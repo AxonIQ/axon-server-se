@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -32,15 +34,18 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     private final Logger logger = LoggerFactory.getLogger(CommandCache.class);
     private final long defaultCommandTimeout;
     private final Clock clock;
+    private final long cacheCapacity;
 
     @Autowired
-    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout, Clock clock) {
+    public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
+                        Clock clock, @Value("${axoniq.axonserver.command-cache-capacity:50000}") long cacheCapacity) {
         this.defaultCommandTimeout = defaultCommandTimeout;
         this.clock = clock;
+        this.cacheCapacity = cacheCapacity;
     }
 
     public CommandCache(Clock clock) {
-        this(300000, clock);
+        this(300000, clock, 50000);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
@@ -62,4 +67,29 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
         }
     }
 
+    @Override
+    public CommandInformation put(@NotNull String key, @NotNull CommandInformation value) {
+        checkCapacity();
+        return super.put(key, value);
+    }
+
+
+    @Override
+    public CommandInformation putIfAbsent(String key, CommandInformation value) {
+        checkCapacity();
+        return super.putIfAbsent(key, value);
+    }
+
+    @Override
+    public void putAll(Map<? extends String, ? extends CommandInformation> m) {
+        checkCapacity();
+        super.putAll(m);
+    }
+
+    private void checkCapacity() {
+        if (mappingCount() >= cacheCapacity) {
+            throw new CommandExecutionException("Command cache is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
+            + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
+        }
+    }
 }
