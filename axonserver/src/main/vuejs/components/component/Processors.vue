@@ -13,12 +13,12 @@
             <div class="results singleHeader">
                 <table>
                     <colgroup>
-                        <col width="15%">
-                        <col width="15%">
-                        <col width="15%">
-                        <col width="15%">
-                        <col width="15%">
                         <col width="25%">
+                        <col width="15%">
+                        <col width="15%">
+                        <col width="15%">
+                        <col width="15%">
+                        <col width="15%">
                     </colgroup>
                     <thead>
                     <tr>
@@ -71,8 +71,9 @@
                         </td>
                         <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="right">
                             <span v-if="processor.mode === 'Tracking'">
-                                <select @change="changeLoadBalancingStrategy(processor, processorsLBStrategies[processor.name])"
-                                        v-model="processorsLBStrategies[processor.name]">
+                                <select @change="changeLoadBalancingStrategy(processor,
+                                processorsLBStrategies[processor.name + '@' + processor.tokenStoreIdentifier])"
+                                        v-model="processorsLBStrategies[processor.name + '@' + processor.tokenStoreIdentifier]">
                                     <option v-for="strategy in loadBalancingStrategies" :value="strategy.name">{{strategy.label}}</option>
                                 </select>
                             </span>
