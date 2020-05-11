@@ -35,6 +35,7 @@ public class TrackingProcessorTest {
                 "{\"name\":\"processor name\","
                         + "\"mode\":\"tracking\","
                         + "\"warnings\":[],"
+                        + "\"tokenStoreIdentifier\":\"\","
                         + "\"freeThreadInstances\":[\"clientIdOne\"],"
                         + "\"activeThreads\":2,"
                         + "\"canPause\":true,"
@@ -92,6 +93,7 @@ public class TrackingProcessorTest {
                 "{\"name\":\"processor name\","
                         + "\"mode\":\"tracking\","
                         + "\"warnings\":[],"
+                        + "\"tokenStoreIdentifier\":\"\","
                         + "\"freeThreadInstances\":[\"clientIdOne\"],"
                         + "\"activeThreads\":1,"
                         + "\"canPause\":true,"
@@ -130,11 +132,11 @@ public class TrackingProcessorTest {
     public void testPrintOnEnableCanMergeWhenOnlyOneSegmentOfMultipleIsClaimed() throws IOException {
 
         EventProcessorInfo.SegmentStatus trackerInfo0 = EventProcessorInfo.SegmentStatus.newBuilder()
-                                                                                              .setCaughtUp(true)
-                                                                                              .setReplaying(false)
-                                                                                              .setOnePartOf(2)
-                                                                                              .setSegmentId(0)
-                                                                                              .build();
+                                                                                        .setCaughtUp(true)
+                                                                                        .setReplaying(false)
+                                                                                        .setOnePartOf(2)
+                                                                                        .setSegmentId(0)
+                                                                                        .build();
         EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
                                                               .setMode("Tracking")
                                                               .setActiveThreads(1)

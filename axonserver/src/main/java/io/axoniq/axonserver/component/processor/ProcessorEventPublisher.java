@@ -110,8 +110,7 @@ public class ProcessorEventPublisher {
      * Split the biggest segment of the given {@code processorName} in two, by publishing a {@link SplitSegmentRequest}
      * as an application event to be picked up by the component publishing this message towards the right Axon client.
      *
-     * @param clientNames   a {@link List} of {@link String}s specifying all the clients which are in the same context
-     *                      as the given {@code processorName}
+     * @param clientNames   a {@link List} of {@link String}s containing the specified tracking event processor
      * @param processorName a {@link String} specifying the Tracking Event Processor for which the biggest segment
      *                      should be split in two
      */
@@ -141,8 +140,7 @@ public class ProcessorEventPublisher {
      * message towards the right Axon client. Prior to publishing the {@code MergeSegmentRequest} firstly all other
      * active clients should be notified to release the paired segment.
      *
-     * @param clientNames   a {@link List} of {@link String}s specifying all the clients which are in the same context
-     *                      as the given {@code processorName}
+     * @param clientNames   a {@link List} of {@link String}s containing the specified tracking event processor
      * @param processorName a {@link String} specifying the Tracking Event Processor for which the smallest segment
      *                      should be merged with the segment that it's paired with
      */

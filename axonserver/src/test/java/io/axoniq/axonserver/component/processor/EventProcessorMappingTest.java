@@ -28,18 +28,20 @@ public class EventProcessorMappingTest {
     @Test
     public void testTracking(){
         ClientProcessor clientProcessor = new FakeClientProcessor("clientId", true,
-                                                                  EventProcessorInfo.newBuilder().setMode("Tracking").build());
+                                                                  EventProcessorInfo.newBuilder().setMode("Tracking")
+                                                                                    .build());
 
         EventProcessor processor = processorMapping.apply("processorName",
-                                                              asList(clientProcessor, clientProcessor));
+                                                          asList(clientProcessor, clientProcessor));
 
         assertTrue(processor instanceof TrackingProcessor);
     }
 
     @Test
-    public void testGeneric(){
+    public void testGeneric() {
         ClientProcessor clientProcessor = new FakeClientProcessor("clientId", true,
-                                                                  EventProcessorInfo.newBuilder().setMode("Subscribing").build());
+                                                                  EventProcessorInfo.newBuilder().setMode("Subscribing")
+                                                                                    .build());
 
         EventProcessor processor = processorMapping.apply("processorName",
                                                           asList(clientProcessor, clientProcessor));
@@ -49,14 +51,15 @@ public class EventProcessorMappingTest {
     }
 
     @Test
-    public void testMixed(){
+    public void testMixed() {
         ClientProcessor tracking = new FakeClientProcessor("clientId", true,
                                                            EventProcessorInfo.newBuilder().setMode("Tracking").build());
 
         ClientProcessor subscribing = new FakeClientProcessor("clientId", true,
-                                                              EventProcessorInfo.newBuilder().setMode("Subscribing").build());
+                                                              EventProcessorInfo.newBuilder().setMode("Subscribing")
+                                                                                .build());
 
-        EventProcessor processor = processorMapping.apply("processorName",  asList(tracking, subscribing));
+        EventProcessor processor = processorMapping.apply("processorName", asList(tracking, subscribing));
 
         assertTrue(processor instanceof GenericProcessor);
         assertNotEquals("Tracking", processor.mode());

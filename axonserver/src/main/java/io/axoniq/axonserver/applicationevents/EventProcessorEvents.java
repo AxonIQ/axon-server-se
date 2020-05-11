@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.applicationevents;
 
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
-import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 
 /**
  * Set of application events for specific operations which can be performed on Event Processors. Used to signal other
@@ -233,51 +232,77 @@ public class EventProcessorEvents {
      */
     public static class SplitSegmentsSucceeded implements AxonServerEvent {
 
-        private final EventProcessorIdentifier processorIdentifier;
+        private final String clientName;
+
+        private final String processorName;
 
         /**
-         * Creates an instance of the event for the specified {@link EventProcessorIdentifier}
+         * Creates an instance of the event for the specified client and processor
          *
-         * @param processorIdentifier the identifier of the processor that has been split
+         * @param clientName    the name of the client that performed the split operation
+         * @param processorName the name of the processor that has been split
          */
-        public SplitSegmentsSucceeded(EventProcessorIdentifier processorIdentifier) {
-            this.processorIdentifier = processorIdentifier;
+        public SplitSegmentsSucceeded(String clientName, String processorName) {
+            this.clientName = clientName;
+            this.processorName = processorName;
         }
 
         /**
-         * Returns the identifier of the processor that has been split
+         * Returns the name of the client that performed the split operation
          *
-         * @return the identifier of the processor that has been split
+         * @return the name of the client that performed the split operation
          */
-        public EventProcessorIdentifier processorIdentifier() {
-            return processorIdentifier;
+        public String clientName() {
+            return clientName;
+        }
+
+        /**
+         * Returns the name of the processor that has been split
+         *
+         * @return the name of the processor that has been split
+         */
+        public String processorName() {
+            return processorName;
         }
     }
 
     /**
-     * Axon Server Event that is published any time a merge instruction for
-     * a tracking event processor is successfully executed.
+     * Axon Server Event that is notified any time a merge instruction for
+     * a tracking event processor is successfully executed by a client.
      */
     public static class MergeSegmentsSucceeded implements AxonServerEvent {
 
-        private final EventProcessorIdentifier processorIdentifier;
+        private final String clientName;
+
+        private final String processorName;
 
         /**
-         * Creates an instance of the event for the specified {@link EventProcessorIdentifier}
+         * Creates an instance of the event for the specified client and processor
          *
-         * @param processorIdentifier the identifier of the processor that has been merged
+         * @param clientName    the name of the client that performed the merge operation
+         * @param processorName the name of the processor that has been merged
          */
-        public MergeSegmentsSucceeded(EventProcessorIdentifier processorIdentifier) {
-            this.processorIdentifier = processorIdentifier;
+        public MergeSegmentsSucceeded(String clientName, String processorName) {
+            this.clientName = clientName;
+            this.processorName = processorName;
         }
 
         /**
-         * Returns the identifier of the processor that has been merged
+         * Returns the name of the client that performed the merge operation
          *
-         * @return the identifier of the processor that has been merged
+         * @return the name of the client that performed the merge operation
          */
-        public EventProcessorIdentifier processorIdentifier() {
-            return processorIdentifier;
+        public String clientName() {
+            return clientName;
+        }
+
+        /**
+         * Returns the name of the processor that has been merged
+         *
+         * @return the name of the processor that has been merged
+         */
+        public String processorName() {
+            return processorName;
         }
     }
 }

@@ -90,8 +90,7 @@ public class EventProcessorService {
                 PlatformOutboundInstruction.newBuilder()
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
                                            .build();
-        EventProcessorIdentifier processorId = new NameBasedEventProcessorIdentifier(event.getProcessorName());
-        SplitSegmentsSucceeded success = new SplitSegmentsSucceeded(processorId);
+        SplitSegmentsSucceeded success = new SplitSegmentsSucceeded(event.getClientName(), event.getProcessorName());
         instructionResultSource
                 .onInstructionResultFor(instruction.getInstructionId())
                 .subscribe(() -> eventPublisher.publishEvent(success),
@@ -120,8 +119,7 @@ public class EventProcessorService {
                 PlatformOutboundInstruction.newBuilder()
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        EventProcessorIdentifier processorId = new NameBasedEventProcessorIdentifier(event.getProcessorName());
-        MergeSegmentsSucceeded success = new MergeSegmentsSucceeded(processorId);
+        MergeSegmentsSucceeded success = new MergeSegmentsSucceeded(event.getClientName(), event.getProcessorName());
 
         instructionResultSource
                 .onInstructionResultFor(instruction.getInstructionId())

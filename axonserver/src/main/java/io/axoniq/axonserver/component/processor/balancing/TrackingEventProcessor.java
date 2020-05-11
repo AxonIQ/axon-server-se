@@ -16,6 +16,7 @@ import javax.persistence.Embeddable;
 
 /**
  * Represents the tracking event processor semantic key.
+ *
  * @author Sara Pellegrini
  * @since 4.0
  */
@@ -26,6 +27,8 @@ public final class TrackingEventProcessor implements Serializable {
 
     private String context;
 
+    private String tokenStoreIdentifier;
+
     @SuppressWarnings("unused")
     public TrackingEventProcessor() {
     }
@@ -34,11 +37,26 @@ public final class TrackingEventProcessor implements Serializable {
      * Creates an instance with the specified name and context
      *
      * @param name    the name of the tracking event processor
-     * @param context the context of the tracking event processor
+     * @param context the principal context of the tracking event processor
      */
-    public TrackingEventProcessor(@Nonnull String name, @Nonnull String context) {
+    public TrackingEventProcessor(@Nonnull String name,
+                                  @Nonnull String context) {
+        this(name, context, "");
+    }
+
+    /**
+     * Creates an instance with the specified name, context and token store identifier
+     *
+     * @param name                 the name of the tracking event processor
+     * @param context              the principal context of the tracking event processor
+     * @param tokenStoreIdentifier the token store identifier of the tracking event processor
+     */
+    public TrackingEventProcessor(@Nonnull String name,
+                                  @Nonnull String context,
+                                  @Nonnull String tokenStoreIdentifier) {
         this.name = name;
         this.context = context;
+        this.tokenStoreIdentifier = tokenStoreIdentifier;
     }
 
     /**
@@ -51,11 +69,21 @@ public final class TrackingEventProcessor implements Serializable {
     }
 
     /**
-     * Returns the context of the tracking event processor
-     * @return the context of the tracking event processor
+     * Returns the principal context of the tracking event processor
+     *
+     * @return the principal context of the tracking event processor
      */
     public String context() {
         return context;
+    }
+
+    /**
+     * Returns the token store identifier of the tracking event processor
+     *
+     * @return the token store identifier of the tracking event processor
+     */
+    public String tokenStoreIdentifier() {
+        return tokenStoreIdentifier;
     }
 
     @Override
@@ -68,12 +96,13 @@ public final class TrackingEventProcessor implements Serializable {
         }
         TrackingEventProcessor that = (TrackingEventProcessor) o;
         return Objects.equals(name, that.name) &&
-                Objects.equals(context, that.context);
+                Objects.equals(context, that.context) &&
+                Objects.equals(tokenStoreIdentifier, that.tokenStoreIdentifier);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, context);
+        return Objects.hash(name, context, tokenStoreIdentifier);
     }
 
     @Override
@@ -81,6 +110,7 @@ public final class TrackingEventProcessor implements Serializable {
         return "TrackingEventProcessor{" +
                 "name='" + name + '\'' +
                 ", context='" + context + '\'' +
+                ", tokenStoreIdentifier='" + tokenStoreIdentifier + '\'' +
                 '}';
     }
 }

@@ -68,7 +68,8 @@ public class EventProcessorServiceTest {
         assertFalse(publishedInternalEvents.isEmpty());
         Object event = publishedInternalEvents.get(0);
         assertTrue(event instanceof MergeSegmentsSucceeded);
-        assertEquals("Processor", ((MergeSegmentsSucceeded) event).processorIdentifier().name());
+        assertEquals("Processor", ((MergeSegmentsSucceeded) event).processorName());
+        assertEquals("MergeClient", ((MergeSegmentsSucceeded) event).clientName());
     }
 
     @Test
@@ -113,7 +114,8 @@ public class EventProcessorServiceTest {
         assertFalse(publishedInternalEvents.isEmpty());
         Object event = publishedInternalEvents.get(0);
         assertTrue(event instanceof SplitSegmentsSucceeded);
-        assertEquals("processor", ((SplitSegmentsSucceeded) event).processorIdentifier().name());
+        assertEquals("processor", ((SplitSegmentsSucceeded) event).processorName());
+        assertEquals("SplitClient", ((SplitSegmentsSucceeded) event).clientName());
     }
 
     @Test

@@ -18,15 +18,15 @@ import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
-import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.FakeStreamObserver;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -41,9 +41,9 @@ public class QueryRestControllerTest {
         registationCache = new QueryRegistrationCache(null);
         queryDispatcher = mock(QueryDispatcher.class);
         QuerySubscription querySubscription = QuerySubscription.newBuilder()
-                .setQuery("Request")
-                .setComponentName("Component")
-                .setClientId("client").build();
+                                                               .setQuery("Request")
+                                                               .setComponentName("Component")
+                                                               .setClientId("client").build();
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
                              new DirectQueryHandler(new FakeStreamObserver<>(),
                                                     new ClientIdentification(Topology.DEFAULT_CONTEXT,

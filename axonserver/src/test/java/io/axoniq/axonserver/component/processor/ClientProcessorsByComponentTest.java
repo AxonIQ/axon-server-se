@@ -12,12 +12,12 @@ import java.util.Iterator;
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for {@link ComponentClientProcessors}
+ * Unit tests for {@link ClientProcessorsByComponent}
  *
  * @author Sara Pellegrini
  * @since 4.2
  */
-public class ComponentClientProcessorsTest {
+public class ClientProcessorsByComponentTest {
 
 
     @Test
@@ -73,9 +73,9 @@ public class ComponentClientProcessorsTest {
         delegate.add(greenD);
         delegate.add(blueD);
 
-        ComponentClientProcessors testSubject = new ComponentClientProcessors(delegate::iterator,
-                                                                              "component",
-                                                                              "context");
+        ClientProcessorsByComponent testSubject = new ClientProcessorsByComponent(delegate::iterator,
+                                                                                  "component",
+                                                                                  "context");
 
         Iterator<ClientProcessor> iterator = testSubject.iterator();
         assertEquals(blueA, iterator.next());
