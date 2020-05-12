@@ -71,8 +71,8 @@
                         </td>
                         <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="right">
                             <span v-if="processor.mode === 'Tracking'">
-                                <select @change="changeLoadBalancingStrategy(processor, processorsLBStrategies[processor.fullName])"
-                                        v-model="processorsLBStrategies[processor.fullName]">
+                                <select v-model="processorsLBStrategies[processor.fullName]"
+                                        @change="changeLoadBalancingStrategy(processor, processorsLBStrategies[processor.fullName])">
                                     <option v-for="strategy in loadBalancingStrategies" :value="strategy.name">{{strategy.label}}</option>
                                 </select>
                             </span>
@@ -85,7 +85,7 @@
                 </table>
             </div>
         </section>
-        <section style="display:block; float: left; width: 30%; margin-left: 5%" v-if="selected.name">
+        <section v-if="selected.name" style="display:block; float: left; width: 30%; margin-left: 5%">
             <div class="results singleHeader">
 
                 <table class="nodes" v-if="selected.mode === 'Tracking'">
@@ -154,7 +154,7 @@
 
             </div>
         </modal>
-        <modal height="250" name="load-balance" width="500">
+        <modal name="load-balance" width="500" height="250">
             <div id="load-balance" class="column configuration modal">
                 <h2>Load Balance {{loadBalanceProcessor.name}} Event Processor</h2>
                 <form>
@@ -219,12 +219,12 @@
                                   "/clients?context=" + this.context +
                                   "&tokenStoreIdentifier=" + this.selected.tokenStoreIdentifier)
                         .then(response => {
-                            this.segmentDestinationOptions = response.data
-                                    .map(instance => instance.name)
-                                    .filter(instanceName => instanceName !== tracker.clientId);
-                            this.movingSegment = tracker;
-                            this.$modal.show('move-segment');
-                        });
+                    this.segmentDestinationOptions = response.data
+                            .map(instance => instance.name)
+                            .filter(instanceName => instanceName !== tracker.clientId);
+                    this.movingSegment = tracker;
+                    this.$modal.show('move-segment');
+                });
             },
             hideMoveSegment() {
                 this.moveSegmentInstances = [];
