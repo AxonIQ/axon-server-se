@@ -61,6 +61,11 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     }
 
     @Override
+    public String fullName() {
+        return name() + "@" + tokenStoreIdentifier;
+    }
+
+    @Override
     public Iterable<Warning> warnings() {
         return asList(
                 new DuplicatedTrackers(concat(processors())),

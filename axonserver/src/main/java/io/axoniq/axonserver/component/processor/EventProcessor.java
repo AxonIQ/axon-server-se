@@ -26,14 +26,19 @@ public interface EventProcessor extends Printable {
 
     String mode();
 
-    default Iterable<Warning> warnings(){
+    default String fullName() {
+        return name();
+    }
+
+    default Iterable<Warning> warnings() {
         return emptyList();
     }
 
     @Override
-    default void printOn(Media media){
+    default void printOn(Media media) {
         media.with("name", name())
              .with("mode", mode())
+             .with("fullName", fullName())
              .with("warnings", new ActiveWarnings(warnings()));
     }
 }

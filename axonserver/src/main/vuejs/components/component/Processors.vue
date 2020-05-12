@@ -34,7 +34,7 @@
                     <tr :class="{selected : isSelected(processor)}" v-for="processor in processors"
                         @click="select(processor)">
                         <td>
-                            <div>{{processor.name}}</div>
+                            <div>{{processor.fullName}}</div>
                         </td>
                         <td>
                             <div>{{processor.mode}}</div>
@@ -71,9 +71,8 @@
                         </td>
                         <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="right">
                             <span v-if="processor.mode === 'Tracking'">
-                                <select @change="changeLoadBalancingStrategy(processor,
-                                processorsLBStrategies[processor.name + '@' + processor.tokenStoreIdentifier])"
-                                        v-model="processorsLBStrategies[processor.name + '@' + processor.tokenStoreIdentifier]">
+                                <select @change="changeLoadBalancingStrategy(processor, processorsLBStrategies[processor.fullName])"
+                                        v-model="processorsLBStrategies[processor.fullName]">
                                     <option v-for="strategy in loadBalancingStrategies" :value="strategy.name">{{strategy.label}}</option>
                                 </select>
                             </span>

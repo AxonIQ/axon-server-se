@@ -86,6 +86,15 @@ public final class TrackingEventProcessor implements Serializable {
         return tokenStoreIdentifier;
     }
 
+    /**
+     * Returns the full name of processor, that is processorName@tokenStoreIdentifier
+     *
+     * @return the full name of processor
+     */
+    public String fullName() {
+        return name + "@" + tokenStoreIdentifier;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
