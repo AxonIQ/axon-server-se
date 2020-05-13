@@ -40,7 +40,7 @@ import static org.mockito.Mockito.*;
 public class PlatformServiceTest {
     private PlatformService platformService;
     private Topology clusterController;
-    private final String context = "context";
+    private final String context = Topology.DEFAULT_CONTEXT;
     @Before
     public void setUp()  {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());

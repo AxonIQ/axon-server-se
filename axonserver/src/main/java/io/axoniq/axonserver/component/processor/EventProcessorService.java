@@ -4,6 +4,7 @@ import io.axoniq.axonserver.applicationevents.AxonServerEventPublisher;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentsSucceeded;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentsSucceeded;
+import io.axoniq.axonserver.grpc.InstructionPublisher;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.EventProcessorSegmentReference;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
@@ -13,8 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-
-import java.util.function.BiConsumer;
 
 /**
  * Service responsible to communicate instructions about event processor management with client applications.
@@ -27,7 +26,7 @@ public class EventProcessorService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventProcessorService.class);
 
-    private final BiConsumer<String, PlatformOutboundInstruction> instructionPublisher;
+    private final InstructionPublisher instructionPublisher;
 
     private final InstructionResultSource.Factory instructionResultSource;
 
@@ -63,7 +62,7 @@ public class EventProcessorService {
      * @param eventPublisher          used to publish internal events
      */
     public EventProcessorService(
-            BiConsumer<String, PlatformOutboundInstruction> instructionPublisher,
+            InstructionPublisher instructionPublisher,
             InstructionResultSource.Factory instructionResultSource,
             AxonServerEventPublisher eventPublisher) {
         this.instructionPublisher = instructionPublisher;
@@ -97,7 +96,7 @@ public class EventProcessorService {
                            error -> LOGGER.warn("Error during segment split: {}, {}", error, instruction),
                            timeout -> LOGGER.warn("The following operation is taking to long: {}", instruction));
 
-        instructionPublisher.accept(event.getClientName(), instruction);
+        instructionPublisher.publish(event.context(), event.getClientName(), instruction);
     }
 
 
@@ -127,7 +126,7 @@ public class EventProcessorService {
                            error -> LOGGER.warn("Error during segment merge: {}, {}", error, instruction),
                            timeout -> LOGGER.warn("The following operation is taking to long: {}", instruction));
 
-        instructionPublisher.accept(event.getClientName(), instruction);
+        instructionPublisher.publish(event.context(), event.getClientName(), instruction);
     }
 
     /**
@@ -147,6 +146,6 @@ public class EventProcessorService {
                 PlatformOutboundInstruction.newBuilder()
                                            .setReleaseSegment(releaseSegmentRequest)
                                            .build();
-        instructionPublisher.accept(event.getClientName(), outboundInstruction);
+        instructionPublisher.publish(event.context(), event.getClientName(), outboundInstruction);
     }
 }

@@ -36,7 +36,7 @@ public class EventProcessorServiceTest {
     private List<Object> publishedInternalEvents = new CopyOnWriteArrayList<>();
 
     private EventProcessorService testSubject = new EventProcessorService(
-            (client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>()).add(i),
+            (context, client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>()).add(i),
             instructionId -> (subscriber, timeout) -> resultSubscribers.computeIfAbsent(instructionId,
                                                                                         k -> new CopyOnWriteArrayList<>())
                                                                        .add(subscriber),

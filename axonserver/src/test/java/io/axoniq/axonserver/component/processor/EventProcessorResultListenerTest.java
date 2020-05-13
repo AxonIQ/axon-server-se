@@ -22,8 +22,7 @@ public class EventProcessorResultListenerTest {
 
     private final EventProcessorResultListener testSubject =
             new EventProcessorResultListener((context, processor) -> refreshed.add(processor),
-                                             (client, processor) -> new EventProcessorIdentifier(processor, ""),
-                                             (client) -> "context");
+                                             (context, client, processor) -> new EventProcessorIdentifier(processor, ""));
 
     @Before
     public void setUp() throws Exception {

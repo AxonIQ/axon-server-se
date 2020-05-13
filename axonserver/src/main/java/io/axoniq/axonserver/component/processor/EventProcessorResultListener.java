@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
-import io.axoniq.axonserver.component.instance.ClientContextProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -19,25 +18,25 @@ import java.util.function.Function;
 @Component
 public class EventProcessorResultListener {
 
+    public interface ProcessorProvider {
+        EventProcessorIdentifier get(String context, String client, String tokenStoreIdentifier);
+    }
+
     private final BiConsumer<String, EventProcessorIdentifier> refreshOperation;
 
-    private final BiFunction<String, String, EventProcessorIdentifier> eventProcessorIdentifierProvider;
-
-    private final Function<String, String> contextProvider;
+    private final ProcessorProvider eventProcessorIdentifierProvider;
 
     /**
      * Creates an instance of {@link EventProcessorResultListener} based on the {@link EventProcessorStatusRefresh}.
      *
      * @param refreshEventProcessorStatus      used to require a refresh of the status of the event processors.
      * @param eventProcessorIdentifierProvider used to retrieve the token store identifier for the specified processor
-     *                                         name
-     *                                         and client name
+     *                                         name and client name
      */
     @Autowired
     public EventProcessorResultListener(EventProcessorStatusRefresh refreshEventProcessorStatus,
-                                        EventProcessorIdentifierProvider eventProcessorIdentifierProvider,
-                                        ClientContextProvider contextProvider) {
-        this(refreshEventProcessorStatus::run, eventProcessorIdentifierProvider, contextProvider);
+                                        EventProcessorIdentifierProvider eventProcessorIdentifierProvider) {
+        this(refreshEventProcessorStatus::run, eventProcessorIdentifierProvider::get);
     }
 
     /**
@@ -45,15 +44,12 @@ public class EventProcessorResultListener {
      *
      * @param refreshOperation                 used to require a refresh of the status of the event processors.
      * @param eventProcessorIdentifierProvider used to retrieve the token store identifier for the specified processor
-     *                                         name
-     *                                         and client name
+     *                                         name and client name
      */
     public EventProcessorResultListener(BiConsumer<String, EventProcessorIdentifier> refreshOperation,
-                                        BiFunction<String, String, EventProcessorIdentifier> eventProcessorIdentifierProvider,
-                                        Function<String, String> contextProvider) {
+                                        ProcessorProvider eventProcessorIdentifierProvider) {
         this.refreshOperation = refreshOperation;
         this.eventProcessorIdentifierProvider = eventProcessorIdentifierProvider;
-        this.contextProvider = contextProvider;
     }
 
     /**
@@ -63,7 +59,7 @@ public class EventProcessorResultListener {
      */
     @EventListener
     public void on(EventProcessorEvents.MergeSegmentsSucceeded event) {
-        refresh(event.clientName(), event.processorName());
+        refresh(event.context(), event.clientName(), event.processorName());
     }
 
     /**
@@ -73,12 +69,11 @@ public class EventProcessorResultListener {
      */
     @EventListener
     public void on(EventProcessorEvents.SplitSegmentsSucceeded event) {
-        refresh(event.clientName(), event.processorName());
+        refresh(event.context(), event.clientName(), event.processorName());
     }
 
-    private void refresh(String clientName, String processorName) {
-        EventProcessorIdentifier processor = eventProcessorIdentifierProvider.apply(clientName, processorName);
-        String context = contextProvider.apply(clientName);
+    private void refresh(String context, String clientName, String processorName) {
+        EventProcessorIdentifier processor = eventProcessorIdentifierProvider.get(context, clientName, processorName);
         refreshOperation.accept(context, processor);
     }
 }

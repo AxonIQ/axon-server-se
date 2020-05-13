@@ -14,7 +14,7 @@ import java.util.function.BiFunction;
  * @since 4.4
  */
 @Component
-public class EventProcessorIdentifierProvider implements BiFunction<String, String, EventProcessorIdentifier> {
+public class EventProcessorIdentifierProvider {
 
     /*All event processor instances running in connected clients*/
     private final ClientProcessors clientProcessors;
@@ -32,14 +32,15 @@ public class EventProcessorIdentifierProvider implements BiFunction<String, Stri
      * Finds the first event processor instance that runs in the specified client and has the specified name.
      * Returns the token store identifier of that instance.
      *
+     * @param context          the principal context of event processor
      * @param clientIdentifier the client running the event processor instance
      * @param processorName    the name of the event processor
      * @return the token store identifier of the event processor
      */
-    @Override
-    public EventProcessorIdentifier apply(String clientIdentifier, String processorName) {
+    public EventProcessorIdentifier get(String context, String clientIdentifier, String processorName) {
         for (ClientProcessor clientProcessor : clientProcessors) {
             if (clientProcessor.clientId().equals(clientIdentifier) &&
+                    clientProcessor.belongsToContext(context) &&
                     clientProcessor.eventProcessorInfo().getProcessorName().equals(processorName)) {
                 String tokenStoreIdentifier = clientProcessor.eventProcessorInfo().getTokenStoreIdentifier();
                 return new EventProcessorIdentifier(processorName, tokenStoreIdentifier);
