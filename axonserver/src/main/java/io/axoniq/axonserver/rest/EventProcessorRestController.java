@@ -85,7 +85,7 @@ public class EventProcessorRestController {
         auditLog.info("[{}@{}] Request to pause Event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processor, component);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier)
-                .forEach(client -> processorEventsSource.pauseProcessorRequest(client.name(), processor));
+                .forEach(client -> processorEventsSource.pauseProcessorRequest(context, client.name(), processor));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/start")
@@ -97,7 +97,7 @@ public class EventProcessorRestController {
         auditLog.info("[{}@{}] Request to start Event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processor, component);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier)
-                .forEach(client -> processorEventsSource.startProcessorRequest(client.name(), processor));
+                .forEach(client -> processorEventsSource.startProcessorRequest(context, client.name(), processor));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/segments/{segment}/move")
@@ -112,7 +112,7 @@ public class EventProcessorRestController {
                       AuditLog.username(principal), context, segment, processor, component, target);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier).forEach(client -> {
             if (!target.equals(client.name())) {
-                processorEventsSource.releaseSegment(client.name(), processor, segment);
+                processorEventsSource.releaseSegment(context, client.name(), processor, segment);
             }
         });
     }
@@ -138,7 +138,7 @@ public class EventProcessorRestController {
         List<String> clientNames = StreamSupport.stream(clients.spliterator(), false)
                                                 .map(Client::name)
                                                 .collect(Collectors.toList());
-        processorEventsSource.splitSegment(clientNames, processorName);
+        processorEventsSource.splitSegment(context, clientNames, processorName);
     }
 
     /**
@@ -162,7 +162,7 @@ public class EventProcessorRestController {
         List<String> clientNames = StreamSupport.stream(clients.spliterator(), false)
                                                 .map(Client::name)
                                                 .collect(Collectors.toList());
-        processorEventsSource.mergeSegment(clientNames, processorName);
+        processorEventsSource.mergeSegment(context, clientNames, processorName);
     }
 
     /**

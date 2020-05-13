@@ -16,6 +16,8 @@ import static org.junit.Assert.*;
  */
 public class EventProcessorResultListenerTest {
 
+    private final String context = "context";
+
     private final List<EventProcessorIdentifier> refreshed = new ArrayList<>();
 
     private final EventProcessorResultListener testSubject =
@@ -31,14 +33,14 @@ public class EventProcessorResultListenerTest {
     @Test
     public void onSplit() {
         assertTrue(refreshed.isEmpty());
-        testSubject.on(new EventProcessorEvents.SplitSegmentsSucceeded("clientA", "ProcessorA"));
+        testSubject.on(new EventProcessorEvents.SplitSegmentsSucceeded(context, "clientA", "ProcessorA"));
         assertEquals(refreshed, singletonList(new EventProcessorIdentifier("ProcessorA", "")));
     }
 
     @Test
     public void onMerge() {
         assertTrue(refreshed.isEmpty());
-        testSubject.on(new EventProcessorEvents.MergeSegmentsSucceeded("clientB", "ProcessorB"));
+        testSubject.on(new EventProcessorEvents.MergeSegmentsSucceeded(context, "clientB", "ProcessorB"));
         assertEquals(refreshed, singletonList(new EventProcessorIdentifier("ProcessorB", "")));
     }
 }

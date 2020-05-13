@@ -27,6 +27,8 @@ import static org.junit.Assert.*;
  */
 public class EventProcessorServiceTest {
 
+    private final String context = "context";
+
     private Map<String, List<PlatformOutboundInstruction>> publishedInstructions = new ConcurrentHashMap<>();
 
     private Map<String, List<ResultSubscriber>> resultSubscribers = new ConcurrentHashMap<>();
@@ -50,6 +52,7 @@ public class EventProcessorServiceTest {
     @Test
     public void onMergeSegmentRequestExecuted() {
         MergeSegmentRequest mergeSegmentRequest = new MergeSegmentRequest(false,
+                                                                          context,
                                                                           "MergeClient",
                                                                           "Processor",
                                                                           1);
@@ -75,6 +78,7 @@ public class EventProcessorServiceTest {
     @Test
     public void onMergeSegmentRequestNotExecuted() {
         MergeSegmentRequest mergeSegmentRequest = new MergeSegmentRequest(false,
+                                                                          context,
                                                                           "MergeClient",
                                                                           "Processor",
                                                                           1);
@@ -96,6 +100,7 @@ public class EventProcessorServiceTest {
     @Test
     public void onSplitSegmentRequestExecuted() {
         SplitSegmentRequest splitSegmentRequest = new SplitSegmentRequest(false,
+                                                                          context,
                                                                           "SplitClient",
                                                                           "processor",
                                                                           1);
@@ -121,6 +126,7 @@ public class EventProcessorServiceTest {
     @Test
     public void onSplitSegmentRequestNotExecuted() {
         SplitSegmentRequest splitSegmentRequest = new SplitSegmentRequest(false,
+                                                                          context,
                                                                           "SplitClient",
                                                                           "processor",
                                                                           1);
@@ -141,7 +147,8 @@ public class EventProcessorServiceTest {
 
     @Test
     public void onReleaseSegmentRequest() {
-        ReleaseSegmentRequest releaseSegmentRequest = new ReleaseSegmentRequest("Release",
+        ReleaseSegmentRequest releaseSegmentRequest = new ReleaseSegmentRequest(context,
+                                                                                "Release",
                                                                                 "processor",
                                                                                 1,
                                                                                 false);

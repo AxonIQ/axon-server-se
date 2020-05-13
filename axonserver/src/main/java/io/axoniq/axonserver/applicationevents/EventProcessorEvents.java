@@ -77,11 +77,14 @@ public class EventProcessorEvents {
 
     public static class PauseEventProcessorRequest extends BaseEventProcessorsEvent {
 
+        private final String context;
         private final String clientName;
         private final String processorName;
 
-        public PauseEventProcessorRequest(String clientName, String processorName, boolean proxied) {
+        public PauseEventProcessorRequest(String context, String clientName, String processorName,
+                                          boolean proxied) {
             super(proxied);
+            this.context = context;
             this.clientName = clientName;
             this.processorName = processorName;
         }
@@ -92,17 +95,28 @@ public class EventProcessorEvents {
 
         public String processorName() {
             return processorName;
+        }
+
+        /**
+         * Returns the principal context of the event processor
+         * @return the principal context of the event processor
+         */
+        public String context() {
+            return context;
         }
     }
 
 
     public static class StartEventProcessorRequest extends BaseEventProcessorsEvent {
 
+        private final String context;
         private final String clientName;
         private final String processorName;
 
-        public StartEventProcessorRequest(String clientName, String processorName, boolean proxied) {
+        public StartEventProcessorRequest(String context, String clientName, String processorName,
+                                          boolean proxied) {
             super(proxied);
+            this.context = context;
             this.clientName = clientName;
             this.processorName = processorName;
         }
@@ -113,6 +127,14 @@ public class EventProcessorEvents {
 
         public String processorName() {
             return processorName;
+        }
+
+        /**
+         * Returns the principal context of the event processor
+         * @return the principal context of the event processor
+         */
+        public String context() {
+            return context;
         }
     }
 
@@ -123,6 +145,7 @@ public class EventProcessorEvents {
      */
     public abstract static class BaseSegmentRequest extends BaseEventProcessorsEvent {
 
+        private final String context;
         private final String clientName;
         private final String processorName;
         private final int segmentId;
@@ -132,14 +155,16 @@ public class EventProcessorEvents {
          * Processor.
          *
          * @param proxied       a {@code boolean} specifying whether this message has been proxied yes/no
+         * @param context       the principal context of the event processor
          * @param clientName    a {@link String} defining the name of the client which should handle this message
          * @param processorName a {@link String} defining the name of the processor which this message should perform
          *                      some operation on/with
          * @param segmentId     an {@code int} specifying the segment identifier which this message should perform some
-         *                      operation on/with
          */
-        protected BaseSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
+        BaseSegmentRequest(boolean proxied, String context, String clientName, String processorName,
+                                     int segmentId) {
             super(proxied);
+            this.context = context;
             this.clientName = clientName;
             this.processorName = processorName;
             this.segmentId = segmentId;
@@ -171,6 +196,14 @@ public class EventProcessorEvents {
         public int getSegmentId() {
             return segmentId;
         }
+
+        /**
+         * Returns the principal context of the event processor
+         * @return the principal context of the event processor
+         */
+        public String context() {
+            return context;
+        }
     }
 
     /**
@@ -179,18 +212,22 @@ public class EventProcessorEvents {
      */
     public static class ReleaseSegmentRequest extends BaseSegmentRequest {
 
-        public ReleaseSegmentRequest(String clientName, String processorName, int segmentId, boolean proxied) {
-            super(proxied, clientName, processorName, segmentId);
+        public ReleaseSegmentRequest(String context, String clientName, String processorName, int segmentId,
+                                     boolean proxied) {
+            super(proxied, context, clientName, processorName, segmentId);
         }
     }
 
     public static class ProcessorStatusRequest extends BaseEventProcessorsEvent {
 
+        private final String context;
         private final String clientName;
         private final String processorName;
 
-        public ProcessorStatusRequest(String clientName, String processorName, boolean proxied) {
+        public ProcessorStatusRequest(String context, String clientName, String processorName,
+                                      boolean proxied) {
             super(proxied);
+            this.context = context;
             this.clientName = clientName;
             this.processorName = processorName;
         }
@@ -202,6 +239,14 @@ public class EventProcessorEvents {
         public String processorName() {
             return processorName;
         }
+
+        /**
+         * Returns the principal context of the event processor
+         * @return the principal context of the event processor
+         */
+        public String context() {
+            return context;
+        }
     }
 
     /**
@@ -210,8 +255,9 @@ public class EventProcessorEvents {
      */
     public static class SplitSegmentRequest extends BaseSegmentRequest {
 
-        public SplitSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
-            super(proxied, clientName, processorName, segmentId);
+        public SplitSegmentRequest(boolean proxied, String context, String clientName, String processorName,
+                                   int segmentId) {
+            super(proxied, context, clientName, processorName, segmentId);
         }
     }
 
@@ -221,8 +267,9 @@ public class EventProcessorEvents {
      */
     public static class MergeSegmentRequest extends BaseSegmentRequest {
 
-        public MergeSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
-            super(proxied, clientName, processorName, segmentId);
+        public MergeSegmentRequest(boolean proxied, String context, String clientName, String processorName,
+                                   int segmentId) {
+            super(proxied, context, clientName, processorName, segmentId);
         }
     }
 
@@ -232,6 +279,8 @@ public class EventProcessorEvents {
      */
     public static class SplitSegmentsSucceeded implements AxonServerEvent {
 
+        private final String context;
+
         private final String clientName;
 
         private final String processorName;
@@ -239,10 +288,12 @@ public class EventProcessorEvents {
         /**
          * Creates an instance of the event for the specified client and processor
          *
+         * @param context       the primary context of the client application
          * @param clientName    the name of the client that performed the split operation
          * @param processorName the name of the processor that has been split
          */
-        public SplitSegmentsSucceeded(String clientName, String processorName) {
+        public SplitSegmentsSucceeded(String context, String clientName, String processorName) {
+            this.context = context;
             this.clientName = clientName;
             this.processorName = processorName;
         }
@@ -264,6 +315,14 @@ public class EventProcessorEvents {
         public String processorName() {
             return processorName;
         }
+
+        /**
+         * Returns the principal context of the event processor
+         * @return the principal context of the event processor
+         */
+        public String context() {
+            return context;
+        }
     }
 
     /**
@@ -272,6 +331,8 @@ public class EventProcessorEvents {
      */
     public static class MergeSegmentsSucceeded implements AxonServerEvent {
 
+        private final String context;
+
         private final String clientName;
 
         private final String processorName;
@@ -279,10 +340,12 @@ public class EventProcessorEvents {
         /**
          * Creates an instance of the event for the specified client and processor
          *
+         * @param context       the primary context of the client application
          * @param clientName    the name of the client that performed the merge operation
          * @param processorName the name of the processor that has been merged
          */
-        public MergeSegmentsSucceeded(String clientName, String processorName) {
+        public MergeSegmentsSucceeded(String context, String clientName, String processorName) {
+            this.context = context;
             this.clientName = clientName;
             this.processorName = processorName;
         }
@@ -303,6 +366,14 @@ public class EventProcessorEvents {
          */
         public String processorName() {
             return processorName;
+        }
+
+        /**
+         * Returns the principal context of the event processor
+         * @return the principal context of the event processor
+         */
+        public String context() {
+            return context;
         }
     }
 }

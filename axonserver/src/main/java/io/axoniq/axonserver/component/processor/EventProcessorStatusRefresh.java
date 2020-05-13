@@ -96,7 +96,8 @@ public class EventProcessorStatusRefresh {
 
             updateListeners.add(statusUpdateListener);
             matchingClients.forEach(client -> eventPublisher.publishEvent(
-                    new EventProcessorEvents.ProcessorStatusRequest(client.clientId(), processorId.name(), false)
+                    new EventProcessorEvents.ProcessorStatusRequest(context,
+                                                                    client.clientId(), processorId.name(), false)
             ));
             try {
                 boolean updated = clientProcessorStatusUpdateLatch.await(timeout.toMillis(), MILLISECONDS);

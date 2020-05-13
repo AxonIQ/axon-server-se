@@ -39,8 +39,8 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class PlatformServiceTest {
     private PlatformService platformService;
-
     private Topology clusterController;
+    private final String context = "context";
     @Before
     public void setUp()  {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
@@ -135,7 +135,8 @@ public class PlatformServiceTest {
                                                                                                      .setClientId("Release")
                                                                                                      .setComponentName("component")
         ).build());
-        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest("Release",
+        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest(context,
+                                                                                                         "Release",
                                                                                                          "processor",
                                                                                                          false));
         assertEquals(1, responseObserver.values().size());
@@ -149,7 +150,8 @@ public class PlatformServiceTest {
                                                                                                      .setClientId("Release")
                                                                                                      .setComponentName("component")
         ).build());
-        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest("Release",
+        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest(context,
+                                                                                                         "Release",
                                                                                                          "processor",
                                                                                                          false));
         assertEquals(1, responseObserver.values().size());
