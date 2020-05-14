@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import org.junit.*;
 
@@ -20,11 +22,16 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class FlowControlQueuesTest {
+    private static final int SOFT_LIMIT_QUEUE_SIZE = 5;
     private FlowControlQueues<QueueElement> testSubject;
 
     @Before
     public void setup() {
-        testSubject = new FlowControlQueues<>( Comparator.comparing(QueueElement::getPrioKey));
+        testSubject = new FlowControlQueues<>(Comparator.comparing(QueueElement::getPrioKey),
+                                              SOFT_LIMIT_QUEUE_SIZE,
+                                              null,
+                                              null,
+                                              ErrorCode.OTHER);
     }
 
     @Test
@@ -73,6 +80,27 @@ public class FlowControlQueuesTest {
         assertEquals("A", testSubject.take("one").prioKey);
         assertEquals("B", testSubject.take("one").prioKey);
         assertEquals("C", testSubject.take("one").prioKey);
+    }
+
+    @Test(expected = MessagingPlatformException.class)
+    public void queueSoftLimits() {
+        testSubject.put("one", new QueueElement("A"));
+        testSubject.put("one", new QueueElement("B"));
+        testSubject.put("one", new QueueElement("C"));
+        testSubject.put("one", new QueueElement("D"));
+        testSubject.put("one", new QueueElement("E"));
+        testSubject.put("one", new QueueElement("F"), -1);
+    }
+
+    @Test(expected = MessagingPlatformException.class)
+    public void queueHardLimits() {
+        testSubject.put("one", new QueueElement("A"));
+        testSubject.put("one", new QueueElement("B"));
+        testSubject.put("one", new QueueElement("C"));
+        testSubject.put("one", new QueueElement("D"));
+        testSubject.put("one", new QueueElement("E"));
+        testSubject.put("one", new QueueElement("F"), 1);
+        testSubject.put("one", new QueueElement("G"), 1);
     }
 
     public static class QueueElement {

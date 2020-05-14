@@ -52,8 +52,9 @@ public class CommandDispatcherTest {
 
     @Before
     public void setup() {
-        metricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry);
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        metricsRegistry = new CommandMetricsRegistry(meterFactory);
+        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory, 10_000);
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
         Set<CommandRegistrationCache.RegistrationEntry> commands =
                 Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "Command"));
