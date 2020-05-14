@@ -29,7 +29,7 @@
         <frontend-maven-plugin.npmVersion>5.6.0</frontend-maven-plugin.npmVersion>
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
 
-        <mapdb.version>3.0.7</mapdb.version>
+        <mapdb.version>3.0.8</mapdb.version>
         <skip.integration.tests>false</skip.integration.tests>
     </properties>
 
