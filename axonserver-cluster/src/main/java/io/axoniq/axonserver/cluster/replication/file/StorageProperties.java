@@ -148,7 +148,7 @@ public class StorageProperties {
      * @return true if module should use mapdb mmap files
      */
     public boolean isUseMmapIndex() {
-        return useMmapIndex == null ? useMmapIndex : false;
+        return useMmapIndex != null ? useMmapIndex : false;
     }
 
     public void setUseMmapIndex(Boolean useMmapIndex) {
@@ -161,7 +161,7 @@ public class StorageProperties {
      * @return true if mapdb should use cleaner hack
      */
     public boolean isForceCleanMmapIndex() {
-        return forceCleanMmapIndex == null ? forceCleanMmapIndex : false;
+        return forceCleanMmapIndex != null ? forceCleanMmapIndex : false;
     }
 
     public void setForceCleanMmapIndex(Boolean forceCleanMmapIndex) {
