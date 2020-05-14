@@ -19,7 +19,6 @@ import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,11 +51,15 @@ public class CommandDispatcher {
 
     public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache,
                              CommandMetricsRegistry metricRegistry,
+                             MeterFactory meterFactory,
                              @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
-        commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(), queueCapacity);
+        commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
+                                                queueCapacity,
+                                                "commandQueue",
+                                                meterFactory);
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConcurrentHashMap::size);
     }
 

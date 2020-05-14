@@ -26,7 +26,7 @@ public class FlowControlQueuesTest {
 
     @Before
     public void setup() {
-        testSubject = new FlowControlQueues<>( Comparator.comparing(QueueElement::getPrioKey), SOFT_LIMIT_QUEUE_SIZE);
+        testSubject = new FlowControlQueues<>( Comparator.comparing(QueueElement::getPrioKey), SOFT_LIMIT_QUEUE_SIZE, "testQueue", null);
     }
 
     @Test

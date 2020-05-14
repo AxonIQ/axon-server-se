@@ -48,11 +48,15 @@ public class QueryDispatcher {
 
     public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
+                           MeterFactory meterFactory,
                            @Value("${axoniq.axonserver.query-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrationCache = registrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
-        queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed(), queueCapacity);
+        queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed(),
+                                             queueCapacity,
+                                             "commandQueue",
+                                             meterFactory);
         queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, QueryCache::size);
     }
 
