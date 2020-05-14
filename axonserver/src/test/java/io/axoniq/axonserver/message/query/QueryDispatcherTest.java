@@ -53,7 +53,7 @@ public class QueryDispatcherTest {
     @Before
     public void setup() {
         QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(Metrics.globalRegistry, new DefaultMetricCollector()));
-        queryDispatcher = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry);
+        queryDispatcher = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry, 10_000);
     }
 
     @Test

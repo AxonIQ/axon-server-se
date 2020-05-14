@@ -31,11 +31,19 @@ public class FlowControlQueues<T> {
     private static final Logger logger = LoggerFactory.getLogger(FlowControlQueues.class);
     private static final AtomicLong requestId = new AtomicLong(0);
     private final Comparator<T> comparator;
+    private final int softLimit;
+    private final int hardLimit;
 
     private final Map<String, BlockingQueue<FilterNode>> segments = new ConcurrentHashMap<>();
 
-    public FlowControlQueues(Comparator<T> comparator) {
+    public FlowControlQueues(Comparator<T> comparator, int softLimit) {
         this.comparator = comparator;
+        this.softLimit = softLimit;
+        this.hardLimit = (int) Math.ceil(softLimit * 1.1);
+    }
+
+    public FlowControlQueues(Comparator<T> comparator) {
+        this(comparator, 10_000);
     }
 
     public FlowControlQueues() {
@@ -48,16 +56,36 @@ public class FlowControlQueues<T> {
         return message == null ? null : message.value;
     }
 
-    public void put(String filterValue, T value)  {
-        if( value == null) throw new NullPointerException();
-        BlockingQueue<FilterNode> filterSegment = segments.computeIfAbsent(filterValue, f -> new PriorityBlockingQueue<>());
-        FilterNode filterNode = new FilterNode(value);
-        if( !filterSegment.offer(filterNode)) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
+    public void put(String filterValue, T value) {
+        put(filterValue, value, 0);
+    }
 
+    public void put(String filterValue, T value, long priority) {
+        if (value == null) {
+            throw new NullPointerException();
+        }
+        BlockingQueue<FilterNode> filterSegment = segments.computeIfAbsent(filterValue,
+                                                                           f -> new PriorityBlockingQueue<>());
+        if (filterSegment.size() >= hardLimit) {
+            logger.warn("Reached hard limit on queue size of {}, priority of item failed to be added {}, hard limit {}.",
+                        filterSegment.size(),
+                        priority,
+                        hardLimit);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
+        }
+        if (priority == 0 && filterSegment.size() >= softLimit) {
+            logger.warn("Reached soft limit on queue size of {}, priority of item failed to be added {}, soft limit {}.",
+                        filterSegment.size(),
+                        priority,
+                        softLimit);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
+        }
+        FilterNode filterNode = new FilterNode(value);
+        if (!filterSegment.offer(filterNode)) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
         }
 
-        if( logger.isTraceEnabled()) {
+        if (logger.isTraceEnabled()) {
             filterSegment.forEach(node -> logger.trace("entry: {}", node.id));
         }
     }
