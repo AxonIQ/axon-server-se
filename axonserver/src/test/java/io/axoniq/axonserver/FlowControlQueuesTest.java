@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import org.junit.*;
@@ -26,7 +27,11 @@ public class FlowControlQueuesTest {
 
     @Before
     public void setup() {
-        testSubject = new FlowControlQueues<>( Comparator.comparing(QueueElement::getPrioKey), SOFT_LIMIT_QUEUE_SIZE, "testQueue", null);
+        testSubject = new FlowControlQueues<>(Comparator.comparing(QueueElement::getPrioKey),
+                                              SOFT_LIMIT_QUEUE_SIZE,
+                                              null,
+                                              null,
+                                              ErrorCode.OTHER);
     }
 
     @Test

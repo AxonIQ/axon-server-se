@@ -14,14 +14,13 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricName;
 import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -33,27 +32,31 @@ import java.util.function.Function;
  * @author Marc Gathier
  */
 public class FlowControlQueues<T> {
+
     private static final Logger logger = LoggerFactory.getLogger(FlowControlQueues.class);
     private static final AtomicLong requestId = new AtomicLong(0);
     private final Comparator<T> comparator;
     private final int softLimit;
     private final int hardLimit;
     private final MeterFactory meterFactory;
-    private final String name;
+    private final MetricName metricName;
+    private final ErrorCode errorCode;
 
-    private final Map<String, BlockingQueue<FilterNode>> segments = new ConcurrentHashMap<>();
+    private final Map<String, BlockingQueue<DestinationNode>> segments = new ConcurrentHashMap<>();
     private final Map<String, Gauge> gauges = new ConcurrentHashMap<>();
 
-    public FlowControlQueues(Comparator<T> comparator, int softLimit, String name, MeterFactory meterFactory) {
+    public FlowControlQueues(Comparator<T> comparator, int softLimit, MetricName metricName,
+                             MeterFactory meterFactory, ErrorCode errorCode) {
         this.comparator = comparator;
         this.softLimit = softLimit;
         this.hardLimit = (int) Math.ceil(softLimit * 1.1);
-        this.name = name;
+        this.metricName = metricName;
         this.meterFactory = meterFactory;
+        this.errorCode = errorCode;
     }
 
     public FlowControlQueues(Comparator<T> comparator) {
-        this(comparator, 10_000, "queue", null);
+        this(comparator, 10_000, null, null, ErrorCode.OTHER);
     }
 
     public FlowControlQueues() {
@@ -61,8 +64,9 @@ public class FlowControlQueues<T> {
     }
 
     public T take(String filterValue) throws InterruptedException {
-        BlockingQueue<FilterNode> filterSegment = segments.computeIfAbsent(filterValue, this::newQueueWithMetrics);
-        FilterNode message = filterSegment.poll(1, TimeUnit.SECONDS);
+        BlockingQueue<DestinationNode> destinationSegment = segments.computeIfAbsent(filterValue,
+                                                                                     this::newQueueWithMetrics);
+        DestinationNode message = destinationSegment.poll(1, TimeUnit.SECONDS);
         return message == null ? null : message.value;
     }
 
@@ -74,93 +78,80 @@ public class FlowControlQueues<T> {
         if (value == null) {
             throw new NullPointerException();
         }
-        BlockingQueue<FilterNode> filterSegment = segments.computeIfAbsent(filterValue, this::newQueueWithMetrics);
-        if (filterSegment.size() >= hardLimit) {
+        BlockingQueue<DestinationNode> destinationSegment = segments.computeIfAbsent(filterValue,
+                                                                                     this::newQueueWithMetrics);
+        if (destinationSegment.size() >= hardLimit) {
             logger.warn("Reached hard limit on queue size of {}, priority of item failed to be added {}, hard limit {}.",
-                        filterSegment.size(),
+                        destinationSegment.size(),
                         priority,
                         hardLimit);
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
+            throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
         }
-        if (priority <= 0 && filterSegment.size() >= softLimit) {
+        if (priority <= 0 && destinationSegment.size() >= softLimit) {
             logger.warn("Reached soft limit on queue size of {}, priority of item failed to be added {}, soft limit {}.",
-                        filterSegment.size(),
+                        destinationSegment.size(),
                         priority,
                         softLimit);
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
+            throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
         }
-        FilterNode filterNode = new FilterNode(value);
-        if (!filterSegment.offer(filterNode)) {
+        DestinationNode destinationNode = new DestinationNode(value);
+        if (!destinationSegment.offer(destinationNode)) {
             throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
         }
 
         if (logger.isTraceEnabled()) {
-            filterSegment.forEach(node -> logger.trace("entry: {}", node.id));
+            destinationSegment.forEach(node -> logger.trace("entry: {}", node.id));
         }
     }
 
-    public void move(String oldFilterValue, Function<T, String> newFilterAssignment) {
-        logger.debug("Remove: {}", oldFilterValue);
-        BlockingQueue<FilterNode> filterSegment = segments.remove(oldFilterValue);
-        if (filterSegment == null) {
+    public void move(String oldDestinationValue, Function<T, String> newDestinationAssignment) {
+        logger.debug("Remove: {}", oldDestinationValue);
+        BlockingQueue<DestinationNode> oldDestination = segments.remove(oldDestinationValue);
+        if (oldDestination == null) {
             return;
         }
-        Optional.ofNullable(gauges.remove(oldFilterValue))
-                .ifPresent(Meter::close);
+        Gauge gauge = gauges.remove(oldDestinationValue);
+        if (gauge != null) {
+            gauge.close();
+        }
 
-        filterSegment.forEach(filterNode -> {
-            String newFilterValue = newFilterAssignment.apply(filterNode.value);
-            if (newFilterValue != null) {
+        oldDestination.forEach(filterNode -> {
+            String destination = newDestinationAssignment.apply(filterNode.value);
+            if (destination != null) {
                 try {
-                    segments.computeIfAbsent(newFilterValue, this::newQueueWithMetrics).put(filterNode);
+                    segments.computeIfAbsent(destination, this::newQueueWithMetrics).put(filterNode);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     logger.debug("Interrupt during move");
                     throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                         "Failed to add request to queue " + newFilterValue);
+                                                         "Failed to add request to queue " + destination);
                 }
             }
         });
     }
 
-    private PriorityBlockingQueue<FilterNode> newQueueWithMetrics(String filterValue) {
-        PriorityBlockingQueue<FilterNode> queue = new PriorityBlockingQueue<>();
-        Optional.ofNullable(meterFactory)
-                .ifPresent(mf -> {
-                    Gauge gauge = mf.gauge(new ItemMetricName(filterValue), queue, BlockingQueue::size);
-                    gauges.put(filterValue, gauge);
-                });
+    private PriorityBlockingQueue<DestinationNode> newQueueWithMetrics(String destination) {
+        PriorityBlockingQueue<DestinationNode> queue = new PriorityBlockingQueue<>();
+        if (meterFactory != null && metricName != null) {
+            Gauge gauge = meterFactory.gauge(metricName,
+                                             Tags.of("destination", destination),
+                                             queue,
+                                             BlockingQueue::size);
+            gauges.put(destination, gauge);
+        }
         return queue;
     }
 
-    public Map<String, BlockingQueue<FilterNode>> getSegments() {
+    public Map<String, BlockingQueue<DestinationNode>> getSegments() {
         return segments;
     }
 
-    private class ItemMetricName implements MetricName {
+    public class DestinationNode implements Comparable<DestinationNode> {
 
-        private final String itemName;
-
-        private ItemMetricName(String itemName) {
-            this.itemName = itemName;
-        }
-
-        @Override
-        public String metric() {
-            return "axon." + name + "." + itemName + ".size";
-        }
-
-        @Override
-        public String description() {
-            return "The size of queue holding messages to be picked up by Axon Server for processing per client";
-        }
-    }
-
-    public class FilterNode implements Comparable<FilterNode> {
         private final T value;
         private final long id;
 
-        public FilterNode(T value) {
+        public DestinationNode(T value) {
             this.value = value;
             this.id = requestId.getAndIncrement();
         }
@@ -173,7 +164,7 @@ public class FlowControlQueues<T> {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            FilterNode that = (FilterNode) o;
+            DestinationNode that = (DestinationNode) o;
             return id == that.id;
         }
 
@@ -183,16 +174,14 @@ public class FlowControlQueues<T> {
         }
 
         @Override
-        public int compareTo(FilterNode o) {
-            if( comparator != null) {
+        public int compareTo(DestinationNode o) {
+            if (comparator != null) {
                 int rc = comparator.compare(value, o.value);
-                if( rc != 0) return rc;
-
+                if (rc != 0) {
+                    return rc;
+                }
             }
             return Long.compare(id, o.id);
-
-
         }
     }
-
 }

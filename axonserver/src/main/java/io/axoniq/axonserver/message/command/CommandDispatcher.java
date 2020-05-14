@@ -58,8 +58,9 @@ public class CommandDispatcher {
         this.metricRegistry = metricRegistry;
         commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
                                                 queueCapacity,
-                                                "commandQueue",
-                                                meterFactory);
+                                                BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
+                                                meterFactory,
+                                                ErrorCode.COMMAND_DISPATCH_ERROR);
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConcurrentHashMap::size);
     }
 

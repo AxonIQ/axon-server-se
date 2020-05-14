@@ -55,8 +55,9 @@ public class QueryDispatcher {
         this.queryCache = queryCache;
         queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed(),
                                              queueCapacity,
-                                             "commandQueue",
-                                             meterFactory);
+                                             BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
+                                             meterFactory,
+                                             ErrorCode.QUERY_DISPATCH_ERROR);
         queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, QueryCache::size);
     }
 
