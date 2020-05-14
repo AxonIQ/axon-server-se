@@ -84,7 +84,7 @@ public class FlowControlQueuesTest {
         testSubject.put("one", new QueueElement("C"));
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
-        testSubject.put("one", new QueueElement("F"));
+        testSubject.put("one", new QueueElement("F"), -1);
     }
 
     @Test(expected = MessagingPlatformException.class)
