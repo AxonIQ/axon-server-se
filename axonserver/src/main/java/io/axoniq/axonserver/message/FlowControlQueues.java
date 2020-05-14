@@ -73,7 +73,7 @@ public class FlowControlQueues<T> {
                         hardLimit);
             throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
         }
-        if (priority == 0 && filterSegment.size() >= softLimit) {
+        if (priority <= 0 && filterSegment.size() >= softLimit) {
             logger.warn("Reached soft limit on queue size of {}, priority of item failed to be added {}, soft limit {}.",
                         filterSegment.size(),
                         priority,
