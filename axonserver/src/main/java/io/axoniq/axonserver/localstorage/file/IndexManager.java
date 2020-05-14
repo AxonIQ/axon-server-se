@@ -36,8 +36,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class IndexManager {
 
-    private final Object indexLock = new Object();
-
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String AGGREGATE_MAP = "aggregateMap";
     private static final ScheduledExecutorService scheduledExecutorService =
@@ -51,6 +49,7 @@ public class IndexManager {
     public IndexManager(String context, StorageProperties storageProperties) {
         this.storageProperties = storageProperties;
         this.context = context;
+        scheduledExecutorService.scheduleAtFixedRate(this::indexCleanup, 10, 10, TimeUnit.SECONDS);
     }
 
     public void createIndex(Long segment, Map<String, SortedSet<PositionInfo>> positionsPerAggregate) {
@@ -62,7 +61,7 @@ public class IndexManager {
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
         if (storageProperties.isUseMmapIndex()) {
             maker.fileMmapEnable();
-            if (storageProperties.isCleanerHackEnabled()) {
+            if (storageProperties.isForceCleanMmapIndex()) {
                 maker.cleanerHackEnable();
             }
         } else {
@@ -121,23 +120,7 @@ public class IndexManager {
      * @throws IndexNotFoundException if the attempt to open tha index file fails
      */
     public Index getIndex(long segment) {
-        Index index = indexMap.get(segment);
-        if (index != null && !index.db.isClosed()) {
-            return index;
-        }
-        synchronized (indexLock) {
-            index = indexMap.get(segment);
-            if (index == null || index.db.isClosed()) {
-                logger.debug("{}: open index for {}", context, segment);
-                if (!storageProperties.index(context, segment).exists()) {
-                    throw new IndexNotFoundException("Index not found for segment: " + segment);
-                }
-                index = new Index(segment);
-                indexMap.put(segment, index);
-                indexCleanup();
-            }
-            return index;
-        }
+        return indexMap.computeIfAbsent(segment, Index::new).ensureReady();
     }
 
     private void indexCleanup() {
@@ -197,23 +180,15 @@ public class IndexManager {
 
     public class Index implements Closeable {
 
-        private final Map<String, SortedSet<PositionInfo>> positions;
-        private final DB db;
+        private final long segment;
+        private final Object initLock = new Object();
+        private volatile boolean initialized;
+        private Map<String, SortedSet<PositionInfo>> positions;
+        private DB db;
+
 
         private Index(long segment) {
-            DBMaker.Maker maker = DBMaker.fileDB(storageProperties.index(context, segment))
-                                         .readOnly()
-                                         .fileLockDisable();
-            if (storageProperties.isUseMmapIndex()) {
-                maker.fileMmapEnable();
-                if (storageProperties.isCleanerHackEnabled()) {
-                    maker.cleanerHackEnable();
-                }
-            } else {
-                maker.fileChannelEnable();
-            }
-            this.db = maker.make();
-            this.positions = db.hashMap(AGGREGATE_MAP, Serializer.STRING, PositionInfoSerializer.get()).createOrOpen();
+            this.segment = segment;
         }
 
         public SortedSet<PositionInfo> getPositions(String aggregateId) {
@@ -223,7 +198,41 @@ public class IndexManager {
 
         @Override
         public void close() {
+            logger.warn("{}: close {}", segment, storageProperties.index(context, segment));
             db.close();
+        }
+
+        public Index ensureReady() {
+            if (initialized && !db.isClosed()) {
+                return this;
+            }
+
+            synchronized (initLock) {
+                if (initialized && !db.isClosed()) {
+                    return this;
+                }
+
+                if (!storageProperties.index(context, segment).exists()) {
+                    throw new IndexNotFoundException("Index not found for segment: " + segment);
+                }
+                logger.warn("{}: open {}", segment, storageProperties.index(context, segment));
+                DBMaker.Maker maker = DBMaker.fileDB(storageProperties.index(context, segment))
+                                             .readOnly()
+                                             .fileLockDisable();
+                if (storageProperties.isUseMmapIndex()) {
+                    maker.fileMmapEnable();
+                    if (storageProperties.isForceCleanMmapIndex()) {
+                        maker.cleanerHackEnable();
+                    }
+                } else {
+                    maker.fileChannelEnable();
+                }
+                this.db = maker.make();
+                this.positions = db.hashMap(AGGREGATE_MAP, Serializer.STRING, PositionInfoSerializer.get())
+                                   .createOrOpen();
+                initialized = true;
+            }
+            return this;
         }
     }
 }
