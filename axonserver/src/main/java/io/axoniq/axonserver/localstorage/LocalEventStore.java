@@ -44,6 +44,7 @@ import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -53,8 +54,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
@@ -69,6 +75,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
+    private final ExecutorService dataFetcher;
     private volatile boolean running;
     @Value("${axoniq.axonserver.query.limit:200}")
     private long defaultLimit = 200;
@@ -95,7 +102,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
              new MeterFactory(meterFactory, new DefaultMetricCollector()),
              storageTransactionManagerFactory,
              eventStoreExistChecker, Short.MAX_VALUE,
-             1000);
+             1000,
+             24);
     }
 
     @Autowired
@@ -103,13 +111,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                            MeterFactory meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
                            EventStoreExistChecker eventStoreExistChecker, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
-                           @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter) {
+                           @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
+                           @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads) {
         this.eventStoreFactory = eventStoreFactory;
         this.meterFactory = meterFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
         this.eventStoreExistChecker = eventStoreExistChecker;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
+        this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
     }
 
     public void initContext(String context, boolean validating) {
@@ -249,32 +259,52 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
-        AtomicInteger counter = new AtomicInteger();
-        workers(context).aggregateReader.readEvents( request.getAggregateId(),
-                                                            request.getAllowSnapshots(),
-                                                            request.getInitialSequence(),
-                                                            event -> {
-                                                                responseStreamObserver.onNext(event.asInputStream());
-                                                                counter.incrementAndGet();
-                                                            });
-        if( counter.get() == 0) {
-            logger.debug("Aggregate not found: {}", request);
+        runInDataFetcherPool(() -> {
+            AtomicInteger counter = new AtomicInteger();
+            workers(context).aggregateReader.readEvents(request.getAggregateId(),
+                                                        request.getAllowSnapshots(),
+                                                        request.getInitialSequence(),
+                                                        event -> {
+                                                            responseStreamObserver.onNext(event.asInputStream());
+                                                            counter.incrementAndGet();
+                                                        });
+            if (counter.get() == 0) {
+                logger.debug("Aggregate not found: {}", request);
+            }
+            responseStreamObserver.onCompleted();
+        }, responseStreamObserver::onError);
+    }
+
+    private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {
+        try {
+            dataFetcher.submit(() -> {
+                // we will not start new reader tasks when a shutdown was initialized. Behavior is similar to submitting tasks after shutdown
+                if (!running) {
+                    onError.accept(new RejectedExecutionException("Cannot load events. AxonServer is shutting down"));
+                } else {
+                    task.run();
+                }
+            });
+        } catch (Exception e) {
+            // in case we didn't manage to schedule the task to run.
+            onError.accept(e);
         }
-        responseStreamObserver.onCompleted();
     }
 
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
-                                    StreamObserver<InputStream> responseStreamObserver) {
-        if( request.getMaxSequence() >= 0) {
-            workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
-                                                                  request.getInitialSequence(),
-                                                                  request.getMaxSequence(),
-                                                                  request.getMaxResults(),
-                                                                  event -> responseStreamObserver
-                                                                          .onNext(event.asInputStream()));
-        }
-        responseStreamObserver.onCompleted();
+                                       StreamObserver<InputStream> responseStreamObserver) {
+        runInDataFetcherPool(() -> {
+            if (request.getMaxSequence() >= 0) {
+                workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
+                                                               request.getInitialSequence(),
+                                                               request.getMaxSequence(),
+                                                               request.getMaxResults(),
+                                                               event -> responseStreamObserver
+                                                                       .onNext(event.asInputStream()));
+            }
+            responseStreamObserver.onCompleted();
+        }, responseStreamObserver::onError);
     }
 
     @Override
@@ -325,19 +355,22 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
-        long token = workers(context).eventStreamReader.getTokenAt(request.getInstant());
-        responseObserver.onNext(TrackingToken.newBuilder().setToken(token).build());
-        responseObserver.onCompleted();
+        runInDataFetcherPool(() -> {
+            long token = workers(context).eventStreamReader.getTokenAt(request.getInstant());
+            responseObserver.onNext(TrackingToken.newBuilder().setToken(token).build());
+            responseObserver.onCompleted();
+        }, responseObserver::onError);
     }
 
     @Override
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
+        runInDataFetcherPool(() -> {
             long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
             responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
             responseObserver.onCompleted();
+        }, responseObserver::onError);
     }
-
 
     @Override
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
@@ -354,8 +387,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void stop(@NonNull Runnable runnable) {
         running = false;
+        dataFetcher.shutdown();
         workersMap.forEach((k, workers) -> workers.close(false));
+        try {
+            dataFetcher.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            // just stop waiting
+            Thread.currentThread().interrupt();
+        }
+        dataFetcher.shutdownNow();
         runnable.run();
+
     }
 
     @Override

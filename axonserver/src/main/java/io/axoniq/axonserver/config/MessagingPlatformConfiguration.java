@@ -134,12 +134,12 @@ public class MessagingPlatformConfiguration {
     /**
      * Number of threads for executing incoming gRPC requests
      */
-    private int executorThreadCount = 16;
+    private int executorThreadCount = 4;
 
     /**
      * Number of threads for executing incoming gRPC requests for internal communication
      */
-    private int clusterExecutorThreadCount = 16;
+    private int clusterExecutorThreadCount = 4;
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
