@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.ClusterTagsCache;
+import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -62,7 +63,8 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ChannelCloser channelCloser;
-    private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService reconnectExecutor = Executors
+            .newSingleThreadScheduledExecutor(new AxonThreadFactory("cluster-reconnect"));
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ClusterNode> nodeMap = new ConcurrentHashMap<>();

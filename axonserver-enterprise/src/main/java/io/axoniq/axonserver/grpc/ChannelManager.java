@@ -6,11 +6,14 @@ import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import javax.annotation.PreDestroy;
@@ -30,9 +33,12 @@ public class ChannelManager implements ChannelProvider, ChannelCloser {
 
     private final MessagingPlatformConfiguration configuration;
     private final Map<ChannelKey, ManagedChannel> channels = new ConcurrentHashMap<>();
+    private final ExecutorService executors;
 
     public ChannelManager(MessagingPlatformConfiguration configuration) {
         this.configuration = configuration;
+        this.executors = Executors.newFixedThreadPool(configuration.getClusterExecutorThreadCount(),
+                                                      new CustomizableThreadFactory("cluster-request-executor-"));
     }
 
     /**
@@ -46,7 +52,7 @@ public class ChannelManager implements ChannelProvider, ChannelCloser {
     public Channel get(String hostname, int port) {
         ChannelKey channelKey = new ChannelKey(hostname, port);
         channels.computeIfAbsent(channelKey, key -> ManagedChannelHelper
-                .createManagedChannel(configuration, hostname, port));
+                .createManagedChannel(executors, configuration, hostname, port));
         return channels.get(channelKey);
     }
 

@@ -166,6 +166,7 @@ class LocalRaftConfigService implements RaftConfigService {
                                                                                    e.getMessage());
                                           });
         } catch (RuntimeException throwable) {
+            contextsInProgress.remove(context);
             resetAdminConfiguration(oldConfiguration, "Failed to add node: " + node, throwable);
             throw throwable;
         }
