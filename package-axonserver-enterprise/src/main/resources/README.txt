@@ -28,6 +28,43 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.3.4
+-------------------------------
+
+* Reduced risk for contention when opening an index file
+* Offload expensive data-fetching operations to separate thread pool
+* Option to configure the way that index files are opened (memory mapped or file channel based)
+* Limit the amount of commands/queries held in Axon Server waiting for the handlers to be ready to handle them, to avoid
+  out of memory errors on Axon Server
+* Fix for high number of cluster-request threads being created
+* Fix for timing issue in delete context. This could leave the context existing on one of the member nodes
+* Fix RAFT bug: configuration changes are not allowed before an entry has been committed in the current term.
+
+New configuration properties added for Axon Server:
+axoniq.axonserver.data-fetcher-threads=24 (number of threads that are allocated for doing longer running operations on the event store)
+axoniq.axonserver.command-queue-capacity-per-client=10000 (number of command requests for a specific command handling client that Axon Server will cache waiting for permits)
+axoniq.axonserver.query-queue-capacity-per-client=10000 (number of query requests for a specific query handling client that Axon Server will cache waiting for permits)
+axoniq.axonserver.replication.use-mmap-index=null (by default, AxonServer will determine whether to use memory mapped
+                                indexes for replication logs based on operating system and java version, in rare cases it may be useful to override the default)
+axoniq.axonserver.replication.force-clean-mmap-index=null (option to forcefully close unused memory mapped files instead of leaving the garbage collector do this,
+                                by default, AxonServer will determine this  based on operating system and java version, in rare cases it may be useful to override the default)
+axoniq.axonserver.event.use-mmap-index=null (by default, AxonServer will determine whether to use memory mapped
+                                indexes for event files in the event store based on operating system and java version, in rare cases it may be useful to override the default)
+axoniq.axonserver.event.force-clean-mmap-index=null (option to forcefully close unused memory mapped files instead of leaving the garbage collector do this,
+                                by default, AxonServer will determine this  based on operating system and java version, in rare cases it may be useful to override the default)
+axoniq.axonserver.snapshot.use-mmap-index=null (by default, AxonServer will determine whether to use memory mapped
+                                indexes for snapshot files in the event store based on operating system and java version, in rare cases it may be useful to override the default)
+axoniq.axonserver.snapshot.force-clean-mmap-index=null (option to forcefully close unused memory mapped files instead of leaving the garbage collector do this,
+                                by default, AxonServer will determine this  based on operating system and java version, in rare cases it may be useful to override the default)
+
+Configuration properties default values changed:
+
+axoniq.axonserver.cluster-executor-thread-count=4 (reduced from 8, configures the number of threads used to handle requests from other axon server nodes,
+                                                   reduced as effective processing of the requests if offloaded to other threads)
+axoniq.axonserver.executor-thread-count=4 (reduced from 8, configures the number of threads used to handle requests from clients,
+                                                   reduced as effective processing of the requests if offloaded to other threads)
+
+
 Release Notes for version 4.3.3
 -------------------------------
 
