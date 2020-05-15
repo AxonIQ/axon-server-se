@@ -61,6 +61,7 @@ if [ -d ${TARGET} ] ; then
 fi
 mkdir -p ${TARGET}
 mkdir -p ${TARGET}/exts
+mkdir -p ${TARGET}/exts
 
 if [ ! -s axonserver-stackdriver/target/stackdriver-logging.jar ] ; then
     echo "WARNING: Could not find StackDriver logging jar."

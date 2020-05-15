@@ -8,27 +8,26 @@ import io.grpc.netty.NettyChannelBuilder;
 import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
-import org.springframework.stereotype.Component;
 
 import java.io.File;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 
 /**
  * @author Marc Gathier
  */
-@Component
 public class ManagedChannelHelper {
     private static final Logger logger = LoggerFactory.getLogger(ManagedChannelHelper.class);
 
-    public static ManagedChannel createManagedChannel(MessagingPlatformConfiguration messagingPlatformConfiguration,  String host, int port) {
+    public static ManagedChannel createManagedChannel(ExecutorService executors,
+                                                      MessagingPlatformConfiguration messagingPlatformConfiguration,
+                                                      String host, int port) {
         ManagedChannel channel = null;
         try {
             NettyChannelBuilder builder = NettyChannelBuilder.forAddress(host, port);
 
-            if( messagingPlatformConfiguration.getKeepAliveTime() > 0) {
+            if (messagingPlatformConfiguration.getKeepAliveTime() > 0) {
                 builder.keepAliveTime(messagingPlatformConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
                        .keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS)
                        .keepAliveWithoutCalls(true);
@@ -42,9 +41,7 @@ public class ManagedChannelHelper {
             if (messagingPlatformConfiguration.getMaxMessageSize() > 0) {
                 builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
             }
-            builder.executor(Executors
-                                     .newFixedThreadPool(messagingPlatformConfiguration.getClusterExecutorThreadCount(),
-                                                         new CustomizableThreadFactory("cluster-request-executor-")));
+            builder.executor(executors);
             builder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
             channel = builder.build();
         } catch(Exception ex) {
