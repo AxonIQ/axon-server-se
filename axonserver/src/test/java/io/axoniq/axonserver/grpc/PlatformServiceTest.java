@@ -186,4 +186,32 @@ public class PlatformServiceTest {
         assertTrue(responseObserver.completedCount() == 1);
     }
 
+    @Test
+    public void testSendInstruction() {
+        PlatformOutboundInstruction i = PlatformOutboundInstruction.newBuilder().build();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService.openStream(responseObserver);
+        clientStreamObserver.onNext(PlatformInboundInstruction
+                                            .newBuilder()
+                                            .setRegister(ClientIdentification.newBuilder()
+                                                                             .setClientId("MyClient")
+                                                                             .setComponentName("component")).build());
+        platformService.sendToClient("default", "MyClient", i);
+        assertEquals(1,responseObserver.values().size());
+        assertEquals(i,responseObserver.values().get(0));
+    }
+
+    @Test
+    public void testSendInstructionToInvalidClientIdentifier() {
+        PlatformOutboundInstruction i = PlatformOutboundInstruction.newBuilder().build();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService.openStream(responseObserver);
+        clientStreamObserver.onNext(PlatformInboundInstruction
+                                            .newBuilder()
+                                            .setRegister(ClientIdentification.newBuilder()
+                                                                             .setClientId("MyClient")
+                                                                             .setComponentName("component")).build());
+        platformService.sendToClient("wrong-context", "MyClient", i);
+        assertEquals(0,responseObserver.values().size());
+    }
 }
