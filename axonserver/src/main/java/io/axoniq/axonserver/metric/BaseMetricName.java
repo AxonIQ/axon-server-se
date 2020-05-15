@@ -70,7 +70,13 @@ public enum BaseMetricName implements MetricName {
     AXON_APPLICATION_SUBSCRIPTION_UPDATES("axon.ApplicationSubscriptionMetricRegistry.updates",
                                           "Total number of updates submitted on subscription queries per application"),
     AXON_APPLICATION_SUBSCRIPTION_ACTIVE("axon.ApplicationSubscriptionMetricRegistry.active",
-                                         "Active number of subscription queries on this node per application");
+                                         "Active number of subscription queries on this node per application"),
+    AXON_APPLICATION_COMMAND_QUEUE_SIZE("axon.ApplicationCommandQueue.size",
+                                        "The size of queue holding commands waiting for permits from client"),
+    AXON_APPLICATION_QUERY_QUEUE_SIZE("axon.ApplicationQueryQueue.size",
+                                        "The size of queue holding queries waiting for permits from client")
+    ;
+
 
     private final String name;
     private final String description;
