@@ -6,6 +6,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentR
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
@@ -27,6 +28,7 @@ import io.axoniq.axonserver.grpc.internal.CommandHandlerStatus;
 import io.axoniq.axonserver.grpc.internal.ConnectRequest;
 import io.axoniq.axonserver.grpc.internal.ConnectResponse;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
+import io.axoniq.axonserver.grpc.internal.ConnectorCommand.RequestCase;
 import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
 import io.axoniq.axonserver.grpc.internal.ContextName;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
@@ -53,17 +55,21 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.Consumer;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.PreDestroy;
 
 import static io.axoniq.axonserver.enterprise.cluster.internal.ForwardedQueryResponseUtils.getDispatchingClient;
 import static io.axoniq.axonserver.enterprise.cluster.internal.ForwardedQueryResponseUtils.unwrap;
-import static io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter.fromProto;
+import static java.util.Collections.emptyList;
 
 /**
  * Handles requests from other Axon Server cluster servers acting as message processors. Other servers connect to this
@@ -111,6 +117,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     @Value("${axoniq.axonserver.cluster.command-threads:1}")
     private int commandProcessingThreads = 1;
 
+    private final Map<RequestCase, List<Consumer<ConnectorCommand>>> handlers = new EnumMap<>(RequestCase.class);
     /**
      * Instantiate a {@link MessagingClusterService} which consumes all incoming messages propagated between a cluster
      * of Axon Server instances.
@@ -132,6 +139,21 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         this.clusterController = clusterController;
         this.raftLeaderProvider = raftLeaderProvider;
         this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * Registers a new handler for the specified {@link RequestCase}
+     *
+     * @param requestCase the {@link RequestCase} of {@link ConnectorCommand} that can be consumed by the handler
+     * @param handler     the handler to be registered
+     * @return the {@link Registration}
+     */
+    public Registration registerConnectorCommandHandler(RequestCase requestCase,
+                                                        Consumer<ConnectorCommand> handler) {
+        List<Consumer<ConnectorCommand>> consumers = handlers.computeIfAbsent(requestCase,
+                                                                              rc -> new CopyOnWriteArrayList<>());
+        consumers.add(handler);
+        return () -> consumers.remove(handler);
     }
 
     @Override
@@ -239,6 +261,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
         @Override
         protected void consume(ConnectorCommand connectorCommand) {
+            List<Consumer<ConnectorCommand>> consumers = handlers.getOrDefault(connectorCommand.getRequestCase(),
+                                                                               emptyList());
+            consumers.forEach(consumer -> consumer.accept(connectorCommand));
             switch (connectorCommand.getRequestCase()) {
                 case CONNECT:
                     try {
@@ -406,11 +431,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                         ));
                     }
                     break;
-                case CLIENT_EVENT_PROCESSOR_STATUS:
-                    eventPublisher.publishEvent(new EventProcessorEvents.EventProcessorStatusUpdate(
-                            fromProto(connectorCommand.getClientEventProcessorStatus()), PROXIED
-                    ));
-                    break;
                 case START_CLIENT_EVENT_PROCESSOR:
                     ClientEventProcessor startProcessor = connectorCommand.getStartClientEventProcessor();
                     eventPublisher.publishEvent(new EventProcessorEvents.StartEventProcessorRequest(
@@ -462,7 +482,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
                     break;
                 default:
-                    logger.warn("Unknown operation occurred [{}]", connectorCommand.getRequestCase());
+                    if (consumers.isEmpty()) {
+                        logger.warn("Unknown operation occurred [{}]", connectorCommand.getRequestCase());
+                    }
                     break;
             }
         }
