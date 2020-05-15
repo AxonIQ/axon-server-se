@@ -3,6 +3,15 @@ This is the Axon Server Standard Edition, version 4.3
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.3.4
+-------------------------------
+
+* Reduced risk for contention when opening an index file
+* Offload expensive data-fetching operations to separate thread pool
+* Option to configure the way that index files are opened (memory mapped or file channel based)
+* Limit the amount of commands/queries held in Axon Server waiting for the handlers to be ready to handle them, to avoid
+  out of memory errors on Axon Server
+
 Release Notes for version 4.3.3
 -------------------------------
 
