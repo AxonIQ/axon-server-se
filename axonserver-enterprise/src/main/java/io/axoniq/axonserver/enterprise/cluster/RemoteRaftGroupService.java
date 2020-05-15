@@ -67,7 +67,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
     public CompletableFuture<Void> updateApplication(ContextApplication application) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.mergeAppAuthorization(application,
-                                   new CompletableStreamObserver<>(result, "updateApplication", logger));
+                                   new CompletableStreamObserver<>(result, "updateApplication", logger, TO_VOID));
         return result;
     }
 
@@ -81,7 +81,7 @@ public class RemoteRaftGroupService implements RaftGroupService {
                                            .setEntry(ByteString.copyFrom(bytes))
                                            .build();
         stub.appendEntry(request,
-                         new CompletableStreamObserver<>(result, "appendEntry", logger));
+                         new CompletableStreamObserver<>(result, "appendEntry", logger, TO_VOID));
         return result;
     }
 
@@ -116,7 +116,9 @@ public class RemoteRaftGroupService implements RaftGroupService {
         CompletableFuture<ContextConfiguration> result = new CompletableFuture<>();
         Context request = Context.newBuilder()
                                  .setName(context)
-                                 .addAllMembers(raftNodes.stream().map(this::asContextMember).collect(Collectors.toList()))
+                                 .addAllMembers(raftNodes.stream()
+                                                         .map(ContextMemberConverter::asContextMember)
+                                                         .collect(Collectors.toList()))
                                  .build();
         stub.initContext(
                 request, new CompletableStreamObserver<>(result, "initContext", logger));
@@ -124,14 +126,6 @@ public class RemoteRaftGroupService implements RaftGroupService {
         return result;
     }
 
-    private ContextMember asContextMember(Node r) {
-        return ContextMember.newBuilder()
-                            .setHost(r.getHost())
-                            .setPort(r.getPort())
-                            .setNodeId(r.getNodeId())
-                            .setNodeName(r.getNodeName())
-                            .build();
-    }
 
     @Override
     public CompletableFuture<Void> updateLoadBalancingStrategy(String name, LoadBalanceStrategy loadBalancingStrategy) {

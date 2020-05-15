@@ -8,12 +8,12 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
+import javax.annotation.PreDestroy;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
-import javax.annotation.PreDestroy;
 
 /**
  * This class's goal is to centralize the creation of the {@link Channel}s, in order to have one single {@link Channel}
@@ -45,9 +45,8 @@ public class ChannelManager implements ChannelProvider, ChannelCloser {
     @Override
     public Channel get(String hostname, int port) {
         ChannelKey channelKey = new ChannelKey(hostname, port);
-        channels.computeIfAbsent(channelKey, key -> ManagedChannelHelper
-                .createManagedChannel(configuration, hostname, port));
-        return channels.get(channelKey);
+        return channels.computeIfAbsent(channelKey,
+                                        key -> ManagedChannelHelper.createManagedChannel(configuration, key.host, key.port));
     }
 
     /**

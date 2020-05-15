@@ -141,7 +141,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         protected void validate() {
             if (schedulerFactory == null) {
-                schedulerFactory = () -> new DefaultScheduler("raftState-" + raftGroup.localNode().groupId());
+                schedulerFactory = () -> new DefaultScheduler(raftGroup.localNode().groupId() + "-raftState");
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
@@ -394,5 +394,16 @@ public abstract class AbstractMembershipState implements MembershipState {
     @Override
     public List<Node> currentGroupMembers() {
         return currentConfiguration.groupMembers();
+    }
+
+    /**
+     * Checks health of the node based on its state. base implementation checks state of the logEntryProcessor.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if this node considers itself healthy
+     */
+    @Override
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        return raftGroup.logEntryProcessor().health(statusConsumer);
     }
 }

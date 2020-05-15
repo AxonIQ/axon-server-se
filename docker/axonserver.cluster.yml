@@ -5,12 +5,12 @@ services:
   config:
     build:
       context: shared
-      dockerfile: shared/Dockerfile-autocluster
+      dockerfile: Dockerfile-autocluster
     volumes:
       - axon-server-config:/config
 
   axonserver-enterprise-1:
-    image: eu.gcr.io/axoniq-devops/axonserver-enterprise
+    image: eu.gcr.io/axoniq-devops/axonserver-enterprise:4.4-SNAPSHOT
     hostname: axonserver-enterprise-1
     depends_on:
       - config
@@ -26,7 +26,7 @@ services:
       - '8024:8024'
       - '8124:8124'
   axonserver-enterprise-2:
-    image: eu.gcr.io/axoniq-devops/axonserver-enterprise
+    image: eu.gcr.io/axoniq-devops/axonserver-enterprise:4.4-SNAPSHOT
     hostname: axonserver-enterprise-2
     depends_on:
       - config
@@ -44,7 +44,7 @@ services:
       - '8025:8025'
       - '8125:8125'
   axonserver-enterprise-3:
-    image: eu.gcr.io/axoniq-devops/axonserver-enterprise
+    image: eu.gcr.io/axoniq-devops/axonserver-enterprise:4.4-SNAPSHOT
     hostname: axonserver-enterprise-3
     depends_on:
       - config

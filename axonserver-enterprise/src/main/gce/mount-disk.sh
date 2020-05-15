@@ -6,7 +6,7 @@ DISK_NAME=
 DISK_DEV=
 DISK_FORMAT=y
 DISK_MOUNT_BASE=
-DISK_MOUNT_BASE_DEF=/opt
+DISK_MOUNT_BASE_DEF=/mnt
 DISK_MOUNT_PATH=
 USER_NAME=
 
@@ -56,7 +56,7 @@ fi
 if [[ "${DISK_MOUNT_NAME}" == "" ]] ; then
     DISK_MOUNT_NAME=${DISK_NAME}
 fi
-if [[ "${DISK_MOUNT_BASE}" ="" ]] ; then
+if [[ "${DISK_MOUNT_BASE}" == "" ]] ; then
     DISK_MOUNT_BASE=${DISK_MOUNT_BASE_DEF}
 fi
 if [[ "${DISK_MOUNT_PATH}" == "" ]] ; then
@@ -110,7 +110,7 @@ else
         mount ${DISK_MOUNT_PATH}
         echo "Disk mounted."
         chown ${USER_NAME}:${USER_NAME} ${DISK_MOUNT_PATH}
-        echo "Ownership changed to ${USER_NAME} user."
+        echo "Ownership changed to user \"${USER_NAME}\"."
     fi
     echo "Done"
 

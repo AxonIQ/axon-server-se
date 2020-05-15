@@ -19,7 +19,7 @@ import io.axoniq.axonserver.enterprise.cluster.snapshot.UserSnapshotDataStore;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.ProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.stategy.RaftProcessorLoadBalancingRepository;
 import io.axoniq.axonserver.enterprise.context.ContextController;
-import io.axoniq.axonserver.enterprise.taskscheduler.TaskManager;
+import io.axoniq.axonserver.enterprise.taskscheduler.ClusterTaskManager;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -89,7 +89,7 @@ public class SnapshotDataProviders implements Function<String, List<SnapshotData
                 new ProcessorLoadBalancingSnapshotDataStore(context, processorLoadBalancingRepository),
                 new UserSnapshotDataStore(context, userRepository),
                 new ContextUserSnapshotDataStore(context, contextUserRepository),
-                new TaskSnapshotDataStore(context, applicationContext.getBean(TaskManager.class)));
+                new TaskSnapshotDataStore(context, applicationContext.getBean(ClusterTaskManager.class)));
     }
 
 }

@@ -38,15 +38,23 @@ public class RaftConfigServiceFactory {
 
 
     public RaftConfigService getRaftConfigService() {
-        if( raftLeaderProvider.isLeader(getAdmin()) ) return localRaftConfigService;
+        if (raftLeaderProvider.isLeader(getAdmin())) {
+            return localRaftConfigService;
+        }
         String leader = raftLeaderProvider.getLeader(getAdmin());
         if (leader == null) {
             throw new MessagingPlatformException(ErrorCode.NO_LEADER_AVAILABLE,
                                                  "No leader for " + getAdmin());
         }
         ClusterNode node = clusterController.getNode(leader);
+        if (node == null) {
+            throw new MessagingPlatformException(ErrorCode.NO_LEADER_AVAILABLE,
+                                                 "Leader node " + leader + " not found for " + getAdmin());
+        }
         return new RemoteRaftConfigService(RaftConfigServiceGrpc.newStub(channelProvider.get(node))
-                                                                .withInterceptors(new InternalTokenAddingInterceptor(configuration.getAccesscontrol().getInternalToken())));
+                                                                .withInterceptors(new InternalTokenAddingInterceptor(
+                                                                        configuration.getAccesscontrol()
+                                                                                     .getInternalToken())));
     }
 
     public RaftConfigServiceGrpc.RaftConfigServiceBlockingStub getRaftConfigServiceStub(String host, int port) {

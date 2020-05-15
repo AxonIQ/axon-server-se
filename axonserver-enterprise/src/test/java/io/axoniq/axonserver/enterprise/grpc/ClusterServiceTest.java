@@ -13,7 +13,7 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;

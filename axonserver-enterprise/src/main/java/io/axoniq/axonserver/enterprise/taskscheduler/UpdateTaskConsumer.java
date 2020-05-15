@@ -18,14 +18,14 @@ import org.springframework.stereotype.Component;
 public class UpdateTaskConsumer implements LogEntryConsumer {
 
     private final Logger logger = LoggerFactory.getLogger(UpdateTaskConsumer.class);
-    private final TaskManager taskManager;
+    private final ClusterTaskManager taskManager;
 
     /**
      * Constructor for the log consumer.
      *
      * @param taskManager the task manager
      */
-    public UpdateTaskConsumer(TaskManager taskManager) {
+    public UpdateTaskConsumer(ClusterTaskManager taskManager) {
         this.taskManager = taskManager;
     }
 

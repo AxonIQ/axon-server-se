@@ -11,8 +11,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Marc Gathier
@@ -21,6 +27,7 @@ public class IndexManager {
 
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String INDEX_MAP = "indexMap";
+    private static final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
     private final StorageProperties storageProperties;
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
     private final String context;
@@ -34,29 +41,42 @@ public class IndexManager {
 
     public boolean validIndex(long segment) {
         try {
-            return getIndex(segment) != null;
+            return fileExists(segment) && getIndex(segment) != null;
         } catch (Exception ex) {
             logger.warn("{}: Failed to validate index for segment: {}", context, segment, ex);
         }
         return false;
     }
 
+    private boolean fileExists(long segment) {
+        return storageProperties.indexFile(context, segment).exists() &&
+                storageProperties.indexFile(context, segment).canRead();
+    }
+
     public Index getIndex(long segment) {
         Index index = indexMap.get(segment);
-        if( index == null || index.db.isClosed()) {
-            index = new IndexManager.Index(segment, false);
-            indexMap.put(segment, index);
-            indexCleanup();
+        if (index != null && !index.isClosed()) {
+            return index;
+        }
+
+        synchronized (indexMap) {
+            index = indexMap.get(segment);
+            if (index == null || index.isClosed()) {
+                logger.debug("{}: open index for {}", context, segment);
+                index = new IndexManager.Index(segment, false);
+                indexMap.put(segment, index);
+                indexCleanup();
+            }
         }
         return index;
     }
 
     private void indexCleanup() {
-//        while( indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
-//            Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
-//            logger.debug("Closing index {}", entry.getKey());
-//            scheduledExecutorService.schedule(() -> entry.getValue().db.close(), 2, TimeUnit.SECONDS);
-//        }
+        while (indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
+            Map.Entry<Long, Index> entry = indexMap.pollFirstEntry();
+            logger.debug("{}: Closing index {}", context, entry.getKey());
+            scheduledExecutorService.schedule(() -> entry.getValue().close(), 2, TimeUnit.SECONDS);
+        }
     }
 
     public void createIndex(Long segment, Map<Long, Integer> entriesMap, boolean force) {
@@ -64,10 +84,11 @@ public class IndexManager {
         if( tempFile.exists() && (! force || ! FileUtils.delete(tempFile))) {
             return;
         }
+
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
-        if( storageProperties.isUseMmapIndex()) {
+        if (storageProperties.isUseMmapIndex()) {
             maker.fileMmapEnable();
-            if( storageProperties.isCleanerHackEnabled()) {
+            if (storageProperties.isCleanerHackEnabled()) {
                 maker.cleanerHackEnable();
             }
         } else {
@@ -75,27 +96,32 @@ public class IndexManager {
         }
         DB db = maker.make();
         try (HTreeMap<Long, Integer> map = db.hashMap(INDEX_MAP,
-                                                                        Serializer.LONG,
-                                                                        Serializer.INTEGER)
-                                                               .createOrOpen() ) {
+                                                      Serializer.LONG,
+                                                      Serializer.INTEGER)
+                                             .createOrOpen()) {
             map.putAll(entriesMap);
         }
         db.close();
 
-        if( ! tempFile.renameTo(storageProperties.indexFile(context, segment)) ) {
-            throw new LogException(ErrorCode.INDEX_WRITE_ERROR, context + ": Failed to rename index file:" + tempFile);
+        try {
+            Files.move(tempFile.toPath(), storageProperties.indexFile(context, segment).toPath(),
+                       StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new LogException(ErrorCode.INDEX_WRITE_ERROR,
+                                   "Failed to rename index file + storageProperties.indexFile(context, segment)",
+                                   e);
         }
     }
 
     public void cleanup() {
-
+        indexMap.forEach((segment, index) -> index.close());
     }
 
     public boolean remove(long segment) {
         Index index = indexMap.remove(segment);
         if( index != null) {
             try {
-                index.db.close();
+                index.close();
             } catch( Exception ex) {
                 // No action
             }
@@ -132,6 +158,10 @@ public class IndexManager {
 
         public void close() {
             if( !managed) db.close();
+        }
+
+        public boolean isClosed() {
+            return db.isClosed();
         }
     }
 }

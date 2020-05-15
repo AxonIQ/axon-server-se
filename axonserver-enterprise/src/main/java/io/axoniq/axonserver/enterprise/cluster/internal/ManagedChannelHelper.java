@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.GrpcBufferingInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.GrpcSslContexts;
@@ -9,9 +8,11 @@ import io.grpc.netty.NettyChannelBuilder;
 import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 
@@ -32,14 +33,18 @@ public class ManagedChannelHelper {
                        .keepAliveTimeout(messagingPlatformConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS)
                        .keepAliveWithoutCalls(true);
             }
-            if( messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl().isEnabled()) {
+            if (messagingPlatformConfiguration.getSsl() != null && messagingPlatformConfiguration.getSsl()
+                                                                                                 .isEnabled()) {
                 addTlsConfig(messagingPlatformConfiguration, builder);
             } else {
                 builder.usePlaintext();
             }
-            if( messagingPlatformConfiguration.getMaxMessageSize() > 0) {
+            if (messagingPlatformConfiguration.getMaxMessageSize() > 0) {
                 builder.maxInboundMessageSize(messagingPlatformConfiguration.getMaxMessageSize());
             }
+            builder.executor(Executors
+                                     .newFixedThreadPool(messagingPlatformConfiguration.getClusterExecutorThreadCount(),
+                                                         new CustomizableThreadFactory("cluster-request-executor-")));
             builder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
             channel = builder.build();
         } catch(Exception ex) {

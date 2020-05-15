@@ -7,13 +7,18 @@ import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.CompetableFutureUtils;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
-import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import io.axoniq.axonserver.enterprise.logconsumer.AdminNodeConsumer;
+import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
+import io.axoniq.axonserver.taskscheduler.TransientException;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.NodeContext;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.UnregisterNodeTask;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
@@ -24,6 +29,7 @@ import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextApplication;
 import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
@@ -43,6 +49,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -53,6 +61,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -64,6 +73,7 @@ import static io.axoniq.axonserver.enterprise.logconsumer.DeleteLoadBalancingStr
 import static io.axoniq.axonserver.enterprise.logconsumer.DeleteUserConsumer.DELETE_USER;
 import static io.axoniq.axonserver.rest.ClusterRestController.CONTEXT_NONE;
 import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
+import static io.axoniq.axonserver.util.StringUtils.isEmpty;
 
 /**
  * Service to orchestrate configuration changes. This service is executed on the leader of the _admin context.
@@ -81,6 +91,7 @@ class LocalRaftConfigService implements RaftConfigService {
     private final ApplicationController applicationController;
     private final UserController userController;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
+    private final TaskPublisher taskPublisher;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final CopyOnWriteArraySet<String> contextsInProgress = new CopyOnWriteArraySet<>();
     private final Logger logger = LoggerFactory.getLogger(LocalRaftConfigService.class);
@@ -92,7 +103,8 @@ class LocalRaftConfigService implements RaftConfigService {
                                   RaftGroupServiceFactory raftGroupServiceFactory,
                                   ApplicationController applicationController,
                                   UserController userController,
-                                  MessagingPlatformConfiguration messagingPlatformConfiguration) {
+                                  MessagingPlatformConfiguration messagingPlatformConfiguration,
+                                  TaskPublisher taskPublisher) {
         this.grpcRaftController = grpcRaftController;
         this.contextController = contextController;
         this.clusterController = clusterController;
@@ -100,28 +112,35 @@ class LocalRaftConfigService implements RaftConfigService {
         this.applicationController = applicationController;
         this.userController = userController;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+        this.taskPublisher = taskPublisher;
     }
 
     @Override
-    public void addNodeToContext(String context, String node, Role role) {
+    public CompletableFuture<Void> addNodeToContext(String context, String node, Role role) {
         logger.info("Add node request invoked for node: {} - and context: {}", node, context);
-        Context contextDefinition = contextController.getContext(context);
+        if (!contextsInProgress.add(context)) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS, context + ": pending update");
+        }
 
+        Context contextDefinition = contextController.getContext(context);
         if (contextDefinition == null) {
+            contextsInProgress.remove(context);
             throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
                                                  String.format("Context %s not found", context));
         }
 
         if (contextDefinition.isChangePending()
                 && contextDefinition.getPendingSince().getTime() > System.currentTimeMillis() - MAX_PENDING_TIME) {
+            contextsInProgress.remove(context);
             throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS, context + ": pending update");
         }
         ClusterNode clusterNode = clusterController.getNode(node);
         if (clusterNode == null) {
+            contextsInProgress.remove(context);
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, String.format("Node %s not found", node));
         }
         if (clusterNode.getContextNames().contains(context)) {
-            return;
+            return null;
         }
         ContextConfiguration oldConfiguration = createContextConfigBuilder(contextDefinition).build();
         String nodeLabel = generateNodeLabel(node);
@@ -134,12 +153,18 @@ class LocalRaftConfigService implements RaftConfigService {
         appendToAdmin(ContextConfiguration.class.getName(), contextConfiguration.toByteArray());
 
         try {
-            raftGroupServiceFactory.getRaftGroupService(context)
-                                   .addNodeToContext(context, raftNode)
-                                   .thenAccept(result -> handleContextUpdateResult(context, result))
-                                   .exceptionally(e -> resetAdminConfiguration(oldConfiguration,
-                                                                               "Failed to add node: " + node,
-                                                                               e));
+            return raftGroupServiceFactory.getRaftGroupService(context)
+                                          .addNodeToContext(context, raftNode)
+                                          .thenAccept(result -> handleContextUpdateResult(context, result))
+                                          .exceptionally(e -> {
+                                              raftGroupServiceFactory.getRaftGroupServiceForNode(raftNode.getNodeName())
+                                                                     .deleteContext(context, false);
+                                              resetAdminConfiguration(oldConfiguration,
+                                                                      "Failed to add node: " + node,
+                                                                      e);
+                                              throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS,
+                                                                                   e.getMessage());
+                                          });
         } catch (RuntimeException throwable) {
             resetAdminConfiguration(oldConfiguration, "Failed to add node: " + node, throwable);
             throw throwable;
@@ -148,8 +173,10 @@ class LocalRaftConfigService implements RaftConfigService {
 
     private void handleContextUpdateResult(String context,
                                            ContextUpdateConfirmation result) {
+        contextsInProgress.remove(context);
         if (!result.getSuccess()) {
             logger.error("{}: {}", context, result.getMessage());
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS, result.getMessage());
         }
         ContextConfiguration updatedConfiguration = createContextConfiguration(context, result);
         try {
@@ -263,11 +290,11 @@ class LocalRaftConfigService implements RaftConfigService {
             throw new MessagingPlatformException(ErrorCode.CANNOT_REMOVE_LAST_NODE,
                                                  String.format(
                                                          "Node %s is last node in context %s, to delete the context use unregister context",
-                                                               node,
-                                                               context));
+                                                         node,
+                                                         context));
         }
 
-        removeNodeFromContext(contextDef, node, nodeLabel);
+        CompetableFutureUtils.getFuture(removeNodeFromContext(contextDef, node, nodeLabel), 1, TimeUnit.MINUTES);
     }
 
     private CompletableFuture<Void> removeNodeFromContext(Context context,
@@ -283,7 +310,8 @@ class LocalRaftConfigService implements RaftConfigService {
 
             transferLeader(context, node);
 
-            raftGroupServiceFactory.getRaftGroupService(context.getName()).deleteNode(context.getName(), nodeLabel)
+            raftGroupServiceFactory.getRaftGroupService(context.getName())
+                                   .deleteNode(context.getName(), nodeLabel)
                                    .thenAccept(result -> handleContextUpdateResult(context.getName(), result))
                                    .exceptionally(e -> resetAdminConfiguration(oldConfiguration,
                                                                                "Failed to delete node " + node,
@@ -300,7 +328,7 @@ class LocalRaftConfigService implements RaftConfigService {
     private void transferLeader(Context context, String node)
             throws InterruptedException, java.util.concurrent.ExecutionException {
         String leader = raftGroupServiceFactory.getLeader(context.getName());
-        if (node.equals(leader)) {
+        if (context.getNodes().size() > 1 && node.equals(leader)) {
             logger.info("{}: leader is {}", context, leader);
             raftGroupServiceFactory.getRaftGroupService(context.getName()).transferLeadership(context.getName())
                                    .get();
@@ -339,55 +367,38 @@ class LocalRaftConfigService implements RaftConfigService {
             logger.info("Delete Node: {} - Node not found.", name);
             return;
         }
-        Set<ContextClusterNode> membersToDelete =
-                clusterNode.getContexts()
-                           .stream()
-                           .filter(contextClusterNode -> contextClusterNode.getContext().getNodes().size() > 1)
-                           .filter(contextClusterNode -> !isAdmin(contextClusterNode.getContext().getName()))
-                           .collect(Collectors.toSet());
+        clusterNode.getContexts()
+                   .forEach(contextClusterNode -> taskPublisher.publishScheduledTask(getAdmin(),
+                                                                                     PrepareDeleteNodeFromContextTask.class
+                                                                                             .getName(),
+                                                                                     new NodeContext(name,
+                                                                                                     contextClusterNode
+                                                                                                             .getContext()
+                                                                                                             .getName(),
+                                                                                                     false),
+                                                                                     Duration.ZERO));
 
 
-        List<CompletableFuture<Void>> completableFutures = new ArrayList<>();
-        membersToDelete.forEach(contextClusterNode ->
-                                        completableFutures.add(
-                                                removeNodeFromContext(contextClusterNode.getContext(),
-                                                                      name,
-                                                                      contextClusterNode.getClusterNodeLabel())));
-
-        getFuture(CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[0]))
-                                   .thenApply(r ->
-                                                      clusterNode.getContext(getAdmin())
-                                                                 .map(adminContext ->
-                                                                              removeNodeFromContext(
-                                                                                      adminContext.getContext(),
-                                                                                      name,
-                                                                                      adminContext
-                                                                                              .getClusterNodeLabel()))
-                                                                 .orElse(CompletableFuture.completedFuture(null)))
-                                   .thenAccept(r -> {
-                                       try {
-                                           Thread.sleep((long) (grpcRaftController.electionTimeout() * 1.5));
-                                           waitForAdminLeader();
-                                           appendToAdmin(DeleteNode.class.getName(),
-                                                         DeleteNode.newBuilder().setNodeName(name).build()
-                                                                   .toByteArray());
-                                       } catch (InterruptedException e) {
-                                           Thread.currentThread().interrupt();
-                                       }
-                                   }));
+        taskPublisher.publishScheduledTask(getAdmin(),
+                                           UnregisterNodeTask.class.getName(),
+                                           name,
+                                           Duration.of(1, ChronoUnit.SECONDS));
     }
 
-    private void waitForAdminLeader() throws InterruptedException {
-        int retries = 25;
-        while (retries > 0) {
-            try {
-                raftGroupServiceFactory.getRaftGroupService(getAdmin());
-                return;
-            } catch (RuntimeException re) {
-                retries--;
-                Thread.sleep(250);
-            }
+    @Override
+    public void deleteNodeIfEmpty(String name) {
+        ClusterNode clusterNode = clusterController.getNode(name);
+        if (clusterNode == null) {
+            return;
         }
+
+        if (clusterNode.getContexts()
+                       .stream().anyMatch(c -> c.getContext().getNodes().size() > 1)) {
+            throw new TransientException("Node still member of contexts.");
+        }
+
+        appendToAdmin(DeleteNode.class.getName(),
+                      DeleteNode.newBuilder().setNodeName(name).build().toByteArray());
     }
 
     @Override
@@ -403,68 +414,103 @@ class LocalRaftConfigService implements RaftConfigService {
                                                  String.format("Context %s already exists", context));
         }
 
+        Set<String> unknownNodes = contextDefinition.getMembersList()
+                                                    .stream()
+                                                    .filter(m -> clusterController.getNode(m.getNodeName()) == null)
+                                                    .map(ContextMember::getNodeName)
+                                                    .collect(Collectors.toSet());
+        if (!unknownNodes.isEmpty()) {
+            contextsInProgress.remove(context);
+            throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE,
+                                                 String.format("Node(s) %s not found", unknownNodes));
+        }
+
         List<Node> raftNodes = new ArrayList<>();
+        AtomicReference<Node> target = new AtomicReference<>();
         contextDefinition.getMembersList().forEach(n -> {
             ClusterNode clusterNode = clusterController.getNode(n.getNodeName());
             String nodeLabel = generateNodeLabel(n.getNodeName());
-            raftNodes.add(createNode(clusterNode, nodeLabel, Role.PRIMARY));
+            Node raftNode = createNode(clusterNode, nodeLabel, n.getRole());
+            if (target.get() == null && Role.PRIMARY.equals(raftNode.getRole())) {
+                target.set(raftNode);
+            }
+            raftNodes.add(raftNode);
         });
-        Node target = raftNodes.get(0);
 
-        getFuture(
-            raftGroupServiceFactory.getRaftGroupServiceForNode(target.getNodeName()).initContext(context, raftNodes)
-                                   .thenAccept(contextConfiguration -> {
-                                       ContextConfiguration completed =
-                                               ContextConfiguration.newBuilder(contextConfiguration)
-                                                                   .setPending(false)
-                                                                   .putAllMetaData(contextDefinition.getMetaDataMap())
-                                                                   .build();
-                                       appendToAdmin(ContextConfiguration.class.getName(),
-                                                     completed.toByteArray());
-                                   }).whenComplete((success, error) -> {
-                contextsInProgress.remove(context);
-                if (error != null) {
-                    deleteContext(context);
-                } else {
-                    addWildcardApps(context);
-                    addWildcardUsers(context);
-                }
-            }));
+        if (target.get() == null) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                                                 "No primary nodes provided");
+        }
+
+        try {
+            getFuture(
+                    raftGroupServiceFactory.getRaftGroupServiceForNode(target.get().getNodeName()).initContext(context,
+                                                                                                               raftNodes)
+                                           .thenAccept(contextConfiguration -> {
+                                               ContextConfiguration completed =
+                                                       ContextConfiguration.newBuilder(contextConfiguration)
+                                                                           .setPending(false)
+                                                                           .putAllMetaData(contextDefinition
+                                                                                                   .getMetaDataMap())
+                                                                           .build();
+                                               appendToAdmin(ContextConfiguration.class.getName(),
+                                                             completed.toByteArray());
+                                           }).whenComplete((success, error) -> {
+                        contextsInProgress.remove(context);
+                        if (error != null) {
+                            deleteContext(context);
+                        } else {
+                            addWildcardApps(target.get(), context);
+                            addWildcardUsers(target.get(), context);
+                        }
+                    }));
+        } catch (RuntimeException runtimeException) {
+            contextsInProgress.remove(context);
+            throw runtimeException;
+        }
     }
 
-    private void addWildcardUsers(String context) {
-        userController.getUsers().stream()
-                      .map(io.axoniq.axonserver.access.jpa.User::newContextPermissions)
-                      .filter(user -> !user.getRoles().isEmpty())
-                      .forEach(user -> {
-                          ContextUser contextUser = UserProtoConverter.createContextUser(context, user);
-                          getFuture(raftGroupServiceFactory.getRaftGroupService(context)
-                                                           .updateUser(contextUser));
-                      });
+    private void addWildcardUsers(Node leader, String context) {
+        Set<io.axoniq.axonserver.access.jpa.User> users = userController.getUsers().stream()
+                                                                        .map(io.axoniq.axonserver.access.jpa.User::newContextPermissions)
+                                                                        .filter(user -> !user.getRoles().isEmpty())
+                                                                        .collect(Collectors.toSet());
+
+        if (!users.isEmpty()) {
+            users.forEach(user -> {
+                ContextUser contextUser = UserProtoConverter.createContextUser(context, user);
+                getFuture(raftGroupServiceFactory.getRaftGroupServiceForNode(leader.getNodeName())
+                                                 .updateUser(contextUser));
+            });
+        }
     }
 
-    private void addWildcardApps(String context) {
-        applicationController.getApplications().stream()
-                             .map(JpaApplication::newContextPermissions)
-                             .filter(app -> !app.getContexts().isEmpty())
-                             .forEach(app -> {
-                                 ContextApplication contextApplication =
-                                         ContextApplication.newBuilder()
-                                                           .setContext(context)
-                                                           .setName(app.getName())
-                                                           .setHashedToken(app.getHashedToken())
-                                                           .setTokenPrefix(app.getTokenPrefix())
-                                                           .addAllRoles(app.getContexts().stream().findFirst()
-                                                                           .map(ac ->
-                                                                                        ac.getRoles().stream()
-                                                                                          .map(io.axoniq.axonserver.access.application.ApplicationContextRole::getRole)
-                                                                                          .collect(
-                                                                                                  Collectors.toList())
-                                                                           ).orElse(Collections.emptyList())).build();
+    private void addWildcardApps(Node leader, String context) {
+        Set<JpaApplication> apps = applicationController.getApplications().stream()
+                                                        .map(JpaApplication::newContextPermissions)
+                                                        .filter(app -> !app.getContexts().isEmpty())
+                                                        .collect(Collectors.toSet());
 
-                                 getFuture(raftGroupServiceFactory.getRaftGroupService(context)
-                                                                  .updateApplication(contextApplication));
-                             });
+        if (!apps.isEmpty()) {
+            apps.forEach(app -> {
+                ContextApplication contextApplication =
+                        ContextApplication.newBuilder()
+                                          .setContext(context)
+                                          .setName(app.getName())
+                                          .setHashedToken(app.getHashedToken())
+                                          .setTokenPrefix(app.getTokenPrefix())
+                                          .addAllRoles(app.getContexts().stream().findFirst()
+                                                          .map(ac ->
+                                                                       ac.getRoles().stream()
+                                                                         .map(io.axoniq.axonserver.access.application.ApplicationContextRole::getRole)
+                                                                         .collect(
+                                                                                 Collectors.toList())
+                                                          ).orElse(Collections.emptyList())).build();
+
+                getFuture(raftGroupServiceFactory.getRaftGroupServiceForNode(leader.getNodeName())
+                                                 .updateApplication(contextApplication));
+            });
+        }
     }
 
     @Override
@@ -655,7 +701,7 @@ class LocalRaftConfigService implements RaftConfigService {
         try {
             JpaApplication jpaApplication = applicationController.get(application.getName());
 
-            String token = UUID.randomUUID().toString();
+            String token = isEmpty(application.getToken()) ? UUID.randomUUID().toString() : application.getToken();
             Application updatedApplication = Application.newBuilder(ApplicationProtoConverter
                                                                             .createApplication(jpaApplication))
                                                         .setToken(applicationController.hash(token))
@@ -683,13 +729,11 @@ class LocalRaftConfigService implements RaftConfigService {
         if (storedApplication == null) {
             if (StringUtils.isEmpty(application.getToken())) {
                 token = UUID.randomUUID().toString();
-                hashedToken = applicationController.hash(token);
-                tokenPrefix = ApplicationController.tokenPrefix(token);
             } else {
                 token = application.getToken();
-                hashedToken = applicationController.hash(token);
-                tokenPrefix = ApplicationController.tokenPrefix(token);
             }
+            hashedToken = applicationController.hash(token);
+            tokenPrefix = ApplicationController.tokenPrefix(token);
         } else {
             hashedToken = storedApplication.getHashedToken();
             tokenPrefix = storedApplication.getTokenPrefix() == null ? "" : storedApplication.getTokenPrefix();
@@ -883,7 +927,11 @@ class LocalRaftConfigService implements RaftConfigService {
      */
     @EventListener
     public void on(ClusterEvents.LeaderConfirmation leaderConfirmation) {
-        checkPendingChanges(leaderConfirmation.getContext());
+        try {
+            checkPendingChanges(leaderConfirmation.getContext());
+        } catch (IllegalStateException ignore) {
+            // Node may be starting or stopping
+        }
     }
 
     /**

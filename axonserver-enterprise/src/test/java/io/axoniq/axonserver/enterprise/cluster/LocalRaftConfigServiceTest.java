@@ -10,6 +10,9 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.context.ContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
+import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
+import io.axoniq.axonserver.enterprise.taskscheduler.task.UnregisterNodeTask;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ContextMemberConverter;
@@ -29,13 +32,17 @@ import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 import org.junit.*;
 import org.mockito.stubbing.*;
 
+import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -56,6 +63,8 @@ public class LocalRaftConfigServiceTest {
     private AdminDB adminDB;
     private RaftNode adminNode;
     private FakeRaftGroupService fakeRaftGroupService = new FakeRaftGroupService();
+    private TaskPublisher taskPublisher;
+    private Map<String, Set<String>> scheduledTasks = new ConcurrentHashMap<>();
 
     private ClusterNode createNode(String name) {
         return new ClusterNode(name, name, name, 1, 2,3);
@@ -324,13 +333,22 @@ public class LocalRaftConfigServiceTest {
         when(grpcRaftController.waitForLeader(any())).thenReturn(adminNode);
         when(adminNode.addNode(any())).thenReturn(CompletableFuture.completedFuture(null));
         UserController userController = mock(UserController.class);
+        taskPublisher = new TaskPublisher(null, null, null) {
+            @Override
+            public CompletableFuture<String> publishScheduledTask(String context, String taskHandler, Object payload,
+                                                                  Duration delay) {
+                scheduledTasks.computeIfAbsent(context, c -> new CopyOnWriteArraySet<>()).add(taskHandler);
+                return CompletableFuture.completedFuture(null);
+            }
+        };
         testSubject = new LocalRaftConfigService(grpcRaftController,
                                                  contextcontroller,
                                                  clusterController,
                                                  raftGroupServiceFactory,
                                                  applicationController,
                                                  userController,
-                                                 messagingPlatformConfiguration);
+                                                 messagingPlatformConfiguration,
+                                                 taskPublisher);
     }
 
     @Test
@@ -423,7 +441,10 @@ public class LocalRaftConfigServiceTest {
     @Test
     public void deleteNode() {
         testSubject.deleteNode("node2");
-        assertEquals(1, fakeRaftGroupService.groupDBs.get("_admin").nodes.size());
+        assertEquals(1, scheduledTasks.size());
+        Set<String> adminTasks = scheduledTasks.getOrDefault("_admin", Collections.emptySet());
+        assertTrue(adminTasks.contains(PrepareDeleteNodeFromContextTask.class.getName()));
+        assertTrue(adminTasks.contains(UnregisterNodeTask.class.getName()));
     }
 
     @Test

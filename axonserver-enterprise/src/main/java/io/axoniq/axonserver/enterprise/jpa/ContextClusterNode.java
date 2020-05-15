@@ -151,6 +151,11 @@ public class ContextClusterNode implements Serializable {
         public int hashCode() {
             return Objects.hash(context, clusterNode);
         }
+
+        @Override
+        public String toString() {
+            return clusterNode.getName() + "@" + context.getName();
+        }
     }
 
 }

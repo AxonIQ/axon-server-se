@@ -102,7 +102,7 @@ public class NodeSelector {
         List<String> activeNodes = activeNodes(context);
         if (activeNodes.isEmpty()) {
             throw new MessagingPlatformException(ErrorCode.NO_AXONSERVER_FOR_CONTEXT,
-                                                 "No active AxonServers found for context: " + context);
+                                                 "No active AxonServers found for context \"" + context + "\"");
         }
         ClusterNode me = clusterNodeSelector.apply(nodeName);
         if (clientName == null || clientName.isEmpty()) {

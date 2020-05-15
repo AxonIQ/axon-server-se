@@ -11,10 +11,16 @@ import io.axoniq.axonserver.licensing.Feature;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -116,8 +122,24 @@ public class MessagingClusterServer implements SmartLifecycle {
         }
         serverBuilder.intercept(new GrpcBufferingInterceptor(messagingPlatformConfiguration.getGrpcBufferedMessages()));
 
-        serverBuilder.executor(Executors.newCachedThreadPool());
+        serverBuilder.executor(Executors.newFixedThreadPool(messagingPlatformConfiguration
+                                                                    .getClusterExecutorThreadCount(),
+                                                            new CustomizableThreadFactory("cluster-executor-")));
 
+        if (Epoll.isAvailable()) {
+            serverBuilder.bossEventLoopGroup(new EpollEventLoopGroup(1,
+                                                                     new CustomizableThreadFactory("cluster-epoll-boss-")));
+            serverBuilder.workerEventLoopGroup(new EpollEventLoopGroup(0,
+                                                                       new CustomizableThreadFactory(
+                                                                               "cluster-epoll-worker-")));
+            serverBuilder.channelType(EpollServerSocketChannel.class);
+        } else {
+            serverBuilder.bossEventLoopGroup(new NioEventLoopGroup(1,
+                                                                   new CustomizableThreadFactory("cluster-nio-boss-")));
+            serverBuilder.workerEventLoopGroup(new NioEventLoopGroup(0,
+                                                                     new CustomizableThreadFactory("cluster-nio-worker-")));
+            serverBuilder.channelType(NioServerSocketChannel.class);
+        }
 
         server = serverBuilder.build();
         try {

@@ -18,8 +18,18 @@ public class ContextNameValidationTest {
     }
 
     @Test
+    public void allowAt() {
+        assertTrue(new ContextNameValidation().test("correctName@54"));
+    }
+
+    @Test
     public void avoidStartWithNumber() {
         assertFalse(new ContextNameValidation().test("54name"));
+    }
+
+    @Test
+    public void avoidStartWithAt() {
+        assertFalse(new ContextNameValidation().test("@54name"));
     }
 
     @Test

@@ -6,6 +6,8 @@ import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.util.stream.IntStream;
+
 
 /**
  * @author Marc Gathier
@@ -22,7 +24,10 @@ public class Queries {
 
     @QueryHandler
     public String echo(String cmd, MetaData metaData) {
-        return cmd + "@" + messagingConfiguration.getComponentName();
+        StringBuilder result = new StringBuilder();
+        IntStream.range(0, cmd.length() * 100).forEach(i -> result.append(i).append(cmd));
+
+        return result.toString();
     }
 
     @QueryHandler

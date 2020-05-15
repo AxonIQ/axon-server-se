@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.internal.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,14 +24,15 @@ import java.util.concurrent.TimeoutException;
 import static java.util.concurrent.ConcurrentHashMap.newKeySet;
 
 /**
- * Retrieves leader information about contexts where this node is not a member of. Admin nodes need this information to send
+ * Retrieves leader information about contexts where this node is not a member of. Admin nodes need this information to
+ * send
  * admin requests to the right node.
  *
  * @author Marc Gathier
  * @since 4.1
  */
 @Component
-public class LeadershipStatusNotifier {
+public class LeadershipStatusNotifier implements SmartLifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(LeadershipStatusNotifier.class);
 
@@ -38,6 +40,7 @@ public class LeadershipStatusNotifier {
     private final RaftGroupServiceFactory raftServiceFactory;
     private final RaftLeaderProvider raftLeaderProvider;
     private final ApplicationEventPublisher eventPublisher;
+    private boolean running;
 
     /**
      * Creates an instance of Leadership Status Notifier.
@@ -71,6 +74,9 @@ public class LeadershipStatusNotifier {
 
     private void checkLeadershipChanges(
             Map<String, Set<String>> leadersPerContext) {
+        if (!running) {
+            return;
+        }
         Collection<String> myContexts = clusterController.getMe().getContextNames();
         leadersPerContext.forEach((context, leaders) -> {
             // Ignore information for contexts that I am a member of as leader information for these contexts
@@ -119,6 +125,7 @@ public class LeadershipStatusNotifier {
     }
 
     private void updateLeader(Context context, Map<String, Set<String>> leadersPerContext) {
+        leadersPerContext.computeIfAbsent(context.getName(), n -> newKeySet());
         context.getMembersList()
                .stream()
                .filter(cm -> State.LEADER.getNumber() == cm.getState().getNumber())
@@ -130,4 +137,21 @@ public class LeadershipStatusNotifier {
     private void publishLeaderConfirmation(String context, String leader) {
         eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context, leader, true));
     }
+
+    @Override
+    public void start() {
+        running = true;
+    }
+
+    @Override
+    public void stop() {
+        logger.info("Stop LeadershipStatusNotifier");
+        running = false;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
+    }
+
 }

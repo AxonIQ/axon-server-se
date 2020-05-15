@@ -93,7 +93,8 @@ public class FakeScheduler implements Scheduler {
 
         registration.set(schedule(runnable, initialDelay, timeUnit));
         return new DefaultScheduledRegistration(clock,
-                                                mayInterruptIfRunning -> registration.get().cancel(mayInterruptIfRunning),
+                                                mayInterruptIfRunning -> registration.get()
+                                                                                     .cancel(mayInterruptIfRunning),
                                                 unit -> registration.get().getDelay(unit));
     }
 
@@ -103,7 +104,7 @@ public class FakeScheduler implements Scheduler {
     }
 
     @Override
-    public void shutdownNow() {
+    public void shutdown() {
         tasks.clear();
     }
 

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -22,12 +23,14 @@ public class LogEntryProcessor {
     private final ProcessorStore processorStore;
     private final List<Consumer<Entry>> logAppliedListeners = new CopyOnWriteArrayList<>();
     private volatile String lastError;
+    private final AtomicBoolean health = new AtomicBoolean(true);
 
     public LogEntryProcessor(ProcessorStore processorStore) {
         this.processorStore = processorStore;
     }
 
-    public void apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
+    public ApplyResult apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
+        ApplyResult result = ApplyResult.NO_WORK;
         if (applyRunning.compareAndSet(false, true)) {
             try {
                 if (processorStore.lastAppliedIndex() < processorStore.commitIndex()) {
@@ -40,6 +43,8 @@ public class LogEntryProcessor {
                             beforeCommit = entry.getIndex() <= processorStore.commitIndex();
                             if (beforeCommit) {
                                 consumer.accept(entry);
+                                result = ApplyResult.APPLIED;
+                                health.set(true);
                                 processorStore.updateLastApplied(entry.getIndex(), entry.getTerm());
                                 logAppliedListeners.forEach(listener -> listener.accept(entry));
                             }
@@ -50,6 +55,8 @@ public class LogEntryProcessor {
                 }
             } catch (LogEntryApplyException ex) {
                 // Already logged
+                result = ApplyResult.FAILED;
+                health.set(false);
             } catch (Exception ex) {
                 String error = String.format("%s: Apply failed last applied : %d, commitIndex: %d, %s",
                                              processorStore.groupId(),
@@ -61,10 +68,15 @@ public class LogEntryProcessor {
                     lastError = error;
                     logger.error(lastError);
                 }
+                result = ApplyResult.FAILED;
+                health.set(false);
             } finally {
                 applyRunning.set(false);
             }
+        } else {
+            result = ApplyResult.RUNNING;
         }
+        return result;
     }
 
     public void markCommitted(long committedIndex, long term) {
@@ -117,5 +129,18 @@ public class LogEntryProcessor {
     public void reset() {
         processorStore.updateCommit(0, 0);
         processorStore.updateLastApplied(0, 0);
+    }
+
+    /**
+     * Checks health of {@link LogEntryProcessor}. Returns false if the last attempt to apply an entry failed.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if the processor is healthy
+     */
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        if (!health.get()) {
+            statusConsumer.accept(processorStore.groupId() + ".apply", "STOPPED");
+        }
+        return health.get();
     }
 }

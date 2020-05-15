@@ -43,7 +43,7 @@ public interface Scheduler {
     /**
      * Cancels all scheduled tasks.
      */
-    void shutdownNow();
+    void shutdown();
 
     /**
      * Gets the clock used by this scheduler.

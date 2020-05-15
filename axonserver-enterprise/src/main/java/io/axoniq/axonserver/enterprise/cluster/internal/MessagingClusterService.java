@@ -63,6 +63,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.PreDestroy;
 
@@ -92,6 +93,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         implements AxonServerInternalService {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingClusterService.class);
+    /**
+     * Defines the period that connections from nodes are refused once the node was deleted.
+     */
+    private static final long BLACKOUT_TIME = TimeUnit.SECONDS.toMillis(10);
 
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
@@ -101,7 +106,8 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
 
     private final Map<ClientIdentification, String> connectedClients = new ConcurrentHashMap<>();
-
+    private final Set<GrpcFlowControlledDispatcherListener> dispatchListeners = new CopyOnWriteArraySet<>();
+    private final Map<String, Long> blacklistedServers = new ConcurrentHashMap<>();
     @Value("${axoniq.axonserver.cluster.connectionCheckRetries:5}")
     private int connectionCheckRetries = 5;
     @Value("${axoniq.axonserver.cluster.connectionCheckRetryWait:1000}")
@@ -110,7 +116,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     private int queryProcessingThreads = 1;
     @Value("${axoniq.axonserver.cluster.command-threads:1}")
     private int commandProcessingThreads = 1;
-    private final Set<GrpcFlowControlledDispatcherListener> dispatchListeners = new CopyOnWriteArraySet<>();
 
     private final Map<RequestCase, List<Consumer<ConnectorCommand>>> handlers = new EnumMap<>(RequestCase.class);
     /**
@@ -203,14 +208,39 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         String axonServerNode = applicationDisconnected.isProxied() ? applicationDisconnected.getProxy() : "LOCAL";
-        connectedClients.computeIfPresent(new ClientIdentification(applicationDisconnected.getContext(), applicationDisconnected.getClient()),
-                                          (client,current)-> current.equals(axonServerNode) ? null : current);
+        connectedClients.computeIfPresent(new ClientIdentification(applicationDisconnected.getContext(),
+                                                                   applicationDisconnected.getClient()),
+                                          (client, current) -> current.equals(axonServerNode) ? null : current);
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected applicationConnected) {
         String axonServerNode = applicationConnected.isProxied() ? applicationConnected.getProxy() : "LOCAL";
-        connectedClients.put(new ClientIdentification(applicationConnected.getContext(), applicationConnected.getClient()), axonServerNode);
+        connectedClients.put(new ClientIdentification(applicationConnected.getContext(),
+                                                      applicationConnected.getClient()), axonServerNode);
+    }
+
+    @EventListener
+    public void on(ClusterEvents.AxonServerNodeDeleted axonServerNodeDeleted) {
+        blacklistedServers.put(axonServerNodeDeleted.node(), System.currentTimeMillis() + BLACKOUT_TIME);
+    }
+
+    @EventListener
+    public void on(ClusterEvents.AxonServerInstanceDisconnected axonServerInstanceDisconnected) {
+        connectedClients.entrySet().stream()
+                        .filter(connectedClientEntry ->
+                                        connectedClientEntry.getValue()
+                                                            .equals(axonServerInstanceDisconnected.getNodeName()))
+                        .map(Map.Entry::getKey)
+                        .forEach(connectedClientEntry -> eventPublisher
+                                .publishEvent(new TopologyEvents.ApplicationDisconnected(
+                                        connectedClientEntry.getContext(), null, connectedClientEntry.getClient(),
+                                        axonServerInstanceDisconnected.getNodeName()
+                                )));
+    }
+
+    Set<ClientIdentification> connectedClients() {
+        return connectedClients.keySet();
     }
 
     private class ConnectorReceivingStreamObserver extends ReceivingStreamObserver<ConnectorCommand> {
@@ -218,11 +248,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         private static final boolean PROXIED = true;
 
         private final SendingStreamObserver<ConnectorResponse> responseObserver;
+        private final Map<ClientIdentification, CommandHandler> commandHandlerPerContextClient = new ConcurrentHashMap<>();
+        private final Map<ClientIdentification, QueryHandler> queryHandlerPerContextClient = new ConcurrentHashMap<>();
         private volatile GrpcInternalCommandDispatcherListener commandQueueListener;
         private volatile GrpcInternalQueryDispatcherListener queryQueueListener;
         private volatile String messagingServerName;
-        private final Map<ClientIdentification, CommandHandler> commandHandlerPerContextClient = new ConcurrentHashMap<>();
-        private final Map<ClientIdentification, QueryHandler> queryHandlerPerContextClient = new ConcurrentHashMap<>();
 
         private ConnectorReceivingStreamObserver(SendingStreamObserver<ConnectorResponse> responseObserver) {
             super(logger);
@@ -239,24 +269,19 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     try {
                         ConnectRequest connectRequest = connectorCommand.getConnect();
                         messagingServerName = connectRequest.getNodeInfo().getNodeName();
-
-                        if (clusterController.connect(connectRequest.getNodeInfo(), connectRequest.getAdmin())) {
+                        if (blacklistedServers.getOrDefault(messagingServerName, 0L) > System.currentTimeMillis()) {
+                            logger.warn("{}: Blacklisted, refusing connection", messagingServerName);
+                            responseObserver.onNext(ConnectorResponse.newBuilder()
+                                                                     .setConnectResponse(ConnectResponse.newBuilder()
+                                                                                                        .setDeleted(true))
+                                                                     .build());
+                        } else {
+                            clusterController.handleRemoteConnection(connectRequest.getNodeInfo());
                             logger.debug("Received connect from: {} - {}", messagingServerName, connectRequest);
 
                             responseObserver.onNext(ConnectorResponse.newBuilder()
                                                                      .setConnectResponse(ConnectResponse.newBuilder())
                                                                      .build());
-                        } else {
-                            logger.warn(
-                                    "Received connection from unknown node {}, closing connection", messagingServerName
-                            );
-
-                            responseObserver.onNext(
-                                    ConnectorResponse.newBuilder()
-                                                     .setConnectResponse(ConnectResponse.newBuilder().setDeleted(true))
-                                                     .build()
-                            );
-                            responseObserver.onCompleted();
                         }
                     } catch (MessagingPlatformException mpe) {
                         responseObserver.onError(mpe);
@@ -453,6 +478,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             mergeSegment.getSegmentIdentifier()
                     ));
                     break;
+                case DELETE_NODE:
+                    clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
+                    break;
                 default:
                     if (consumers.isEmpty()) {
                         logger.warn("Unknown operation occurred [{}]", connectorCommand.getRequestCase());
@@ -494,7 +522,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
         }
 
         private void checkClient(String context, String component, String clientName) {
-            if (messagingServerName != null && !messagingServerName.equals(connectedClients.get((new ClientIdentification(context, clientName))))) {
+            if (messagingServerName != null && !messagingServerName.equals(connectedClients
+                                                                                   .get((new ClientIdentification(
+                                                                                           context,
+                                                                                           clientName))))) {
                 eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
                                                                                     component,
                                                                                     clientName,
@@ -517,9 +548,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     ));
                 } else {
                     logger.debug("Client {} connected to {} not forwarded, as already known to be connected to {}",
-                                 clientIdentification.getClient(), messagingServerName, connectedClients.get(clientIdentification));
+                                 clientIdentification.getClient(),
+                                 messagingServerName,
+                                 connectedClients.get(clientIdentification));
                 }
-
             } else {
                 if (messagingServerName.equals(connectedClients.get(clientIdentification))) {
                     commandHandlerPerContextClient.remove(clientIdentification);
@@ -532,7 +564,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     ));
                 } else {
                     logger.debug("Client {} disconnected from {} not forwarded, as already known to be connected to {}",
-                                 clientIdentification.getClient(), messagingServerName, connectedClients.get(clientIdentification));
+                                 clientIdentification.getClient(),
+                                 messagingServerName,
+                                 connectedClients.get(clientIdentification));
                 }
             }
         }
@@ -540,7 +574,9 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
         @Override
         public void onError(Throwable throwable) {
-            logger.warn("{}: Error on connection from AxonServer node - {}", messagingServerName, throwable.getMessage());
+            logger.warn("{}: Error on connection from AxonServer node - {}",
+                        messagingServerName,
+                        throwable.getMessage());
             closeConnections();
         }
 
@@ -562,10 +598,15 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             }
             if (messagingServerName != null) {
                 connectedClients.entrySet().stream()
-                                .filter(connectedClientEntry -> connectedClientEntry.getValue().equals(messagingServerName))
-                                .forEach(connectedClientEntry -> eventPublisher.publishEvent(new TopologyEvents.ApplicationDisconnected(
-                                        connectedClientEntry.getKey().getContext(), null, connectedClientEntry.getKey().getClient(), messagingServerName
-                                )));
+                                .filter(connectedClientEntry -> connectedClientEntry.getValue()
+                                                                                    .equals(messagingServerName))
+                                .forEach(connectedClientEntry -> eventPublisher
+                                        .publishEvent(new TopologyEvents.ApplicationDisconnected(
+                                                connectedClientEntry.getKey().getContext(),
+                                                null,
+                                                connectedClientEntry.getKey().getClient(),
+                                                messagingServerName
+                                        )));
                 clusterController.closeConnection(messagingServerName);
                 eventPublisher.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(messagingServerName));
             }

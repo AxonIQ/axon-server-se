@@ -6,6 +6,7 @@ import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LeadershipTransferInProgressException;
 import io.axoniq.axonserver.cluster.exception.LogException;
+import io.axoniq.axonserver.cluster.exception.UncommittedTermException;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
@@ -27,6 +28,7 @@ import reactor.core.publisher.FluxSink;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -39,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -108,6 +111,15 @@ public class LeaderState extends AbstractMembershipState {
             future.completeExceptionally(new UncommittedConfigException(message));
             return future;
         }
+
+        //https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
+        if (currentTerm() != raftGroup().logEntryProcessor().commitTerm()){
+            String message = "No entry has been committed during current term, cannot accept a configuration change.";
+            CompletableFuture<Entry> future = new CompletableFuture<>();
+            future.completeExceptionally(new UncommittedTermException(message));
+            return future;
+        }
+
         Collection<Node> newConfig = configChange.apply(currentConfiguration().groupMembers());
         Config config = Config.newBuilder().addAllNodes(newConfig).build();
         if (config.getNodesCount() == 0) {
@@ -129,18 +141,8 @@ public class LeaderState extends AbstractMembershipState {
     @Override
     public CompletableFuture<ConfigChangeResult> removeServer(String nodeId) {
         pendingConfigurationChange = clusterConfiguration.removeServer(nodeId);
-//                                                         .thenApply(configChangeResult -> checkCurrentNodeDeleted(
-//                configChangeResult, nodeId));
         return pendingConfigurationChange;
     }
-
-//    private ConfigChangeResult checkCurrentNodeDeleted(ConfigChangeResult configChangeResult, String nodeId) {
-//        if (nodeId.equals(me())) {
-//            logger.warn("{} in term {}: Check Current leader deleted: {}", groupId(), currentTerm(), nodeId);
-//            changeStateTo(stateFactory().removedState(), "Node deleted from group");
-//        }
-//        return configChangeResult;
-//    }
 
     @Override
     public void start() {
@@ -171,7 +173,7 @@ public class LeaderState extends AbstractMembershipState {
         pendingEntries.clear();
         logger.info("{} in term {}: {} steps down from Leader role.", groupId(), currentTerm(), me());
         if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdownNow();
+            scheduler.getAndSet(null).shutdown();
         }
     }
 
@@ -379,9 +381,13 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public Iterator<ReplicatorPeerStatus> replicatorPeers() {
+        if (replicators == null) {
+            return Collections.emptyIterator();
+        }
         return replicators.replicatorPeerMap.values()
                                             .stream()
-                                            .filter(peer -> !replicators.nonVotingReplicaMap.containsKey(peer.nodeId()))
+                                            .filter(peer -> !replicators.nonVotingReplicaMap
+                                                    .containsKey(peer.nodeName()))
                                             .map(peer -> (ReplicatorPeerStatus) peer)
                                             .iterator();
     }
@@ -413,6 +419,35 @@ public class LeaderState extends AbstractMembershipState {
             this.matchStrategy = matchStrategy;
             return this;
         }
+    }
+
+    /**
+     * Checks health of the node if it is in leader state.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if this node considers itself healthy
+     */
+    @Override
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        long lastLogIndex = lastLogIndex();
+        long now = System.currentTimeMillis();
+        AtomicBoolean result = new AtomicBoolean(super.health(statusConsumer));
+        replicatorPeers().forEachRemaining(
+                rp -> {
+                    long lastMessageAge = now - rp.lastMessageReceived();
+                    long raftMsgBuffer = lastLogIndex - (rp.nextIndex() - 1);
+                    if (lastMessageAge > maxElectionTimeout()) {
+                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "NO_ACK_RECEIVED");
+                        result.set(false);
+                    } else if (raftMsgBuffer > 100) {
+                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "BEHIND");
+                        result.set(false);
+                    } else {
+                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "UP");
+                    }
+                }
+        );
+        return result.get();
     }
 
     private class Replicators {

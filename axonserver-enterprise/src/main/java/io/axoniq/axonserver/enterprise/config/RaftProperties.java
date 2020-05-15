@@ -59,7 +59,7 @@ public class RaftProperties extends StorageProperties {
     private boolean forceSnapshotOnJoin = true;
     /**
      * Timeout to wait for leader when requesting access to event store while leader change in progress, if not set
-     * defaults to 2*maxElectionTimeout
+     * defaults to maxElectionTimeout
      */
     private int waitForLeaderTimeout = -1;
 
@@ -183,7 +183,7 @@ public class RaftProperties extends StorageProperties {
 
     public int getWaitForLeaderTimeout() {
         if (waitForLeaderTimeout == -1) {
-            waitForLeaderTimeout = 2 * maxElectionTimeout;
+            waitForLeaderTimeout = maxElectionTimeout;
         }
         return waitForLeaderTimeout;
     }

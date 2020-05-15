@@ -39,7 +39,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.transitionHandler = transitionHandler;
         this.termUpdateHandler = termUpdateHandler;
         this.snapshotManager = snapshotManager;
-        this.schedulerFactory = () -> new DefaultScheduler("raftState-" + raftGroup.localNode().groupId());
+        this.schedulerFactory = () -> new DefaultScheduler(raftGroup.localNode().groupId() + "-raftState");
         CachedCurrentConfiguration configuration = new CachedCurrentConfiguration(raftGroup);
         this.currentConfiguration = configuration;
         this.registerConfigurationListener = configuration::registerChangeListener;
@@ -60,7 +60,7 @@ public class DefaultStateFactory implements MembershipStateFactory {
 
     @Override
     public MembershipState fatalState() {
-        return new FatalState(new DefaultResponseFactory(raftGroup));
+        return new FatalState(new DefaultResponseFactory(raftGroup), raftGroup);
     }
 
     @Override

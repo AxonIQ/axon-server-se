@@ -1,4 +1,4 @@
-This is the Axon Server Enterprise Edition, version ${project.version}
+This is the Axon Server Enterprise Edition, version 4.3
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
@@ -28,6 +28,51 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.3.3
+-------------------------------
+
+* Fix for race condition during rollback of transaction log
+
+Release Notes for version 4.3.2
+-------------------------------
+
+* Fix for tracking event processor updates to websocket causing high CPU load in specific situation
+* Reduced warnings in log file on clients disconnecting
+* Fix for concurrency issue in sending heartbeat while client connects/disconnects
+
+Release Notes for version 4.3.1
+-------------------------------
+
+* Updated usage output in CLI
+* Updated gRPC/Netty versions
+* Prevent errors in log (sending ad-hoc result to client that has gone, sending heartbeat to client that has gone)
+* Fix in CLI, application list failed
+* Removed retry option from H2 controldb URL
+* Fixed Axon Server keeping incorrect application references on restart of Axon Server node where application was connected
+* Fixed race condition when two Axon Server nodes are trying to become member of the same context at the same time
+* Fix for some REST reads were able with invalid token
+* Clean up of server shutdown process
+* Fixed error when adding a non-existing node to a context
+
+
+Release Notes for version 4.3
+-------------------------------
+
+* Introduced new roles for nodes in context (ACTIVE_BACKUP, PASSIVE_BACKUP and MESSAGING_ONLY)
+* Improved support for running in containers
+* New option to configure cluster information in configuration files, to automatically build cluster at startup
+* Support load factor for commands
+* Support for moving Axon Server cluster to other nodes
+* Option to remove a node from a context without deleting the event store on that node
+* Separate audit log for configuration changes
+* Changed metrics to use common names and tags
+
+
+Changes in Axon Server 4.2.6
+----------------------------
+
+- Rollback in log entry could cause cluster member to transition to fatal state when there were writes pending
+
 Changes in Axon Server 4.2.5
 ----------------------------
 
@@ -47,14 +92,6 @@ Changes in Axon Server 4.2.3
 
 - Fix for issue on cancelling queries on lost connection
 - Introduced acknowlegments on instructions between Axon Server and clients
-
-Changes in Axon Server 4.2.3
-----------------------------
-
-- Cleaned-up logging
-- Fix for specific error while reading aggregate
-- Optional heartbeat between Axon Server and Axon Framework clients
-- Added option to include gRPC metrics and tracing
 
 Changes in Axon Server 4.2.2
 ----------------------------
@@ -180,30 +217,6 @@ Changes in Axon Server 4.1
 - Default setting for health endpoint (/actuator/heath) has changed to show more details.
 - Change in TLS configuration for communication between AxonServer nodes (new property axoniq.axonserver.ssl.internal-trust-manager-file)
 
-
-Migrating from Axon Server Enterprise edition 4.0
--------------------------------------------------
-
-As the internal communication between Axon Server nodes has changed between versions 4.0 and 4.1 it is not possible to
-perform a rolling update of the nodes.
-
-To upgrade to 4.1 take the following steps:
-
-1. Stop all applications connected to Axon Server
-
-2. Stop all Axon Server nodes
-
-3. Verify that the event files and snapshot files are equal on all nodes by calculating the md5 hash for all *.events and *.snapshot files.
-   On Linux based systems you can use the command md5sum for this.
-
-4. Unpack the new Axon Server version on the nodes
-
-5. Check the axonserver.properties file, set property axoniq.axonserver.replication.log-storage-folder to a directory where the transaction log
-   files for replication should be stored
-
-6. Start all nodes, this will migrate the configuration data and create an _admin context will all nodes assigned to it.
-
-7. Start all applications connected to Axon Server
 
 Configuring Axon Server
 =======================

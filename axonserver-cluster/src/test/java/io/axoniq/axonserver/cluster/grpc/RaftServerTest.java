@@ -79,15 +79,14 @@ public class RaftServerTest {
 
         try {
 
-            assertWithin(15, TimeUnit.SECONDS, () -> {
+            assertWithin(10, TimeUnit.SECONDS, () -> {
                 RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
                 assertNotNull(leader);
             });
 
             RaftNode leader = clusterNodes.values().stream().filter(RaftNode::isLeader).findFirst().orElse(null);
 
-            CompletableFuture<Void>[] futures = new CompletableFuture[250];
-            Thread.currentThread().setPriority(5);
+            CompletableFuture<Void>[] futures = new CompletableFuture[25];
             AtomicInteger successCount = new AtomicInteger();
                 long before = System.currentTimeMillis();
                 for (int i = 0; i < futures.length; i++) {
@@ -96,14 +95,22 @@ public class RaftServerTest {
                                            successCount.incrementAndGet();
                                        });
                 }
-                CompletableFuture.allOf(futures).get(5, TimeUnit.SECONDS);
+            CompletableFuture.allOf(futures).get(10, TimeUnit.SECONDS);
                 long after = System.currentTimeMillis();
                 System.out.println("Applied on leader within " + (after - before) + "ms., successful = " + successCount);
                 assertEquals(futures.length, successCount.get());
                 Thread.sleep(100);
         } finally {
-            clusterNodes.forEach((id, node) -> node.stop());
+            clusterNodes.forEach((id, node) -> stop(node));
             raftServers.forEach(RaftServer::stop);
+        }
+    }
+
+    private void stop(RaftNode node) {
+        try {
+            node.stop();
+        } catch (Exception ex) {
+
         }
     }
 

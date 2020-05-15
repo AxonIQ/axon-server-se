@@ -3,6 +3,7 @@ package io.axoniq.axonserver.access.application;
 import io.axoniq.axonserver.access.jpa.PathToFunction;
 import io.axoniq.axonserver.access.roles.FunctionRoleRepository;
 import io.axoniq.axonserver.access.roles.PathToFunctionRepository;
+import io.axoniq.axonserver.exception.InvalidTokenException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -50,7 +51,8 @@ public class AccessControllerDB {
     }
 
     /**
-     * Retrieves all roles for the token on all contexts available on this node.
+     * Retrieves all roles for the token on all contexts available on this node. Throws exception if no applications
+     * with specified token found.
      *
      * @param token the application token
      * @return set of ROLE@Context values
@@ -59,12 +61,19 @@ public class AccessControllerDB {
         if (token != null && token.equals(systemTokenProvider.get())) {
             return Collections.singleton("ADMIN@_admin");
         }
-        return contextApplicationRepository.findAllByTokenPrefix(ApplicationController.tokenPrefix(token))
-                                           .stream()
-                                           .filter(app -> hasher.checkpw(token, app.getHashedToken()))
-                                           .map(JpaContextApplication::getQualifiedRoles)
-                                           .flatMap(Set::stream)
-                                           .collect(Collectors.toSet());
+        Set<JpaContextApplication> apps = contextApplicationRepository.findAllByTokenPrefix(ApplicationController
+                                                                                                    .tokenPrefix(token))
+                                                                      .stream()
+                                                                      .filter(app -> hasher
+                                                                              .checkpw(token, app.getHashedToken()))
+                                                                      .collect(Collectors.toSet());
+
+        if (apps.isEmpty()) {
+            throw new InvalidTokenException();
+        }
+        return apps.stream().map(JpaContextApplication::getQualifiedRoles)
+                   .flatMap(Set::stream)
+                   .collect(Collectors.toSet());
     }
 
     private Set<String> getRolesForContext(String context, String token) {

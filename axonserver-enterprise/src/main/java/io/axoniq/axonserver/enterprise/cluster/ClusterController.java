@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
+import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -9,7 +9,6 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.enterprise.config.FlowControl;
-import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -23,14 +22,17 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.util.Optionals;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -42,20 +44,20 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
  */
 @Controller("ClusterController")
-public class ClusterController implements SmartLifecycle {
+public class ClusterController implements SmartLifecycle, ApplicationContextAware {
 
     private final Logger logger = LoggerFactory.getLogger(ClusterController.class);
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final ClusterConfiguration clusterConfiguration;
     private final ClusterNodeRepository clusterNodeRepository;
-    private final TagsConfiguration tagsConfiguration;
+    private final ClusterTagsCache clusterTagsCache;
     private final StubFactory stubFactory;
-    private final RaftGroupRepositoryManager raftGroupRepositoryManager;
     private final QueryDispatcher queryDispatcher;
     private final CommandDispatcher commandDispatcher;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -66,13 +68,13 @@ public class ClusterController implements SmartLifecycle {
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ClusterNode> nodeMap = new ConcurrentHashMap<>();
     private volatile boolean running;
+    private ApplicationContext applicationContext;
 
     public ClusterController(MessagingPlatformConfiguration messagingPlatformConfiguration,
                              ClusterConfiguration clusterConfiguration,
                              ClusterNodeRepository clusterNodeRepository,
-                             TagsConfiguration tagsConfiguration,
+                             ClusterTagsCache clusterTagsCache,
                              StubFactory stubFactory,
-                             RaftGroupRepositoryManager raftGroupRepositoryManager,
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
                              @Qualifier("localEventPublisher") ApplicationEventPublisher applicationEventPublisher,
@@ -81,9 +83,8 @@ public class ClusterController implements SmartLifecycle {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.clusterConfiguration = clusterConfiguration;
         this.clusterNodeRepository = clusterNodeRepository;
-        this.tagsConfiguration = tagsConfiguration;
+        this.clusterTagsCache = clusterTagsCache;
         this.stubFactory = stubFactory;
-        this.raftGroupRepositoryManager = raftGroupRepositoryManager;
         this.queryDispatcher = queryDispatcher;
         this.commandDispatcher = commandDispatcher;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -111,7 +112,7 @@ public class ClusterController implements SmartLifecycle {
 
             RemoteConnection remoteConnection = remoteConnections.remove(name);
             if (remoteConnection != null) {
-                clusterNodeRepository.deleteById(name);
+                clusterNodeRepository.findById(name).ifPresent(c -> clusterNodeRepository.deleteById(name));
                 remoteConnection.close();
                 nodeListeners.forEach(listener -> listener
                         .accept(new ClusterEvent(ClusterEvent.EventType.NODE_DELETED,
@@ -129,7 +130,7 @@ public class ClusterController implements SmartLifecycle {
 
     @Override
     public void stop(Runnable runnable) {
-        reconnectExecutor.shutdownNow();
+        reconnectExecutor.shutdown();
         remoteConnections.forEach((k, v) -> v.close());
         runnable.run();
         running = false;
@@ -154,22 +155,43 @@ public class ClusterController implements SmartLifecycle {
     }
 
     private void checkCurrentNodeSaved() {
-        Optionals.ifPresentOrElse(clusterNodeRepository.findById(messagingPlatformConfiguration.getName()),
-                                  node -> {
-                                  },
-                                  () -> {
-                                      ClusterNode newNode = new ClusterNode(messagingPlatformConfiguration.getName(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getFullyQualifiedHostname(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getFullyQualifiedInternalHostname(),
-                                                                            messagingPlatformConfiguration.getPort(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getInternalPort(),
-                                                                            messagingPlatformConfiguration
-                                                                                    .getHttpPort());
-                                      clusterNodeRepository.save(newNode);
-                                  });
+        Optional<ClusterNode> optionalNode = clusterNodeRepository.findById(messagingPlatformConfiguration.getName());
+        if (!optionalNode.isPresent()) {
+            if (!clusterNodeRepository.findAll().isEmpty()) {
+                logger.error("Current node name has changed, new name {}. Start AxonServer with recovery file.",
+                             messagingPlatformConfiguration.getName());
+                SpringApplication.exit(applicationContext, () -> {
+                    System.exit(1);
+                    return 1;
+                });
+            }
+
+            ClusterNode newNode = new ClusterNode(messagingPlatformConfiguration.getName(),
+                                                  messagingPlatformConfiguration
+                                                          .getFullyQualifiedHostname(),
+                                                  messagingPlatformConfiguration
+                                                          .getFullyQualifiedInternalHostname(),
+                                                  messagingPlatformConfiguration.getPort(),
+                                                  messagingPlatformConfiguration
+                                                          .getInternalPort(),
+                                                  messagingPlatformConfiguration
+                                                          .getHttpPort());
+            clusterNodeRepository.save(newNode);
+        } else {
+            ClusterNode node = optionalNode.get();
+            if (!node.getInternalHostName().equals(messagingPlatformConfiguration
+                                                                 .getFullyQualifiedInternalHostname()) ||
+                    !node.getGrpcInternalPort().equals(messagingPlatformConfiguration.getInternalPort())) {
+                logger.error(
+                        "Current node's internal hostname/port ({}:{}) has changed,  new values {}:{}. Start AxonServer with recovery file.",
+                        node.getInternalHostName(), node.getGrpcInternalPort(),
+                        messagingPlatformConfiguration.getFullyQualifiedHostname(), messagingPlatformConfiguration.getInternalPort());
+                SpringApplication.exit(applicationContext, () -> {
+                    System.exit(1);
+                    return 1;
+                });
+            }
+        }
     }
 
     Stream<RemoteConnection> activeConnections() {
@@ -230,19 +252,12 @@ public class ClusterController implements SmartLifecycle {
      * Only accepts connections if the other node is member of a context of this node or it is an admin node.
      *
      * @param nodeInfo the node information of the node connecting to this node
-     * @param admin    flag indicating if the remote node is admin node
-     * @return true if connection is accepted
      */
     @Transactional
-    public synchronized boolean connect(NodeInfo nodeInfo, boolean admin) {
+    public synchronized void handleRemoteConnection(NodeInfo nodeInfo) {
         String nodeName = nodeInfo.getNodeName();
         ClusterNode node = getNode(nodeName);
         if (node == null) {
-            if (!admin && !isAnyContext(nodeName)) {
-                // received connection from unknown node, and this node is not in any context we know of and not an admin node
-                // -> refuse the connection
-                return false;
-            }
             node = addConnection(nodeInfo);
             RemoteConnection remoteConnection = remoteConnections.remove(nodeName);
             if (remoteConnection != null) {
@@ -259,20 +274,13 @@ public class ClusterController implements SmartLifecycle {
         }
 
         applicationEventPublisher.publishEvent(new ClusterEvents.AxonServerNodeConnected(nodeInfo));
-        return true;
-    }
-
-    private boolean isAnyContext(String nodeName) {
-        Set<JpaRaftGroupNode> groups = raftGroupRepositoryManager.findByNodeName(nodeName);
-        logger.warn("Checking if node {} is member of any known context, found {}", nodeName, groups.size());
-        return !groups.isEmpty();
     }
 
     @Transactional
     public synchronized ClusterNode addConnection(NodeInfo nodeInfo) {
         checkLimit(nodeInfo.getNodeName());
         if (nodeInfo.getNodeName().equals(messagingPlatformConfiguration.getName())) {
-            logger.warn("Trying to join with current node name: {}", nodeInfo.getNodeName());
+            logger.info("Trying to join with current node name: {}", nodeInfo.getNodeName());
             return getMe();
         }
         if (nodeInfo.getInternalHostName().equals(messagingPlatformConfiguration.getInternalHostname())
@@ -331,11 +339,10 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode getMe() {
-        ClusterNode clusterNode = clusterNodeRepository.findById(messagingPlatformConfiguration.getName())
-                                                       .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
-                                                                                                         "Cannot find current node in controldb"));
-        clusterNode.setTags(tagsConfiguration.getTags());
-        return clusterNode;
+        return clusterNodeRepository.findById(messagingPlatformConfiguration.getName())
+                                    .map(this::setTags)
+                                    .orElseThrow(() -> new MessagingPlatformException(ErrorCode.NO_SUCH_NODE,
+                                                                                      "Current node not found"));
     }
 
 
@@ -351,7 +358,14 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public Stream<ClusterNode> nodes() {
-        return clusterNodeRepository.findAll().stream();
+        return clusterNodeRepository
+                .findAll()
+                .stream()
+                .peek(this::setTags);
+    }
+
+    public Stream<ClusterNode> activeNodes() {
+        return nodes().filter(n -> isActive(n.getName()));
     }
 
     public void addNodeListener(Consumer<ClusterEvent> nodeListener) {
@@ -374,8 +388,16 @@ public class ClusterController implements SmartLifecycle {
     }
 
     public ClusterNode getNode(String name) {
-        return nodeMap.computeIfAbsent(name, id -> clusterNodeRepository.findById(id).orElse(null));
+        ClusterNode clusterNode = nodeMap.computeIfAbsent(name, id -> clusterNodeRepository.findById(id).orElse(null));
+        return clusterNode == null ? null : setTags(clusterNode);
     }
+
+    private ClusterNode setTags(ClusterNode clusterNode) {
+        clusterNode.setTags(clusterTagsCache.getClusterTags()
+                                            .getOrDefault(clusterNode.getName(), Collections.emptyMap()));
+        return clusterNode;
+    }
+
 
     public FlowControl getCommandFlowControl() {
         return clusterConfiguration.getCommandFlowControl();
@@ -426,5 +448,10 @@ public class ClusterController implements SmartLifecycle {
         if (!clusterNodeRepository.findById(node.getNodeName()).isPresent()) {
             startRemoteConnection(new ClusterNode(node), true);
         }
+    }
+
+    @Override
+    public void setApplicationContext(@Nonnull ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
     }
 }

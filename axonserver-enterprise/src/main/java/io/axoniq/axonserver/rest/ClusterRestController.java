@@ -2,17 +2,16 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.licensing.Feature;
-import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
@@ -50,19 +48,16 @@ public class ClusterRestController {
 
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
-    private final GrpcRaftController grpcRaftController;
     private final FeatureChecker limits;
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final ClusterTagsCache clusterTagsCache;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
-                                 GrpcRaftController grpcRaftController,
                                  FeatureChecker limits,
                                  ClusterTagsCache clusterTagsCache) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
-        this.grpcRaftController = grpcRaftController;
         this.limits = limits;
         this.clusterTagsCache = clusterTagsCache;
     }
@@ -127,8 +122,10 @@ public class ClusterRestController {
 
     @GetMapping
     public List<JsonClusterNode> list() {
-        Stream<JsonClusterNode> otherNodes = clusterController.getRemoteConnections().stream().map(e -> JsonClusterNode.from(e.getClusterNode(), e.isConnected(), clusterTagsCache));
-        return Stream.concat(Stream.of(JsonClusterNode.from(clusterController.getMe(), true, clusterTagsCache)), otherNodes).collect(Collectors.toList());
+        return clusterController
+                .nodes()
+                .map(e -> JsonClusterNode.from(e, clusterController.isActive(e.getName())))
+                .collect(Collectors.toList());
     }
 
     @GetMapping(path="{name}")
@@ -136,7 +133,7 @@ public class ClusterRestController {
         ClusterNode node = clusterController.getNode(name);
         if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, "Node " + name + " not found");
 
-        return JsonClusterNode.from(node, true, clusterTagsCache);
+        return JsonClusterNode.from(node, clusterController.isActive(name));
     }
 
     @KeepNames
@@ -214,7 +211,7 @@ public class ClusterRestController {
             this.tags = tags;
         }
 
-        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected, ClusterTagsCache clusterTagsCache) {
+        public static JsonClusterNode from(ClusterNode jpaClusterNode, boolean connected) {
             JsonClusterNode clusterNode = new JsonClusterNode();
             clusterNode.name = jpaClusterNode.getName();
             clusterNode.internalHostName = jpaClusterNode.getInternalHostName();
@@ -223,7 +220,7 @@ public class ClusterRestController {
             clusterNode.grpcPort = jpaClusterNode.getGrpcPort();
             clusterNode.httpPort = jpaClusterNode.getHttpPort();
             clusterNode.connected = connected;
-            clusterNode.tags = clusterTagsCache.getClusterTags().get(jpaClusterNode.getName());
+            clusterNode.tags = jpaClusterNode.getTags();
             return clusterNode;
         }
     }

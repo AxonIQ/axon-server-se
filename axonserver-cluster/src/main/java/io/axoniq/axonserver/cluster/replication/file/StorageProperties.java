@@ -19,7 +19,7 @@ public class StorageProperties {
      * Delay to actually do the clear of the buffer when removing a file from primary storage (in seconds)
      */
     private int primaryCleanupDelay = 5;
-    private int segmentSize = 1024*1024*16;
+    private int segmentSize = 1024 * 1024 * 16;
     private long numberOfSegments = 1000;
     /**
      * Delay to actually do the clear of the buffer when removing a file from secondary storage (in seconds)
@@ -29,6 +29,7 @@ public class StorageProperties {
     private boolean useMmapIndex;
     private boolean cleanerHackEnabled;
     private int minActiveBackups = 1;
+    private int maxIndexesInMemory = 5;
 
     public int getSyncInterval() {
         return syncInterval;
@@ -176,5 +177,13 @@ public class StorageProperties {
 
     public void setMinActiveBackups(int minActiveBackups) {
         this.minActiveBackups = minActiveBackups;
+    }
+
+    public int getMaxIndexesInMemory() {
+        return maxIndexesInMemory;
+    }
+
+    public void setMaxIndexesInMemory(int maxIndexesInMemory) {
+        this.maxIndexesInMemory = maxIndexesInMemory;
     }
 }

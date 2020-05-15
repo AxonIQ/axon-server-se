@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.AxonServer;
+import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
@@ -41,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.persistence.EntityManager;
 
-import static io.axoniq.axonserver.util.AssertUtils.assertWithin;
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -55,8 +56,6 @@ import static org.mockito.Mockito.*;
 @ContextConfiguration(classes = AxonServer.class)
 public class ClusterControllerTest {
     private ClusterController testSubject;
-    @Mock
-    private NodeSelectionStrategy nodeSelectionStrategy;
     @Mock
     private Limits limits;
     @Mock
@@ -112,6 +111,7 @@ public class ClusterControllerTest {
 
         TagsConfiguration tagsConfiguration = new TagsConfiguration();
         tagsConfiguration.setTags(tagMap);
+        ClusterTagsCache clusterTagsCache = new ClusterTagsCache(messagingPlatformConfiguration, tagsConfiguration);
 
         ClusterConfiguration clusterConfiguration = new ClusterConfiguration();
 
@@ -132,14 +132,12 @@ public class ClusterControllerTest {
 
         when(raftController.isAutoStartup()).thenReturn(false);
 
-        RaftGroupRepositoryManager mockRaftGroupRepositoryManager = mock(RaftGroupRepositoryManager.class);
         CommandDispatcher commandDispatcher = mock(CommandDispatcher.class);
         QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
         testSubject = new ClusterController(messagingPlatformConfiguration, clusterConfiguration,
                                             clusterNodeRepository,
-                                            tagsConfiguration,
+                                            clusterTagsCache,
                                             stubFactory,
-                                            mockRaftGroupRepositoryManager,
                                             queryDispatcher, commandDispatcher,
                                             eventPublisher, limits, channelCloser);
     }

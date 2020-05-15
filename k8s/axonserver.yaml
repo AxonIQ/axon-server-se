@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: axonserver-enterprise
+  labels:
+    app: axonserver-enterprise
+spec:
+  ports:
+    - port: 8124
+      name: grpc
+      targetPort: 8124
+  clusterIP: None
+  selector:
+    app: axonserver-enterprise
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: axonserver-enterprise-gui
+  labels:
+    app: axonserver-enterprise
+spec:
+  sessionAffinity: ClientIP
+  selector:
+    app: axonserver-enterprise
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: axonserver-enterprise
+spec:
+  serviceName: "axonserver-enterprise"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: axonserver-enterprise
+  template:
+    metadata:
+      labels:
+        app: axonserver-enterprise
+    spec:
+      containers:
+        - name: axonserver-enterprise
+          image: eu.gcr.io/axoniq-devops/axonserver-enterprise:4.4-SNAPSHOT
+          ports:
+            - containerPort: 8124
+              protocol: TCP
+              name: grpc
+            - containerPort: 8024
+              protocol: TCP
+              name: gui
+          volumeMounts:
+            - name: eventstore
+              mountPath: /eventdata
+            - name: data
+              mountPath: /data
+            - name: configuration
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 300m
+          readinessProbe:
+            httpGet:
+              path: /actuator/info
+              port: 8024
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 1
+          livenessProbe:
+            initialDelaySeconds: 300
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            httpGet:
+              path: /actuator/info
+              port: 8024
+          env:
+            - name: AXONIQ_LICENSE
+              value: "/config/axoniq.license"
+      volumes:
+        - name: configuration
+          secret:
+            secretName: axon-server-config
+            items:
+              - key: axoniq.license
+                path: axoniq.license
+              - key: axonserver-autocluster.properties
+                path: axonserver.properties
+  volumeClaimTemplates:
+    - metadata:
+        name: eventstore
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 5Gi
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi

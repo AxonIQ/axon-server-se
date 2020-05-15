@@ -63,7 +63,7 @@ public class RaftNode {
      * @param snapshotManager          manages snapshot creation/installation
      */
     public RaftNode(String nodeId, RaftGroup raftGroup, SnapshotManager snapshotManager) {
-        this(nodeId, raftGroup, new DefaultScheduler("raftNode-" + nodeId), snapshotManager);
+        this(nodeId, raftGroup, new DefaultScheduler(nodeId + "-raftNode"), snapshotManager);
     }
 
     /**
@@ -162,6 +162,10 @@ public class RaftNode {
     private void updateConfig(Config newConfiguration, NewConfigurationConsumer newConfigurationConsumer) {
         raftGroup.raftConfiguration().update(newConfiguration.getNodesList());
         newConfigurationConsumer.consume(newConfiguration);
+        logger.debug("{} in term {}: Force refresh configuration",
+                     groupId(),
+                     currentTerm());
+        state.get().currentConfiguration().refresh();
     }
 
     private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
@@ -376,9 +380,9 @@ public class RaftNode {
      */
     public void stop() {
         logger.info("{} in term {}: Stopping the node...", groupId(), currentTerm());
-        updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
-        logEntryApplier.stop();
         stopLogCleaning();
+        logEntryApplier.stop();
+        updateState(state.get(), stateFactory.idleState(nodeId), "Node stopped");
         raftGroup.localLogEntryStore().close(false);
         logger.info("{} in term {}: Node stopped.", groupId(), currentTerm());
     }
@@ -511,7 +515,7 @@ public class RaftNode {
         logger.info("{} in term {}: Remove a group.", groupId(), currentTerm());
         stop();
         raftGroup.delete();
-        scheduler.shutdownNow();
+        scheduler.shutdown();
         logger.info("{} in term {}: Group removed.", groupId(), currentTerm());
         return CompletableFuture.completedFuture(null);
     }
@@ -632,5 +636,29 @@ public class RaftNode {
      */
     public long unappliedEntriesCount() {
         return raftGroup.logEntryProcessor().commitIndex() - raftGroup.logEntryProcessor().lastAppliedIndex();
+    }
+
+    /**
+     * Checks health of the node.
+     *
+     * @param statusConsumer consumer to provide status messages to
+     * @return true if this node considers itself healthy
+     */
+    public boolean health(BiConsumer<String, String> statusConsumer) {
+        return state.get() == null || state.get().health(statusConsumer);
+    }
+
+    /**
+     * Forces node to move to fatal state.
+     */
+    public void changeToFatal() {
+        updateState(state.get(), stateFactory.fatalState(), "Force to fatal state");
+    }
+
+    /**
+     * Forces node to move to follower state.
+     */
+    public void changeToFollower() {
+        updateState(state.get(), stateFactory.followerState(), "Force to fatal state");
     }
 }

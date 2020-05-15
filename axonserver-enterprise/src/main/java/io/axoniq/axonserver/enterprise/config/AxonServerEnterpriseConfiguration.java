@@ -22,6 +22,10 @@ import io.axoniq.axonserver.enterprise.storage.file.ClusterTransactionManagerFac
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DefaultMultiContextEventTransformerFactory;
 import io.axoniq.axonserver.enterprise.storage.file.MultiContextEventTransformerFactory;
+import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
+import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
+import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
+import io.axoniq.axonserver.taskscheduler.TaskRepository;
 import io.axoniq.axonserver.grpc.ChannelProvider;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -33,12 +37,17 @@ import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.rest.LoadBalanceStrategyControllerFacade;
 import io.axoniq.axonserver.rest.ProcessorLoadBalancingControllerFacade;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import java.time.Clock;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * @author Marc Gathier
@@ -112,5 +121,21 @@ public class AxonServerEnterpriseConfiguration {
             ProcessorLoadBalancingService processorLoadBalancingController,
             RaftConfigServiceFactory raftServiceFactory) {
         return new RaftProcessorLoadBalancingControllerFacade(processorLoadBalancingController, raftServiceFactory);
+    }
+
+    @Bean
+    public StandaloneTaskManager localTaskManager(ScheduledTaskExecutor taskExecutor,
+                                                  TaskRepository taskRepository,
+                                                  TaskPayloadSerializer taskPayloadSerializer,
+                                                  PlatformTransactionManager platformTransactionManager,
+                                                  @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+                                                  Clock clock) {
+        return new StandaloneTaskManager("_local",
+                                         taskExecutor,
+                                         taskRepository,
+                                         taskPayloadSerializer,
+                                         platformTransactionManager,
+                                         scheduler,
+                                         clock);
     }
 }
