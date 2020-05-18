@@ -20,6 +20,8 @@ import io.axoniq.axonserver.grpc.event.ScheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleToken;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.TaskPayload;
+import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
+import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -32,14 +34,18 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
         AxonServerClientService {
 
     private final StandaloneTaskManager standaloneTaskManager;
+    private final TaskPayloadSerializer taskPayloadSerializer;
 
     /**
      * Instantiates the service
      *
      * @param standaloneTaskManager component responsible maintaining scheduled tasks.
+     * @param taskPayloadSerializer
      */
-    public EventSchedulerService(StandaloneTaskManager standaloneTaskManager) {
+    public EventSchedulerService(StandaloneTaskManager standaloneTaskManager,
+                                 TaskPayloadSerializer taskPayloadSerializer) {
         this.standaloneTaskManager = standaloneTaskManager;
+        this.taskPayloadSerializer = taskPayloadSerializer;
     }
 
     /**
@@ -91,7 +97,8 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
 
     private void doScheduleEvent(Event event, long instant, StreamObserver<ScheduleToken> responseObserver) {
         try {
-            TaskPayload payload = new TaskPayload(Event.class.getName(), event.toByteArray());
+            TaskPayload payload = taskPayloadSerializer.serialize(new ScheduledEventWrapper(
+                    Topology.DEFAULT_CONTEXT, event.toByteArray()));
             String taskId = standaloneTaskManager.createTask(ScheduledEventExecutor.class.getName(),
                                                              payload,
                                                              instant);

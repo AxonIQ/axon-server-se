@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.event.CancelScheduledEventRequest;
 import io.axoniq.axonserver.grpc.event.RescheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleToken;
+import io.axoniq.axonserver.taskscheduler.JacksonTaskPayloadSerializer;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
@@ -32,7 +33,7 @@ public class EventSchedulerServiceTest {
     @Before
     public void setup() {
         when(standaloneTaskManager.createTask(anyString(), any(), anyLong())).thenReturn("1234");
-        testSubject = new EventSchedulerService(standaloneTaskManager);
+        testSubject = new EventSchedulerService(standaloneTaskManager, new JacksonTaskPayloadSerializer());
     }
 
     @Test

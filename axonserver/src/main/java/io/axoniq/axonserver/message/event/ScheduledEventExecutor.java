@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -50,10 +49,11 @@ public class ScheduledEventExecutor implements ScheduledTask {
     public CompletableFuture<Void> executeAsync(String context, Object payload) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         try {
-            SerializedObject serializedObject = (SerializedObject) payload;
-            Event event = Event.newBuilder(Event.parseFrom(serializedObject.getData()))
+            ScheduledEventWrapper scheduledEventWrapper = (ScheduledEventWrapper) payload;
+            Event event = Event.newBuilder(Event.parseFrom(scheduledEventWrapper.getBytes()))
                                .setTimestamp(System.currentTimeMillis()).build();
-            StreamObserver<InputStream> inputStream = localEventStore.createAppendEventConnection(context,
+            StreamObserver<InputStream> inputStream = localEventStore.createAppendEventConnection(scheduledEventWrapper
+                                                                                                          .getContext(),
                                                                                                   new StreamObserver<Confirmation>() {
                                                                                                       @Override
                                                                                                       public void onNext(
@@ -83,14 +83,4 @@ public class ScheduledEventExecutor implements ScheduledTask {
         return result;
     }
 
-    /**
-     * Overrides the default value for serialized. The payload for these tasks are not json serialized (they are
-     * protobuf serialized).
-     *
-     * @return always false
-     */
-    @Override
-    public boolean isSerialized() {
-        return false;
-    }
 }

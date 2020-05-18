@@ -140,9 +140,10 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventSchedulerGrpc.EventSchedulerImplBase.class)
-    public AxonServerClientService eventSchedulerService(StandaloneTaskManager localTaskManager) {
+    public AxonServerClientService eventSchedulerService(StandaloneTaskManager localTaskManager,
+                                                         TaskPayloadSerializer taskPayloadSerializer) {
         logger.info("Creating SE EventSchedulerService");
-        return new EventSchedulerService(localTaskManager);
+        return new EventSchedulerService(localTaskManager, taskPayloadSerializer);
     }
 
     @Bean
