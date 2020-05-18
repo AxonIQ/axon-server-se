@@ -128,10 +128,10 @@
                         let primaryNode = false;
                         for (var i = 0; i < this.newReplicationGroup.nodes.length; i++) {
                             if (this.newReplicationGroup.nodes[i].selectedRole !== "none") {
-                                context.roles.push({
-                                                       "node": this.newReplicationGroup.nodes[i].name,
-                                                       "role": this.newReplicationGroup.nodes[i].selectedRole,
-                                                   });
+                                replicationGroup.roles.push({
+                                                                "node": this.newReplicationGroup.nodes[i].name,
+                                                                "role": this.newReplicationGroup.nodes[i].selectedRole,
+                                                            });
                                 if (this.newReplicationGroup.nodes[i].selectedRole === "PRIMARY") {
                                     primaryNode = true;
                                 }
@@ -143,7 +143,7 @@
                             return;
                         }
 
-                        axios.post("v1/replicationgroups", context).then(response => {
+                        axios.post("v1/replicationgroups", replicationGroup).then(response => {
                             this.initNewReplicationGroup();
                             this.loadReplicationGroups();
                         });
@@ -160,13 +160,19 @@
                         if (this.isInternalReplicationGroup(replicationGroup)) {
                             alert("Cannot delete internal replication group")
                         } else {
-                            this.deleteReplicationGroupData = {"name": replicationGroup.name, "retypeName": ""};
+                            this.deleteReplicationGroupData = {
+                                "name": replicationGroup.name,
+                                "retypeName": "",
+                                "preserveData": false
+                            };
                             this.$modal.show('delete-replication-group');
                         }
                     },
                     doDeleteReplicationGroup() {
                         if (this.deleteReplicationGroupData.name === this.deleteReplicationGroupData.retypeName) {
-                            axios.delete("v1/replicationgroups/" + this.deleteReplicationGroupData.name).then(
+                            axios.delete("v1/replicationgroups/" + this.deleteReplicationGroupData.name
+                                                 + "?preserveEventStore="
+                                                 + this.deleteReplicationGroupData.preserveData).then(
                                     response => {
                                         this.loadReplicationGroups();
                                         this.hideModal('delete-replication-group');
@@ -300,7 +306,7 @@
                             <span><input disabled v-model="removeNodeData.node"/></span>
                         </li>
                         <li>
-                            <span>Preserve Event Store</span>
+                            <span>Preserve Event Stores</span>
                             <span><input type="checkbox" v-model="removeNodeData.preserveData"/></span>
                         </li>
                         <li>
@@ -317,7 +323,7 @@
 
             </div>
     </modal>
-    <modal name="delete-replication-group" width="600" height="250">
+    <modal name="delete-replication-group" width="600" height="270">
             <div class="column configuration modal">
                 <h2>Delete replication group {{deleteReplicationGroupData.name}}</h2>
                 <p>
@@ -326,8 +332,12 @@
                 <form>
                     <ul>
                         <li>
-                            <span>Context Name</span>
+                            <span>Replication Group Name</span>
                             <span><input v-model="deleteReplicationGroupData.retypeName"/></span>
+                        </li>
+                        <li>
+                            <span>Preserve Event Stores</span>
+                            <span><input type="checkbox" v-model="deleteReplicationGroupData.preserveData"/></span>
                         </li>
                         <li>
                             <span></span>

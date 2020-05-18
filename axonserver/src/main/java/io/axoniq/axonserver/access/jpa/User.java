@@ -131,8 +131,4 @@ public class User {
     public void removeContext(String context) {
         roles.removeIf(r -> r.getContext().equals(context));
     }
-
-    public boolean hasWildcardPermissions() {
-        return roles.stream().anyMatch(role -> "*".equals(role.getContext()));
-    }
 }
