@@ -15,6 +15,7 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.mockito.stubbing.*;
@@ -64,10 +65,8 @@ public class ScheduledEventExecutorTest {
 
     @Test
     public void executeAsync() {
-        SerializedObject payload = SerializedObject.newBuilder()
-                                                   .setData(Event.newBuilder().build().toByteString())
-                                                   .setType(Event.class.getName())
-                                                   .build();
+        ScheduledEventWrapper payload = new ScheduledEventWrapper(Topology.DEFAULT_CONTEXT,
+                                                                  Event.newBuilder().build().toByteArray());
         CompletableFuture<Void> result = testSubject.executeAsync("context", payload);
         try {
             result.get(1, TimeUnit.SECONDS);
