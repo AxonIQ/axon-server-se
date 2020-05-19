@@ -33,7 +33,8 @@ public class RegisterContext extends AxonIQCliCommand {
         CommandLine commandLine = processCommandLine(args[0],
                                                      args,
                                                      CONTEXT,
-                                                     NODES,
+                                                     CONTEXTREPLICATIONGROUP,
+                                                     CONTEXT_NODES,
                                                      ACTIVE_BACKUP_NODES,
                                                      PASSIVE_BACKUP_NODES,
                                                      MESSAGING_ONLY_NODES,
@@ -43,15 +44,19 @@ public class RegisterContext extends AxonIQCliCommand {
 
         ContextNode contextNode = new ContextNode();
         contextNode.setContext(commandLine.getOptionValue(CONTEXT.getOpt()));
-        List<NodeAndRole> nodeRolesMap = new ArrayList<>();
-        Set<String> definedNodes = new HashSet<>();
-        addNodes(commandLine, NODES, "PRIMARY", definedNodes, nodeRolesMap);
-        addNodes(commandLine, ACTIVE_BACKUP_NODES, "ACTIVE_BACKUP", definedNodes, nodeRolesMap);
-        addNodes(commandLine, PASSIVE_BACKUP_NODES, "PASSIVE_BACKUP", definedNodes, nodeRolesMap);
-        addNodes(commandLine, MESSAGING_ONLY_NODES, "MESSAGING_ONLY", definedNodes, nodeRolesMap);
+        if (commandLine.hasOption(REPLICATIONGROUP.getOpt())) {
+            contextNode.setReplicationGroup(commandLine.getOptionValue(CONTEXTREPLICATIONGROUP.getOpt()));
+        } else {
+            List<NodeAndRole> nodeRolesMap = new ArrayList<>();
+            Set<String> definedNodes = new HashSet<>();
+            addNodes(commandLine, CONTEXT_NODES, "PRIMARY", definedNodes, nodeRolesMap);
+            addNodes(commandLine, ACTIVE_BACKUP_NODES, "ACTIVE_BACKUP", definedNodes, nodeRolesMap);
+            addNodes(commandLine, PASSIVE_BACKUP_NODES, "PASSIVE_BACKUP", definedNodes, nodeRolesMap);
+            addNodes(commandLine, MESSAGING_ONLY_NODES, "MESSAGING_ONLY", definedNodes, nodeRolesMap);
 
-        contextNode.setRoles(nodeRolesMap);
-        contextNode.setNodes(new ArrayList<>(definedNodes));
+            contextNode.setRoles(nodeRolesMap);
+            contextNode.setNodes(new ArrayList<>(definedNodes));
+        }
 
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             postJSON(httpclient, url, contextNode, 200, getToken(commandLine),

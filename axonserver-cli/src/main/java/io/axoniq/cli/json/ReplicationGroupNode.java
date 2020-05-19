@@ -16,14 +16,14 @@ import java.util.stream.Collectors;
 /**
  * @author Marc Gathier
  */
-public class ContextNode {
+public class ReplicationGroupNode {
+
     private String context;
     private String leader;
-    private String replicationGroup;
-    private List<String> nodes = new ArrayList<>();
     private List<NodeAndRole> roles = new ArrayList<>();
 
-    public ContextNode() {
+
+    public ReplicationGroupNode() {
     }
 
     public String getContext() {
@@ -34,13 +34,6 @@ public class ContextNode {
         this.context = context;
     }
 
-    public List<String> getNodes() {
-        return nodes;
-    }
-
-    public void setNodes(List<String> nodes) {
-        this.nodes = nodes;
-    }
 
     public String getLeader() {
         return leader;
@@ -62,23 +55,9 @@ public class ContextNode {
         return roles != null && !roles.isEmpty();
     }
 
-    public String concatNodes() {
-        return nodes == null ? "" : nodes.stream()
-                                         .map(Object::toString)
-                                         .collect(Collectors.joining(","));
-    }
-
     public String concatRoles() {
         return roles == null ? "" : roles.stream()
                                          .map(Object::toString)
                                          .collect(Collectors.joining(","));
-    }
-
-    public String getReplicationGroup() {
-        return replicationGroup;
-    }
-
-    public void setReplicationGroup(String replicationGroup) {
-        this.replicationGroup = replicationGroup;
     }
 }

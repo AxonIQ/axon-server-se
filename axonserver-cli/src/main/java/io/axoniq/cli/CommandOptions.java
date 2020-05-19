@@ -115,42 +115,68 @@ public class CommandOptions {
             .desc("Name of the context")
             .build();
     /**
-     * Comma separated list of Axon Server node names as primary members for the context.
+     * The name of the replication group.
+     */
+    public static final Option REPLICATIONGROUP = Option
+            .builder("g")
+            .longOpt("replication-group")
+            .required()
+            .hasArg()
+            .desc("Name of the replication group")
+            .build();
+
+    public static final Option CONTEXTREPLICATIONGROUP = Option
+            .builder("g")
+            .longOpt("replication-group")
+            .hasArg()
+            .desc("Name of the replication group")
+            .build();
+    /**
+     * Comma separated list of Axon Server node names as primary members for the replication group.
      */
     public static final Option NODES = Option
             .builder("n")
             .longOpt("nodes")
             .hasArgs().valueSeparator(',')
             .required()
-            .desc("[Enterprise Edition only] primary member nodes for context")
+            .desc("[Enterprise Edition only] primary member nodes for replication group")
             .build();
     /**
-     * Comma separated list of Axon Server node names as active backup nodes for the context.
+     * Comma separated list of Axon Server node names as primary members for the replication group.
+     */
+    public static final Option CONTEXT_NODES = Option
+            .builder("n")
+            .longOpt("nodes")
+            .hasArgs().valueSeparator(',')
+            .desc("[Enterprise Edition only] primary member nodes for replication group")
+            .build();
+    /**
+     * Comma separated list of Axon Server node names as active backup nodes for the replication group.
      */
     public static final Option ACTIVE_BACKUP_NODES = Option
             .builder("a")
             .longOpt("active-backup")
             .hasArgs().valueSeparator(',')
-            .desc("[Optional - Enterprise Edition only] active backup member nodes for context")
+            .desc("[Optional - Enterprise Edition only] active backup member nodes for replication group")
             .build();
     /**
-     * Comma separated list of Axon Server node names as passive backup nodes for the context.
+     * Comma separated list of Axon Server node names as passive backup nodes for the replication group.
      */
     public static final Option PASSIVE_BACKUP_NODES = Option
             .builder("p")
             .longOpt("passive-backup")
             .hasArgs().valueSeparator(',')
-            .desc("[Optional - Enterprise Edition only] passive backup member nodes for context")
+            .desc("[Optional - Enterprise Edition only] passive backup member nodes for replication group")
             .build();
     /**
-     * Comma separated list of Axon Server node names as messaging-only nodes for the context.
+     * Comma separated list of Axon Server node names as messaging-only nodes for the replication group.
      */
     public static final Option MESSAGING_ONLY_NODES = Option
             .builder("m")
             .hasArgs()
             .valueSeparator(',')
             .longOpt("messaging-only")
-            .desc("[Optional - Enterprise Edition only] messaging-only member nodes for context")
+            .desc("[Optional - Enterprise Edition only] messaging-only member nodes for replication group")
             .build();
     /**
      * The name of the context, where the nodes should be added to.
