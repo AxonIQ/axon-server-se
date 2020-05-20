@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.component.instance;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.context.annotation.Primary;
@@ -30,10 +31,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GenericClients implements Clients {
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
+    private final ClientTagsCache clientTagsCache;
     private final Map<ClientIdentification, Client> clientRegistrations = new ConcurrentHashMap<>();
 
-    public GenericClients(MessagingPlatformConfiguration messagingPlatformConfiguration) {
+    public GenericClients(MessagingPlatformConfiguration messagingPlatformConfiguration,
+                          ClientTagsCache clientTagsCache) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+        this.clientTagsCache = clientTagsCache;
     }
 
     @Override
@@ -52,7 +56,9 @@ public class GenericClients implements Clients {
                                      new GenericClient(event.getClient(),
                                                        event.getComponentName(),
                                                        event.getContext(),
-                                                       event.isProxied() ? event.getProxy() : messagingPlatformConfiguration
-                                                               .getName()));
+                                                       event.isProxied() ? event
+                                                               .getProxy() : messagingPlatformConfiguration
+                                                               .getName(),
+                                                       clientTagsCache.apply(event.clientIdentification())));
     }
 }

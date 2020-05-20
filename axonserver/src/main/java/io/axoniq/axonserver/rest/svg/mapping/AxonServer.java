@@ -12,6 +12,9 @@ package io.axoniq.axonserver.rest.svg.mapping;
 
 import io.axoniq.axonserver.topology.AxonServerNode;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
  * @author Sara Pellegrini
  * @since 4.0
@@ -25,6 +28,10 @@ public interface AxonServer {
     Iterable<String> contexts();
 
     Iterable<Storage> storage();
+
+    default Map<String, String> tags() {
+        return Collections.emptyMap();
+    }
 
     default boolean isAdminLeader() {
         return false;
