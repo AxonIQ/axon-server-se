@@ -57,7 +57,6 @@ public class GenericClientsTest {
             Client next = iterator.next();
             GsonMedia media = new GsonMedia();
             next.printOn(media);
-            System.out.println(media);
             assertNotNull(next);
         }
     }
