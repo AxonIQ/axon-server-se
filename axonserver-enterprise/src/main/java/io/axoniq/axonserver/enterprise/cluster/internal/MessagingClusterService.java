@@ -6,6 +6,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentR
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
 import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
@@ -298,8 +299,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             command.getCommand(), clientId, messagingServerName
                     );
 
-                    checkClient(subscribeCommand.getContext(), componentName, clientId);
-
                     CommandHandler commandHandler = commandHandlerPerContextClient.computeIfAbsent(
                             new ClientIdentification(subscribeCommand.getContext(), clientId),
                             clientIdentification -> new ProxyCommandHandler(
@@ -344,7 +343,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                             query.getResultName(), query.getClientId(), messagingServerName
                     );
 
-                    checkClient(queryContext, query.getComponentName(), query.getClientId());
                     ClientIdentification clientIdentification =
                             new ClientIdentification(queryContext, query.getClientId());
 
@@ -521,18 +519,6 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
             return messagingServerName;
         }
 
-        private void checkClient(String context, String component, String clientName) {
-            if (messagingServerName != null && !messagingServerName.equals(connectedClients
-                                                                                   .get((new ClientIdentification(
-                                                                                           context,
-                                                                                           clientName))))) {
-                eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(context,
-                                                                                    component,
-                                                                                    clientName,
-                                                                                    messagingServerName));
-            }
-        }
-
         private void updateClientStatus(ClientStatus clientStatus) {
             ClientIdentification clientIdentification =
                     new ClientIdentification(clientStatus.getContext(), clientStatus.getClientName());
@@ -540,6 +526,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 if (messagingServerName != null && !messagingServerName.equals(connectedClients
                                                                                        .get(clientIdentification))) {
                     // Unknown client
+                    eventPublisher.publishEvent(new ClientTagsUpdate(clientIdentification, clientStatus.getTagsMap()));
                     eventPublisher.publishEvent(new TopologyEvents.ApplicationConnected(
                             clientStatus.getContext(),
                             clientStatus.getComponentName(),

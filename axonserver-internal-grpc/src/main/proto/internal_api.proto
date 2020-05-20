@@ -226,6 +226,7 @@ message ClientStatus {
     string component_name = 2;
     string context = 3;
     bool connected = 4;
+    map<string, string> tags = 5;
 }
 
 message CommandHandlerStatus {
