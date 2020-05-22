@@ -6,6 +6,7 @@ import io.axoniq.axonserver.cluster.election.DefaultPreVote;
 import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
+import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
@@ -17,8 +18,10 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -37,13 +40,15 @@ import static java.util.stream.StreamSupport.stream;
  */
 public abstract class AbstractMembershipState implements MembershipState {
 
+    private final Supplier<Long> stateVersionSupplier;
+
     private static final Logger logger = LoggerFactory.getLogger(AbstractMembershipState.class);
 
     private final RaftGroup raftGroup;
     private final StateTransitionHandler transitionHandler;
     private final BiConsumer<Long, String> termUpdateHandler;
     private final MembershipStateFactory stateFactory;
-    private final Supplier<Scheduler> schedulerFactory;
+    private final Scheduler scheduler;
     private final Function<Boolean, Election> electionFactory;
     private final Supplier<Election> preElectionFactory;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
@@ -54,11 +59,12 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
+        this.stateVersionSupplier = builder.stateVersionSupplier;
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
         this.termUpdateHandler = builder.termUpdateHandler;
         this.stateFactory = builder.stateFactory;
-        this.schedulerFactory = builder.schedulerFactory;
+        this.scheduler = new VersionAwareScheduler(((Supplier<Scheduler>) builder.schedulerFactory).get());
         this.electionFactory = builder.electionFactory;
         this.preElectionFactory = builder.preVoteFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
@@ -70,6 +76,7 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     public static abstract class Builder<B extends Builder<B>> {
 
+        private Supplier<Long> stateVersionSupplier;
         public Supplier<Election> preVoteFactory;
         private RaftGroup raftGroup;
         private StateTransitionHandler transitionHandler;
@@ -82,6 +89,11 @@ public abstract class AbstractMembershipState implements MembershipState {
         private SnapshotManager snapshotManager;
         private CurrentConfiguration currentConfiguration;
         private Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
+
+        public B stateVersionSupplier(Supplier<Long> stateVersionSupplier) {
+            this.stateVersionSupplier = stateVersionSupplier;
+            return self();
+        }
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -145,6 +157,9 @@ public abstract class AbstractMembershipState implements MembershipState {
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
+            }
+            if (stateVersionSupplier == null) {
+                throw new IllegalStateException("The stateVersionSupplier must be provided");
             }
             if (transitionHandler == null) {
                 throw new IllegalStateException("The transitionHandler must be provided");
@@ -308,10 +323,6 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup;
     }
 
-    public Supplier<Scheduler> schedulerFactory() {
-        return schedulerFactory;
-    }
-
     public MembershipStateFactory stateFactory() {
         return stateFactory;
     }
@@ -405,5 +416,71 @@ public abstract class AbstractMembershipState implements MembershipState {
     @Override
     public boolean health(BiConsumer<String, String> statusConsumer) {
         return raftGroup.logEntryProcessor().health(statusConsumer);
+    }
+
+    protected long currentTimeMillis() {
+        return clock().millis();
+    }
+
+    protected Clock clock() {
+        return scheduler.clock();
+    }
+
+    protected void execute(Runnable r) {
+        scheduler.execute(r);
+    }
+
+    protected void schedule(Function<Scheduler, ScheduledRegistration> schedulerFunction) {
+        schedulerFunction.apply(scheduler);
+    }
+
+    private class VersionAwareScheduler implements Scheduler {
+
+        private final Scheduler delegate;
+
+        private VersionAwareScheduler(Scheduler delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit) {
+            long version = stateVersionSupplier.get();
+            return delegate.schedule(() -> {
+                if (stateVersionSupplier.get() == version) {
+                    command.run();
+                }
+            }, delay, timeUnit);
+        }
+
+        @Override
+        public ScheduledRegistration scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
+                                                            TimeUnit timeUnit) {
+            long version = stateVersionSupplier.get();
+            return delegate.scheduleWithFixedDelay(() -> {
+                if (stateVersionSupplier.get() == version) {
+                    command.run();
+                }
+            }, initialDelay, delay, timeUnit);
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            long version = stateVersionSupplier.get();
+            delegate.execute(() -> {
+                if (stateVersionSupplier.get() == version) {
+                    command.run();
+                }
+            });
+        }
+
+        @Override
+        public void shutdown() {
+            delegate.shutdown();
+        }
+
+        @Override
+        public Clock clock() {
+            return delegate.clock();
+        }
     }
 }

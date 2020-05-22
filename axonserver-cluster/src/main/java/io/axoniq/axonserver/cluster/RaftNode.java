@@ -22,10 +22,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -48,6 +48,7 @@ public class RaftNode {
     private final RaftGroup raftGroup;
     private final MembershipStateFactory stateFactory;
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
+    private final AtomicLong stateVersion = new AtomicLong();
     private final LogEntryApplier logEntryApplier;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
@@ -97,7 +98,8 @@ public class RaftNode {
                                                    newConfiguration -> updateConfig(newConfiguration,
                                                                                     newConfigurationConsumer));
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
-                                                                      this::updateTerm, snapshotManager));
+                                                                      this::updateTerm, snapshotManager,
+                                                                      stateVersion::get));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
     }
@@ -172,7 +174,10 @@ public class RaftNode {
         String newStateName = toString(newState);
         String currentStateName = toString(currentState);
         if (state.compareAndSet(currentState, newState)) {
-            Optional.ofNullable(currentState).ifPresent(MembershipState::stop);
+            stateVersion.incrementAndGet();
+            if (currentState != null) {
+                currentState.stop();
+            }
             logger.info("{} in term {}: Updating state from {} to {} ({})",
                         groupId(),
                         currentTerm(),

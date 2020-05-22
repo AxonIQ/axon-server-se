@@ -21,6 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 import static java.util.Arrays.asList;
@@ -89,6 +90,7 @@ public class FollowerStateTest {
                                                                     node("node3", Role.PRIMARY)));
 
         followerState = spy(FollowerState.builder()
+                                         .stateVersionSupplier(() -> 0L)
                                          .transitionHandler(transitionHandler)
                                          .termUpdateHandler(termUpdateHandler)
                                          .raftGroup(raftGroup)
@@ -101,7 +103,8 @@ public class FollowerStateTest {
                                          .stateFactory(new DefaultStateFactory(raftGroup,
                                                                                transitionHandler,
                                                                                termUpdateHandler,
-                                                                               snapshotManager))
+                                                                               snapshotManager,
+                                                                               () -> 0L))
                                          .build());
         followerState.start();
     }

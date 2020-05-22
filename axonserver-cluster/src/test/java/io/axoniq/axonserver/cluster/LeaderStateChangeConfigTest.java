@@ -76,6 +76,7 @@ public class LeaderStateChangeConfigTest {
     @Test
     public void test() throws ExecutionException, InterruptedException {
         LeaderState leaderState = LeaderState.builder()
+                                             .stateVersionSupplier(() -> 0L)
                                              .raftGroup(raftGroup)
                                              .transitionHandler(transitionHandler)
                                              .termUpdateHandler((term, cause) -> electionStore.updateCurrentTerm(term))

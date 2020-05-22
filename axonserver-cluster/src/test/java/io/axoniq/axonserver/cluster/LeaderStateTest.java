@@ -184,6 +184,7 @@ public class LeaderStateTest {
         nodeRef.set(new RaftNode("test", raftGroup, new FakeSnapshotManager()));
 
         testSubject = LeaderState.builder()
+                                 .stateVersionSupplier(() -> 0L)
                                  .transitionHandler(transitionHandler)
                                  .termUpdateHandler(termUpdateHandler)
                                  .raftGroup(raftGroup)
@@ -192,7 +193,8 @@ public class LeaderStateTest {
                                  .matchStrategy(nextCommitCandidate -> true)
                                  .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler,
                                                                        termUpdateHandler,
-                                                                       new FakeSnapshotManager()))
+                                                                       new FakeSnapshotManager(),
+                                                                       () -> 0L))
                                  .build();
     }
 

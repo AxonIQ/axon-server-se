@@ -50,6 +50,7 @@ public class DefaultScheduler implements Scheduler {
         return clock;
     }
 
+    @Override
     public ScheduledRegistration scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
                                                         TimeUnit timeUnit) {
         ScheduledFuture<?> schedule =

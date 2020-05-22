@@ -72,6 +72,7 @@ public class CandidateStateTest {
 
         BiConsumer<Long, String> termUpdateHandler = (term, cause) -> electionStore.updateCurrentTerm(term);
         candidateState = CandidateState.builder()
+                                       .stateVersionSupplier(() -> 0L)
                                        .raftGroup(raftGroup)
                                        .transitionHandler(transitionHandler)
                                        .termUpdateHandler(termUpdateHandler)
@@ -216,6 +217,7 @@ public class CandidateStateTest {
     @Test
     public void electionTimedOut() {
         candidateState = CandidateState.builder()
+                                       .stateVersionSupplier(() -> 0L)
                                        .raftGroup(raftGroup)
                                        .transitionHandler(transitionHandler)
                                        .termUpdateHandler((term, cause) -> {
