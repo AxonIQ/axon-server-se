@@ -35,6 +35,7 @@ public abstract class VotingState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        super.start();
         running = true;
         startElection();
     }

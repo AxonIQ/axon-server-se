@@ -145,6 +145,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        super.start();
         leadershipTransferInProgress.set(false);
         replicators = new Replicators();
         lastConfirmed.set(0);

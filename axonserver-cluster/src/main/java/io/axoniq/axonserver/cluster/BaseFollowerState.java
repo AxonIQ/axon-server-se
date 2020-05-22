@@ -50,6 +50,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        super.start();
         heardFromLeader = false;
         leaderId.set(null);
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout

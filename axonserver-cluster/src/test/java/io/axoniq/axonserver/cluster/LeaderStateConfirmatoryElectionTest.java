@@ -71,7 +71,6 @@ public class LeaderStateConfirmatoryElectionTest {
     public void testLeaderNotConfirmed() {
 
         LeaderState leaderState = LeaderState.builder()
-                                             .stateVersionSupplier(() -> 0L)
                                              .raftGroup(raftGroup)
                                              .transitionHandler(transitionHandler)
                                              .termUpdateHandler((term, cause) -> electionStore.updateCurrentTerm(term))

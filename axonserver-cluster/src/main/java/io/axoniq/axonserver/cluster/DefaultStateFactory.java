@@ -29,13 +29,12 @@ public class DefaultStateFactory implements MembershipStateFactory {
     private final CurrentConfiguration currentConfiguration;
     private final Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
     private final MatchStrategy matchStrategy;
-    private final Supplier<Long> stateVersionSupplier;
 
 
     public DefaultStateFactory(RaftGroup raftGroup,
                                StateTransitionHandler transitionHandler,
                                BiConsumer<Long, String> termUpdateHandler,
-                               SnapshotManager snapshotManager, Supplier<Long> stateVersionSupplier) {
+                               SnapshotManager snapshotManager) {
         this.raftGroup = raftGroup;
         this.transitionHandler = transitionHandler;
         this.termUpdateHandler = termUpdateHandler;
@@ -47,7 +46,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
         this.matchStrategy = new MajorityMatchStrategy(() -> raftGroup.localLogEntryStore().lastLogIndex(),
                                                        () -> raftGroup.localNode().replicatorPeers(),
                                                        raftGroup.raftConfiguration()::minActiveBackups);
-        this.stateVersionSupplier = stateVersionSupplier;
     }
 
     private MembershipStateFactory stateFactory() {
@@ -68,7 +66,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     @Override
     public LeaderState leaderState() {
         return LeaderState.builder()
-                          .stateVersionSupplier(stateVersionSupplier)
                           .raftGroup(raftGroup)
                           .schedulerFactory(schedulerFactory)
                           .transitionHandler(transitionHandler)
@@ -84,7 +81,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     @Override
     public FollowerState followerState() {
         return FollowerState.builder()
-                            .stateVersionSupplier(stateVersionSupplier)
                             .raftGroup(raftGroup)
                             .schedulerFactory(schedulerFactory)
                             .transitionHandler(transitionHandler)
@@ -99,7 +95,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     @Override
     public ProspectState prospectState() {
         return ProspectState.builder()
-                            .stateVersionSupplier(stateVersionSupplier)
                             .raftGroup(raftGroup)
                             .schedulerFactory(schedulerFactory)
                             .transitionHandler(transitionHandler)
@@ -114,7 +109,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     @Override
     public SecondaryState secondaryState() {
         return SecondaryState.builder()
-                             .stateVersionSupplier(stateVersionSupplier)
                              .raftGroup(raftGroup)
                              .schedulerFactory(schedulerFactory)
                              .transitionHandler(transitionHandler)
@@ -129,7 +123,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     @Override
     public CandidateState candidateState() {
         return CandidateState.builder()
-                             .stateVersionSupplier(stateVersionSupplier)
                              .raftGroup(raftGroup)
                              .schedulerFactory(schedulerFactory)
                              .transitionHandler(transitionHandler)
@@ -144,7 +137,6 @@ public class DefaultStateFactory implements MembershipStateFactory {
     @Override
     public MembershipState preVoteState() {
         return PreVoteState.builder()
-                           .stateVersionSupplier(stateVersionSupplier)
                            .raftGroup(raftGroup)
                            .schedulerFactory(schedulerFactory)
                            .transitionHandler(transitionHandler)

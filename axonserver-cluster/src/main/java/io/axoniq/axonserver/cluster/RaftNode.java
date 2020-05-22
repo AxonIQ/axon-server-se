@@ -48,7 +48,6 @@ public class RaftNode {
     private final RaftGroup raftGroup;
     private final MembershipStateFactory stateFactory;
     private final AtomicReference<MembershipState> state = new AtomicReference<>();
-    private final AtomicLong stateVersion = new AtomicLong();
     private final LogEntryApplier logEntryApplier;
     private volatile ScheduledRegistration scheduledLogCleaning;
     private final List<Consumer<StateChanged>> stateChangeListeners = new CopyOnWriteArrayList<>();
@@ -98,8 +97,7 @@ public class RaftNode {
                                                    newConfiguration -> updateConfig(newConfiguration,
                                                                                     newConfigurationConsumer));
         stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
-                                                                      this::updateTerm, snapshotManager,
-                                                                      stateVersion::get));
+                                                                      this::updateTerm, snapshotManager));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
     }
@@ -174,7 +172,6 @@ public class RaftNode {
         String newStateName = toString(newState);
         String currentStateName = toString(currentState);
         if (state.compareAndSet(currentState, newState)) {
-            stateVersion.incrementAndGet();
             if (currentState != null) {
                 currentState.stop();
             }

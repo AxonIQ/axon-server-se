@@ -65,7 +65,6 @@ public class LeaderStateTestWithFakeTransition {
                                                                     node("node2")));
 
         leaderState = LeaderState.builder()
-                                 .stateVersionSupplier(() -> 0L)
                                  .raftGroup(raftGroup)
                                  .transitionHandler(transitionHandler)
                                  .schedulerFactory(() -> scheduler)

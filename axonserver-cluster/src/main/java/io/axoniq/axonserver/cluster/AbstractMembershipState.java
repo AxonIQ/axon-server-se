@@ -22,6 +22,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -40,7 +41,8 @@ import static java.util.stream.StreamSupport.stream;
  */
 public abstract class AbstractMembershipState implements MembershipState {
 
-    private final Supplier<Long> stateVersionSupplier;
+    private volatile boolean stopping = true;
+    private final AtomicLong stateVersion = new AtomicLong();
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractMembershipState.class);
 
@@ -59,7 +61,6 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     protected AbstractMembershipState(Builder builder) {
         builder.validate();
-        this.stateVersionSupplier = builder.stateVersionSupplier;
         this.raftGroup = builder.raftGroup;
         this.transitionHandler = builder.transitionHandler;
         this.termUpdateHandler = builder.termUpdateHandler;
@@ -76,7 +77,6 @@ public abstract class AbstractMembershipState implements MembershipState {
 
     public static abstract class Builder<B extends Builder<B>> {
 
-        private Supplier<Long> stateVersionSupplier;
         public Supplier<Election> preVoteFactory;
         private RaftGroup raftGroup;
         private StateTransitionHandler transitionHandler;
@@ -89,11 +89,6 @@ public abstract class AbstractMembershipState implements MembershipState {
         private SnapshotManager snapshotManager;
         private CurrentConfiguration currentConfiguration;
         private Function<Consumer<List<Node>>, Registration> registerConfigurationListener;
-
-        public B stateVersionSupplier(Supplier<Long> stateVersionSupplier) {
-            this.stateVersionSupplier = stateVersionSupplier;
-            return self();
-        }
 
         public B raftGroup(RaftGroup raftGroup) {
             this.raftGroup = raftGroup;
@@ -157,9 +152,6 @@ public abstract class AbstractMembershipState implements MembershipState {
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
-            }
-            if (stateVersionSupplier == null) {
-                throw new IllegalStateException("The stateVersionSupplier must be provided");
             }
             if (transitionHandler == null) {
                 throw new IllegalStateException("The transitionHandler must be provided");
@@ -427,11 +419,27 @@ public abstract class AbstractMembershipState implements MembershipState {
     }
 
     protected void execute(Runnable r) {
-        scheduler.execute(r);
+        if (!stopping) {
+            scheduler.execute(r);
+        }
     }
 
     protected void schedule(Function<Scheduler, ScheduledRegistration> schedulerFunction) {
-        schedulerFunction.apply(scheduler);
+        if (!stopping) {
+            schedulerFunction.apply(scheduler);
+        }
+    }
+
+    @Override
+    public void stop() {
+        stopping = true;
+        stateVersion.incrementAndGet();
+    }
+
+    @Override
+    public void start() {
+        stateVersion.incrementAndGet();
+        stopping = false;
     }
 
     private class VersionAwareScheduler implements Scheduler {
@@ -444,9 +452,9 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         @Override
         public ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit) {
-            long version = stateVersionSupplier.get();
+            long version = stateVersion.get();
             return delegate.schedule(() -> {
-                if (stateVersionSupplier.get() == version) {
+                if (stateVersion.get() == version) {
                     command.run();
                 }
             }, delay, timeUnit);
@@ -455,9 +463,9 @@ public abstract class AbstractMembershipState implements MembershipState {
         @Override
         public ScheduledRegistration scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
                                                             TimeUnit timeUnit) {
-            long version = stateVersionSupplier.get();
+            long version = stateVersion.get();
             return delegate.scheduleWithFixedDelay(() -> {
-                if (stateVersionSupplier.get() == version) {
+                if (stateVersion.get() == version) {
                     command.run();
                 }
             }, initialDelay, delay, timeUnit);
@@ -465,9 +473,9 @@ public abstract class AbstractMembershipState implements MembershipState {
 
         @Override
         public void execute(Runnable command) {
-            long version = stateVersionSupplier.get();
+            long version = stateVersion.get();
             delegate.execute(() -> {
-                if (stateVersionSupplier.get() == version) {
+                if (stateVersion.get() == version) {
                     command.run();
                 }
             });

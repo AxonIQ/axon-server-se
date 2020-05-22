@@ -71,7 +71,6 @@ public class PreVoteStateTest {
 
         BiConsumer<Long, String> termUpdateHandler = (term, cause) -> electionStore.updateCurrentTerm(term);
         preVoteState = PreVoteState.builder()
-                                   .stateVersionSupplier(() -> 0L)
                                    .raftGroup(raftGroup)
                                    .transitionHandler(transitionHandler)
                                    .termUpdateHandler(termUpdateHandler)

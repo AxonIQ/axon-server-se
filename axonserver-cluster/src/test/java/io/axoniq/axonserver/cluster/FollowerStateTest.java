@@ -90,7 +90,6 @@ public class FollowerStateTest {
                                                                     node("node3", Role.PRIMARY)));
 
         followerState = spy(FollowerState.builder()
-                                         .stateVersionSupplier(() -> 0L)
                                          .transitionHandler(transitionHandler)
                                          .termUpdateHandler(termUpdateHandler)
                                          .raftGroup(raftGroup)
@@ -103,8 +102,7 @@ public class FollowerStateTest {
                                          .stateFactory(new DefaultStateFactory(raftGroup,
                                                                                transitionHandler,
                                                                                termUpdateHandler,
-                                                                               snapshotManager,
-                                                                               () -> 0L))
+                                                                               snapshotManager))
                                          .build());
         followerState.start();
     }
