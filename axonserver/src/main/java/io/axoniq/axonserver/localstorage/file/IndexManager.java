@@ -198,7 +198,7 @@ public class IndexManager {
 
         @Override
         public void close() {
-            logger.warn("{}: close {}", segment, storageProperties.index(context, segment));
+            logger.debug("{}: close {}", segment, storageProperties.index(context, segment));
             db.close();
         }
 
@@ -215,7 +215,7 @@ public class IndexManager {
                 if (!storageProperties.index(context, segment).exists()) {
                     throw new IndexNotFoundException("Index not found for segment: " + segment);
                 }
-                logger.warn("{}: open {}", segment, storageProperties.index(context, segment));
+                logger.debug("{}: open {}", segment, storageProperties.index(context, segment));
                 DBMaker.Maker maker = DBMaker.fileDB(storageProperties.index(context, segment))
                                              .readOnly()
                                              .fileLockDisable();
