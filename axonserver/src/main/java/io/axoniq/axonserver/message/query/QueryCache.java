@@ -12,8 +12,7 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.localstorage.query.QueryExecutionException;
-import io.axoniq.axonserver.message.command.CommandExecutionException;
-import io.axoniq.axonserver.message.command.CommandInformation;
+import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +38,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     private final long cacheCapacity;
 
     public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout,
-                      @Value("${axoniq.axonserver.query-cache-capacity:50000}") long cacheCapacity) {
+                      @Value("${axoniq.axonserver.query-cache-capacity:10000}") long cacheCapacity) {
         this.defaultQueryTimeout = defaultQueryTimeout;
         this.cacheCapacity = cacheCapacity;
     }
@@ -105,7 +104,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
 
     private void checkCapacity() {
         if (mappingCount() >= cacheCapacity) {
-            throw new QueryExecutionException("Query cache is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
+            throw new InsufficientCacheCapacityException("Query cache is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
                     + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
         }
     }

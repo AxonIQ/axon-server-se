@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.util.unit.DataSize;
 
 import java.time.Clock;
 import java.util.Map;
@@ -38,14 +39,21 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
 
     @Autowired
     public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
-                        Clock clock, @Value("${axoniq.axonserver.command-cache-capacity:50000}") long cacheCapacity) {
+                        Clock clock, @Value("${axoniq.axonserver.command-cache-capacity:0}") long cacheCapacity) {
         this.defaultCommandTimeout = defaultCommandTimeout;
         this.clock = clock;
-        this.cacheCapacity = cacheCapacity;
+
+        if (cacheCapacity > 0) {
+            this.cacheCapacity = cacheCapacity;
+        } else {
+            long totalMemory = DataSize.ofBytes(Runtime.getRuntime().maxMemory()).toGigabytes();
+            this.cacheCapacity = (totalMemory > 0) ? (2500 * totalMemory) : 2500;
+        }
+
     }
 
     public CommandCache(Clock clock) {
-        this(300000, clock, 50000);
+        this(300000, clock, 2500);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
@@ -88,7 +96,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
 
     private void checkCapacity() {
         if (mappingCount() >= cacheCapacity) {
-            throw new CommandExecutionException("Command cache is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
+            throw new InsufficientCacheCapacityException("Command cache is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
             + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
         }
     }
