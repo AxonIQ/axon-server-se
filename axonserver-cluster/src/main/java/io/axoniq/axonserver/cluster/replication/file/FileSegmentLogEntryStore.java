@@ -5,6 +5,7 @@ import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.cluster.TermIndex;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
+import io.axoniq.axonserver.cluster.exception.RaftException;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.grpc.cluster.Config;
@@ -46,15 +47,15 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     private final List<Consumer<Entry>> appendListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final String name;
-    private final LongSupplier lastAppliedIndexSupplier;
+    private final LongSupplier commitIndexSupplier;
 
     private final PrimaryLogEntryStore primaryLogEntryStore;
 
     public FileSegmentLogEntryStore(String name, PrimaryLogEntryStore primaryLogEntryStore,
-                                    LongSupplier lastAppliedIndexSupplier) {
+                                    LongSupplier commitIndexSupplier) {
         this.name = name;
         this.primaryLogEntryStore = primaryLogEntryStore;
-        this.lastAppliedIndexSupplier = lastAppliedIndexSupplier;
+        this.commitIndexSupplier = commitIndexSupplier;
     }
 
     @Override
@@ -149,7 +150,11 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
             Entry existingEntry = getEntry(e.getIndex());
             boolean skip = false;
             if (existingEntry != null) {
-                if (existingEntry.getTerm() != e.getTerm() && e.getIndex() > lastAppliedIndexSupplier.getAsLong()) {
+                if (existingEntry.getTerm() != e.getTerm()) {
+                    if (e.getIndex() > commitIndexSupplier.getAsLong()) {
+                        throw new RaftException(ErrorCode.INVALID_LEADER,
+                                                "The commit index on this node is lesser than the index leader is sending me. No rollback allowed.");
+                    }
                     logger.debug("{}: Clear from {}", name, e.getIndex());
                     deleteFrom(e.getIndex());
                 } else {

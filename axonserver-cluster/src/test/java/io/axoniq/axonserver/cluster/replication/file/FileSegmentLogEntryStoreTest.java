@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster.replication.file;
 
+import io.axoniq.axonserver.cluster.exception.RaftException;
 import io.axoniq.axonserver.cluster.replication.EntryFactory;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.grpc.cluster.Entry;
@@ -39,11 +40,11 @@ public class FileSegmentLogEntryStoreTest {
         primary.cleanup(0);
     }
 
-    @Test
+    @Test(expected = RaftException.class)
     public void rollback() {
-        LongSupplier lastAppliedLogIndexSupplier = mock(LongSupplier.class);
-        when(lastAppliedLogIndexSupplier.getAsLong()).thenReturn(1L, 1L, 1L, 1L, 3L);
-        testSubject = new FileSegmentLogEntryStore("Test", primary, lastAppliedLogIndexSupplier);
+        LongSupplier commitIndexSupplier = mock(LongSupplier.class);
+        when(commitIndexSupplier.getAsLong()).thenReturn(1L, 1L, 1L, 1L, 3L);
+        testSubject = new FileSegmentLogEntryStore("Test", primary, commitIndexSupplier);
         testSubject.appendEntry(asList(EntryFactory.newEntry(1, 1),
                                        EntryFactory.newEntry(1, 2),
                                        EntryFactory.newEntry(1, 3),
@@ -54,8 +55,6 @@ public class FileSegmentLogEntryStoreTest {
 
         // cannot rollback since last applied index is greater than a rollback index (3>2)
         testSubject.appendEntry(Collections.singletonList(EntryFactory.newEntry(3, 3)));
-
-        verify(primary, never()).rollback(2);
     }
 
     @Test

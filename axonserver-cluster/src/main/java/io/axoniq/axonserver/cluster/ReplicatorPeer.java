@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster;
 
+import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.StreamAlreadyClosedException;
 import io.axoniq.axonserver.cluster.replication.DefaultSnapshotContext;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
@@ -30,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static java.lang.String.format;
@@ -55,6 +57,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
     private final RaftGroup raftGroup;
     private final SnapshotManager snapshotManager;
     private final BiConsumer<Long, String> updateCurrentTerm;
+    private final Consumer<String> stepDown;
     private volatile boolean running;
     private ReplicatorPeerState currentState;
 
@@ -64,7 +67,8 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
                           RaftGroup raftGroup,
                           SnapshotManager snapshotManager,
                           BiConsumer<Long, String> updateCurrentTerm,
-                          Supplier<Long> lastLogIndex) {
+                          Supplier<Long> lastLogIndex,
+                          Consumer<String> stepDown) {
         this.raftPeer = raftPeer;
         this.matchIndexUpdates = matchIndexUpdates;
         this.clock = clock;
@@ -73,6 +77,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
         this.raftGroup = raftGroup;
         this.snapshotManager = snapshotManager;
         this.nextIndex.set(lastLogIndex.get() + 1);
+        this.stepDown = stepDown;
         changeStateTo(new IdleReplicatorPeerState());
     }
 
@@ -623,6 +628,13 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
 
                 if (response.getFailure().getFatal()) {
                     changeStateTo(new FatalState());
+                    return;
+                }
+                if (ErrorCode.INVALID_LEADER.code().equals(response.getFailure().getErrorCode())) {
+                    stepDown.accept(format("%s: %s received INVALID_LEADER error from %s node.",
+                                           groupId(),
+                                           me(),
+                                           raftPeer.nodeId()));
                     return;
                 }
                 setMatchIndex(response.getFailure().getLastAppliedIndex());

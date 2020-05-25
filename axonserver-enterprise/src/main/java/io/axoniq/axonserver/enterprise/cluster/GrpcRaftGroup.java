@@ -80,7 +80,7 @@ public class GrpcRaftGroup implements RaftGroup {
         primary.setNext(new SecondaryLogEntryStore(groupId, indexManager, eventTransformerFactory, storageOptions));
         primary.initSegments(Long.MAX_VALUE);
 
-        localLogEntryStore = new FileSegmentLogEntryStore(groupId, primary, logEntryProcessor::lastAppliedIndex);
+        localLogEntryStore = new FileSegmentLogEntryStore(groupId, primary, logEntryProcessor::commitIndex);
 
         raftConfiguration = new RaftConfiguration() {
 

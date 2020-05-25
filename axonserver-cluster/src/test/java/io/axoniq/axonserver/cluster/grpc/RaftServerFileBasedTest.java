@@ -123,7 +123,7 @@ public class RaftServerFileBasedTest {
             logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
             logEntryStore = new FileSegmentLogEntryStore(localNode,
                                                          PrimaryEventStoreFactory.create(localNode),
-                                                         logEntryProcessor::lastAppliedIndex);
+                                                         logEntryProcessor::commitIndex);
 
             electionStore = new InMemoryElectionStore();
             initializePeers(nodes);
