@@ -65,7 +65,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.transitionHandler = builder.transitionHandler;
         this.termUpdateHandler = builder.termUpdateHandler;
         this.stateFactory = builder.stateFactory;
-        this.scheduler = new VersionAwareScheduler(((Supplier<Scheduler>) builder.schedulerFactory).get());
+        this.scheduler = new VersionAwareScheduler(builder.scheduler);
         this.electionFactory = builder.electionFactory;
         this.preElectionFactory = builder.preVoteFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
@@ -82,7 +82,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         private StateTransitionHandler transitionHandler;
         private BiConsumer<Long, String> termUpdateHandler;
         private MembershipStateFactory stateFactory;
-        private Supplier<Scheduler> schedulerFactory;
+        private Scheduler scheduler;
         private Function<Boolean, Election> electionFactory;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
@@ -110,8 +110,8 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B schedulerFactory(Supplier<Scheduler> schedulerFactory) {
-            this.schedulerFactory = schedulerFactory;
+        public B scheduler(Scheduler scheduler) {
+            this.scheduler = scheduler;
             return self();
         }
 
@@ -147,8 +147,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
 
         protected void validate() {
-            if (schedulerFactory == null) {
-                schedulerFactory = () -> new DefaultScheduler(raftGroup.localNode().groupId() + "-raftState");
+            if (scheduler == null) {
+                scheduler = new DefaultScheduler(raftGroup.localNode().groupId() + "-raftState");
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");

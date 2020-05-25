@@ -34,7 +34,7 @@ public class VersionAwareSchedulerTest {
                              .currentConfiguration(mock(CurrentConfiguration.class))
                              .registerConfigurationListenerFn(mock(Function.class))
                              .snapshotManager(mock(SnapshotManager.class))
-                             .schedulerFactory(DefaultScheduler::new)
+                             .scheduler(new DefaultScheduler())
                              .build();
     }
 

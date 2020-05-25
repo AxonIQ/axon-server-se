@@ -21,7 +21,6 @@ import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 import static java.util.Arrays.asList;
@@ -93,7 +92,7 @@ public class FollowerStateTest {
                                          .transitionHandler(transitionHandler)
                                          .termUpdateHandler(termUpdateHandler)
                                          .raftGroup(raftGroup)
-                                         .schedulerFactory(() -> fakeScheduler)
+                                         .scheduler(fakeScheduler)
                                          .randomValueSupplier((min, max) -> electionTimeout)
                                          .snapshotManager(snapshotManager)
                                          .currentConfiguration(currentConfiguration)

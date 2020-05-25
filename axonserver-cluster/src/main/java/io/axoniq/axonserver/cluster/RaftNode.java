@@ -96,8 +96,12 @@ public class RaftNode {
                                                    e -> state.get().applied(e),
                                                    newConfiguration -> updateConfig(newConfiguration,
                                                                                     newConfigurationConsumer));
-        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
-                                                                      this::updateTerm, snapshotManager));
+        DefaultScheduler stateScheduler = new DefaultScheduler(raftGroup.raftConfiguration().groupId() + "-raftState");
+        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup,
+                                                                      this::updateState,
+                                                                      this::updateTerm,
+                                                                      snapshotManager,
+                                                                      stateScheduler));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
     }
