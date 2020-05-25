@@ -36,7 +36,6 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(BaseFollowerState.class);
     private final ClusterConfiguration clusterConfiguration;
 
-    protected final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
     private final AtomicInteger lastSnapshotChunk = new AtomicInteger(-1);
@@ -51,20 +50,13 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        super.start();
         heardFromLeader = false;
         leaderId.set(null);
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
-        scheduler.set(schedulerFactory().get());
-        lastMessage.set(scheduler.get().clock().millis());
+        lastMessage.set(currentTimeMillis());
         followerStateStatedAt = lastMessage.get();
         // initially the timeout is increased to prevent leader elections when node restarts
-    }
-
-    @Override
-    public void stop() {
-        if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdown();
-        }
     }
 
     /**

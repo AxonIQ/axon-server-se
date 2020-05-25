@@ -40,8 +40,7 @@ public class FollowerState extends BaseFollowerState {
     public void start() {
         super.start();
         // initially the timeout is increased to prevent leader elections when node restarts
-        nextTimeout.set(scheduler.get().clock().millis() + initialElectionTimeout() + random(minElectionTimeout(),
-                                                                                             maxElectionTimeout()));
+        nextTimeout.set(currentTimeMillis() + initialElectionTimeout() + random(minElectionTimeout(), maxElectionTimeout()));
         scheduleElectionTimeoutChecker();
     }
 
@@ -87,16 +86,13 @@ public class FollowerState extends BaseFollowerState {
     }
 
     private long timeSinceLastMessage() {
-        return processing.get() ? 0 : scheduler.get().clock().millis() - lastMessage.get();
+        return processing.get() ? 0 : currentTimeMillis() - lastMessage.get();
     }
 
 
 
     private void scheduleElectionTimeoutChecker() {
-        scheduler.get().schedule(
-                this::checkMessageReceived,
-                minElectionTimeout() / 10,
-                TimeUnit.MILLISECONDS);
+        schedule(s -> s.schedule(this::checkMessageReceived, minElectionTimeout() / 10, TimeUnit.MILLISECONDS));
     }
 
     /**
@@ -104,7 +100,7 @@ public class FollowerState extends BaseFollowerState {
      * within a timeout (random value between minElectionTimeout and maxElectionTimeout).
      */
     private void checkMessageReceived() {
-        long now = scheduler.get().clock().millis();
+        long now = currentTimeMillis();
         if (!processing.get() && nextTimeout.get() < now) {
             String message = format("%s in term %s: Timeout in follower state: %s ms.",
                                     groupId(),
@@ -120,7 +116,7 @@ public class FollowerState extends BaseFollowerState {
     @Override
     protected void rescheduleElection(long term, long extra) {
         if (term >= currentTerm()) {
-            long now = scheduler.get().clock().millis();
+            long now = currentTimeMillis();
             lastMessage.set(now);
             nextTimeout.updateAndGet(currentTimeout -> {
                 long newTimeout = now + extra + random(minElectionTimeout(), maxElectionTimeout());

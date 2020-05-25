@@ -58,7 +58,6 @@ public class LeaderState extends AbstractMembershipState {
 
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
     private final ClusterConfiguration clusterConfiguration;
-    private final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
     private final MatchStrategy matchStrategy;
@@ -72,13 +71,13 @@ public class LeaderState extends AbstractMembershipState {
         super(builder);
         this.matchStrategy = builder.matchStrategy;
         clusterConfiguration = new LeaderConfiguration(raftGroup(),
-                                                       () -> scheduler.get().clock().millis(),
+                                                       () -> currentTimeMillis(),
                                                        this::replicator,
                                                        this::appendConfigurationChange);
 
         leaderTimeoutChecker = new LeaderTimeoutChecker(this::replicatorPeers,
                                                         maxElectionTimeout(),
-                                                        () -> scheduler.get().clock(),
+                                                        () -> clock(),
                                                         () -> raftGroup().raftConfiguration().minActiveBackups());
     }
 
@@ -146,9 +145,9 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        super.start();
         leadershipTransferInProgress.set(false);
         replicators = new Replicators();
-        scheduler.set(schedulerFactory().get());
         lastConfirmed.set(0);
         replicators.start();
         //It is important to have leaderElected log entry appended only after the replicators are started,
@@ -159,6 +158,7 @@ public class LeaderState extends AbstractMembershipState {
 
     @Override
     public void stop() {
+        super.stop();
         if (replicators != null) {
             replicators.stop();
             replicators = null;
@@ -172,9 +172,6 @@ public class LeaderState extends AbstractMembershipState {
                 .completeExceptionally(new LeadershipTransferInProgressException("Transferring leadership")));
         pendingEntries.clear();
         logger.info("{} in term {}: {} steps down from Leader role.", groupId(), currentTerm(), me());
-        if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdown();
-        }
     }
 
     @Override
@@ -236,7 +233,7 @@ public class LeaderState extends AbstractMembershipState {
     }
 
     private void scheduleStepDownTimeoutChecker() {
-        scheduler.get().schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS);
+        schedule(s -> s.schedule(this::checkStepdown, maxElectionTimeout(), MILLISECONDS));
     }
 
     @Override
@@ -268,7 +265,7 @@ public class LeaderState extends AbstractMembershipState {
                          groupId(),
                          currentTerm(),
                          checkResult.nextCheckInterval());
-            scheduler.get().schedule(this::checkStepdown, checkResult.nextCheckInterval(), MILLISECONDS);
+            schedule(s -> s.schedule(this::checkStepdown, checkResult.nextCheckInterval(), MILLISECONDS));
         }
     }
 
@@ -300,7 +297,7 @@ public class LeaderState extends AbstractMembershipState {
             updatedFollower.get().sendTimeoutNow();
             completableFuture.complete(null);
         } else {
-            scheduler.get().schedule(() -> waitForFollowerUpdated(completableFuture), 10, TimeUnit.MILLISECONDS);
+            schedule(s -> s.schedule(() -> waitForFollowerUpdated(completableFuture), 10, TimeUnit.MILLISECONDS));
         }
     }
 
@@ -459,7 +456,7 @@ public class LeaderState extends AbstractMembershipState {
 
         void stop() {
             logger.info("{} in term {}: Stop replication thread", groupId(), currentTerm());
-            long now = scheduler.get().clock().millis();
+            long now = currentTimeMillis();
             replicatorPeerMap.forEach((peer, replicator) -> {
                 replicator.stop();
                 logger.info(
@@ -486,7 +483,7 @@ public class LeaderState extends AbstractMembershipState {
             registrations.add(registerConfigurationListener(this::updateNodes));
             try {
                 otherPeersStream().forEach(this::registerNode);
-                scheduler.get().execute(this::replicate);
+                execute(this::replicate);
                 logger.info("{} in term {}: Start replication thread for {} peers.",
                             groupId(),
                             currentTerm(),
@@ -502,37 +499,34 @@ public class LeaderState extends AbstractMembershipState {
                 // it's fine, replication is already in progress
                 return;
             }
-            Optional.ofNullable(scheduler.get())
-                    .ifPresent(schedulerInstance -> {
-                        try {
-                            int runsWithoutChanges = 0;
-                            while (runsWithoutChanges < 3) {
-                                int sent = 0;
-                                for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
-                                    sent += time(raftPeer::sendNextMessage, raftPeer.nodeId());
-                                }
-                                if (sent == 0) {
-                                    runsWithoutChanges++;
-                                } else {
-                                    runsWithoutChanges = 0;
-                                }
-                            }
-                        } finally {
-                            schedulerInstance.schedule(this::replicate,
-                                                       raftGroup().raftConfiguration().heartbeatTimeout()/2,
-                                                       MILLISECONDS);
-                            replicationRunning.set(false);
-                        }
-                    });
+            try {
+                int runsWithoutChanges = 0;
+                while (runsWithoutChanges < 3) {
+                    int sent = 0;
+                    for (ReplicatorPeer raftPeer : replicatorPeerMap.values()) {
+                        sent += time(raftPeer::sendNextMessage, raftPeer.nodeId());
+                    }
+                    if (sent == 0) {
+                        runsWithoutChanges++;
+                    } else {
+                        runsWithoutChanges = 0;
+                    }
+                }
+            } finally {
+                schedule(s -> s.schedule(this::replicate,
+                                         raftGroup().raftConfiguration().heartbeatTimeout() / 2,
+                                         MILLISECONDS));
+                replicationRunning.set(false);
+            }
         }
 
         private int time(Supplier<Integer> operation, String target) {
-            long before = scheduler.get().clock().millis();
+            long before = currentTimeMillis();
             try {
                 return operation.get();
             } finally {
                 if( logger.isTraceEnabled()) {
-                    long after = scheduler.get().clock().millis();
+                    long after = currentTimeMillis();
                     if (after - raftGroup().raftConfiguration().heartbeatTimeout() > before) {
                         logger.trace("{}: Action took {}ms", target, after - before);
                     }
@@ -559,8 +553,8 @@ public class LeaderState extends AbstractMembershipState {
         }
 
         void notifySenders() {
-            if( ! replicationRunning.get()) {
-                scheduler.get().execute(this::replicate);
+            if (!replicationRunning.get()) {
+                execute(this::replicate);
             }
         }
 
@@ -607,7 +601,7 @@ public class LeaderState extends AbstractMembershipState {
         private Registration registerPeer(RaftPeer raftPeer, FluxSink<Long> matchIndexUpdates) {
             ReplicatorPeer replicatorPeer = new ReplicatorPeer(raftPeer,
                                                                matchIndexUpdates,
-                                                               scheduler.get().clock(),
+                                                               clock(),
                                                                raftGroup(),
                                                                snapshotManager(),
                                                                LeaderState.this::updateCurrentTerm,

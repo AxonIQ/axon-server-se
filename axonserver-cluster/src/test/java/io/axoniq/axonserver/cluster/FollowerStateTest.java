@@ -92,7 +92,7 @@ public class FollowerStateTest {
                                          .transitionHandler(transitionHandler)
                                          .termUpdateHandler(termUpdateHandler)
                                          .raftGroup(raftGroup)
-                                         .schedulerFactory(() -> fakeScheduler)
+                                         .scheduler(fakeScheduler)
                                          .randomValueSupplier((min, max) -> electionTimeout)
                                          .snapshotManager(snapshotManager)
                                          .currentConfiguration(currentConfiguration)
