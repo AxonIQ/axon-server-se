@@ -14,7 +14,6 @@ import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -47,12 +46,15 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     private final List<Consumer<Entry>> appendListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Entry>> rollbackListeners = new CopyOnWriteArrayList<>();
     private final String name;
+    private final LongSupplier lastAppliedIndexSupplier;
 
     private final PrimaryLogEntryStore primaryLogEntryStore;
 
-    public FileSegmentLogEntryStore(String name, PrimaryLogEntryStore primaryLogEntryStore) {
+    public FileSegmentLogEntryStore(String name, PrimaryLogEntryStore primaryLogEntryStore,
+                                    LongSupplier lastAppliedIndexSupplier) {
         this.name = name;
         this.primaryLogEntryStore = primaryLogEntryStore;
+        this.lastAppliedIndexSupplier = lastAppliedIndexSupplier;
     }
 
     @Override
@@ -142,12 +144,12 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
     }
 
     @Override
-    public void appendEntry(List<Entry> entries) throws IOException {
+    public void appendEntry(List<Entry> entries) {
         entries.forEach(e -> {
             Entry existingEntry = getEntry(e.getIndex());
             boolean skip = false;
-            if( existingEntry != null ) {
-                if( existingEntry.getTerm() != e.getTerm() ) {
+            if (existingEntry != null) {
+                if (existingEntry.getTerm() != e.getTerm() && e.getIndex() > lastAppliedIndexSupplier.getAsLong()) {
                     logger.debug("{}: Clear from {}", name, e.getIndex());
                     deleteFrom(e.getIndex());
                 } else {
