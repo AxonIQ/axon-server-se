@@ -31,7 +31,7 @@ public class FileSegmentLogEntryStoreTest {
     public void setUp() throws Exception {
         primary = spy(PrimaryEventStoreFactory
                               .create(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString()));
-        testSubject = new FileSegmentLogEntryStore("Test", primary, () -> 0L);
+        testSubject = new FileSegmentLogEntryStore("Test", primary, () -> 5L);
     }
 
     @After
@@ -68,8 +68,9 @@ public class FileSegmentLogEntryStoreTest {
 
     @Test
     public void replaceEntries() throws IOException {
-        testSubject.appendEntry(asList(EntryFactory.newEntry(1, 1), EntryFactory.newEntry(1, 2), EntryFactory
-                .newEntry(1, 3)));
+        testSubject.appendEntry(asList(EntryFactory.newEntry(1, 1),
+                                       EntryFactory.newEntry(1, 2),
+                                       EntryFactory.newEntry(1, 3)));
         testSubject.appendEntry(Collections.singletonList(EntryFactory.newEntry(2, 2)));
         assertNotNull(testSubject.getEntry(1));
         assertEquals(1, testSubject.getEntry(1).getTerm());
