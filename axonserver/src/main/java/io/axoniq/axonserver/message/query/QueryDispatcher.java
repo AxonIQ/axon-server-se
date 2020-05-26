@@ -22,6 +22,7 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -42,13 +43,21 @@ public class QueryDispatcher {
     private final QueryRegistrationCache registrationCache;
     private final QueryCache queryCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
-    private final FlowControlQueues<WrappedQuery> queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed());
+    private final FlowControlQueues<WrappedQuery> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
-    public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache, QueryMetricsRegistry queryMetricsRegistry) {
+    public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache,
+                           QueryMetricsRegistry queryMetricsRegistry,
+                           MeterFactory meterFactory,
+                           @Value("${axoniq.axonserver.query-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrationCache = registrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
+        queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed(),
+                                             queueCapacity,
+                                             BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
+                                             meterFactory,
+                                             ErrorCode.QUERY_DISPATCH_ERROR);
         queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, QueryCache::size);
     }
 

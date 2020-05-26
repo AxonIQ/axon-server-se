@@ -82,6 +82,16 @@ public class StorageProperties {
     private long syncInterval = 1000;
 
     /**
+     * Use memory mapped files for index files
+     */
+    private Boolean useMmapIndex;
+    /**
+     * When using memory mapped files for indexes, let mapdb forcefully close the memory mapped files on close
+     */
+    private Boolean forceCleanMmapIndex;
+
+
+    /**
      * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
      */
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
@@ -246,19 +256,33 @@ public class StorageProperties {
     public File oldDataFile(String context, long segment) {
         return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, eventsSuffix));
     }
+
     public File oldIndex(String context, long segment) {
         return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, indexSuffix));
     }
+
     public File oldBloomFilter(String context, long segment) {
         return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, bloomIndexSuffix));
     }
 
-    public boolean isCleanerHackEnabled() {
-        return systemInfoProvider.javaOnWindows() && ! systemInfoProvider.javaWithModules();
+    public void setUseMmapIndex(Boolean useMmapIndex) {
+        this.useMmapIndex = useMmapIndex;
+    }
+
+    public void setForceCleanMmapIndex(Boolean forceCleanMmapIndex) {
+        this.forceCleanMmapIndex = forceCleanMmapIndex;
+    }
+
+    public boolean isForceCleanMmapIndex() {
+        return forceCleanMmapIndex != null ?
+                forceCleanMmapIndex :
+                systemInfoProvider.javaOnWindows() && !systemInfoProvider.javaWithModules();
     }
 
     public boolean isUseMmapIndex() {
-        return ! (systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
+        return useMmapIndex != null ?
+                useMmapIndex :
+                !(systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
     }
 
     public boolean isCleanRequired() {
