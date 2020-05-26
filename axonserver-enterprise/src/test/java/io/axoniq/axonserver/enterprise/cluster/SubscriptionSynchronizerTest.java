@@ -13,6 +13,7 @@ import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import org.junit.*;
 
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -36,7 +37,9 @@ public class SubscriptionSynchronizerTest {
                                                                                       queryRegistrationCache,
                                                                                       activeConnections::stream,
                                                                                       s -> System.out.println(
-                                                                                              "Connection Closed"));
+                                                                                              "Connection Closed"),
+                                                                                      c -> Collections
+                                                                                              .emptyMap());
 
 
     @Before

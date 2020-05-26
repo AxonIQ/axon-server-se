@@ -6,6 +6,7 @@ import io.axoniq.axonserver.cluster.configuration.NodeReplicator;
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LeadershipTransferInProgressException;
 import io.axoniq.axonserver.cluster.exception.LogException;
+import io.axoniq.axonserver.cluster.exception.UncommittedTermException;
 import io.axoniq.axonserver.cluster.exception.UncommittedConfigException;
 import io.axoniq.axonserver.cluster.replication.MatchStrategy;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
@@ -110,6 +111,15 @@ public class LeaderState extends AbstractMembershipState {
             future.completeExceptionally(new UncommittedConfigException(message));
             return future;
         }
+
+        //https://groups.google.com/forum/#!msg/raft-dev/t4xj6dJTP6E/d2D9LrWRza8J
+        if (currentTerm() != raftGroup().logEntryProcessor().commitTerm()){
+            String message = "No entry has been committed during current term, cannot accept a configuration change.";
+            CompletableFuture<Entry> future = new CompletableFuture<>();
+            future.completeExceptionally(new UncommittedTermException(message));
+            return future;
+        }
+
         Collection<Node> newConfig = configChange.apply(currentConfiguration().groupMembers());
         Config config = Config.newBuilder().addAllNodes(newConfig).build();
         if (config.getNodesCount() == 0) {

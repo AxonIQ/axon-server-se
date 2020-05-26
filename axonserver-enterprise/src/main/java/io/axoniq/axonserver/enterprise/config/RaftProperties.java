@@ -108,13 +108,17 @@ public class RaftProperties extends StorageProperties {
     }
 
     @Override
-    public boolean isCleanerHackEnabled() {
-        return systemInfoProvider.javaOnWindows() && ! systemInfoProvider.javaWithModules();
+    public boolean isForceCleanMmapIndex() {
+        return forceCleanMmapIndex != null ?
+                forceCleanMmapIndex :
+                systemInfoProvider.javaOnWindows() && !systemInfoProvider.javaWithModules();
     }
 
     @Override
     public boolean isUseMmapIndex() {
-        return ! (systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
+        return useMmapIndex != null ?
+                useMmapIndex :
+                !(systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
     }
 
     public int getMaxReplicationRound() {

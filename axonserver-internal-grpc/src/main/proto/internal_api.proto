@@ -168,6 +168,9 @@ message ConnectorCommand {
         ClientEventProcessorSegment split_segment = 38;
         ClientEventProcessorSegment merge_segment = 39;
         UpdateLicense update_license = 40;
+
+        /*Axon Server internal event, propagated to all nodes in the cluster*/
+        io.axoniq.axonserver.grpc.SerializedObject internal_event = 40;
     }
 }
 

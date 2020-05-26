@@ -2,10 +2,9 @@ package io.axoniq.axonserver.enterprise.component.processor.balancing;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
-import io.axoniq.axonserver.grpc.ClientEventProcessorStatusProtoConverter;
-import io.axoniq.axonserver.grpc.internal.ClientEventProcessorStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -50,12 +49,11 @@ public class AutoLoadBalancer {
      */
     @EventListener
     public void onEventProcessorStatusChange(EventProcessorEvents.EventProcessorStatusUpdated event) {
-        ClientEventProcessorStatus status = ClientEventProcessorStatusProtoConverter
-                .toProto(event.eventProcessorStatus());
-        String context = status.getContext();
-        String client = status.getClient();
-        String processor = status.getEventProcessorInfo().getProcessorName();
-        Integer newActiveThreads = status.getEventProcessorInfo().getActiveThreads();
+        ClientEventProcessorInfo eventProcessorStatus = event.eventProcessorStatus();
+        String context = eventProcessorStatus.getContext();
+        String client = eventProcessorStatus.getClientName();
+        String processor = eventProcessorStatus.getEventProcessorInfo().getProcessorName();
+        Integer newActiveThreads = eventProcessorStatus.getEventProcessorInfo().getActiveThreads();
         TrackingEventProcessor trackingEventProcessor = new TrackingEventProcessor(processor, context);
         Integer previousActiveThreads = cache.computeIfAbsent(trackingEventProcessor, s -> new ConcurrentHashMap<>())
                                              .put(client, newActiveThreads);

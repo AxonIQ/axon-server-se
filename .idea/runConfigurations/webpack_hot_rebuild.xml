@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="webpack hot rebuild" type="js.build_tools.npm">
-    <package-json value="$PROJECT_DIR$/axonserver/package.json" />
+    <package-json value="$PROJECT_DIR$/../axon-server-se/axonserver/package.json" />
     <command value="run" />
     <scripts>
       <script value="watch" />

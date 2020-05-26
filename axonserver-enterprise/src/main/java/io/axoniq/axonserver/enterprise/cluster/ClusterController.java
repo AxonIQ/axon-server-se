@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.ClusterTagsCache;
+import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
@@ -21,6 +22,7 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -62,7 +64,8 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     private final ApplicationEventPublisher applicationEventPublisher;
     private final FeatureChecker limits;
     private final ChannelCloser channelCloser;
-    private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService reconnectExecutor = Executors
+            .newSingleThreadScheduledExecutor(new AxonThreadFactory("cluster-reconnect"));
     private final List<Consumer<ClusterEvent>> nodeListeners = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<String, RemoteConnection> remoteConnections = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ClusterNode> nodeMap = new ConcurrentHashMap<>();
@@ -76,7 +79,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                              StubFactory stubFactory,
                              QueryDispatcher queryDispatcher,
                              CommandDispatcher commandDispatcher,
-                             ApplicationEventPublisher applicationEventPublisher,
+                             @Qualifier("localEventPublisher") ApplicationEventPublisher applicationEventPublisher,
                              FeatureChecker limits,
                              ChannelCloser channelCloser) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;

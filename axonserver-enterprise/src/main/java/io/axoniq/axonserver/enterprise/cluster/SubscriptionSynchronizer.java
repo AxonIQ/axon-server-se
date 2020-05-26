@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -23,6 +24,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -39,25 +41,30 @@ public class SubscriptionSynchronizer {
     private final Supplier<Stream<RemoteConnection>> activeConnections;
     private final Consumer<String> closeConnectionToServer;
     private final Map<ClientIdentification, ContextComponent> connectedClients = new ConcurrentHashMap<>();
+    private final Function<ClientIdentification, Map<String, String>> clientTagsProvider;
 
     @Autowired
     public SubscriptionSynchronizer(CommandRegistrationCache commandRegistrationCache,
                                     QueryRegistrationCache queryRegistrationCache,
-                                    ClusterController clusterController) {
+                                    ClusterController clusterController,
+                                    ClientTagsCache clientTagsCache) {
         this(commandRegistrationCache, queryRegistrationCache,
              clusterController::activeConnections,
-             clusterController::closeConnection);
+             clusterController::closeConnection,
+             clientTagsCache::apply);
     }
 
     public SubscriptionSynchronizer(CommandRegistrationCache commandRegistrationCache,
                                     QueryRegistrationCache queryRegistrationCache,
                                     Supplier<Stream<RemoteConnection>> activeConnections,
-                                    Consumer<String> closeConnectionToServer
+                                    Consumer<String> closeConnectionToServer,
+                                    Function<ClientIdentification, Map<String, String>> clientTagsProvider
     ) {
         this.commandRegistrationCache = commandRegistrationCache;
         this.queryRegistrationCache = queryRegistrationCache;
         this.activeConnections = activeConnections;
         this.closeConnectionToServer = closeConnectionToServer;
+        this.clientTagsProvider = clientTagsProvider;
     }
 
     private Stream<RemoteConnection> activeConnections() {
@@ -71,7 +78,8 @@ public class SubscriptionSynchronizer {
                                          event.getRemoteConnection().clientStatus(key.getContext(),
                                                                                   value.getComponent(),
                                                                                   key.getClient(),
-                                                                                  true));
+                                                                                  true,
+                                                                                  clientTagsProvider.apply(key)));
 
         commandRegistrationCache.getAll().forEach((member, commands) -> {
             if (member instanceof DirectCommandHandler) {
@@ -156,7 +164,7 @@ public class SubscriptionSynchronizer {
         if (!event.isProxied()) {
             activeConnections().forEach(remoteConnection -> remoteConnection
                     .clientStatus(event.getContext(), event.getComponentName(),
-                                  event.getClient(), false));
+                                  event.getClient(), false, Collections.emptyMap()));
             connectedClients.remove(event.clientIdentification());
         }
     }
@@ -194,7 +202,9 @@ public class SubscriptionSynchronizer {
                                                 remoteConnection.clientStatus(event.getContext(),
                                                                               event.getComponentName(),
                                                                               event.getClient(),
-                                                                              true));
+                                                                              true,
+                                                                              clientTagsProvider
+                                                                                      .apply(event.clientIdentification())));
             connectedClients.put(event.clientIdentification(),
                                  new ContextComponent(event.getContext(), event.getComponentName()));
         }

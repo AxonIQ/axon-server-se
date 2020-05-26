@@ -48,7 +48,7 @@ import static java.util.stream.Collectors.toSet;
 public class LocalRaftGroupService implements RaftGroupService {
 
     private final Logger logger = LoggerFactory.getLogger(LocalRaftGroupService.class);
-    private final ExecutorService asyncPool = Executors.newCachedThreadPool(new AxonThreadFactory("raft-async"));
+    private final ExecutorService asyncPool = Executors.newCachedThreadPool(new AxonThreadFactory("raft-async-"));
 
     private final GrpcRaftController grpcRaftController;
 

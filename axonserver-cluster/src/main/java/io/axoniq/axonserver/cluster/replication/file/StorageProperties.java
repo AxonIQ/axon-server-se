@@ -26,8 +26,14 @@ public class StorageProperties {
      */
     private long secondaryCleanupDelay = 30;
     private String logStorageFolder = "log";
-    private boolean useMmapIndex;
-    private boolean cleanerHackEnabled;
+    /**
+     * Use memory mapped files when accessing index
+     */
+    protected Boolean useMmapIndex;
+    /**
+     * When using memory mapped files for indexes, let mapdb forcefully close the memory mapped files on close
+     */
+    protected Boolean forceCleanMmapIndex;
     private int minActiveBackups = 1;
     private int maxIndexesInMemory = 5;
 
@@ -142,33 +148,24 @@ public class StorageProperties {
      * @return true if module should use mapdb mmap files
      */
     public boolean isUseMmapIndex() {
-        return useMmapIndex;
+        return useMmapIndex != null ? useMmapIndex : false;
     }
 
-    public void setUseMmapIndex(boolean useMmapIndex) {
+    public void setUseMmapIndex(Boolean useMmapIndex) {
         this.useMmapIndex = useMmapIndex;
     }
 
     /**
      * Checks if we should enable the cleaner hack for mapdb files. Only applied when useMmapIndex is true.
+     *
      * @return true if mapdb should use cleaner hack
      */
-    public boolean isCleanerHackEnabled() {
-        return cleanerHackEnabled;
+    public boolean isForceCleanMmapIndex() {
+        return forceCleanMmapIndex != null ? forceCleanMmapIndex : false;
     }
 
-    public void setCleanerHackEnabled(boolean cleanerHackEnabled) {
-        this.cleanerHackEnabled = cleanerHackEnabled;
-    }
-
-    /**
-     * Checks if we need to explicitly call the clean method on memory mapped files to remove the file lock (needed only on Windows)
-     *
-     * @return true if running on Windows
-     */
-    public boolean isCleanerHackNeeded() {
-        String os = System.getProperty("os.name").toLowerCase();
-        return os.startsWith("win");
+    public void setForceCleanMmapIndex(Boolean forceCleanMmapIndex) {
+        this.forceCleanMmapIndex = forceCleanMmapIndex;
     }
 
     public int getMinActiveBackups() {

@@ -1,4 +1,4 @@
 FROM busybox
 ADD axoniq.license /config/axoniq.license
-ADD systemtoken /config/sytemtoken
+ADD systemtoken /config/systemtoken
 ADD axonserver-accesscontrol.properties /config/axonserver.properties

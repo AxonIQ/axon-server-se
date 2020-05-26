@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -58,11 +59,11 @@ public class RemoteConnection {
     private final CommandDispatcher commandDispatcher;
     private final long connectionWaitTime;
     private final AtomicInteger repeatedErrorCount = new AtomicInteger(IGNORE_SAME_ERROR_COUNT);
+    private final ChannelCloser channelCloser;
     private AtomicBoolean connected = new AtomicBoolean();
     private AtomicLong connectionPending = new AtomicLong();
     private volatile ClusterFlowControlStreamObserver requestStreamObserver;
     private volatile String errorMessage;
-    private final ChannelCloser channelCloser;
 
 
     public RemoteConnection(ClusterController clusterController, ClusterNode clusterNode,
@@ -98,16 +99,25 @@ public class RemoteConnection {
                                        case COMMAND:
                                            ForwardedCommand forwardedCommand = connectorResponse.getCommand();
                                            commandDispatcher.dispatch(forwardedCommand.getContext(),
-                                                                      new SerializedCommand(forwardedCommand.getCommand().toByteArray(),
-                                                                                            forwardedCommand.getClient(),
-                                                                                            forwardedCommand.getMessageId()),
+                                                                      new SerializedCommand(forwardedCommand
+                                                                                                    .getCommand()
+                                                                                                    .toByteArray(),
+                                                                                            forwardedCommand
+                                                                                                    .getClient(),
+                                                                                            forwardedCommand
+                                                                                                    .getMessageId()),
                                                                       commandResponse -> publish(
                                                                               ConnectorCommand.newBuilder()
                                                                                               .setCommandResponse(
                                                                                                       ForwardedCommandResponse
                                                                                                               .newBuilder()
-                                                                                                              .setRequestIdentifier(commandResponse.getRequestIdentifier())
-                                                                                                              .setResponse(commandResponse.toByteString()).build())
+                                                                                                              .setRequestIdentifier(
+                                                                                                                      commandResponse
+                                                                                                                              .getRequestIdentifier())
+                                                                                                              .setResponse(
+                                                                                                                      commandResponse
+                                                                                                                              .toByteString())
+                                                                                                              .build())
                                                                                               .build()),
                                                                       true);
 
@@ -121,7 +131,8 @@ public class RemoteConnection {
                                            break;
 
                                        case SUBSCRIPTION_QUERY_REQUEST:
-                                           ClientSubscriptionQueryRequest request = connectorResponse.getSubscriptionQueryRequest();
+                                           ClientSubscriptionQueryRequest request = connectorResponse
+                                                   .getSubscriptionQueryRequest();
                                            UpdateHandler handler = new ProxyUpdateHandler(requestStreamObserver::onNext);
                                            clusterController.publishEvent(
                                                    new SubscriptionQueryEvents.ProxiedSubscriptionQueryRequest(request.getSubscriptionQueryRequest(),
@@ -136,7 +147,9 @@ public class RemoteConnection {
 
                                private void checkConnected() {
                                    if (connected.compareAndSet(false, true)) {
-                                       logger.debug("Connected to {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
+                                       logger.debug("Connected to {}:{}",
+                                                    clusterNode.getInternalHostName(),
+                                                    clusterNode.getGrpcInternalPort());
                                        errorMessage = null;
                                        connectionPending.set(0);
                                        initFlowControl();
@@ -146,13 +159,15 @@ public class RemoteConnection {
                                private void query(ForwardedQuery query) {
                                    SerializedQuery serializedQuery = new SerializedQuery(query.getContext(),
                                                                                          query.getClient(),
-                                                                                         query.getQuery().toByteArray());
+                                                                                         query.getQuery()
+                                                                                              .toByteArray());
                                    queryDispatcher.dispatchProxied(serializedQuery,
                                                                    queryResponse -> sendQueryResponse(
                                                                            serializedQuery.client(),
                                                                            queryResponse),
                                                                    client -> sendQueryComplete(client,
-                                                                                               serializedQuery.getMessageIdentifier()
+                                                                                               serializedQuery
+                                                                                                       .getMessageIdentifier()
                                                                    ));
                                }
 
@@ -168,7 +183,6 @@ public class RemoteConnection {
                                                    .publishEvent(new ClusterEvents.AxonServerInstanceConnected(
                                                            RemoteConnection.this));
                                        }
-
                                    } catch (Exception ex) {
                                        logger.warn("Failed to process request {}",
                                                    connectResponse,
@@ -183,9 +197,13 @@ public class RemoteConnection {
 
                                @Override
                                public void onError(Throwable throwable) {
-                                   if (!String.valueOf(throwable.getMessage()).equals(errorMessage) || repeatedErrorCount.decrementAndGet() <= 0) {
+                                   if (!String.valueOf(throwable.getMessage()).equals(errorMessage)
+                                           || repeatedErrorCount.decrementAndGet() <= 0) {
                                        channelCloser.shutdownIfNeeded(clusterNode, throwable);
-                                       logger.warn("Error on {}:{} - {}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort(), throwable.getMessage());
+                                       logger.warn("Error on {}:{} - {}",
+                                                   clusterNode.getInternalHostName(),
+                                                   clusterNode.getGrpcInternalPort(),
+                                                   throwable.getMessage());
                                        errorMessage = String.valueOf(throwable.getMessage());
                                        repeatedErrorCount.set(IGNORE_SAME_ERROR_COUNT);
                                    }
@@ -195,21 +213,26 @@ public class RemoteConnection {
 
                                private void closeConnection() {
                                    if (connected.compareAndSet(true, false)) {
-                                       clusterController.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(clusterNode.getName()));
+                                       clusterController.publishEvent(new ClusterEvents.AxonServerInstanceDisconnected(
+                                               clusterNode.getName()));
                                        connectionPending.set(0);
                                    }
                                }
 
                                @Override
                                public void onCompleted() {
-                                   logger.debug("Completed connection to {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
+                                   logger.debug("Completed connection to {}:{}",
+                                                clusterNode.getInternalHostName(),
+                                                clusterNode.getGrpcInternalPort());
                                    closeConnection();
                                }
                            }));
         requestStreamObserver.onNext(ConnectorCommand.newBuilder()
                                                      .setConnect(ConnectRequest.newBuilder()
-                                                                               .setNodeInfo(clusterController.getMe().toNodeInfo())
-                                                                               .setAdmin(clusterController.getMe().isAdmin()))
+                                                                               .setNodeInfo(clusterController.getMe()
+                                                                                                             .toNodeInfo())
+                                                                               .setAdmin(clusterController.getMe()
+                                                                                                          .isAdmin()))
                                                      .build());
 
         // send master info
@@ -233,9 +256,10 @@ public class RemoteConnection {
     }
 
     private void initFlowControl() {
-        requestStreamObserver.initCommandFlowControl(clusterController.getName(), clusterController.getCommandFlowControl());
-        requestStreamObserver.initQueryFlowControl(clusterController.getName(), clusterController.getQueryFlowControl());
-
+        requestStreamObserver.initCommandFlowControl(clusterController.getName(),
+                                                     clusterController.getCommandFlowControl());
+        requestStreamObserver.initQueryFlowControl(clusterController.getName(),
+                                                   clusterController.getQueryFlowControl());
     }
 
     private void sendQueryResponse(String client, QueryResponse queryResponse) {
@@ -268,8 +292,11 @@ public class RemoteConnection {
     }
 
     public void checkConnection() {
-        if (logger.isDebugEnabled() && System.currentTimeMillis() - connectionPending.get() < connectionWaitTime)
-            logger.debug("Connection pending to: {}:{}", clusterNode.getInternalHostName(), clusterNode.getGrpcInternalPort());
+        if (logger.isDebugEnabled() && System.currentTimeMillis() - connectionPending.get() < connectionWaitTime) {
+            logger.debug("Connection pending to: {}:{}",
+                         clusterNode.getInternalHostName(),
+                         clusterNode.getGrpcInternalPort());
+        }
         if (!connected.get() && System.currentTimeMillis() - connectionPending.get() > connectionWaitTime) {
             init();
         }
@@ -291,7 +318,8 @@ public class RemoteConnection {
 
     /**
      * Propagate a client command subscription to the other platform node.
-     * @param context the context
+     *
+     * @param context             the context
      * @param commandSubscription the command subscription to propagate
      */
     public void subscribeCommand(String context, CommandSubscription commandSubscription) {
@@ -306,18 +334,23 @@ public class RemoteConnection {
         return clusterNode;
     }
 
-    public void subscribeQuery(QueryDefinition query, Collection<String> resultNames, String component, String clientName) {
-        resultNames.forEach(resultName ->
-                                    publish(
-                                            ConnectorCommand.newBuilder()
-                                                            .setSubscribeQuery(
-                                                                    InternalQuerySubscription.newBuilder()
-                                                                                             .setQuery(
-                                                                                                     QuerySubscription.newBuilder()
-                                                                                                                      .setClientId(clientName)
-                                                                                                                      .setQuery(query.getQueryName())
-                                                                                                                      .setResultName(resultName)
-                                                                                                                      .setComponentName(component))
+    public void subscribeQuery(QueryDefinition query, Collection<String> resultNames, String component,
+                               String clientName) {
+        resultNames.forEach(resultName -> publish(
+                ConnectorCommand.newBuilder()
+                                .setSubscribeQuery(
+                                        InternalQuerySubscription.newBuilder()
+                                                                 .setQuery(
+                                                                         QuerySubscription
+                                                                                 .newBuilder()
+                                                                                 .setClientId(
+                                                                                         clientName)
+                                                                                 .setQuery(
+                                                                                         query.getQueryName())
+                                                                                 .setResultName(
+                                                                                         resultName)
+                                                                                 .setComponentName(
+                                                                                         component))
                                                                                              .setContext(query.getContext()))
                                                             .build()));
     }
@@ -326,15 +359,20 @@ public class RemoteConnection {
         publish(ConnectorCommand.newBuilder()
                                 .setUnsubscribeQuery(InternalQuerySubscription.newBuilder()
                                                                               .setQuery(QuerySubscription.newBuilder()
-                                                                                                         .setClientId(client)
-                                                                                                         .setQuery(queryDefinition.getQueryName())
-                                                                                                         .setComponentName(componentName))
+                                                                                                         .setClientId(
+                                                                                                                 client)
+                                                                                                         .setQuery(
+                                                                                                                 queryDefinition
+                                                                                                                         .getQueryName())
+                                                                                                         .setComponentName(
+                                                                                                                 componentName))
                                                                               .setContext(queryDefinition.getContext())
                                 ).build());
     }
 
 
-    public void clientStatus(String context, String componentName, String client, boolean clientConnected) {
+    public void clientStatus(String context, String componentName, String client, boolean clientConnected,
+                             Map<String, String> tags) {
         publish(ConnectorCommand.newBuilder()
                                 .setClientStatus(ClientStatus
                                                          .newBuilder()
@@ -342,6 +380,7 @@ public class RemoteConnection {
                                                          .setComponentName(componentName)
                                                          .setClientName(client)
                                                          .setConnected(clientConnected)
+                                                         .putAllTags(tags)
                                 )
                                 .build());
     }
@@ -351,5 +390,4 @@ public class RemoteConnection {
             requestStreamObserver.onNext(connectorCommand);
         }
     }
-
 }
