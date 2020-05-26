@@ -71,13 +71,13 @@ public class LeaderState extends AbstractMembershipState {
         super(builder);
         this.matchStrategy = builder.matchStrategy;
         clusterConfiguration = new LeaderConfiguration(raftGroup(),
-                                                       () -> currentTimeMillis(),
+                                                       this::currentTimeMillis,
                                                        this::replicator,
                                                        this::appendConfigurationChange);
 
         leaderTimeoutChecker = new LeaderTimeoutChecker(this::replicatorPeers,
                                                         maxElectionTimeout(),
-                                                        () -> clock(),
+                                                        this::clock,
                                                         () -> raftGroup().raftConfiguration().minActiveBackups());
     }
 
@@ -309,11 +309,10 @@ public class LeaderState extends AbstractMembershipState {
     private Optional<ReplicatorPeer> findUpToDatePeer() {
         long lastLogEntry = raftGroup().localLogEntryStore().lastLogIndex();
         return replicators.replicatorPeerMap
-                .entrySet()
+                .values()
                 .stream()
-                .filter(e -> replicators.isPossibleLeader(e.getValue()))
-                .filter(e -> e.getValue().nextIndex() > lastLogEntry)
-                .map(Map.Entry::getValue)
+                .filter(replicatorPeer -> replicators.isPossibleLeader(replicatorPeer))
+                .filter(replicatorPeer -> replicatorPeer.nextIndex() > lastLogEntry)
                 .findFirst();
     }
 
@@ -605,7 +604,8 @@ public class LeaderState extends AbstractMembershipState {
                                                                raftGroup(),
                                                                snapshotManager(),
                                                                LeaderState.this::updateCurrentTerm,
-                                                               LeaderState.this::lastLogIndex);
+                                                               LeaderState.this::lastLogIndex,
+                                                               LeaderState.this::stepDown);
             replicatorPeer.start();
             replicatorPeerMap.put(raftPeer.nodeName(), replicatorPeer);
             return () -> {
