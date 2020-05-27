@@ -136,10 +136,8 @@ podTemplate(label: label,
             }
 
             stage ('Run SonarQube') {
-                if (!releaseBuild && relevantBranch(gitBranch, sonarBranches)) {
-                    sh "mvn \${MVN_BLD} -DskipTests -Dsonar.branch.name=${gitBranch} -Psonar sonar:sonar"
-                    slackReport = slackReport + "\nSources analyzed in SonarQube."
-                }
+                sh "mvn \${MVN_BLD} -DskipTests -Dsonar.branch.name=${gitBranch} -Psonar sonar:sonar"
+                slackReport = slackReport + "\nSources analyzed in SonarQube."
             }
 
             stage('Trigger followup') {
