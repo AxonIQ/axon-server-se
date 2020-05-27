@@ -11,7 +11,7 @@ def dockerBranches = [
     "master", "axonserver-ee-4.3.x"
 ]
 def sonarBranches = [
-    "master", "axonserver-ee-4.3.x"
+    "master", "axonserver-ee-4.3.x", "feature/add-coverage"
 ]
 def relevantBranch(thisBranch, branches) {
     for (br in branches) {
@@ -97,6 +97,9 @@ podTemplate(label: label,
                         }
                         if (relevantBranch(gitBranch, dockerBranches)) {
                             mavenTarget = "-Pdocker " + mavenTarget
+                        }
+                        if (relevantBranch(gitBranch, sonarBranches)) {
+                            mavenTarget = "-Pcoverage " + mavenTarget
                         }
                         try {
                             sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"
