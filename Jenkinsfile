@@ -1,5 +1,6 @@
 import hudson.tasks.test.AbstractTestResultAction
 import hudson.model.Actionable
+
 properties([
     [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', numToKeepStr: '5']]
 ])
@@ -10,9 +11,7 @@ def deployingBranches = [
 def dockerBranches = [
     "master", "axonserver-ee-4.3.x"
 ]
-def sonarBranches = [
-    "master", "axonserver-ee-4.3.x"
-]
+
 def relevantBranch(thisBranch, branches) {
     for (br in branches) {
         if (thisBranch == br) {
@@ -98,9 +97,7 @@ podTemplate(label: label,
                         if (relevantBranch(gitBranch, dockerBranches)) {
                             mavenTarget = "-Pdocker " + mavenTarget
                         }
-                        if (relevantBranch(gitBranch, sonarBranches)) {
-                            mavenTarget = "-Pcoverage " + mavenTarget
-                        }
+                        mavenTarget = "-Pcoverage " + mavenTarget
                         try {
                             sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"
 
@@ -140,9 +137,7 @@ podTemplate(label: label,
 
             stage ('Run SonarQube') {
                 if (!releaseBuild && relevantBranch(gitBranch, sonarBranches)) {
-                    container("maven") {
-                        sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
-                    }
+                    sh "mvn \${MVN_BLD} -DskipTests -Dsonar.branch.name=${gitBranch} -Psonar sonar:sonar"
                     slackReport = slackReport + "\nSources analyzed in SonarQube."
                 }
             }
