@@ -32,6 +32,8 @@
         <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
 
+        <jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
+
         <kotlin.version>1.3.31</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <!--
@@ -230,6 +232,34 @@
                 <module>data-encryption</module>
                 <module>axonserver-stackdriver</module>
             </modules>
+        </profile>
+
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco-maven-plugin.version}</version>
+
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 
