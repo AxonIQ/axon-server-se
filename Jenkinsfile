@@ -82,8 +82,6 @@ podTemplate(label: label,
             pom = readMavenPom file: 'pom.xml'
             def pomVersion = pom.version
 
-            def slackReport = "Maven build for Axon Server EE ${pomVersion} using SE version ${seVersion} (branch \"${gitBranch}\")."
-
             stage ('Project setup') {
                 container("maven") {
                     sh """
@@ -97,6 +95,8 @@ podTemplate(label: label,
             def gcloudRegistry = props ['gcloud.registry']
             def gcloudProjectName = props ['gcloud.project.name']
             def seVersion = props ['axonserver.se.version']
+
+            def slackReport = "Maven build for Axon Server EE ${pomVersion} using SE version ${seVersion} (branch \"${gitBranch}\")."
 
             def mavenTarget = "clean verify"
 
