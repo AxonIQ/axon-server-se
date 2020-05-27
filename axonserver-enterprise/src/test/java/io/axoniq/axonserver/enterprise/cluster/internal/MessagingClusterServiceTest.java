@@ -79,8 +79,7 @@ public class MessagingClusterServiceTest {
                                                                     .setQuery("query")
                                                                     .setComponentName("Component")
                                                                     .setClientId("Client")
-                                                                    .setResultName("Result")
-                                                                    .setNrOfHandlers(1))
+                                                                    .setResultName("Result"))
                                          .setContext(Topology.DEFAULT_CONTEXT)
                                          .build();
 

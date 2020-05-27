@@ -33,19 +33,20 @@ public class JpaLocalEventStoreTest {
         testSubject = new LocalEventStore(
                 new JdbcEventStoreFactory(storageProperties,
                                           new ProtoMetaDataSerializer(),
-                                          new SingleSchemaMultiContextStrategy(storageProperties.getVendorSpecific()),c -> true),
+                                          new SingleSchemaMultiContextStrategy(storageProperties.getVendorSpecific()),
+                                          c -> true),
                 new SimpleMeterRegistry(),
                 SingleInstanceTransactionManager::new,
                 c -> true);
+        testSubject.start();
         testSubject.initContext("default", false);
     }
 
     @Test
-    public void readAggregate() {
+    public void readAggregate() throws InterruptedException {
         int aggregeteIdCount = 5;
         int eventsPerAggregate = 5;
         String[] aggregateIds = storeEvents(aggregeteIdCount, eventsPerAggregate);
-
 
 
         GetAggregateEventsRequest request = GetAggregateEventsRequest.newBuilder().setAggregateId(aggregateIds[0])
@@ -53,8 +54,17 @@ public class JpaLocalEventStoreTest {
 
         CollectingStreamObserver<InputStream> responseObserver = new CollectingStreamObserver<>();
         testSubject.listAggregateEvents("default", request, responseObserver);
+        waitForCompleted(responseObserver);
 
         TestCase.assertEquals(eventsPerAggregate, responseObserver.messages.size());
+    }
+
+    private void waitForCompleted(CollectingStreamObserver<InputStream> responseObserver)
+            throws InterruptedException {
+        int retries = 10;
+        while (!responseObserver.success && retries-- > 0) {
+            Thread.sleep(100);
+        }
     }
 
     @Test
@@ -73,6 +83,7 @@ public class JpaLocalEventStoreTest {
 
         CollectingStreamObserver<InputStream> responseObserver = new CollectingStreamObserver<>();
         testSubject.listAggregateEvents("default", request, responseObserver);
+        waitForCompleted(responseObserver);
 
         TestCase.assertEquals(8, responseObserver.messages.size());
     }

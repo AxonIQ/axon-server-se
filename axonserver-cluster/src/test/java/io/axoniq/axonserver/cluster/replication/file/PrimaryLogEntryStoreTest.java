@@ -43,7 +43,8 @@ public class PrimaryLogEntryStoreTest {
             }
         };
         StorageProperties storageOptions = new StorageProperties();
-        storageOptions.setSegmentSize(1024*1024);
+        storageOptions.setForceCleanMmapIndex(true);
+        storageOptions.setSegmentSize(1024 * 1024);
         storageOptions.setLogStorageFolder(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
 
 

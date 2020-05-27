@@ -1,14 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.cluster.LogEntryConsumer;
-import io.axoniq.axonserver.cluster.NewConfigurationConsumer;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.StateChanged;
 import io.axoniq.axonserver.cluster.grpc.RaftGroupManager;
 import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftStateRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
@@ -18,17 +14,14 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -48,41 +41,26 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
 
     private static final boolean NO_EVENT_STORE = false;
     private final Logger logger = LoggerFactory.getLogger(GrpcRaftController.class);
-    private final JpaRaftStateRepository raftStateRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Map<String, RaftGroup> raftGroupMap = new ConcurrentHashMap<>();
     private final RaftGroupRepositoryManager raftGroupNodeRepository;
     private final RaftProperties raftProperties;
     private final ApplicationEventPublisher eventPublisher;
-    private final AxonServerGrpcRaftClientFactory grpcRaftClientFactory;
-    private final ApplicationContext applicationContext;
-    private final PlatformTransactionManager platformTransactionManager;
-    private final JpaRaftGroupNodeRepository nodeRepository;
-    private final SnapshotDataProviders snapshotDataProviders;
+    private final GrpcRaftGroupFactory groupFactory;
+    private final Map<String, Long> blacklistedGroups = new ConcurrentHashMap<>();
     private boolean running;
     private volatile boolean replicationServerStarted;
-    private volatile LocalEventStore localEventStore;
 
-    public GrpcRaftController(JpaRaftStateRepository raftStateRepository,
-                              MessagingPlatformConfiguration messagingPlatformConfiguration,
-                              RaftGroupRepositoryManager raftGroupNodeRepository,
+    public GrpcRaftController(MessagingPlatformConfiguration messagingPlatformConfiguration,
                               RaftProperties raftProperties,
+                              RaftGroupRepositoryManager raftGroupNodeRepository,
                               ApplicationEventPublisher eventPublisher,
-                              JpaRaftGroupNodeRepository nodeRepository,
-                              SnapshotDataProviders snapshotDataProviders,
-                              AxonServerGrpcRaftClientFactory grpcRaftClientFactory,
-                              ApplicationContext applicationContext,
-                              PlatformTransactionManager platformTransactionManager) {
-        this.raftStateRepository = raftStateRepository;
+                              GrpcRaftGroupFactory groupFactory) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
         this.raftProperties = raftProperties;
         this.eventPublisher = eventPublisher;
-        this.nodeRepository = nodeRepository;
-        this.snapshotDataProviders = snapshotDataProviders;
-        this.grpcRaftClientFactory = grpcRaftClientFactory;
-        this.applicationContext = applicationContext;
-        this.platformTransactionManager = platformTransactionManager;
+        this.groupFactory = groupFactory;
     }
 
 
@@ -92,7 +70,6 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             logger.warn("Updating replication segment size (axoniq.axonserver.replication.segment-size) to {}",
                         raftProperties.getSegmentSize());
         }
-        localEventStore = applicationContext.getBean(LocalEventStore.class);
         Set<JpaRaftGroupNode> groups = raftGroupNodeRepository.getMyContexts();
         groups.forEach(context -> {
             try {
@@ -148,27 +125,11 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
                 return existingRaftGroup;
             }
 
-            NewConfigurationConsumer newConfigurationConsumer = applicationContext
-                    .getBean(NewConfigurationConsumer.class);
-
-            RaftGroup raftGroup = new GrpcRaftGroup(localNodeId,
-                                                    groupId,
-                                                    raftStateRepository,
-                                                    nodeRepository,
-                                                    raftProperties,
-                                                    snapshotDataProviders,
-                                                    localEventStore,
-                                                    grpcRaftClientFactory,
-                                                    messagingPlatformConfiguration,
-                                                    newConfigurationConsumer,
-                                                    platformTransactionManager);
+            RaftGroup raftGroup = groupFactory.create(groupId, localNodeId);
 
             if (initializeEventStore) {
                 eventPublisher.publishEvent(new ContextEvents.ContextCreated(groupId));
             }
-            applicationContext.getBeansOfType(LogEntryConsumer.class)
-                              .forEach((name, bean) -> raftGroup.localNode()
-                                                                .registerEntryConsumer(bean));
             raftGroup.localNode().registerStateChangeListener(stateChanged -> stateChanged(raftGroup.localNode(),
                                                                                            stateChanged));
 
@@ -272,6 +233,9 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
         synchronized (raftGroupMap) {
             raftGroup = raftGroupMap.get(groupId);
             if (raftGroup == null) {
+                if (blacklisted(groupId)) {
+                    throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, "Context deletion in progress");
+                }
                 raftGroup = createRaftGroup(groupId, nodeId, NO_EVENT_STORE, null);
             }
         }
@@ -339,6 +303,7 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     }
 
     public void delete(String context, boolean preserveEventStore) {
+        blacklist(context);
         raftGroupMap.remove(context);
         if (context.equals(getAdmin())) {
             eventPublisher.publishEvent(new ContextEvents.AdminContextDeleted(context));
@@ -346,6 +311,15 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
             eventPublisher.publishEvent(new ContextEvents.ContextDeleted(context, preserveEventStore));
         }
     }
+
+    private void blacklist(String groupId) {
+        blacklistedGroups.put(groupId, System.currentTimeMillis() + 2 * raftProperties.getMaxElectionTimeout());
+    }
+
+    private boolean blacklisted(String groupId) {
+        return blacklistedGroups.getOrDefault(groupId, 0L) > System.currentTimeMillis();
+    }
+
 
     public void prepareDeleteNodeFromContext(String context, String node) {
         raftGroupNodeRepository.prepareDeleteNodeFromContext(context, node);

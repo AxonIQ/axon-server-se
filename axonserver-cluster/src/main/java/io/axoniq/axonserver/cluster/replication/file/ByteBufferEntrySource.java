@@ -26,7 +26,7 @@ public class ByteBufferEntrySource implements EntrySource {
         this.eventTransformer = eventTransformerFactory.get(version, flags, storageProperties);
         this.buffer = buffer;
         this.main = true;
-        this.cleanerHackNeeded = storageProperties.isCleanerHackNeeded();
+        this.cleanerHackNeeded = storageProperties.isForceCleanMmapIndex();
     }
 
     public ByteBufferEntrySource(ByteBuffer buffer, LogEntryTransformer eventTransformer, boolean cleanerHackNeeded) {

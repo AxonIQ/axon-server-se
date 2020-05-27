@@ -2,6 +2,7 @@ package io.axoniq.axonserver.cluster.replication.file;
 
 import io.axoniq.axonserver.cluster.exception.ErrorCode;
 import io.axoniq.axonserver.cluster.exception.LogException;
+import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.HTreeMap;
@@ -27,7 +28,8 @@ public class IndexManager {
 
     private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
     private static final String INDEX_MAP = "indexMap";
-    private static final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+    private static final ScheduledExecutorService scheduledExecutorService =
+            Executors.newScheduledThreadPool(1, new AxonThreadFactory("replication-index-"));
     private final StorageProperties storageProperties;
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
     private final String context;
@@ -36,6 +38,7 @@ public class IndexManager {
                         String context) {
         this.storageProperties = storageProperties;
         this.context = context;
+        scheduledExecutorService.scheduleAtFixedRate(this::indexCleanup, 10, 10, TimeUnit.SECONDS);
     }
 
 
@@ -54,21 +57,7 @@ public class IndexManager {
     }
 
     public Index getIndex(long segment) {
-        Index index = indexMap.get(segment);
-        if (index != null && !index.isClosed()) {
-            return index;
-        }
-
-        synchronized (indexMap) {
-            index = indexMap.get(segment);
-            if (index == null || index.isClosed()) {
-                logger.debug("{}: open index for {}", context, segment);
-                index = new IndexManager.Index(segment, false);
-                indexMap.put(segment, index);
-                indexCleanup();
-            }
-        }
-        return index;
+        return indexMap.computeIfAbsent(segment, Index::new).ensureReady();
     }
 
     private void indexCleanup() {
@@ -88,7 +77,7 @@ public class IndexManager {
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
         if (storageProperties.isUseMmapIndex()) {
             maker.fileMmapEnable();
-            if (storageProperties.isCleanerHackEnabled()) {
+            if (storageProperties.isForceCleanMmapIndex()) {
                 maker.cleanerHackEnable();
             }
         } else {
@@ -131,25 +120,14 @@ public class IndexManager {
 
     public class Index implements Closeable {
 
-        private final Map<Long, Integer> entriesMap;
-        private final DB db;
-        private final boolean managed;
+        private final long segment;
+        private final Object initLock = new Object();
+        private volatile boolean initialized;
+        private Map<Long, Integer> entriesMap;
+        private DB db;
 
-        private Index(long  segment, boolean managed) {
-            this.managed = managed;
-            DBMaker.Maker maker = DBMaker.fileDB(storageProperties.indexFile(context, segment))
-                                         .readOnly()
-                                         .fileLockDisable();
-            if( storageProperties.isUseMmapIndex()) {
-                maker.fileMmapEnable();
-                if (storageProperties.isCleanerHackEnabled()) {
-                    maker.cleanerHackEnable();
-                }
-            } else {
-                maker.fileChannelEnable();
-            }
-            this.db = maker.make();
-            this.entriesMap = db.hashMap(INDEX_MAP, Serializer.LONG, Serializer.INTEGER).createOrOpen();
+        private Index(long segment) {
+            this.segment = segment;
         }
 
         public Integer getPosition(long index) {
@@ -157,11 +135,37 @@ public class IndexManager {
         }
 
         public void close() {
-            if( !managed) db.close();
+            logger.debug("{}: close {}", segment, storageProperties.indexFile(context, segment));
+            db.close();
         }
 
-        public boolean isClosed() {
-            return db.isClosed();
+        public Index ensureReady() {
+            if (initialized && !db.isClosed()) {
+                return this;
+            }
+
+            synchronized (initLock) {
+                if (initialized && !db.isClosed()) {
+                    return this;
+                }
+                logger.debug("{}: open {}", segment, storageProperties.indexFile(context, segment));
+
+                DBMaker.Maker maker = DBMaker.fileDB(storageProperties.indexFile(context, segment))
+                                             .readOnly()
+                                             .fileLockDisable();
+                if (storageProperties.isUseMmapIndex()) {
+                    maker.fileMmapEnable();
+                    if (storageProperties.isForceCleanMmapIndex()) {
+                        maker.cleanerHackEnable();
+                    }
+                } else {
+                    maker.fileChannelEnable();
+                }
+                this.db = maker.make();
+                this.entriesMap = db.hashMap(INDEX_MAP, Serializer.LONG, Serializer.INTEGER).createOrOpen();
+                initialized = true;
+            }
+            return this;
         }
     }
 }

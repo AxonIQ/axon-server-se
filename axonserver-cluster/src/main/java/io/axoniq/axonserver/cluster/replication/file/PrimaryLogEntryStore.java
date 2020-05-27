@@ -366,8 +366,9 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
                 buffer.position(5);
             }
             WritableEntrySource writableEventSource = new WritableEntrySource(buffer,
-                    logEntryTransformer,
-                    storageProperties.isCleanerHackNeeded());
+                                                                              logEntryTransformer,
+                                                                              storageProperties
+                                                                                      .isForceCleanMmapIndex());
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {

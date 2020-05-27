@@ -24,7 +24,7 @@ public class DefaultScheduler implements Scheduler {
      * Creates the Default Scheduler, uses {@link Executors#newScheduledThreadPool(int)}.
      */
     public DefaultScheduler() {
-        this(Executors.newScheduledThreadPool(2));
+        this(Executors.newScheduledThreadPool(2, new AxonThreadFactory("default-scheduler-")));
     }
 
     /**
