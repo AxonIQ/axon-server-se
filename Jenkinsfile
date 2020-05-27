@@ -4,7 +4,9 @@ import hudson.model.Actionable
 properties([
     [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', numToKeepStr: '5']]
 ])
+
 def label = "worker-${UUID.randomUUID().toString()}"
+
 def deployingBranches = [
     "master", "axonserver-ee-4.3.x"
 ]
@@ -12,6 +14,9 @@ def dockerBranches = [
     "master", "axonserver-ee-4.3.x"
 ]
 
+/*
+ * Check if we want to do something extra.
+ */
 def relevantBranch(thisBranch, branches) {
     for (br in branches) {
         if (thisBranch == br) {
@@ -20,6 +25,10 @@ def relevantBranch(thisBranch, branches) {
     }
     return false;
 }
+
+/*
+ * Prepare a textual summary of the Unit tests, for sending to Slack
+ */
 @NonCPS
 def getTestSummary = { ->
     def testResultAction = currentBuild.rawBuild.getAction(AbstractTestResultAction.class)
@@ -34,6 +43,10 @@ def getTestSummary = { ->
     }
     return summary
 }
+
+/*
+ * Using the Kubernetes plugin for Jenkins, we run everything in a Maven pod.
+ */
 podTemplate(label: label,
     containers: [
         containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:latest',
@@ -49,10 +62,10 @@ podTemplate(label: label,
     ],
     volumes: [
         hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
-        secretVolume(secretName: 'cacerts', mountPath: '/docker-java-home/lib/security'),
         secretVolume(secretName: 'dockercfg', mountPath: '/dockercfg'),
         secretVolume(secretName: 'jenkins-nexus', mountPath: '/nexus_settings'),
         secretVolume(secretName: 'test-settings', mountPath: '/axoniq'),
+        secretVolume(secretName: 'cacerts', mountPath: '/docker-java-home/lib/security'),
         secretVolume(secretName: 'maven-settings', mountPath: '/maven_settings')
     ]) {
         node(label) {
@@ -60,15 +73,16 @@ podTemplate(label: label,
             def gitCommit = myRepo.GIT_COMMIT
             def gitBranch = myRepo.GIT_BRANCH
             def shortGitCommit = "${gitCommit[0..10]}"
-            def previousGitCommit = sh(script: "git rev-parse ${gitCommit}~", returnStdout: true)
-            def tag = sh(returnStdout: true, script: "git tag --contains | head -1").trim()
-            def onTag = sh(returnStdout: true, script: "git tag --points-at | head -1").trim()
 
-            def testRun = gitBranch.equals("feature/release-builds")
-            def releaseBuild = (!tag.isEmpty() && tag.equals(onTag)) || testRun
+            def tag = sh(returnStdout: true, script: "git tag --contains | head -1").trim()
+            def onTag = sh(returnStdout: true, script: "git tag --points-at HEAD | head -1").trim()
+
+            def releaseBuild = (!tag.isEmpty() && tag.equals(onTag))
 
             pom = readMavenPom file: 'pom.xml'
             def pomVersion = pom.version
+
+            def slackReport = "Maven build for Axon Server EE ${pomVersion} using SE version ${seVersion} (branch \"${gitBranch}\")."
 
             stage ('Project setup') {
                 container("maven") {
@@ -84,8 +98,6 @@ podTemplate(label: label,
             def gcloudProjectName = props ['gcloud.project.name']
             def seVersion = props ['axonserver.se.version']
 
-            def slackReport = "Maven build for Axon Server EE ${pomVersion} using SE version ${seVersion} (branch \"${gitBranch}\")."
-
             def mavenTarget = "clean verify"
 
             stage ('Maven build') {
@@ -99,7 +111,7 @@ podTemplate(label: label,
                         }
                         mavenTarget = "-Pcoverage " + mavenTarget
                         try {
-                            sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"
+                            sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"   // Ignore test failures; we want the numbers only.
 
                             if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                                 slackReport = slackReport + "\nDeployed to dev-nexus"
@@ -109,11 +121,11 @@ podTemplate(label: label,
                             }
                         }
                         catch (err) {
-                            slackReport = slackReport + "\nMaven build FAILED!"
+                            slackReport = slackReport + "\nMaven build FAILED!"             // This means build itself failed, not 'just' tests
                             throw err
                         }
                         finally {
-                            junit '**/target/surefire-reports/TEST-*.xml'
+                            junit '**/target/surefire-reports/TEST-*.xml'                   // Read the test results
                             slackReport = slackReport + "\n" + getTestSummary()
                         }
                     }
@@ -124,7 +136,7 @@ podTemplate(label: label,
 
             def gceZone = testSettings ['io.axoniq.axonserver.infrastructure.gce.zone']
             def imgFamily = "axonserver-enterprise"
-            def imgVersion = pomVersion.toLowerCase().replace('.', '-') + (testRun ? "-test" : "")
+            def imgVersion = pomVersion.toLowerCase().replace('.', '-')
 
             stage ('VM image build') {
                 if (releaseBuild) {
@@ -136,8 +148,10 @@ podTemplate(label: label,
             }
 
             stage ('Run SonarQube') {
-                sh "mvn \${MVN_BLD} -DskipTests -Dsonar.branch.name=${gitBranch} -Psonar sonar:sonar"
-                slackReport = slackReport + "\nSources analyzed in SonarQube."
+                container("maven") {
+                    sh "mvn \${MVN_BLD} -DskipTests -Dsonar.branch.name=${gitBranch} -Psonar sonar:sonar"
+                    slackReport = slackReport + "\nSources analyzed in SonarQube."
+                }
             }
 
             stage('Trigger followup') {
