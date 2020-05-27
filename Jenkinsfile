@@ -11,7 +11,7 @@ def dockerBranches = [
     "master", "axonserver-ee-4.3.x"
 ]
 def sonarBranches = [
-    "master", "axonserver-ee-4.3.x", "feature/add-coverage"
+    "master", "axonserver-ee-4.3.x"
 ]
 def relevantBranch(thisBranch, branches) {
     for (br in branches) {
