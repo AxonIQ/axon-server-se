@@ -14,7 +14,7 @@ def dockerBranches = [      // The branches mentioned here will get Docker test 
     "master", "axonserver-se-4.3.x"
 ]
 def sonarBranches = [       // The branches mentioned here will get a SonarQube analysis
-    "master", "axonserver-se-4.3.x", "feature/add-coverage"
+    "master", "axonserver-se-4.3.x"
 ]
 
 /*
