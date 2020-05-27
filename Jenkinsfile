@@ -13,9 +13,6 @@ def deployingBranches = [   // The branches mentioned here will get their artifa
 def dockerBranches = [      // The branches mentioned here will get Docker test images built
     "master", "axonserver-se-4.3.x"
 ]
-def sonarBranches = [       // The branches mentioned here will get a SonarQube analysis
-    "master", "axonserver-se-4.3.x"
-]
 
 /*
  * Check if we want to do something extra.
@@ -87,9 +84,7 @@ podTemplate(label: label,
                     if (relevantBranch(gitBranch, dockerBranches)) {
                         mavenTarget = "-Pdocker " + mavenTarget
                     }
-                    if (relevantBranch(gitBranch, sonarBranches)) {
-                        mavenTarget = "-Pcoverage " + mavenTarget
-                    }
+                    mavenTarget = "-Pcoverage " + mavenTarget
 
                     try {
                         sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"   // Ignore test failures; we want the numbers only.
@@ -114,10 +109,9 @@ podTemplate(label: label,
             }
 
             stage ('Run SonarQube') {
-                if (relevantBranch(gitBranch, sonarBranches)) {                        // Run SonarQube analyses for some branches
-                    container("maven") {
-                        sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
-                    }
+                container("maven") {
+                    sh "mvn \${MVN_BLD} -DskipTests -Dsonar.branch.name=${gitBranch}  -Psonar sonar:sonar"
+                    slackReport = slackReport + "\nSources analyzed in SonarQube."
                 }
             }
 
