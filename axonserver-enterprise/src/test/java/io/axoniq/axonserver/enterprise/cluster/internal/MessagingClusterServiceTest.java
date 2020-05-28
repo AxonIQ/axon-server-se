@@ -4,6 +4,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentR
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.licensing.LicenseManager;
@@ -12,8 +13,8 @@ import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,7 +34,7 @@ public class MessagingClusterServiceTest {
     private final QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
     private final ClusterController clusterController = mock(ClusterController.class);
     private final FakeApplicationEventPublisher eventPublisher = new FakeApplicationEventPublisher();
-    private final LicenseManager licenseManager = mock(LicenseManager.class);;
+    private final LicenseManager licenseManager = mock(LicenseManager.class);
     private MessagingClusterService testSubject;
 
     @Before
@@ -127,7 +128,7 @@ public class MessagingClusterServiceTest {
 
         Iterator<Object> eventIterator = eventPublisher.events().iterator();
         Object next = eventIterator.next();
-        assertEquals(TopologyEvents.ApplicationConnected.class, next.getClass());
+        assertEquals(ClientTagsUpdate.class, next.getClass());
         assertFalse(eventIterator.hasNext());
 
     }

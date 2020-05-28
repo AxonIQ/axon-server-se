@@ -1,14 +1,11 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
-import io.axoniq.axonserver.enterprise.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.concurrent.CompletableFuture;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
@@ -25,12 +22,12 @@ public class PrepareUpdateLicenseTask implements ScheduledTask {
     private final ClusterController clusterController;
 
     public PrepareUpdateLicenseTask(TaskPublisher taskPublisher, ClusterController clusterController) {
-        this.taskPublisher = taskPublisher;;
+        this.taskPublisher = taskPublisher;
         this.clusterController = clusterController;
     }
 
     @Override
-    public void execute(Object payload) {
+    public void execute(String context, Object payload) {
         byte[] licensePayload = (byte[]) payload;
 
         clusterController.nodes()

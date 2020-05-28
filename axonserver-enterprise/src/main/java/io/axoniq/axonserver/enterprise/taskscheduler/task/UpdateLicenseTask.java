@@ -4,12 +4,10 @@ import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
-import io.axoniq.axonserver.enterprise.jpa.Payload;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
-import io.axoniq.axonserver.enterprise.taskscheduler.TaskPayloadSerializer;
-import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.grpc.internal.UpdateLicense;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
+import io.axoniq.axonserver.taskscheduler.TransientException;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +30,7 @@ public class UpdateLicenseTask implements ScheduledTask {
     }
 
     @Override
-    public void execute(Object payload) {
+    public void execute(String context, Object payload) {
 
         UpdateLicenseTaskPayload licenseTaskPayload = (UpdateLicenseTaskPayload) payload;
 

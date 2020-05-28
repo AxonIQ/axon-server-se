@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.licensing;
 
+import io.axoniq.axonserver.enterprise.cluster.ClusterNodeRepository;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.config.AxonServerEnterpriseProperties;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -55,10 +56,19 @@ public class LicenseManager {
     private final String LICENSE_FILENAME = "axoniq.license";
     private final String LICENSE_DIRECTORY;
     private static final String AXON_SERVER = "AxonServer";
+    private final ClusterNodeRepository clusterNodeRepository;
 
-    public LicenseManager(AxonServerEnterpriseProperties axonServerEnterpriseProperties) {
+    public LicenseManager(AxonServerEnterpriseProperties axonServerEnterpriseProperties, ClusterNodeRepository clusterNodeRepository) {
         LICENSE_DIRECTORY = axonServerEnterpriseProperties.getLicenseDirectory() == null
                 ? Paths.get("").toAbsolutePath().toString() : axonServerEnterpriseProperties.getLicenseDirectory();
+
+        this.clusterNodeRepository = clusterNodeRepository;
+    }
+
+    public long nodesCount() {
+        return clusterNodeRepository
+                .findAll()
+                .size();
     }
 
     @EventListener
@@ -176,11 +186,30 @@ public class LicenseManager {
     /**
      * Validates that license content is valid
      *
-     * @param licenseContent
+     * @param licenseContent as bytes array
      */
     public void validate(byte[] licenseContent) {
         Properties licenseProperties = loadProperties(licenseContent);
         validate(licenseProperties);
+    }
+
+    boolean validateSilently(byte[] licenseContent) {
+        try {
+            Properties licenseProperties = loadProperties(licenseContent);
+            validate(licenseProperties);
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean validateSilently() {
+        try {
+            getLicenseConfiguration();
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
     }
 
     private void validate(Properties licenseProperties) {
@@ -219,6 +248,14 @@ public class LicenseManager {
                 throw LicenseException.wrongProduct(product);
             }
 
+            int allowedClusterNodes = Integer.parseInt((String) licenseProperties.get("clusterNodes"));
+            long clusterNodes = nodesCount();
+
+            if (clusterNodes > allowedClusterNodes) {
+                logger.error("Cluster limited to " + allowedClusterNodes + " but found " + clusterNodes + " nodes.");
+                throw LicenseException.allowedClusterNodesExceeded(allowedClusterNodes,clusterNodes);
+            }
+
         } catch (SignatureException ex) {
             throw LicenseException.wrongSignature("SignatureException: " + ex.getMessage());
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException ex) {
@@ -243,9 +280,9 @@ public class LicenseManager {
                     properties.getProperty("packs"),
                     getLocalDate(properties.getProperty("grace_date")));
 
-            logger.info("Licensed to: {}", licenseConfiguration.getLicensee());
-            logger.info("Running {} mode", licenseConfiguration.getEdition());
-            logger.info("License expiry date is {}", licenseConfiguration.getExpiryDate());
+            logger.debug("Licensed to: {}", licenseConfiguration.getLicensee());
+            logger.debug("Running {} mode", licenseConfiguration.getEdition());
+            logger.debug("License expiry date is {}", licenseConfiguration.getExpiryDate());
 
             return licenseConfiguration;
         }

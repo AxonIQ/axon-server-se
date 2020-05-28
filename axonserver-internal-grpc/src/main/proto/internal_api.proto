@@ -167,10 +167,10 @@ message ConnectorCommand {
         QueryHandlerStatus query_handler_status = 37;
         ClientEventProcessorSegment split_segment = 38;
         ClientEventProcessorSegment merge_segment = 39;
-        UpdateLicense update_license = 40;
 
         /*Axon Server internal event, propagated to all nodes in the cluster*/
         io.axoniq.axonserver.grpc.SerializedObject internal_event = 40;
+        UpdateLicense update_license = 41;
     }
 }
 
@@ -231,6 +231,7 @@ message ClientStatus {
     string component_name = 2;
     string context = 3;
     bool connected = 4;
+    map<string, string> tags = 5;
 }
 
 message CommandHandlerStatus {

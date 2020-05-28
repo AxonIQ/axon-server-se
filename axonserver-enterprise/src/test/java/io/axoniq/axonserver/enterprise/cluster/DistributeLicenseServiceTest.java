@@ -4,14 +4,13 @@ import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
-import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenseTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.UpdateLicenseTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.UpdateLicenseTaskPayload;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.licensing.LicenseManager;
-import io.axoniq.axonserver.licensing.Limits;
+import io.axoniq.axonserver.taskscheduler.TransientException;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
@@ -87,9 +86,9 @@ public class DistributeLicenseServiceTest {
         });
 
 
-        taskPublisher = new TaskPublisher(null, null) {
+        taskPublisher = new TaskPublisher(null, null, null) {
             @Override
-            public CompletableFuture<Void> publishScheduledTask(String context, String taskHandler, Object payload,
+            public CompletableFuture<String> publishScheduledTask(String context, String taskHandler, Object payload,
                                                                 Duration delay) {
                 scheduledPayloadsTasks.computeIfAbsent(taskHandler, c -> new CopyOnWriteArraySet<>()).add(payload);
                 return CompletableFuture.completedFuture(null);
@@ -104,14 +103,14 @@ public class DistributeLicenseServiceTest {
     public void distributeLicense() {
         testSubject.distributeLicense("myLicense".getBytes());
         assertEquals(1, scheduledPayloadsTasks.size());
-        assertTrue(scheduledPayloadsTasks.keySet().contains(PrepareUpdateLicenseTask.class.getName()));
+        assertTrue(scheduledPayloadsTasks.containsKey(PrepareUpdateLicenseTask.class.getName()));
     }
 
     @Test
     public void prepareUpdateLicenseTask() {
 
         PrepareUpdateLicenseTask prepareUpdateLicenseTask = new PrepareUpdateLicenseTask(taskPublisher, clusterController);
-        prepareUpdateLicenseTask.execute("myLicense".getBytes());
+        prepareUpdateLicenseTask.execute("","myLicense".getBytes());
 
 
         Set<UpdateLicenseTaskPayload> scheduledPayloads = scheduledPayloadsTasks.getOrDefault(UpdateLicenseTask.class.getName(), Collections.emptySet())
@@ -131,7 +130,7 @@ public class DistributeLicenseServiceTest {
         UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("adminNode", "myLicense".getBytes());
 
         UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(clusterController, applicationEventPublisher);
-        updateLicenseTask.execute(updateLicenseTaskPayload);
+        updateLicenseTask.execute("",updateLicenseTaskPayload);
 
         verify(applicationEventPublisher, times(1)).publishEvent(any(ClusterEvents.LicenseUpdated.class));
     }
@@ -149,7 +148,7 @@ public class DistributeLicenseServiceTest {
         UpdateLicenseTaskPayload updateLicenseTaskPayload = new UpdateLicenseTaskPayload("remoteNode", "myLicense".getBytes());
 
         UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(clusterController, applicationEventPublisher);
-        updateLicenseTask.execute(updateLicenseTaskPayload);
+        updateLicenseTask.execute("",updateLicenseTaskPayload);
 
         verify(remoteConnection, times(1)).publish(any(ConnectorCommand.class));
 
@@ -161,7 +160,7 @@ public class DistributeLicenseServiceTest {
         assertEquals(licenseContent, "myLicense");
     }
 
-    @Test
+    @Test(expected = TransientException.class)
     public void updateLicenseTaskRemoteDisconnectedNode() {
         when(clusterController.getMe().getName()).thenReturn("adminNode");
 
@@ -175,11 +174,8 @@ public class DistributeLicenseServiceTest {
 
         UpdateLicenseTask updateLicenseTask = new UpdateLicenseTask(clusterController, applicationEventPublisher);
 
-        try {
-            updateLicenseTask.execute(updateLicenseTaskPayload);
-        } catch (TransientException e) {
-            assertTrue(true);
-        }
+
+        updateLicenseTask.execute("",updateLicenseTaskPayload);
     }
 
 

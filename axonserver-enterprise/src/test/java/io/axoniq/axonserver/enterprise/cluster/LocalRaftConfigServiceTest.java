@@ -67,7 +67,7 @@ public class LocalRaftConfigServiceTest {
     private FakeRaftGroupService fakeRaftGroupService = new FakeRaftGroupService();
     private TaskPublisher taskPublisher;
     private Map<String, Set<String>> scheduledTasks = new ConcurrentHashMap<>();
-    private LicenseManager licenseManager = mock(LicenseManager.class);
+    private final LicenseManager licenseManager = mock(LicenseManager.class);
     private Limits limits = mock(Limits.class);
 
     private ClusterNode createNode(String name) {
@@ -347,6 +347,7 @@ public class LocalRaftConfigServiceTest {
         };
 
         when(limits.isEnterprise()).thenReturn(true);
+        when(limits.getMaxClusterSize()).thenReturn(100);
         when(licenseManager.readLicense()).thenReturn("license".getBytes());
 
         testSubject = new LocalRaftConfigService(grpcRaftController,

@@ -3,13 +3,16 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.enterprise.taskscheduler.LocalTaskManager;
-import io.axoniq.axonserver.enterprise.taskscheduler.ScheduledTask;
-import io.axoniq.axonserver.enterprise.taskscheduler.TransientException;
+import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.UpdateLicense;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
+import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
+import io.axoniq.axonserver.taskscheduler.TransientException;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -34,7 +37,8 @@ public class RegisterNodeTask implements ScheduledTask {
 
     public RegisterNodeTask(StandaloneTaskManager taskManager,
                             ClusterController clusterController,
-                            RaftConfigServiceFactory raftServiceFactory) {
+                            RaftConfigServiceFactory raftServiceFactory,
+                            ApplicationEventPublisher eventPublisher) {
         this.taskManager = taskManager;
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;

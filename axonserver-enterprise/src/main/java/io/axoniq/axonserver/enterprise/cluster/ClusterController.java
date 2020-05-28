@@ -307,7 +307,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         if (remoteConnections.containsKey(nodeName) || messagingPlatformConfiguration.getName().equals(nodeName)) {
             return;
         }
-        if (remoteConnections.size() + 1 > limits.getMaxClusterSize()) {
+        if (remoteConnections.size() + 1 >= limits.getMaxClusterSize()) {
             throw new MessagingPlatformException(ErrorCode.MAX_CLUSTER_SIZE_REACHED,
                                                  "Maximum allowed number of nodes reached " + nodeName);
         }

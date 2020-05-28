@@ -7,7 +7,7 @@ import java.time.LocalDate;
  * Exception to throw when something goes wrong the license file verification, including
  * some useful factory methods.
  *
- * @author Frans van Buul
+ * @author Stefan Dragisic
  */
 public class LicenseException extends RuntimeException {
 
@@ -21,6 +21,10 @@ public class LicenseException extends RuntimeException {
 
     public static LicenseException wrongProduct(String expectedProduct) {
         return new LicenseException("This license does not cover " + expectedProduct + ".");
+    }
+
+    public static LicenseException allowedClusterNodesExceeded(int allowedNodes, long currentNodes) {
+        return new LicenseException("Cluster limited to " + allowedNodes + " but found " + currentNodes + " nodes. Update number of nodes accordingly and re-upload license.");
     }
 
     public static LicenseException wrongSignature(String details) {
