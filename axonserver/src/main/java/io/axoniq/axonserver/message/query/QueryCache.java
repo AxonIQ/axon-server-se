@@ -11,9 +11,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.localstorage.query.QueryExecutionException;
 import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +19,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -85,7 +84,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     }
 
     @Override
-    public QueryInformation put(@NotNull String key, @NotNull QueryInformation value) {
+    public QueryInformation put(@Nonnull String key, @Nonnull QueryInformation value) {
         checkCapacity();
         return super.put(key, value);
     }

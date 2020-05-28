@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.command;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
+import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +36,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     private final long defaultCommandTimeout;
     private final Clock clock;
     private final long cacheCapacity;
-
+    private final int COMMANDS_PER_GB = 2500;
     @Autowired
     public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
                         Clock clock, @Value("${axoniq.axonserver.command-cache-capacity:0}") long cacheCapacity) {
@@ -47,7 +47,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
             this.cacheCapacity = cacheCapacity;
         } else {
             long totalMemory = DataSize.ofBytes(Runtime.getRuntime().maxMemory()).toGigabytes();
-            this.cacheCapacity = (totalMemory > 0) ? (2500 * totalMemory) : 2500;
+            this.cacheCapacity = (totalMemory > 0) ? (COMMANDS_PER_GB * totalMemory) : COMMANDS_PER_GB;
         }
 
     }
@@ -76,7 +76,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     }
 
     @Override
-    public CommandInformation put(@NotNull String key, @NotNull CommandInformation value) {
+    public CommandInformation put(@Nonnull String key, @Nonnull CommandInformation value) {
         checkCapacity();
         return super.put(key, value);
     }
