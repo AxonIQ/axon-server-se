@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -21,7 +22,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -46,25 +46,26 @@ public class CommandRegistrationCache {
     private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
     private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
-    private final BiFunction<Command, ClientIdentification, Integer> filter;
+    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter;
 
     @Autowired
-    public CommandRegistrationCache(BiFunction<Command, ClientIdentification, Integer> filter) {
+    public CommandRegistrationCache(
+            BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter) {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
         this.filter = filter;
     }
 
     public CommandRegistrationCache() {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
-        this.filter = (command, target) -> 0;
+        this.filter = (metaData, targets) -> targets;
     }
 
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory) {
-        this(selectorFactory, (command, target) -> 0);
+        this(selectorFactory, (metaData, targets) -> targets);
     }
 
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory,
-                                    BiFunction<Command, ClientIdentification, Integer> filter) {
+                                    BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter) {
         this.selectorFactory = selectorFactory;
         this.filter = filter;
     }
@@ -169,7 +170,8 @@ public class CommandRegistrationCache {
         if (candidates.size() == 1) {
             return commandHandlersPerClientContext.get(candidates.iterator().next());
         }
-        Set<String> candidateNames = candidates.stream().map(s -> s.getClient()).collect(Collectors.toSet());
+        Set<String> candidateNames = candidates.stream().map(ClientIdentification::getClient).collect(Collectors
+                                                                                                              .toSet());
         RoutingSelector<String> routingSelector = routingSelector(context, command);
         return routingSelector
                 .selectHandler(routingKey, candidateNames)
@@ -179,31 +181,19 @@ public class CommandRegistrationCache {
 
     private Set<ClientIdentification> getCandidates(Command command) {
 
-        Map<ClientIdentification, Integer> scorePerClient = new HashMap<>();
-        registrationsPerClient.entrySet()
-                              .stream()
-                              .filter(entry -> entry.getValue().containsKey(command.getName()))
-                              .forEach(entry -> scorePerClient.computeIfAbsent(entry.getKey(),
-                                                                               m -> filter.apply(command,
-                                                                                                 entry.getKey())));
-
-        return getHighestScore(scorePerClient);
+        Set<ClientIdentification> candidates = registrationsPerClient.entrySet()
+                                                                     .stream()
+                                                                     .filter(entry -> entry
+                                                                             .getValue()
+                                                                             .containsKey(
+                                                                                     command.getName()))
+                                                                     .map(Map.Entry::getKey)
+                                                                     .collect(
+                                                                             Collectors
+                                                                                     .toSet());
+        return filter.apply(command.getMetaDataMap(), candidates);
     }
 
-    private Set<ClientIdentification> getHighestScore(Map<ClientIdentification, Integer> scorePerClient) {
-        Set<ClientIdentification> bestClients = new HashSet<>();
-        int highest = Integer.MIN_VALUE;
-        for (Map.Entry<ClientIdentification, Integer> score : scorePerClient.entrySet()) {
-            if (score.getValue() > highest) {
-                bestClients = new HashSet<>();
-                highest = score.getValue();
-            }
-            if (score.getValue() == highest) {
-                bestClients.add(score.getKey());
-            }
-        }
-        return bestClients;
-    }
 
     @Nonnull
     private RoutingSelector<String> routingSelector(String context, String command) {

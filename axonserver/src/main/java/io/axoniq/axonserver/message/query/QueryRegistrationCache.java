@@ -10,9 +10,12 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
+import org.eclipse.collections.impl.factory.Sets;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +31,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.emptySet;
@@ -38,12 +42,21 @@ import static java.util.stream.Collectors.toSet;
  */
 @Component("QueryRegistrationCache")
 public class QueryRegistrationCache {
+
     private final QueryHandlerSelector queryHandlerSelector;
+    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter;
 
     private final Map<QueryDefinition, QueryInformation> registrationsPerQuery = new ConcurrentHashMap<>();
 
-    public QueryRegistrationCache(QueryHandlerSelector queryHandlerSelector) {
+    @Autowired
+    public QueryRegistrationCache(QueryHandlerSelector queryHandlerSelector,
+                                  BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter) {
         this.queryHandlerSelector = queryHandlerSelector;
+        this.filter = filter;
+    }
+
+    public QueryRegistrationCache(QueryHandlerSelector queryHandlerSelector) {
+        this(queryHandlerSelector, (metadata, clients) -> clients);
     }
 
     @EventListener
@@ -84,12 +97,22 @@ public class QueryRegistrationCache {
     public Set<QueryHandler> find(String context, QueryRequest request) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
-        if( queryInformation == null) return Collections.emptySet();
+        if (queryInformation == null) {
+            return Collections.emptySet();
+        }
 
+        Set<ClientIdentification> candidates = queryInformation.getHandlersPerComponent()
+                                                               .values()
+                                                               .stream()
+                                                               .flatMap(Collection::stream).collect(toSet());
+        Set<ClientIdentification> filteredCandidates = filter.apply(request.getMetaDataMap(), candidates);
         return queryInformation.getHandlersPerComponent().entrySet().stream()
-                                                    .map( entry -> pickOne(queryDefinition, entry.getKey(), entry.getValue()))
-                                                    .filter(Objects::nonNull)
-                                                    .collect(toSet());
+                               .map(entry -> pickOne(queryDefinition,
+                                                     entry.getKey(),
+                                                     entry.getValue(),
+                                                     filteredCandidates))
+                               .filter(Objects::nonNull)
+                               .collect(toSet());
     }
 
     public Collection<QueryHandler> findAll(String context, QueryRequest request) {
@@ -97,10 +120,19 @@ public class QueryRegistrationCache {
         return (registrationsPerQuery.containsKey(def)) ?  registrationsPerQuery.get(def).handlers.values() : emptySet();
     }
 
-    private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName, NavigableSet<ClientIdentification> queryHandlers) {
-        if (queryHandlers.isEmpty()) return null;
-        ClientIdentification client = queryHandlerSelector.select(queryDefinition, componentName, queryHandlers);
-        if( client == null) return null;
+    private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName,
+                                 NavigableSet<ClientIdentification> queryHandlers,
+                                 Set<ClientIdentification> filteredCandidates) {
+        if (queryHandlers.isEmpty()) {
+            return null;
+        }
+        ClientIdentification client = queryHandlerSelector.select(queryDefinition,
+                                                                  componentName,
+                                                                  new TreeSet<>(Sets.intersect(queryHandlers,
+                                                                                               filteredCandidates)));
+        if (client == null) {
+            return null;
+        }
         return registrationsPerQuery.get(queryDefinition).getHandler(client);
     }
 

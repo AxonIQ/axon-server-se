@@ -7,39 +7,52 @@
  *
  */
 
-package io.axoniq.axonserver.message.command;
+package io.axoniq.axonserver.message;
 
 import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.message.ClientIdentification;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
  * @author Marc Gathier
  */
 @Component
-public class CommandTargetValidator implements BiFunction<Command, ClientIdentification, Integer> {
+public class MetaDataBasedTargetSelector
+        implements BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> {
 
     private final ClientTagsCache clientTagsCache;
 
-    public CommandTargetValidator(ClientTagsCache clientTagsCache) {
+    public MetaDataBasedTargetSelector(ClientTagsCache clientTagsCache) {
         this.clientTagsCache = clientTagsCache;
     }
 
-
     @Override
-    public Integer apply(Command command, ClientIdentification client) {
-        if (command == null) {
+    public Set<ClientIdentification> apply(Map<String, MetaDataValue> metaDataMap,
+                                           Set<ClientIdentification> candidates) {
+        if (candidates.size() < 2 || metaDataMap.isEmpty()) {
+            return candidates;
+        }
+        Map<ClientIdentification, Integer> scorePerClient = new HashMap<>();
+        candidates.forEach(candidate -> scorePerClient.computeIfAbsent(candidate,
+                                                                       m -> score(metaDataMap, m)));
+
+        return getHighestScore(scorePerClient);
+    }
+
+    private int score(Map<String, MetaDataValue> metaDataMap, ClientIdentification client) {
+        if (metaDataMap.isEmpty()) {
             return 0;
         }
         Map<String, String> clientTags = clientTagsCache.apply(client);
         int score = 0;
         for (Map.Entry<String, String> tagEntry : clientTags.entrySet()) {
-            score += match(tagEntry, command.getMetaDataMap());
+            score += match(tagEntry, metaDataMap);
         }
 
         return score;
@@ -72,5 +85,20 @@ public class CommandTargetValidator implements BiFunction<Command, ClientIdentif
                 break;
         }
         return match ? 1 : -1;
+    }
+
+    private Set<ClientIdentification> getHighestScore(Map<ClientIdentification, Integer> scorePerClient) {
+        Set<ClientIdentification> bestClients = new HashSet<>();
+        int highest = Integer.MIN_VALUE;
+        for (Map.Entry<ClientIdentification, Integer> score : scorePerClient.entrySet()) {
+            if (score.getValue() > highest) {
+                bestClients.clear();
+                highest = score.getValue();
+            }
+            if (score.getValue() == highest) {
+                bestClients.add(score.getKey());
+            }
+        }
+        return bestClients;
     }
 }
