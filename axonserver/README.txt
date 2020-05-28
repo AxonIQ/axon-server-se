@@ -5,6 +5,7 @@ visit https://docs.axoniq.io.
 
 Release Notes for version 4.3.5
 -------------------------------
+
 * Fixed logging in IndexManager
 
 Release Notes for version 4.3.4
