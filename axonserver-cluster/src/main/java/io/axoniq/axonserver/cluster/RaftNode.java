@@ -32,6 +32,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 
+import javax.annotation.Nonnull;
+
 import static java.lang.String.format;
 
 /**
@@ -168,7 +170,8 @@ public class RaftNode {
         state.get().currentConfiguration().refresh();
     }
 
-    private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
+    private synchronized void updateState(MembershipState currentState, @Nonnull MembershipState newState,
+                                          String cause) {
         String newStateName = toString(newState);
         String currentStateName = toString(currentState);
         if (state.compareAndSet(currentState, newState)) {

@@ -36,7 +36,7 @@ public class PreVoteState extends VotingState {
             return;
         }
         newPreVote().result().subscribe(this::onElectionResult,
-                                        error -> logger.warn("{} in term {}: Failed to run election. {}",
+                                        error -> logger.warn("{} in term {}: Failed to run election.",
                                                              groupId(),
                                                              currentTerm(),
                                                              error));

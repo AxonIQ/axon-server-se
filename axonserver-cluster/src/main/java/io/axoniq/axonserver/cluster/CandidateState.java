@@ -46,7 +46,7 @@ public class CandidateState extends VotingState {
 
         long timeout = now() + maxElectionTimeout();
         newElection(disruptAllowed).result().subscribe(result -> onElectionResult(result, timeout),
-                                                       error -> logger.warn("{} in term {}: Failed to run election. {}",
+                                                       error -> logger.warn("{} in term {}: Failed to run election.",
                                                                             groupId(),
                                                                             currentTerm(),
                                                                             error));
