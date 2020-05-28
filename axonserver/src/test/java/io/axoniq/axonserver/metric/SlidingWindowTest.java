@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.metric;
 
-import io.axoniq.axonserver.util.ChangeableClock;
+import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 
 import java.util.concurrent.TimeUnit;
@@ -21,8 +21,9 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class SlidingWindowTest {
+
     private SlidingWindow<AtomicLong> testSubject;
-    private ChangeableClock clock = new ChangeableClock();
+    private FakeClock clock = new FakeClock();
 
     @Before
     public void init() {
@@ -35,7 +36,7 @@ public class SlidingWindowTest {
         current.incrementAndGet();
         current = testSubject.current();
         assertEquals(1, current.get());
-        clock.forward(TimeUnit.SECONDS.toMillis(5));
+        clock.timeElapses(5, TimeUnit.SECONDS);
         current = testSubject.current();
         assertEquals(0, current.get());
     }
@@ -51,13 +52,13 @@ public class SlidingWindowTest {
     @Test
     public void reduce() {
         testSubject.current().incrementAndGet();
-        clock.forward(TimeUnit.SECONDS.toMillis(20));
+        clock.timeElapses(20, TimeUnit.SECONDS);
         assertEquals(1, testSubject.aggregate(1, TimeUnit.MINUTES).get());
         testSubject.current().incrementAndGet();
         assertEquals(2, testSubject.aggregate(1, TimeUnit.MINUTES).get());
-        clock.forward(TimeUnit.SECONDS.toMillis(41));
+        clock.timeElapses(41, TimeUnit.SECONDS);
         assertEquals(1, testSubject.aggregate(1, TimeUnit.MINUTES).get());
-        clock.forward(TimeUnit.SECONDS.toMillis(20));
+        clock.timeElapses(20, TimeUnit.SECONDS);
         assertEquals(0, testSubject.aggregate(1, TimeUnit.MINUTES).get());
     }
 }

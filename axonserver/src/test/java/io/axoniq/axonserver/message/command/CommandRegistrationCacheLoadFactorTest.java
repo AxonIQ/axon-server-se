@@ -6,7 +6,7 @@ import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.util.FakeStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 
 import java.util.HashMap;

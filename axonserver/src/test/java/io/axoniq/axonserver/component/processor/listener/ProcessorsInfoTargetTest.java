@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.component.processor.listener;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.junit.*;
@@ -35,8 +36,7 @@ public class ProcessorsInfoTargetTest {
         ClientEventProcessorInfo clientEventProcessorInfo = new ClientEventProcessorInfo("client",
                                                                                          "context",
                                                                                          processorInfo);
-        EventProcessorEvents.EventProcessorStatusUpdate event = new EventProcessorEvents.EventProcessorStatusUpdate(
-                clientEventProcessorInfo, false);
+        EventProcessorStatusUpdate event = new EventProcessorStatusUpdate(clientEventProcessorInfo);
         EventProcessorEvents.EventProcessorStatusUpdated updatedEvent = testSubject
                 .onEventProcessorStatusChange(event);
         assertEquals("client", updatedEvent.eventProcessorStatus().getClientName());

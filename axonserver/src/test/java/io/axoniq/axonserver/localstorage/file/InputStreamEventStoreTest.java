@@ -16,7 +16,7 @@ import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.TestUtils;
+import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 
 import java.util.SortedSet;
