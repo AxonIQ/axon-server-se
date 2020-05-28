@@ -27,7 +27,7 @@ public class RoundRobinQueryHandlerSelector implements QueryHandlerSelector {
     public ClientIdentification select(QueryDefinition queryDefinition, String componentName, NavigableSet<ClientIdentification> queryHandlers) {
         if( queryHandlers.isEmpty()) return null;
         QueryDefinitionComponent key = new QueryDefinitionComponent(queryDefinition, componentName);
-        ClientIdentification last = lastClientMap.computeIfAbsent(key, k -> queryHandlers.first());
+        ClientIdentification last = lastClientMap.computeIfAbsent(key, k -> queryHandlers.last());
         SortedSet<ClientIdentification> tail = queryHandlers.tailSet(last, false);
         if( tail.isEmpty()) {
             last = queryHandlers.first();
