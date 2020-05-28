@@ -10,7 +10,7 @@
 <script src="js/settings.js" language="JavaScript"></script>
 <script language="JavaScript">
     $(document).ready(function(){
-        $("body").on('submit', '#licenseForm', function(event) {
+        $("body").one('submit', '#licenseForm', function(event) {
             var fd = new FormData();
             var files = $('#license')[0].files[0];
             fd.append('licenseFile',files);
