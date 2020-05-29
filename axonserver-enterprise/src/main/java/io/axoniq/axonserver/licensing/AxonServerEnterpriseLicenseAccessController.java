@@ -65,13 +65,13 @@ public class AxonServerEnterpriseLicenseAccessController implements LicenseAcces
         }
     }
 
-    public long nodesCount() {
+    private long nodesCount() {
         return clusterNodeRepository
                 .findAll()
                 .size();
     }
 
-    public long contextsCount() {
+    private long contextsCount() {
         return contextRepository
                 .findAll()
                 .stream()
