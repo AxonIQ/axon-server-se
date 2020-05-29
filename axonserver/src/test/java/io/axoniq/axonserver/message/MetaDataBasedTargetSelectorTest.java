@@ -57,6 +57,18 @@ public class MetaDataBasedTargetSelectorTest {
     }
 
     @Test
+    public void findClientNotInCache() {
+        clientTagsCache.on(new ClientTagsUpdate("client1", "context1", Collections.singletonMap("location", "Europe")));
+        clientTagsCache.on(new ClientTagsUpdate("client2", "context1", Collections.singletonMap("location", "Asia")));
+        Set<ClientIdentification> clientIdentifications = new HashSet<>();
+        clientIdentifications.add(new ClientIdentification("context1", "client3"));
+        Set<ClientIdentification> targets = testSubject.apply(Collections.emptyMap(), clientIdentifications);
+        assertEquals(1, targets.size());
+        ClientIdentification client = targets.iterator().next();
+        assertEquals("client3", client.getClient());
+    }
+
+    @Test
     public void findWithoutMatchingMetaData() {
         clientTagsCache.on(new ClientTagsUpdate("client1", "context1", Collections.singletonMap("location", "Europe")));
         clientTagsCache.on(new ClientTagsUpdate("client2", "context1", Collections.singletonMap("location", "Asia")));
