@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
+import io.axoniq.axonserver.applicationevents.*;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
@@ -478,6 +478,11 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                     break;
                 case DELETE_NODE:
                     clusterController.deleteNode(connectorCommand.getDeleteNode().getNodeName());
+                    break;
+                case UPDATE_LICENSE:
+                    eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(
+                            connectorCommand.getUpdateLicense().getLicense().toByteArray()) {
+                    });
                     break;
                 default:
                     if (consumers.isEmpty()) {

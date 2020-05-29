@@ -3,7 +3,6 @@
     <module name="axonserver-enterprise" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="io.axoniq.axonserver.AxonServerEnterprise" />
     <option name="ACTIVE_PROFILES" value="internal" />
-    <option name="VM_PARAMETERS" value="-Dlicense=dev/developer.license" />
     <option name="ALTERNATIVE_JRE_PATH" />
     <additionalParameters>
       <param>
@@ -40,6 +39,11 @@
         <option name="enabled" value="true" />
         <option name="name" value="axoniq.axonserver.controldb-path" />
         <option name="value" value="./dev/node1/controldb" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="axoniq.axonserver.enterprise.license-directory" />
+        <option name="value" value="./dev/node1/license" />
       </param>
     </additionalParameters>
     <method v="2">

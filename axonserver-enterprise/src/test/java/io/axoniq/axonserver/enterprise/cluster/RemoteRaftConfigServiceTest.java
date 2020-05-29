@@ -2,17 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.grpc.internal.Application;
-import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.ContextName;
-import io.axoniq.axonserver.grpc.internal.ContextNames;
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.NodeContext;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.NodeName;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.User;
+import io.axoniq.axonserver.grpc.internal.*;
 import io.grpc.Channel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
@@ -147,8 +137,8 @@ public class RemoteRaftConfigServiceTest {
         }
 
         @Override
-        public void joinCluster(NodeInfo request, StreamObserver<InstructionAck> responseObserver) {
-            responseObserver.onNext(InstructionAck.newBuilder().build());
+        public void joinCluster(NodeInfo request, StreamObserver<UpdateLicense> responseObserver) {
+            responseObserver.onNext(UpdateLicense.newBuilder().build());
             responseObserver.onCompleted();
         }
 
