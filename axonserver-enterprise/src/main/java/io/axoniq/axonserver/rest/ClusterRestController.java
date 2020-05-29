@@ -129,6 +129,11 @@ public class ClusterRestController {
 
     @PostMapping("/upload-license")
     public void distributeLicense(@RequestParam("licenseFile") MultipartFile licenseFile) throws IOException {
+        String axoniq_license = System.getenv("AXONIQ_LICENSE");
+        if(axoniq_license != null) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "License path hardcoded to AXONIQ_LICENSE=" + axoniq_license + ". Remove this environment key to dynamically manage license.");
+        }
+
         logger.info("New license uploaded, performing license update...");
         distributeLicenseService.distributeLicense(licenseFile.getBytes());
     }
