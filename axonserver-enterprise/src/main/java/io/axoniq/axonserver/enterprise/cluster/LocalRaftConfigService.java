@@ -17,7 +17,6 @@ import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.enterprise.logconsumer.AdminNodeConsumer;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
-import io.axoniq.axonserver.taskscheduler.TransientException;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.NodeContext;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareDeleteNodeFromContextTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.UnregisterNodeTask;
@@ -30,6 +29,7 @@ import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.*;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.licensing.LicenseManager;
+import io.axoniq.axonserver.taskscheduler.TransientException;
 import io.axoniq.axonserver.util.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -393,6 +393,12 @@ class LocalRaftConfigService implements RaftConfigService {
 
     @Override
     public void addContext(io.axoniq.axonserver.grpc.internal.Context contextDefinition) {
+
+        if (!Feature.MULTI_CONTEXT.enabled(limits)) {
+            throw new MessagingPlatformException(ErrorCode.CONTEXT_CREATION_NOT_ALLOWED,
+                    "License does not allow creating contexts");
+        }
+
         String context = contextDefinition.getName();
         if (!contextsInProgress.add(context)) {
             throw new UnsupportedOperationException("The creation of the context is already in progress.");

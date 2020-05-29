@@ -1,7 +1,9 @@
 package io.axoniq.axonserver.licensing;
 
 import io.axoniq.axonserver.LicenseAccessController;
+import io.axoniq.axonserver.enterprise.cluster.ClusterNodeRepository;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.rest.ClusterRestController;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,10 +21,12 @@ import org.springframework.stereotype.Controller;
 public class AxonServerEnterpriseLicenseAccessController implements LicenseAccessController {
 
     private final LicenseManager licenseManager;
+    private final ClusterNodeRepository clusterNodeRepository;
 
-    public AxonServerEnterpriseLicenseAccessController(LicenseManager licenseManager) {
+    public AxonServerEnterpriseLicenseAccessController(LicenseManager licenseManager, ClusterNodeRepository clusterNodeRepository) {
         this.licenseManager = licenseManager;
-        licenseIsValid = licenseManager.validateSilently();
+        this.clusterNodeRepository = clusterNodeRepository;
+        checkAndSetValidity();
     }
 
     private volatile boolean licenseIsValid;
@@ -35,12 +39,34 @@ public class AxonServerEnterpriseLicenseAccessController implements LicenseAcces
     // not configurable, as must not be changed by customer
     @Scheduled(fixedRate = 3600000, initialDelay = 3600000)
     protected void checkLicense() {
-        licenseIsValid = licenseManager.validateSilently();
+        checkAndSetValidity();
     }
 
     @EventListener()
     public void on(ClusterEvents.LicenseUpdated licenseUpdated) {
-        licenseIsValid = licenseManager.validateSilently(licenseUpdated.getLicense());
+        checkAndSetValidity(licenseUpdated.getLicense());
+    }
+
+    private void checkAndSetValidity() {
+        if (nodesCount() > 1) {
+            licenseIsValid = licenseManager.validateSilently();
+        } else {
+            licenseIsValid = true;
+        }
+    }
+
+    private void checkAndSetValidity(byte[] licenseContent) {
+        if (nodesCount() > 1) {
+            licenseIsValid = licenseManager.validateSilently(licenseContent);
+        } else {
+            licenseIsValid = true;
+        }
+    }
+
+    public long nodesCount() {
+        return clusterNodeRepository
+                .findAll()
+                .size();
     }
 
 }
