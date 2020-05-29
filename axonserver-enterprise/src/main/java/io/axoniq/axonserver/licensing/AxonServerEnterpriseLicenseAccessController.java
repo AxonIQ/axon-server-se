@@ -3,7 +3,7 @@ package io.axoniq.axonserver.licensing;
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterNodeRepository;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.rest.ClusterRestController;
+import io.axoniq.axonserver.enterprise.context.ContextRepository;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,10 +22,12 @@ public class AxonServerEnterpriseLicenseAccessController implements LicenseAcces
 
     private final LicenseManager licenseManager;
     private final ClusterNodeRepository clusterNodeRepository;
+    private final ContextRepository contextRepository;
 
-    public AxonServerEnterpriseLicenseAccessController(LicenseManager licenseManager, ClusterNodeRepository clusterNodeRepository) {
+    public AxonServerEnterpriseLicenseAccessController(LicenseManager licenseManager, ClusterNodeRepository clusterNodeRepository, ContextRepository contextRepository) {
         this.licenseManager = licenseManager;
         this.clusterNodeRepository = clusterNodeRepository;
+        this.contextRepository = contextRepository;
         checkAndSetValidity();
     }
 
@@ -48,7 +50,7 @@ public class AxonServerEnterpriseLicenseAccessController implements LicenseAcces
     }
 
     private void checkAndSetValidity() {
-        if (nodesCount() > 1) {
+        if (nodesCount() > 1 || contextsCount() > 1) {
             licenseIsValid = licenseManager.validateSilently();
         } else {
             licenseIsValid = true;
@@ -56,7 +58,7 @@ public class AxonServerEnterpriseLicenseAccessController implements LicenseAcces
     }
 
     private void checkAndSetValidity(byte[] licenseContent) {
-        if (nodesCount() > 1) {
+        if (nodesCount() > 1 || contextsCount() > 1) {
             licenseIsValid = licenseManager.validateSilently(licenseContent);
         } else {
             licenseIsValid = true;
@@ -69,4 +71,11 @@ public class AxonServerEnterpriseLicenseAccessController implements LicenseAcces
                 .size();
     }
 
+    public long contextsCount() {
+        return contextRepository
+                .findAll()
+                .stream()
+                .filter(ctx-> !ctx.getName().equals("_admin"))
+                .count();
+    }
 }
