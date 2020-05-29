@@ -11,6 +11,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
+import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
@@ -48,6 +49,7 @@ public class GatewayTest {
     private Gateway testSubject;
     private AxonServerAccessController accessController;
     private MessagingPlatformConfiguration routingConfiguration;
+    private LicenseAccessController licenseAccessController = mock(LicenseAccessController.class);
 
 
     @Before
@@ -58,6 +60,7 @@ public class GatewayTest {
         routingConfiguration.setAccesscontrol(new AccessControlConfiguration());
         routingConfiguration.getAccesscontrol().setEnabled(true);
         routingConfiguration.setName("JUnit");
+        when(licenseAccessController.allowed()).thenReturn(true);
     }
 
     @After
@@ -71,7 +74,7 @@ public class GatewayTest {
     @Test
     public void stopWithCallback() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController);
+                                  accessController, licenseAccessController);
 
         AtomicBoolean stopped = new AtomicBoolean(false);
         testSubject.start();
@@ -83,7 +86,7 @@ public class GatewayTest {
     @Test
     public void start() {
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController);
+                                  accessController, licenseAccessController);
 
         testSubject.start();
         assertTrue(testSubject.isRunning());
@@ -96,7 +99,7 @@ public class GatewayTest {
         routingConfiguration.setSsl(new SslConfiguration());
         routingConfiguration.getSsl().setEnabled(true);
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController);
+                                  accessController, licenseAccessController);
 
         testSubject.start();
     }
@@ -108,7 +111,7 @@ public class GatewayTest {
         routingConfiguration.getSsl().setCertChainFile("../resources/sample.crt");
         routingConfiguration.getSsl().setPrivateKeyFile("../resources/sample.pem");
         testSubject = new Gateway(routingConfiguration, Collections.emptyList(),
-                                  accessController);
+                                  accessController, licenseAccessController);
         assertTrue(testSubject.isAutoStartup());
         testSubject.start();
         assertTrue(testSubject.isRunning());
@@ -137,7 +140,7 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController);
+                                  accessController, licenseAccessController);
         testSubject.start();
 
         Channel channel = NettyChannelBuilder.forAddress("localhost", routingConfiguration.getPort()).usePlaintext()
@@ -180,7 +183,7 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController);
+                                  accessController, licenseAccessController);
         testSubject.start();
 
         String aLongName = generateString(size);
@@ -205,7 +208,7 @@ public class GatewayTest {
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
                                   Collections.singletonList(dummyPlatformService),
-                                  accessController);
+                                  accessController, licenseAccessController);
         testSubject.start();
 
         String aLongName = generateString(size);

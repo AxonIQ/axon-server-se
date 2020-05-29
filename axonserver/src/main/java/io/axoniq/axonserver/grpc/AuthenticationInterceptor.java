@@ -18,7 +18,7 @@ import io.grpc.*;
  * The interceptor retrieves the TOKEN and the CONTEXT from gRPC metadata provided in the request.
  * @author Marc Gathier
  */
-public class AuthenticationInterceptor implements ServerInterceptor{
+public class AuthenticationInterceptor implements ServerInterceptor {
     private final AxonServerAccessController axonServerAccessController;
 
     public AuthenticationInterceptor(AxonServerAccessController axonServerAccessController) {
