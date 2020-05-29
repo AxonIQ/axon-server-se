@@ -6,6 +6,7 @@ import io.axoniq.axonserver.cluster.election.DefaultPreVote;
 import io.axoniq.axonserver.cluster.election.Election;
 import io.axoniq.axonserver.cluster.message.factory.DefaultResponseFactory;
 import io.axoniq.axonserver.cluster.scheduler.DefaultScheduler;
+import io.axoniq.axonserver.cluster.scheduler.ScheduledRegistration;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.snapshot.SnapshotManager;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
@@ -17,8 +18,11 @@ import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -37,13 +41,16 @@ import static java.util.stream.StreamSupport.stream;
  */
 public abstract class AbstractMembershipState implements MembershipState {
 
+    private volatile boolean stopping = true;
+    private final AtomicLong stateVersion = new AtomicLong();
+
     private static final Logger logger = LoggerFactory.getLogger(AbstractMembershipState.class);
 
     private final RaftGroup raftGroup;
     private final StateTransitionHandler transitionHandler;
     private final BiConsumer<Long, String> termUpdateHandler;
     private final MembershipStateFactory stateFactory;
-    private final Supplier<Scheduler> schedulerFactory;
+    private final Scheduler scheduler;
     private final Function<Boolean, Election> electionFactory;
     private final Supplier<Election> preElectionFactory;
     private final BiFunction<Integer, Integer, Integer> randomValueSupplier;
@@ -58,7 +65,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         this.transitionHandler = builder.transitionHandler;
         this.termUpdateHandler = builder.termUpdateHandler;
         this.stateFactory = builder.stateFactory;
-        this.schedulerFactory = builder.schedulerFactory;
+        this.scheduler = new VersionAwareScheduler(builder.scheduler);
         this.electionFactory = builder.electionFactory;
         this.preElectionFactory = builder.preVoteFactory;
         this.randomValueSupplier = builder.randomValueSupplier;
@@ -75,7 +82,7 @@ public abstract class AbstractMembershipState implements MembershipState {
         private StateTransitionHandler transitionHandler;
         private BiConsumer<Long, String> termUpdateHandler;
         private MembershipStateFactory stateFactory;
-        private Supplier<Scheduler> schedulerFactory;
+        private Scheduler scheduler;
         private Function<Boolean, Election> electionFactory;
         private BiFunction<Integer, Integer, Integer> randomValueSupplier =
                 (min, max) -> ThreadLocalRandom.current().nextInt(min, max);
@@ -103,8 +110,8 @@ public abstract class AbstractMembershipState implements MembershipState {
             return self();
         }
 
-        public B schedulerFactory(Supplier<Scheduler> schedulerFactory) {
-            this.schedulerFactory = schedulerFactory;
+        public B scheduler(Scheduler scheduler) {
+            this.scheduler = scheduler;
             return self();
         }
 
@@ -140,8 +147,8 @@ public abstract class AbstractMembershipState implements MembershipState {
         }
 
         protected void validate() {
-            if (schedulerFactory == null) {
-                schedulerFactory = () -> new DefaultScheduler(raftGroup.localNode().groupId() + "-raftState");
+            if (scheduler == null) {
+                scheduler = new DefaultScheduler(raftGroup.localNode().groupId() + "-raftState");
             }
             if (raftGroup == null) {
                 throw new IllegalStateException("The RAFT group must be provided");
@@ -308,10 +315,6 @@ public abstract class AbstractMembershipState implements MembershipState {
         return raftGroup;
     }
 
-    public Supplier<Scheduler> schedulerFactory() {
-        return schedulerFactory;
-    }
-
     public MembershipStateFactory stateFactory() {
         return stateFactory;
     }
@@ -405,5 +408,87 @@ public abstract class AbstractMembershipState implements MembershipState {
     @Override
     public boolean health(BiConsumer<String, String> statusConsumer) {
         return raftGroup.logEntryProcessor().health(statusConsumer);
+    }
+
+    protected long currentTimeMillis() {
+        return clock().millis();
+    }
+
+    protected Clock clock() {
+        return scheduler.clock();
+    }
+
+    protected void execute(Runnable r) {
+        if (!stopping) {
+            scheduler.execute(r);
+        }
+    }
+
+    protected void schedule(Function<Scheduler, ScheduledRegistration> schedulerFunction) {
+        if (!stopping) {
+            schedulerFunction.apply(scheduler);
+        }
+    }
+
+    @Override
+    public void stop() {
+        stopping = true;
+        stateVersion.incrementAndGet();
+    }
+
+    @Override
+    public void start() {
+        stateVersion.incrementAndGet();
+        stopping = false;
+    }
+
+    private class VersionAwareScheduler implements Scheduler {
+
+        private final Scheduler delegate;
+
+        private VersionAwareScheduler(Scheduler delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public ScheduledRegistration schedule(Runnable command, long delay, TimeUnit timeUnit) {
+            long version = stateVersion.get();
+            return delegate.schedule(() -> {
+                if (stateVersion.get() == version) {
+                    command.run();
+                }
+            }, delay, timeUnit);
+        }
+
+        @Override
+        public ScheduledRegistration scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
+                                                            TimeUnit timeUnit) {
+            long version = stateVersion.get();
+            return delegate.scheduleWithFixedDelay(() -> {
+                if (stateVersion.get() == version) {
+                    command.run();
+                }
+            }, initialDelay, delay, timeUnit);
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            long version = stateVersion.get();
+            delegate.execute(() -> {
+                if (stateVersion.get() == version) {
+                    command.run();
+                }
+            });
+        }
+
+        @Override
+        public void shutdown() {
+            delegate.shutdown();
+        }
+
+        @Override
+        public Clock clock() {
+            return delegate.clock();
+        }
     }
 }

@@ -2,6 +2,8 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.FollowerConfiguration;
+import io.axoniq.axonserver.cluster.exception.LogException;
+import io.axoniq.axonserver.cluster.exception.RaftException;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
 import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
@@ -36,7 +38,6 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(BaseFollowerState.class);
     private final ClusterConfiguration clusterConfiguration;
 
-    protected final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
     private final AtomicInteger lastSnapshotChunk = new AtomicInteger(-1);
@@ -51,20 +52,13 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
 
     @Override
     public void start() {
+        super.start();
         heardFromLeader = false;
         leaderId.set(null);
         // initialize lastMessage with current time to get a meaningful message in case of initial timeout
-        scheduler.set(schedulerFactory().get());
-        lastMessage.set(scheduler.get().clock().millis());
+        lastMessage.set(currentTimeMillis());
         followerStateStatedAt = lastMessage.get();
         // initially the timeout is increased to prevent leader elections when node restarts
-    }
-
-    @Override
-    public void stop() {
-        if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdown();
-        }
     }
 
     /**
@@ -178,6 +172,9 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
                 logger.error(failureCause + ". Shutting down.", e);
                 fatalShutdown(failureCause);
                 return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
+            } catch (RaftException raftException) {
+                logger.error("Unexpected condition occurred.", raftException);
+                return responseFactory().appendEntriesFailure(request.getRequestId(), raftException.getMessage());
             }
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)

@@ -152,10 +152,10 @@ public abstract class SegmentBasedLogEntryStore {
     public abstract void rollback(long token);
 
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        Stream<String> filenames = getSegments().stream().filter(s -> s > lastSegmentBackedUp).map( s -> Stream.of(
+        Stream<String> filenames = getSegments().stream().filter(s -> s > lastSegmentBackedUp).flatMap(s -> Stream.of(
                 storageProperties.logFile(context, s).getAbsolutePath(),
                 storageProperties.indexFile(context, s).getAbsolutePath()
-        )).flatMap(Function.identity());
+        ));
         if( next == null) return filenames;
         return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
     }

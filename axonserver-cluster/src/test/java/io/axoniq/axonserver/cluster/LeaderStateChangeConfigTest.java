@@ -79,7 +79,7 @@ public class LeaderStateChangeConfigTest {
                                              .raftGroup(raftGroup)
                                              .transitionHandler(transitionHandler)
                                              .termUpdateHandler((term, cause) -> electionStore.updateCurrentTerm(term))
-                                             .schedulerFactory(() -> scheduler)
+                                             .scheduler(scheduler)
                                              .snapshotManager(new FakeSnapshotManager())
                                              .stateFactory(new FakeStateFactory())
                                              .matchStrategy(matchStrategy)

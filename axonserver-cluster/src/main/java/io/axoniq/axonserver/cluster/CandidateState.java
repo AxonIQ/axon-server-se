@@ -44,7 +44,7 @@ public class CandidateState extends VotingState {
             return;
         }
 
-        long timeout = now() + maxElectionTimeout();
+        long timeout = currentTimeMillis() + maxElectionTimeout();
         newElection(disruptAllowed).result().subscribe(result -> onElectionResult(result, timeout),
                                                        error -> logger.warn("{} in term {}: Failed to run election.",
                                                                             groupId(),
@@ -53,15 +53,8 @@ public class CandidateState extends VotingState {
         resetElectionTimeout();
     }
 
-    private long now() {
-        if (scheduler.get() == null) {
-            return System.currentTimeMillis();
-        }
-        return scheduler.get().clock().millis();
-    }
-
     private void onElectionResult(Result result, long timeout) {
-        if (!running || timeout < now()) {
+        if (!running || timeout < currentTimeMillis()) {
             logger.warn("{} in term {}: Failed to run election. Election took too long", groupId(), currentTerm());
             return;
         }

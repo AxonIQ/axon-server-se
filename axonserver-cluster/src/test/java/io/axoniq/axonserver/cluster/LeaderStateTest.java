@@ -188,7 +188,7 @@ public class LeaderStateTest {
                                  .termUpdateHandler(termUpdateHandler)
                                  .raftGroup(raftGroup)
                                  .snapshotManager(new FakeSnapshotManager())
-                                 .schedulerFactory(() -> fakeScheduler)
+                                 .scheduler(fakeScheduler)
                                  .matchStrategy(nextCommitCandidate -> true)
                                  .stateFactory(new DefaultStateFactory(raftGroup, transitionHandler,
                                                                        termUpdateHandler,
