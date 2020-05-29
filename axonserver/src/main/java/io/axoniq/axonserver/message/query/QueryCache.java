@@ -11,10 +11,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.localstorage.query.QueryExecutionException;
-import io.axoniq.axonserver.message.command.CommandExecutionException;
-import io.axoniq.axonserver.message.command.CommandInformation;
-import org.jetbrains.annotations.NotNull;
+import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +19,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +37,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     private final long cacheCapacity;
 
     public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout,
-                      @Value("${axoniq.axonserver.query-cache-capacity:50000}") long cacheCapacity) {
+                      @Value("${axoniq.axonserver.query-cache-capacity:10000}") long cacheCapacity) {
         this.defaultQueryTimeout = defaultQueryTimeout;
         this.cacheCapacity = cacheCapacity;
     }
@@ -86,7 +84,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     }
 
     @Override
-    public QueryInformation put(@NotNull String key, @NotNull QueryInformation value) {
+    public QueryInformation put(@Nonnull String key, @Nonnull QueryInformation value) {
         checkCapacity();
         return super.put(key, value);
     }
@@ -105,7 +103,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
 
     private void checkCapacity() {
         if (mappingCount() >= cacheCapacity) {
-            throw new QueryExecutionException("Query cache is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
+            throw new InsufficientCacheCapacityException("Query cache is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
                     + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
         }
     }
