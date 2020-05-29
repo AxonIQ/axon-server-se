@@ -30,6 +30,7 @@
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>docker/axonserver-docker-hub</module>
+        <module>axonserver-test-utils</module>
     </modules>
 
     <properties>
@@ -40,6 +41,8 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
+
+        <jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
 
         <!--
             Please note that there are dependencies between the gRPC and Netty TcNative versions.
@@ -52,7 +55,7 @@
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <axonserver.api.version>4.4-SNAPSHOT</axonserver.api.version>
         <h2.version>1.4.197</h2.version>
-        <jackson.version>2.9.10.3</jackson.version>
+        <jackson.version>2.9.10.4</jackson.version>
     </properties>
 
     <dependencyManagement>
@@ -167,6 +170,38 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco-maven-plugin.version}</version>
+
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    </profiles>
 
     <scm>
         <connection>scm:git:https://github.com/AxonIQ/axon-server-se.git</connection>

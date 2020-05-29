@@ -26,7 +26,7 @@ import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
@@ -67,29 +67,32 @@ public class QueryServiceTest {
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<QueryProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2).setClientId("name").build()).build());
+        FakeStreamObserver<QueryProviderInbound> FakeStreamObserver = new FakeStreamObserver<>();
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(FakeStreamObserver);
+        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2)
+                                                                                          .setClientId("name").build())
+                                                  .build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
         ClientIdentification name = new ClientIdentification(Topology.DEFAULT_CONTEXT, "name");
         queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
-                                                                     QueryRequest.newBuilder()
-                                                                                 .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
-                                                                                 .build()), System.currentTimeMillis() + 2000));
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
+                                    QueryRequest.newBuilder()
+                                                .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
+                                                .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
-        assertEquals(1, countingStreamObserver.count);
+        assertEquals(1, FakeStreamObserver.values().size());
         queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()),
+                System.currentTimeMillis() - 2000));
         Thread.sleep(150);
-        assertEquals(1, countingStreamObserver.count);
+        assertEquals(1, FakeStreamObserver.values().size());
         verify(queryDispatcher).removeFromCache(any(), any());
     }
 
     @Test
     public void subscribe()  {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder()
                 .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("query"))
                 .build());
@@ -98,7 +101,7 @@ public class QueryServiceTest {
 
     @Test
     public void unsupportedQueryInstruction() {
-        CountingStreamObserver<QueryProviderInbound> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<QueryProviderInbound> responseStream = new FakeStreamObserver<>();
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(responseStream);
 
         String instructionId = "instructionId";
@@ -106,8 +109,8 @@ public class QueryServiceTest {
                                                   .setInstructionId(instructionId)
                                                   .build());
 
-        InstructionAck ack = responseStream.responseList.get(responseStream.responseList.size() - 1)
-                                                           .getAck();
+        InstructionAck ack = responseStream.values().get(responseStream.values().size() - 1)
+                                           .getAck();
         assertEquals(instructionId, ack.getInstructionId());
         assertTrue(ack.hasError());
         assertEquals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode(), ack.getError().getErrorCode());
@@ -115,17 +118,17 @@ public class QueryServiceTest {
 
     @Test
     public void unsupportedQueryInstructionWithoutInstructionId() {
-        CountingStreamObserver<QueryProviderInbound> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<QueryProviderInbound> responseStream = new FakeStreamObserver<>();
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(responseStream);
 
         requestStream.onNext(QueryProviderOutbound.newBuilder().build());
 
-        assertEquals(0, responseStream.responseList.size());
+        assertEquals(0, responseStream.values().size());
     }
 
     @Test
     public void unsubscribe()  {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder()
                 .setUnsubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("command"))
                 .build());
@@ -133,7 +136,7 @@ public class QueryServiceTest {
     }
     @Test
     public void unsubscribeAfterSubscribe() {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder()
                 .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("command"))
                 .build());
@@ -145,7 +148,7 @@ public class QueryServiceTest {
 
     @Test
     public void cancelAfterSubscribe() {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder()
                 .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("command"))
                 .build());
@@ -154,13 +157,13 @@ public class QueryServiceTest {
 
     @Test
     public void cancelBeforeSubscribe() {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onError(new RuntimeException("failed"));
     }
 
     @Test
     public void close() {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         requestStream.onCompleted();
     }
@@ -173,14 +176,14 @@ public class QueryServiceTest {
             callback.accept(QueryResponse.newBuilder().build());
             return null;
         }).when(queryDispatcher).query(isA(SerializedQuery.class), isA(Consumer.class), any());
-        CountingStreamObserver<QueryResponse> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.query(QueryRequest.newBuilder().build(), responseObserver);
-        assertEquals(1, responseObserver.count);
+        assertEquals(1, responseObserver.values().size());
     }
 
     @Test
     public void queryHandlerDisconnected(){
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder()
                                                   .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("command"))
                                                   .build());

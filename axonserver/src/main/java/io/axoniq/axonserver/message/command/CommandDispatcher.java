@@ -21,6 +21,7 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -45,13 +46,21 @@ public class CommandDispatcher {
     private final CommandCache commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
-    private final FlowControlQueues<WrappedCommand> commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed());
+    private final FlowControlQueues<WrappedCommand> commandQueues;
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
 
-    public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache, CommandMetricsRegistry metricRegistry) {
+    public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache,
+                             CommandMetricsRegistry metricRegistry,
+                             MeterFactory meterFactory,
+                             @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
+        commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
+                                                queueCapacity,
+                                                BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
+                                                meterFactory,
+                                                ErrorCode.COMMAND_DISPATCH_ERROR);
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConcurrentHashMap::size);
     }
 
@@ -117,7 +126,8 @@ public class CommandDispatcher {
                                                                                 responseObserver,
                                                                                 commandHandler.getClient(),
                                                                                 commandHandler.getComponentName()));
-        commandQueues.put(commandHandler.queueName(), new WrappedCommand( commandHandler.getClient(), command));
+        WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClient(), command);
+        commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
     }
 
 
