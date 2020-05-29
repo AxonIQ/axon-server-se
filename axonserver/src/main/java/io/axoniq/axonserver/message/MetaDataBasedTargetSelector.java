@@ -20,7 +20,13 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
+ * Selects one or more target clients for a request based on the request's meta data. Finds the client with most
+ * matching
+ * tags. If multiple clients have same number of matching tasks, all of them are returned. If there are no clients with
+ * matching tags, all candidates are returned.
+ *
  * @author Marc Gathier
+ * @since 4.4
  */
 @Component
 public class MetaDataBasedTargetSelector
@@ -28,10 +34,20 @@ public class MetaDataBasedTargetSelector
 
     private final ClientTagsCache clientTagsCache;
 
+    /**
+     * Constructor
+     * @param clientTagsCache component containing the connected clients and their tags
+     */
     public MetaDataBasedTargetSelector(ClientTagsCache clientTagsCache) {
         this.clientTagsCache = clientTagsCache;
     }
 
+    /**
+     * Finds the candidates that best match the meta data from the list of provided candidates.
+     * @param metaDataMap meta data from the request
+     * @param candidates set of clients capable of handling the request
+     * @return subset of candidates with best matching tags
+     */
     @Override
     public Set<ClientIdentification> apply(Map<String, MetaDataValue> metaDataMap,
                                            Set<ClientIdentification> candidates) {
