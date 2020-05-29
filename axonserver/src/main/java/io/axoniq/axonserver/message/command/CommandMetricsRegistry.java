@@ -103,10 +103,16 @@ public class CommandMetricsRegistry {
      * @return CommandMetric containing the number of times that the command has been handled by this client
      */
     public CommandMetric commandMetric(String command, ClientIdentification clientId, String componentName) {
-        return new CommandMetric(command,
-                                 clientId.metricName(),
-                                 componentName,
-                                 clusterMetric(command, clientId).count());
+        ClusterMetric clusterMetric = clusterMetric(command, clientId);
+
+        return new CommandMetric(
+                command,
+                clientId.metricName(),
+                componentName,
+                clusterMetric.count(),
+                clusterMetric.mean(),
+                clusterMetric.max()
+        );
     }
 
     /**
@@ -135,17 +141,25 @@ public class CommandMetricsRegistry {
         return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
     }
 
+    public MeterFactory.RateMeter errorRate(String context, BaseMetricName meterName, String errorCode) {
+        return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context, MeterFactory.ERROR_CODE, errorCode));
+    }
+
     public static class CommandMetric {
         private final String command;
         private final String clientId;
         private final String componentName;
         private final long count;
+        private final double mean;
+        private final double max;
 
-        CommandMetric(String command, String clientId, String componentName, long count) {
+        CommandMetric(String command, String clientId, String componentName, long count, double mean, double max) {
             this.command = command;
             this.clientId = clientId;
             this.componentName = componentName;
             this.count = count;
+            this.mean = mean;
+            this.max = max;
         }
 
         public String getCommand() {
@@ -162,6 +176,14 @@ public class CommandMetricsRegistry {
 
         public long getCount() {
             return count;
+        }
+
+        public double getMean() {
+            return mean;
+        }
+
+        public double getMax() {
+            return max;
         }
 
         @Override

@@ -22,6 +22,7 @@ import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 
@@ -38,6 +39,7 @@ public class MeterFactory {
     public static final String REQUEST = "request";
     public static final String SOURCE = "source";
     public static final String TARGET = "target";
+    public static final String ERROR_CODE = "errorCode";
 
     private final MeterRegistry meterRegistry;
     private final MetricCollector clusterMetrics;
@@ -96,13 +98,13 @@ public class MeterFactory {
         for (Timer timer : meterRegistry.find(metric.metric()).tags(tags).timers()) {
             HistogramSnapshot snapshot = timer.takeSnapshot();
             if (snapshot != null) {
-                total += snapshot.total();
+                total += snapshot.total(TimeUnit.MILLISECONDS);
                 count += snapshot.count();
-                max = Math.max(max, snapshot.max());
+                max = Math.max(max, snapshot.max(TimeUnit.MILLISECONDS));
             }
         }
 
-        return new SnapshotMetric(max, count == 0 ? 0 : total / count, count);
+        return new SnapshotMetric(max, count == 0 ? 0 : total / (double)count, count);
     }
 
     public void remove(Meter meter) {

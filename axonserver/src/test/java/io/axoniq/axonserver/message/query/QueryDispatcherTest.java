@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.query;
 
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -141,6 +142,36 @@ public class QueryDispatcherTest {
         assertEquals(1, responseObserver.values().size());
         verify(queryCache, times(1)).put(any(), any());
     }
+
+    @Test
+    public void queryErrorNoHandler() {
+        QueryRequest request = QueryRequest.newBuilder()
+                .setQuery("noHandlersQuery")
+                .setMessageIdentifier("1234")
+                .build();
+        SerializedQuery query = new SerializedQuery(
+                Topology.DEFAULT_CONTEXT,
+                request
+        );
+        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
+        TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
+
+        doReturn(Collections.emptySet()).when(registrationCache).find(query.context(), request);
+
+        queryDispatcher.query(
+                query,
+                testResponseObserver::onNext,
+                client -> testResponseObserver.onCompleted()
+        );
+
+        assertEquals(1L,
+                queryDispatcher
+                        .getErrorRates(Topology.DEFAULT_CONTEXT)
+                        .get(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
+                        .getCount()
+        );
+    }
+
     @Test
     public void dispatchProxied() {
         QueryRequest request = QueryRequest.newBuilder()

@@ -13,6 +13,7 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
@@ -44,7 +45,9 @@ public class QueryDispatcher {
     private final QueryCache queryCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue;
+
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, MeterFactory.RateMeter>> errorRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
@@ -122,6 +125,7 @@ public class QueryDispatcher {
         QueryInformation query = queryCache.remove(messageId);
         if (query != null) {
             query.completeWithError(client, ErrorCode.COMMAND_TIMEOUT, "Query cancelled due to timeout");
+            errorRate(query.getContext(), ErrorCode.COMMAND_TIMEOUT.getCode()).mark();
         }
     }
 
@@ -132,6 +136,7 @@ public class QueryDispatcher {
 
     public void query(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
+
         QueryRequest query = serializedQuery.query();
         long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         Set<? extends QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
@@ -141,9 +146,11 @@ public class QueryDispatcher {
                                          .setMessageIdentifier(query.getMessageIdentifier())
                                          .setErrorMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
                                          .build());
+            errorRate(serializedQuery.context(), ErrorCode.NO_HANDLER_FOR_QUERY.getCode()).mark();
+
             onCompleted.accept("NoClient");
         } else {
-            QueryDefinition queryDefinition =new QueryDefinition(serializedQuery.context(), query.getQuery());
+            QueryDefinition queryDefinition = new QueryDefinition(serializedQuery.context(), query.getQuery());
             int expectedResults = Integer.MAX_VALUE;
             int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
             if( nrOfResults > 0) {
@@ -157,12 +164,6 @@ public class QueryDispatcher {
             queryCache.put(query.getMessageIdentifier(), queryInformation);
             handlers.forEach(h -> dispatchOne(h, serializedQuery, timeout));
         }
-    }
-
-    public MeterFactory.RateMeter queryRate(String context) {
-        return queryRatePerContext.computeIfAbsent(context,
-                                                   c -> queryMetricsRegistry
-                                                           .rateMeter(c, BaseMetricName.AXON_QUERY_RATE));
     }
 
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
@@ -179,6 +180,8 @@ public class QueryDispatcher {
                                                  ErrorMessageFactory.build(String.format("Client %s not found while processing: %s"
                                                          , client, query.getQuery())))
                                          .build());
+            errorRate(context, ErrorCode.CLIENT_DISCONNECTED.getCode()).mark();
+
             onCompleted.accept(client);
         } else {
             QueryDefinition queryDefinition = new QueryDefinition(context, query.getQuery());
@@ -200,9 +203,39 @@ public class QueryDispatcher {
         }
     }
 
-    private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
-        queryHandler.enqueue( query, queryQueue, timeout);
+    public MeterFactory.RateMeter queryRate(String context) {
+        return queryRatePerContext.computeIfAbsent(context,
+                c -> queryMetricsRegistry
+                        .rateMeter(c, BaseMetricName.AXON_QUERY_RATE));
     }
 
+    public Map<String, MeterFactory.RateMeter> getErrorRates(String context) {
+        return errorRatePerContext.get(context);
+    }
+
+    private MeterFactory.RateMeter errorRate(String context, String errorCode) {
+        Map<String, MeterFactory.RateMeter> ctxErrors = errorRatePerContext.computeIfAbsent(
+                context,
+                ctx -> new ConcurrentHashMap<>()
+        );
+
+        return ctxErrors.computeIfAbsent(
+                errorCode,
+                err -> queryMetricsRegistry.errorRate(
+                        context,
+                        BaseMetricName.AXON_QUERY_RATE,
+                        errorCode
+                )
+        );
+    }
+
+    private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
+        try {
+            queryHandler.enqueue(query, queryQueue, timeout);
+        } catch(MessagingPlatformException ex) {
+            errorRate(query.context(), ex.getErrorCode().getCode());
+            throw ex;
+        }
+    }
 
 }
