@@ -98,6 +98,7 @@ message AppendEntryFailure {
     sint64 lastAppliedEventSequence = 3; // only relevant for storage groups
     sint64 lastAppliedSnapshotSequence = 4; // only relevant for storage groups
     bool fatal = 5;
+    string errorCode = 6;
 }
 
 

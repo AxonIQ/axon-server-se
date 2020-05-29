@@ -69,7 +69,7 @@ public class RaftNodeTest {
         SnapshotManager snapshotManager = mock(SnapshotManager.class);
 
         PrimaryLogEntryStore primaryLogEntryStore = PrimaryEventStoreFactory.create(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
-        LogEntryStore logEntryStore = new FileSegmentLogEntryStore("test", primaryLogEntryStore);
+        LogEntryStore logEntryStore = new FileSegmentLogEntryStore("test", primaryLogEntryStore, () -> 0L);
 
         RaftConfiguration raftConfiguration = mock(RaftConfiguration.class);
         when(raftConfiguration.maxElectionTimeout()).thenReturn(100);

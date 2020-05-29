@@ -75,7 +75,7 @@ public class LeaderStateConfirmatoryElectionTest {
                                              .transitionHandler(transitionHandler)
                                              .termUpdateHandler((term, cause) -> electionStore.updateCurrentTerm(term))
                                              .electionFactory((disruptLeader) -> () -> Mono.just(lost()))
-                                             .schedulerFactory(() -> scheduler)
+                                             .scheduler(scheduler)
                                              .snapshotManager(new FakeSnapshotManager())
                                              .stateFactory(new FakeStateFactory())
                                              .matchStrategy(matchStrategy)

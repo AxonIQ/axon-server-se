@@ -76,7 +76,7 @@ public class CandidateStateTest {
                                        .transitionHandler(transitionHandler)
                                        .termUpdateHandler(termUpdateHandler)
                                        .snapshotManager(new FakeSnapshotManager())
-                                       .schedulerFactory(() -> fakeScheduler)
+                                       .scheduler(fakeScheduler)
                                        .randomValueSupplier((min, max) -> electionTimeout)
                                        .currentConfiguration(currentConfiguration)
                                        .registerConfigurationListenerFn(l -> () -> {
@@ -221,7 +221,7 @@ public class CandidateStateTest {
                                        .termUpdateHandler((term, cause) -> {
                                        })
                                        .snapshotManager(new FakeSnapshotManager())
-                                       .schedulerFactory(() -> fakeScheduler)
+                                       .scheduler(fakeScheduler)
                                        .randomValueSupplier((min, max) -> Integer.MAX_VALUE)
                                        .currentConfiguration(currentConfiguration)
                                        .registerConfigurationListenerFn(l -> () -> {

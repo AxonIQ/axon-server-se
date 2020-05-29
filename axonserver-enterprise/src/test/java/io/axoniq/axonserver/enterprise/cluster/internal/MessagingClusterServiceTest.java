@@ -83,7 +83,7 @@ public class MessagingClusterServiceTest {
                                                                                     .setNodeInfo(NodeInfo.newBuilder()
                                                                                                          .setNodeName("node-1")
                                                                                                          )
-                                                                                    ).build());
+        ).build());
 
         requestStream.onNext(ConnectorCommand.newBuilder().setSubscribeQuery(testMessage).build());
         assertEquals(1, responseStream.values().size());
@@ -91,11 +91,10 @@ public class MessagingClusterServiceTest {
         requestStream.onCompleted();
         Iterator<Object> eventIterator = eventPublisher.events().iterator();
         Object next = eventIterator.next();
-        assertEquals(TopologyEvents.ApplicationConnected.class, next.getClass());
-        next = eventIterator.next();
         assertEquals(SubscriptionEvents.SubscribeQuery.class, next.getClass());
         next = eventIterator.next();
-        assertEquals(TopologyEvents.ApplicationDisconnected.class, next.getClass());
+        assertEquals(ClusterEvents.AxonServerInstanceDisconnected.class, next.getClass());
+        assertFalse(eventIterator.hasNext());
     }
 
     @Test
@@ -129,8 +128,11 @@ public class MessagingClusterServiceTest {
         Iterator<Object> eventIterator = eventPublisher.events().iterator();
         Object next = eventIterator.next();
         assertEquals(ClientTagsUpdate.class, next.getClass());
+        assertEquals(ClientTagsUpdate.class, next.getClass());
+        assertTrue(eventIterator.hasNext());
+        next = eventIterator.next();
+        assertEquals(TopologyEvents.ApplicationConnected.class, next.getClass());
         assertFalse(eventIterator.hasNext());
-
     }
 
     @Test

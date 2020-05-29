@@ -25,7 +25,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public abstract class VotingState extends AbstractMembershipState {
 
     private final Logger logger;
-    protected final AtomicReference<Scheduler> scheduler = new AtomicReference<>();
     private final ClusterConfiguration clusterConfiguration = new CandidateConfiguration();
     protected volatile boolean running;
 
@@ -36,7 +35,7 @@ public abstract class VotingState extends AbstractMembershipState {
 
     @Override
     public void start() {
-        scheduler.set(schedulerFactory().get());
+        super.start();
         running = true;
         startElection();
     }
@@ -44,10 +43,8 @@ public abstract class VotingState extends AbstractMembershipState {
 
     @Override
     public void stop() {
+        super.stop();
         running = false;
-        if (scheduler.get() != null) {
-            scheduler.getAndSet(null).shutdown();
-        }
     }
 
     @Override
@@ -84,7 +81,7 @@ public abstract class VotingState extends AbstractMembershipState {
 
     void resetElectionTimeout() {
         int timeout = random(minElectionTimeout(), maxElectionTimeout() + 1);
-        ofNullable(scheduler.get()).ifPresent(s -> s.schedule(this::startElection, timeout, MILLISECONDS));
+        schedule(s -> s.schedule(this::startElection, timeout, MILLISECONDS));
     }
 
     protected abstract void startElection();

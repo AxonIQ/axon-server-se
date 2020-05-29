@@ -22,15 +22,17 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
+
+import javax.annotation.Nonnull;
 
 import static java.lang.String.format;
 
@@ -96,8 +98,12 @@ public class RaftNode {
                                                    e -> state.get().applied(e),
                                                    newConfiguration -> updateConfig(newConfiguration,
                                                                                     newConfigurationConsumer));
-        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup, this::updateState,
-                                                                      this::updateTerm, snapshotManager));
+        DefaultScheduler stateScheduler = new DefaultScheduler(raftGroup.raftConfiguration().groupId() + "-raftState");
+        stateFactory = new CachedStateFactory(new DefaultStateFactory(raftGroup,
+                                                                      this::updateState,
+                                                                      this::updateTerm,
+                                                                      snapshotManager,
+                                                                      stateScheduler));
         this.scheduler = scheduler;
         updateState(null, stateFactory.idleState(nodeId), "Node initialized.");
     }
@@ -168,11 +174,14 @@ public class RaftNode {
         state.get().currentConfiguration().refresh();
     }
 
-    private synchronized void updateState(MembershipState currentState, MembershipState newState, String cause) {
+    private synchronized void updateState(MembershipState currentState, @Nonnull MembershipState newState,
+                                          String cause) {
         String newStateName = toString(newState);
         String currentStateName = toString(currentState);
         if (state.compareAndSet(currentState, newState)) {
-            Optional.ofNullable(currentState).ifPresent(MembershipState::stop);
+            if (currentState != null) {
+                currentState.stop();
+            }
             logger.info("{} in term {}: Updating state from {} to {} ({})",
                         groupId(),
                         currentTerm(),
