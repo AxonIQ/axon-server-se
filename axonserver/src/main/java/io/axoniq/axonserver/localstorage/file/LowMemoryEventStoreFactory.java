@@ -15,6 +15,7 @@ import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.metric.MeterFactory;
 
 /**
  * @author Marc Gathier
@@ -23,36 +24,48 @@ public class LowMemoryEventStoreFactory implements EventStoreFactory {
     protected final EmbeddedDBProperties embeddedDBProperties;
     protected final EventTransformerFactory eventTransformerFactory;
     protected final StorageTransactionManagerFactory storageTransactionManagerFactory;
+    private final MeterFactory meterFactory;
 
-    public LowMemoryEventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                      StorageTransactionManagerFactory storageTransactionManagerFactory) {
+    public LowMemoryEventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                      EventTransformerFactory eventTransformerFactory,
+                                      StorageTransactionManagerFactory storageTransactionManagerFactory,
+                                      MeterFactory meterFactory) {
         this.embeddedDBProperties = embeddedDBProperties;
         this.eventTransformerFactory = eventTransformerFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
+        this.meterFactory = meterFactory;
     }
 
     @Override
     public EventStorageEngine createEventStorageEngine(String context) {
-        IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getEvent());
-        PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT), indexManager, eventTransformerFactory, embeddedDBProperties.getEvent());
-        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
-                                                             eventTransformerFactory,
-                                                             embeddedDBProperties.getEvent());
+        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                                     meterFactory);
+        PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
+                                                        indexManager,
+                                                        eventTransformerFactory,
+                                                        embeddedDBProperties.getEvent(),
+                                                        meterFactory);
+        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
+                                                                 indexManager,
+                                                                 eventTransformerFactory,
+                                                                 embeddedDBProperties.getEvent(),
+                                                                 meterFactory);
         first.next(second);
         return first;
     }
 
     @Override
     public EventStorageEngine createSnapshotStorageEngine(String context) {
-        IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getSnapshot());
+        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getSnapshot(),
+                                                                     meterFactory);
         PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                         indexManager,
                                                         eventTransformerFactory,
-                                                        embeddedDBProperties.getSnapshot());
+                                                        embeddedDBProperties.getSnapshot(), meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
-                                                                 embeddedDBProperties.getSnapshot());
+                                                                 embeddedDBProperties.getSnapshot(), meterFactory);
         first.next(second);
         return first;
     }

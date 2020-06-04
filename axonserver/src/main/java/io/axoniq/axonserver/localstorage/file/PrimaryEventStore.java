@@ -19,6 +19,7 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
@@ -33,14 +34,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.SortedSet;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -58,13 +57,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected final Synchronizer synchronizer;
     protected final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     protected final AtomicLong lastToken = new AtomicLong(-1);
-    private final ConcurrentNavigableMap<Long, Map<String, SortedSet<PositionInfo>>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
-    protected final Map<Long, ByteBufferEventSource> readBuffers = new ConcurrentHashMap<>();
+    //
+    protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>();
     protected EventTransformer eventTransformer;
 
     public PrimaryEventStore(EventTypeContext context, IndexManager indexCreator,
-                             EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties) {
-        super(context, indexCreator, storageProperties);
+                             EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties,
+                             MeterFactory meterFactory) {
+        super(context, indexCreator, storageProperties, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }
@@ -73,6 +73,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     public void initSegments(long lastInitialized) {
         File storageDir = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
+        indexManager.init();
         eventTransformer = eventTransformerFactory.get(VERSION, storageProperties.getFlags());
         initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir);
     }
@@ -85,15 +86,21 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         FileUtils.delete(storageProperties.bloomFilter(context, first));
         long sequence = first;
         try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first)) {
-            Map<String, SortedSet<PositionInfo>> aggregatePositions = new ConcurrentHashMap<>();
-            positionsPerSegmentMap.put(first, aggregatePositions);
+//            Map<String, SortedSet<PositionInfo>> aggregatePositions = new ConcurrentHashMap<>();
+//            positionsPerSegmentMap.put(first, aggregatePositions);
             while (sequence < nextToken && iterator.hasNext()) {
                 EventInformation event = iterator.next();
                 if (event.isDomainEvent()) {
-                    aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                       k -> new ConcurrentSkipListSet<>())
-                                      .add(new PositionInfo(event.getPosition(),
-                                                            event.getEvent().getAggregateSequenceNumber()));
+                    indexManager.addToActiveSegment(first, event.getEvent().getAggregateIdentifier(), new IndexEntry(
+                            event.getEvent().getAggregateSequenceNumber(),
+                            event.getPosition(),
+                            sequence
+                    ));
+//
+//                    aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
+//                                                       k -> new ConcurrentSkipListSet<>())
+//                                      .add(new PositionInfo(event.getPosition(),
+//                                                            event.getEvent().getAggregateSequenceNumber()));
                 }
                 sequence++;
             }
@@ -105,10 +112,17 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                         pendingEvents.size());
                 for (EventInformation event : pendingEvents) {
                     if (event.isDomainEvent()) {
-                        aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                           k -> new ConcurrentSkipListSet<>())
-                                          .add(new PositionInfo(event.getPosition(),
-                                                                event.getEvent().getAggregateSequenceNumber()));
+                        indexManager.addToActiveSegment(first,
+                                                        event.getEvent().getAggregateIdentifier(),
+                                                        new IndexEntry(
+                                                                event.getEvent().getAggregateSequenceNumber(),
+                                                                event.getPosition(),
+                                                                sequence
+                                                        ));
+//                        aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
+//                                                           k -> new ConcurrentSkipListSet<>())
+//                                          .add(new PositionInfo(event.getPosition(),
+//                                                                event.getEvent().getAggregateSequenceNumber()));
                     }
                     sequence++;
                 }
@@ -149,7 +163,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
-            Map<String, SortedSet<PositionInfo>> indexEntries = new HashMap<>();
+            Map<String, IndexEntries> indexEntries = new HashMap<>();
             FilePreparedTransaction preparedTransaction = prepareTransaction(origEventList);
             WritePosition writePosition = preparedTransaction.getWritePosition();
 
@@ -159,18 +173,24 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 @Override
                 public boolean onCompleted(long firstToken) {
                     if (execute.getAndSet(false)) {
-                        Map<String, SortedSet<PositionInfo>> mapForSegment = positionsPerSegmentMap.computeIfAbsent(
-                                writePosition.segment,
-                                s -> new HashMap<>());
+//                        Map<String, SortedSet<PositionInfo>> mapForSegment = positionsPerSegmentMap.computeIfAbsent(
+//                                writePosition.segment,
+//                                s -> new HashMap<>());
                         indexEntries.forEach((aggregeteId, positions) -> {
-                            mapForSegment.compute(aggregeteId, (k, old) -> {
-                                if (old == null) {
-                                    return positions;
-                                } else {
-                                    old.addAll(positions);
-                                    return old;
-                                }
-                            });
+                            positions.positions().forEach(positionInfo -> indexManager
+                                    .addToActiveSegment(writePosition.segment, aggregeteId,
+                                                        new IndexEntry(
+                                                                positionInfo.getSequenceNumber(),
+                                                                positionInfo.getPosition(),
+                                                                positionInfo.getToken())));
+//                            mapForSegment.compute(aggregeteId, (k, old) -> {
+//                                if (old == null) {
+//                                    return positions;
+//                                } else {
+//                                    old.addAll(positions);
+//                                    return old;
+//                                }
+//                            });
                         });
                         completableFuture.complete(firstToken);
                         lastToken.set(firstToken + preparedTransaction.getEventList().size() - 1);
@@ -210,14 +230,15 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         if (deleteData) {
             File storageDir = new File(storageProperties.getStorage(context));
+            indexManager.cleanup(deleteData);
             storageDir.delete();
         }
         closeListeners.forEach(Runnable::run);
     }
 
     @Override
-    protected SortedSet<Long> getSegments() {
-        return positionsPerSegmentMap.descendingKeySet();
+    protected NavigableSet<Long> getSegments() {
+        return readBuffers.descendingKeySet();
     }
 
     @Override
@@ -228,10 +249,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return Optional.empty();
     }
 
-    @Override
-    protected SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
-        return positionsPerSegmentMap.get(segment).get(aggregateId);
-    }
+//    @Override
+//    protected SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
+//        return positionsPerSegmentMap.get(segment).get(aggregateId);
+//    }
 
     @Override
     public long getLastToken() {
@@ -249,8 +270,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             return;
         }
         synchronizer.shutdown(false);
+        NavigableSet<Long> segments = getSegments();
 
-        if (positionsPerSegmentMap.descendingKeySet().first() < token) {
+        if (segments.first() < token) {
             int currentPosition = writePositionRef.get().position;
             initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)));
             writePositionRef.get().buffer.clearTo(currentPosition);
@@ -262,7 +284,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 }
             }
 
-            if (positionsPerSegmentMap.isEmpty() && next != null) {
+            if (segments.isEmpty() && next != null) {
                 next.rollback(token);
             }
 
@@ -321,7 +343,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private void removeSegment(long segment) {
-        positionsPerSegmentMap.remove(segment);
+        indexManager.remove(segment);
         ByteBufferEventSource eventSource = readBuffers.remove(segment);
         if (eventSource != null) {
             eventSource.clean(0);
@@ -330,27 +352,27 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     protected void completeSegment(WritePosition writePosition) {
-        indexManager.createIndex(writePosition.segment, positionsPerSegmentMap.get(writePosition.segment));
+        indexManager.complete(writePosition.segment);
         if (next != null) {
             next.handover(writePosition.segment, () -> {
-                positionsPerSegmentMap.remove(writePosition.segment);
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
                 logger.debug("Handed over {}, remaining segments: {}",
                              writePosition.segment,
-                             positionsPerSegmentMap.keySet());
+                             getSegments());
                 source.clean(storageProperties.getPrimaryCleanupDelay());
             });
         }
     }
 
     private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList,
-                       Map<String, SortedSet<PositionInfo>> indexEntries) {
+                       Map<String, IndexEntries> indexEntries) {
         ByteBufferEventSource source = writePosition.buffer.duplicate();
         ByteBuffer writeBuffer = source.getBuffer();
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(0);
         writeBuffer.put(TRANSACTION_VERSION);
         writeBuffer.putShort((short) eventList.size());
+        long token = writePosition.sequence;
         Checksum checksum = new Checksum();
         int eventsPosition = writeBuffer.position();
         for (ProcessedEvent event : eventList) {
@@ -359,9 +381,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             writeBuffer.put(event.toByteArray());
             if (event.isDomainEvent()) {
                 indexEntries.computeIfAbsent(event.getAggregateIdentifier(),
-                                                                                  k -> new ConcurrentSkipListSet<>())
-                            .add(new PositionInfo(position, event.getAggregateSequenceNumber()));
+                                             k -> new StandardIndexEntries(event.getAggregateSequenceNumber()))
+                            .add(new IndexEntry(event.getAggregateSequenceNumber(), position, token));
             }
+            token++;
         }
 
         writeBuffer.putInt(checksum.update(writeBuffer, eventsPosition, writeBuffer.position() - eventsPosition).get());
@@ -415,7 +438,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             logger.info("Opening file {}", file);
-            positionsPerSegmentMap.computeIfAbsent(segment, k -> new ConcurrentHashMap<>());
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
             buffer.put(VERSION);
             buffer.putInt(storageProperties.getFlags());

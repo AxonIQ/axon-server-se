@@ -18,6 +18,9 @@ import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
 
@@ -56,9 +59,10 @@ public class LowMemoryEventStoreFactoryTest {
         embeddedDBProperties.getSnapshot().setSegmentSize(10 * 1024L);
         embeddedDBProperties.getSnapshot().setPrimaryCleanupDelay(0);
         embeddedDBProperties.getSnapshot().setSecondaryCleanupDelay(0);
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
         testSubject = new LowMemoryEventStoreFactory(embeddedDBProperties,
                                                      new DefaultEventTransformerFactory(),
-                                                     new DefaultStorageTransactionManagerFactory());
+                                                     new DefaultStorageTransactionManagerFactory(), meterFactory);
     }
 
     @Test

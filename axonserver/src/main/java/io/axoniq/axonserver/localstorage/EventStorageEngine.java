@@ -97,24 +97,29 @@ public interface EventStorageEngine {
 
 
     /**
-     * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
-     * @param aggregateId the aggregate identifier
+     * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is
+     * found.
+     * Returns the event with the lowest sequence number first.
+     *
+     * @param aggregateId       the aggregate identifier
      * @param minSequenceNumber the first sequence number to retrieve
-     * @param eventConsumer the consumer to apply for each event
+     * @param eventConsumer     the consumer to apply for each event
      */
     void processEventsPerAggregate(String aggregateId, long minSequenceNumber,
                                    Consumer<SerializedEvent> eventConsumer);
 
     /**
-     * Find events for an aggregate and execute the consumer for each event.
-     * @param aggregateId the aggregate identifier
+     * Find events for an aggregate and execute the consumer for each event. The event with the highest sequence number
+     * is returned first.
+     *
+     * @param aggregateId       the aggregate identifier
      * @param minSequenceNumber the first sequence number to retrieve
      * @param maxSequenceNumber the last sequence number to retrieve
-     * @param maxResults maximum number of events to apply
-     * @param eventConsumer the consumer to apply for each event
+     * @param maxResults        maximum number of events to apply
+     * @param eventConsumer     the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long minSequenceNumber, long maxSequenceNumber,
-                                   int maxResults, Consumer<SerializedEvent> eventConsumer);
+    void processEventsPerAggregateHighestFirst(String aggregateId, long minSequenceNumber, long maxSequenceNumber,
+                                               int maxResults, Consumer<SerializedEvent> eventConsumer);
 
 
     /**

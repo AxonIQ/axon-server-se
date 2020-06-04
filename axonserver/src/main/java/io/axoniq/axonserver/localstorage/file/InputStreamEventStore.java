@@ -13,6 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.metric.MeterFactory;
 
 import java.util.Comparator;
 import java.util.Optional;
@@ -23,13 +24,14 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * @author Marc Gathier
  */
 public class InputStreamEventStore extends SegmentBasedEventStore {
+
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
 
-    public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
-                               EventTransformerFactory eventTransformerFactory,
-                               StorageProperties storageProperties) {
-        super(context, indexManager, storageProperties);
+    public InputStreamEventStore(EventTypeContext context, StandardIndexManager indexManager,
+                                 EventTransformerFactory eventTransformerFactory,
+                                 StorageProperties storageProperties, MeterFactory meterFactory) {
+        super(context, indexManager, storageProperties, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
     }
 
@@ -48,7 +50,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
 
     @Override
     public void close(boolean deleteData) {
-        indexManager.cleanup();
         if( deleteData) {
             segments.forEach(this::removeSegment);
         }
@@ -86,11 +87,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
-        return indexManager.getPositions(segment, aggregateId   );
-    }
-
-    @Override
     public void deleteAllEventData() {
         throw new UnsupportedOperationException("Development mode deletion is not supported in InputStreamEventStore");
     }
@@ -111,5 +107,4 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
         }
 
     }
-
 }

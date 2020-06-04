@@ -31,7 +31,7 @@ public class EmbeddedDBProperties {
 
     public EmbeddedDBProperties(SystemInfoProvider systemInfoProvider) {
         event = new StorageProperties(systemInfoProvider);
-        snapshot = new StorageProperties(systemInfoProvider, ".snapshots", ".sindex", ".sbloom");
+        snapshot = new StorageProperties(systemInfoProvider, ".snapshots", ".sindex", ".sbloom", ".snindex", ".sxref");
     }
 
     @PostConstruct
