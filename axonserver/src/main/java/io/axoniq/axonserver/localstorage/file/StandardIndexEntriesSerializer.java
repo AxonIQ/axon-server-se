@@ -48,7 +48,7 @@ public class StandardIndexEntriesSerializer implements Serializer<IndexEntries> 
         long sequenceNumber = input.unpackLong();
         List<IndexEntry> entryList = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            entryList.add(new IndexEntry(sequenceNumber++, input.unpackInt()));
+            entryList.add(new IndexEntry(sequenceNumber + i, input.unpackInt()));
         }
         return new StandardIndexEntries(sequenceNumber, entryList);
     }

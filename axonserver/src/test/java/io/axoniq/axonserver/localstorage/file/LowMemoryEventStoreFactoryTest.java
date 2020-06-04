@@ -55,10 +55,14 @@ public class LowMemoryEventStoreFactoryTest {
         embeddedDBProperties.getEvent().setSegmentSize(10 * 1024L);
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
         embeddedDBProperties.getEvent().setSecondaryCleanupDelay(0);
+        embeddedDBProperties.getEvent().setUseMmapIndex(false);
+        embeddedDBProperties.getEvent().setForceCleanMmapIndex(true);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getSnapshot().setSegmentSize(10 * 1024L);
         embeddedDBProperties.getSnapshot().setPrimaryCleanupDelay(0);
         embeddedDBProperties.getSnapshot().setSecondaryCleanupDelay(0);
+        embeddedDBProperties.getSnapshot().setUseMmapIndex(false);
+        embeddedDBProperties.getSnapshot().setForceCleanMmapIndex(true);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
         testSubject = new LowMemoryEventStoreFactory(embeddedDBProperties,
                                                      new DefaultEventTransformerFactory(),

@@ -75,7 +75,7 @@ public class StandardIndexEntries implements IndexEntries {
         if (entries.isEmpty()) {
             return -1;
         }
-        return firstSequenceNumber + entries.size();
+        return firstSequenceNumber + entries.size() - 1;
     }
 
     @Override

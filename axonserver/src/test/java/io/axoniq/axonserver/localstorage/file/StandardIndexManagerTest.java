@@ -56,7 +56,7 @@ public class StandardIndexManagerTest {
         long segment = 0L;
         String aggregateId = "aggregateId";
         IndexEntry positionInfo = new IndexEntry(0, 0, 0);
-        indexManager.addToActiveSegment(segment, "aa", positionInfo);
+        indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
         indexManager.complete(segment);
 
         ExecutorService executorService = Executors.newFixedThreadPool(10);
@@ -75,6 +75,7 @@ public class StandardIndexManagerTest {
             try {
                 f.get();
             } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
                 fail("Futures should complete successfully.");
             }
         });

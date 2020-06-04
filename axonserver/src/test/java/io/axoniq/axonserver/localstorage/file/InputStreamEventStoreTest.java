@@ -32,7 +32,6 @@ import static junit.framework.TestCase.assertTrue;
  */
 public class InputStreamEventStoreTest {
     private InputStreamEventStore testSubject;
-    private EmbeddedDBProperties embeddedDBProperties;
 
     @Before
     public void setUp() {
@@ -41,11 +40,14 @@ public class InputStreamEventStoreTest {
         embeddedDBProperties.getEvent().setStorage(TestUtils
                                                            .fixPathOnWindows(InputStreamEventStore.class
                                                                                      .getResource("/data").getFile()));
+        embeddedDBProperties.getEvent().setForceCleanMmapIndex(true);
+        embeddedDBProperties.getEvent().setUseMmapIndex(true);
         String context = Topology.DEFAULT_CONTEXT;
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
                                                                      meterFactory);
+        indexManager.init();
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         testSubject = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
                                                 eventTransformerFactory,

@@ -44,30 +44,30 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     @Override
     public void initSegments(long lastInitialized) {
         segments.addAll(prepareSegmentStore(lastInitialized));
-        if( next != null) next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
-
+        if (next != null) {
+            next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
+        }
     }
 
     @Override
     public void close(boolean deleteData) {
-        if( deleteData) {
+        if (deleteData) {
             segments.forEach(this::removeSegment);
         }
     }
 
 
-        private void removeSegment(long segment) {
-            if( segments.remove(segment)) {
-
-
-                indexManager.remove(segment);
-                if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                        ! FileUtils.delete(storageProperties.index(context, segment)) ||
-                        ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
-                    throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
-                }
+    private void removeSegment(long segment) {
+        if (segments.remove(segment)) {
+            indexManager.remove(segment);
+            if (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+                    !FileUtils.delete(storageProperties.index(context, segment)) ||
+                    !FileUtils.delete(storageProperties.bloomFilter(context, segment))) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+                                                     "Failed to rollback " + getType().getEventType()
+                                                             + ", could not remove segment: " + segment);
             }
-
+        }
     }
 
     @Override
@@ -92,7 +92,9 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     private InputStreamEventSource get(long segment, boolean force) {
-        if( !force && ! segments.contains(segment)) return null;
+        if (!force && !segments.contains(segment)) {
+            return null;
+        }
 
         return new InputStreamEventSource(storageProperties.dataFile(context, segment),
                                           eventTransformerFactory,
@@ -102,9 +104,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     @Override
     protected void recreateIndex(long segment) {
         try (InputStreamEventSource is = get(segment, true);
-             EventIterator iterator = createEventIterator( is,segment, segment)) {
+             EventIterator iterator = createEventIterator(is, segment, segment)) {
             recreateIndexFromIterator(segment, iterator);
         }
-
     }
 }

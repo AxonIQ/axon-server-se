@@ -80,6 +80,9 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private void createIndex(Long segment, Map<String, IndexEntries> positionsPerAggregate) {
+        if (positionsPerAggregate == null) {
+            positionsPerAggregate = Collections.emptyMap();
+        }
         File tempFile = storageProperties.indexTemp(context, segment);
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
@@ -339,6 +342,7 @@ public class StandardIndexManager implements IndexManager {
         bloomFilterPerSegment.clear();
         indexMap.forEach((segment, index) -> index.close());
         indexMap.clear();
+        indexes.clear();
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
