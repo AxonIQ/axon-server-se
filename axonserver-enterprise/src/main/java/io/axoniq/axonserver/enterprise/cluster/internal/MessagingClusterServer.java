@@ -62,7 +62,7 @@ public class MessagingClusterServer implements SmartLifecycle {
 
     @Override
     public boolean isAutoStartup() {
-        return Feature.CLUSTERING.enabled(limits);
+        return true;
     }
 
     @Override

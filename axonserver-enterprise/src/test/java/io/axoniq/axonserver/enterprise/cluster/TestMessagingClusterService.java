@@ -42,6 +42,8 @@ public class TestMessagingClusterService implements MessagingClusterServiceInter
                         break;
                     case REQUEST_NOT_SET:
                         break;
+                    case UPDATE_LICENSE:
+                        break;
                 }
 
             }

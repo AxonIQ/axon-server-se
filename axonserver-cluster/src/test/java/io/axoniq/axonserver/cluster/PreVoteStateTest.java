@@ -75,7 +75,7 @@ public class PreVoteStateTest {
                                    .transitionHandler(transitionHandler)
                                    .termUpdateHandler(termUpdateHandler)
                                    .snapshotManager(new FakeSnapshotManager())
-                                   .schedulerFactory(() -> fakeScheduler)
+                                   .scheduler(fakeScheduler)
                                    .randomValueSupplier((min, max) -> electionTimeout)
                                    .currentConfiguration(currentConfiguration)
                                    .registerConfigurationListenerFn(l -> () -> {

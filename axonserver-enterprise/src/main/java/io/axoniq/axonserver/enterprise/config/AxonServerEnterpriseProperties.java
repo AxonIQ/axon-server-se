@@ -15,12 +15,22 @@ public class AxonServerEnterpriseProperties {
 
     private long contextConfigurationSyncRate;
 
+    private String licenseDirectory;
+
     public long contextConfigurationSyncRate() {
         return contextConfigurationSyncRate;
     }
 
     public void setContextConfigurationSyncRate(long contextConfigurationSyncRate) {
         this.contextConfigurationSyncRate = contextConfigurationSyncRate;
+    }
+
+    public String getLicenseDirectory() {
+        return licenseDirectory;
+    }
+
+    public void setLicenseDirectory(String licenseDirectory) {
+        this.licenseDirectory = licenseDirectory;
     }
 }
 

@@ -120,10 +120,12 @@ public class RaftServerFileBasedTest {
         private GrpcRaftGroup(List<Node> nodes, String localNode) {
             this.localNode = new RaftNode(localNode, this, new FakeSnapshotManager());
 
-            logEntryStore = new FileSegmentLogEntryStore(localNode, PrimaryEventStoreFactory.create(localNode));
+            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
+            logEntryStore = new FileSegmentLogEntryStore(localNode,
+                                                         PrimaryEventStoreFactory.create(localNode),
+                                                         logEntryProcessor::commitIndex);
 
             electionStore = new InMemoryElectionStore();
-            logEntryProcessor = new LogEntryProcessor(new InMemoryProcessorStore());
             initializePeers(nodes);
 
         }

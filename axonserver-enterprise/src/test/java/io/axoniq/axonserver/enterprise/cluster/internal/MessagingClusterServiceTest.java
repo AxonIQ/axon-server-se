@@ -7,15 +7,8 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.grpc.internal.ClientEventProcessorSegment;
-import io.axoniq.axonserver.grpc.internal.ClientStatus;
-import io.axoniq.axonserver.grpc.internal.ConnectRequest;
-import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
-import io.axoniq.axonserver.grpc.internal.ConnectorResponse;
-import io.axoniq.axonserver.grpc.internal.Group;
-import io.axoniq.axonserver.grpc.internal.InternalFlowControl;
-import io.axoniq.axonserver.grpc.internal.InternalQuerySubscription;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.licensing.LicenseManager;
+import io.axoniq.axonserver.grpc.internal.*;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -23,13 +16,14 @@ import io.axoniq.axonserver.spring.FakeApplicationEventPublisher;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.Iterator;
 
 import static io.axoniq.axonserver.grpc.internal.ConnectorResponse.ResponseCase.CONNECT_RESPONSE;
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Marc Gathier
@@ -40,7 +34,7 @@ public class MessagingClusterServiceTest {
     private final QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
     private final ClusterController clusterController = mock(ClusterController.class);
     private final FakeApplicationEventPublisher eventPublisher = new FakeApplicationEventPublisher();
-
+    private final LicenseManager licenseManager = mock(LicenseManager.class);
     private MessagingClusterService testSubject;
 
     @Before
@@ -133,6 +127,7 @@ public class MessagingClusterServiceTest {
 
         Iterator<Object> eventIterator = eventPublisher.events().iterator();
         Object next = eventIterator.next();
+        assertEquals(ClientTagsUpdate.class, next.getClass());
         assertEquals(ClientTagsUpdate.class, next.getClass());
         assertTrue(eventIterator.hasNext());
         next = eventIterator.next();

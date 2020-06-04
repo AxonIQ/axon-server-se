@@ -48,12 +48,6 @@ public class AxonServerEnterprise {
 
 
     public static void main(String[] args) {
-        try {
-            LicenseConfiguration.getInstance();
-        } catch (LicenseException ex) {
-            log.error(ex.getMessage());
-            System.exit(-1);
-        }
         System.setProperty("spring.config.name", "axonserver");
         SpringApplication.run(AxonServerEnterprise.class, args);
     }

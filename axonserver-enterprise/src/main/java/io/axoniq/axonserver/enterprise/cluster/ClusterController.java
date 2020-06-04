@@ -143,7 +143,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
     public void start() {
         checkCurrentNodeSaved();
 
-        if (Feature.CLUSTERING.enabled(limits)) {
             logger.debug("Start cluster controller");
 
             nodes().forEach(clusterNode -> startRemoteConnection(clusterNode, true));
@@ -152,7 +151,6 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                                                      clusterConfiguration.getConnectionCheckDelay(),
                                                      clusterConfiguration.getConnectionCheckInterval(),
                                                      TimeUnit.MILLISECONDS);
-        }
         running = true;
     }
 
@@ -247,6 +245,11 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         return remoteConnections.values();
     }
 
+
+    public Optional<RemoteConnection> getRemoteConnection(String nodeName) {
+        return Optional.of(remoteConnections.get(nodeName));
+    }
+
     /**
      * Received connection from another Axon Server node. Update configuration if this node is not known.
      * Needs to be synchronized as it can be called in parallel with same node information, which would
@@ -304,7 +307,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
         if (remoteConnections.containsKey(nodeName) || messagingPlatformConfiguration.getName().equals(nodeName)) {
             return;
         }
-        if (limits.getMaxClusterSize() == remoteConnections.size() + 1) {
+        if (remoteConnections.size() + 1 >= limits.getMaxClusterSize()) {
             throw new MessagingPlatformException(ErrorCode.MAX_CLUSTER_SIZE_REACHED,
                                                  "Maximum allowed number of nodes reached " + nodeName);
         }
