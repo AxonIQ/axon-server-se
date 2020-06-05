@@ -25,6 +25,10 @@
             <artifactId>opencensus-contrib-grpc-metrics</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-census</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.opencensus</groupId>
             <artifactId>opencensus-impl</artifactId>
             <scope>runtime</scope>
