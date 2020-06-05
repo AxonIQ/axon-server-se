@@ -151,9 +151,9 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
             boolean skip = false;
             if (existingEntry != null) {
                 if (existingEntry.getTerm() != e.getTerm()) {
-                    if (e.getIndex() > commitIndexSupplier.getAsLong()) {
+                    if (e.getIndex() <= commitIndexSupplier.getAsLong()) {
                         throw new RaftException(ErrorCode.INVALID_LEADER,
-                                                "The commit index on this node is lesser than the index leader is sending me. No rollback allowed.");
+                                                "The commit index on this node is greater than or equal to the index the leader is sending me. Cannot replace an already committed entry.");
                     }
                     logger.debug("{}: Clear from {}", name, e.getIndex());
                     deleteFrom(e.getIndex());

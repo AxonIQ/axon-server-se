@@ -31,7 +31,7 @@ public class FileSegmentLogEntryStoreTest {
     public void setUp() throws Exception {
         primary = spy(PrimaryEventStoreFactory
                               .create(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString()));
-        testSubject = new FileSegmentLogEntryStore("Test", primary, () -> 5L);
+        testSubject = new FileSegmentLogEntryStore("Test", primary, () -> 0L);
     }
 
     @After
@@ -40,10 +40,10 @@ public class FileSegmentLogEntryStoreTest {
         primary.cleanup(0);
     }
 
-    @Test(expected = RaftException.class)
+    @Test
     public void rollback() {
         LongSupplier commitIndexSupplier = mock(LongSupplier.class);
-        when(commitIndexSupplier.getAsLong()).thenReturn(1L, 1L, 1L, 1L, 3L);
+        when(commitIndexSupplier.getAsLong()).thenReturn(1L);
         testSubject = new FileSegmentLogEntryStore("Test", primary, commitIndexSupplier);
         testSubject.appendEntry(asList(EntryFactory.newEntry(1, 1),
                                        EntryFactory.newEntry(1, 2),
@@ -52,9 +52,15 @@ public class FileSegmentLogEntryStoreTest {
                                        EntryFactory.newEntry(2, 2)));
 
         verify(primary).rollback(1);
-
-        // cannot rollback since last applied index is greater than a rollback index (3>2)
-        testSubject.appendEntry(Collections.singletonList(EntryFactory.newEntry(3, 3)));
+        testSubject.appendEntry(Collections.singletonList(EntryFactory.newEntry(2, 3)));
+        when(commitIndexSupplier.getAsLong()).thenReturn(3L);
+        try {
+            // cannot rollback since last applied index is greater than a rollback index (3>2)
+            testSubject.appendEntry(Collections.singletonList(EntryFactory.newEntry(3, 3)));
+            fail("should not succeed");
+        } catch (RaftException re) {
+            assertTrue(re.getMessage().contains("greater"));
+        }
     }
 
     @Test
