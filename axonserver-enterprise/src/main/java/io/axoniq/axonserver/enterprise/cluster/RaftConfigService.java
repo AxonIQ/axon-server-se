@@ -1,12 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.grpc.internal.Application;
-import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.User;
+import io.axoniq.axonserver.grpc.internal.*;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -58,8 +53,9 @@ public interface RaftConfigService {
      * If a context has a large eventstore it may take some time to complete.
      *
      * @param nodeInfo Node information on the new node
+     * @return
      */
-    void join(NodeInfo nodeInfo);
+    UpdateLicense join(NodeInfo nodeInfo);
 
     /**
      * Initialize a node with specified contexts and the _admin context. Node becomes leader for all specified contexts.

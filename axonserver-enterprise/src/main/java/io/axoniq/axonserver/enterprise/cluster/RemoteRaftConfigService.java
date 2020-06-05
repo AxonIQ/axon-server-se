@@ -2,17 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.grpc.internal.Application;
-import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.ContextName;
-import io.axoniq.axonserver.grpc.internal.ContextNames;
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.NodeContext;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.NodeName;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.User;
+import io.axoniq.axonserver.grpc.internal.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,10 +85,11 @@ public class RemoteRaftConfigService implements RaftConfigService {
     }
 
     @Override
-    public void join(NodeInfo nodeInfo) {
-        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
+    public UpdateLicense join(NodeInfo nodeInfo) {
+        CompletableFuture<UpdateLicense> completableFuture = new CompletableFuture<>();
         raftConfigServiceStub.joinCluster(nodeInfo, new CompletableStreamObserver<>(completableFuture, "join", logger));
-        getFuture(completableFuture);
+
+        return getFuture(completableFuture);
     }
 
     @Override

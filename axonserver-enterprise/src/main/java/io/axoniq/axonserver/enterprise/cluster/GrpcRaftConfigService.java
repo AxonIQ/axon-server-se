@@ -3,17 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.grpc.AxonServerInternalService;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.InstructionAck;
-import io.axoniq.axonserver.grpc.internal.Application;
-import io.axoniq.axonserver.grpc.internal.Context;
-import io.axoniq.axonserver.grpc.internal.ContextName;
-import io.axoniq.axonserver.grpc.internal.ContextNames;
-import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
-import io.axoniq.axonserver.grpc.internal.NodeContext;
-import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.NodeName;
-import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
-import io.axoniq.axonserver.grpc.internal.RaftConfigServiceGrpc;
-import io.axoniq.axonserver.grpc.internal.User;
+import io.axoniq.axonserver.grpc.internal.*;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,12 +50,18 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     }
 
     @Override
-    public void joinCluster(NodeInfo request, StreamObserver<InstructionAck> responseObserver) {
+    public void joinCluster(NodeInfo request, StreamObserver<UpdateLicense> responseObserver) {
         logger.info("{}:{} wants to join cluster with name {}",
-                    request.getInternalHostName(),
-                    request.getGrpcInternalPort(),
-                    request.getNodeName());
-        wrap(responseObserver, () -> serviceFactory.get().join(request));
+                request.getInternalHostName(),
+                request.getGrpcInternalPort(),
+                request.getNodeName());
+
+        try {
+            responseObserver.onNext(serviceFactory.get().join(request));
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(GrpcExceptionBuilder.build(e));
+        }
     }
 
     @Override
@@ -92,14 +88,14 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
     @Override
     public void addNodeToContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver,
-             () -> localRaftConfigService
-                     .addNodeToContext(request.getContext(), request.getNodeName(), request.getRole()));
+                () -> localRaftConfigService
+                        .addNodeToContext(request.getContext(), request.getNodeName(), request.getRole()));
     }
 
     @Override
     public void deleteNodeFromContext(NodeContext request, StreamObserver<InstructionAck> responseObserver) {
         wrap(responseObserver,
-             () -> localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNodeName()));
+                () -> localRaftConfigService.deleteNodeFromContext(request.getContext(), request.getNodeName()));
     }
 
     @Override
