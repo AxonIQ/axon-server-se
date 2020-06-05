@@ -30,7 +30,7 @@ public interface IndexManager {
     void remove(long segment);
 
     SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
-                                                  long maxResults);
+                                                  long maxResults, boolean snapshot);
 
     void cleanup(boolean delete);
 

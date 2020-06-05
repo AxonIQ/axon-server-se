@@ -184,6 +184,9 @@ public class StandardIndexManager implements IndexManager {
 
     @Override
     public void addToActiveSegment(long segment, String aggregateId, IndexEntry indexEntry) {
+        if (indexes.contains(segment)) {
+            throw new IndexNotFoundException(segment + ": already completed");
+        }
         activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
                      .computeIfAbsent(aggregateId, a -> new StandardIndexEntries(indexEntry.getSequenceNumber()))
                      .add(indexEntry);
@@ -237,7 +240,7 @@ public class StandardIndexManager implements IndexManager {
         for (Long segment : indexes) {
             IndexEntries indexEntries = getPositions(segment, aggregateId);
             if (indexEntries != null) {
-                if (minSequenceNumber > indexEntries.lastSequenceNumber()) {
+                if (minSequenceNumber < indexEntries.lastSequenceNumber()) {
                     return new SegmentAndPosition(segment, indexEntries.last());
                 } else {
                     return null;
@@ -285,7 +288,7 @@ public class StandardIndexManager implements IndexManager {
 
     @Override
     public SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber,
-                                                         long lastSequenceNumber, long maxResults) {
+                                                         long lastSequenceNumber, long maxResults, boolean snapshot) {
         SortedMap<Long, IndexEntries> results = new TreeMap<>();
         logger.debug("{}: lookupAggregate {} minSequenceNumber {}, lastSequenceNumber {}",
                      context,
@@ -304,10 +307,12 @@ public class StandardIndexManager implements IndexManager {
             IndexEntries entries = activeIndexes.getOrDefault(segment, Collections.emptyMap()).get(aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, segment, entries);
             if (entries != null) {
-                IndexEntries range = entries.range(firstSequenceNumber, lastSequenceNumber);
-                if (!range.isEmpty()) {
-                    results.put(segment, range);
-                    maxResults -= range.size();
+                if (!snapshot) {
+                    entries = entries.range(firstSequenceNumber, lastSequenceNumber);
+                }
+                if (!entries.isEmpty()) {
+                    results.put(segment, entries);
+                    maxResults -= entries.size();
                     if (firstSequenceNumber >= entries.firstSequenceNumber() || maxResults <= 0) {
                         return results;
                     }
@@ -324,9 +329,11 @@ public class StandardIndexManager implements IndexManager {
             IndexEntries entries = getPositions(index, aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
             if (entries != null) {
-                IndexEntries range = entries.range(firstSequenceNumber, lastSequenceNumber);
-                if (!range.isEmpty()) {
-                    results.put(index, range);
+                if (!snapshot) {
+                    entries = entries.range(firstSequenceNumber, lastSequenceNumber);
+                }
+                if (!entries.isEmpty()) {
+                    results.put(index, entries);
                     if (firstSequenceNumber >= entries.firstSequenceNumber()) {
                         return results;
                     }

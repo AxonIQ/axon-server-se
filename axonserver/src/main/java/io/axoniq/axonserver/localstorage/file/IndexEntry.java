@@ -39,4 +39,9 @@ public class IndexEntry {
     public long getToken() {
         return token;
     }
+
+    @Override
+    public String toString() {
+        return "sequenceNumber->" + sequenceNumber + ",position->" + position;
+    }
 }
