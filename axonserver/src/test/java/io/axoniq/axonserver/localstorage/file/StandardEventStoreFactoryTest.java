@@ -38,12 +38,12 @@ import static org.junit.Assert.*;
 /**
  * @author Marc Gathier
  */
-public class LowMemoryEventStoreFactoryTest {
+public class StandardEventStoreFactoryTest {
 
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
 
-    private LowMemoryEventStoreFactory testSubject;
+    private StandardEventStoreFactory testSubject;
 
 
     @Before
@@ -64,9 +64,9 @@ public class LowMemoryEventStoreFactoryTest {
         embeddedDBProperties.getSnapshot().setUseMmapIndex(false);
         embeddedDBProperties.getSnapshot().setForceCleanMmapIndex(true);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        testSubject = new LowMemoryEventStoreFactory(embeddedDBProperties,
-                                                     new DefaultEventTransformerFactory(),
-                                                     new DefaultStorageTransactionManagerFactory(), meterFactory);
+        testSubject = new StandardEventStoreFactory(embeddedDBProperties,
+                                                    new DefaultEventTransformerFactory(),
+                                                    new DefaultStorageTransactionManagerFactory(), meterFactory);
     }
 
     @Test

@@ -19,36 +19,56 @@ import java.util.List;
 import javax.annotation.Nonnull;
 
 /**
+ * Serializer/Deserializer of {@link IndexEntries} to/from index file.
+ *
  * @author Marc Gathier
+ * @since 4.4
  */
 public class StandardIndexEntriesSerializer implements Serializer<IndexEntries> {
 
     private static final StandardIndexEntriesSerializer INSTANCE = new StandardIndexEntriesSerializer();
 
+    /**
+     * Get an instance of the serializer.
+     * @return an instance of the serializer
+     */
     public static StandardIndexEntriesSerializer get() {
         return INSTANCE;
     }
 
     private StandardIndexEntriesSerializer() {
-
     }
 
+    /**
+     * Writes a value to a data output.
+     * @param out the data output to write to
+     * @param value the value to serialize
+     * @throws IOException when writing to data output fails
+     */
     @Override
     public void serialize(@Nonnull DataOutput2 out, @Nonnull IndexEntries value) throws IOException {
         out.packInt(value.size());
         out.packLong(value.firstSequenceNumber());
-        for (IndexEntry positionInfo : value.positions()) {
-            out.packInt(positionInfo.getPosition());
+        for (Integer positionInfo : value.positions()) {
+            out.packInt(positionInfo);
         }
     }
 
+    /**
+     * Reads a value from a data input
+     * @param input the data input to read from
+     * @param available number of bytes available
+     * @return the deserialized object
+     *
+     * @throws IOException
+     */
     @Override
     public IndexEntries deserialize(@Nonnull DataInput2 input, int available) throws IOException {
         int count = input.unpackInt();
         long sequenceNumber = input.unpackLong();
-        List<IndexEntry> entryList = new ArrayList<>(count);
+        List<Integer> entryList = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            entryList.add(new IndexEntry(sequenceNumber + i, input.unpackInt()));
+            entryList.add(input.unpackInt());
         }
         return new StandardIndexEntries(sequenceNumber, entryList);
     }

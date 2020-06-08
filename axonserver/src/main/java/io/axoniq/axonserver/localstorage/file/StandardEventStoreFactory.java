@@ -18,27 +18,43 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
 /**
+ * Factory to create event storage engines for the event store and the snapshot store.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
-public class LowMemoryEventStoreFactory implements EventStoreFactory {
+public class StandardEventStoreFactory implements EventStoreFactory {
+
     protected final EmbeddedDBProperties embeddedDBProperties;
     protected final EventTransformerFactory eventTransformerFactory;
     protected final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final MeterFactory meterFactory;
 
-    public LowMemoryEventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
-                                      EventTransformerFactory eventTransformerFactory,
-                                      StorageTransactionManagerFactory storageTransactionManagerFactory,
-                                      MeterFactory meterFactory) {
+    /**
+     * @param embeddedDBProperties properties for the storage engines
+     * @param eventTransformerFactory transformer factory that can be used to transform events before they are stored
+     * @param storageTransactionManagerFactory factory to create a transaction manager for the storage engine
+     * @param meterFactory factory to create metrics meters
+     */
+    public StandardEventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                     EventTransformerFactory eventTransformerFactory,
+                                     StorageTransactionManagerFactory storageTransactionManagerFactory,
+                                     MeterFactory meterFactory) {
         this.embeddedDBProperties = embeddedDBProperties;
         this.eventTransformerFactory = eventTransformerFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
         this.meterFactory = meterFactory;
     }
 
+    /**
+     * Creates a storage engine for the event store for a context.
+     * @param context the context
+     * @return the storage engine
+     */
     @Override
     public EventStorageEngine createEventStorageEngine(String context) {
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                                     EventType.EVENT,
                                                                      meterFactory);
         PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                                         indexManager,
@@ -54,9 +70,15 @@ public class LowMemoryEventStoreFactory implements EventStoreFactory {
         return first;
     }
 
+    /**
+     * Creates a storage engine for the snapshot store for a context.
+     * @param context the context
+     * @return the storage engine
+     */
     @Override
     public EventStorageEngine createSnapshotStorageEngine(String context) {
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getSnapshot(),
+                                                                     EventType.SNAPSHOT,
                                                                      meterFactory);
         PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                         indexManager,

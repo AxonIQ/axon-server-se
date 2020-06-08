@@ -46,6 +46,7 @@ public class InputStreamEventStoreTest {
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                                     EventType.EVENT,
                                                                      meterFactory);
         indexManager.init();
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
@@ -90,12 +91,5 @@ public class InputStreamEventStoreTest {
         assertTrue(segments.contains(0L));
         assertTrue(segments.contains(14L));
         assertEquals(14, (long)segments.first());
-    }
-
-    @Test
-    @Ignore("Data does not contain valid domain events, therefore the aggregate is not found.")
-    public void getAggregatePositions() {
-        IndexEntries positions = testSubject.getPositions(0, "a83e55b8-68ac-4287-bd9f-e9b90e5bb55c");
-        assertEquals(1, positions.size());
     }
 }

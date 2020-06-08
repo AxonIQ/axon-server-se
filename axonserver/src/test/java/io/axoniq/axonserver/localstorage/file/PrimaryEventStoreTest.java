@@ -58,6 +58,7 @@ public class PrimaryEventStoreTest {
         String context = "junit";
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                                     EventType.EVENT,
                                                                      meterFactory);
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -13,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.SortedMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -48,7 +50,7 @@ public class StandardIndexManagerTest {
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        indexManager = new StandardIndexManager(context, storageProperties, meterFactory);
+        indexManager = new StandardIndexManager(context, storageProperties, EventType.EVENT, meterFactory);
     }
 
     @Test
@@ -64,8 +66,11 @@ public class StandardIndexManagerTest {
         Future[] futures = new Future[concurrentRequests];
         for (int i = 0; i < concurrentRequests; i++) {
             Future<?> future = executorService.submit(() -> {
-                IndexEntries actual = indexManager.positions(segment, aggregateId);
-                assertEquals(positionInfo.getSequenceNumber(), actual.firstSequenceNumber());
+                SortedMap<Long, IndexEntries> actual = indexManager.lookupAggregate(aggregateId,
+                                                                                    0,
+                                                                                    Long.MAX_VALUE,
+                                                                                    Long.MAX_VALUE);
+                assertEquals(positionInfo.getSequenceNumber(), actual.get(0L).firstSequenceNumber());
             });
             futures[i] = future;
         }

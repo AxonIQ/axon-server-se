@@ -13,7 +13,7 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
+import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
@@ -49,10 +49,10 @@ public class TestInputStreamStorageContainer {
         embeddedDBProperties.getSnapshot().setSegmentSize(512 * 1024L);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-        EventStoreFactory eventStoreFactory = new LowMemoryEventStoreFactory(embeddedDBProperties,
-                                                                             new DefaultEventTransformerFactory(),
-                                                                             new DefaultStorageTransactionManagerFactory(),
-                                                                             meterFactory);
+        EventStoreFactory eventStoreFactory = new StandardEventStoreFactory(embeddedDBProperties,
+                                                                            new DefaultEventTransformerFactory(),
+                                                                            new DefaultStorageTransactionManagerFactory(),
+                                                                            meterFactory);
         datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");
         datafileManagerChain.init(false);
         snapshotManagerChain = eventStoreFactory.createSnapshotStorageEngine("default");

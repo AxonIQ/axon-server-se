@@ -29,7 +29,7 @@ import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.DatafileEventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
+import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
@@ -101,10 +101,10 @@ public class AxonServerStandardConfiguration {
                                                EventTransformerFactory eventTransformerFactory,
                                                StorageTransactionManagerFactory storageTransactionManagerFactory,
                                                MeterFactory meterFactory) {
-        return new LowMemoryEventStoreFactory(embeddedDBProperties,
-                                              eventTransformerFactory,
-                                              storageTransactionManagerFactory,
-                                              meterFactory);
+        return new StandardEventStoreFactory(embeddedDBProperties,
+                                             eventTransformerFactory,
+                                             storageTransactionManagerFactory,
+                                             meterFactory);
     }
 
     @Bean

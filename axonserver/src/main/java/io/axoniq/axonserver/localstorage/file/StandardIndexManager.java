@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Tags;
@@ -41,7 +42,12 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
+ * identifiers and the position of events for this aggregate and a bloom filter to quickly check if an aggregate occurs
+ * in the segment.
+ *
  * @author Marc Gathier
+ * @since 4.4
  */
 public class StandardIndexManager implements IndexManager {
 
@@ -51,6 +57,7 @@ public class StandardIndexManager implements IndexManager {
             Executors.newScheduledThreadPool(1, new CustomizableThreadFactory("index-manager-"));
     protected final StorageProperties storageProperties;
     protected final String context;
+    private final EventType eventType;
     private final ConcurrentNavigableMap<Long, Map<String, IndexEntries>> activeIndexes = new ConcurrentSkipListMap<>();
     private final ConcurrentNavigableMap<Long, PersistedBloomFilter> bloomFilterPerSegment = new ConcurrentSkipListMap<>();
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
@@ -59,10 +66,17 @@ public class StandardIndexManager implements IndexManager {
     private final MeterFactory.RateMeter indexCloseMeter;
     private ScheduledFuture<?> cleanupTask;
 
-    public StandardIndexManager(String context, StorageProperties storageProperties,
+    /**
+     * @param context           the context of the storage engine
+     * @param storageProperties storage engine configuration
+     * @param eventType         content type of the event store (events or snapshots)
+     * @param meterFactory      factory to create metrics meter
+     */
+    public StandardIndexManager(String context, StorageProperties storageProperties, EventType eventType,
                                 MeterFactory meterFactory) {
         this.storageProperties = storageProperties;
         this.context = context;
+        this.eventType = eventType;
         this.indexOpenMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_OPEN,
                                                      Tags.of(MeterFactory.CONTEXT, context));
         this.indexCloseMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_CLOSE,
@@ -70,6 +84,9 @@ public class StandardIndexManager implements IndexManager {
         scheduledExecutorService.scheduleAtFixedRate(this::indexCleanup, 10, 10, TimeUnit.SECONDS);
     }
 
+    /**
+     * Initializes the index manager.
+     */
     public void init() {
         String[] indexFiles = FileUtils.getFilesWithSuffix(new File(storageProperties.getStorage(context)),
                                                            storageProperties.getIndexSuffix());
@@ -132,6 +149,8 @@ public class StandardIndexManager implements IndexManager {
             try {
                 Index idx = getIndex(segment);
                 return idx.getPositions(aggregateId);
+            } catch (IndexNotFoundException ex) {
+                return null;
             } catch (Throwable ex) {
                 lastError = new RuntimeException(
                         "Error happened while trying get positions for " + segment + " segment.", ex);
@@ -140,16 +159,13 @@ public class StandardIndexManager implements IndexManager {
         throw lastError;
     }
 
-    /**
-     * Returns the {@link Index} for the specified segment.
-     *
-     * @param segment the segment
-     * @return the {@link Index} for the specified segment
-     *
-     * @throws IndexNotFoundException if the attempt to open tha index file fails
-     */
-    public Index getIndex(long segment) {
-        return indexMap.computeIfAbsent(segment, Index::new).ensureReady();
+    private Index getIndex(long segment) {
+        try {
+            return indexMap.computeIfAbsent(segment, Index::new).ensureReady();
+        } catch (IndexNotFoundException indexNotFoundException) {
+            indexMap.remove(segment);
+            throw indexNotFoundException;
+        }
     }
 
     private void indexCleanup() {
@@ -182,6 +198,13 @@ public class StandardIndexManager implements IndexManager {
         return filter;
     }
 
+    /**
+     * Adds the position of an event for an aggregate to an active (writable) index.
+     *
+     * @param segment     the segment number
+     * @param aggregateId the identifier for the aggregate
+     * @param indexEntry  position, sequence number and token of the new entry
+     */
     @Override
     public void addToActiveSegment(long segment, String aggregateId, IndexEntry indexEntry) {
         if (indexes.contains(segment)) {
@@ -192,6 +215,11 @@ public class StandardIndexManager implements IndexManager {
                      .add(indexEntry);
     }
 
+    /**
+     * Commpletes an active index.
+     *
+     * @param segment the first token in the segment
+     */
     @Override
     public void complete(long segment) {
         createIndex(segment, activeIndexes.get(segment));
@@ -199,6 +227,13 @@ public class StandardIndexManager implements IndexManager {
         indexes.add(segment);
     }
 
+    /**
+     * Returns the last sequence number of an aggregate if this is found.
+     *
+     * @param aggregateId the identifier for the aggregate
+     * @param maxSegments maximum number of segments to check for the aggregate
+     * @return last sequence number for the aggregate (if found)
+     */
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments) {
         int checked = 0;
@@ -225,6 +260,13 @@ public class StandardIndexManager implements IndexManager {
         return Optional.empty();
     }
 
+    /**
+     * Returns the position of the last event for an aggregate.
+     *
+     * @param aggregateId       the aggregate identifier
+     * @param minSequenceNumber minimum sequence number of the event to find
+     * @return
+     */
     @Override
     public SegmentAndPosition lastEvent(String aggregateId, long minSequenceNumber) {
         for (Long segment : activeIndexes.descendingKeySet()) {
@@ -250,19 +292,13 @@ public class StandardIndexManager implements IndexManager {
         return null;
     }
 
+    /**
+     * Checks if the index and bloom filter for the segment exist.
+     *
+     * @param segment the segment number
+     * @return true if the index for this segment is valid
+     */
     @Override
-    public IndexEntries positions(long segment, String aggregateId) {
-        logger.debug("{}: positions for {} in  segment {}.{}",
-                     context,
-                     aggregateId,
-                     segment,
-                     storageProperties.getIndexSuffix());
-        if (activeIndexes.containsKey(segment)) {
-            return activeIndexes.get(segment).get(aggregateId);
-        }
-        return getPositions(segment, aggregateId);
-    }
-
     public boolean validIndex(long segment) {
         try {
             return loadBloomFilter(segment) != null && getIndex(segment) != null;
@@ -272,6 +308,11 @@ public class StandardIndexManager implements IndexManager {
         return false;
     }
 
+    /**
+     * Removes the index and bloom filter for the segment
+     *
+     * @param segment the segment number
+     */
     @Override
     public void remove(long segment) {
         if (activeIndexes.remove(segment) == null) {
@@ -286,9 +327,18 @@ public class StandardIndexManager implements IndexManager {
         }
     }
 
+    /**
+     * Finds all positions for an aggregate within the specified sequence number range.
+     *
+     * @param aggregateId         the aggregate identifier
+     * @param firstSequenceNumber minimum sequence number for the events returned (inclusive)
+     * @param lastSequenceNumber  maximum sequence number for the events returned (exclusive)
+     * @param maxResults          maximum number of results allowed
+     * @return all positions for an aggregate within the specified sequence number range
+     */
     @Override
     public SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber,
-                                                         long lastSequenceNumber, long maxResults, boolean snapshot) {
+                                                         long lastSequenceNumber, long maxResults) {
         SortedMap<Long, IndexEntries> results = new TreeMap<>();
         logger.debug("{}: lookupAggregate {} minSequenceNumber {}, lastSequenceNumber {}",
                      context,
@@ -297,23 +347,13 @@ public class StandardIndexManager implements IndexManager {
                      lastSequenceNumber);
 
         for (Long segment : activeIndexes.descendingKeySet()) {
-            logger.debug("{}: lookupAggregate {} in segment {} map size {}",
-                         context,
-                         aggregateId,
-                         segment,
-                         activeIndexes.getOrDefault(segment, Collections
-                                 .emptyMap()).size());
-
             IndexEntries entries = activeIndexes.getOrDefault(segment, Collections.emptyMap()).get(aggregateId);
-            logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, segment, entries);
             if (entries != null) {
-                if (!snapshot) {
-                    entries = entries.range(firstSequenceNumber, lastSequenceNumber);
-                }
+                entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
                 if (!entries.isEmpty()) {
                     results.put(segment, entries);
                     maxResults -= entries.size();
-                    if (firstSequenceNumber >= entries.firstSequenceNumber() || maxResults <= 0) {
+                    if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
                         return results;
                     }
                 }
@@ -321,20 +361,13 @@ public class StandardIndexManager implements IndexManager {
         }
 
         for (Long index : indexes) {
-            logger.debug("{}: lookupAggregate {} in segment {}.{}",
-                         context,
-                         aggregateId,
-                         index,
-                         storageProperties.getIndexSuffix());
             IndexEntries entries = getPositions(index, aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
             if (entries != null) {
-                if (!snapshot) {
-                    entries = entries.range(firstSequenceNumber, lastSequenceNumber);
-                }
+                entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
                 if (!entries.isEmpty()) {
                     results.put(index, entries);
-                    if (firstSequenceNumber >= entries.firstSequenceNumber()) {
+                    if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
                         return results;
                     }
                 }
@@ -344,6 +377,15 @@ public class StandardIndexManager implements IndexManager {
         return results;
     }
 
+    private boolean allEntriesFound(long firstSequenceNumber, long maxResults, IndexEntries entries) {
+        return firstSequenceNumber >= entries.firstSequenceNumber() || maxResults <= 0;
+    }
+
+    /**
+     * Cleanup the index manager.
+     *
+     * @param delete flag to indicate that all indexes should be deleted
+     */
     public void cleanup(boolean delete) {
         activeIndexes.clear();
         bloomFilterPerSegment.clear();
@@ -355,7 +397,7 @@ public class StandardIndexManager implements IndexManager {
         }
     }
 
-    public class Index implements Closeable {
+    private class Index implements Closeable {
 
         private final long segment;
         private final Object initLock = new Object();
