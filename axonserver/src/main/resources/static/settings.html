@@ -8,6 +8,41 @@
   -->
 
 <script src="js/settings.js" language="JavaScript"></script>
+<script language="JavaScript">
+    $(document).ready(function(){
+        $("body").one('submit', '#licenseForm', function(event) {
+            var fd = new FormData();
+            var files = $('#license')[0].files[0];
+            fd.append('licenseFile',files);
+
+            console.log(files);
+
+            if(files == undefined) {
+                alert("Choose license file first")
+                return false;
+            }
+
+            $.ajax({
+                url: '/v1/cluster/upload-license',
+                type: 'post',
+                data: fd,
+                contentType: false,
+                processData: false,
+                success: function(response){
+                    alert('License uploaded!');
+                    setTimeout(function(){
+                        location.reload(true);
+                    }, 2000);
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown) {
+                    alert("Error occured: " + XMLHttpRequest.responseText);
+                }
+            });
+
+            return false;
+        });
+    });
+</script>
 
 <div id="settings">
 
@@ -124,6 +159,13 @@
                         <span id="expiryDate"> {{license.expiryDate | formatDate}}</span>
                     </li>
                 </ul>
+            </section>
+            <section>
+                <h3>Upload license</h3>
+                <form id="licenseForm" enctype="multipart/form-data">
+                    <input type="file" id="license" name="licenseFile"/>
+                    <input type="submit" value="Upload"  id="license_upload_button" />
+                </form>
             </section>
         </div>
     </div>
