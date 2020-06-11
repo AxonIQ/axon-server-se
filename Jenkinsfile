@@ -10,7 +10,7 @@ def label = "worker-${UUID.randomUUID().toString()}"
 def deployingBranches = [   // The branches mentioned here will get their artifacts deployed to Nexus
     "master", "axonserver-se-4.3.x"
 ]
-def dockerBranches = [      // The branches mentioned here will get Docker test images built
+def dockerBranches = [      // The branches mentioned here will get Docker images built
     "master", "axonserver-se-4.3.x"
 ]
 
@@ -108,9 +108,13 @@ podTemplate(label: label,
                 }
             }
 
+            def sonarOptions = "-Dsonar.branch.name=${gitBranch}"
+            if (gitBranch.startsWith("PR-") && env.CHANGE_ID) {
+                sonarOptions = "-Dsonar.pullrequest.branch=" + gitBranch + " -Dsonar.pullrequest.key=" + env.CHANGE_ID
+            }
             stage ('Run SonarQube') {
                 container("maven") {
-                    sh "mvn \${MVN_BLD} -DskipTests -Dsonar.branch.name=${gitBranch}  -Psonar sonar:sonar"
+                    sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
                     slackReport = slackReport + "\nSources analyzed in SonarQube."
                 }
             }
