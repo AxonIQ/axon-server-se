@@ -151,7 +151,7 @@ public class StandardIndexManager implements IndexManager {
                 return idx.getPositions(aggregateId);
             } catch (IndexNotFoundException ex) {
                 return null;
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 lastError = new RuntimeException(
                         "Error happened while trying get positions for " + segment + " segment.", ex);
             }
@@ -349,13 +349,10 @@ public class StandardIndexManager implements IndexManager {
         for (Long segment : activeIndexes.descendingKeySet()) {
             IndexEntries entries = activeIndexes.getOrDefault(segment, Collections.emptyMap()).get(aggregateId);
             if (entries != null) {
-                entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
-                if (!entries.isEmpty()) {
-                    results.put(segment, entries);
-                    maxResults -= entries.size();
-                    if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
-                        return results;
-                    }
+                entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, segment, entries);
+                maxResults -= entries.size();
+                if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
+                    return results;
                 }
             }
         }
@@ -364,17 +361,24 @@ public class StandardIndexManager implements IndexManager {
             IndexEntries entries = getPositions(index, aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
             if (entries != null) {
-                entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
-                if (!entries.isEmpty()) {
-                    results.put(index, entries);
-                    if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
-                        return results;
-                    }
+                entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, index, entries);
+                maxResults -= entries.size();
+                if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
+                    return results;
                 }
             }
         }
 
         return results;
+    }
+
+    private IndexEntries addToResult(long firstSequenceNumber, long lastSequenceNumber,
+                                     SortedMap<Long, IndexEntries> results, Long segment, IndexEntries entries) {
+        entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
+        if (!entries.isEmpty()) {
+            results.put(segment, entries);
+        }
+        return entries;
     }
 
     private boolean allEntriesFound(long firstSequenceNumber, long maxResults, IndexEntries entries) {

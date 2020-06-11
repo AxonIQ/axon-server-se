@@ -76,7 +76,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final StorageProperties storageProperties;
     protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
-    private final MeterFactory meterFactory;
     private final Timer aggregateReadTimer;
     private final Timer lastSequenceReadTimer;
     protected volatile SegmentBasedEventStore next;
@@ -87,7 +86,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
-        this.meterFactory = meterFactory;
         this.aggregateReadTimer = meterFactory.timer(BaseMetricName.AXON_AGGREGATE_READTIME,
                                                      Tags.of(MeterFactory.CONTEXT,
                                                              eventTypeContext.getContext(),
@@ -468,22 +466,26 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         if (dataFile.exists()) {
             if (!dataFile.renameTo(storageProperties.dataFile(context, segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
-                                                     "Could not rename " + dataFile.getAbsolutePath() + " to "
-                                                             + storageProperties.dataFile(context, segment));
+                                                     renameMessage(dataFile,
+                                                                   storageProperties.dataFile(context, segment)));
             }
             File indexFile = storageProperties.oldIndex(context, segment);
             if (indexFile.exists() && !indexFile.renameTo(storageProperties.index(context, segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
-                                                     "Could not rename " + indexFile.getAbsolutePath() + " to "
-                                                             + storageProperties.index(context, segment));
+                                                     renameMessage(indexFile,
+                                                                   storageProperties.index(context, segment)));
             }
             File bloomFile = storageProperties.oldBloomFilter(context, segment);
             if (bloomFile.exists() && !bloomFile.renameTo(storageProperties.bloomFilter(context, segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
-                                                     "Could not rename " + bloomFile.getAbsolutePath() + " to "
-                                                             + storageProperties.bloomFilter(context, segment));
+                                                     renameMessage(bloomFile,
+                                                                   storageProperties.bloomFilter(context, segment)));
             }
         }
+    }
+
+    private String renameMessage(File from, File to) {
+        return "Could not rename " + from.getAbsolutePath() + " to " + to.getAbsolutePath();
     }
 
     protected void recreateIndexFromIterator(long segment, EventIterator iterator) {
@@ -494,10 +496,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                         event.getEvent().getAggregateSequenceNumber(),
                         event.getPosition(),
                         event.getToken()));
-//                aggregatePositions.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-//                                                   k -> new ConcurrentSkipListSet<>())
-//                                  .add(new PositionInfo(event.getPosition(),
-//                                                        event.getEvent().getAggregateSequenceNumber()));
             }
         }
         indexManager.complete(segment);
