@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.grpc.Server;
 import io.grpc.netty.NettyServerBuilder;
@@ -37,13 +38,14 @@ public class Gateway implements SmartLifecycle {
     private boolean started;
     private Server server;
     private final MessagingPlatformConfiguration routingConfiguration;
-
+    private final LicenseAccessController licenseAccessController;
 
     public Gateway(MessagingPlatformConfiguration messagingPlatformConfiguration, List<AxonServerClientService> axonServerClientServices,
-                   AxonServerAccessController axonServerAccessController) {
+                   AxonServerAccessController axonServerAccessController, LicenseAccessController licenseAccessController) {
         this.routingConfiguration = messagingPlatformConfiguration;
         this.axonServerClientServices = axonServerClientServices;
         this.axonServerAccessController = axonServerAccessController;
+        this.licenseAccessController = licenseAccessController;
     }
 
     @Override
@@ -98,6 +100,7 @@ public class Gateway implements SmartLifecycle {
         if( routingConfiguration.getAccesscontrol().isEnabled()) {
             serverBuilder.intercept(new AuthenticationInterceptor(axonServerAccessController));
         }
+        serverBuilder.intercept(new LicenseInterceptor(licenseAccessController));
         serverBuilder.intercept(new ContextInterceptor());
 
         if( routingConfiguration.getKeepAliveTime() > 0) {

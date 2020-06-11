@@ -29,7 +29,7 @@ public class CommandCacheTest {
     @Before
     public void setUp() {
         clock = new FakeClock();
-        testSubject = new CommandCache(50000, clock);
+        testSubject = new CommandCache(50000, clock,1);
     }
 
     @Test
@@ -42,5 +42,19 @@ public class CommandCacheTest {
         testSubject.clearOnTimeout();
         assertNotNull(responseAtomicReference.get());
 
+    }
+
+    @Test(expected = InsufficientCacheCapacityException.class)
+    public void onFullCapacityThrowError() {
+        AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
+
+        testSubject.put("1234", new CommandInformation("1234", "Source", responseAtomicReference::set,
+                new ClientIdentification("context", "client"),
+                "component"));
+
+
+        testSubject.put("4567", new CommandInformation("4567", "Source", responseAtomicReference::set,
+                new ClientIdentification("context", "client"),
+                "component"));
     }
 }
