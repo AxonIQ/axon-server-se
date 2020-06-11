@@ -28,11 +28,16 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.3.6
+-------------------------------
+
+* Do not override log entries in RAFT log that already have been committed
+
 Release Notes for version 4.3.5
 -------------------------------
 
 * Fix for scheduling of tasks in clustering module
-* Do not rollback RAFT log before commit index
+* Do not override log entries in RAFT log that already have been committed
 * Fixed logging in IndexManager
 
 Release Notes for version 4.3.4

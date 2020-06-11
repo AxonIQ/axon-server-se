@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-ee</artifactId>
     <packaging>pom</packaging>
-    <version>4.3.6-SNAPSHOT</version>
+    <version>4.3.7-SNAPSHOT</version>
 
     <name>AxonIQ Axon Server EE</name>
 
@@ -169,6 +169,11 @@
                         <artifactId>jsr305</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-census</artifactId>
+                <version>${grpc.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.grpc</groupId>
