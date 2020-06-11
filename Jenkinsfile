@@ -10,10 +10,7 @@ def label = "worker-${UUID.randomUUID().toString()}"
 def deployingBranches = [   // The branches mentioned here will get their artifacts deployed to Nexus
     "master", "axonserver-se-4.3.x"
 ]
-def dockerBranches = [      // The branches mentioned here will get Docker test images built
-    "master", "axonserver-se-4.3.x"
-]
-def sonarBranches = [       // The branches mentioned here will get a SonarQube analysis
+def dockerBranches = [      // The branches mentioned here will get Docker images built
     "master", "axonserver-se-4.3.x"
 ]
 
@@ -87,6 +84,7 @@ podTemplate(label: label,
                     if (relevantBranch(gitBranch, dockerBranches)) {
                         mavenTarget = "-Pdocker " + mavenTarget
                     }
+                    mavenTarget = "-Pcoverage " + mavenTarget
 
                     try {
                         sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"   // Ignore test failures; we want the numbers only.
@@ -110,11 +108,14 @@ podTemplate(label: label,
                 }
             }
 
+            def sonarOptions = "-Dsonar.branch.name=${gitBranch}"
+            if (gitBranch.startsWith("PR-") && env.CHANGE_ID) {
+                sonarOptions = "-Dsonar.pullrequest.branch=" + gitBranch + " -Dsonar.pullrequest.key=" + env.CHANGE_ID
+            }
             stage ('Run SonarQube') {
-                if (relevantBranch(gitBranch, sonarBranches)) {                        // Run SonarQube analyses for some branches
-                    container("maven") {
-                        sh "mvn \${MVN_BLD} -DskipTests -Psonar sonar:sonar"
-                    }
+                container("maven") {
+                    sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
+                    slackReport = slackReport + "\nSources analyzed in SonarQube."
                 }
             }
 
