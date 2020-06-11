@@ -114,16 +114,21 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
-        SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId, firstSequenceNumber);
+    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long minToken,
+                                          Consumer<SerializedEvent> eventConsumer) {
+        SortedMap<Long, SortedSet<PositionInfo>> positionInfos = getPositionInfos(aggregateId,
+                                                                                  firstSequenceNumber,
+                                                                                  minToken);
         boolean delegate = true;
-        if( ! positionInfos.isEmpty()) {
+        if (!positionInfos.isEmpty()) {
             SortedSet<PositionInfo> first = positionInfos.get(positionInfos.firstKey());
-            if( foundFirstSequenceNumber(first, firstSequenceNumber)) delegate = false;
+            if (foundFirstSequenceNumber(first, firstSequenceNumber) || positionInfos.firstKey() >= minToken) {
+                delegate = false;
+            }
         }
 
-        if( delegate && next != null) {
-            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, eventConsumer);
+        if (delegate && next != null) {
+            next.processEventsPerAggregate(aggregateId, firstSequenceNumber, minToken, eventConsumer);
         }
 
         positionInfos.keySet()
@@ -383,16 +388,18 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected abstract void recreateIndex(long segment);
 
-    private SortedMap<Long, SortedSet<PositionInfo>> getPositionInfos(String aggregateId, long minSequenceNumber) {
+    private SortedMap<Long, SortedSet<PositionInfo>> getPositionInfos(String aggregateId, long minSequenceNumber,
+                                                                      long minToken) {
         final SortedMap<Long, SortedSet<PositionInfo>> result = new ConcurrentSkipListMap<>();
-        for( long segment : getSegments()) {
+        for (long segment : getSegments()) {
             SortedSet<PositionInfo> positionInfos = getPositions(segment, aggregateId);
             if (positionInfos != null) {
                 positionInfos = positionInfos.tailSet(new PositionInfo(0, minSequenceNumber));
-                if (!positionInfos.isEmpty())
+                if (!positionInfos.isEmpty()) {
                     result.put(segment, positionInfos);
+                }
 
-                if (foundFirstSequenceNumber(positionInfos, minSequenceNumber)) {
+                if (foundFirstSequenceNumber(positionInfos, minSequenceNumber) || segment >= minToken) {
                     return result;
                 }
             }

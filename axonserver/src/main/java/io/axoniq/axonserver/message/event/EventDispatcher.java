@@ -30,6 +30,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -71,21 +72,22 @@ public class EventDispatcher implements AxonServerClientService {
             EventStoreGrpc.getListEventsMethod().toBuilder(
                     ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
                     InputStreamMarshaller.inputStreamMarshaller())
-                                             .build();
-    public static final MethodDescriptor<GetAggregateEventsRequest, InputStream> METHOD_LIST_AGGREGATE_EVENTS =
+                          .build();
+    public static final MethodDescriptor<GetAggregateEventsRequest, SerializedEvent> METHOD_LIST_AGGREGATE_EVENTS =
             EventStoreGrpc.getListAggregateEventsMethod().toBuilder(
                     ProtoUtils.marshaller(GetAggregateEventsRequest.getDefaultInstance()),
-                    InputStreamMarshaller.inputStreamMarshaller())
-                                              .build();
+                    SerializedEventMarshaller.serializedEventMarshaller())
+                          .build();
 
-    public static final MethodDescriptor<GetAggregateSnapshotsRequest, InputStream> METHOD_LIST_AGGREGATE_SNAPSHOTS =
+    public static final MethodDescriptor<GetAggregateSnapshotsRequest, SerializedEvent> METHOD_LIST_AGGREGATE_SNAPSHOTS =
             EventStoreGrpc.getListAggregateSnapshotsMethod().toBuilder(
                     ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
-                    InputStreamMarshaller.inputStreamMarshaller())
-                                                       .build();
+                    SerializedEventMarshaller.serializedEventMarshaller())
+                          .build();
     public static final MethodDescriptor<InputStream, Confirmation> METHOD_APPEND_EVENT =
             EventStoreGrpc.getAppendEventMethod().toBuilder(
-                    InputStreamMarshaller.inputStreamMarshaller(), ProtoUtils.marshaller(Confirmation.getDefaultInstance()))
+                    InputStreamMarshaller.inputStreamMarshaller(),
+                    ProtoUtils.marshaller(Confirmation.getDefaultInstance()))
                           .build();
 
     private final EventStoreLocator eventStoreLocator;
@@ -165,11 +167,15 @@ public class EventDispatcher implements AxonServerClientService {
         });
     }
 
-    public void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
-        listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "listAggregateEvents", responseObserver));
+    public void listAggregateEvents(GetAggregateEventsRequest request,
+                                    StreamObserver<SerializedEvent> responseObserver) {
+        listAggregateEvents(contextProvider.getContext(),
+                            request,
+                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", responseObserver));
     }
 
-    public void listAggregateEvents(String context, GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
+    public void listAggregateEvents(String context, GetAggregateEventsRequest request,
+                                    StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventStore.listAggregateEvents(context, request, responseObserver);
@@ -374,7 +380,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
-                                       StreamObserver<InputStream> responseObserver) {
+                                       StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventStore.listAggregateSnapshots(context, request, responseObserver);
@@ -386,7 +392,7 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     private void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
-                                       StreamObserver<InputStream> responseObserver) {
+                                        StreamObserver<SerializedEvent> responseObserver) {
         listAggregateSnapshots(contextProvider.getContext(), request, responseObserver);
     }
 

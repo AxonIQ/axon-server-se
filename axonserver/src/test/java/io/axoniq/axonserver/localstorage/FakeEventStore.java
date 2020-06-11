@@ -50,7 +50,7 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber, long minToken,
                                           Consumer<SerializedEvent> eventConsumer) {
 
     }

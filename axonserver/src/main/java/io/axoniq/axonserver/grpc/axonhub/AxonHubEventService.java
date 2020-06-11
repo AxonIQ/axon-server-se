@@ -12,8 +12,10 @@ package io.axoniq.axonserver.grpc.axonhub;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.*;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.event.InputStreamMarshaller;
+import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -48,9 +50,9 @@ public class AxonHubEventService implements AxonServerClientService {
                             .setType(MethodDescriptor.MethodType.UNARY)
                             .build();
 
-    public static final MethodDescriptor<GetAggregateEventsRequest,InputStream> METHOD_LIST_AGGREGATE_EVENTS =
+    public static final MethodDescriptor<GetAggregateEventsRequest, SerializedEvent> METHOD_LIST_AGGREGATE_EVENTS =
             MethodDescriptor.newBuilder(ProtoUtils.marshaller(GetAggregateEventsRequest.getDefaultInstance()),
-                                        InputStreamMarshaller.inputStreamMarshaller())
+                                        SerializedEventMarshaller.serializedEventMarshaller())
                             .setFullMethodName(generateFullMethodName(SERVICE_NAME, "ListAggregateEvents"))
                             .setType(MethodDescriptor.MethodType.SERVER_STREAMING)
                             .build();

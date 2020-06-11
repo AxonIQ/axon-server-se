@@ -260,14 +260,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
-                                    StreamObserver<InputStream> responseStreamObserver) {
+                                    StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             AtomicInteger counter = new AtomicInteger();
             workers(context).aggregateReader.readEvents(request.getAggregateId(),
                                                         request.getAllowSnapshots(),
                                                         request.getInitialSequence(),
+                                                        request.getMinToken(),
                                                         event -> {
-                                                            responseStreamObserver.onNext(event.asInputStream());
+                                                            responseStreamObserver.onNext(event);
                                                             counter.incrementAndGet();
                                                         });
             if (counter.get() == 0) {
@@ -295,7 +296,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
-                                       StreamObserver<InputStream> responseStreamObserver) {
+                                       StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             if (request.getMaxSequence() >= 0) {
                 workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
@@ -303,7 +304,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                request.getMaxSequence(),
                                                                request.getMaxResults(),
                                                                event -> responseStreamObserver
-                                                                       .onNext(event.asInputStream()));
+                                                                       .onNext(event));
             }
             responseStreamObserver.onCompleted();
         }, responseStreamObserver::onError);
@@ -522,7 +523,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
+    public boolean hasContext(String context) {
+        return workersMap.containsKey(context);
+    }
+
     private class Workers {
+
         private final EventWriteStorage eventWriteStorage;
         private final SnapshotWriteStorage snapshotWriteStorage;
         private final AggregateReader aggregateReader;

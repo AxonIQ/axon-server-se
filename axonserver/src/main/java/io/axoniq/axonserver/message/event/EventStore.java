@@ -22,6 +22,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
 
 import java.io.InputStream;
@@ -37,7 +38,7 @@ public interface EventStore {
                                                             StreamObserver<Confirmation> responseObserver);
 
     void listAggregateEvents(String context, GetAggregateEventsRequest request,
-                             StreamObserver<InputStream> responseStreamObserver);
+                             StreamObserver<SerializedEvent> responseStreamObserver);
 
     StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseStreamObserver);
 
@@ -53,7 +54,7 @@ public interface EventStore {
     StreamObserver<QueryEventsRequest> queryEvents(String context, StreamObserver<QueryEventsResponse> responseObserver);
 
     void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
-                                StreamObserver<InputStream> responseObserver);
+                                StreamObserver<SerializedEvent> responseObserver);
 
     /**
      * Deletes all event data in a given context (Only intended for development environments).
