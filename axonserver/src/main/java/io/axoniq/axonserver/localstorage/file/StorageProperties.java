@@ -116,6 +116,8 @@ public class StorageProperties {
         this.eventsSuffix = eventsSuffix;
         this.indexSuffix = indexSuffix;
         this.bloomIndexSuffix = bloomIndexSuffix;
+        this.globalIndexSuffix = globalIndexSuffix;
+        this.newIndexSuffix = newIndexSuffix;
     }
 
     public String getEventsSuffix() {
