@@ -115,7 +115,7 @@ public class AxonServerFixture {
             return null;
         }).when(axonserverEventService).getFirstToken(any(), any());
         axonhubClientServices.add(new AxonHubEventService(axonserverEventService));
-        gateway = new Gateway(configuration, axonhubClientServices, accessController);
+        gateway = new Gateway(configuration, axonhubClientServices, accessController, () -> true);
         gateway.start();
     }
 

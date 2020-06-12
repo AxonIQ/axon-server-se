@@ -58,6 +58,7 @@ public class LogEntryProcessor {
                 result = ApplyResult.FAILED;
                 health.set(false);
             } catch (Exception ex) {
+                logger.error("{}: Apply failed", processorStore.groupId(), ex);
                 String error = String.format("%s: Apply failed last applied : %d, commitIndex: %d, %s",
                                              processorStore.groupId(),
                                              processorStore.lastAppliedIndex(),
