@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.SortedMap;
 
 /**
- * Manages index for an event store. There is two IndexManagers per context, one for the events and one for the
+ * Manages index for an event store. There are two IndexManagers per context, one for the events and one for the
  * snapshots.
  *
  * @author Marc Gathier

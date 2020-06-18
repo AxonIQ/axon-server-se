@@ -21,14 +21,17 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
+ * Manages the completed segments for the event store.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 public class InputStreamEventStore extends SegmentBasedEventStore {
 
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
 
-    public InputStreamEventStore(EventTypeContext context, StandardIndexManager indexManager,
+    public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
                                  EventTransformerFactory eventTransformerFactory,
                                  StorageProperties storageProperties, MeterFactory meterFactory) {
         super(context, indexManager, storageProperties, meterFactory);
