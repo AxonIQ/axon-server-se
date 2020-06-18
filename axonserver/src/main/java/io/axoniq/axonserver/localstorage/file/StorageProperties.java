@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 
 import java.io.File;
+import java.time.Duration;
 
 /**
  * @author Marc Gathier
@@ -97,12 +98,19 @@ public class StorageProperties {
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
+    /**
+     * Time to keep events in primary tier before deleting them, if secondary tier is defined.
+     */
+    private Duration[] retentionTime = new Duration[]{
+            Duration.ofDays(7)
+    };
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
 
-    public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix, String bloomIndexSuffix) {
+    public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix,
+                             String bloomIndexSuffix) {
         this(systemInfoProvider);
         this.eventsSuffix = eventsSuffix;
         this.indexSuffix = indexSuffix;
@@ -328,5 +336,16 @@ public class StorageProperties {
         StorageProperties clone = cloneProperties();
         clone.maxBloomFiltersInMemory = maxBloomFiltersInMemory;
         return clone;
+    }
+
+    public void setRetentionTime(Duration[] retentionTime) {
+        this.retentionTime = retentionTime;
+    }
+
+    public long getRetentionTime(int tier) {
+        if (tier < 0 || tier >= retentionTime.length) {
+            return System.currentTimeMillis();
+        }
+        return retentionTime[tier].toMillis();
     }
 }

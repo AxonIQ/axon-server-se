@@ -16,6 +16,7 @@ import java.util.function.Consumer;
  * @author Marc Gathier
  */
 public class AggregateReader {
+
     private final EventStorageEngine eventStorageEngine;
     private final SnapshotReader snapshotReader;
 
@@ -24,17 +25,28 @@ public class AggregateReader {
         this.snapshotReader = snapshotReader;
     }
 
-    public void readEvents(String aggregateId, boolean useSnapshots, long minSequenceNumber, Consumer<SerializedEvent> eventConsumer) {
+    public void readEvents(String aggregateId, boolean useSnapshots, long minSequenceNumber,
+                           Consumer<SerializedEvent> eventConsumer) {
+        readEvents(aggregateId, useSnapshots, minSequenceNumber, Long.MAX_VALUE, eventConsumer);
+    }
+
+    public void readEvents(String aggregateId, boolean useSnapshots, long minSequenceNumber, long maxSequenceNumber,
+                           Consumer<SerializedEvent> eventConsumer) {
         long actualMinSequenceNumber = minSequenceNumber;
-        if( useSnapshots) {
+        if (useSnapshots) {
             Optional<SerializedEvent> snapshot = snapshotReader.readSnapshot(aggregateId, minSequenceNumber);
-            if( snapshot.isPresent()) {
+            if (snapshot.isPresent()) {
                 eventConsumer.accept(snapshot.get());
+                if (snapshot.get().getAggregateSequenceNumber() >= maxSequenceNumber) {
+                    return;
+                }
                 actualMinSequenceNumber = snapshot.get().asEvent().getAggregateSequenceNumber() + 1;
             }
         }
-        eventStorageEngine.processEventsPerAggregate(aggregateId, actualMinSequenceNumber, eventConsumer);
-
+        eventStorageEngine.processEventsPerAggregate(aggregateId,
+                                                     actualMinSequenceNumber,
+                                                     maxSequenceNumber,
+                                                     eventConsumer);
     }
     public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
         snapshotReader.streamByAggregateId(aggregateId, minSequenceNumber, maxSequenceNumber,

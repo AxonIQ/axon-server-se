@@ -35,8 +35,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.anyBoolean;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -57,12 +55,12 @@ public class EventDispatcherTest {
     @Before
     public void setUp() {
         when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
-        when(eventStoreLocator.getEventStore(eq("OtherContext"), anyBoolean())).thenReturn(null);
-        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
+        when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
+        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
                                           new MeterFactory(Metrics.globalRegistry,
-                                          new DefaultMetricCollector()));
+                                                           new DefaultMetricCollector()));
     }
 
     @Test
@@ -87,7 +85,7 @@ public class EventDispatcherTest {
         assertTrue(responseObserver.values().isEmpty());
         inputStream.onError(new Throwable());
         assertTrue(responseObserver.errors().isEmpty());
-        verify(appendEventConnection).onError(anyObject());
+        verify(appendEventConnection).onError(any());
     }
 
     @Test

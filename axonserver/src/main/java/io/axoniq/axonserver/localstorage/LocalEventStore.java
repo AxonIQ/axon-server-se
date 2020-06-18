@@ -261,20 +261,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
-        runInDataFetcherPool(() -> {
-            AtomicInteger counter = new AtomicInteger();
-            workers(context).aggregateReader.readEvents(request.getAggregateId(),
-                                                        request.getAllowSnapshots(),
-                                                        request.getInitialSequence(),
-                                                        event -> {
-                                                            responseStreamObserver.onNext(event.asInputStream());
-                                                            counter.incrementAndGet();
-                                                        });
-            if (counter.get() == 0) {
-                logger.debug("Aggregate not found: {}", request);
-            }
-            responseStreamObserver.onCompleted();
-        }, responseStreamObserver::onError);
+        runInDataFetcherPool(() -> {AtomicInteger counter = new AtomicInteger();
+        workers(context).aggregateReader.readEvents(request.getAggregateId(),
+                                                    request.getAllowSnapshots(),
+                                                    request.getInitialSequence(),
+                                                    getMaxSequence(request),
+                                                    event -> {
+                                                        responseStreamObserver.onNext(event.asInputStream());
+                                                        counter.incrementAndGet();
+                                                    });
+        if (counter.get() == 0) {
+            logger.debug("Aggregate not found: {}", request);
+        }
+        responseStreamObserver.onCompleted();}, responseStreamObserver::onError);
     }
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {
@@ -293,20 +292,26 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
     }
 
+    private long getMaxSequence(GetAggregateEventsRequest request) {
+        if (request.getMaxSequence() > 0) {
+            return request.getMaxSequence();
+        }
+        return Long.MAX_VALUE;
+    }
+
+
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
                                        StreamObserver<InputStream> responseStreamObserver) {
-        runInDataFetcherPool(() -> {
-            if (request.getMaxSequence() >= 0) {
-                workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
-                                                               request.getInitialSequence(),
-                                                               request.getMaxSequence(),
-                                                               request.getMaxResults(),
-                                                               event -> responseStreamObserver
-                                                                       .onNext(event.asInputStream()));
-            }
-            responseStreamObserver.onCompleted();
-        }, responseStreamObserver::onError);
+        runInDataFetcherPool(() -> {if (request.getMaxSequence() >= 0) {
+            workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
+                                                           request.getInitialSequence(),
+                                                           request.getMaxSequence(),
+                                                           request.getMaxResults(),
+                                                           event -> responseStreamObserver
+                                                                          .onNext(event.asInputStream()));
+        }
+        responseStreamObserver.onCompleted();}, responseStreamObserver::onError);
     }
 
     @Override
@@ -377,18 +382,20 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        runInDataFetcherPool(() -> {
-            long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
-            responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
-            responseObserver.onCompleted();
-        }, responseObserver::onError);
+        runInDataFetcherPool(() -> {long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
+        responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
+        responseObserver.onCompleted();}, responseObserver::onError);
     }
 
     @Override
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
-        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage, workers.eventStreamReader, defaultLimit, timeout, responseObserver);
+        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage,
+                                                    workers.eventStreamReader,
+                                                    defaultLimit,
+                                                    timeout,
+                                                    responseObserver);
     }
 
     @Override
@@ -437,7 +444,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workersMap.forEach((k, v) -> v.validateActiveConnections());
     }
 
-    public long getLastToken(String context) {
+    public long getLastEvent(String context) {
         workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).eventStorageEngine.getLastToken();
     }
@@ -522,7 +529,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
+    public long firstToken(String context) {
+        return workers(context).eventStreamReader.getFirstToken();
+    }
+
     private class Workers {
+
         private final EventWriteStorage eventWriteStorage;
         private final SnapshotWriteStorage snapshotWriteStorage;
         private final AggregateReader aggregateReader;
@@ -535,6 +547,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final AtomicBoolean initialized = new AtomicBoolean();
         private final TrackingEventProcessorManager trackingEventManager;
         private final Gauge gauge;
+        private final Gauge snapshotGauge;
 
 
         public Workers(String context) {
@@ -555,8 +568,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.gauge = meterFactory.gauge(BaseMetricName.AXON_EVENT_LAST_TOKEN,
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,
-                                            c -> (double) getLastToken(c));
-
+                                            c -> (double) getLastEvent(c));
+            this.snapshotGauge = meterFactory.gauge(BaseMetricName.AXON_SNAPSHOT_LAST_TOKEN,
+                                                    Tags.of(MeterFactory.CONTEXT, context),
+                                                    context,
+                                                    c -> (double) getLastSnapshot(c));
         }
 
         public synchronized void init(boolean validate) {
@@ -576,6 +592,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventStorageEngine.close(deleteData);
             snapshotStorageEngine.close(deleteData);
             meterFactory.remove(gauge);
+            meterFactory.remove(snapshotGauge);
         }
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,
