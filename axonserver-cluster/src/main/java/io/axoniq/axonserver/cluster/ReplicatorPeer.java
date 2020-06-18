@@ -655,7 +655,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
             if (!raftGroup.raftConfiguration().forceSnapshotOnJoin()) {
                 return false;
             }
-            return nextIndex() <= 1;
+            return nextIndex() <= 1 && raftGroup.logEntryProcessor().lastAppliedIndex() > 0;
         }
 
         private EntryIterator updateEntryIterator() {
@@ -671,7 +671,7 @@ public class ReplicatorPeer implements ReplicatorPeerStatus {
                 entryIterator = logEntryStore.createIterator(nextIndex());
                 return entryIterator;
             } else {
-                logger.info("{} in term {}: follower {} is far behind the log entry. Follower's last applied index: {}.",
+                logger.info("{} in term {}: follower {} is far behind the log entry. Follower's next index: {}.",
                             groupId(),
                             currentTerm(),
                             raftPeer.nodeId(),
