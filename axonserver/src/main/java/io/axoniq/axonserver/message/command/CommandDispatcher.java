@@ -12,6 +12,7 @@ package io.axoniq.axonserver.message.command;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
@@ -47,7 +48,9 @@ public class CommandDispatcher {
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
+
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, MeterFactory.RateMeter>> errorRatePerContext = new ConcurrentHashMap<>();
 
     public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache,
                              CommandMetricsRegistry metricRegistry,
@@ -68,17 +71,29 @@ public class CommandDispatcher {
     public void dispatch(String context, SerializedCommand request, Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if( proxied) {
             CommandHandler handler = registrations.findByClientAndCommand(new ClientIdentification(context,request.getClient()), request.getCommand());
-            dispatchToCommandHandler( request, handler, responseObserver,
-                                      ErrorCode.CLIENT_DISCONNECTED,
-                                      String.format("Client %s not found while processing: %s"
-                                              , request.getClient(), request.getCommand()));
+            dispatchToCommandHandler(
+                    request,
+                    handler,
+                    responseObserver,
+                    ErrorCode.CLIENT_DISCONNECTED,
+                    String.format(
+                            "Client %s not found while processing: %s",
+                            request.getClient(),
+                            request.getCommand()
+                    ),
+                    context
+            );
         } else {
             commandRate(context).mark();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context, request.wrapped(), request.getRoutingKey());
-            dispatchToCommandHandler( request, commandHandler, responseObserver,
-                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
-                                      "No Handler for command: " + request.getCommand()
-                                      );
+            dispatchToCommandHandler(
+                    request,
+                    commandHandler,
+                    responseObserver,
+                    ErrorCode.NO_HANDLER_FOR_COMMAND,
+                    "No Handler for command: " + request.getCommand(),
+                    context
+            );
         }
     }
 
@@ -108,7 +123,8 @@ public class CommandDispatcher {
 
     private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
                                           Consumer<SerializedCommandResponse> responseObserver,
-                                          ErrorCode noHandlerErrorCode, String noHandlerMessage) {
+                                          ErrorCode noHandlerErrorCode, String noHandlerMessage,
+                                          String context) {
         if (commandHandler == null) {
             logger.warn("No Handler for command: {}", command.getName() );
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
@@ -117,19 +133,26 @@ public class CommandDispatcher {
                                                    .setErrorCode(noHandlerErrorCode.getCode())
                                                    .setErrorMessage(ErrorMessageFactory.build(noHandlerMessage))
                                                    .build()));
+            errorRate(context, noHandlerErrorCode.getCode());
+
             return;
         }
 
         logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClient());
         commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(),
-                                                                                command.wrapped().getClientId(),
-                                                                                responseObserver,
-                                                                                commandHandler.getClient(),
-                                                                                commandHandler.getComponentName()));
-        WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClient(), command);
-        commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
-    }
+                command.wrapped().getClientId(),
+                responseObserver,
+                commandHandler.getClient(),
+                commandHandler.getComponentName()));
 
+        try {
+            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClient(), command);
+            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+        } catch (MessagingPlatformException ex) {
+            errorRate(commandHandler.getClient().getContext(), ex.getErrorCode().getCode());
+            throw ex;
+        }
+    }
 
     public void handleResponse(SerializedCommandResponse commandResponse, boolean proxied) {
         CommandInformation toPublisher = commandCache.remove(commandResponse.getRequestIdentifier());
@@ -169,6 +192,7 @@ public class CommandDispatcher {
                     .setErrorCode(ErrorCode.NO_HANDLER_FOR_COMMAND.getCode())
                     .setErrorMessage(ErrorMessageFactory.build("No Handler for command: " + request.getName()))
                     .build()));
+            errorRate(command.client().getContext(), ErrorCode.NO_HANDLER_FOR_COMMAND.getCode());
             return null;
         }
 
@@ -195,6 +219,7 @@ public class CommandDispatcher {
                         .setErrorMessage(ErrorMessageFactory.build("Connection lost while executing command on: " + ci.getClientId()))
                         .setErrorCode(ErrorCode.CONNECTION_TO_HANDLER_LOST.getCode())
                         .build()));
+                errorRate(client.getContext(), ErrorCode.CONNECTION_TO_HANDLER_LOST.getCode());
             }
         });
     }
@@ -203,5 +228,10 @@ public class CommandDispatcher {
         return commandCache.size();
     }
 
+    private void errorRate(String context, String errorCode) {
+        Map<String, MeterFactory.RateMeter> contextErrors = errorRatePerContext.computeIfAbsent(context, ctx -> new ConcurrentHashMap<>());
+        MeterFactory.RateMeter errorRate = contextErrors.computeIfAbsent(errorCode, err -> metricRegistry.errorRate(context, BaseMetricName.AXON_COMMAND_RATE, errorCode));
 
+        errorRate.mark();
+    }
 }

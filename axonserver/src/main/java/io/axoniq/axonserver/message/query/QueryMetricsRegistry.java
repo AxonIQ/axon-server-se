@@ -102,7 +102,15 @@ public class QueryMetricsRegistry {
      */
     public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
         ClusterMetric clusterMetric = clusterMetric(query, clientId);
-        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.count());
+
+        return new QueryMetric(
+                query,
+                clientId.metricName(),
+                componentName,
+                clusterMetric.count(),
+                clusterMetric.mean(),
+                clusterMetric.max()
+        );
     }
 
     /**
@@ -131,18 +139,25 @@ public class QueryMetricsRegistry {
         return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
     }
 
+    public MeterFactory.RateMeter errorRate(String context, BaseMetricName meterName, String errorCode) {
+        return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context, MeterFactory.ERROR_CODE, errorCode));
+    }
 
     public static class QueryMetric {
         private final QueryDefinition queryDefinition;
         private final String clientId;
         private final String componentName;
         private final long count;
+        private final double mean;
+        private final double max;
 
-        QueryMetric(QueryDefinition queryDefinition, String clientId, String componentName, double count) {
+        QueryMetric(QueryDefinition queryDefinition, String clientId, String componentName, double count, double mean, double max) {
             this.queryDefinition = queryDefinition;
             this.clientId = clientId;
             this.componentName = componentName;
             this.count = (long) count;
+            this.mean = mean;
+            this.max = max;
         }
 
         public QueryDefinition getQueryDefinition() {
@@ -159,6 +174,14 @@ public class QueryMetricsRegistry {
 
         public long getCount() {
             return count;
+        }
+
+        public double getMean() {
+            return mean;
+        }
+
+        public double getMax() {
+            return max;
         }
 
         @Override

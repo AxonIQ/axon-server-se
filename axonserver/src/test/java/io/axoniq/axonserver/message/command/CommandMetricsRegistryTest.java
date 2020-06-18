@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
@@ -21,10 +22,12 @@ import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.runner.*;
-import org.mockito.runners.*;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author Marc Gathier
@@ -63,6 +66,19 @@ public class CommandMetricsRegistryTest {
         System.out.println(snapshot);
         meterRegistry.find("sample").tags("tag2", "value2").meters().forEach(m -> System.out
                 .printf("%s = %s%n", name(m), value(m)));
+    }
+
+    @Test
+    public void testErrorRates() {
+        MeterFactory.RateMeter errorRate1 = testSubject.errorRate("testContext", BaseMetricName.AXON_QUERY_RATE, "testError1");
+        MeterFactory.RateMeter errorRate2 = testSubject.errorRate("testContext", BaseMetricName.AXON_QUERY_RATE, "testError2");
+
+        errorRate1.mark();
+        errorRate1.mark();
+        errorRate2.mark();
+
+        assertEquals(2L, errorRate1.getCount());
+        assertEquals(1L, errorRate2.getCount());
     }
 
     private String value(Meter m) {
