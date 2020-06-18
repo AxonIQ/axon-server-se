@@ -293,4 +293,40 @@ public class StorageProperties {
     public void setFlags(int flags) {
         this.flags = flags;
     }
+
+    public StorageProperties withStorage(String storage) {
+        StorageProperties clone = cloneProperties();
+        clone.storage = storage;
+        return clone;
+    }
+
+    private StorageProperties cloneProperties() {
+        StorageProperties clone = new StorageProperties(systemInfoProvider);
+        clone.maxIndexesInMemory = maxIndexesInMemory;
+        clone.maxBloomFiltersInMemory = maxBloomFiltersInMemory;
+        clone.segmentSize = segmentSize;
+        clone.validationSegments = validationSegments;
+        clone.syncInterval = syncInterval;
+        clone.readBufferSize = readBufferSize;
+        clone.primaryCleanupDelay = primaryCleanupDelay;
+        clone.storage = storage;
+        clone.numberOfSegments = numberOfSegments;
+        clone.forceInterval = forceInterval;
+        clone.indexSuffix = indexSuffix;
+        clone.bloomIndexSuffix = bloomIndexSuffix;
+        clone.eventsSuffix = eventsSuffix;
+        return clone;
+    }
+
+    public StorageProperties withSegmentSize(long segmentSize) {
+        StorageProperties clone = cloneProperties();
+        clone.segmentSize = segmentSize;
+        return clone;
+    }
+
+    public StorageProperties withMaxBloomFiltersInMemory(int maxBloomFiltersInMemory) {
+        StorageProperties clone = cloneProperties();
+        clone.maxBloomFiltersInMemory = maxBloomFiltersInMemory;
+        return clone;
+    }
 }

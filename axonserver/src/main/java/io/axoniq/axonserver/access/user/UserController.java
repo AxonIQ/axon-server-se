@@ -95,10 +95,16 @@ public class UserController {
 
     /**
      * Removes all roles for specified context from all users.
+     *
      * @param context the context to remove
      */
     @Transactional
     public void removeRolesForContext(String context) {
         userRepository.findAll().forEach(user -> user.removeContext(context));
+    }
+
+    @Transactional
+    public void deleteAll() {
+        userRepository.deleteAll();
     }
 }

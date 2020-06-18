@@ -9,7 +9,7 @@
 
 package io.axoniq.cli;
 
-import io.axoniq.cli.json.ContextNode;
+import io.axoniq.cli.json.ReplicationGroupNode;
 import org.apache.commons.cli.CommandLine;
 import org.apache.http.impl.client.CloseableHttpClient;
 
@@ -18,38 +18,36 @@ import java.io.IOException;
 /**
  * @author Marc Gathier
  */
-public class ListContexts extends AxonIQCliCommand {
+public class ListReplicationGroups extends AxonIQCliCommand {
+
     public static void run(String[] args) throws IOException {
         // check args
         CommandLine commandLine = processCommandLine(args[0], args, CommandOptions.TOKEN);
-        String url = createUrl(commandLine, "/v1/public/context");
+        String url = createUrl(commandLine, "/v1/public/replicationgroups");
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            if( jsonOutput(commandLine)) {
+            if (jsonOutput(commandLine)) {
                 System.out.println(getJSON(httpclient,
                                            url,
                                            String.class,
                                            200,
                                            getToken(commandLine)));
             } else {
-                ContextNode[] contexts = getJSON(httpclient,
-                                                 url,
-                                                 ContextNode[].class,
-                                                 200,
-                                                 getToken(commandLine));
-                System.out.printf("%-20s %-20s %-20s %-60s\n", "Name", "Leader", "Replication Group", "Members");
+                ReplicationGroupNode[] replicationGroups = getJSON(httpclient,
+                                                                   url,
+                                                                   ReplicationGroupNode[].class,
+                                                                   200,
+                                                                   getToken(commandLine));
+                System.out.printf("%-20s %-20s %-60s\n", "Name", "Leader", "Members");
 
-                for (ContextNode context : contexts) {
-                    System.out.printf("%-20s %-20s %-20s %-60s\n", context.getContext(),
-                                      context.getLeader(),
-                                      context.getReplicationGroup(),
-                                      context.hasRoles() ? context.concatRoles() : context.concatNodes()
+                for (ReplicationGroupNode replicationGroup : replicationGroups) {
+                    System.out.printf("%-20s %-20s %-60s\n", replicationGroup.getContext(),
+                                      replicationGroup.getLeader(),
+                                      replicationGroup.concatRoles()
                     );
                 }
             }
         }
-
-
     }
 }
