@@ -17,7 +17,6 @@ import io.axoniq.axonserver.grpc.ChannelCloser;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.internal.DeleteNode;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import org.slf4j.Logger;
@@ -184,8 +183,10 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                     !node.getGrpcInternalPort().equals(messagingPlatformConfiguration.getInternalPort())) {
                 logger.error(
                         "Current node's internal hostname/port ({}:{}) has changed,  new values {}:{}. Start AxonServer with recovery file.",
-                        node.getInternalHostName(), node.getGrpcInternalPort(),
-                        messagingPlatformConfiguration.getFullyQualifiedHostname(), messagingPlatformConfiguration.getInternalPort());
+                        node.getInternalHostName(),
+                        node.getGrpcInternalPort(),
+                        messagingPlatformConfiguration.getFullyQualifiedInternalHostname(),
+                        messagingPlatformConfiguration.getInternalPort());
                 SpringApplication.exit(applicationContext, () -> {
                     System.exit(1);
                     return 1;
