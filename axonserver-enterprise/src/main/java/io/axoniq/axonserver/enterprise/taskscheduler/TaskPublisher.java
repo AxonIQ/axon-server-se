@@ -85,6 +85,7 @@ public class TaskPublisher {
                                             .setPayload(payloadSerializedObject)
                                             .setTaskId(UUID.randomUUID().toString())
                                             .setTaskExecutor(taskHandler)
+                                            .setRetryInterval(10)
                                             .build();
 
             logger.debug("Publish task {} with payload {}", taskHandler, task.getPayload().getType());

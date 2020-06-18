@@ -51,7 +51,10 @@ public class RemoteRaftConfigService implements RaftConfigService {
 
     @Override
     public void deleteNodeIfEmpty(String name) {
-        // no action
+        CompletableFuture<InstructionAck> completableFuture = new CompletableFuture<>();
+        raftConfigServiceStub.deleteNode(NodeName.newBuilder().setNode(name).setRequireEmpty(true).build(),
+                                         new CompletableStreamObserver<>(completableFuture, "deleteNode", logger));
+        getFuture(completableFuture);
     }
 
     @Override

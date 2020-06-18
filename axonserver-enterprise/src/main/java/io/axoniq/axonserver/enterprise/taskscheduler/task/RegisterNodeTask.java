@@ -57,11 +57,6 @@ public class RegisterNodeTask implements ScheduledTask {
                     registerNodePayload.getPort())
                     .joinCluster(nodeInfo);
 
-            registerNodePayload.contexts.forEach(c ->
-                                                         taskManager
-                                                                 .createTask(AddNodeToContextTask.class.getName(),
-                                                                             new AddNodeToContext(c),
-                                                                             Duration.ZERO));
             eventPublisher.publishEvent(new ClusterEvents.LicenseUpdated(updateLicense.getLicense().toByteArray()));
 
             registerNodePayload.contexts.forEach(c ->

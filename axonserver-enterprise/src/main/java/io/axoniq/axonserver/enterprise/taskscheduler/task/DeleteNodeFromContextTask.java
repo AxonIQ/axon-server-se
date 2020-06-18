@@ -1,12 +1,11 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
-import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
+import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.CompletableFuture;
 
 import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
@@ -44,7 +43,7 @@ public class DeleteNodeFromContextTask implements ScheduledTask {
                                                                               nodeContext.getNode());
         return taskPublisher.publishScheduledTask(getAdmin(), DeleteContextFromNodeTask.class.getName(),
                                                   nodeContext,
-                                                  Duration.of(100, ChronoUnit.MILLIS))
+                                                  Duration.ZERO)
                             .thenApply(taskId -> null);
     }
 }

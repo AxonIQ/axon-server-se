@@ -101,7 +101,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
 
 
     @Transactional
-    public void deleteNode(String name) {
+    public synchronized void deleteNode(String name) {
         logger.info("Delete node: {}", name);
         synchronized (remoteConnections) {
             if (messagingPlatformConfiguration.getName().equals(name)) {

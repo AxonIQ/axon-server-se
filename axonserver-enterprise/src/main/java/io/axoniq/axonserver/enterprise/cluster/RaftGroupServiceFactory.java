@@ -52,6 +52,9 @@ public class RaftGroupServiceFactory {
         if( configuration.getName().equals(nodeName)) return localRaftGroupService;
 
         ClusterNode node = clusterController.getNode(nodeName);
+        if (node == null) {
+            throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, nodeName + " not found");
+        }
         return new RemoteRaftGroupService(RaftGroupServiceGrpc.newStub(channelProvider.get(node))
                                                               .withInterceptors(new InternalTokenAddingInterceptor(configuration.getAccesscontrol().getInternalToken())));
     }

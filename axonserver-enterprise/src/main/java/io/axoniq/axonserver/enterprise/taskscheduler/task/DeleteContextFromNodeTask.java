@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.taskscheduler.TransientException;
 import org.springframework.stereotype.Component;
@@ -26,10 +28,17 @@ public class DeleteContextFromNodeTask implements ScheduledTask {
     @Override
     public CompletableFuture<Void> executeAsync(String context, Object payload) {
         NodeContext nodeContext = (NodeContext) payload;
-        return raftGroupServiceFactory.getRaftGroupServiceForNode(nodeContext.getNode())
-                                      .deleteContext(nodeContext.getContext(), nodeContext.isPreserveEventStore())
-                                      .exceptionally(t -> {
-                                          throw new TransientException(t.getMessage(), t);
-                                      });
+        try {
+            return raftGroupServiceFactory.getRaftGroupServiceForNode(nodeContext.getNode())
+                                          .deleteContext(nodeContext.getContext(), nodeContext.isPreserveEventStore())
+                                          .exceptionally(t -> {
+                                              throw new TransientException(t.getMessage(), t);
+                                          });
+        } catch (MessagingPlatformException mpe) {
+            if (ErrorCode.NO_SUCH_NODE.equals(mpe.getErrorCode())) {
+                // ignore
+            }
+            throw mpe;
+        }
     }
 }

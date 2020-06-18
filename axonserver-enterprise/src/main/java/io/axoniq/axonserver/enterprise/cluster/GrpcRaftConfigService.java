@@ -72,7 +72,11 @@ public class GrpcRaftConfigService extends RaftConfigServiceGrpc.RaftConfigServi
 
     @Override
     public void deleteNode(NodeName request, StreamObserver<InstructionAck> responseObserver) {
-        wrap(responseObserver, () -> localRaftConfigService.deleteNode(request.getNode()));
+        if (request.getRequireEmpty()) {
+            wrap(responseObserver, () -> localRaftConfigService.deleteNodeIfEmpty(request.getNode()));
+        } else {
+            wrap(responseObserver, () -> localRaftConfigService.deleteNode(request.getNode()));
+        }
     }
 
     private void wrap(StreamObserver<InstructionAck> responseObserver, Runnable action) {

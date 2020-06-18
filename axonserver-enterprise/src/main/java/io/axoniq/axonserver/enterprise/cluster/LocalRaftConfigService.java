@@ -26,7 +26,22 @@ import io.axoniq.axonserver.grpc.ApplicationProtoConverter;
 import io.axoniq.axonserver.grpc.UserProtoConverter;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
-import io.axoniq.axonserver.grpc.internal.*;
+import io.axoniq.axonserver.grpc.internal.Application;
+import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
+import io.axoniq.axonserver.grpc.internal.ContextApplication;
+import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
+import io.axoniq.axonserver.grpc.internal.ContextMember;
+import io.axoniq.axonserver.grpc.internal.ContextRole;
+import io.axoniq.axonserver.grpc.internal.ContextUpdateConfirmation;
+import io.axoniq.axonserver.grpc.internal.ContextUser;
+import io.axoniq.axonserver.grpc.internal.DeleteNode;
+import io.axoniq.axonserver.grpc.internal.LoadBalanceStrategy;
+import io.axoniq.axonserver.grpc.internal.NodeInfo;
+import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
+import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
+import io.axoniq.axonserver.grpc.internal.UpdateLicense;
+import io.axoniq.axonserver.grpc.internal.User;
+import io.axoniq.axonserver.grpc.internal.UserContextRole;
 import io.axoniq.axonserver.licensing.Feature;
 import io.axoniq.axonserver.licensing.LicenseManager;
 import io.axoniq.axonserver.taskscheduler.TransientException;
@@ -40,8 +55,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
@@ -129,41 +149,43 @@ class LocalRaftConfigService implements RaftConfigService {
             throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, String.format("Node %s not found", node));
         }
         if (clusterNode.getContextNames().contains(context)) {
+            logger.info("{} already contains context: {}", context, node);
+            contextsInProgress.remove(context);
             return null;
         }
         ContextConfiguration oldConfiguration = createContextConfigBuilder(contextDefinition).build();
-        String nodeLabel = generateNodeLabel(node);
-        Node raftNode = createNode(clusterNode, nodeLabel, role);
-
-        ContextConfiguration contextConfiguration =
-                ContextConfiguration.newBuilder(oldConfiguration).setPending(true)
-                        .build();
-
-        appendToAdmin(ContextConfiguration.class.getName(), contextConfiguration.toByteArray());
-
         try {
+            String nodeLabel = generateNodeLabel(node);
+            Node raftNode = createNode(clusterNode, nodeLabel, role);
+
+            ContextConfiguration contextConfiguration =
+                    ContextConfiguration.newBuilder(oldConfiguration).setPending(true)
+                                        .build();
+
+            appendToAdmin(ContextConfiguration.class.getName(), contextConfiguration.toByteArray());
+
             return raftGroupServiceFactory.getRaftGroupService(context)
-                    .addNodeToContext(context, raftNode)
-                    .thenAccept(result -> handleContextUpdateResult(context, result))
-                    .exceptionally(e -> {
-                        raftGroupServiceFactory.getRaftGroupServiceForNode(raftNode.getNodeName())
-                                .deleteContext(context, false);
-                        resetAdminConfiguration(oldConfiguration,
-                                "Failed to add node: " + node,
-                                e);
-                        throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS,
-                                e.getMessage());
-                    });
+                                          .addNodeToContext(context, raftNode)
+                                          .thenAccept(result -> handleContextUpdateResult(context, result))
+                                          .exceptionally(e -> {
+                                              raftGroupServiceFactory.getRaftGroupServiceForNode(raftNode.getNodeName())
+                                                                     .deleteContext(context, false);
+                                              resetAdminConfiguration(oldConfiguration,
+                                                                      "Failed to add node: " + node,
+                                                                      e);
+                                              throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS,
+                                                                                   e.getMessage());
+                                          });
         } catch (RuntimeException throwable) {
-            contextsInProgress.remove(context);
             resetAdminConfiguration(oldConfiguration, "Failed to add node: " + node, throwable);
             throw throwable;
+        } finally {
+            contextsInProgress.remove(context);
         }
     }
 
     private void handleContextUpdateResult(String context,
                                            ContextUpdateConfirmation result) {
-        contextsInProgress.remove(context);
         if (!result.getSuccess()) {
             logger.error("{}: {}", context, result.getMessage());
             throw new MessagingPlatformException(ErrorCode.CONTEXT_UPDATE_IN_PROGRESS, result.getMessage());
@@ -370,9 +392,9 @@ class LocalRaftConfigService implements RaftConfigService {
 
 
         taskPublisher.publishScheduledTask(getAdmin(),
-                UnregisterNodeTask.class.getName(),
-                name,
-                Duration.of(1, ChronoUnit.SECONDS));
+                                           UnregisterNodeTask.class.getName(),
+                                           name,
+                                           Duration.ofSeconds(1));
     }
 
     @Override

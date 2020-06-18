@@ -531,6 +531,7 @@ message DeleteContextRequest {
 
 message NodeName {
     string node = 1;
+    bool require_empty = 2;
 }
 
 message LoadBalanceStrategy {
