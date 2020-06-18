@@ -8,10 +8,10 @@ properties([
 def label = "worker-${UUID.randomUUID().toString()}"
 
 def deployingBranches = [   // The branches mentioned here will get their artifacts deployed to Nexus
-    "master", "axonserver-se-4.3.x"
+    "master", "axonserver-se-4.3.x", "release-preview"
 ]
 def dockerBranches = [      // The branches mentioned here will get Docker images built
-    "master", "axonserver-se-4.3.x"
+    "master", "axonserver-se-4.3.x", "release-preview"
 ]
 
 /*
