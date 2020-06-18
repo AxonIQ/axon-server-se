@@ -14,12 +14,24 @@
             <tr>
                 <th><div>Instance Name</div></th>
                 <th><div>AxonServer Node</div></th>
+                <th>
+                    <div>Tags</div>
+                </th>
             </tr>
             </thead>
             <tbody class="selectable">
             <tr v-for="instance in instances">
-                <td><div>{{instance.name}}</div></td>
-                <td><div>{{instance.axonServerNode}}</div></td>
+                <td>
+                    <div>{{instance.name}}</div>
+                </td>
+                <td>
+                    <div>{{instance.axonServerNode}}</div>
+                </td>
+                <td>
+                    <ul>
+                        <li v-for="tag in Object.keys(instance.tags)">{{tag}}={{instance.tags[tag]}}</li>
+                    </ul>
+                </td>
             </tr>
             </tbody>
         </table>

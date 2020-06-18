@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
@@ -70,7 +71,12 @@ public class AxonServers implements Iterable<AxonServer> {
                                              public boolean master() {
                                                  return topology.isLeader(node.getName(), contextName);
                                              }
-                                         } ).sorted(Comparator.comparing(Storage::context)).collect(Collectors.toList());
+                                         }).sorted(Comparator.comparing(Storage::context)).collect(Collectors.toList());
+                                     }
+
+                                     @Override
+                                     public Map<String, String> tags() {
+                                         return node.getTags();
                                      }
 
                                      @Override

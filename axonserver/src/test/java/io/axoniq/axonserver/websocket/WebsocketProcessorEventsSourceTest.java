@@ -37,14 +37,14 @@ public class WebsocketProcessorEventsSourceTest {
                                                                      10,
                                                                      TimeUnit.MILLISECONDS);
 
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         Thread.sleep(20);
         assertEquals(1, triggers.get());
-        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true));
+        testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         Thread.sleep(15);
         assertEquals(2, triggers.get());
 
@@ -67,7 +67,7 @@ public class WebsocketProcessorEventsSourceTest {
 
         for (int run = 0; run < 10; run++) {
             IntStream.range(0, 1000).parallel().forEach(i -> testSubject
-                    .on(new EventProcessorEvents.EventProcessorStatusUpdate(null, true)));
+                    .on(new EventProcessorEvents.EventProcessorStatusUpdate(null)));
             Thread.sleep(100);
         }
 

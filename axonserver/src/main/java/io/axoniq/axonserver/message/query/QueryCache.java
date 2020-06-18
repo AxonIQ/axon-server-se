@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +19,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -31,9 +34,12 @@ import static java.lang.String.format;
 public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
+    private final long cacheCapacity;
 
-    public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout) {
+    public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout,
+                      @Value("${axoniq.axonserver.query-cache-capacity:10000}") long cacheCapacity) {
         this.defaultQueryTimeout = defaultQueryTimeout;
+        this.cacheCapacity = cacheCapacity;
     }
 
     public QueryInformation remove(String messagId) {
@@ -74,6 +80,31 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         if( entry.waitingFor(client) && entry.completeWithError(client, ErrorCode.CONNECTION_TO_HANDLER_LOST,
                                                                 format("Connection to handler %s lost", client))) {
             remove(entry.getKey());
+        }
+    }
+
+    @Override
+    public QueryInformation put(@Nonnull String key, @Nonnull QueryInformation value) {
+        checkCapacity();
+        return super.put(key, value);
+    }
+
+    @Override
+    public QueryInformation putIfAbsent(String key, QueryInformation value) {
+        checkCapacity();
+        return super.putIfAbsent(key, value);
+    }
+
+    @Override
+    public void putAll(Map<? extends String, ? extends QueryInformation> m) {
+        checkCapacity();
+        super.putAll(m);
+    }
+
+    private void checkCapacity() {
+        if (mappingCount() >= cacheCapacity) {
+            throw new InsufficientCacheCapacityException("Query cache is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
+                    + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
         }
     }
 

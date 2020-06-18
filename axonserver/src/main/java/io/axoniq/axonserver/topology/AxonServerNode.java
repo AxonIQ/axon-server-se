@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.topology;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Defines an AxonServer node.
@@ -63,9 +65,14 @@ public interface AxonServerNode {
     /**
      * Returns a list of all contexts where this node is member of and that can store events.
      * In Standard Edition this will only contain "default".
+     *
      * @return
      */
     default Collection<String> getStorageContextNames() {
         return getContextNames();
+    }
+
+    default Map<String, String> getTags() {
+        return Collections.emptyMap();
     }
 }
