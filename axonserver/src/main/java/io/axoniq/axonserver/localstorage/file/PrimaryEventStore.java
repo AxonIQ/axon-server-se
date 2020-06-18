@@ -99,8 +99,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         long first = getFirstFile(lastInitialized, storageDir);
         renameFileIfNecessary(first);
         WritableEventSource buffer = getOrOpenDatafile(first);
-        FileUtils.delete(storageProperties.index(context, first));
-        FileUtils.delete(storageProperties.bloomFilter(context, first));
+        indexManager.remove(first);
         long sequence = first;
         try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first)) {
             while (sequence < nextToken && iterator.hasNext()) {
@@ -146,7 +145,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    protected long getFirstFile(long lastInitialized, File events) {
+    private long getFirstFile(long lastInitialized, File events) {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
 
         return Arrays.stream(eventFiles)
@@ -156,7 +155,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                      .orElse(0L);
     }
 
-    protected FilePreparedTransaction prepareTransaction(List<SerializedEvent> origEventList) {
+    private FilePreparedTransaction prepareTransaction(List<SerializedEvent> origEventList) {
         List<ProcessedEvent> eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
                 Collectors.toList());
         int eventSize = eventBlockSize(eventList);

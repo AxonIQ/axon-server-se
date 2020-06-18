@@ -20,10 +20,10 @@ public class WritePosition implements Comparable<WritePosition> {
     private static final Comparator<WritePosition> writePositionComparator =
             Comparator.comparingLong(WritePosition::getSegment)
                       .thenComparingInt(WritePosition::getPosition);
-    public final long sequence;
-    public final int position;
-    public final WritableEventSource buffer;
-    public final Long segment;
+    final long sequence;
+    final int position;
+    final WritableEventSource buffer;
+    final Long segment;
 
     public WritePosition(long sequence, int position) {
         this(sequence, position, null, null);
