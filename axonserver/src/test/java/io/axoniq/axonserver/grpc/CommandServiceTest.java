@@ -25,7 +25,7 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
@@ -65,22 +65,25 @@ public class CommandServiceTest {
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
+        FakeStreamObserver<SerializedCommandProviderInbound> fakeStreamObserver = new FakeStreamObserver<>();
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(fakeStreamObserver);
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1)
+                                                                                            .setClientId("name")
+                                                                                            .build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
         ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                             "name");
+                                                                             "name");
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
-                                                            new SerializedCommand(Command.newBuilder().build())));
+                                                                             new SerializedCommand(Command.newBuilder()
+                                                                                                          .build())));
         Thread.sleep(50);
-        assertEquals(1, countingStreamObserver.count);
+        assertEquals(1, fakeStreamObserver.values().size());
     }
 
     @Test
     public void subscribe() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                 .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
@@ -89,15 +92,15 @@ public class CommandServiceTest {
 
     @Test
     public void unsupportedCommandInstruction() {
-        CountingStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new FakeStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
 
         String instructionId = "instructionId";
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                                                     .setInstructionId(instructionId)
                                                     .build());
-        InstructionAckOrBuilder result = responseStream.responseList.get(responseStream.responseList.size() - 1)
-                                                                    .getInstructionResult();
+        InstructionAckOrBuilder result = responseStream.values().get(responseStream.values().size() - 1)
+                                                       .getInstructionResult();
 
         assertEquals(instructionId, result.getInstructionId());
         assertTrue(result.hasError());
@@ -106,17 +109,17 @@ public class CommandServiceTest {
 
     @Test
     public void unsupportedCommandInstructionWithoutInstructionId() {
-        CountingStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new CountingStreamObserver<>();
+        FakeStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new FakeStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
 
         requestStream.onNext(CommandProviderOutbound.newBuilder().build());
 
-        assertEquals(0, responseStream.responseList.size());
+        assertEquals(0, responseStream.values().size());
     }
 
     @Test
     public void unsubscribe() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                 .setUnsubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
@@ -124,7 +127,7 @@ public class CommandServiceTest {
     }
     @Test
     public void unsubscribeAfterSubscribe() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                 .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
@@ -136,7 +139,7 @@ public class CommandServiceTest {
 
     @Test
     public void cancelAfterSubscribe() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                 .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                 .build());
@@ -145,13 +148,13 @@ public class CommandServiceTest {
 
     @Test
     public void cancelBeforeSubscribe() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onError(new RuntimeException("failed"));
     }
 
     @Test
     public void close() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
         requestStream.onCompleted();
     }
@@ -163,14 +166,14 @@ public class CommandServiceTest {
             responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
         }).when(commandDispatcher).dispatch(any(), any(), any(), anyBoolean());
-        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build().toByteArray(), responseObserver);
-        assertEquals(1, responseObserver.count);
+        assertEquals(1, responseObserver.values().size());
     }
 
     @Test
     public void commandHandlerDisconnected(){
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                                                     .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
                                                     .build());

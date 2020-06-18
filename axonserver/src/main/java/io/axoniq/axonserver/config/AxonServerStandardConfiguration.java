@@ -16,13 +16,15 @@ import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
+import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.DatafileEventStoreExistChecker;
@@ -32,19 +34,24 @@ import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionMa
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
+import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
+import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
+import io.axoniq.axonserver.taskscheduler.TaskRepository;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.version.VersionInfoProvider;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -53,12 +60,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+
+import static java.util.concurrent.Executors.newScheduledThreadPool;
 
 /**
  * Creates instances of Spring beans required by Axon Server.
@@ -116,7 +128,8 @@ public class AxonServerStandardConfiguration {
     @Bean
     @ConditionalOnMissingBean(FeatureChecker.class)
     public FeatureChecker featureChecker() {
-        return new FeatureChecker() {};
+        return new FeatureChecker() {
+        };
     }
 
     @Bean
@@ -126,13 +139,28 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(EventSchedulerGrpc.EventSchedulerImplBase.class)
+    public AxonServerClientService eventSchedulerService(StandaloneTaskManager localTaskManager) {
+        logger.info("Creating SE EventSchedulerService");
+        return new EventSchedulerService(localTaskManager);
+    }
+
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+
+    @Bean
+    @Qualifier("taskScheduler")
+    public ScheduledExecutorService scheduler() {
+        return newScheduledThreadPool(10, new CustomizableThreadFactory("task-scheduler"));
+    }
+
     @Bean
     @ConditionalOnMissingBean(UserControllerFacade.class)
-    public UserControllerFacade userControllerFacade(UserController userController, ApplicationEventPublisher eventPublisher) {
+    public UserControllerFacade userControllerFacade(UserController userController,
+                                                     ApplicationEventPublisher eventPublisher) {
         return new UserControllerFacade() {
             @Override
             public void updateUser(String userName, String password, Set<UserRole> roles) {
@@ -209,6 +237,24 @@ public class AxonServerStandardConfiguration {
     public VersionInfoProvider versionInfoProvider() {
         return new DefaultVersionInfoProvider();
     }
+
+    @Bean
+    @ConditionalOnMissingBean(StandaloneTaskManager.class)
+    public StandaloneTaskManager localTaskManager(ScheduledTaskExecutor taskExecutor,
+                                                  TaskRepository taskRepository,
+                                                  TaskPayloadSerializer taskPayloadSerializer,
+                                                  PlatformTransactionManager platformTransactionManager,
+                                                  @Qualifier("taskScheduler") ScheduledExecutorService scheduler,
+                                                  Clock clock) {
+        return new StandaloneTaskManager(Topology.DEFAULT_CONTEXT,
+                                         taskExecutor,
+                                         taskRepository,
+                                         taskPayloadSerializer,
+                                         platformTransactionManager,
+                                         scheduler,
+                                         clock);
+    }
+
 
     @Bean
     public ApplicationEventMulticaster applicationEventMulticaster() {

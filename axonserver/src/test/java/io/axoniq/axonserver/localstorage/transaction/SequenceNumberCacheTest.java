@@ -14,7 +14,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.util.ChangeableClock;
+import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 
 import java.util.Optional;
@@ -27,7 +27,8 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class SequenceNumberCacheTest {
-    private ChangeableClock clock = new ChangeableClock();
+
+    private FakeClock clock = new FakeClock();
     private SequenceNumberCache testSubject = new SequenceNumberCache(SequenceNumberCacheTest::dummySequenceNumberProvider,
                                                                       clock, 1);
 
@@ -160,7 +161,7 @@ public class SequenceNumberCacheTest {
         testSubject.reserveSequenceNumbers(asList(
                 serializedEvent("SECOND_OTHER", "SampleAgg", 11)));
 
-        clock.forward(11);
+        clock.timeElapses(11);
         testSubject.clearOld(10);
         testSubject.reserveSequenceNumbers(asList(
                 serializedEvent("OTHER", "SampleAgg", 11)));

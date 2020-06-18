@@ -63,7 +63,8 @@ public abstract class QueryHandler<T>  {
      * @param timeout timeout of the query
      */
     public void enqueue(SerializedQuery request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
-        queryQueue.put(queueName(), new WrappedQuery(request.withClient(getClientId()), timeout));
+        WrappedQuery wrappedQuery = new WrappedQuery(request.withClient(getClientId()), timeout);
+        queryQueue.put(queueName(), wrappedQuery, wrappedQuery.priority());
     }
 
     @Override

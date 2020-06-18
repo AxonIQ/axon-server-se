@@ -19,7 +19,7 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
-import io.axoniq.axonserver.util.CountingStreamObserver;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 
 import java.util.ArrayList;
@@ -60,7 +60,7 @@ public class SubscriptionQueryDispatcherTest {
                                                       QuerySubscription.newBuilder().setClientId("client")
                                                                        .setQuery("test").build(),
                                                       new QueryHandler<QueryProviderInbound>(
-                                                              new CountingStreamObserver<>(),
+                                                              new FakeStreamObserver<>(),
                                                               new ClientIdentification("Demo", "client"),
                                                               "component") {
                                                           @Override

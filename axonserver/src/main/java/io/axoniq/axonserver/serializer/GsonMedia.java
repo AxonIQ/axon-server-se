@@ -13,6 +13,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import java.util.Map;
+
 /**
  * Created by Sara Pellegrini on 21/03/2018.
  * sara.pellegrini@gmail.com
@@ -61,8 +63,14 @@ public class GsonMedia implements Media {
         return this;
     }
 
+    @Override
+    public void with(String property, Map<String, String> map) {
+        JsonObject mapObject = new JsonObject();
+        map.forEach(mapObject::addProperty);
+        jsonObject.add(property, mapObject);
+    }
 
-    private JsonObject print(Printable printable){
+    private JsonObject print(Printable printable) {
         GsonMedia jsonMediaTest = new GsonMedia();
         printable.printOn(jsonMediaTest);
         return jsonMediaTest.jsonObject;

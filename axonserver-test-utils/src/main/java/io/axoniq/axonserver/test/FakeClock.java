@@ -7,18 +7,30 @@
  *
  */
 
-package io.axoniq.axonserver.util;
+package io.axoniq.axonserver.test;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 /**
+ * Clock that allows test cases to set the time.
+ *
  * @author Marc Gathier
+ * @since 4.4
  */
-public class ChangeableClock extends Clock {
+public class FakeClock extends Clock {
 
-    Instant instant = Instant.now();
+    Instant instant;
+
+    public FakeClock() {
+        this(Instant.now());
+    }
+
+    public FakeClock(Instant instant) {
+        this.instant = instant;
+    }
 
     @Override
     public ZoneId getZone() {
@@ -35,7 +47,11 @@ public class ChangeableClock extends Clock {
         return instant;
     }
 
-    public void forward(long millis) {
+    public void timeElapses(long millis) {
         instant = instant.plusMillis(millis);
+    }
+
+    public void timeElapses(long delay, TimeUnit timeUnit) {
+        timeElapses(timeUnit.toMillis(delay));
     }
 }
