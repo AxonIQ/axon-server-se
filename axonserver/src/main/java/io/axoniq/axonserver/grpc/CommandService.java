@@ -14,9 +14,9 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivi
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
-import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
+import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
@@ -35,13 +35,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PreDestroy;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.PreDestroy;
 
 import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncUnaryCall;
@@ -50,14 +50,16 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
  * GRPC service to handle command bus requests from Axon Application
  * Client can sent two requests:
  * dispatch: sends a singe command to AxonServer
- * openStream: used by application providing command handlers, maintains an open bi directional connection between the application and AxonServer
+ * openStream: used by application providing command handlers, maintains an open bi directional connection between the
+ * application and AxonServer
+ *
  * @author Marc Gathier
  */
 @Service("CommandService")
 public class CommandService implements AxonServerClientService {
 
-    private static final MethodDescriptor<Command, SerializedCommandResponse> METHOD_DISPATCH =
-            CommandServiceGrpc.getDispatchMethod().toBuilder(ProtoUtils.marshaller(Command.getDefaultInstance()),
+    private static final MethodDescriptor<byte[], SerializedCommandResponse> METHOD_DISPATCH =
+            CommandServiceGrpc.getDispatchMethod().toBuilder(ByteArrayMarshaller.instance(),
                                                              ProtoUtils.marshaller(SerializedCommandResponse
                                                                                            .getDefaultInstance()))
                               .build();
@@ -236,11 +238,11 @@ public class CommandService implements AxonServerClientService {
                 && instructionResult.getError().getErrorCode().equals(ErrorCode.UNSUPPORTED_INSTRUCTION.getCode());
     }
 
-    public void dispatch(Command command, StreamObserver<SerializedCommandResponse> responseObserver) {
+    public void dispatch(byte[] command, StreamObserver<SerializedCommandResponse> responseObserver) {
         SerializedCommand request = new SerializedCommand(command);
-        String clientId = command.getClientId();
+        String clientId = request.wrapped().getClientId();
         if (logger.isTraceEnabled()) {
-            logger.trace("{}: Received command: {}", clientId, command.getName());
+            logger.trace("{}: Received command: {}", clientId, request.wrapped().getName());
         }
         try {
             commandDispatcher.dispatch(contextProvider.getContext(), request, commandResponse -> safeReply(clientId,

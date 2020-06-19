@@ -13,8 +13,8 @@ import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.CommandService;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
-import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
+import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -33,15 +33,15 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 public class AxonHubCommandService implements AxonServerClientService {
     private static final String SERVICE_NAME = "io.axoniq.axonhub.grpc.CommandService";
     private static final MethodDescriptor<CommandProviderOutbound, SerializedCommandProviderInbound> METHOD_OPEN_STREAM =
-                MethodDescriptor.newBuilder(ProtoUtils.marshaller(CommandProviderOutbound.getDefaultInstance()),
-                                            ProtoUtils.marshaller(SerializedCommandProviderInbound.getDefaultInstance()))
-                        .setFullMethodName( generateFullMethodName(
-                                SERVICE_NAME, "OpenStream"))
-                        .setType(MethodDescriptor.MethodType.BIDI_STREAMING)
-                        .build();
+            MethodDescriptor.newBuilder(ProtoUtils.marshaller(CommandProviderOutbound.getDefaultInstance()),
+                                        ProtoUtils.marshaller(SerializedCommandProviderInbound.getDefaultInstance()))
+                            .setFullMethodName(generateFullMethodName(
+                                    SERVICE_NAME, "OpenStream"))
+                            .setType(MethodDescriptor.MethodType.BIDI_STREAMING)
+                            .build();
 
-    private static final MethodDescriptor<Command, SerializedCommandResponse> METHOD_DISPATCH =
-            MethodDescriptor.newBuilder(ProtoUtils.marshaller(Command.getDefaultInstance()),
+    private static final MethodDescriptor<byte[], SerializedCommandResponse> METHOD_DISPATCH =
+            MethodDescriptor.newBuilder(ByteArrayMarshaller.instance(),
                                         ProtoUtils.marshaller(SerializedCommandResponse.getDefaultInstance()))
                             .setFullMethodName(generateFullMethodName(SERVICE_NAME, "Dispatch"))
                             .setType(MethodDescriptor.MethodType.UNARY)

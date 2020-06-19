@@ -20,22 +20,24 @@ import io.axoniq.axonserver.grpc.command.Command;
  */
 public class SerializedCommand  {
 
-    private volatile String client;
-    private volatile String messageId;
-    private volatile Command command;
+    private final String client;
+    private final String messageId;
     private final byte[] serializedData;
+    private volatile Command command;
 
     public SerializedCommand(Command command) {
-        this.serializedData = command.toByteArray();
+        this(command.toByteArray());
         this.command = command;
     }
 
-    public SerializedCommand(byte[] readByteArray) {
-        serializedData = readByteArray;
+    public SerializedCommand(byte[] serializedCommand) {
+        this.serializedData = serializedCommand;
+        this.client = null;
+        this.messageId = null;
     }
 
-    public SerializedCommand(byte[] toByteArray, String client, String messageId) {
-        this(toByteArray);
+    public SerializedCommand(byte[] serializedCommand, String client, String messageId) {
+        this.serializedData = serializedCommand;
         this.client = client;
         this.messageId = messageId;
     }
@@ -87,7 +89,7 @@ public class SerializedCommand  {
     }
 
     public String getRoutingKey() {
-        return ProcessingInstructionHelper.routingKey(wrapped().getProcessingInstructionsList());
+        return ProcessingInstructionHelper.routingKey(wrapped().getProcessingInstructionsList(), wrapped().getMessageIdentifier());
     }
 
     public long getPriority() {
