@@ -13,6 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.metric.MeterFactory;
 
 import java.util.Comparator;
 import java.util.Optional;
@@ -20,16 +21,20 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
+ * Manages the completed segments for the event store.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 public class InputStreamEventStore extends SegmentBasedEventStore {
+
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
 
     public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
-                               EventTransformerFactory eventTransformerFactory,
-                               StorageProperties storageProperties) {
-        super(context, indexManager, storageProperties);
+                                 EventTransformerFactory eventTransformerFactory,
+                                 StorageProperties storageProperties, MeterFactory meterFactory) {
+        super(context, indexManager, storageProperties, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
     }
 
@@ -42,40 +47,40 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     @Override
     public void initSegments(long lastInitialized) {
         segments.addAll(prepareSegmentStore(lastInitialized));
-        if( next != null) next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
-
+        if (next != null) {
+            next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
+        }
     }
 
     @Override
     public void close(boolean deleteData) {
-        indexManager.cleanup();
-        if( deleteData) {
+        if (deleteData) {
             segments.forEach(this::removeSegment);
         }
     }
 
 
-        private void removeSegment(long segment) {
-            if( segments.remove(segment)) {
-
-
-                indexManager.remove(segment);
-                if( ! FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                        ! FileUtils.delete(storageProperties.index(context, segment)) ||
-                        ! FileUtils.delete(storageProperties.bloomFilter(context, segment)) ) {
-                    throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Failed to rollback " +getType().getEventType() + ", could not remove segment: " + segment);
-                }
+    private void removeSegment(long segment) {
+        if (segments.remove(segment)) {
+            indexManager.remove(segment);
+            if (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+                    !FileUtils.delete(storageProperties.index(context, segment)) ||
+                    !FileUtils.delete(storageProperties.bloomFilter(context, segment))) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+                                                     "Failed to rollback " + getType().getEventType()
+                                                             + ", could not remove segment: " + segment);
             }
-
+        }
     }
 
     @Override
-    protected Optional<EventSource> getEventSource(long segment) {
+    public Optional<EventSource> getEventSource(long segment) {
         logger.debug("Get eventsource: {}", segment);
         InputStreamEventSource eventSource = get(segment, false);
         logger.trace("result={}", eventSource);
-        if( eventSource == null)
+        if (eventSource == null) {
             return Optional.empty();
+        }
         return Optional.of(eventSource);
     }
 
@@ -85,17 +90,14 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected SortedSet<PositionInfo> getPositions(long segment, String aggregateId) {
-        return indexManager.getPositions(segment, aggregateId   );
-    }
-
-    @Override
     public void deleteAllEventData() {
         throw new UnsupportedOperationException("Development mode deletion is not supported in InputStreamEventStore");
     }
 
     private InputStreamEventSource get(long segment, boolean force) {
-        if( !force && ! segments.contains(segment)) return null;
+        if (!force && !segments.contains(segment)) {
+            return null;
+        }
 
         return new InputStreamEventSource(storageProperties.dataFile(context, segment),
                                           eventTransformerFactory,
@@ -105,10 +107,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
     @Override
     protected void recreateIndex(long segment) {
         try (InputStreamEventSource is = get(segment, true);
-             EventIterator iterator = createEventIterator( is,segment, segment)) {
+             EventIterator iterator = createEventIterator(is, segment, segment)) {
             recreateIndexFromIterator(segment, iterator);
         }
-
     }
-
 }

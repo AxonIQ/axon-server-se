@@ -32,6 +32,14 @@ public class StorageProperties {
      */
     private String indexSuffix = ".index";
     /**
+     * File suffix for new index files.
+     */
+    private String newIndexSuffix = ".nindex";
+    /**
+     * File suffix for the global index file.
+     */
+    private String globalIndexSuffix = ".xref";
+    /**
      * File suffix for bloom files.
      */
     private String bloomIndexSuffix = ".bloom";
@@ -110,11 +118,13 @@ public class StorageProperties {
     }
 
     public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix,
-                             String bloomIndexSuffix) {
+                             String bloomIndexSuffix, String newIndexSuffix, String globalIndexSuffix) {
         this(systemInfoProvider);
         this.eventsSuffix = eventsSuffix;
         this.indexSuffix = indexSuffix;
         this.bloomIndexSuffix = bloomIndexSuffix;
+        this.globalIndexSuffix = globalIndexSuffix;
+        this.newIndexSuffix = newIndexSuffix;
     }
 
     public String getEventsSuffix() {
@@ -131,6 +141,14 @@ public class StorageProperties {
 
     public void setIndexSuffix(String indexSuffix) {
         this.indexSuffix = indexSuffix;
+    }
+
+    public String getNewIndexSuffix() {
+        return newIndexSuffix;
+    }
+
+    public void setNewIndexSuffix(String newIndexSuffix) {
+        this.newIndexSuffix = newIndexSuffix;
     }
 
     public String getBloomIndexSuffix() {
@@ -175,6 +193,22 @@ public class StorageProperties {
 
     public File indexTemp(String context, long segment) {
         return new File(String.format(TEMP_PATH_FORMAT, storage, context, segment, indexSuffix));
+    }
+
+    public File newIndex(String context, long segment) {
+        return new File(String.format(PATH_FORMAT, storage, context, segment, newIndexSuffix));
+    }
+
+    public File newIndexTemp(String context, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, storage, context, segment, newIndexSuffix));
+    }
+
+    public String getGlobalIndexSuffix() {
+        return globalIndexSuffix;
+    }
+
+    public void setGlobalIndexSuffix(String globalIndexSuffix) {
+        this.globalIndexSuffix = globalIndexSuffix;
     }
 
     public File dataFile(String context, long segment) {

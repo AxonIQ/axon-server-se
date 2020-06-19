@@ -13,12 +13,15 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
+import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,14 +40,19 @@ public class TestInputStreamStorageContainer {
     private EventWriteStorage eventWriter;
 
     public TestInputStreamStorageContainer(File location) throws IOException {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+        });
         embeddedDBProperties.getEvent().setStorage(location.getAbsolutePath());
-        embeddedDBProperties.getEvent().setSegmentSize(256*1024L);
+        embeddedDBProperties.getEvent().setSegmentSize(256 * 1024L);
         embeddedDBProperties.getEvent().setForceInterval(10000);
         embeddedDBProperties.getSnapshot().setStorage(location.getAbsolutePath());
-        embeddedDBProperties.getSnapshot().setSegmentSize(512*1024L);
-        EventStoreFactory eventStoreFactory = new LowMemoryEventStoreFactory(embeddedDBProperties, new DefaultEventTransformerFactory(),
-                                                                             new DefaultStorageTransactionManagerFactory());
+        embeddedDBProperties.getSnapshot().setSegmentSize(512 * 1024L);
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+
+        EventStoreFactory eventStoreFactory = new StandardEventStoreFactory(embeddedDBProperties,
+                                                                            new DefaultEventTransformerFactory(),
+                                                                            new DefaultStorageTransactionManagerFactory(),
+                                                                            meterFactory);
         datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");
         datafileManagerChain.init(false);
         snapshotManagerChain = eventStoreFactory.createSnapshotStorageEngine("default");

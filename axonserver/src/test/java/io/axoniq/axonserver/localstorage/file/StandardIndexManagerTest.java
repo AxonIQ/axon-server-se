@@ -2,35 +2,38 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import io.axoniq.axonserver.localstorage.EventType;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.*;
+import org.junit.rules.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.concurrent.*;
+import java.util.SortedMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.Assert.*;
 import static org.junit.Assume.*;
 
 /**
- * Tests for {@link IndexManager}.
+ * Tests for {@link StandardIndexManager}.
  *
  * @author Milan Savic
  */
-public class IndexManagerTest {
+public class StandardIndexManagerTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-    private IndexManager indexManager;
+    private StandardIndexManager indexManager;
     private StorageProperties storageProperties;
     private String context;
     private SystemInfoProvider systemInfoProvider;
@@ -46,27 +49,28 @@ public class IndexManagerTest {
         storageProperties.setMaxIndexesInMemory(3);
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
-        indexManager = new IndexManager(context, storageProperties);
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        indexManager = new StandardIndexManager(context, storageProperties, EventType.EVENT, meterFactory);
     }
 
     @Test
     public void testConcurrentAccess() {
         long segment = 0L;
         String aggregateId = "aggregateId";
-        ConcurrentSkipListSet<PositionInfo> positions = new ConcurrentSkipListSet<>();
-        PositionInfo positionInfo = new PositionInfo(0, 0);
-        positions.add(positionInfo);
-        Map<String, SortedSet<PositionInfo>> positionsPerAggregate = Collections.singletonMap(aggregateId,
-                                                                                              positions);
-        indexManager.createIndex(segment, positionsPerAggregate);
+        IndexEntry positionInfo = new IndexEntry(0, 0, 0);
+        indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
+        indexManager.complete(segment);
 
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         int concurrentRequests = 100;
         Future[] futures = new Future[concurrentRequests];
         for (int i = 0; i < concurrentRequests; i++) {
             Future<?> future = executorService.submit(() -> {
-                SortedSet<PositionInfo> actual = indexManager.getPositions(segment, aggregateId);
-                assertEquals(positionInfo, actual.first());
+                SortedMap<Long, IndexEntries> actual = indexManager.lookupAggregate(aggregateId,
+                                                                                    0,
+                                                                                    Long.MAX_VALUE,
+                                                                                    Long.MAX_VALUE);
+                assertEquals(positionInfo.getSequenceNumber(), actual.get(0L).firstSequenceNumber());
             });
             futures[i] = future;
         }
@@ -76,6 +80,7 @@ public class IndexManagerTest {
             try {
                 f.get();
             } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
                 fail("Futures should complete successfully.");
             }
         });
@@ -91,12 +96,9 @@ public class IndexManagerTest {
         }
 
         String aggregateId = "aggregateId";
-        ConcurrentSkipListSet<PositionInfo> positions = new ConcurrentSkipListSet<>();
-        PositionInfo positionInfo = new PositionInfo(0, 0);
-        positions.add(positionInfo);
-        Map<String, SortedSet<PositionInfo>> positionsPerAggregate = Collections.singletonMap(aggregateId,
-                                                                                              positions);
-        indexManager.createIndex(segment, positionsPerAggregate);
+        IndexEntry positionInfo = new IndexEntry(0, 0, 0);
+        indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
+        indexManager.complete(segment);
 
         assertFalse(storageProperties.indexTemp(context, segment).exists());
     }
@@ -109,15 +111,12 @@ public class IndexManagerTest {
         File tempFile = storageProperties.indexTemp(context, segment);
 
         String aggregateId = "aggregateId";
-        ConcurrentSkipListSet<PositionInfo> positions = new ConcurrentSkipListSet<>();
-        PositionInfo positionInfo = new PositionInfo(0, 0);
-        positions.add(positionInfo);
-        Map<String, SortedSet<PositionInfo>> positionsPerAggregate = Collections.singletonMap(aggregateId,
-                                                                                              positions);
+        IndexEntry positionInfo = new IndexEntry(0, 0, 0);
 
         try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
             outputStream.write("mockDataToCreateIllegalFile".getBytes(StandardCharsets.UTF_8));
-            indexManager.createIndex(segment, positionsPerAggregate);
+            indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
+            indexManager.complete(segment);
         }
     }
 }

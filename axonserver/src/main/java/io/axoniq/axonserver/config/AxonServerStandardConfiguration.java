@@ -29,7 +29,7 @@ import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.DatafileEventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
+import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
@@ -38,6 +38,7 @@ import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricCollector;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
@@ -96,9 +97,14 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
-    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                               StorageTransactionManagerFactory storageTransactionManagerFactory) {
-        return new LowMemoryEventStoreFactory(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
+    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                               EventTransformerFactory eventTransformerFactory,
+                                               StorageTransactionManagerFactory storageTransactionManagerFactory,
+                                               MeterFactory meterFactory) {
+        return new StandardEventStoreFactory(embeddedDBProperties,
+                                             eventTransformerFactory,
+                                             storageTransactionManagerFactory,
+                                             meterFactory);
     }
 
     @Bean

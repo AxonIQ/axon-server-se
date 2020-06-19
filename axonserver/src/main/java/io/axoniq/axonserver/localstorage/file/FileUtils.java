@@ -27,19 +27,22 @@ public class FileUtils {
 
     }
 
-    static void checkCreateDirectory(File events) {
-        if( events.exists() && ! events.isDirectory()) {
-            throw new MessagingPlatformException(ErrorCode.DIRECTORY_CREATION_FAILED, "Could not setup directory " + events.getAbsolutePath());
+    public static void checkCreateDirectory(File events) {
+        if (events.exists() && !events.isDirectory()) {
+            throw new MessagingPlatformException(ErrorCode.DIRECTORY_CREATION_FAILED,
+                                                 "Could not setup directory " + events.getAbsolutePath());
         }
-        if( !events.exists() && ! events.mkdirs()) {
-            throw new MessagingPlatformException(ErrorCode.DIRECTORY_CREATION_FAILED, "Could not setup directory " + events.getAbsolutePath());
+        if (!events.exists() && !events.mkdirs()) {
+            throw new MessagingPlatformException(ErrorCode.DIRECTORY_CREATION_FAILED,
+                                                 "Could not setup directory " + events.getAbsolutePath());
         }
     }
 
-    static String[] getFilesWithSuffix(File events, String suffix) {
+    public static String[] getFilesWithSuffix(File events, String suffix) {
         String[] eventFiles = events.list((dir, name) -> name.endsWith(suffix));
-        if( eventFiles == null) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, "Could not list files in " + events.getAbsolutePath());
+        if (eventFiles == null) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
+                                                 "Could not list files in " + events.getAbsolutePath());
         }
         return eventFiles;
     }
