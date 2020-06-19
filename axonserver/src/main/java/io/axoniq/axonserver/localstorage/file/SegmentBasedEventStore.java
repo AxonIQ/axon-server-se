@@ -386,9 +386,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
         segments.forEach(this::renameFileIfNecessary);
         long firstValidIndex = segments.stream().filter(indexManager::validIndex).findFirst().orElse(-1L);
-        logger.warn("First valid index: {}", firstValidIndex);
-        SortedSet<Long> recreate = new TreeSet<>();
-        recreate.addAll(segments.headSet(firstValidIndex));
+        logger.debug("First valid index: {}", firstValidIndex);
+        SortedSet<Long> recreate = new TreeSet<>(segments.headSet(firstValidIndex));
         recreate.forEach(this::recreateIndex);
         return segments;
     }
@@ -531,10 +530,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         private long currentSegment;
         private TransactionIterator currentTransactionIterator;
 
-        TransactionWithTokenIterator(long token) {
-            this(token, null);
-        }
-
         TransactionWithTokenIterator(long token, Long limitToken) {
             this.currentToken = token;
             this.limitToken = limitToken;
@@ -549,10 +544,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
         @Override
         public SerializedTransactionWithToken next() {
-            SerializedTransactionWithToken next = currentTransactionIterator.next();
-            currentToken += next.getEventsCount();
+            SerializedTransactionWithToken nextTransaction = currentTransactionIterator.next();
+            currentToken += nextTransaction.getEventsCount();
             checkPointers();
-            return next;
+            return nextTransaction;
         }
 
         private void checkPointers() {
