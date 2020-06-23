@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
@@ -82,6 +84,7 @@ public class LocalEventStorageEngineTest {
         }, new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
                                           transactionManagerFactory, c -> true, 5, 1000, 10);
         testSubject.initContext(SAMPLE_CONTEXT, false);
+        testSubject.start();
     }
 
     @Test
@@ -104,21 +107,35 @@ public class LocalEventStorageEngineTest {
     }
 
     @Test
-    public void appendSnapshot() {
+    public void appendSnapshot() throws InterruptedException, TimeoutException, ExecutionException {
         CompletableFuture<Confirmation> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT,
                                                                               Event.newBuilder()
-                                                                                   .setAggregateIdentifier("123")
-                                                                                   .setAggregateSequenceNumber(100).build());
+                                                                                   .setAggregateIdentifier(
+                                                                                           "AGGREGATE_WITH_ONE_EVENT")
+                                                                                   .setAggregateSequenceNumber(0)
+                                                                                   .build());
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, pendingTransactions.size()));
+        pendingTransactions.get(0).complete(100L);
+        Confirmation confirmation = snapshot.get(100, TimeUnit.MILLISECONDS);
+        assertTrue(confirmation.getSuccess());
+    }
+
+    @Test
+    public void appendSnapshotFailsWhenNoEventsFound() throws InterruptedException, TimeoutException {
+        CompletableFuture<Confirmation> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT,
+                                                                              Event.newBuilder()
+                                                                                   .setAggregateIdentifier(
+                                                                                           "AGGREGATE_WITH_NO_EVENTS")
+                                                                                   .setAggregateSequenceNumber(0)
+                                                                                   .build());
         try {
-            assertEquals(1, pendingTransactions.size());
-            pendingTransactions.get(0).complete(100L);
+            Thread.sleep(100);
+            assertEquals(0, pendingTransactions.size());
             snapshot.get(100, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            fail("Expected execution exception");
         } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (TimeoutException e) {
-            e.printStackTrace();
+            assertEquals(MessagingPlatformException.class, e.getCause().getClass());
+            assertEquals(ErrorCode.INVALID_SEQUENCE, ((MessagingPlatformException) e.getCause()).getErrorCode());
         }
     }
 

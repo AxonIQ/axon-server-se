@@ -84,7 +84,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Value("${axoniq.axonserver.query.timeout:300000}")
     private long timeout = 300000;
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
-    private long newPermitsTimeout=120000;
+    private long newPermitsTimeout = 120000;
+    @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
+    private boolean checkSequenceNrForSnapshots = true;
 
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
@@ -92,7 +94,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final int maxEventCount;
 
     /**
-     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all events
+     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
+     * events
      * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
      */
     private final int blacklistedSendAfter;
@@ -195,16 +198,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
         runInDataFetcherPool(() -> doAppendSnapshot(context, eventMessage, completableFuture),
-                             ex -> completableFuture.completeExceptionally(ex));
+                             completableFuture::completeExceptionally);
         return completableFuture;
     }
 
     private void doAppendSnapshot(String context, Event eventMessage,
                                   CompletableFuture<Confirmation> completableFuture) {
-        long seqNr = workers(context).aggregateReader.readHighestSequenceNr(eventMessage.getAggregateIdentifier());
-        if (seqNr < eventMessage.getAggregateSequenceNumber()) {
-            completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
-                                                                                   "Invalid sequence number while storing snapshot"));
+        if (checkSequenceNrForSnapshots) {
+            long seqNr = workers(context).aggregateReader.readHighestSequenceNr(eventMessage.getAggregateIdentifier());
+            if (seqNr < eventMessage.getAggregateSequenceNumber()) {
+                completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                                                                                       "Invalid sequence number while storing snapshot"));
+                return;
+            }
         }
         workers(context).snapshotWriteStorage.store(eventMessage).whenComplete(((confirmation, throwable) -> {
             if (throwable != null) {

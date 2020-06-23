@@ -36,6 +36,9 @@ public class FakeEventStore implements EventStorageEngine {
 
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint... searchHints) {
+        if ("AGGREGATE_WITH_ONE_EVENT".equals(aggregateIdentifier)) {
+            return Optional.of(0L);
+        }
         return Optional.empty();
     }
 
