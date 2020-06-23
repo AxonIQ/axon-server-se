@@ -17,7 +17,7 @@ import java.time.Duration;
 /**
  * @author Marc Gathier
  */
-public class StorageProperties {
+public class StorageProperties implements Cloneable {
 
     private static final String PATH_FORMAT = "%s/%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
@@ -112,6 +112,7 @@ public class StorageProperties {
     private Duration[] retentionTime = new Duration[]{
             Duration.ofDays(7)
     };
+    private String indexFormat;
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -343,21 +344,11 @@ public class StorageProperties {
     }
 
     private StorageProperties cloneProperties() {
-        StorageProperties clone = new StorageProperties(systemInfoProvider);
-        clone.maxIndexesInMemory = maxIndexesInMemory;
-        clone.maxBloomFiltersInMemory = maxBloomFiltersInMemory;
-        clone.segmentSize = segmentSize;
-        clone.validationSegments = validationSegments;
-        clone.syncInterval = syncInterval;
-        clone.readBufferSize = readBufferSize;
-        clone.primaryCleanupDelay = primaryCleanupDelay;
-        clone.storage = storage;
-        clone.numberOfSegments = numberOfSegments;
-        clone.forceInterval = forceInterval;
-        clone.indexSuffix = indexSuffix;
-        clone.bloomIndexSuffix = bloomIndexSuffix;
-        clone.eventsSuffix = eventsSuffix;
-        return clone;
+        try {
+            return (StorageProperties) this.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     public StorageProperties withSegmentSize(long segmentSize) {
@@ -381,5 +372,19 @@ public class StorageProperties {
             return System.currentTimeMillis();
         }
         return retentionTime[tier].toMillis();
+    }
+
+    public String getIndexFormat() {
+        return indexFormat;
+    }
+
+    public void setIndexFormat(String indexFormat) {
+        this.indexFormat = indexFormat;
+    }
+
+    public StorageProperties withIndexFormat(String indexFormat) {
+        StorageProperties clone = cloneProperties();
+        clone.indexFormat = indexFormat;
+        return clone;
     }
 }

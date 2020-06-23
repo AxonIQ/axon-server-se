@@ -190,9 +190,29 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
         return workers;
     }
+
     @Override
     public CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage) {
-        return workers(context).snapshotWriteStorage.store( eventMessage);
+        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
+        runInDataFetcherPool(() -> doAppendSnapshot(context, eventMessage, completableFuture),
+                             ex -> completableFuture.completeExceptionally(ex));
+        return completableFuture;
+    }
+
+    private void doAppendSnapshot(String context, Event eventMessage,
+                                  CompletableFuture<Confirmation> completableFuture) {
+        long seqNr = workers(context).aggregateReader.readHighestSequenceNr(eventMessage.getAggregateIdentifier());
+        if (seqNr < eventMessage.getAggregateSequenceNumber()) {
+            completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                                                                                   "Invalid sequence number while storing snapshot"));
+        }
+        workers(context).snapshotWriteStorage.store(eventMessage).whenComplete(((confirmation, throwable) -> {
+            if (throwable != null) {
+                completableFuture.completeExceptionally(throwable);
+            } else {
+                completableFuture.complete(confirmation);
+            }
+        }));
     }
 
     @Override
@@ -201,6 +221,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return new StreamObserver<InputStream>() {
             private final List<SerializedEvent> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
+
             @Override
             public void onNext(InputStream event) {
                 if (checkMaxEventCount()) {
@@ -488,15 +509,33 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public long syncEvents(String context, SerializedTransactionWithToken value) {
-        SyncStorage writeStorage = workers(context, CREATE_IF_MISSING).eventSyncStorage;
-        writeStorage.sync(value.getToken(), value.getEvents());
-        return value.getToken() + value.getEvents().size();
+        try {
+            SyncStorage writeStorage = workers(context).eventSyncStorage;
+            writeStorage.sync(value.getToken(), value.getEvents());
+            return value.getToken() + value.getEvents().size();
+        } catch (MessagingPlatformException ex) {
+            if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
+                logger.warn("{}: cannot store in non-active event store", context);
+                return -1;
+            } else {
+                throw ex;
+            }
+        }
     }
 
     public long syncSnapshots(String context, SerializedTransactionWithToken value) {
-        SyncStorage writeStorage = workers(context, CREATE_IF_MISSING).snapshotSyncStorage;
-        writeStorage.sync(value.getToken(), value.getEvents());
-        return value.getToken() + value.getEvents().size();
+        try {
+            SyncStorage writeStorage = workers(context).snapshotSyncStorage;
+            writeStorage.sync(value.getToken(), value.getEvents());
+            return value.getToken() + value.getEvents().size();
+        } catch (MessagingPlatformException ex) {
+            if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
+                logger.warn("{}: cannot store snapshot in non-active event store", context);
+                return -1;
+            } else {
+                throw ex;
+            }
+        }
     }
 
     public long getWaitingEventTransactions(String context) {

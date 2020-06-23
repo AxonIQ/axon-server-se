@@ -64,6 +64,7 @@ public class StandardIndexManager implements IndexManager {
     private final SortedSet<Long> indexes = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final MeterFactory.RateMeter indexOpenMeter;
     private final MeterFactory.RateMeter indexCloseMeter;
+    private final RemoteAggregateSequenceNumberResolver remoteIndexManager;
     private ScheduledFuture<?> cleanupTask;
 
     /**
@@ -74,16 +75,29 @@ public class StandardIndexManager implements IndexManager {
      */
     public StandardIndexManager(String context, StorageProperties storageProperties, EventType eventType,
                                 MeterFactory meterFactory) {
+        this(context, storageProperties, eventType, null, meterFactory);
+    }
+
+    /**
+     * @param context            the context of the storage engine
+     * @param storageProperties  storage engine configuration
+     * @param eventType          content type of the event store (events or snapshots)
+     * @param remoteIndexManager component that provides last sequence number for old aggregates
+     * @param meterFactory       factory to create metrics meter
+     */
+    public StandardIndexManager(String context, StorageProperties storageProperties, EventType eventType,
+                                RemoteAggregateSequenceNumberResolver remoteIndexManager,
+                                MeterFactory meterFactory) {
         this.storageProperties = storageProperties;
         this.context = context;
         this.eventType = eventType;
+        this.remoteIndexManager = remoteIndexManager;
         this.indexOpenMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_OPEN,
                                                      Tags.of(MeterFactory.CONTEXT, context));
         this.indexCloseMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_CLOSE,
                                                       Tags.of(MeterFactory.CONTEXT, context));
         scheduledExecutorService.scheduleAtFixedRate(this::indexCleanup, 10, 10, TimeUnit.SECONDS);
     }
-
     /**
      * Initializes the index manager.
      */
@@ -256,6 +270,13 @@ public class StandardIndexManager implements IndexManager {
                 return Optional.of(indexEntries.lastSequenceNumber());
             }
             checked++;
+        }
+        if (remoteIndexManager != null && checked < maxSegments) {
+            return remoteIndexManager.getLastSequenceNumber(context,
+                                                            aggregateId,
+                                                            maxSegments - checked,
+                                                            indexes.isEmpty() ?
+                                                                    activeIndexes.firstKey() - 1 : indexes.last() - 1);
         }
         return Optional.empty();
     }
