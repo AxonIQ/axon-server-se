@@ -42,14 +42,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.lang.NonNull;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,6 +63,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * Component that handles the actual interaction with the event store.
@@ -128,9 +128,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public void initContext(String context, boolean validating) {
-        if( workersMap.containsKey(context)) return;
+        initContext(context, validating, 0, 0);
+    }
+
+    public void initContext(String context, boolean validating, long defaultFirstEventIndex,
+                            long defaultFirstSnapshotIndex) {
+        if (workersMap.containsKey(context)) {
+            return;
+        }
         workersMap.putIfAbsent(context, new Workers(context));
-        workersMap.get(context).init(validating);
+        workersMap.get(context).init(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
     }
 
     /**
@@ -176,20 +183,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private Workers workers(String context) {
-        return workers(context, false);
-    }
-
-    private Workers workers(String context, boolean createIfMissing) {
         Workers workers = workersMap.get(context);
         if (workers == null) {
-            if (createIfMissing) {
-                synchronized (workersMap) {
-                    initContext(context, false);
-                    workers = workersMap.get(context);
-                }
-            } else {
-                throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
-            }
+            throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
         }
         return workers;
     }
@@ -393,7 +389,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void getLastToken(String context, GetLastTokenRequest request,
                              StreamObserver<TrackingToken> responseObserver) {
-        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventStorageEngine.getLastToken()).build());
+        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventStorageEngine.getLastToken())
+                                             .build());
+        responseObserver.onCompleted();
+    }
+
+    public void getLastSnapshotToken(String context,
+                                     StreamObserver<TrackingToken> responseObserver) {
+        responseObserver.onNext(TrackingToken.newBuilder()
+                                             .setToken(workers(context).snapshotStorageEngine.getLastToken()).build());
         responseObserver.onCompleted();
     }
 
@@ -409,9 +413,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        runInDataFetcherPool(() -> {long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
-        responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
-        responseObserver.onCompleted();}, responseObserver::onError);
+        runInDataFetcherPool(() -> {
+            long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
+            responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
+            responseObserver.onCompleted();
+        }, responseObserver::onError);
+    }
+
+    public CompletableFuture<Long> getHighestSequenceNr(String context, String aggregateIdenfier, int maxSegmentsHint,
+                                                        long maxTokenHint) {
+        CompletableFuture<Long> sequenceNr = new CompletableFuture<>();
+        runInDataFetcherPool(() -> {
+            sequenceNr.complete(workers(context).aggregateReader
+                                        .readHighestSequenceNr(aggregateIdenfier, maxSegmentsHint, maxTokenHint));
+        }, sequenceNr::completeExceptionally);
+        return sequenceNr;
     }
 
     @Override
@@ -431,7 +447,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void stop(@NonNull Runnable runnable) {
+    public void stop(@Nonnull Runnable runnable) {
         running = false;
         dataFetcher.shutdown();
         workersMap.forEach((k, workers) -> workers.close(false));
@@ -472,45 +488,39 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public long getLastEvent(String context) {
-        workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).eventStorageEngine.getLastToken();
     }
 
-    private Workers openIfExist(String context) {
-        if (this.eventStoreExistChecker.exists(context)) {
-            Workers workers = new Workers(context);
-            workers.init(false);
-            return workers;
-        }
-        return null;
-    }
-
     public long getLastSnapshot(String context) {
-        workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).snapshotStorageEngine.getLastToken();
     }
 
     /**
-     * Creates an iterator to iterate over event transactions, starting at transaction with token fromToken and ending before toToken
+     * Creates an iterator to iterate over event transactions, starting at transaction with token fromToken and ending
+     * before toToken
      *
-     * @param context The context of the transactions
+     * @param context   The context of the transactions
      * @param fromToken The first transaction token to include
-     * @param toToken Last transaction token (exclusive)
+     * @param toToken   Last transaction token (exclusive)
      * @return the iterator
      */
-    public Iterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken, long toToken) {
+    public CloseableIterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken,
+                                                                                       long toToken) {
         return workersMap.get(context).eventStorageEngine.transactionIterator(fromToken, toToken);
     }
 
     /**
-     * Creates an iterator to iterate over snapshot transactions, starting at transaction with token fromToken and ending before toToken
+     * Creates an iterator to iterate over snapshot transactions, starting at transaction with token fromToken and
+     * ending before toToken
      *
-     * @param context The context of the transactions
+     * @param context   The context of the transactions
      * @param fromToken The first transaction token to include
-     * @param toToken Last transaction token (exclusive)
+     * @param toToken   Last transaction token (exclusive)
      * @return the iterator
      */
-    public Iterator<SerializedTransactionWithToken> snapshotTransactionsIterator(String context, long fromToken, long toToken) {
+    public CloseableIterator<SerializedTransactionWithToken> snapshotTransactionsIterator(String context,
+                                                                                          long fromToken,
+                                                                                          long toToken) {
         return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
@@ -575,7 +585,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public long firstToken(String context) {
-        return workers(context).eventStreamReader.getFirstToken();
+        return workers(context).eventStorageEngine.getFirstToken();
+    }
+
+    public long firstSnapshotToken(String context) {
+        return workers(context).snapshotStorageEngine.getFirstToken();
     }
 
     private class Workers {
@@ -620,12 +634,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                     c -> (double) getLastSnapshot(c));
         }
 
-        public synchronized void init(boolean validate) {
+        public synchronized void init(boolean validate, long defaultFirstEventIndex, long defaultFirstSnapshotIndex) {
             logger.debug("{}: init called", context);
-            if( initialized.compareAndSet(false, true)) {
+            if (initialized.compareAndSet(false, true)) {
                 logger.debug("{}: initializing", context);
-                eventStorageEngine.init(validate);
-                snapshotStorageEngine.init(validate);
+                eventStorageEngine.init(validate, defaultFirstEventIndex);
+                snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
             }
         }
 

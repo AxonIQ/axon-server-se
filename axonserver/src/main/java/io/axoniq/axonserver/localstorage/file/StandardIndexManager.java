@@ -244,32 +244,37 @@ public class StandardIndexManager implements IndexManager {
     /**
      * Returns the last sequence number of an aggregate if this is found.
      *
-     * @param aggregateId the identifier for the aggregate
-     * @param maxSegments maximum number of segments to check for the aggregate
+     * @param aggregateId  the identifier for the aggregate
+     * @param maxSegments  maximum number of segments to check for the aggregate
+     * @param maxTokenHint
      * @return last sequence number for the aggregate (if found)
      */
     @Override
-    public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments) {
+    public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments, long maxTokenHint) {
         int checked = 0;
         for (Long segment : activeIndexes.descendingKeySet()) {
             if (checked >= maxSegments) {
                 return Optional.empty();
             }
-            IndexEntries indexEntries = activeIndexes.get(segment).get(aggregateId);
-            if (indexEntries != null) {
-                return Optional.of(indexEntries.lastSequenceNumber());
+            if (segment <= maxTokenHint) {
+                IndexEntries indexEntries = activeIndexes.get(segment).get(aggregateId);
+                if (indexEntries != null) {
+                    return Optional.of(indexEntries.lastSequenceNumber());
+                }
+                checked++;
             }
-            checked++;
         }
         for (Long segment : indexes) {
             if (checked >= maxSegments) {
                 return Optional.empty();
             }
-            IndexEntries indexEntries = getPositions(segment, aggregateId);
-            if (indexEntries != null) {
-                return Optional.of(indexEntries.lastSequenceNumber());
+            if (segment <= maxTokenHint) {
+                IndexEntries indexEntries = getPositions(segment, aggregateId);
+                if (indexEntries != null) {
+                    return Optional.of(indexEntries.lastSequenceNumber());
+                }
+                checked++;
             }
-            checked++;
         }
         if (remoteIndexManager != null && checked < maxSegments) {
             return remoteIndexManager.getLastSequenceNumber(context,

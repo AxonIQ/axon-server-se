@@ -45,11 +45,12 @@ public interface IndexManager {
     /**
      * Retrieves the sequence number of the last event for the given aggregate.
      *
-     * @param aggregateId the identifier for the aggregate
-     * @param maxSegments maximum number of segments to check for the aggregate
+     * @param aggregateId  the identifier for the aggregate
+     * @param maxSegments  maximum number of segments to check for the aggregate
+     * @param maxTokenHint maximum token to check for events of this aggregate
      * @return the sequence number of the last event for the given aggregate
      */
-    Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments);
+    Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments, long maxTokenHint);
 
     /**
      * Validates that the index for the given segment exists.

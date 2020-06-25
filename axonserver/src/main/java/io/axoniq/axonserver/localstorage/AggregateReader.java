@@ -48,13 +48,18 @@ public class AggregateReader {
                                                      maxSequenceNumber,
                                                      eventConsumer);
     }
-    public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
+
+    public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults,
+                              Consumer<SerializedEvent> eventConsumer) {
         snapshotReader.streamByAggregateId(aggregateId, minSequenceNumber, maxSequenceNumber,
                                            maxResults > 0 ? maxResults : Integer.MAX_VALUE, eventConsumer);
-
     }
 
     public long readHighestSequenceNr(String aggregateId) {
         return eventStorageEngine.getLastSequenceNumber(aggregateId).orElse(-1L);
+    }
+
+    public long readHighestSequenceNr(String aggregateId, int maxSegmentsHint, long maxTokenHint) {
+        return eventStorageEngine.getLastSequenceNumber(aggregateId, maxSegmentsHint, maxTokenHint).orElse(-1L);
     }
 }

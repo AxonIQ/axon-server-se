@@ -107,12 +107,12 @@ public class PrimaryEventStoreTest {
         testSubject.rollback(2);
         assertEquals(2, testSubject.getLastToken());
 
-        testSubject.initSegments(Long.MAX_VALUE);
+        testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(2, testSubject.getLastToken());
 
         storeEvent();
 
-        testSubject.initSegments(Long.MAX_VALUE);
+        testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(3, testSubject.getLastToken());
     }
 

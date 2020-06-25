@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -67,7 +66,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final int FILE_OPTIONS_BYTES = 4;
     protected static final int TX_CHECKSUM_BYTES = 4;
     protected static final byte VERSION = 2;
-    protected static final byte TRANSACTION_VERSION = 2;
+    public static final byte TRANSACTION_VERSION = 2;
     private static final int TRANSACTION_LENGTH_BYTES = 4;
     private static final int NUMBER_OF_EVENTS_BYTES = 2;
     protected static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
@@ -194,13 +193,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
         return getLastSequenceNumber(aggregateIdentifier, contains(hints, SearchHint.RECENT_ONLY) ?
-                MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE);
+                MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
-    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegments) {
+    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegmentsHint, long maxTokenHint) {
         long before = System.currentTimeMillis();
         try {
-            return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegments);
+            return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegmentsHint, maxTokenHint);
         } finally {
             lastSequenceReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
         }
@@ -240,15 +239,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void init(boolean validate) {
-        initSegments(Long.MAX_VALUE);
+    public void init(boolean validate, long defaultFirstToken) {
+        initSegments(Long.MAX_VALUE, defaultFirstToken);
         validate(validate ? storageProperties.getValidationSegments() : 2);
     }
 
 
     @Override
     public long getFirstToken() {
-        if (next != null) {
+        if (next != null && !next.getSegments().isEmpty()) {
             return next.getFirstToken();
         }
         if (getSegments().isEmpty()) {
@@ -339,7 +338,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return () -> closeListeners.remove(listener);
     }
 
-    public abstract void initSegments(long maxValue);
+    public void initSegments(long maxValue, long defaultFirstToken) {
+        initSegments(maxValue);
+    }
+
+    public void initSegments(long maxValue) {
+    }
 
     public EventIterator getEvents(long segment, long token) {
         Optional<EventSource> reader = getEventSource(segment);
@@ -370,7 +374,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+    public CloseableIterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         return new TransactionWithTokenIterator(firstToken, limitToken);
     }
 
@@ -523,7 +527,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return 0;
     }
 
-    private class TransactionWithTokenIterator implements Iterator<SerializedTransactionWithToken> {
+    private class TransactionWithTokenIterator implements CloseableIterator<SerializedTransactionWithToken> {
 
         private final Long limitToken;
         private long currentToken;
@@ -558,6 +562,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 currentSegment = getSegmentFor(currentToken);
                 currentTransactionIterator.close();
                 currentTransactionIterator = getTransactions(currentSegment, currentToken);
+            }
+        }
+
+        @Override
+        public void close() {
+            if (currentTransactionIterator != null) {
+                currentTransactionIterator.close();
             }
         }
     }

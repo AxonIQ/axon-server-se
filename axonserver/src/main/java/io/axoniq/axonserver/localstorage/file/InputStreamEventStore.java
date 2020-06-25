@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * @author Marc Gathier
  * @since 4.0
  */
-public class InputStreamEventStore extends SegmentBasedEventStore {
+public class InputStreamEventStore extends SegmentBasedEventStore implements ReadOnlySegmentsHandler {
 
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
