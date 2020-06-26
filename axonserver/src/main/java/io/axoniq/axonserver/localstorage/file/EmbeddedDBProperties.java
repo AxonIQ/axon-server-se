@@ -14,8 +14,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
-
 /**
  * @author Marc Gathier
  */
@@ -32,13 +30,6 @@ public class EmbeddedDBProperties {
     public EmbeddedDBProperties(SystemInfoProvider systemInfoProvider) {
         event = new StorageProperties(systemInfoProvider);
         snapshot = new StorageProperties(systemInfoProvider, ".snapshots", ".sindex", ".sbloom", ".snindex", ".sxref");
-    }
-
-    @PostConstruct
-    public void init() {
-        if(snapshot.getStorage() == null) {
-            snapshot.setStorage(event.getStorage());
-        }
     }
 
     public StorageProperties getEvent() {
