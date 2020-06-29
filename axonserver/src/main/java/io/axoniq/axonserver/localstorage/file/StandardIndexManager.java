@@ -40,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
@@ -98,6 +99,7 @@ public class StandardIndexManager implements IndexManager {
                                                       Tags.of(MeterFactory.CONTEXT, context));
         scheduledExecutorService.scheduleAtFixedRate(this::indexCleanup, 10, 10, TimeUnit.SECONDS);
     }
+
     /**
      * Initializes the index manager.
      */
@@ -425,6 +427,16 @@ public class StandardIndexManager implements IndexManager {
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
+    }
+
+    @Override
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+        return indexes.stream()
+                      .filter(s -> s > lastSegmentBackedUp)
+                      .flatMap(s -> Stream.of(
+                              storageProperties.index(context, s).getAbsolutePath(),
+                              storageProperties.bloomFilter(context, s).getAbsolutePath()
+                      ));
     }
 
     private class Index implements Closeable {

@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import java.util.Optional;
 import java.util.SortedMap;
+import java.util.stream.Stream;
 
 /**
  * Manages index for an event store. There are two IndexManagers per context, one for the events and one for the
@@ -96,4 +97,12 @@ public interface IndexManager {
      * @return segment and position of the last event
      */
     SegmentAndPosition lastEvent(String aggregateId, long minSequenceNumber);
+
+    /**
+     * Returns a stream of index related files that should be included in the backup
+     *
+     * @param lastSegmentBackedUp the sequence number of the last already backed up segment
+     * @return stream of index related files
+     */
+    Stream<String> getBackupFilenames(long lastSegmentBackedUp);
 }

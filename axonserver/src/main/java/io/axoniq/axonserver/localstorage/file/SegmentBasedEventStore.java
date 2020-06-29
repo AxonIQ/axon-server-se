@@ -60,13 +60,13 @@ import static org.apache.commons.lang3.ArrayUtils.contains;
  */
 public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
+    public static final byte TRANSACTION_VERSION = 2;
     protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
     protected static final int MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK = 10;
     protected static final int VERSION_BYTES = 1;
     protected static final int FILE_OPTIONS_BYTES = 4;
     protected static final int TX_CHECKSUM_BYTES = 4;
     protected static final byte VERSION = 2;
-    public static final byte TRANSACTION_VERSION = 2;
     private static final int TRANSACTION_LENGTH_BYTES = 4;
     private static final int NUMBER_OF_EVENTS_BYTES = 2;
     protected static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
@@ -432,13 +432,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
         Stream<String> filenames = getSegments().stream()
                                                 .filter(s -> s > lastSegmentBackedUp)
-                                                .flatMap(s -> Stream.of(
-                                                        storageProperties.dataFile(context, s).getAbsolutePath(),
-                                                        storageProperties.index(context, s).getAbsolutePath(),
-                                                        storageProperties.bloomFilter(context, s).getAbsolutePath()
-                                                ));
+                                                .map(s -> storageProperties.dataFile(context, s).getAbsolutePath());
+
         if (next == null) {
-            return filenames;
+            return Stream.concat(filenames, indexManager.getBackupFilenames(lastSegmentBackedUp));
         }
         return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
     }

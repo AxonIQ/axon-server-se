@@ -61,15 +61,11 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
 
     private void removeSegment(long segment) {
-        if (segments.remove(segment)) {
-            indexManager.remove(segment);
-            if (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                    !FileUtils.delete(storageProperties.index(context, segment)) ||
-                    !FileUtils.delete(storageProperties.bloomFilter(context, segment))) {
-                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
-                                                     "Failed to rollback " + getType().getEventType()
-                                                             + ", could not remove segment: " + segment);
-            }
+        if (segments.remove(segment) && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+                !indexManager.remove(segment))) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+                                                 "Failed to rollback " + getType().getEventType()
+                                                         + ", could not remove segment: " + segment);
         }
     }
 
