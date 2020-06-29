@@ -113,7 +113,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         long before = System.currentTimeMillis();
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
-                                                                                   Long.MAX_VALUE,
+                                                                                   lastSequenceNumber,
                                                                                    Long.MAX_VALUE);
         positionInfos.forEach((segment, positionInfo) -> retrieveEventsForAnAggregate(segment,
                                                                                       positionInfo.positions(),

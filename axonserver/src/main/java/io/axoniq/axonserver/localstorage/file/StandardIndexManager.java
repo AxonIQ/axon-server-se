@@ -340,7 +340,7 @@ public class StandardIndexManager implements IndexManager {
      * @param segment the segment number
      */
     @Override
-    public void remove(long segment) {
+    public boolean remove(long segment) {
         if (activeIndexes.remove(segment) == null) {
             Index index = indexMap.remove(segment);
             if (index != null) {
@@ -348,9 +348,9 @@ public class StandardIndexManager implements IndexManager {
             }
             bloomFilterPerSegment.remove(segment);
             indexes.remove(segment);
-            FileUtils.delete(storageProperties.index(context, segment));
-            FileUtils.delete(storageProperties.bloomFilter(context, segment));
         }
+        return FileUtils.delete(storageProperties.index(context, segment)) &&
+                FileUtils.delete(storageProperties.bloomFilter(context, segment));
     }
 
     /**

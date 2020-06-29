@@ -63,8 +63,9 @@ public interface IndexManager {
      * Removes index entries for a specific segment.
      *
      * @param segment the segment number
+     * @return true if all index related files for the segment have been removed
      */
-    void remove(long segment);
+    boolean remove(long segment);
 
     /**
      * Finds all locations of events for the given aggregate within range of sequence numbers specified.

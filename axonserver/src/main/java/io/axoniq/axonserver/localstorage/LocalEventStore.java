@@ -67,17 +67,29 @@ import javax.annotation.Nonnull;
 
 /**
  * Component that handles the actual interaction with the event store.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
+
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
     private static final boolean CREATE_IF_MISSING = true;
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
     private final ExecutorService dataFetcher;
+    private final MeterFactory meterFactory;
+    private final StorageTransactionManagerFactory storageTransactionManagerFactory;
+    private final EventStoreExistChecker eventStoreExistChecker;
+    private final int maxEventCount;
+    /**
+     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
+     * events
+     * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
+     */
+    private final int blacklistedSendAfter;
     private volatile boolean running;
     @Value("${axoniq.axonserver.query.limit:200}")
     private long defaultLimit = 200;
@@ -87,18 +99,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long newPermitsTimeout = 120000;
     @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
     private boolean checkSequenceNrForSnapshots = true;
-
-    private final MeterFactory meterFactory;
-    private final StorageTransactionManagerFactory storageTransactionManagerFactory;
-    private final EventStoreExistChecker eventStoreExistChecker;
-    private final int maxEventCount;
-
-    /**
-     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
-     * events
-     * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
-     */
-    private final int blacklistedSendAfter;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory, MeterRegistry meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
@@ -115,7 +115,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public LocalEventStore(EventStoreFactory eventStoreFactory,
                            MeterFactory meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
-                           EventStoreExistChecker eventStoreExistChecker, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
+                           EventStoreExistChecker eventStoreExistChecker,
+                           @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
                            @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads) {
         this.eventStoreFactory = eventStoreFactory;
@@ -157,12 +158,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     public void deleteContext(String context, boolean keepData) {
         Workers workers = workersMap.remove(context);
-        if( workers == null) return;
+        if (workers == null) {
+            return;
+        }
         workers.close(!keepData);
     }
 
     /**
      * Deletes all event data from the context. Context remains alive.
+     *
      * @param context the context to be cleared
      */
     @Override
@@ -176,7 +180,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public void cancel(String context) {
         Workers workers = workersMap.get(context);
-        if( workers == null) return;
+        if (workers == null) {
+            return;
+        }
 
         workers.eventWriteStorage.cancelPendingTransactions();
         workers.cancelTrackingEventProcessors();
@@ -254,7 +260,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
             @Override
             public void onCompleted() {
-                if( closed.get()) return;
+                if (closed.get()) {
+                    return;
+                }
 
                 workers(context)
                         .eventWriteStorage
@@ -265,7 +273,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
             private Void error(Throwable exception) {
                 exception = ConcurrencyExceptions.unwrap(exception);
-                if( isClientException(exception)) {
+                if (isClientException(exception)) {
                     logger.info("{}: Error while storing events: {}", context, exception.getMessage());
                 } else {
                     logger.warn("{}: Error while storing events", context, exception);
@@ -284,19 +292,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
                                     StreamObserver<InputStream> responseStreamObserver) {
-        runInDataFetcherPool(() -> {AtomicInteger counter = new AtomicInteger();
-        workers(context).aggregateReader.readEvents(request.getAggregateId(),
-                                                    request.getAllowSnapshots(),
-                                                    request.getInitialSequence(),
-                                                    getMaxSequence(request),
-                                                    event -> {
-                                                        responseStreamObserver.onNext(event.asInputStream());
-                                                        counter.incrementAndGet();
-                                                    });
-        if (counter.get() == 0) {
-            logger.debug("Aggregate not found: {}", request);
-        }
-        responseStreamObserver.onCompleted();}, responseStreamObserver::onError);
+        runInDataFetcherPool(() -> {
+            AtomicInteger counter = new AtomicInteger();
+            workers(context).aggregateReader.readEvents(request.getAggregateId(),
+                                                        request.getAllowSnapshots(),
+                                                        request.getInitialSequence(),
+                                                        getMaxSequence(request),
+                                                        event -> {
+                                                            responseStreamObserver.onNext(event.asInputStream());
+                                                            counter.incrementAndGet();
+                                                        });
+            if (counter.get() == 0) {
+                logger.debug("Aggregate not found: {}", request);
+            }
+            responseStreamObserver.onCompleted();
+        }, responseStreamObserver::onError);
     }
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {
@@ -306,7 +316,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (!running) {
                     onError.accept(new RejectedExecutionException("Cannot load events. AxonServer is shutting down"));
                 } else {
-                    task.run();
+                    try {
+                        task.run();
+                    } catch (Exception ex) {
+                        onError.accept(ex);
+                    }
                 }
             });
         } catch (Exception e) {
@@ -326,15 +340,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
                                        StreamObserver<InputStream> responseStreamObserver) {
-        runInDataFetcherPool(() -> {if (request.getMaxSequence() >= 0) {
-            workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
-                                                           request.getInitialSequence(),
-                                                           request.getMaxSequence(),
-                                                           request.getMaxResults(),
-                                                           event -> responseStreamObserver
-                                                                          .onNext(event.asInputStream()));
-        }
-        responseStreamObserver.onCompleted();}, responseStreamObserver::onError);
+        runInDataFetcherPool(() -> {
+            if (request.getMaxSequence() >= 0) {
+                workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
+                                                               request.getInitialSequence(),
+                                                               request.getMaxSequence(),
+                                                               request.getMaxResults(),
+                                                               event -> responseStreamObserver
+                                                                       .onNext(event.asInputStream()));
+            }
+            responseStreamObserver.onCompleted();
+        }, responseStreamObserver::onError);
     }
 
     @Override
@@ -459,7 +475,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
         dataFetcher.shutdownNow();
         runnable.run();
-
     }
 
     @Override
@@ -469,7 +484,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public void stop() {
-        stop(() -> {});
+        stop(() -> {
+        });
     }
 
     @Override
@@ -557,6 +573,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public long getWaitingEventTransactions(String context) {
         return workers(context).eventWriteStorage.waitingTransactions();
     }
+
     public long getWaitingSnapshotTransactions(String context) {
         return workers(context).snapshotWriteStorage.waitingTransactions();
     }
@@ -569,7 +586,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp);
-        } catch (Exception ex ) {
+        } catch (Exception ex) {
             logger.warn("Failed to get backup filenames", ex);
         }
         return Stream.empty();
