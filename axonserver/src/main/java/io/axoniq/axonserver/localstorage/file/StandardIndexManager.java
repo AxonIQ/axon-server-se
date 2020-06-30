@@ -40,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
@@ -64,6 +65,7 @@ public class StandardIndexManager implements IndexManager {
     private final SortedSet<Long> indexes = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final MeterFactory.RateMeter indexOpenMeter;
     private final MeterFactory.RateMeter indexCloseMeter;
+    private final RemoteAggregateSequenceNumberResolver remoteIndexManager;
     private ScheduledFuture<?> cleanupTask;
 
     /**
@@ -74,9 +76,23 @@ public class StandardIndexManager implements IndexManager {
      */
     public StandardIndexManager(String context, StorageProperties storageProperties, EventType eventType,
                                 MeterFactory meterFactory) {
+        this(context, storageProperties, eventType, null, meterFactory);
+    }
+
+    /**
+     * @param context            the context of the storage engine
+     * @param storageProperties  storage engine configuration
+     * @param eventType          content type of the event store (events or snapshots)
+     * @param remoteIndexManager component that provides last sequence number for old aggregates
+     * @param meterFactory       factory to create metrics meter
+     */
+    public StandardIndexManager(String context, StorageProperties storageProperties, EventType eventType,
+                                RemoteAggregateSequenceNumberResolver remoteIndexManager,
+                                MeterFactory meterFactory) {
         this.storageProperties = storageProperties;
         this.context = context;
         this.eventType = eventType;
+        this.remoteIndexManager = remoteIndexManager;
         this.indexOpenMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_OPEN,
                                                      Tags.of(MeterFactory.CONTEXT, context));
         this.indexCloseMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_CLOSE,
@@ -230,32 +246,44 @@ public class StandardIndexManager implements IndexManager {
     /**
      * Returns the last sequence number of an aggregate if this is found.
      *
-     * @param aggregateId the identifier for the aggregate
-     * @param maxSegments maximum number of segments to check for the aggregate
+     * @param aggregateId  the identifier for the aggregate
+     * @param maxSegments  maximum number of segments to check for the aggregate
+     * @param maxTokenHint
      * @return last sequence number for the aggregate (if found)
      */
     @Override
-    public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments) {
+    public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments, long maxTokenHint) {
         int checked = 0;
         for (Long segment : activeIndexes.descendingKeySet()) {
             if (checked >= maxSegments) {
                 return Optional.empty();
             }
-            IndexEntries indexEntries = activeIndexes.get(segment).get(aggregateId);
-            if (indexEntries != null) {
-                return Optional.of(indexEntries.lastSequenceNumber());
+            if (segment <= maxTokenHint) {
+                IndexEntries indexEntries = activeIndexes.get(segment).get(aggregateId);
+                if (indexEntries != null) {
+                    return Optional.of(indexEntries.lastSequenceNumber());
+                }
+                checked++;
             }
-            checked++;
         }
         for (Long segment : indexes) {
             if (checked >= maxSegments) {
                 return Optional.empty();
             }
-            IndexEntries indexEntries = getPositions(segment, aggregateId);
-            if (indexEntries != null) {
-                return Optional.of(indexEntries.lastSequenceNumber());
+            if (segment <= maxTokenHint) {
+                IndexEntries indexEntries = getPositions(segment, aggregateId);
+                if (indexEntries != null) {
+                    return Optional.of(indexEntries.lastSequenceNumber());
+                }
+                checked++;
             }
-            checked++;
+        }
+        if (remoteIndexManager != null && checked < maxSegments) {
+            return remoteIndexManager.getLastSequenceNumber(context,
+                                                            aggregateId,
+                                                            maxSegments - checked,
+                                                            indexes.isEmpty() ?
+                                                                    activeIndexes.firstKey() - 1 : indexes.last() - 1);
         }
         return Optional.empty();
     }
@@ -314,7 +342,7 @@ public class StandardIndexManager implements IndexManager {
      * @param segment the segment number
      */
     @Override
-    public void remove(long segment) {
+    public boolean remove(long segment) {
         if (activeIndexes.remove(segment) == null) {
             Index index = indexMap.remove(segment);
             if (index != null) {
@@ -322,9 +350,9 @@ public class StandardIndexManager implements IndexManager {
             }
             bloomFilterPerSegment.remove(segment);
             indexes.remove(segment);
-            FileUtils.delete(storageProperties.index(context, segment));
-            FileUtils.delete(storageProperties.bloomFilter(context, segment));
         }
+        return FileUtils.delete(storageProperties.index(context, segment)) &&
+                FileUtils.delete(storageProperties.bloomFilter(context, segment));
     }
 
     /**
@@ -399,6 +427,16 @@ public class StandardIndexManager implements IndexManager {
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
+    }
+
+    @Override
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+        return indexes.stream()
+                      .filter(s -> s > lastSegmentBackedUp)
+                      .flatMap(s -> Stream.of(
+                              storageProperties.index(context, s).getAbsolutePath(),
+                              storageProperties.bloomFilter(context, s).getAbsolutePath()
+                      ));
     }
 
     private class Index implements Closeable {

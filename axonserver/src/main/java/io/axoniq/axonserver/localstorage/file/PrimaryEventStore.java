@@ -81,22 +81,17 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }
 
-    /**
-     * Initializes the event store.
-     *
-     * @param lastInitialized last already initialized segment
-     */
     @Override
-    public void initSegments(long lastInitialized) {
+    public void initSegments(long lastInitialized, long defaultFirstIndex) {
         File storageDir = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
         indexManager.init();
         eventTransformer = eventTransformerFactory.get(VERSION, storageProperties.getFlags());
-        initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir);
+        initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir, defaultFirstIndex);
     }
 
-    private void initLatestSegment(long lastInitialized, long nextToken, File storageDir) {
-        long first = getFirstFile(lastInitialized, storageDir);
+    private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, long defaultFirstIndex) {
+        long first = getFirstFile(lastInitialized, storageDir, defaultFirstIndex);
         renameFileIfNecessary(first);
         WritableEventSource buffer = getOrOpenDatafile(first);
         indexManager.remove(first);
@@ -145,14 +140,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private long getFirstFile(long lastInitialized, File events) {
+    private long getFirstFile(long lastInitialized, File events, long defaultFirstIndex) {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
 
         return Arrays.stream(eventFiles)
                      .map(name -> Long.valueOf(name.substring(0, name.indexOf('.'))))
                      .filter(segment -> segment < lastInitialized)
                      .max(Long::compareTo)
-                     .orElse(0L);
+                     .orElse(defaultFirstIndex);
     }
 
     private FilePreparedTransaction prepareTransaction(List<SerializedEvent> origEventList) {
@@ -269,7 +264,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         if (segments.first() < token) {
             int currentPosition = writePositionRef.get().position;
-            initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)));
+            initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)), 0L);
             writePositionRef.get().buffer.clearTo(currentPosition);
         } else {
 
@@ -283,7 +278,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 next.rollback(token);
             }
 
-            initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)));
+            initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)), 0L);
             writePositionRef.get().buffer.clearTo(writePositionRef.get().buffer.capacity());
         }
     }

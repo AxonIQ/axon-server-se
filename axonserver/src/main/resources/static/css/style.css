@@ -201,13 +201,19 @@ h2,h3{
 
 input[type="text"],
 input[type="password"],
-input[type="search"]{
+input[type="search"] {
 	border: 1px solid #a1a4aa;
 	border-radius: 4px;
 	padding: 12px 18px 13px 18px;
 	font-size: 16px;
 }
-.button{
+
+.userPassword {
+	padding: 2px 2px 2px 2px;
+
+}
+
+.button {
 	padding: 13px 32px 14px 32px;
 	font-size: 16px;
 	border-radius: 4px;
@@ -215,7 +221,8 @@ input[type="search"]{
 	border: none;
 	color: #fff;
 }
-.button-reset{
+
+.button-reset {
 	padding: 14px 14px 14px 14px;
 	font-size: 12px;
 	border-radius: 4px;
@@ -680,7 +687,7 @@ select {
 }
 
 .propertyValue {
-    width: 100%;
+	width: 95%;
 }
 
 .nestedTable td {

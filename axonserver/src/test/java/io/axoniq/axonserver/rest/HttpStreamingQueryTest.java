@@ -30,7 +30,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -50,7 +49,7 @@ public class HttpStreamingQueryTest {
     public void setUp() {
         EventStorageEngine engine = new EventStorageEngine() {
             @Override
-            public void init(boolean validate) {
+            public void init(boolean validate, long defaultFirstToken) {
 
             }
 
@@ -89,7 +88,8 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+            public CloseableIterator<SerializedTransactionWithToken> transactionIterator(long firstToken,
+                                                                                         long limitToken) {
                 return null;
             }
 

@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import java.util.Optional;
 import java.util.SortedMap;
+import java.util.stream.Stream;
 
 /**
  * Manages index for an event store. There are two IndexManagers per context, one for the events and one for the
@@ -45,11 +46,12 @@ public interface IndexManager {
     /**
      * Retrieves the sequence number of the last event for the given aggregate.
      *
-     * @param aggregateId the identifier for the aggregate
-     * @param maxSegments maximum number of segments to check for the aggregate
+     * @param aggregateId  the identifier for the aggregate
+     * @param maxSegments  maximum number of segments to check for the aggregate
+     * @param maxTokenHint maximum token to check for events of this aggregate
      * @return the sequence number of the last event for the given aggregate
      */
-    Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments);
+    Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments, long maxTokenHint);
 
     /**
      * Validates that the index for the given segment exists.
@@ -62,8 +64,9 @@ public interface IndexManager {
      * Removes index entries for a specific segment.
      *
      * @param segment the segment number
+     * @return true if all index related files for the segment have been removed
      */
-    void remove(long segment);
+    boolean remove(long segment);
 
     /**
      * Finds all locations of events for the given aggregate within range of sequence numbers specified.
@@ -94,4 +97,12 @@ public interface IndexManager {
      * @return segment and position of the last event
      */
     SegmentAndPosition lastEvent(String aggregateId, long minSequenceNumber);
+
+    /**
+     * Returns a stream of index related files that should be included in the backup
+     *
+     * @param lastSegmentBackedUp the sequence number of the last already backed up segment
+     * @return stream of index related files
+     */
+    Stream<String> getBackupFilenames(long lastSegmentBackedUp);
 }

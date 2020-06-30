@@ -45,11 +45,17 @@
                 <ul>
                     <li>
                         <span class="narrow">Username</span>
-                        <input v-model="user.userName"/></span>
+                        <input data-lpignore="true" v-model="user.userName"/></span>
                     </li>
                     <li>
                         <span class="narrow">Password</span>
-                        <input v-model="user.password"/></span>
+                        <input data-lpignore="true" style="padding: 1px 2px" type="password"
+                               v-model="user.password"/></span>
+                    </li>
+                    <li>
+                        <span class="narrow">Password Verification</span>
+                        <input data-lpignore="true" style="padding: 1px 2px" type="password"
+                               v-model="user.password2"/></span>
                     </li>
                     <li v-if="!isEnterprise()">
                         <span class="narrow">Administrator</span>

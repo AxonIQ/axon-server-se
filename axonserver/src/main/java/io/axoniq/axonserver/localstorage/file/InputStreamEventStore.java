@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * @author Marc Gathier
  * @since 4.0
  */
-public class InputStreamEventStore extends SegmentBasedEventStore {
+public class InputStreamEventStore extends SegmentBasedEventStore implements ReadOnlySegmentsHandler {
 
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
@@ -61,15 +61,11 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
 
 
     private void removeSegment(long segment) {
-        if (segments.remove(segment)) {
-            indexManager.remove(segment);
-            if (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                    !FileUtils.delete(storageProperties.index(context, segment)) ||
-                    !FileUtils.delete(storageProperties.bloomFilter(context, segment))) {
-                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
-                                                     "Failed to rollback " + getType().getEventType()
-                                                             + ", could not remove segment: " + segment);
-            }
+        if (segments.remove(segment) && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+                !indexManager.remove(segment))) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+                                                 "Failed to rollback " + getType().getEventType()
+                                                         + ", could not remove segment: " + segment);
         }
     }
 
