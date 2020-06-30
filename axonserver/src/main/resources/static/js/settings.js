@@ -39,6 +39,15 @@ globals.pageView = new Vue({
             this.reloadStatus();
         }
     }, methods: {
+        downloadTemplate: function () {
+                axios.get("/v1/cluster/download-template").then(response => {
+                    let blob = new Blob([response.data], { type: 'application/text' });
+                    let link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = 'cluster-template.yml';
+                    link.click();
+                });
+        },
         reloadStatus: function () {
             if (this.context) {
                 axios.get("v1/public/status?context=" + this.context).then(response => {
