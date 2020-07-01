@@ -28,6 +28,7 @@ import static io.axoniq.cli.CommandOptions.*;
  * @author Marc Gathier
  */
 public class RegisterContext extends AxonIQCliCommand {
+
     public static void run(String[] args) throws IOException {
         // check args
         CommandLine commandLine = processCommandLine(args[0],
@@ -38,6 +39,8 @@ public class RegisterContext extends AxonIQCliCommand {
                                                      ACTIVE_BACKUP_NODES,
                                                      PASSIVE_BACKUP_NODES,
                                                      MESSAGING_ONLY_NODES,
+                                                     SECONDARY_NODES,
+                                                     PROPERTIES,
                                                      CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/context");
@@ -46,17 +49,28 @@ public class RegisterContext extends AxonIQCliCommand {
         contextNode.setContext(commandLine.getOptionValue(CONTEXT.getOpt()));
         if (commandLine.hasOption(REPLICATIONGROUP.getOpt())) {
             contextNode.setReplicationGroup(commandLine.getOptionValue(CONTEXTREPLICATIONGROUP.getOpt()));
-        } else {
-            List<NodeAndRole> nodeRolesMap = new ArrayList<>();
-            Set<String> definedNodes = new HashSet<>();
-            addNodes(commandLine, CONTEXT_NODES, "PRIMARY", definedNodes, nodeRolesMap);
-            addNodes(commandLine, ACTIVE_BACKUP_NODES, "ACTIVE_BACKUP", definedNodes, nodeRolesMap);
-            addNodes(commandLine, PASSIVE_BACKUP_NODES, "PASSIVE_BACKUP", definedNodes, nodeRolesMap);
-            addNodes(commandLine, MESSAGING_ONLY_NODES, "MESSAGING_ONLY", definedNodes, nodeRolesMap);
-
-            contextNode.setRoles(nodeRolesMap);
-            contextNode.setNodes(new ArrayList<>(definedNodes));
         }
+
+        List<NodeAndRole> nodeRolesMap = new ArrayList<>();
+        Set<String> definedNodes = new HashSet<>();
+        addNodes(commandLine, CONTEXT_NODES, "PRIMARY", definedNodes, nodeRolesMap);
+        addNodes(commandLine, ACTIVE_BACKUP_NODES, "ACTIVE_BACKUP", definedNodes, nodeRolesMap);
+        addNodes(commandLine, PASSIVE_BACKUP_NODES, "PASSIVE_BACKUP", definedNodes, nodeRolesMap);
+        addNodes(commandLine, MESSAGING_ONLY_NODES, "MESSAGING_ONLY", definedNodes, nodeRolesMap);
+        addNodes(commandLine, SECONDARY_NODES, "SECONDARY", definedNodes, nodeRolesMap);
+
+        if (commandLine.hasOption(PROPERTIES.getOpt())) {
+            for (String metadataProperty : commandLine.getOptionValues(PROPERTIES.getOpt())) {
+                String[] keyValue = metadataProperty.split("=", 2);
+                if (keyValue.length != 2) {
+                    throw new IllegalArgumentException("Property value must be key=value - " + keyValue);
+                }
+                contextNode.getMetaData().put(keyValue[0].trim(), keyValue[1].trim());
+            }
+        }
+
+        contextNode.setRoles(nodeRolesMap);
+        contextNode.setNodes(new ArrayList<>(definedNodes));
 
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             postJSON(httpclient, url, contextNode, 200, getToken(commandLine),
@@ -69,7 +83,7 @@ public class RegisterContext extends AxonIQCliCommand {
         if (commandLine.hasOption(nodes.getOpt())) {
             for (String primary : commandLine.getOptionValues(nodes.getOpt())) {
                 if (definedNodes.contains(primary)) {
-                    throw new RuntimeException("Node can only be provided once");
+                    throw new IllegalArgumentException("Node can only be provided once");
                 }
                 nodeRolesMap.add(new NodeAndRole(primary, role));
                 definedNodes.add(primary);

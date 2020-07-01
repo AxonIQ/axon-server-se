@@ -179,6 +179,26 @@ public class CommandOptions {
             .desc("[Optional - Enterprise Edition only] messaging-only member nodes for replication group")
             .build();
     /**
+     * Comma separated list of Axon Server node names as secondary nodes for the replication group.
+     */
+    public static final Option SECONDARY_NODES = Option
+            .builder("s")
+            .hasArgs()
+            .valueSeparator(',')
+            .longOpt("secondary")
+            .desc("[Optional - Enterprise Edition only] secondary member nodes for replication group")
+            .build();
+    /**
+     * Properties that can be set on a context. Values are in the form name=value
+     */
+    public static final Option PROPERTIES = Option
+            .builder("prop")
+            .hasArgs()
+            .valueSeparator(',')
+            .longOpt("property")
+            .desc("[Optional - Enterprise Edition only] properties for a context (specify as name=value)")
+            .build();
+    /**
      * The name of the context, where the nodes should be added to.
      */
     public static final Option CONTEXT_TO_REGISTER_IN = Option
