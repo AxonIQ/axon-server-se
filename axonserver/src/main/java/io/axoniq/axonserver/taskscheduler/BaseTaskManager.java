@@ -238,14 +238,14 @@ public abstract class BaseTaskManager implements SmartLifecycle {
             long retryInterval = Math.min(task.getRetryInterval() * 2,
                     MAX_RETRY_INTERVAL);
 
-            if(task.getRetryInterval() < MAX_RETRY_INTERVAL/2) {
-                logger.info("{}: Failed to execute task {}: {} - {}. Retrying in {} ms...", task.getContext(),
-                        task.getTaskId(),
-                        task.getTaskExecutor(),
-                        cause.getMessage(),
+            if(task.getRetryInterval() < MAX_RETRY_INTERVAL) {
+                logger.info("{}: Failed to execute task '{}'.  Retrying in {} ms...",
+                        task.getContext(),
+                        task.getPayload().getType(),
                         retryInterval);
             } else {
-                logger.warn("{}: Failed to execute task {}: {} - {}. Retrying in {} ms...", task.getContext(),
+                logger.warn("{}: Failed to execute task {}: {} - {}. Retrying in {} ms...",
+                        task.getContext(),
                         task.getTaskId(),
                         task.getTaskExecutor(),
                         cause.getMessage(),
