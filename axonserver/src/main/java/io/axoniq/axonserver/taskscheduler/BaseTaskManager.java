@@ -235,24 +235,28 @@ public abstract class BaseTaskManager implements SmartLifecycle {
         CompletableFuture<Void> publishResultFuture;
         if (isTransient(cause)) {
 
-            if(task.getRetryInterval() < MAX_RETRY_INTERVAL) {
-                logger.info("{}: Failed to execute task {}: {} - {}. Retrying...", task.getContext(),
+            long retryInterval = Math.min(task.getRetryInterval() * 2,
+                    MAX_RETRY_INTERVAL);
+
+            if(task.getRetryInterval() < MAX_RETRY_INTERVAL/2) {
+                logger.info("{}: Failed to execute task {}: {} - {}. Retrying in {} ms...", task.getContext(),
                         task.getTaskId(),
                         task.getTaskExecutor(),
-                        cause.getMessage());
+                        cause.getMessage(),
+                        retryInterval);
             } else {
-                logger.warn("{}: Failed to execute task {}: {} - {}. Retrying...", task.getContext(),
+                logger.warn("{}: Failed to execute task {}: {} - {}. Retrying in {} ms...", task.getContext(),
                         task.getTaskId(),
                         task.getTaskExecutor(),
-                        cause.getMessage());
+                        cause.getMessage(),
+                        retryInterval);
             }
 
             publishResultFuture = processResult(task.getContext(),
                                                 task.getTaskId(),
                                                 TaskStatus.SCHEDULED,
                                                 newSchedule(task),
-                                                Math.min(task.getRetryInterval() * 2,
-                                                         MAX_RETRY_INTERVAL), asString(cause));
+                    retryInterval, asString(cause));
         } else {
             logger.warn("{}: Failed to execute task {}: {}", task.getContext(),
                         task.getTaskId(),
