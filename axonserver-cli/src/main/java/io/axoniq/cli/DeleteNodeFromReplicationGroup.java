@@ -18,10 +18,13 @@ public class DeleteNodeFromReplicationGroup extends AxonIQCliCommand {
                                                      args,
                                                      REPLICATIONGROUP,
                                                      NODE_NAME,
+                                                     PRESERVE_EVENT_STORE,
                                                      CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/replicationgroups", REPLICATIONGROUP, NODE_NAME);
-
+        if (commandLine.hasOption(PRESERVE_EVENT_STORE.getLongOpt())) {
+            url += "?preserveEventStore=true";
+        }
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             delete(httpclient, url, 202, getToken(commandLine));
         }

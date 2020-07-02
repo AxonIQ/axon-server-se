@@ -35,7 +35,7 @@ public class RegisterContext extends AxonIQCliCommand {
                                                      args,
                                                      CONTEXT,
                                                      CONTEXTREPLICATIONGROUP,
-                                                     CONTEXT_NODES,
+                                                     CONTEXT_PRIMARY_NODES,
                                                      ACTIVE_BACKUP_NODES,
                                                      PASSIVE_BACKUP_NODES,
                                                      MESSAGING_ONLY_NODES,
@@ -53,7 +53,7 @@ public class RegisterContext extends AxonIQCliCommand {
 
         List<NodeAndRole> nodeRolesMap = new ArrayList<>();
         Set<String> definedNodes = new HashSet<>();
-        addNodes(commandLine, CONTEXT_NODES, "PRIMARY", definedNodes, nodeRolesMap);
+        addNodes(commandLine, CONTEXT_PRIMARY_NODES, "PRIMARY", definedNodes, nodeRolesMap);
         addNodes(commandLine, ACTIVE_BACKUP_NODES, "ACTIVE_BACKUP", definedNodes, nodeRolesMap);
         addNodes(commandLine, PASSIVE_BACKUP_NODES, "PASSIVE_BACKUP", definedNodes, nodeRolesMap);
         addNodes(commandLine, MESSAGING_ONLY_NODES, "MESSAGING_ONLY", definedNodes, nodeRolesMap);

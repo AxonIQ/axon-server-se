@@ -24,7 +24,7 @@ public class RegisterReplicationGroup extends AxonIQCliCommand {
         CommandLine commandLine = processCommandLine(args[0],
                                                      args,
                                                      REPLICATIONGROUP,
-                                                     NODES,
+                                                     PRIMARY_NODES,
                                                      ACTIVE_BACKUP_NODES,
                                                      PASSIVE_BACKUP_NODES,
                                                      MESSAGING_ONLY_NODES,
@@ -37,7 +37,7 @@ public class RegisterReplicationGroup extends AxonIQCliCommand {
         replicationGroup.setName(commandLine.getOptionValue(REPLICATIONGROUP.getOpt()));
         List<ReplicationGroupJSON.NodeAndRole> nodeRolesMap = new ArrayList<>();
         Set<String> definedNodes = new HashSet<>();
-        addNodes(commandLine, NODES, "PRIMARY", definedNodes, nodeRolesMap);
+        addNodes(commandLine, PRIMARY_NODES, "PRIMARY", definedNodes, nodeRolesMap);
         addNodes(commandLine, SECONDARY_NODES, "SECONDARY", definedNodes, nodeRolesMap);
         addNodes(commandLine, ACTIVE_BACKUP_NODES, "ACTIVE_BACKUP", definedNodes, nodeRolesMap);
         addNodes(commandLine, PASSIVE_BACKUP_NODES, "PASSIVE_BACKUP", definedNodes, nodeRolesMap);
