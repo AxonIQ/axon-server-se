@@ -78,4 +78,11 @@ public interface IndexEntries {
      * @return the first sequence number
      */
     long firstSequenceNumber();
+
+    /**
+     * Adds a number of positions to the index entries for an aggregate.
+     *
+     * @param entries list of positions
+     */
+    void addAll(List<IndexEntry> entries);
 }

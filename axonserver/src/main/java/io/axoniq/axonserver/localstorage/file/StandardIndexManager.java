@@ -27,6 +27,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
@@ -229,6 +230,26 @@ public class StandardIndexManager implements IndexManager {
         activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
                      .computeIfAbsent(aggregateId, a -> new StandardIndexEntries(indexEntry.getSequenceNumber()))
                      .add(indexEntry);
+    }
+
+    /**
+     * Adds positions of a number of events for aggregates to an active (writable) index.
+     *
+     * @param segment      the segment number
+     * @param indexEntries the new entries to add
+     */
+    @Override
+    public void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries) {
+        if (indexes.contains(segment)) {
+            throw new IndexNotFoundException(segment + ": already completed");
+        }
+
+        indexEntries.forEach((aggregateId, entries) -> {
+            activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
+                         .computeIfAbsent(aggregateId,
+                                          a -> new StandardIndexEntries(entries.get(0).getSequenceNumber()))
+                         .addAll(entries);
+        });
     }
 
     /**

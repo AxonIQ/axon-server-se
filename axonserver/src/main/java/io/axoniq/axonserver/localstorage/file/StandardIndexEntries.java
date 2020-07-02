@@ -113,11 +113,19 @@ public class StandardIndexEntries implements IndexEntries {
 
     /**
      * Adds a new entry
+     *
      * @param indexEntry the index entry to add
      */
     @Override
     public void add(IndexEntry indexEntry) {
         entries.add(indexEntry.getPosition());
+    }
+
+    @Override
+    public void addAll(List<IndexEntry> newEntries) {
+        List<Integer> positions = new ArrayList<>(newEntries.size());
+        newEntries.forEach(e -> positions.add(e.getPosition()));
+        entries.addAll(positions);
     }
 
     /**

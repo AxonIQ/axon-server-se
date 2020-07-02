@@ -179,14 +179,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 @Override
                 public boolean onCompleted(long firstToken) {
                     if (execute.getAndSet(false)) {
-                        indexEntries.forEach((aggregeteId, positions) -> {
-                            positions.forEach(positionInfo -> indexManager
-                                    .addToActiveSegment(writePosition.segment, aggregeteId,
-                                                        new IndexEntry(
-                                                                positionInfo.getSequenceNumber(),
-                                                                positionInfo.getPosition(),
-                                                                positionInfo.getToken())));
-                        });
+                        indexManager.addToActiveSegment(writePosition.segment, indexEntries);
                         completableFuture.complete(firstToken);
                         lastToken.set(firstToken + preparedTransaction.getEventList().size() - 1);
                         return true;
