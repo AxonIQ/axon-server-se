@@ -19,10 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -237,10 +234,19 @@ public abstract class BaseTaskManager implements SmartLifecycle {
     protected void error(Task task, Throwable cause) {
         CompletableFuture<Void> publishResultFuture;
         if (isTransient(cause)) {
-            logger.warn("{}: Failed to execute task {}: {} - {}", task.getContext(),
+
+            if(task.getRetryInterval() < MAX_RETRY_INTERVAL) {
+                logger.info("{}: Failed to execute task {}: {} - {}. Retrying...", task.getContext(),
                         task.getTaskId(),
                         task.getTaskExecutor(),
                         cause.getMessage());
+            } else {
+                logger.warn("{}: Failed to execute task {}: {} - {}. Retrying...", task.getContext(),
+                        task.getTaskId(),
+                        task.getTaskExecutor(),
+                        cause.getMessage());
+            }
+
             publishResultFuture = processResult(task.getContext(),
                                                 task.getTaskId(),
                                                 TaskStatus.SCHEDULED,
