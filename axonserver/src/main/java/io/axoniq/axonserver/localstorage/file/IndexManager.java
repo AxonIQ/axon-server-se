@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.stream.Stream;
@@ -105,4 +107,12 @@ public interface IndexManager {
      * @return stream of index related files
      */
     Stream<String> getBackupFilenames(long lastSegmentBackedUp);
+
+    /**
+     * Adds a number of index entries for a segment.
+     *
+     * @param segment      segment to add entries to
+     * @param indexEntries list of index entries to add
+     */
+    void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
 }

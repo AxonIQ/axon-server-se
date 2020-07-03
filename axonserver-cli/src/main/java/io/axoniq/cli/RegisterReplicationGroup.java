@@ -24,10 +24,11 @@ public class RegisterReplicationGroup extends AxonIQCliCommand {
         CommandLine commandLine = processCommandLine(args[0],
                                                      args,
                                                      REPLICATIONGROUP,
-                                                     NODES,
+                                                     PRIMARY_NODES,
                                                      ACTIVE_BACKUP_NODES,
                                                      PASSIVE_BACKUP_NODES,
                                                      MESSAGING_ONLY_NODES,
+                                                     SECONDARY_NODES,
                                                      CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/replicationgroups");
@@ -36,7 +37,8 @@ public class RegisterReplicationGroup extends AxonIQCliCommand {
         replicationGroup.setName(commandLine.getOptionValue(REPLICATIONGROUP.getOpt()));
         List<ReplicationGroupJSON.NodeAndRole> nodeRolesMap = new ArrayList<>();
         Set<String> definedNodes = new HashSet<>();
-        addNodes(commandLine, NODES, "PRIMARY", definedNodes, nodeRolesMap);
+        addNodes(commandLine, PRIMARY_NODES, "PRIMARY", definedNodes, nodeRolesMap);
+        addNodes(commandLine, SECONDARY_NODES, "SECONDARY", definedNodes, nodeRolesMap);
         addNodes(commandLine, ACTIVE_BACKUP_NODES, "ACTIVE_BACKUP", definedNodes, nodeRolesMap);
         addNodes(commandLine, PASSIVE_BACKUP_NODES, "PASSIVE_BACKUP", definedNodes, nodeRolesMap);
         addNodes(commandLine, MESSAGING_ONLY_NODES, "MESSAGING_ONLY", definedNodes, nodeRolesMap);
@@ -54,7 +56,7 @@ public class RegisterReplicationGroup extends AxonIQCliCommand {
         if (commandLine.hasOption(nodes.getOpt())) {
             for (String primary : commandLine.getOptionValues(nodes.getOpt())) {
                 if (definedNodes.contains(primary)) {
-                    throw new RuntimeException("Node can only be provided once");
+                    throw new IllegalArgumentException("Node can only be provided once");
                 }
                 nodeRolesMap.add(new ReplicationGroupJSON.NodeAndRole(primary, role));
                 definedNodes.add(primary);

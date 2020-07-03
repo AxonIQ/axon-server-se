@@ -10,7 +10,9 @@
 package io.axoniq.cli.json;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +24,7 @@ public class ContextNode {
     private String replicationGroup;
     private List<String> nodes = new ArrayList<>();
     private List<NodeAndRole> roles = new ArrayList<>();
+    private Map<String, String> metaData = new HashMap<>();
 
     public ContextNode() {
     }
@@ -80,5 +83,13 @@ public class ContextNode {
 
     public void setReplicationGroup(String replicationGroup) {
         this.replicationGroup = replicationGroup;
+    }
+
+    public Map<String, String> getMetaData() {
+        return metaData;
+    }
+
+    public void setMetaData(Map<String, String> metaData) {
+        this.metaData = metaData;
     }
 }
