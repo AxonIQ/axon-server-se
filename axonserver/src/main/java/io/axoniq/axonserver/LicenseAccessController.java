@@ -18,9 +18,6 @@ package io.axoniq.axonserver;
  */
 public interface LicenseAccessController {
 
-    /**
-     * TODO
-     */
     boolean allowed();
 
 }
