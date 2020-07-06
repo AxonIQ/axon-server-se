@@ -434,7 +434,7 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private boolean allEntriesFound(long firstSequenceNumber, long maxResults, IndexEntries entries) {
-        return firstSequenceNumber >= entries.firstSequenceNumber() || maxResults <= 0;
+        return !entries.isEmpty() && firstSequenceNumber >= entries.firstSequenceNumber() || maxResults <= 0;
     }
 
     /**
