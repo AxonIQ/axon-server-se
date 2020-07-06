@@ -269,11 +269,14 @@ public class StandardIndexManager implements IndexManager {
      *
      * @param aggregateId  the identifier for the aggregate
      * @param maxSegments  maximum number of segments to check for the aggregate
-     * @param maxTokenHint
+     * @param maxTokenHint maximum token to check
      * @return last sequence number for the aggregate (if found)
      */
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments, long maxTokenHint) {
+        if (activeIndexes.isEmpty()) {
+            return Optional.empty();
+        }
         int checked = 0;
         for (Long segment : activeIndexes.descendingKeySet()) {
             if (checked >= maxSegments) {
