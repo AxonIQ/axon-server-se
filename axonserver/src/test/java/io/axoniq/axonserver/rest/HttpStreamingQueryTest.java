@@ -70,7 +70,7 @@ public class HttpStreamingQueryTest {
 
             @Override
             public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
-                                                  long actualMaxSequenceNumber,
+                                                  long actualMaxSequenceNumber, long minToken,
                                                   Consumer<SerializedEvent> eventConsumer) {
 
             }

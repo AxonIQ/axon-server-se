@@ -65,7 +65,7 @@ public class InputStreamAggregateReaderTest {
     @Test
     public void readEventsFromOldSegment() {
         AtomicLong sequenceNumber = new AtomicLong();
-        testSubject.readEvents("1", true, 0,
+        testSubject.readEvents("1", true, 0, 0,
                                event -> sequenceNumber.set(event.getAggregateSequenceNumber()));
         Assert.assertEquals(99, sequenceNumber.intValue());
     }
@@ -73,7 +73,7 @@ public class InputStreamAggregateReaderTest {
     @Test
     public void readEventsFromCurrentSegment() {
         AtomicLong sequenceNumber = new AtomicLong();
-        testSubject.readEvents("999", true, 0,
+        testSubject.readEvents("999", true, 0, 0,
                                event -> sequenceNumber.set(event.getAggregateSequenceNumber()));
         Assert.assertEquals(99, sequenceNumber.intValue());
     }
@@ -81,7 +81,7 @@ public class InputStreamAggregateReaderTest {
     @Test
     public void readEventsWithSnapshot() {
         List<Event> events = new ArrayList<>();
-        testSubject.readEvents("55", true, 0, serialized -> {
+        testSubject.readEvents("55", true, 0, 0, serialized -> {
             events.add(serialized.asEvent());
         });
 
@@ -92,7 +92,7 @@ public class InputStreamAggregateReaderTest {
     @Test
     public void readEventsWithSnapshotBeforeMin() {
         List<Event> events = new ArrayList<>();
-        testSubject.readEvents("55", true, 90, serialized -> {
+        testSubject.readEvents("55", true, 90, 0, serialized -> {
             events.add(serialized.asEvent());
         });
 
@@ -104,7 +104,7 @@ public class InputStreamAggregateReaderTest {
     public void readEventsFromNonExistingAggregate() throws InterruptedException {
         Thread.sleep(2000); // Wait some time so that files are synchronized
         AtomicLong sequenceNumber = new AtomicLong();
-        testSubject.readEvents("100000", true, 0,
+        testSubject.readEvents("100000", true, 0, 0,
                                event -> sequenceNumber.set(event.getAggregateSequenceNumber()));
         Assert.assertEquals(0, sequenceNumber.intValue());
     }
