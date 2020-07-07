@@ -56,6 +56,7 @@ public class ConsistentHash {
      * found an empty Optional is returned.
      *
      * @param routingKey the routing that should be used to select a member
+     * @param candidates set of allowed candidates, null means all candidates allowed
      * @return the member that should handle the message or an empty Optional if no suitable member was found
      */
     public Optional<ConsistentHashMember> getMember(String routingKey,

@@ -22,6 +22,12 @@ public interface RoutingSelector<Handler> {
     Optional<Handler> selectHandler(String routingKey,
                                     Set<Handler> candidates);
 
+    /**
+     * Selects the best handler to dispatch the message to. Allows all candidates to be considered.
+     *
+     * @param routingKey the routing key for the message
+     * @return optional value of best handler to dispatch the message to.
+     */
     default Optional<Handler> selectHandler(String routingKey) {
         return selectHandler(routingKey, null);
     }

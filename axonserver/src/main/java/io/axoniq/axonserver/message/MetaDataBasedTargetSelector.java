@@ -22,7 +22,7 @@ import java.util.function.BiFunction;
 /**
  * Selects one or more target clients for a request based on the request's meta data. Finds the client with most
  * matching
- * tags. If multiple clients have same number of matching tasks, all of them are returned. If there are no clients with
+ * tags. If multiple clients have same number of matching tags, all of them are returned. If there are no clients with
  * matching tags, all candidates are returned.
  *
  * @author Marc Gathier
@@ -77,10 +77,10 @@ public class MetaDataBasedTargetSelector
     private int match(Map.Entry<String, String> tagEntry, Map<String, MetaDataValue> metaDataMap) {
         MetaDataValue metaDataValue = metaDataMap.get(tagEntry.getKey());
 
-        return metaDataValue == null ? 0 : matchStrings(tagEntry.getValue(), metaDataValue);
+        return metaDataValue == null ? 0 : matchValues(tagEntry.getValue(), metaDataValue);
     }
 
-    private int matchStrings(String value, MetaDataValue metaDataValue) {
+    private int matchValues(String value, MetaDataValue metaDataValue) {
         boolean match = false;
         switch (metaDataValue.getDataCase()) {
             case TEXT_VALUE:

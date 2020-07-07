@@ -40,34 +40,56 @@ import static java.util.Collections.emptyMap;
  */
 @Component("CommandRegistrationCache")
 public class CommandRegistrationCache {
+
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
     private final ConcurrentMap<ClientIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
     private final ConcurrentMap<ClientIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
     private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
     private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
-    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter;
+    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector;
 
+    /**
+     * Autowired constructor.
+     *
+     * @param metaDataBasedNodeSelector function that filters the possible clients based on meta data values in the
+     *                                  request
+     */
     @Autowired
     public CommandRegistrationCache(
-            BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter) {
+            BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
-        this.filter = filter;
+        this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
 
+    /**
+     * Default constructor. Does not filter targets based on the metadata of the command.
+     */
     public CommandRegistrationCache() {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
-        this.filter = (metaData, targets) -> targets;
+        this.metaDataBasedNodeSelector = (metaData, targets) -> targets;
     }
 
+    /**
+     * Constructor with a custom selector factory. Does not filter targets based on the metadata of the command.
+     *
+     * @param selectorFactory function to find a command handling target based on the command type
+     */
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory) {
         this(selectorFactory, (metaData, targets) -> targets);
     }
 
+    /**
+     * Constructor specifying a specific selectorFactory and metaDataBasedNodeSelector.
+     *
+     * @param selectorFactory           function to find a command handling target based on the command type
+     * @param metaDataBasedNodeSelector function that filters the possible clients based on meta data values in the
+     *                                  request
+     */
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory,
-                                    BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter) {
+                                    BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = selectorFactory;
-        this.filter = filter;
+        this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
 
     /**
@@ -191,7 +213,7 @@ public class CommandRegistrationCache {
                                                                      .collect(
                                                                              Collectors
                                                                                      .toSet());
-        return filter.apply(command.getMetaDataMap(), candidates);
+        return metaDataBasedNodeSelector.apply(command.getMetaDataMap(), candidates);
     }
 
 

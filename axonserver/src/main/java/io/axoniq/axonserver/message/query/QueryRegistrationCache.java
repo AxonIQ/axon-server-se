@@ -38,27 +38,50 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 /**
+ * Cache to keep track of query handlers registered. It tracks the registered queries for each client and the clients
+ * for each query.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 @Component("QueryRegistrationCache")
 public class QueryRegistrationCache {
 
     private final QueryHandlerSelector queryHandlerSelector;
-    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter;
+    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector;
 
     private final Map<QueryDefinition, QueryInformation> registrationsPerQuery = new ConcurrentHashMap<>();
 
+    /**
+     * Autowired constructor.
+     *
+     * @param queryHandlerSelector      selector to choose one application instance to handle a query when there are
+     *                                  multiple instances of the same application
+     * @param metaDataBasedNodeSelector selector to filter the candidates for a query based on the meta data in the
+     *                                  query
+     */
     @Autowired
     public QueryRegistrationCache(QueryHandlerSelector queryHandlerSelector,
-                                  BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> filter) {
+                                  BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
         this.queryHandlerSelector = queryHandlerSelector;
-        this.filter = filter;
+        this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
 
+    /**
+     * Constructor that uses a no-op meta data filter.
+     *
+     * @param queryHandlerSelector selector to choose one application instance to handle a query when there are multiple
+     *                             instances of the same application
+     */
     public QueryRegistrationCache(QueryHandlerSelector queryHandlerSelector) {
         this(queryHandlerSelector, (metadata, clients) -> clients);
     }
 
+    /**
+     * Removes registration for a query handler.
+     *
+     * @param event the unsubscription event
+     */
     @EventListener
     public void on(SubscriptionEvents.UnsubscribeQuery event) {
         QuerySubscription unsubscribe = event.getUnsubscribe();
@@ -66,6 +89,11 @@ public class QueryRegistrationCache {
         remove(queryDefinition, event.clientIdentification());
     }
 
+    /**
+     * Adds a registration for a query handler.
+     *
+     * @param event the subscription event
+     */
     @EventListener
     public void on(SubscriptionEvents.SubscribeQuery event) {
         QuerySubscription subscription = event.getSubscription();
@@ -73,6 +101,11 @@ public class QueryRegistrationCache {
         add(queryDefinition, subscription.getResultName(), event.getQueryHandler());
     }
 
+    /**
+     * Removes all registered queries for a client
+     *
+     * @param clientId the client identification
+     */
     public void remove(ClientIdentification clientId) {
         registrationsPerQuery.forEach((k, v) -> v.removeClient(clientId));
         registrationsPerQuery.entrySet().removeIf(v -> v.getValue().isEmpty());
@@ -80,11 +113,12 @@ public class QueryRegistrationCache {
 
     public void remove(QueryDefinition queryDefinition, ClientIdentification clientId) {
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
-        if( queryInformation != null) {
+        if (queryInformation != null) {
             queryInformation.removeClient(clientId);
-            if( queryInformation.isEmpty()) registrationsPerQuery.remove(queryDefinition);
+            if (queryInformation.isEmpty()) {
+                registrationsPerQuery.remove(queryDefinition);
+            }
         }
-
     }
 
     public void add(QueryDefinition queryDefinition, String resultName,
@@ -94,6 +128,14 @@ public class QueryRegistrationCache {
                              .addHandler(queryHandler);
     }
 
+    /**
+     * Finds query handlers for the given request. Possible handlers may be filtered based on meta data in the request.
+     * If there are multiple instances of an application, this returns only one of the instances.
+     *
+     * @param context the name of the context
+     * @param request the query request
+     * @return a set of {@link QueryHandler}s.
+     */
     public Set<QueryHandler> find(String context, QueryRequest request) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
@@ -105,7 +147,8 @@ public class QueryRegistrationCache {
                                                                .values()
                                                                .stream()
                                                                .flatMap(Collection::stream).collect(toSet());
-        Set<ClientIdentification> filteredCandidates = filter.apply(request.getMetaDataMap(), candidates);
+        Set<ClientIdentification> filteredCandidates = metaDataBasedNodeSelector.apply(request.getMetaDataMap(),
+                                                                                       candidates);
         return queryInformation.getHandlersPerComponent().entrySet().stream()
                                .map(entry -> pickOne(queryDefinition,
                                                      entry.getKey(),
@@ -115,9 +158,16 @@ public class QueryRegistrationCache {
                                .collect(toSet());
     }
 
+    /**
+     * Finds all query handlers for the given request.
+     *
+     * @param context the name of the context
+     * @param request the query request
+     * @return a set of {@link QueryHandler}s.
+     */
     public Collection<QueryHandler> findAll(String context, QueryRequest request) {
         QueryDefinition def = new QueryDefinition(context, request.getQuery());
-        return (registrationsPerQuery.containsKey(def)) ?  registrationsPerQuery.get(def).handlers.values() : emptySet();
+        return (registrationsPerQuery.containsKey(def)) ? registrationsPerQuery.get(def).handlers.values() : emptySet();
     }
 
     private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName,
