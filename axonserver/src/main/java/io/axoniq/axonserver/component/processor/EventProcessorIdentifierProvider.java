@@ -4,8 +4,6 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import org.springframework.stereotype.Component;
 
-import java.util.function.BiFunction;
-
 
 /**
  * Provides the token store identifier for a given tracking event processor instance.
