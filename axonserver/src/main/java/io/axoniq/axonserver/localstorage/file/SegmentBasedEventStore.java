@@ -133,7 +133,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
                                                                                    maxSequenceNumber,
-                                                                                   maxResults);
+                                                                                   maxResults,
+                                                                                   0);
 
         List<Long> segmentsContainingAggregate = new ArrayList<>(positionInfos.keySet());
         Collections.reverse(segmentsContainingAggregate);
@@ -146,7 +147,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                        firstSequenceNumber,
                                                        maxSequenceNumber,
                                                        eventConsumer,
-                                                       maxResults);
+                                                       maxResults, 0);
             if (maxResults <= 0) {
                 return;
             }

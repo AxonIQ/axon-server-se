@@ -390,7 +390,7 @@ public class StandardIndexManager implements IndexManager {
      */
     @Override
     public SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber,
-                                                         long lastSequenceNumber, long maxResults) {
+                                                         long lastSequenceNumber, long maxResults, long minToken) {
         SortedMap<Long, IndexEntries> results = new TreeMap<>();
         logger.debug("{}: lookupAggregate {} minSequenceNumber {}, lastSequenceNumber {}",
                      context,
@@ -398,7 +398,11 @@ public class StandardIndexManager implements IndexManager {
                      firstSequenceNumber,
                      lastSequenceNumber);
 
+        long minTokenInPreviousSegment = Long.MAX_VALUE;
         for (Long segment : activeIndexes.descendingKeySet()) {
+            if (minTokenInPreviousSegment < minToken) {
+                return results;
+            }
             IndexEntries entries = activeIndexes.getOrDefault(segment, Collections.emptyMap()).get(aggregateId);
             if (entries != null) {
                 entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, segment, entries);
@@ -407,9 +411,13 @@ public class StandardIndexManager implements IndexManager {
                     return results;
                 }
             }
+            minTokenInPreviousSegment = segment;
         }
 
         for (Long index : indexes) {
+            if (minTokenInPreviousSegment < minToken) {
+                return results;
+            }
             IndexEntries entries = getPositions(index, aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
             if (entries != null) {
@@ -419,6 +427,7 @@ public class StandardIndexManager implements IndexManager {
                     return results;
                 }
             }
+            minTokenInPreviousSegment = index;
         }
 
         return results;

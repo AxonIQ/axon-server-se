@@ -69,7 +69,7 @@ public class StandardIndexManagerTest {
                 SortedMap<Long, IndexEntries> actual = indexManager.lookupAggregate(aggregateId,
                                                                                     0,
                                                                                     Long.MAX_VALUE,
-                                                                                    Long.MAX_VALUE);
+                                                                                    Long.MAX_VALUE, 0);
                 assertEquals(positionInfo.getSequenceNumber(), actual.get(0L).firstSequenceNumber());
             });
             futures[i] = future;
@@ -102,9 +102,34 @@ public class StandardIndexManagerTest {
         indexManager.complete(10);
         indexManager.addToActiveSegment(15L, aggregateId, new IndexEntry(7, 0, 0));
 
-        SortedMap<Long, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, 5, 100);
+        SortedMap<Long, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, 5, 100, 0);
         assertEquals(1, position.size());
         assertNotNull(position.get(0L));
+    }
+
+    @Test
+    public void testIndexMinToken() {
+        long segment = 0L;
+        String aggregateId = "aggregateId";
+        IndexEntry positionInfo = new IndexEntry(0, 0, 0);
+        indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
+        indexManager.addToActiveSegment(segment, aggregateId, new IndexEntry(1, 0, 0));
+        indexManager.addToActiveSegment(segment, aggregateId, new IndexEntry(2, 0, 0));
+        indexManager.addToActiveSegment(segment, aggregateId, new IndexEntry(3, 0, 0));
+        indexManager.addToActiveSegment(segment, aggregateId, new IndexEntry(4, 0, 0));
+        indexManager.complete(0);
+        indexManager.addToActiveSegment(10L, aggregateId, new IndexEntry(5, 0, 0));
+        indexManager.addToActiveSegment(10L, aggregateId, new IndexEntry(6, 0, 0));
+        indexManager.complete(10);
+        indexManager.addToActiveSegment(15L, aggregateId, new IndexEntry(7, 0, 0));
+
+        SortedMap<Long, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 11);
+        assertEquals(2, position.size());
+        assertNotNull(position.get(10L));
+        assertNotNull(position.get(15L));
+        position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 15);
+        assertEquals(2, position.size());
+        assertNotNull(position.get(15L));
     }
 
     @Test
