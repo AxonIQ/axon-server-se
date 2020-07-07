@@ -347,8 +347,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                request.getInitialSequence(),
                                                                request.getMaxSequence(),
                                                                request.getMaxResults(),
-                                                               event -> responseStreamObserver
-                                                                       .onNext(event));
+                                                               responseStreamObserver::onNext);
             }
             responseStreamObserver.onCompleted();
         }, responseStreamObserver::onError);
