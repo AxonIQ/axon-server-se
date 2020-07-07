@@ -9,8 +9,6 @@ import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.function.BiConsumer;
-
 /**
  * Publisher of heartbeat pulses, that is responsible to send heartbeat only to clients that support this feature.
  *
