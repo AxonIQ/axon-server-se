@@ -134,8 +134,8 @@ public class EventProcessorRestController {
                              final Principal principal) {
         auditLog.info("[{}@{}] Request to split segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
-        Clients clients = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        List<String> clientNames = StreamSupport.stream(clients.spliterator(), false)
+        Clients clientList = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
+        List<String> clientNames = StreamSupport.stream(clientList.spliterator(), false)
                                                 .map(Client::name)
                                                 .collect(Collectors.toList());
         processorEventsSource.splitSegment(context, clientNames, processorName);
@@ -158,8 +158,8 @@ public class EventProcessorRestController {
                              final Principal principal) {
         auditLog.info("[{}@{}] Request to merge segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
-        Clients clients = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        List<String> clientNames = StreamSupport.stream(clients.spliterator(), false)
+        Clients clientList = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
+        List<String> clientNames = StreamSupport.stream(clientList.spliterator(), false)
                                                 .map(Client::name)
                                                 .collect(Collectors.toList());
         processorEventsSource.mergeSegment(context, clientNames, processorName);
