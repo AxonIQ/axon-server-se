@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -26,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
@@ -38,24 +40,61 @@ import static java.util.Collections.emptyMap;
  */
 @Component("CommandRegistrationCache")
 public class CommandRegistrationCache {
+
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
     private final ConcurrentMap<ClientIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
     private final ConcurrentMap<ClientIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
     private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
     private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
+    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector;
 
+    /**
+     * Autowired constructor.
+     *
+     * @param metaDataBasedNodeSelector function that filters the possible clients based on meta data values in the
+     *                                  request
+     */
     @Autowired
-    public CommandRegistrationCache() {
+    public CommandRegistrationCache(
+            BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
+        this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
 
+    /**
+     * Default constructor. Does not filter targets based on the metadata of the command.
+     */
+    public CommandRegistrationCache() {
+        this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
+        this.metaDataBasedNodeSelector = (metaData, targets) -> targets;
+    }
+
+    /**
+     * Constructor with a custom selector factory. Does not filter targets based on the metadata of the command.
+     *
+     * @param selectorFactory function to find a command handling target based on the command type
+     */
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory) {
+        this(selectorFactory, (metaData, targets) -> targets);
+    }
+
+    /**
+     * Constructor specifying a specific selectorFactory and metaDataBasedNodeSelector.
+     *
+     * @param selectorFactory           function to find a command handling target based on the command type
+     * @param metaDataBasedNodeSelector function that filters the possible clients based on meta data values in the
+     *                                  request
+     */
+    public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory,
+                                    BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = selectorFactory;
+        this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
 
     /**
      * Removes all registrations for a client
+     *
      * @param client the clientId to remove
      */
     public void remove(ClientIdentification client) {
@@ -146,18 +185,42 @@ public class CommandRegistrationCache {
      */
     public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
         String command = request.getName();
+        Set<ClientIdentification> candidates = getCandidates(request);
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        if (candidates.size() == 1) {
+            return commandHandlersPerClientContext.get(candidates.iterator().next());
+        }
+        Set<String> candidateNames = candidates.stream().map(ClientIdentification::getClient).collect(Collectors
+                                                                                                              .toSet());
         RoutingSelector<String> routingSelector = routingSelector(context, command);
         return routingSelector
-                .selectHandler(routingKey)
+                .selectHandler(routingKey, candidateNames)
                 .map(client -> commandHandlersPerClientContext.get(new ClientIdentification(context, client)))
                 .orElse(null);
     }
 
+    private Set<ClientIdentification> getCandidates(Command command) {
+
+        Set<ClientIdentification> candidates = registrationsPerClient.entrySet()
+                                                                     .stream()
+                                                                     .filter(entry -> entry
+                                                                             .getValue()
+                                                                             .containsKey(
+                                                                                     command.getName()))
+                                                                     .map(Map.Entry::getKey)
+                                                                     .collect(
+                                                                             Collectors
+                                                                                     .toSet());
+        return metaDataBasedNodeSelector.apply(command.getMetaDataMap(), candidates);
+    }
+
+
     @Nonnull
     private RoutingSelector<String> routingSelector(String context, String command) {
         CommandTypeIdentifier commandIdentification = new CommandTypeIdentifier(context, command);
-        return routingSelectors.computeIfAbsent(commandIdentification,
-                                                c -> selectorFactory.apply(commandIdentification));
+        return routingSelectors.computeIfAbsent(commandIdentification, selectorFactory::apply);
     }
 
     private Function<String, Integer> loadFactorSolver(CommandTypeIdentifier command) {

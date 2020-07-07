@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.query;
 
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -22,6 +23,7 @@ import org.mockito.runners.*;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.anyObject;
@@ -130,18 +132,82 @@ public class QueryRegistrationCacheTest {
     public void find1() {
         queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
-                                   new DirectQueryHandler(dummyStreamObserver,  new ClientIdentification(Topology.DEFAULT_CONTEXT,"client"), "component"));
+                                   new DirectQueryHandler(dummyStreamObserver,
+                                                          new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                                          "component"));
         QueryRequest request = QueryRequest.newBuilder().setQuery("test").build();
         QueryRequest request2 = QueryRequest.newBuilder().setQuery("test1").build();
-        when( queryHandlerSelector.select(anyObject(), anyObject(), anyObject())).thenReturn( new ClientIdentification(Topology.DEFAULT_CONTEXT,"client"));
+        when(queryHandlerSelector.select(anyObject(), anyObject(), anyObject())).thenReturn(new ClientIdentification(
+                Topology.DEFAULT_CONTEXT,
+                "client"));
         assertNotNull(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request));
         assertTrue(queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request2).isEmpty());
     }
 
     @Test
-    public void querySubscriptionTwice(){
+    public void findFromCandidates() {
+
+        queryRegistrationCache = new QueryRegistrationCache((queryDefinition, componentName, queryHandlers) -> {
+            if (queryHandlers.isEmpty()) {
+                return null;
+            }
+            return queryHandlers.first();
+        }, (metadata, clients) -> {
+            if (!metadata.containsKey("client")) {
+                return clients;
+            }
+            return clients.stream().filter(c -> c.getClient().equals(metadata.getOrDefault("client",
+                                                                                           MetaDataValue
+                                                                                                   .getDefaultInstance())
+                                                                             .getTextValue())).collect(
+                    Collectors.toSet());
+        });
+
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
+                                   "test",
+                                   new DirectQueryHandler(dummyStreamObserver,
+                                                          new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                                          "component"));
+        queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
+                                   "test",
+                                   new DirectQueryHandler(dummyStreamObserver,
+                                                          new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"),
+                                                          "component"));
+
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setQuery("test")
+                                           .putMetaData("client",
+                                                        MetaDataValue.newBuilder().setTextValue("client2").build())
+                                           .build();
+        Set<QueryHandler> result = queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request);
+        assertEquals(1, result.size());
+        QueryHandler queryHandler = result.iterator().next();
+        assertEquals("client2", queryHandler.getClientId());
+        request = QueryRequest.newBuilder()
+                              .setQuery("test")
+                              .putMetaData("client", MetaDataValue.newBuilder().setTextValue("client").build())
+                              .build();
+        result = queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request);
+        assertEquals(1, result.size());
+        queryHandler = result.iterator().next();
+        assertEquals("client", queryHandler.getClientId());
+        request = QueryRequest.newBuilder()
+                              .setQuery("test")
+                              .build();
+        result = queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request);
+        assertEquals(1, result.size());
+        queryHandler = result.iterator().next();
+        assertEquals("client", queryHandler.getClientId());
+    }
+
+
+    @Test
+    public void querySubscriptionTwice() {
         QueryDefinition queryDefinition = new QueryDefinition("MyContext", "MyQuery");
-        QueryHandler queryHandler = new DirectQueryHandler(null,  new ClientIdentification(Topology.DEFAULT_CONTEXT,"MyClientName"), "MyComponentName") ;
+        QueryHandler queryHandler = new DirectQueryHandler(null,
+                                                           new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                    "MyClientName"),
+                                                           "MyComponentName");
         queryRegistrationCache.add(queryDefinition, "resultName", queryHandler);
         queryRegistrationCache.add(queryDefinition, "resultName", queryHandler);
         QueryRequest queryRequest = QueryRequest.newBuilder().setQuery("MyQuery").build();
