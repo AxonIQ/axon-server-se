@@ -4,6 +4,8 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdated;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
@@ -29,6 +31,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  */
 @Component
 public class EventProcessorStatusRefresh {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventProcessorStatusRefresh.class);
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
 
@@ -105,7 +109,8 @@ public class EventProcessorStatusRefresh {
                     throw new RuntimeException("Event processor status update has not be completed in 10 seconds.");
                 }
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                LOGGER.warn("The refresh of the event processors status was interrupted. ", e);
+                Thread.currentThread().interrupt();
             } finally {
                 updateListeners.remove(statusUpdateListener);
             }
