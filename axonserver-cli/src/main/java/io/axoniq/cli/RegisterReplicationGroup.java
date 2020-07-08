@@ -1,5 +1,6 @@
 package io.axoniq.cli;
 
+import io.axoniq.cli.json.NodeAndRole;
 import io.axoniq.cli.json.ReplicationGroupJSON;
 import io.axoniq.cli.json.RestResponse;
 import org.apache.commons.cli.CommandLine;
@@ -35,7 +36,7 @@ public class RegisterReplicationGroup extends AxonIQCliCommand {
 
         ReplicationGroupJSON replicationGroup = new ReplicationGroupJSON();
         replicationGroup.setName(commandLine.getOptionValue(REPLICATIONGROUP.getOpt()));
-        List<ReplicationGroupJSON.NodeAndRole> nodeRolesMap = new ArrayList<>();
+        List<NodeAndRole> nodeRolesMap = new ArrayList<>();
         Set<String> definedNodes = new HashSet<>();
         addNodes(commandLine, PRIMARY_NODES, "PRIMARY", definedNodes, nodeRolesMap);
         addNodes(commandLine, SECONDARY_NODES, "SECONDARY", definedNodes, nodeRolesMap);
@@ -52,13 +53,13 @@ public class RegisterReplicationGroup extends AxonIQCliCommand {
     }
 
     private static void addNodes(CommandLine commandLine, Option nodes, String role, Set<String> definedNodes,
-                                 List<ReplicationGroupJSON.NodeAndRole> nodeRolesMap) {
+                                 List<NodeAndRole> nodeRolesMap) {
         if (commandLine.hasOption(nodes.getOpt())) {
             for (String primary : commandLine.getOptionValues(nodes.getOpt())) {
                 if (definedNodes.contains(primary)) {
                     throw new IllegalArgumentException("Node can only be provided once");
                 }
-                nodeRolesMap.add(new ReplicationGroupJSON.NodeAndRole(primary, role));
+                nodeRolesMap.add(new NodeAndRole(primary, role));
                 definedNodes.add(primary);
             }
         }
