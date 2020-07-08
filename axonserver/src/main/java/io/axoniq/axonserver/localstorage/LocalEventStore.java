@@ -104,7 +104,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this(eventStoreFactory,
              new MeterFactory(meterFactory, new DefaultMetricCollector()),
              storageTransactionManagerFactory,
-             Optional.<EventDecorator>empty(),
+             new DefaultEventDecorator(),
              Short.MAX_VALUE,
              1000,
              24);
@@ -114,7 +114,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public LocalEventStore(EventStoreFactory eventStoreFactory,
                            MeterFactory meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
-                           Optional<EventDecorator> eventDecorator,
+                           EventDecorator eventDecorator,
                            @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
                            @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads) {
@@ -124,8 +124,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
-        this.eventDecorator = eventDecorator.orElse(new EventDecorator() {
-        });
+        this.eventDecorator = eventDecorator;
     }
 
     public void initContext(String context, boolean validating) {
