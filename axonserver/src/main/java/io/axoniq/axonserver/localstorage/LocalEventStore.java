@@ -75,14 +75,12 @@ import javax.annotation.Nonnull;
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
 
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
-    private static final boolean CREATE_IF_MISSING = true;
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
     private final ExecutorService dataFetcher;
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
-    private final EventStoreExistChecker eventStoreExistChecker;
     private final int maxEventCount;
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
@@ -90,6 +88,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
      */
     private final int blacklistedSendAfter;
+    private final EventDecorator eventDecorator;
     private volatile boolean running;
     @Value("${axoniq.axonserver.query.limit:200}")
     private long defaultLimit = 200;
@@ -101,12 +100,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private boolean checkSequenceNrForSnapshots = true;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory, MeterRegistry meterFactory,
-                           StorageTransactionManagerFactory storageTransactionManagerFactory,
-                           EventStoreExistChecker eventStoreExistChecker) {
+                           StorageTransactionManagerFactory storageTransactionManagerFactory) {
         this(eventStoreFactory,
              new MeterFactory(meterFactory, new DefaultMetricCollector()),
              storageTransactionManagerFactory,
-             eventStoreExistChecker, Short.MAX_VALUE,
+             Optional.<EventDecorator>empty(),
+             Short.MAX_VALUE,
              1000,
              24);
     }
@@ -115,17 +114,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public LocalEventStore(EventStoreFactory eventStoreFactory,
                            MeterFactory meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
-                           EventStoreExistChecker eventStoreExistChecker,
+                           Optional<EventDecorator> eventDecorator,
                            @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
                            @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads) {
         this.eventStoreFactory = eventStoreFactory;
         this.meterFactory = meterFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
-        this.eventStoreExistChecker = eventStoreExistChecker;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
+        this.eventDecorator = eventDecorator.orElse(new EventDecorator() {
+        });
     }
 
     public void initContext(String context, boolean validating) {
@@ -300,7 +300,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                         getMaxSequence(request),
                                                         request.getMinToken(),
                                                         event -> {
-                                                            responseStreamObserver.onNext(event);
+                                                            responseStreamObserver.onNext(eventDecorator
+                                                                                                  .decorateEvent(event));
                                                             counter.incrementAndGet();
                                                         });
             if (counter.get() == 0) {
@@ -347,7 +348,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                request.getInitialSequence(),
                                                                request.getMaxSequence(),
                                                                request.getMaxResults(),
-                                                               responseStreamObserver::onNext);
+                                                               snapshot -> responseStreamObserver
+                                                                       .onNext(eventDecorator.decorateEvent(snapshot)));
             }
             responseStreamObserver.onCompleted();
         }, responseStreamObserver::onError);
@@ -366,7 +368,24 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
                                                                    getEventsRequest.getAllowReadingFromFollower(),
-                                                                   responseStreamObserver);
+                                                                   new StreamObserver<InputStream>() {
+                                                                       @Override
+                                                                       public void onNext(InputStream inputStream) {
+                                                                           responseStreamObserver.onNext(eventDecorator
+                                                                                                                 .decorateEventWithToken(
+                                                                                                                         inputStream));
+                                                                       }
+
+                                                                       @Override
+                                                                       public void onError(Throwable throwable) {
+                                                                           responseStreamObserver.onError(throwable);
+                                                                       }
+
+                                                                       @Override
+                                                                       public void onCompleted() {
+                                                                           responseStreamObserver.onCompleted();
+                                                                       }
+                                                                   });
                     }
                     return c;
                 });
@@ -454,6 +473,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                     workers.eventStreamReader,
                                                     defaultLimit,
                                                     timeout,
+                                                    eventDecorator,
                                                     responseObserver);
     }
 

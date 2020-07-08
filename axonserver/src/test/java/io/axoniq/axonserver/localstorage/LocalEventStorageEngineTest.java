@@ -27,6 +27,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -82,7 +83,7 @@ public class LocalEventStorageEngineTest {
                 return new FakeEventStore(EventType.SNAPSHOT);
             }
         }, new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
-                                          transactionManagerFactory, c -> true, 5, 1000, 10);
+                                          transactionManagerFactory, Optional.<EventDecorator>empty(), 5, 1000, 10);
         testSubject.initContext(SAMPLE_CONTEXT, false);
         testSubject.start();
     }

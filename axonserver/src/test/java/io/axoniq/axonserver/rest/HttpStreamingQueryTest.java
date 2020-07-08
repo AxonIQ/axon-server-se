@@ -141,7 +141,7 @@ public class HttpStreamingQueryTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return engine;
             }
-        }, new SimpleMeterRegistry(), eventStore -> null, c -> true);
+        }, new SimpleMeterRegistry(), eventStore -> null);
         localEventStore.initContext(Topology.DEFAULT_CONTEXT, false);
         EventStoreLocator eventStoreLocator = new DefaultEventStoreLocator(localEventStore);
         testSubject = new HttpStreamingQuery(eventStoreLocator);
