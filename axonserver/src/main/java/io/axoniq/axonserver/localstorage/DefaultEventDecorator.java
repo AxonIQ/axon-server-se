@@ -9,15 +9,12 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import org.springframework.stereotype.Component;
-
 /**
  * Default implementation of the {@link EventDecorator}. Returns the events unchanged.
  *
  * @author Marc Gathier
  * @since 4.4
  */
-@Component
 public class DefaultEventDecorator implements EventDecorator {
 
 }

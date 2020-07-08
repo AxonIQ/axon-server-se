@@ -24,6 +24,8 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
+import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -142,6 +144,12 @@ public class AxonServerStandardConfiguration {
                                                          TaskPayloadSerializer taskPayloadSerializer) {
         logger.info("Creating SE EventSchedulerService");
         return new EventSchedulerService(localTaskManager, taskPayloadSerializer);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EventDecorator.class)
+    public EventDecorator eventDecorator() {
+        return new DefaultEventDecorator();
     }
 
     @Bean
