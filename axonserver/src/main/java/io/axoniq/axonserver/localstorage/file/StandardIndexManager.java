@@ -244,12 +244,12 @@ public class StandardIndexManager implements IndexManager {
             throw new IndexNotFoundException(segment + ": already completed");
         }
 
-        indexEntries.forEach((aggregateId, entries) -> {
-            activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
-                         .computeIfAbsent(aggregateId,
-                                          a -> new StandardIndexEntries(entries.get(0).getSequenceNumber()))
-                         .addAll(entries);
-        });
+        indexEntries.forEach((aggregateId, entries) ->
+                                     activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
+                                                  .computeIfAbsent(aggregateId,
+                                                                   a -> new StandardIndexEntries(
+                                                                           entries.get(0).getSequenceNumber()))
+                                                  .addAll(entries));
     }
 
     /**

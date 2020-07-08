@@ -82,7 +82,7 @@ public class LocalEventStorageEngineTest {
                 return new FakeEventStore(EventType.SNAPSHOT);
             }
         }, new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
-                                          transactionManagerFactory, c -> true, 5, 1000, 10);
+                                          transactionManagerFactory, new DefaultEventDecorator(), 5, 1000, 10);
         testSubject.initContext(SAMPLE_CONTEXT, false);
         testSubject.start();
     }

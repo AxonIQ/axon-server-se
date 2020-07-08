@@ -9,7 +9,7 @@
 
 package io.axoniq.cli;
 
-import io.axoniq.cli.json.ReplicationGroupNode;
+import io.axoniq.cli.json.ReplicationGroupJSON;
 import org.apache.commons.cli.CommandLine;
 import org.apache.http.impl.client.CloseableHttpClient;
 
@@ -34,15 +34,15 @@ public class ListReplicationGroups extends AxonIQCliCommand {
                                            200,
                                            getToken(commandLine)));
             } else {
-                ReplicationGroupNode[] replicationGroups = getJSON(httpclient,
+                ReplicationGroupJSON[] replicationGroups = getJSON(httpclient,
                                                                    url,
-                                                                   ReplicationGroupNode[].class,
+                                                                   ReplicationGroupJSON[].class,
                                                                    200,
                                                                    getToken(commandLine));
-                System.out.printf("%-20s %-20s %-60s\n", "Name", "Leader", "Members");
+                System.out.printf("%-20s %-20s %-60s%n", "Name", "Leader", "Members");
 
-                for (ReplicationGroupNode replicationGroup : replicationGroups) {
-                    System.out.printf("%-20s %-20s %-60s\n", replicationGroup.getContext(),
+                for (ReplicationGroupJSON replicationGroup : replicationGroups) {
+                    System.out.printf("%-20s %-20s %-60s%n", replicationGroup.getName(),
                                       replicationGroup.getLeader(),
                                       replicationGroup.concatRoles()
                     );
