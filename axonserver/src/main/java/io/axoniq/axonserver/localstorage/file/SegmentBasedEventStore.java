@@ -199,6 +199,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
+    @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegmentsHint, long maxTokenHint) {
         long before = System.currentTimeMillis();
         try {

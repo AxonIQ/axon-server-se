@@ -38,10 +38,10 @@ public class ListContexts extends AxonIQCliCommand {
                                                  ContextNode[].class,
                                                  200,
                                                  getToken(commandLine));
-                System.out.printf("%-20s %-20s %-20s %-60s\n", "Name", "Leader", "Replication Group", "Members");
+                System.out.printf("%-20s %-20s %-20s %-60s%n", "Name", "Leader", "Replication Group", "Members");
 
                 for (ContextNode context : contexts) {
-                    System.out.printf("%-20s %-20s %-20s %-60s\n", context.getContext(),
+                    System.out.printf("%-20s %-20s %-20s %-60s%n", context.getContext(),
                                       context.getLeader(),
                                       context.getReplicationGroup(),
                                       context.hasRoles() ? context.concatRoles() : context.concatNodes()

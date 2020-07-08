@@ -95,9 +95,7 @@ public class MetaDataBasedTargetSelector
             case DOUBLE_VALUE:
                 match = value.equals(String.valueOf(metaDataValue.getDoubleValue()));
                 break;
-            case BYTES_VALUE:
-                break;
-            case DATA_NOT_SET:
+            default:
                 break;
         }
         return match ? 1 : -1;

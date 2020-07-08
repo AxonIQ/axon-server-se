@@ -26,9 +26,6 @@ public class ContextNode {
     private List<NodeAndRole> roles = new ArrayList<>();
     private Map<String, String> metaData = new HashMap<>();
 
-    public ContextNode() {
-    }
-
     public String getContext() {
         return context;
     }

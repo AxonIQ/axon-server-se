@@ -457,10 +457,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public CompletableFuture<Long> getHighestSequenceNr(String context, String aggregateIdenfier, int maxSegmentsHint,
                                                         long maxTokenHint) {
         CompletableFuture<Long> sequenceNr = new CompletableFuture<>();
-        runInDataFetcherPool(() -> {
-            sequenceNr.complete(workers(context).aggregateReader
-                                        .readHighestSequenceNr(aggregateIdenfier, maxSegmentsHint, maxTokenHint));
-        }, sequenceNr::completeExceptionally);
+        runInDataFetcherPool(() -> sequenceNr.complete(
+                workers(context)
+                        .aggregateReader
+                        .readHighestSequenceNr(aggregateIdenfier, maxSegmentsHint, maxTokenHint))
+                , sequenceNr::completeExceptionally);
         return sequenceNr;
     }
 
