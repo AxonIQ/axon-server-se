@@ -45,6 +45,8 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     private static final String CAN_MERGE_KEY = "canMerge";
     private static final String TRACKERS_LIST_KEY = "trackers";
 
+    private final String tokenStoreIdentifier;
+
     /**
      * Instantiate a {@link TrackingProcessor}, used to represent the state of a Tracking Event Processor in the UI.
      *
@@ -55,6 +57,12 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
      */
     TrackingProcessor(String name, String mode, Collection<ClientProcessor> processors) {
         super(name, mode, processors);
+        this.tokenStoreIdentifier = processors.iterator().next().eventProcessorInfo().getTokenStoreIdentifier();
+    }
+
+    @Override
+    public String fullName() {
+        return name() + "@" + tokenStoreIdentifier;
     }
 
     @Override
@@ -68,6 +76,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     @Override
     public void printOn(Media media) {
         EventProcessor.super.printOn(media);
+        media.with("tokenStoreIdentifier", tokenStoreIdentifier);
 
         Set<String> freeThreadInstances =
                 processors().stream()

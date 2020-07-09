@@ -34,7 +34,9 @@ public class TrackingProcessorTest {
         String expectedJson =
                 "{\"name\":\"processor name\","
                         + "\"mode\":\"tracking\","
+                        + "\"fullName\":\"processor name@TokenStoreIdentifier\","
                         + "\"warnings\":[],"
+                        + "\"tokenStoreIdentifier\":\"TokenStoreIdentifier\","
                         + "\"freeThreadInstances\":[\"clientIdOne\"],"
                         + "\"activeThreads\":2,"
                         + "\"canPause\":true,"
@@ -54,6 +56,7 @@ public class TrackingProcessorTest {
                                                                                         .build();
         EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
                                                               .setMode("Tracking")
+                                                              .setTokenStoreIdentifier("TokenStoreIdentifier")
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(3)
                                                               .setRunning(true)
@@ -61,13 +64,14 @@ public class TrackingProcessorTest {
                                                               .build();
 
         EventProcessorInfo.SegmentStatus trackerInfo1 = EventProcessorInfo.SegmentStatus.newBuilder()
-                                                                                              .setCaughtUp(true)
-                                                                                              .setReplaying(false)
-                                                                                              .setOnePartOf(2)
-                                                                                              .setSegmentId(1)
-                                                                                              .build();
+                                                                                        .setCaughtUp(true)
+                                                                                        .setReplaying(false)
+                                                                                        .setOnePartOf(2)
+                                                                                        .setSegmentId(1)
+                                                                                        .build();
         EventProcessorInfo processorInfo1 = EventProcessorInfo.newBuilder()
                                                               .setMode("Tracking")
+                                                              .setTokenStoreIdentifier("TokenStoreIdentifier")
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(0)
                                                               .setRunning(true)
@@ -91,7 +95,9 @@ public class TrackingProcessorTest {
         String expectedJson =
                 "{\"name\":\"processor name\","
                         + "\"mode\":\"tracking\","
+                        + "\"fullName\":\"processor name@TokenStoreIdentifier\","
                         + "\"warnings\":[],"
+                        + "\"tokenStoreIdentifier\":\"TokenStoreIdentifier\","
                         + "\"freeThreadInstances\":[\"clientIdOne\"],"
                         + "\"activeThreads\":1,"
                         + "\"canPause\":true,"
@@ -103,13 +109,14 @@ public class TrackingProcessorTest {
                         + "]}";
 
         EventProcessorInfo.SegmentStatus trackerInfo0 = EventProcessorInfo.SegmentStatus.newBuilder()
-                                                                                              .setCaughtUp(true)
-                                                                                              .setReplaying(false)
-                                                                                              .setOnePartOf(1)
-                                                                                              .setSegmentId(0)
-                                                                                              .build();
+                                                                                        .setCaughtUp(true)
+                                                                                        .setReplaying(false)
+                                                                                        .setOnePartOf(1)
+                                                                                        .setSegmentId(0)
+                                                                                        .build();
         EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
                                                               .setMode("Tracking")
+                                                              .setTokenStoreIdentifier("TokenStoreIdentifier")
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(1)
                                                               .setRunning(true)
@@ -130,13 +137,14 @@ public class TrackingProcessorTest {
     public void testPrintOnEnableCanMergeWhenOnlyOneSegmentOfMultipleIsClaimed() throws IOException {
 
         EventProcessorInfo.SegmentStatus trackerInfo0 = EventProcessorInfo.SegmentStatus.newBuilder()
-                                                                                              .setCaughtUp(true)
-                                                                                              .setReplaying(false)
-                                                                                              .setOnePartOf(2)
-                                                                                              .setSegmentId(0)
-                                                                                              .build();
+                                                                                        .setCaughtUp(true)
+                                                                                        .setReplaying(false)
+                                                                                        .setOnePartOf(2)
+                                                                                        .setSegmentId(0)
+                                                                                        .build();
         EventProcessorInfo processorInfo0 = EventProcessorInfo.newBuilder()
                                                               .setMode("Tracking")
+                                                              .setTokenStoreIdentifier("TokenStoreIdentifier")
                                                               .setActiveThreads(1)
                                                               .setAvailableThreads(1)
                                                               .setRunning(true)

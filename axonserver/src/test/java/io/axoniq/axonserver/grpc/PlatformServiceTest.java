@@ -19,9 +19,9 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
@@ -39,8 +39,8 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class PlatformServiceTest {
     private PlatformService platformService;
-
     private Topology clusterController;
+    private final String context = Topology.DEFAULT_CONTEXT;
     @Before
     public void setUp()  {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
@@ -135,7 +135,8 @@ public class PlatformServiceTest {
                                                                                                      .setClientId("Release")
                                                                                                      .setComponentName("component")
         ).build());
-        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest("Release",
+        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest(context,
+                                                                                                         "Release",
                                                                                                          "processor",
                                                                                                          false));
         assertEquals(1, responseObserver.values().size());
@@ -149,7 +150,8 @@ public class PlatformServiceTest {
                                                                                                      .setClientId("Release")
                                                                                                      .setComponentName("component")
         ).build());
-        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest("Release",
+        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest(context,
+                                                                                                         "Release",
                                                                                                          "processor",
                                                                                                          false));
         assertEquals(1, responseObserver.values().size());
@@ -184,4 +186,32 @@ public class PlatformServiceTest {
         assertTrue(responseObserver.completedCount() == 1);
     }
 
+    @Test
+    public void testSendInstruction() {
+        PlatformOutboundInstruction i = PlatformOutboundInstruction.newBuilder().build();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService.openStream(responseObserver);
+        clientStreamObserver.onNext(PlatformInboundInstruction
+                                            .newBuilder()
+                                            .setRegister(ClientIdentification.newBuilder()
+                                                                             .setClientId("MyClient")
+                                                                             .setComponentName("component")).build());
+        platformService.sendToClient("default", "MyClient", i);
+        assertEquals(1,responseObserver.values().size());
+        assertEquals(i,responseObserver.values().get(0));
+    }
+
+    @Test
+    public void testSendInstructionToInvalidClientIdentifier() {
+        PlatformOutboundInstruction i = PlatformOutboundInstruction.newBuilder().build();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService.openStream(responseObserver);
+        clientStreamObserver.onNext(PlatformInboundInstruction
+                                            .newBuilder()
+                                            .setRegister(ClientIdentification.newBuilder()
+                                                                             .setClientId("MyClient")
+                                                                             .setComponentName("component")).build());
+        platformService.sendToClient("wrong-context", "MyClient", i);
+        assertEquals(0,responseObserver.values().size());
+    }
 }

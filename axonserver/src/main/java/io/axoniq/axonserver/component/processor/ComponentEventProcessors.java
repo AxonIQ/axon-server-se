@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nonnull;
 
 /**
  * Iterable of {@link EventProcessor}s defined by a specific component.
@@ -39,7 +40,7 @@ public class ComponentEventProcessors implements Iterable<EventProcessor> {
      */
     public ComponentEventProcessors(String component, String context,
                                     ClientProcessors eventProcessors) {
-        this(new ComponentClientProcessors(eventProcessors, component, context), new EventProcessorMapping());
+        this(new ClientProcessorsByComponent(eventProcessors, component, context), new EventProcessorMapping());
     }
 
     /**
@@ -57,20 +58,21 @@ public class ComponentEventProcessors implements Iterable<EventProcessor> {
         this.mapping = mapping;
     }
 
+    @Nonnull
     @Override
     public Iterator<EventProcessor> iterator() {
-        //group by processorName
-        Map<String, Set<ClientProcessor>> processorsMap = new HashMap<>();
+        //group by processor identifier
+        Map<EventProcessorIdentifier, Set<ClientProcessor>> processorsMap = new HashMap<>();
         for (ClientProcessor processor : componentClientProcessors) {
-            String processorName = processor.eventProcessorInfo().getProcessorName();
-            Set<ClientProcessor> clientProcessors = processorsMap.computeIfAbsent(processorName,
+            EventProcessorIdentifier processorIdentifier = new EventProcessorIdentifier(processor);
+            Set<ClientProcessor> clientProcessors = processorsMap.computeIfAbsent(processorIdentifier,
                                                                                   name -> new HashSet<>());
             clientProcessors.add(processor);
         }
 
         return processorsMap.entrySet().stream().map(
                 entry -> mapping.apply(
-                        entry.getKey(),
+                        entry.getKey().name(),
                         entry.getValue())
         ).iterator();
     }

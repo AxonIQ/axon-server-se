@@ -39,6 +39,8 @@ import static org.mockito.Mockito.*;
  */
 public class ProcessorEventPublisherTest {
 
+    private static final String CONTEXT = "context";
+
     private static final String CLIENT_NAME_OF_SPLIT = "splitClientName";
     private static final String PROCESSOR_NAME_TO_SPLIT = "splitProcessorName";
     private static final int SEGMENT_ID_TO_SPLIT = 1;
@@ -103,13 +105,13 @@ public class ProcessorEventPublisherTest {
     }
 
     /**
-     * Test whether the {@link ProcessorEventPublisher#splitSegment(List, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#splitSegment(String, List, String)} operation correctly
      * deduces what the largest Segment for a given Event Processor is, for which the {@code segmentId} will be included
      * to the {@link SplitSegmentRequest}.
      */
     @Test
     public void testSplitSegmentSelectsTheLargestSegmentToSplit() {
-        testSubject.splitSegment(CLIENTS, PROCESSOR_NAME_TO_SPLIT);
+        testSubject.splitSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_SPLIT);
 
         ArgumentCaptor<SplitSegmentRequest> argumentCaptor = ArgumentCaptor.forClass(SplitSegmentRequest.class);
         verify(applicationEventPublisher).publishEvent(argumentCaptor.capture());
@@ -122,7 +124,7 @@ public class ProcessorEventPublisherTest {
     }
 
     /**
-     * Test whether the {@link ProcessorEventPublisher#mergeSegment(List, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#mergeSegment(String, List, String)} operation correctly
      * deduces what the smallest Segment for a given Event Processor is, for which the {@code segmentId} will be
      * included to the {@link MergeSegmentRequest}.
      */
@@ -130,7 +132,7 @@ public class ProcessorEventPublisherTest {
     public void testMergeSegmentSelectsTheSmallestSegmentToMerge() {
         int expectedInvocations = 2;
 
-        testSubject.mergeSegment(CLIENTS, PROCESSOR_NAME_TO_MERGE);
+        testSubject.mergeSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_MERGE);
 
         ArgumentCaptor<Object> argumentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(applicationEventPublisher, times(expectedInvocations)).publishEvent(argumentCaptor.capture());
@@ -151,7 +153,7 @@ public class ProcessorEventPublisherTest {
 
 
     /**
-     * Test whether the {@link ProcessorEventPublisher#mergeSegment(List, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#mergeSegment(String, List, String)} operation correctly
      * deduces what the smallest Segment for a given Event Processor is, for which the {@code segmentId} will be
      * included to the {@link MergeSegmentRequest}.
      */
@@ -175,7 +177,7 @@ public class ProcessorEventPublisherTest {
         when(splitClientProcessor.eventProcessorInfo()).thenReturn(eventProcessorToSplit);
         eventProcessors.add(splitClientProcessor);
 
-        testSubject.mergeSegment(CLIENTS, PROCESSOR_NAME_TO_SPLIT);
+        testSubject.mergeSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_SPLIT);
 
         ArgumentCaptor<Object> argumentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(applicationEventPublisher, times(expectedInvocations)).publishEvent(argumentCaptor.capture());
