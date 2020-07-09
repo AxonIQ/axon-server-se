@@ -28,7 +28,7 @@ public class HeartbeatPublisherTest {
         Map<String, PlatformOutboundInstruction> receivedHeartbeat = new ConcurrentHashMap<>();
         PlatformOutboundInstruction instruction = newBuilder().setHeartbeat(Heartbeat.newBuilder().build()).build();
 
-        HeartbeatPublisher testSubject = new HeartbeatPublisher(clients, receivedHeartbeat::put);
+        HeartbeatPublisher testSubject = new HeartbeatPublisher(clients, (context, client, i) -> receivedHeartbeat.put(client, i));
         testSubject.publish(instruction);
 
         assertEquals(2, receivedHeartbeat.size());

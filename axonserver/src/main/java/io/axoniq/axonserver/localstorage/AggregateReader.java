@@ -27,10 +27,11 @@ public class AggregateReader {
 
     public void readEvents(String aggregateId, boolean useSnapshots, long minSequenceNumber,
                            Consumer<SerializedEvent> eventConsumer) {
-        readEvents(aggregateId, useSnapshots, minSequenceNumber, Long.MAX_VALUE, eventConsumer);
+        readEvents(aggregateId, useSnapshots, minSequenceNumber, Long.MAX_VALUE, 0, eventConsumer);
     }
 
     public void readEvents(String aggregateId, boolean useSnapshots, long minSequenceNumber, long maxSequenceNumber,
+                           long minToken,
                            Consumer<SerializedEvent> eventConsumer) {
         long actualMinSequenceNumber = minSequenceNumber;
         if (useSnapshots) {
@@ -43,10 +44,8 @@ public class AggregateReader {
                 actualMinSequenceNumber = snapshot.get().asEvent().getAggregateSequenceNumber() + 1;
             }
         }
-        eventStorageEngine.processEventsPerAggregate(aggregateId,
-                                                     actualMinSequenceNumber,
-                                                     maxSequenceNumber,
-                                                     eventConsumer);
+        eventStorageEngine.processEventsPerAggregate(aggregateId, actualMinSequenceNumber, maxSequenceNumber, minToken, eventConsumer);
+
     }
 
     public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults,

@@ -244,12 +244,12 @@ public class StandardIndexManager implements IndexManager {
             throw new IndexNotFoundException(segment + ": already completed");
         }
 
-        indexEntries.forEach((aggregateId, entries) -> {
-            activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
-                         .computeIfAbsent(aggregateId,
-                                          a -> new StandardIndexEntries(entries.get(0).getSequenceNumber()))
-                         .addAll(entries);
-        });
+        indexEntries.forEach((aggregateId, entries) ->
+                                     activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
+                                                  .computeIfAbsent(aggregateId,
+                                                                   a -> new StandardIndexEntries(
+                                                                           entries.get(0).getSequenceNumber()))
+                                                  .addAll(entries));
     }
 
     /**
@@ -269,11 +269,14 @@ public class StandardIndexManager implements IndexManager {
      *
      * @param aggregateId  the identifier for the aggregate
      * @param maxSegments  maximum number of segments to check for the aggregate
-     * @param maxTokenHint
+     * @param maxTokenHint maximum token to check
      * @return last sequence number for the aggregate (if found)
      */
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments, long maxTokenHint) {
+        if (activeIndexes.isEmpty()) {
+            return Optional.empty();
+        }
         int checked = 0;
         for (Long segment : activeIndexes.descendingKeySet()) {
             if (checked >= maxSegments) {
@@ -387,7 +390,7 @@ public class StandardIndexManager implements IndexManager {
      */
     @Override
     public SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber,
-                                                         long lastSequenceNumber, long maxResults) {
+                                                         long lastSequenceNumber, long maxResults, long minToken) {
         SortedMap<Long, IndexEntries> results = new TreeMap<>();
         logger.debug("{}: lookupAggregate {} minSequenceNumber {}, lastSequenceNumber {}",
                      context,
@@ -395,7 +398,11 @@ public class StandardIndexManager implements IndexManager {
                      firstSequenceNumber,
                      lastSequenceNumber);
 
+        long minTokenInPreviousSegment = Long.MAX_VALUE;
         for (Long segment : activeIndexes.descendingKeySet()) {
+            if (minTokenInPreviousSegment < minToken) {
+                return results;
+            }
             IndexEntries entries = activeIndexes.getOrDefault(segment, Collections.emptyMap()).get(aggregateId);
             if (entries != null) {
                 entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, segment, entries);
@@ -404,9 +411,13 @@ public class StandardIndexManager implements IndexManager {
                     return results;
                 }
             }
+            minTokenInPreviousSegment = segment;
         }
 
         for (Long index : indexes) {
+            if (minTokenInPreviousSegment < minToken) {
+                return results;
+            }
             IndexEntries entries = getPositions(index, aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
             if (entries != null) {
@@ -416,6 +427,7 @@ public class StandardIndexManager implements IndexManager {
                     return results;
                 }
             }
+            minTokenInPreviousSegment = index;
         }
 
         return results;
@@ -431,7 +443,7 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private boolean allEntriesFound(long firstSequenceNumber, long maxResults, IndexEntries entries) {
-        return firstSequenceNumber >= entries.firstSequenceNumber() || maxResults <= 0;
+        return !entries.isEmpty() && firstSequenceNumber >= entries.firstSequenceNumber() || maxResults <= 0;
     }
 
     /**

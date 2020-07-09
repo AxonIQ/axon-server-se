@@ -77,10 +77,11 @@ public interface IndexManager {
      * @param firstSequenceNumber minimum sequence number for the events returned (inclusive)
      * @param lastSequenceNumber  maximum sequence number for the events returned (exclusive)
      * @param maxResults          maximum number of results allowed
+     * @param minToken            minimum token hint for the entries to return
      * @return map of positions per segment
      */
     SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
-                                                  long maxResults);
+                                                  long maxResults, long minToken);
 
     /**
      * Stops index manager and optionally deletes all indexes.

@@ -13,12 +13,12 @@
             <div class="results singleHeader">
                 <table>
                     <colgroup>
-                        <col width="15%">
-                        <col width="15%">
-                        <col width="15%">
-                        <col width="15%">
-                        <col width="15%">
                         <col width="25%">
+                        <col width="15%">
+                        <col width="15%">
+                        <col width="15%">
+                        <col width="15%">
+                        <col width="15%">
                     </colgroup>
                     <thead>
                     <tr>
@@ -31,10 +31,14 @@
                     </tr>
                     </thead>
                     <tbody class="selectable">
-                    <tr v-for="processor in processors" :class="{selected : processor.name === selected.name}"
+                    <tr :class="{selected : isSelected(processor)}" v-for="processor in processors"
                         @click="select(processor)">
-                        <td><div>{{processor.name}}</div></td>
-                        <td><div>{{processor.mode}}</div></td>
+                        <td>
+                            <div>{{processor.fullName}}</div>
+                        </td>
+                        <td>
+                            <div>{{processor.mode}}</div>
+                        </td>
                         <td>{{processor.activeThreads}}</td>
                         <td>
                             <span :class="{hidden : !processor.loading}"><i class="fas fa-spinner fa-pulse"></i></span>
@@ -67,8 +71,8 @@
                         </td>
                         <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="right">
                             <span v-if="processor.mode === 'Tracking'">
-                                <select v-model="processorsLBStrategies[processor.name]"
-                                        @change="changeLoadBalancingStrategy(processor.name, processorsLBStrategies[processor.name])">
+                                <select v-model="processorsLBStrategies[processor.fullName]"
+                                        @change="changeLoadBalancingStrategy(processor, processorsLBStrategies[processor.fullName])">
                                     <option v-for="strategy in loadBalancingStrategies" :value="strategy.name">{{strategy.label}}</option>
                                 </select>
                             </span>
@@ -166,7 +170,7 @@
                         <li>
                             <span>&nbsp;</span>
                             <span class="button-bar">
-                                <button @click.prevent="loadBalance()" class="button">Balance</button>
+                                <button @click.prevent="balanceLoad()" class="button">Balance</button>
                                 <button @click.prevent="hideLoadBalance()" class="button">Cancel</button>
                             </span>
                         </li>
@@ -209,12 +213,12 @@
             })
         }, beforeDestroy() {
             this.subscriptions.forEach(sub => sub.unsubscribe());
-            // if (this.subscription) {
-            //     this.subscription.unsubscribe();
-            // }
         }, methods: {
             showMoveSegment(tracker) {
-                axios.get("v1/components/" + encodeURI(this.component) + "/instances?context=" + this.context).then(response => {
+                axios.get("v1/processors/" + encodeURI(this.selected.name) +
+                                  "/clients?context=" + this.context +
+                                  "&tokenStoreIdentifier=" + this.selected.tokenStoreIdentifier)
+                        .then(response => {
                     this.segmentDestinationOptions = response.data
                             .map(instance => instance.name)
                             .filter(instanceName => instanceName !== tracker.clientId);
@@ -232,7 +236,9 @@
                                     + "/processors/" + encodeURI(this.selected.name)
                                     + "/segments/" + this.movingSegment.segmentId
                                     + "/move?target=" + this.segmentDestination
-                                    + "&context=" + this.context).then(
+                                    + "&context=" + this.context
+                                    + "&tokenStoreIdentifier=" + this.selected.tokenStoreIdentifier
+                ).then(
                         response => {
                             this.hideMoveSegment();
                         }
@@ -240,14 +246,16 @@
             },
             select(processor) {
                 this.selected = processor;
-                this.selected.trackers = processor.trackers.sort((a, b) => a.segmentId - b.segmentId);
+                if (processor.trackers) {
+                    this.selected.trackers = processor.trackers.sort((a, b) => a.segmentId - b.segmentId);
+                }
             },
             loadComponentProcessors() {
                 axios.get("v1/components/" + encodeURI(this.component) + "/processors?context=" + this.context).then(response => {
                     this.processors = response.data;
                     if (this.selected.name) {
                         for (let processor of this.processors) {
-                            if (processor.name === this.selected.name) {
+                            if (this.isSelected(processor)) {
                                 this.select(processor);
                             }
                         }
@@ -267,7 +275,11 @@
             },
             startProcessor(processor) {
                 if (confirm("Start processor " + processor.name + "?")) {
-                    axios.patch("v1/components/" + encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/start?context=" + this.context).then(
+                    axios.patch("v1/components/" + encodeURI(this.component) + "/processors/"
+                                        + encodeURI(processor.name) + "/start?" +
+                                        "context=" + this.context +
+                                        "&tokenStoreIdentifier=" + processor.tokenStoreIdentifier
+                    ).then(
                             response => {
                                 this.enableStatusLoader(processor);
                             }
@@ -276,7 +288,10 @@
             },
             pauseProcessor(processor) {
                 if (confirm("Pause processor " + processor.name + "?")) {
-                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/pause?context=" + this.context).then(
+                    axios.patch("v1/components/" + encodeURI(this.component) + "/processors/"
+                                        + encodeURI(processor.name) + "/pause?" +
+                                        "context=" + this.context +
+                                        "&tokenStoreIdentifier=" + processor.tokenStoreIdentifier).then(
                             response => {
                                 this.enableStatusLoader(processor);
                             }
@@ -285,7 +300,11 @@
             },
             splitSegment(processor) {
                 if (confirm("Split segment for " + processor.name + "?")) {
-                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/split?context=" + this.context).then(
+                    axios.patch("v1/components/" + encodeURI(this.component) + "/processors/"
+                                        + encodeURI(processor.name) + "/segments/split?" +
+                                        "context=" + this.context +
+                                        "&tokenStoreIdentifier=" + processor.tokenStoreIdentifier
+                    ).then(
                             response => {
                                 this.enableStatusLoader(processor);
                             }
@@ -294,29 +313,35 @@
             },
             mergeSegment(processor) {
                 if (confirm("Merge segment for " + processor.name + "?")) {
-                    axios.patch("v1/components/" +encodeURI(this.component) + "/processors/" + encodeURI(processor.name) + "/segments/merge?context=" + this.context).then(
+                    axios.patch("v1/components/" + encodeURI(this.component) + "/processors/"
+                                        + encodeURI(processor.name) + "/segments/merge?" +
+                                        "context=" + this.context +
+                                        "&tokenStoreIdentifier=" + processor.tokenStoreIdentifier
+                    ).then(
                             response => {
                                 this.enableStatusLoader(processor);
                             }
                     );
                 }
             },
-            showLoadBalance(processor){
+            showLoadBalance(processor) {
                 this.loadBalanceProcessor = processor;
                 this.$modal.show('load-balance');
             },
-            hideLoadBalance(){
+            hideLoadBalance() {
                 this.loadBalanceProcessor = {};
                 this.loadBalanceStrategy = "DEFAULT";
                 this.$modal.hide('load-balance');
             },
-            loadBalance(){
+            balanceLoad() {
                 axios.patch("v1/processors/" + encodeURI(this.loadBalanceProcessor.name) +
-                                    "/loadbalance?context=" + this.context + "&strategy=" + this.loadBalanceStrategy).then(
-                        response => {
-                            this.enableStatusLoader(this.loadBalanceProcessor);
-                            this.$modal.hide('load-balance');
-                        }
+                                    "/loadbalance?context=" + this.context +
+                                    "&strategy=" + this.loadBalanceStrategy +
+                                    "&tokenStoreIdentifier=" + this.loadBalanceProcessor.tokenStoreIdentifier
+                ).then(response => {
+                           this.enableStatusLoader(this.loadBalanceProcessor);
+                           this.$modal.hide('load-balance');
+                       }
                 );
             },
             enableStatusLoader(processor, timeout) {
@@ -337,13 +362,20 @@
                 let freeThreadInstances = this.selected.freeThreadInstances;
                 return freeThreadInstances.filter(value => value !== clientId).length > 0;
             },
-            changeLoadBalancingStrategy(processor, strategy){
-                console.log("strategy changed 5: "+ strategy);
-                axios.put("v1/processors/" + processor +
-                                  "/autoloadbalance?context=" + this.context + "&strategy=" + strategy).then(
+            changeLoadBalancingStrategy(processor, strategy) {
+                console.log("strategy changed: " + strategy);
+                axios.put("v1/processors/" + processor.name +
+                                  "/autoloadbalance?context=" + this.context +
+                                  "&strategy=" + strategy +
+                                  "&tokenStoreIdentifier=" + processor.tokenStoreIdentifier
+                ).then(
                         response => {
-                    this.loadLBStrategies();
-                });
+                            this.loadLBStrategies();
+                        });
+            },
+            isSelected(processor) {
+                return processor.name === this.selected.name &&
+                        processor.tokenStoreIdentifier === this.selected.tokenStoreIdentifier;
             }
         }
     }

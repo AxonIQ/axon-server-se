@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.QueryValue;
 import io.axoniq.axonserver.grpc.event.RowResponse;
+import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.Registration;
@@ -67,18 +68,20 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private final EventStreamReader eventStreamReader;
     private final long defaultLimit;
     private final long timeout;
+    private final EventDecorator eventDecorator;
     private final StreamObserver<QueryEventsResponse> responseObserver;
     private volatile Registration registration;
     private volatile Pipeline pipeLine;
     private final AtomicReference<Sender> senderRef = new AtomicReference<>();
 
     public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader,
-                                            long defaultLimit, long timeout,
+                                            long defaultLimit, long timeout, EventDecorator eventDecorator,
                                             StreamObserver<QueryEventsResponse> responseObserver) {
         this.eventWriteStorage = eventWriteStorage;
         this.eventStreamReader = eventStreamReader;
         this.defaultLimit = defaultLimit;
         this.timeout = timeout;
+        this.eventDecorator = eventDecorator;
         this.responseObserver = responseObserver;
     }
 
@@ -159,7 +162,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             return false;
         }
         try {
-            return pipeLine.process(new DefaultQueryResult(new EventExpressionResult(event)));
+            return pipeLine.process(new DefaultQueryResult(new EventExpressionResult(eventDecorator
+                                                                                             .decorateEventWithToken(
+                                                                                                     event))));
         } catch (RuntimeException re) {
             try {
                 cancelRegistration();

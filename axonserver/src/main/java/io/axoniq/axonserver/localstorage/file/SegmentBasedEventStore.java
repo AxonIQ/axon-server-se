@@ -109,18 +109,20 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
-                                          Consumer<SerializedEvent> eventConsumer) {
+                                          long minToken, Consumer<SerializedEvent> eventConsumer) {
         long before = System.currentTimeMillis();
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
                                                                                    lastSequenceNumber,
-                                                                                   Long.MAX_VALUE);
+                                                                                   Long.MAX_VALUE,
+                                                                                   minToken);
         positionInfos.forEach((segment, positionInfo) -> retrieveEventsForAnAggregate(segment,
                                                                                       positionInfo.positions(),
                                                                                       firstSequenceNumber,
                                                                                       lastSequenceNumber,
                                                                                       eventConsumer,
-                                                                                      Long.MAX_VALUE));
+                                                                                      Long.MAX_VALUE,
+                                                                                      minToken));
         aggregateReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
     }
 
@@ -131,7 +133,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
                                                                                    maxSequenceNumber,
-                                                                                   maxResults);
+                                                                                   maxResults,
+                                                                                   0);
 
         List<Long> segmentsContainingAggregate = new ArrayList<>(positionInfos.keySet());
         Collections.reverse(segmentsContainingAggregate);
@@ -144,7 +147,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                        firstSequenceNumber,
                                                        maxSequenceNumber,
                                                        eventConsumer,
-                                                       maxResults);
+                                                       maxResults, 0);
             if (maxResults <= 0) {
                 return;
             }
@@ -196,6 +199,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
+    @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegmentsHint, long maxTokenHint) {
         long before = System.currentTimeMillis();
         try {
@@ -400,7 +404,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     private int retrieveEventsForAnAggregate(long segment, List<Integer> indexEntries, long minSequenceNumber,
                                              long maxSequenceNumber,
-                                             Consumer<SerializedEvent> onEvent, long maxResults) {
+                                             Consumer<SerializedEvent> onEvent, long maxResults, long minToken) {
         Optional<EventSource> buffer = getEventSource(segment);
         int processed = 0;
 
@@ -421,7 +425,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                               minSequenceNumber,
                                                               maxSequenceNumber,
                                                               onEvent,
-                                                              maxResults);
+                                                              maxResults,
+                                                              minToken);
             }
         }
 

@@ -56,7 +56,7 @@ import static java.util.stream.StreamSupport.stream;
  * @author Sara Pellegrini
  * @since 4.2
  */
-public class ComponentClientProcessors implements ClientProcessors {
+public class ClientProcessorsByComponent implements ClientProcessors {
 
     private final ClientProcessors allEventProcessors;
 
@@ -69,10 +69,10 @@ public class ComponentClientProcessors implements ClientProcessors {
      * @param component          the component name of the client application
      * @param context            the context of the client application
      */
-    ComponentClientProcessors(ClientProcessors allEventProcessors,
-                              String component,
-                              String context) {
-        this(allEventProcessors, new ProcessorsInComponent(context, component, allEventProcessors));
+    ClientProcessorsByComponent(ClientProcessors allEventProcessors,
+                                String component,
+                                String context) {
+        this(allEventProcessors, new ExistsInComponent(context, component, allEventProcessors));
     }
 
     /**
@@ -82,7 +82,7 @@ public class ComponentClientProcessors implements ClientProcessors {
      * @param allEventProcessors all known {@link ClientProcessor}s
      * @param existInComponent   the predicate to test if a {@link ClientProcessor} is defined in the client application
      */
-    ComponentClientProcessors(ClientProcessors allEventProcessors, Predicate<ClientProcessor> existInComponent) {
+    ClientProcessorsByComponent(ClientProcessors allEventProcessors, Predicate<ClientProcessor> existInComponent) {
         this.allEventProcessors = allEventProcessors;
         this.existInComponent = existInComponent;
     }
@@ -95,29 +95,26 @@ public class ComponentClientProcessors implements ClientProcessors {
                 .iterator();
     }
 
-    private static final class ProcessorsInComponent implements Predicate<ClientProcessor> {
+    private static final class ExistsInComponent implements Predicate<ClientProcessor> {
 
         private final String context;
 
-        private final Iterable<String> processors;
+        /* Iterable of all Client Processors defined directly in the specified component*/
+        private final Iterable<ClientProcessor> directComponentProcessors;
 
-        ProcessorsInComponent(String context, String component, ClientProcessors allEventProcessors) {
-            this(context, new ProcessorNames(new ComponentItems<>(component, context, allEventProcessors)));
+        ExistsInComponent(String context, String component, ClientProcessors allEventProcessors) {
+            this(context, new ComponentItems<>(component, context, allEventProcessors));
         }
 
-        ProcessorsInComponent(String context, Iterable<String> processors) {
+        ExistsInComponent(String context, Iterable<ClientProcessor> directComponentProcessors) {
             this.context = context;
-            this.processors = processors;
+            this.directComponentProcessors = directComponentProcessors;
         }
 
         @Override
-        public boolean test(ClientProcessor p) {
-            for (String processorName : processors) {
-                if (new SameProcessor(() -> context, () -> processorName).test(p)) {
-                    return true;
-                }
-            }
-            return false;
+        public boolean test(ClientProcessor processor) {
+            return stream(directComponentProcessors.spliterator(), false)
+                    .anyMatch(p -> new SameProcessor(context, p).test(processor));
         }
     }
 }

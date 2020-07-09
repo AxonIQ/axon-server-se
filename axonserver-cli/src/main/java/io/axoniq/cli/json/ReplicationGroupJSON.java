@@ -11,6 +11,7 @@ package io.axoniq.cli.json;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Marc Gathier
@@ -89,33 +90,9 @@ public class ReplicationGroupJSON {
         return roles != null && !roles.isEmpty();
     }
 
-    public static class NodeAndRole {
-
-        private String node;
-        private String role;
-
-        public NodeAndRole() {
-        }
-
-        public NodeAndRole(String node, String role) {
-            this.role = role;
-            this.node = node;
-        }
-
-        public String getNode() {
-            return node;
-        }
-
-        public String getRole() {
-            return role;
-        }
-
-        public void setNode(String node) {
-            this.node = node;
-        }
-
-        public void setRole(String role) {
-            this.role = role;
-        }
+    public String concatRoles() {
+        return roles == null ? "" : roles.stream()
+                                         .map(Object::toString)
+                                         .collect(Collectors.joining(","));
     }
 }

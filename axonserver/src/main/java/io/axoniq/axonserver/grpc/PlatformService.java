@@ -80,7 +80,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher,
                            @Qualifier("platformInstructionAckSource")
-                           InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
+                                   InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
@@ -223,11 +223,14 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     /**
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
+     * @param context     the context of the connected client
+     * @param clientName  the name of the connected client
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
-    public void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
+    public void sendToClient(String context, String clientName, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
                      .filter(e -> e.getKey().client.equals(clientName))
+                     .filter(e -> e.getKey().context.equals(context))
                      .map(Map.Entry::getValue)
                      .forEach(stream -> stream.onNext(instruction));
     }
@@ -239,7 +242,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
                                                                .setProcessorName(evt.processorName()))
                 .build();
-        this.sendToClient(evt.clientName(), instruction);
+        this.sendToClient(evt.context(), evt.clientName(), instruction);
     }
 
     @EventListener
@@ -248,7 +251,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .newBuilder()
                 .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
                 .build();
-        this.sendToClient(evt.clientName(), instruction);
+        this.sendToClient(evt.context(),evt.clientName(), instruction);
     }
 
     @EventListener
@@ -283,7 +286,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setRequestEventProcessorInfo(eventProcessorInfoRequest)
                                            .build();
-        sendToClient(event.clientName(), outboundInstruction);
+        sendToClient(event.context(), event.clientName(), outboundInstruction);
     }
 
     private void registerClient(ClientComponent clientComponent,
@@ -313,6 +316,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     /**
      * De-registers a client if it turns out to be inactive/not properly connected
+     *
      * @param evt the event of inactivity timeout for a specific client component
      */
     @EventListener
