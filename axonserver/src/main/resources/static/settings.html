@@ -64,9 +64,10 @@
 
     <div class="column-wrapper">
 
-        <div class="column configuration">
+        <div class="column configuration titleButton">
             <section>
                 <h2>Configuration</h2>
+                <span v-if="node.clustered" @click="downloadTemplate" class="icon download-contents" title="Download cluster configuration as Cluster Template Yaml file."><i class="fas fa-file-export"></i></span>
                 <ul>
                     <li>
                         <span>Node Name</span>
