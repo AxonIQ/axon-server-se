@@ -368,7 +368,7 @@ public class EventDispatcher implements AxonServerClientService {
             public void onNext(QueryEventsRequest request) {
                 if (requestObserver.get() == null) {
                     EventStore eventStore = eventStoreLocator.getEventStore(context,
-                                                                            request.getAllowReadingFromFollower());
+                                                                            request.getForceReadFromLeader());
                     if (eventStore == null) {
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                                 NO_EVENT_STORE_CONFIGURED + context));
@@ -514,7 +514,7 @@ public class EventDispatcher implements AxonServerClientService {
                 try {
                     EventStore eventStore = eventStoreLocator
                             .getEventStore(context,
-                                           getEventsRequest.getAllowReadingFromFollower());
+                                           getEventsRequest.getForceReadFromLeader());
                     if (eventStore == null) {
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
                                                                                 NO_EVENT_STORE_CONFIGURED + context));

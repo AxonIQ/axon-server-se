@@ -33,12 +33,12 @@ public interface EventStoreLocator {
      * Retrieve an EventStore instance which can be used to store and retrieve events. Returns null when there is no
      * leader for the specified context.
      *
-     * @param context  the context to get the local EventStore for
-     * @param useLocal use local event store (if possible - if current node has event store for this context,
-     *                 otherwise opens a remote connection)
+     * @param context     the context to get the local EventStore for
+     * @param forceLeader use local event store (if possible - if current node has event store for this context,
+     *                    otherwise opens a remote connection)
      * @return an EventStore
      */
-    default EventStore getEventStore(String context, boolean useLocal) {
+    default EventStore getEventStore(String context, boolean forceLeader) {
         return getEventStore(context);
     }
 }

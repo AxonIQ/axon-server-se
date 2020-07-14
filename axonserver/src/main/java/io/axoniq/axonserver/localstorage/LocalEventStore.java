@@ -366,7 +366,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     if (c == null) {
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
-                                                                   getEventsRequest.getAllowReadingFromFollower(),
+                                                                   getEventsRequest.getForceReadFromLeader(),
                                                                    new StreamObserver<InputStream>() {
                                                                        @Override
                                                                        public void onNext(InputStream inputStream) {
@@ -697,11 +697,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,
                                                                               String clientId,
-                                                                              boolean allowReadingFromFollower,
+                                                                              boolean forceReadingFromLeader,
                                                                               StreamObserver<InputStream> eventStream) {
             return trackingEventManager.createEventTracker(trackingToken,
                                                            clientId,
-                                                           allowReadingFromFollower,
+                                                           forceReadingFromLeader,
                                                            eventStream);
         }
 
