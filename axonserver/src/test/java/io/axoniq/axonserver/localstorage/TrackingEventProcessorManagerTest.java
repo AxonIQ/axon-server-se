@@ -171,7 +171,7 @@ public class TrackingEventProcessorManagerTest {
         TrackingEventProcessorManager.EventTracker useLocalStoreTracker = testSubject.createEventTracker(
                 100,
                 "",
-                true,
+                false,
                 new StreamObserver<InputStream>() {
                     @Override
                     public void onNext(InputStream value) {
