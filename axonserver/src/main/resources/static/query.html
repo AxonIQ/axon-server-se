@@ -154,6 +154,10 @@
                         working: false,
                         contexts: [],
                         activeContext: "default",
+                        timeConstraint: "last hour",
+                        liveUpdates: false,
+                        forceReadFromLeader: false,
+                        activeRow: {value: []},
                         help: false
                     }, mounted() {
                 if (globals.isEnterprise()) {
@@ -167,22 +171,36 @@
                         toggleHelp() {
                             this.help = !this.help;
                         },
+                        select(row) {
+                            this.activeRow.style = "";
+                            this.activeRow = row;
+                            this.activeRow.style = "selected";
+                            this.$modal.show('result-details');
+                        },
+                        closeDetails(event) {
+                            this.activeRow.style = "";
+                            this.$forceUpdate();
+                        },
                         executeQuery() {
-                            if ( typeof EventSource === "undefined") {
+                            if (typeof EventSource === "undefined") {
                                 alert("No Server Emitter support in browser");
                                 return;
 
                             }
                             this.working = true;
                             this.query = $("#query").val();
+                            let effectiveQuery = this.query;
                             this.rows = [];
                             target = this;
                             if (source) {
                                 source.close();
                             }
                             source = new EventSource("v1/search?query=" + encodeURIComponent(this.query)
-                                    + "&context=" + encodeURIComponent(this.activeContext)
-                                    + "&clientToken="
+                                                             + "&context=" + encodeURIComponent(this.activeContext)
+                                                             + "&timewindow=" + encodeURIComponent(this.timeConstraint)
+                                                             + "&liveupdates=" + this.liveUpdates
+                                                             + "&forceleader=" + this.forceReadFromLeader
+                                                             + "&clientToken="
                                     + encodeURIComponent(clientToken));
                             source.addEventListener('metadata', function (event) {
                                 target.columns = JSON.parse(event.data);
@@ -266,11 +284,25 @@
     }
 </script>
 <div id="queryWrapper">
-    <div class="contextSelector" v-if="isEnterprise()">
-        Active context:
-        <select v-model="activeContext" >
+    <div class="contextSelector">
+        Query time window:
+        <select v-model="timeConstraint">
+            <option>last hour</option>
+            <option>last 2 hours</option>
+            <option>last day</option>
+            <option>last week</option>
+            <option>custom</option>
+        </select>
+
+        <input type="checkbox" v-model="liveUpdates">Live Updates</input>
+
+        <span v-if="isEnterprise()" style="margin-left: 15px;">
+        <input type="checkbox" v-model="forceReadFromLeader">Read from leader</input>
+            Active context:
+        <select v-model="activeContext">
             <option v-for="n in contexts">{{n}}</option>
         </select>
+        </span>
     </div>
     <br/>
     <form class="search-bar">
@@ -367,8 +399,8 @@
                 </th>
             </tr>
             </thead>
-            <tbody>
-            <tr v-for="row in rows">
+            <tbody class="selectable">
+            <tr v-for="row in rows" @click="select(row)" :class="row.style">
                 <td v-for="column in columns">
                     <div>{{row.value[column]}}</div>
                 </td>
@@ -376,4 +408,30 @@
             </tbody>
         </table>
     </div>
+
+    <modal name="result-details" width="900px" height="400px" :draggable="true" :resizable="true" :reset="true"
+           @before-close="closeDetails">
+        <div style="overflow-x: hidden; overflow-y: auto; height: 100%">
+            <table style="width: 95%">
+                <thead>
+                <tr>
+                    <th width="30%">Name</th>
+                    <th width="65%">Value</th>
+                    <th width="5%">Copy</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="column in columns">
+                    <td>{{column}}</td>
+                    <td>{{activeRow.value[column]}}</td>
+                    <td>
+                            <span v-clipboard:copy="activeRow.value[column]" title="Copy to clipboard">
+                                        <i class="far fa-copy"></i>
+                            </span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </modal>
 </div>

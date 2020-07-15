@@ -16,10 +16,12 @@ import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
+import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
@@ -94,15 +96,15 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
+            public void query(QueryOptions queryOptions,
+                              Predicate<EventWithToken> consumer) {
                 Event event = Event.newBuilder().setAggregateIdentifier("demo").build();
                 int i = 100000;
                 EventWithToken eventWithToken;
                 do {
                     i--;
                     eventWithToken = EventWithToken.newBuilder().setToken(i).setEvent(event).build();
-                } while( consumer.test(eventWithToken));
-
+                } while (consumer.test(eventWithToken));
             }
 
             @Override
@@ -163,9 +165,8 @@ public class HttpStreamingQueryTest {
             public void send(SseEventBuilder builder) throws IOException {
                 messages.add(builder.build());
             }
-
         };
-        emitter.onError( t-> {
+        emitter.onError(t -> {
             t.printStackTrace();
             latch.countDown();
         });
@@ -173,7 +174,9 @@ public class HttpStreamingQueryTest {
         emitter.onCompletion(latch::countDown);
 
         emitter.onTimeout(latch::countDown);
-        testSubject.query(Topology.DEFAULT_CONTEXT, "aggregateIdentifier = \"demo\" | limit( 10)", "token", emitter);
+        testSubject.query(Topology.DEFAULT_CONTEXT, "aggregateIdentifier = \"demo\" | limit( 10)",
+                          QueryEventsRequestStreamObserver.TIME_WINDOW_CUSTOM, true, false,
+                          "token", emitter);
 
         latch.await(1, TimeUnit.SECONDS);
         assertEquals(13, messages.size());
