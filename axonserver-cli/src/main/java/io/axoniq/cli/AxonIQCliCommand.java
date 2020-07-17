@@ -138,7 +138,7 @@ public class AxonIQCliCommand {
         }
     }
 
-    private static String responseBody(CloseableHttpResponse response) {
+    protected static String responseBody(CloseableHttpResponse response) {
         StringBuilder builder = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
             builder.append(reader.readLine());

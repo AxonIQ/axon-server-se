@@ -12,7 +12,6 @@ globals.pageView = new Vue(
         {
             el: '#application',
             data: {
-                license: "",
                 application: {workingRoles: []},
                 applications: [],
                 contexts: [],
@@ -22,7 +21,6 @@ globals.pageView = new Vue(
                 webSocketInfo: globals.webSocketInfo,
                 admin: globals.admin
             }, computed: {}, mounted() {
-                axios.get("v1/public/license").then(response => this.license = response.data.edition.toLowerCase());
                 axios.get("v1/roles/application").then(response => this.appRoles = response.data);
                 axios.get("v1/public/context").then(response => {
                     this.contexts = response.data;

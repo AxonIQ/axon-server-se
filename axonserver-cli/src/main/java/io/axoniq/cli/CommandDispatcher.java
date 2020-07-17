@@ -100,6 +100,7 @@ public class CommandDispatcher {
         executorMap.put("metrics", new CommandInformation(Group.METRICS, Metrics::run));
         executorMap.put("init-cluster", new CommandInformation(Group.CLUSTER, InitNode::run));
         executorMap.put("purge-events", new CommandInformation(Group.OTHER, DeleteEvents::run));
+        executorMap.put("update-license", new CommandInformation(Group.CLUSTER, UpdateLicense::run));
     }
 
     public static void main(String[] args)  {

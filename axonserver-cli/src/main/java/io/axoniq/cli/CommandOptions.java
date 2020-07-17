@@ -292,4 +292,13 @@ public class CommandOptions {
             .hasArg()
             .desc("Output format (txt,json)")
             .build();
+    /**
+     * Output format for the command (text or json).
+     */
+    public static final Option FILE = Option
+            .builder("f")
+            .longOpt("file")
+            .hasArg()
+            .desc("license file to upload")
+            .build();
 }
