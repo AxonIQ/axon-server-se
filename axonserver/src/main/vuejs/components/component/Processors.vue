@@ -155,8 +155,8 @@
             </div>
         </modal>
         <modal name="load-balance" width="500" height="250">
+            <h2 style="padding-left: 20px">Load Balance {{loadBalanceProcessor.name}} Event Processor</h2>
             <div id="load-balance" class="column configuration modal">
-                <h2>Load Balance {{loadBalanceProcessor.name}} Event Processor</h2>
                 <form>
                     <ul>
                         <li>

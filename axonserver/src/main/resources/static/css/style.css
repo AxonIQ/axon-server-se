@@ -193,6 +193,9 @@ h2,h3{
 	h2{
 		font-size: 24px;
 		line-height: 36px;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
 	}
 	h3{
 		font-size: 18px;
