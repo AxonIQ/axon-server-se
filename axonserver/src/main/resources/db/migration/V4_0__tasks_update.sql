@@ -51,3 +51,9 @@ values ('CANCEL_SCHEDULED_EVENT', 'WRITE');
 
 insert into FUNCTION_ROLES(function, role)
 values ('CANCEL_SCHEDULED_EVENT', 'USE_CONTEXT');
+
+update FUNCTION_ROLES
+set role = 'ADMIN'
+where function = 'LIST_QUERIES'
+  and role = 'CONTEXT_ADMIN';
+

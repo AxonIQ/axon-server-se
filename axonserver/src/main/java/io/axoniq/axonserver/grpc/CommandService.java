@@ -35,13 +35,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PreDestroy;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.PreDestroy;
 
 import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncUnaryCall;
@@ -261,7 +261,7 @@ public class CommandService implements AxonServerClientService {
             responseObserver.onNext(commandResponse);
             responseObserver.onCompleted();
         } catch (RuntimeException ex) {
-            logger.warn("Response to client {} failed", clientId, ex);
+            logger.debug("Response to client {} failed", clientId, ex);
         }
     }
 
