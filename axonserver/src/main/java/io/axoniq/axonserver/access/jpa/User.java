@@ -125,10 +125,10 @@ public class User {
 
     /**
      * Remobes all roles from the user for specified {@code context}
+     *
      * @param context the context to remove
      */
     public void removeContext(String context) {
         roles.removeIf(r -> r.getContext().equals(context));
     }
-
 }

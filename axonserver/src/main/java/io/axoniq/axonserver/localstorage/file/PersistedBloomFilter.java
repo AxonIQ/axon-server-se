@@ -48,12 +48,14 @@ public class PersistedBloomFilter {
         if (!fileExists()) throw new IllegalArgumentException("File does not exist");
 
         try (FileChannel channel = FileChannel.open(path)) {
-            logger.debug( "Opening index : {}", path);
+            logger.debug("Opening bloom filter : {}", path);
             try( InputStream is = Channels.newInputStream(channel)) {
                 filter = BloomFilter.readFrom(is, Funnels.stringFunnel(UTF8));
             }
         } catch (Exception ex) {
-            throw new MessagingPlatformException(ErrorCode.INDEX_READ_ERROR, "Error while opening bloom index " + path, ex);
+            throw new MessagingPlatformException(ErrorCode.INDEX_READ_ERROR,
+                                                 "Error while opening bloom filter " + path,
+                                                 ex);
         }
 
 

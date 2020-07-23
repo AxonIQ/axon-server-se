@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.topology;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -33,12 +31,12 @@ public interface Topology {
         return true;
     }
 
-    default Stream<? extends AxonServerNode> nodes() {
-        return Stream.of(getMe());
+    default boolean isLeader(String nodeName, String contextName) {
+        return true;
     }
 
-    default List<AxonServerNode> getRemoteConnections() {
-        return new ArrayList<>();
+    default Stream<? extends AxonServerNode> nodes() {
+        return Stream.of(getMe());
     }
 
     AxonServerNode getMe();

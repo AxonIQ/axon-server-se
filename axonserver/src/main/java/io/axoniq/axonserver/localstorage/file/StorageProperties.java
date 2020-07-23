@@ -12,15 +12,16 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 
 import java.io.File;
+import java.time.Duration;
 
 /**
  * @author Marc Gathier
  */
-public class StorageProperties {
+public class StorageProperties implements Cloneable {
 
-    private static final String PATH_FORMAT = "%s/%s/%020d%s";
+    private static final String PATH_FORMAT = "%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
-    private static final String OLD_PATH_FORMAT = "%s/%s/%014d%s";
+    private static final String OLD_PATH_FORMAT = "%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
     /**
      * File suffix for events files.
@@ -30,6 +31,14 @@ public class StorageProperties {
      * File suffix for index files.
      */
     private String indexSuffix = ".index";
+    /**
+     * File suffix for new index files.
+     */
+    private String newIndexSuffix = ".nindex";
+    /**
+     * File suffix for the global index file.
+     */
+    private String globalIndexSuffix = ".xref";
     /**
      * File suffix for bloom files.
      */
@@ -44,6 +53,8 @@ public class StorageProperties {
      * Location for segment files. Will create subdirectory per context.
      */
     private String storage = "./data";
+
+    private String contextStorage;
     /**
      * False-positive percentage allowed for bloom index. Decreasing the value increases the size of the bloom indexes.
      */
@@ -97,16 +108,26 @@ public class StorageProperties {
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
+    /**
+     * Time to keep events in primary tier before deleting them, if secondary tier is defined.
+     */
+    private Duration[] retentionTime = new Duration[]{
+            Duration.ofDays(7)
+    };
+    private String indexFormat;
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
 
-    public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix, String bloomIndexSuffix) {
+    public StorageProperties(SystemInfoProvider systemInfoProvider, String eventsSuffix, String indexSuffix,
+                             String bloomIndexSuffix, String newIndexSuffix, String globalIndexSuffix) {
         this(systemInfoProvider);
         this.eventsSuffix = eventsSuffix;
         this.indexSuffix = indexSuffix;
         this.bloomIndexSuffix = bloomIndexSuffix;
+        this.globalIndexSuffix = globalIndexSuffix;
+        this.newIndexSuffix = newIndexSuffix;
     }
 
     public String getEventsSuffix() {
@@ -125,6 +146,14 @@ public class StorageProperties {
         this.indexSuffix = indexSuffix;
     }
 
+    public String getNewIndexSuffix() {
+        return newIndexSuffix;
+    }
+
+    public void setNewIndexSuffix(String newIndexSuffix) {
+        this.newIndexSuffix = newIndexSuffix;
+    }
+
     public String getBloomIndexSuffix() {
         return bloomIndexSuffix;
     }
@@ -141,10 +170,6 @@ public class StorageProperties {
         this.segmentSize = segmentSize;
     }
 
-    public String getStorage() {
-        return storage;
-    }
-
     public void setStorage(String storage) {
         this.storage = storage;
     }
@@ -158,19 +183,35 @@ public class StorageProperties {
     }
 
     public File bloomFilter(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, storage, context, segment, bloomIndexSuffix));
+        return new File(String.format(PATH_FORMAT, getStorage(context), segment, bloomIndexSuffix));
     }
 
     public File index(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, storage, context, segment, indexSuffix));
+        return new File(String.format(PATH_FORMAT, getStorage(context), segment, indexSuffix));
     }
 
     public File indexTemp(String context, long segment) {
-        return new File(String.format(TEMP_PATH_FORMAT, storage, context, segment, indexSuffix));
+        return new File(String.format(TEMP_PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    }
+
+    public File newIndex(String context, long segment) {
+        return new File(String.format(PATH_FORMAT, getStorage(context), segment, newIndexSuffix));
+    }
+
+    public File newIndexTemp(String context, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, getStorage(context), segment, newIndexSuffix));
+    }
+
+    public String getGlobalIndexSuffix() {
+        return globalIndexSuffix;
+    }
+
+    public void setGlobalIndexSuffix(String globalIndexSuffix) {
+        this.globalIndexSuffix = globalIndexSuffix;
     }
 
     public File dataFile(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, storage, context, segment, eventsSuffix));
+        return new File(String.format(PATH_FORMAT, getStorage(context), segment, eventsSuffix));
     }
 
     public long getForceInterval() {
@@ -186,6 +227,9 @@ public class StorageProperties {
     }
 
     public String getStorage(String context) {
+        if (contextStorage != null) {
+            return contextStorage;
+        }
         return String.format("%s/%s", storage, context);
     }
 
@@ -254,15 +298,15 @@ public class StorageProperties {
     }
 
     public File oldDataFile(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, eventsSuffix));
+        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, eventsSuffix));
     }
 
     public File oldIndex(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, indexSuffix));
+        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, indexSuffix));
     }
 
     public File oldBloomFilter(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, storage, context, segment, bloomIndexSuffix));
+        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, bloomIndexSuffix));
     }
 
     public void setUseMmapIndex(Boolean useMmapIndex) {
@@ -292,5 +336,68 @@ public class StorageProperties {
 
     public void setFlags(int flags) {
         this.flags = flags;
+    }
+
+    public StorageProperties withStorage(String storage) {
+        StorageProperties clone = cloneProperties();
+        clone.contextStorage = storage;
+        return clone;
+    }
+
+    private StorageProperties cloneProperties() {
+        try {
+            return (StorageProperties) this.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    public StorageProperties withSegmentSize(long segmentSize) {
+        StorageProperties clone = cloneProperties();
+        clone.segmentSize = segmentSize;
+        return clone;
+    }
+
+    public StorageProperties withMaxBloomFiltersInMemory(int maxBloomFiltersInMemory) {
+        StorageProperties clone = cloneProperties();
+        clone.maxBloomFiltersInMemory = maxBloomFiltersInMemory;
+        return clone;
+    }
+
+    public void setRetentionTime(Duration[] retentionTime) {
+        this.retentionTime = retentionTime;
+    }
+
+    public long getRetentionTime(int tier) {
+        if (tier < 0 || tier >= retentionTime.length) {
+            return System.currentTimeMillis();
+        }
+        return retentionTime[tier].toMillis();
+    }
+
+    public String getIndexFormat() {
+        return indexFormat;
+    }
+
+    public void setIndexFormat(String indexFormat) {
+        this.indexFormat = indexFormat;
+    }
+
+    public StorageProperties withIndexFormat(String indexFormat) {
+        StorageProperties clone = cloneProperties();
+        clone.indexFormat = indexFormat;
+        return clone;
+    }
+
+    public StorageProperties withMaxIndexesInMemory(int maxIndexesInMemory) {
+        StorageProperties clone = cloneProperties();
+        clone.maxIndexesInMemory = maxIndexesInMemory;
+        return clone;
+    }
+
+    public StorageProperties withRetentionTime(Duration[] retentionTime) {
+        StorageProperties clone = cloneProperties();
+        clone.retentionTime = retentionTime;
+        return clone;
     }
 }

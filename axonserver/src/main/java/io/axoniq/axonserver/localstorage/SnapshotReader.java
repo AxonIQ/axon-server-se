@@ -31,6 +31,10 @@ public class SnapshotReader {
     }
 
     public void streamByAggregateId(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
-        datafileManagerChain.processEventsPerAggregate(aggregateId, minSequenceNumber, maxSequenceNumber, maxResults, eventConsumer);
+        datafileManagerChain.processEventsPerAggregateHighestFirst(aggregateId,
+                                                                   minSequenceNumber,
+                                                                   maxSequenceNumber,
+                                                                   maxResults,
+                                                                   eventConsumer);
     }
 }

@@ -17,6 +17,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.rest.json.MetaDataJson;
@@ -96,13 +97,12 @@ public class EventsRestController {
                                                                            .build();
         eventStoreClient.listAggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
                                                 request,
-                                                new StreamObserver<InputStream>() {
+                                                new StreamObserver<SerializedEvent>() {
                                                     @Override
-                                                    public void onNext(InputStream event) {
+                                                    public void onNext(SerializedEvent event) {
                                                         try {
                                                             sseEmitter.send(SseEmitter.event()
-                                                                                      .data(new JsonEvent(Event.parseFrom(
-                                                                                              event))));
+                                                                                      .data(new JsonEvent(event.asEvent())));
                                                         } catch (Exception e) {
                                                             logger.debug("Exception on sending event - {}",
                                                                          e.getMessage(),
@@ -157,13 +157,12 @@ public class EventsRestController {
                                                                          .build();
 
             ObjectMapper objectMapper = new ObjectMapper();
-            eventStoreClient.listAggregateEvents(context, request, new StreamObserver<InputStream>() {
+            eventStoreClient.listAggregateEvents(context, request, new StreamObserver<SerializedEvent>() {
                 @Override
-                public void onNext(InputStream event) {
+                public void onNext(SerializedEvent event) {
                     try {
                         sseEmitter.send(SseEmitter.event().data(objectMapper
-                                                                        .writeValueAsString(new JsonEvent(Event.parseFrom(
-                                                                                event)))));
+                                                                        .writeValueAsString(new JsonEvent(event.asEvent()))));
                     } catch (Exception e) {
                         logger.warn("Exception on sending event - {}", e.getMessage(), e);
                     }

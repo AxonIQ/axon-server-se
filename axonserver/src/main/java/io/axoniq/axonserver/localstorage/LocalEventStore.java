@@ -42,14 +42,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.lang.NonNull;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,46 +63,49 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * Component that handles the actual interaction with the event store.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
+
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
-    private static final boolean CREATE_IF_MISSING = true;
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
     private final ExecutorService dataFetcher;
+    private final MeterFactory meterFactory;
+    private final StorageTransactionManagerFactory storageTransactionManagerFactory;
+    private final int maxEventCount;
+    /**
+     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
+     * events
+     * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
+     */
+    private final int blacklistedSendAfter;
+    private final EventDecorator eventDecorator;
     private volatile boolean running;
     @Value("${axoniq.axonserver.query.limit:200}")
     private long defaultLimit = 200;
     @Value("${axoniq.axonserver.query.timeout:300000}")
     private long timeout = 300000;
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
-    private long newPermitsTimeout=120000;
-
-    private final MeterFactory meterFactory;
-    private final StorageTransactionManagerFactory storageTransactionManagerFactory;
-    private final EventStoreExistChecker eventStoreExistChecker;
-    private final int maxEventCount;
-
-    /**
-     * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all events
-     * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
-     */
-    private final int blacklistedSendAfter;
+    private long newPermitsTimeout = 120000;
+    @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
+    private boolean checkSequenceNrForSnapshots = true;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory, MeterRegistry meterFactory,
-                           StorageTransactionManagerFactory storageTransactionManagerFactory,
-                           EventStoreExistChecker eventStoreExistChecker) {
+                           StorageTransactionManagerFactory storageTransactionManagerFactory) {
         this(eventStoreFactory,
              new MeterFactory(meterFactory, new DefaultMetricCollector()),
              storageTransactionManagerFactory,
-             eventStoreExistChecker, Short.MAX_VALUE,
+             new DefaultEventDecorator(),
+             Short.MAX_VALUE,
              1000,
              24);
     }
@@ -112,22 +114,30 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public LocalEventStore(EventStoreFactory eventStoreFactory,
                            MeterFactory meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
-                           EventStoreExistChecker eventStoreExistChecker, @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
+                           EventDecorator eventDecorator,
+                           @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
                            @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads) {
         this.eventStoreFactory = eventStoreFactory;
         this.meterFactory = meterFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
-        this.eventStoreExistChecker = eventStoreExistChecker;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
+        this.eventDecorator = eventDecorator;
     }
 
     public void initContext(String context, boolean validating) {
-        if( workersMap.containsKey(context)) return;
+        initContext(context, validating, 0, 0);
+    }
+
+    public void initContext(String context, boolean validating, long defaultFirstEventIndex,
+                            long defaultFirstSnapshotIndex) {
+        if (workersMap.containsKey(context)) {
+            return;
+        }
         workersMap.putIfAbsent(context, new Workers(context));
-        workersMap.get(context).init(validating);
+        workersMap.get(context).init(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
     }
 
     /**
@@ -147,12 +157,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     public void deleteContext(String context, boolean keepData) {
         Workers workers = workersMap.remove(context);
-        if( workers == null) return;
+        if (workers == null) {
+            return;
+        }
         workers.close(!keepData);
     }
 
     /**
      * Deletes all event data from the context. Context remains alive.
+     *
      * @param context the context to be cleared
      */
     @Override
@@ -166,33 +179,47 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public void cancel(String context) {
         Workers workers = workersMap.get(context);
-        if( workers == null) return;
+        if (workers == null) {
+            return;
+        }
 
         workers.eventWriteStorage.cancelPendingTransactions();
         workers.cancelTrackingEventProcessors();
     }
 
     private Workers workers(String context) {
-        return workers(context, false);
-    }
-
-    private Workers workers(String context, boolean createIfMissing) {
         Workers workers = workersMap.get(context);
         if (workers == null) {
-            if (createIfMissing) {
-                synchronized (workersMap) {
-                    initContext(context, false);
-                    workers = workersMap.get(context);
-                }
-            } else {
-                throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
-            }
+            throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
         }
         return workers;
     }
+
     @Override
     public CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage) {
-        return workers(context).snapshotWriteStorage.store( eventMessage);
+        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
+        runInDataFetcherPool(() -> doAppendSnapshot(context, eventMessage, completableFuture),
+                             completableFuture::completeExceptionally);
+        return completableFuture;
+    }
+
+    private void doAppendSnapshot(String context, Event eventMessage,
+                                  CompletableFuture<Confirmation> completableFuture) {
+        if (checkSequenceNrForSnapshots) {
+            long seqNr = workers(context).aggregateReader.readHighestSequenceNr(eventMessage.getAggregateIdentifier());
+            if (seqNr < eventMessage.getAggregateSequenceNumber()) {
+                completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                                                                                       "Invalid sequence number while storing snapshot"));
+                return;
+            }
+        }
+        workers(context).snapshotWriteStorage.store(eventMessage).whenComplete(((confirmation, throwable) -> {
+            if (throwable != null) {
+                completableFuture.completeExceptionally(throwable);
+            } else {
+                completableFuture.complete(confirmation);
+            }
+        }));
     }
 
     @Override
@@ -201,6 +228,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return new StreamObserver<InputStream>() {
             private final List<SerializedEvent> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
+
             @Override
             public void onNext(InputStream event) {
                 if (checkMaxEventCount()) {
@@ -231,7 +259,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
             @Override
             public void onCompleted() {
-                if( closed.get()) return;
+                if (closed.get()) {
+                    return;
+                }
 
                 workers(context)
                         .eventWriteStorage
@@ -242,7 +272,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
             private Void error(Throwable exception) {
                 exception = ConcurrencyExceptions.unwrap(exception);
-                if( isClientException(exception)) {
+                if (isClientException(exception)) {
                     logger.info("{}: Error while storing events: {}", context, exception.getMessage());
                 } else {
                     logger.warn("{}: Error while storing events", context, exception);
@@ -260,14 +290,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
-                                    StreamObserver<InputStream> responseStreamObserver) {
+                                    StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             AtomicInteger counter = new AtomicInteger();
             workers(context).aggregateReader.readEvents(request.getAggregateId(),
                                                         request.getAllowSnapshots(),
                                                         request.getInitialSequence(),
+                                                        getMaxSequence(request),
+                                                        request.getMinToken(),
                                                         event -> {
-                                                            responseStreamObserver.onNext(event.asInputStream());
+                                                            responseStreamObserver.onNext(eventDecorator
+                                                                                                  .decorateEvent(event));
                                                             counter.incrementAndGet();
                                                         });
             if (counter.get() == 0) {
@@ -284,7 +317,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (!running) {
                     onError.accept(new RejectedExecutionException("Cannot load events. AxonServer is shutting down"));
                 } else {
-                    task.run();
+                    try {
+                        task.run();
+                    } catch (Exception ex) {
+                        onError.accept(ex);
+                    }
                 }
             });
         } catch (Exception e) {
@@ -293,17 +330,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
     }
 
+    private long getMaxSequence(GetAggregateEventsRequest request) {
+        if (request.getMaxSequence() > 0) {
+            return request.getMaxSequence();
+        }
+        return Long.MAX_VALUE;
+    }
+
+
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
-                                       StreamObserver<InputStream> responseStreamObserver) {
+                                       StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             if (request.getMaxSequence() >= 0) {
                 workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
                                                                request.getInitialSequence(),
                                                                request.getMaxSequence(),
                                                                request.getMaxResults(),
-                                                               event -> responseStreamObserver
-                                                                       .onNext(event.asInputStream()));
+                                                               snapshot -> responseStreamObserver
+                                                                       .onNext(eventDecorator.decorateEvent(snapshot)));
             }
             responseStreamObserver.onCompleted();
         }, responseStreamObserver::onError);
@@ -321,8 +366,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     if (c == null) {
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
-                                                                   getEventsRequest.getAllowReadingFromFollower(),
-                                                                   responseStreamObserver);
+                                                                   getEventsRequest.getForceReadFromLeader(),
+                                                                   new StreamObserver<InputStream>() {
+                                                                       @Override
+                                                                       public void onNext(InputStream inputStream) {
+                                                                           responseStreamObserver.onNext(eventDecorator
+                                                                                                                 .decorateEventWithToken(
+                                                                                                                         inputStream));
+                                                                       }
+
+                                                                       @Override
+                                                                       public void onError(Throwable throwable) {
+                                                                           responseStreamObserver.onError(throwable);
+                                                                       }
+
+                                                                       @Override
+                                                                       public void onCompleted() {
+                                                                           responseStreamObserver.onCompleted();
+                                                                       }
+                                                                   });
                     }
                     return c;
                 });
@@ -361,7 +423,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public void getLastToken(String context, GetLastTokenRequest request,
                              StreamObserver<TrackingToken> responseObserver) {
-        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventStorageEngine.getLastToken()).build());
+        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventStorageEngine.getLastToken())
+                                             .build());
+        responseObserver.onCompleted();
+    }
+
+    public void getLastSnapshotToken(String context,
+                                     StreamObserver<TrackingToken> responseObserver) {
+        responseObserver.onNext(TrackingToken.newBuilder()
+                                             .setToken(workers(context).snapshotStorageEngine.getLastToken()).build());
         responseObserver.onCompleted();
     }
 
@@ -384,11 +454,28 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }, responseObserver::onError);
     }
 
+    public CompletableFuture<Long> getHighestSequenceNr(String context, String aggregateIdenfier, int maxSegmentsHint,
+                                                        long maxTokenHint) {
+        CompletableFuture<Long> sequenceNr = new CompletableFuture<>();
+        runInDataFetcherPool(() -> sequenceNr.complete(
+                workers(context)
+                        .aggregateReader
+                        .readHighestSequenceNr(aggregateIdenfier, maxSegmentsHint, maxTokenHint))
+                , sequenceNr::completeExceptionally);
+        return sequenceNr;
+    }
+
     @Override
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
-        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage, workers.eventStreamReader, defaultLimit, timeout, responseObserver);
+        return new QueryEventsRequestStreamObserver(workers.eventWriteStorage,
+                                                    workers.eventStreamReader,
+                                                    workers.aggregateReader,
+                                                    defaultLimit,
+                                                    timeout,
+                                                    eventDecorator,
+                                                    responseObserver);
     }
 
     @Override
@@ -397,7 +484,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void stop(@NonNull Runnable runnable) {
+    public void stop(@Nonnull Runnable runnable) {
         running = false;
         dataFetcher.shutdown();
         workersMap.forEach((k, workers) -> workers.close(false));
@@ -409,7 +496,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
         dataFetcher.shutdownNow();
         runnable.run();
-
     }
 
     @Override
@@ -419,7 +505,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public void stop() {
-        stop(() -> {});
+        stop(() -> {
+        });
     }
 
     @Override
@@ -437,64 +524,77 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         workersMap.forEach((k, v) -> v.validateActiveConnections());
     }
 
-    public long getLastToken(String context) {
-        workersMap.computeIfAbsent(context, this::openIfExist);
+    public long getLastEvent(String context) {
         return workers(context).eventStorageEngine.getLastToken();
     }
 
-    private Workers openIfExist(String context) {
-        if (this.eventStoreExistChecker.exists(context)) {
-            Workers workers = new Workers(context);
-            workers.init(false);
-            return workers;
-        }
-        return null;
-    }
-
     public long getLastSnapshot(String context) {
-        workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).snapshotStorageEngine.getLastToken();
     }
 
     /**
-     * Creates an iterator to iterate over event transactions, starting at transaction with token fromToken and ending before toToken
+     * Creates an iterator to iterate over event transactions, starting at transaction with token fromToken and ending
+     * before toToken
      *
-     * @param context The context of the transactions
+     * @param context   The context of the transactions
      * @param fromToken The first transaction token to include
-     * @param toToken Last transaction token (exclusive)
+     * @param toToken   Last transaction token (exclusive)
      * @return the iterator
      */
-    public Iterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken, long toToken) {
+    public CloseableIterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken,
+                                                                                       long toToken) {
         return workersMap.get(context).eventStorageEngine.transactionIterator(fromToken, toToken);
     }
 
     /**
-     * Creates an iterator to iterate over snapshot transactions, starting at transaction with token fromToken and ending before toToken
+     * Creates an iterator to iterate over snapshot transactions, starting at transaction with token fromToken and
+     * ending before toToken
      *
-     * @param context The context of the transactions
+     * @param context   The context of the transactions
      * @param fromToken The first transaction token to include
-     * @param toToken Last transaction token (exclusive)
+     * @param toToken   Last transaction token (exclusive)
      * @return the iterator
      */
-    public Iterator<SerializedTransactionWithToken> snapshotTransactionsIterator(String context, long fromToken, long toToken) {
+    public CloseableIterator<SerializedTransactionWithToken> snapshotTransactionsIterator(String context,
+                                                                                          long fromToken,
+                                                                                          long toToken) {
         return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
     public long syncEvents(String context, SerializedTransactionWithToken value) {
-        SyncStorage writeStorage = workers(context, CREATE_IF_MISSING).eventSyncStorage;
-        writeStorage.sync(value.getToken(), value.getEvents());
-        return value.getToken() + value.getEvents().size();
+        try {
+            SyncStorage writeStorage = workers(context).eventSyncStorage;
+            writeStorage.sync(value.getToken(), value.getEvents());
+            return value.getToken() + value.getEvents().size();
+        } catch (MessagingPlatformException ex) {
+            if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
+                logger.warn("{}: cannot store in non-active event store", context);
+                return -1;
+            } else {
+                throw ex;
+            }
+        }
     }
 
     public long syncSnapshots(String context, SerializedTransactionWithToken value) {
-        SyncStorage writeStorage = workers(context, CREATE_IF_MISSING).snapshotSyncStorage;
-        writeStorage.sync(value.getToken(), value.getEvents());
-        return value.getToken() + value.getEvents().size();
+        try {
+            SyncStorage writeStorage = workers(context).snapshotSyncStorage;
+            writeStorage.sync(value.getToken(), value.getEvents());
+            return value.getToken() + value.getEvents().size();
+        } catch (MessagingPlatformException ex) {
+            if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
+                logger.warn("{}: cannot store snapshot in non-active event store", context);
+                return -1;
+            } else {
+                throw ex;
+            }
+        }
     }
 
     public long getWaitingEventTransactions(String context) {
         return workers(context).eventWriteStorage.waitingTransactions();
     }
+
     public long getWaitingSnapshotTransactions(String context) {
         return workers(context).snapshotWriteStorage.waitingTransactions();
     }
@@ -507,7 +607,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp);
-        } catch (Exception ex ) {
+        } catch (Exception ex) {
             logger.warn("Failed to get backup filenames", ex);
         }
         return Stream.empty();
@@ -522,7 +622,20 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
     }
 
+    public long firstToken(String context) {
+        return workers(context).eventStorageEngine.getFirstToken();
+    }
+
+    public long firstSnapshotToken(String context) {
+        return workers(context).snapshotStorageEngine.getFirstToken();
+    }
+
+    public boolean hasContext(String context) {
+        return workersMap.containsKey(context);
+    }
+
     private class Workers {
+
         private final EventWriteStorage eventWriteStorage;
         private final SnapshotWriteStorage snapshotWriteStorage;
         private final AggregateReader aggregateReader;
@@ -535,6 +648,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final AtomicBoolean initialized = new AtomicBoolean();
         private final TrackingEventProcessorManager trackingEventManager;
         private final Gauge gauge;
+        private final Gauge snapshotGauge;
 
 
         public Workers(String context) {
@@ -555,16 +669,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.gauge = meterFactory.gauge(BaseMetricName.AXON_EVENT_LAST_TOKEN,
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,
-                                            c -> (double) getLastToken(c));
-
+                                            c -> (double) getLastEvent(c));
+            this.snapshotGauge = meterFactory.gauge(BaseMetricName.AXON_SNAPSHOT_LAST_TOKEN,
+                                                    Tags.of(MeterFactory.CONTEXT, context),
+                                                    context,
+                                                    c -> (double) getLastSnapshot(c));
         }
 
-        public synchronized void init(boolean validate) {
+        public synchronized void init(boolean validate, long defaultFirstEventIndex, long defaultFirstSnapshotIndex) {
             logger.debug("{}: init called", context);
-            if( initialized.compareAndSet(false, true)) {
+            if (initialized.compareAndSet(false, true)) {
                 logger.debug("{}: initializing", context);
-                eventStorageEngine.init(validate);
-                snapshotStorageEngine.init(validate);
+                eventStorageEngine.init(validate, defaultFirstEventIndex);
+                snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
             }
         }
 
@@ -576,15 +693,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventStorageEngine.close(deleteData);
             snapshotStorageEngine.close(deleteData);
             meterFactory.remove(gauge);
+            meterFactory.remove(snapshotGauge);
         }
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,
                                                                               String clientId,
-                                                                              boolean allowReadingFromFollower,
+                                                                              boolean forceReadingFromLeader,
                                                                               StreamObserver<InputStream> eventStream) {
             return trackingEventManager.createEventTracker(trackingToken,
                                                            clientId,
-                                                           allowReadingFromFollower,
+                                                           forceReadingFromLeader,
                                                            eventStream);
         }
 

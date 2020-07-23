@@ -23,7 +23,7 @@ import java.util.function.BiFunction;
 public class EventProcessorMapping implements BiFunction<String, Collection<ClientProcessor>, EventProcessor> {
 
     @Override
-    public EventProcessor apply(String name, Collection<ClientProcessor> clientProcessors){
+    public EventProcessor apply(String name, Collection<ClientProcessor> clientProcessors) {
         String mode = modeOf(clientProcessors);
         if ("Tracking".equals(mode)) {
             return new TrackingProcessor(name, mode, clientProcessors);

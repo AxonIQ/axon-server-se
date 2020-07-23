@@ -67,8 +67,13 @@ globals.pageView = new Vue(
                 },
                 save(user) {
                     this.feedback = "";
-                    if( ! this.user.userName ) {
+                    if (!this.user.userName) {
                         alert("Please enter name for user");
+                        return;
+                    }
+
+                    if (this.user.password && this.user.password !== this.user.password2) {
+                        alert("Passwords do not match");
                         return;
                     }
                     if (this.isEnterprise() && this.user.workingRoles.length === 0 && !(this.newRole.context
@@ -76,7 +81,7 @@ globals.pageView = new Vue(
                         alert("Please select roles for user");
                         return;
                     }
-                    if( ! this.user.password && !this.existsUser(this.user.userName)) {
+                    if (!this.user.password && !this.existsUser(this.user.userName)) {
                         alert("Please enter password for new user");
                         return;
                     }

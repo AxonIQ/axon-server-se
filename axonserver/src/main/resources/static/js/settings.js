@@ -25,7 +25,7 @@ globals.pageView = new Vue({
         this.timer = setInterval(this.reloadStatus, 5000);
         if (globals.isEnterprise()) {
             let me = this;
-            axios.get("v1/public/visiblecontexts?includeAdmin=true").then(response => {
+            axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
                 for (let i = 0; i < response.data.length; i++) {
                     me.contexts.push(response.data[i]);
                     if (!me.context && !response.data[i].startsWith("_")) {
@@ -33,12 +33,21 @@ globals.pageView = new Vue({
                     }
                 }
                 me.reloadStatus()
-                });
+            });
         } else {
             this.context = "default";
             this.reloadStatus();
         }
     }, methods: {
+        downloadTemplate: function () {
+                axios.get("/v1/cluster/download-template").then(response => {
+                    let blob = new Blob([response.data], { type: 'application/text' });
+                    let link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = 'cluster-template.yml';
+                    link.click();
+                });
+        },
         reloadStatus: function () {
             if (this.context) {
                 axios.get("v1/public/status?context=" + this.context).then(response => {

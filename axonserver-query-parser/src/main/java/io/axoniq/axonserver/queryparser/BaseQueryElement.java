@@ -48,4 +48,7 @@ public abstract class BaseQueryElement implements PipelineEntry{
         return operator();
     }
 
+    public int size() {
+        return children.size();
+    }
 }

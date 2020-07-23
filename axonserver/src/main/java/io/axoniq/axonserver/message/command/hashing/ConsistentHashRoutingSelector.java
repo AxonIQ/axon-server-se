@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.message.command.hashing;
 
 import io.axoniq.axonserver.message.command.RoutingSelector;
-import io.axoniq.axonserver.message.command.hashing.ConsistentHash.ConsistentHashMember;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -30,8 +30,9 @@ public class ConsistentHashRoutingSelector implements RoutingSelector<String> {
     }
 
     @Override
-    public Optional<String> selectHandler(String routingKey) {
-        return consistentHash.get().getMember(routingKey).map(ConsistentHashMember::getClient);
+    public Optional<String> selectHandler(String routingKey, Set<String> candidates) {
+        return consistentHash.get().getMember(routingKey, candidates)
+                             .map(ConsistentHash.ConsistentHashMember::getClient);
     }
 
     @Override

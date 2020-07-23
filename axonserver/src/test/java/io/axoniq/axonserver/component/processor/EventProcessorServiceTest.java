@@ -27,6 +27,8 @@ import static org.junit.Assert.*;
  */
 public class EventProcessorServiceTest {
 
+    private final String context = "context";
+
     private Map<String, List<PlatformOutboundInstruction>> publishedInstructions = new ConcurrentHashMap<>();
 
     private Map<String, List<ResultSubscriber>> resultSubscribers = new ConcurrentHashMap<>();
@@ -34,7 +36,7 @@ public class EventProcessorServiceTest {
     private List<Object> publishedInternalEvents = new CopyOnWriteArrayList<>();
 
     private EventProcessorService testSubject = new EventProcessorService(
-            (client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>()).add(i),
+            (context, client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>()).add(i),
             instructionId -> (subscriber, timeout) -> resultSubscribers.computeIfAbsent(instructionId,
                                                                                         k -> new CopyOnWriteArrayList<>())
                                                                        .add(subscriber),
@@ -50,6 +52,7 @@ public class EventProcessorServiceTest {
     @Test
     public void onMergeSegmentRequestExecuted() {
         MergeSegmentRequest mergeSegmentRequest = new MergeSegmentRequest(false,
+                                                                          context,
                                                                           "MergeClient",
                                                                           "Processor",
                                                                           1);
@@ -68,12 +71,14 @@ public class EventProcessorServiceTest {
         assertFalse(publishedInternalEvents.isEmpty());
         Object event = publishedInternalEvents.get(0);
         assertTrue(event instanceof MergeSegmentsSucceeded);
-        assertEquals("Processor", ((MergeSegmentsSucceeded) event).processorIdentifier().name());
+        assertEquals("Processor", ((MergeSegmentsSucceeded) event).processorName());
+        assertEquals("MergeClient", ((MergeSegmentsSucceeded) event).clientName());
     }
 
     @Test
     public void onMergeSegmentRequestNotExecuted() {
         MergeSegmentRequest mergeSegmentRequest = new MergeSegmentRequest(false,
+                                                                          context,
                                                                           "MergeClient",
                                                                           "Processor",
                                                                           1);
@@ -95,6 +100,7 @@ public class EventProcessorServiceTest {
     @Test
     public void onSplitSegmentRequestExecuted() {
         SplitSegmentRequest splitSegmentRequest = new SplitSegmentRequest(false,
+                                                                          context,
                                                                           "SplitClient",
                                                                           "processor",
                                                                           1);
@@ -113,12 +119,14 @@ public class EventProcessorServiceTest {
         assertFalse(publishedInternalEvents.isEmpty());
         Object event = publishedInternalEvents.get(0);
         assertTrue(event instanceof SplitSegmentsSucceeded);
-        assertEquals("processor", ((SplitSegmentsSucceeded) event).processorIdentifier().name());
+        assertEquals("processor", ((SplitSegmentsSucceeded) event).processorName());
+        assertEquals("SplitClient", ((SplitSegmentsSucceeded) event).clientName());
     }
 
     @Test
     public void onSplitSegmentRequestNotExecuted() {
         SplitSegmentRequest splitSegmentRequest = new SplitSegmentRequest(false,
+                                                                          context,
                                                                           "SplitClient",
                                                                           "processor",
                                                                           1);
@@ -139,7 +147,8 @@ public class EventProcessorServiceTest {
 
     @Test
     public void onReleaseSegmentRequest() {
-        ReleaseSegmentRequest releaseSegmentRequest = new ReleaseSegmentRequest("Release",
+        ReleaseSegmentRequest releaseSegmentRequest = new ReleaseSegmentRequest(context,
+                                                                                "Release",
                                                                                 "processor",
                                                                                 1,
                                                                                 false);

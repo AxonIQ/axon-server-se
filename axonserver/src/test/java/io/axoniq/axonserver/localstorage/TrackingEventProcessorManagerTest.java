@@ -89,17 +89,18 @@ public class TrackingEventProcessorManagerTest {
         AtomicBoolean completed = new AtomicBoolean();
         AtomicBoolean failed = new AtomicBoolean();
         TrackingEventProcessorManager.EventTracker tracker =
-                testSubject.createEventTracker(100L,
-                                               "",
-                                               true,
-                                               new StreamObserver<InputStream>() {
-                                                   @Override
-                                                   public void onNext(InputStream value) {
-                                                       messagesReceived.incrementAndGet();
-                                                   }
+                testSubject
+                        .createEventTracker(100L,
+                                            "",
+                                            true,
+                                            new StreamObserver<InputStream>() {
+                                                @Override
+                                                public void onNext(InputStream value) {
+                                                    messagesReceived.incrementAndGet();
+                                                }
 
-                                                   @Override
-                                                   public void onError(Throwable t) {
+                                                @Override
+                                                public void onError(Throwable t) {
                                                        failed.set(true);
                                                    }
 
@@ -170,7 +171,7 @@ public class TrackingEventProcessorManagerTest {
         TrackingEventProcessorManager.EventTracker useLocalStoreTracker = testSubject.createEventTracker(
                 100,
                 "",
-                true,
+                false,
                 new StreamObserver<InputStream>() {
                     @Override
                     public void onNext(InputStream value) {

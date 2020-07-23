@@ -46,6 +46,10 @@ public enum BaseMetricName implements MetricName {
      */
     AXON_EVENT_LAST_TOKEN("axon.event.lastToken", "Last token in the event store"),
     /**
+     * Metric for the token of the last snapshot in the event store (tags: context)
+     */
+    AXON_SNAPSHOT_LAST_TOKEN("axon.snapshot.lastToken", "Last snapshot token in the event store"),
+    /**
      * Metric for the rate of events stored (tags: context)
      */
     AXON_EVENTS("axon.event", "Number of event stored per second"),
@@ -74,8 +78,12 @@ public enum BaseMetricName implements MetricName {
     AXON_APPLICATION_COMMAND_QUEUE_SIZE("axon.ApplicationCommandQueue.size",
                                         "The size of queue holding commands waiting for permits from client"),
     AXON_APPLICATION_QUERY_QUEUE_SIZE("axon.ApplicationQueryQueue.size",
-                                        "The size of queue holding queries waiting for permits from client")
-    ;
+                                      "The size of queue holding queries waiting for permits from client"),
+    AXON_INDEX_OPEN("file.index.open", "Rate of index files opened"),
+    AXON_INDEX_CLOSE("file.index.close", "Rate of index files closed"),
+    AXON_AGGREGATE_READTIME("local.aggregate.readtime", "Elapsed time for reading events from the event store"),
+    AXON_LAST_SEQUENCE_READTIME("local.lastsequence.readtime",
+                                "Elapsed time for retrieving the last sequence number for an aggregate");
 
 
     private final String name;

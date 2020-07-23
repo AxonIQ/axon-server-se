@@ -15,8 +15,11 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.TestUtils;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import java.util.SortedSet;
@@ -29,19 +32,27 @@ import static junit.framework.TestCase.assertTrue;
  */
 public class InputStreamEventStoreTest {
     private InputStreamEventStore testSubject;
-    private EmbeddedDBProperties embeddedDBProperties;
 
     @Before
-    public void setUp()  {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
+    public void setUp() {
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+        });
         embeddedDBProperties.getEvent().setStorage(TestUtils
-                                                           .fixPathOnWindows(InputStreamEventStore.class.getResource("/data").getFile()));
+                                                           .fixPathOnWindows(InputStreamEventStore.class
+                                                                                     .getResource("/data").getFile()));
+        embeddedDBProperties.getEvent().setForceCleanMmapIndex(true);
+        embeddedDBProperties.getEvent().setUseMmapIndex(true);
         String context = Topology.DEFAULT_CONTEXT;
-        IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getEvent());
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+
+        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                                     EventType.EVENT,
+                                                                     meterFactory);
+        indexManager.init();
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         testSubject = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
-                                                                 eventTransformerFactory,
-                                                                 embeddedDBProperties.getEvent());
+                                                eventTransformerFactory,
+                                                embeddedDBProperties.getEvent(), meterFactory);
         testSubject.init(true);
     }
 
@@ -80,12 +91,5 @@ public class InputStreamEventStoreTest {
         assertTrue(segments.contains(0L));
         assertTrue(segments.contains(14L));
         assertEquals(14, (long)segments.first());
-    }
-
-    @Test
-    @Ignore("Data does not contain valid domain events, therefore the aggregate is not found.")
-    public void getAggregatePositions() {
-        SortedSet<PositionInfo> positions = testSubject.getPositions(0, "a83e55b8-68ac-4287-bd9f-e9b90e5bb55c");
-        assertEquals(1, positions.size());
     }
 }

@@ -11,7 +11,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.PayloadDescription;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
@@ -131,15 +130,15 @@ public class TrackingEventProcessorManager {
     /**
      * Creates a new event tracker.
      *
-     * @param trackingToken            the tracking token to start tracking events from
-     * @param clientId                 the id of the client
-     * @param allowReadingFromFollower whether reading events from follower is allowed
-     * @param eventStream              the output stream
+     * @param trackingToken          the tracking token to start tracking events from
+     * @param clientId               the id of the client
+     * @param forceReadingFromLeader whether reading events from leader is forced
+     * @param eventStream            the output stream
      * @return an EventTracker
      */
-    EventTracker createEventTracker(long trackingToken, String clientId, boolean allowReadingFromFollower,
+    EventTracker createEventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
                                     StreamObserver<InputStream> eventStream) {
-        return new EventTracker(trackingToken, clientId, allowReadingFromFollower, eventStream);
+        return new EventTracker(trackingToken, clientId, forceReadingFromLeader, eventStream);
     }
 
     /**
@@ -204,15 +203,15 @@ public class TrackingEventProcessorManager {
         private volatile boolean running = true;
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
         private volatile int force = blacklistedSendAfter;
-        private final boolean allowReadingFromFollower;
+        private final boolean forceReadingFromLeader;
 
-        private EventTracker(long trackingToken, String clientId, boolean allowReadingFromFollower,
+        private EventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
                              StreamObserver<InputStream> eventStream) {
             client = clientId;
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(trackingToken);
             this.eventStream = eventStream;
-            this.allowReadingFromFollower = allowReadingFromFollower;
+            this.forceReadingFromLeader = forceReadingFromLeader;
         }
 
         private int sendNext() {
@@ -289,7 +288,7 @@ public class TrackingEventProcessorManager {
         }
 
         public void stopAllWhereNotAllowedReadingFromFollower() {
-            if (!allowReadingFromFollower) {
+            if (forceReadingFromLeader) {
                 stop();
             }
         }

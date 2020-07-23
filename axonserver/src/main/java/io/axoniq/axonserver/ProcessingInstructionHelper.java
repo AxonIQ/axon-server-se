@@ -28,11 +28,12 @@ public abstract class ProcessingInstructionHelper {
 
     public static String getProcessingInstructionString(List<ProcessingInstruction> processingInstructions,
                                                         ProcessingKey key, String defaultValue) {
-        return processingInstructions.stream()
-                                     .filter(pi -> key.equals(pi.getKey()))
-                                     .map(pi -> pi.getValue().getTextValue())
-                                     .findFirst()
-                                     .orElse(defaultValue);
+        for (ProcessingInstruction pi : processingInstructions) {
+            if (key.equals(pi.getKey())) {
+                return pi.getValue().getTextValue();
+            }
+        }
+        return defaultValue;
     }
 
     public static long getProcessingInstructionNumber(List<ProcessingInstruction> processingInstructions, ProcessingKey key) {
@@ -41,11 +42,12 @@ public abstract class ProcessingInstructionHelper {
 
     public static long getProcessingInstructionNumber(List<ProcessingInstruction> processingInstructions,
                                                       ProcessingKey key, long defaultValue) {
-        return processingInstructions.stream()
-                                     .filter(pi -> key.equals(pi.getKey()))
-                                     .map(pi -> pi.getValue().getNumberValue())
-                                     .findFirst()
-                                     .orElse(defaultValue);
+        for (ProcessingInstruction pi : processingInstructions) {
+            if (key.equals(pi.getKey())) {
+                return pi.getValue().getNumberValue();
+            }
+        }
+        return defaultValue;
     }
 
     public static long priority(List<ProcessingInstruction> processingInstructions) {
@@ -60,8 +62,8 @@ public abstract class ProcessingInstructionHelper {
         return (int) getProcessingInstructionNumber(processingInstructions, ProcessingKey.NR_OF_RESULTS);
     }
 
-    public static String routingKey(List<ProcessingInstruction> processingInstructions) {
-        return getProcessingInstructionString(processingInstructions, ProcessingKey.ROUTING_KEY, "NoRoutingKey");
+    public static String routingKey(List<ProcessingInstruction> processingInstructions, String defaultRoutingKey) {
+        return getProcessingInstructionString(processingInstructions, ProcessingKey.ROUTING_KEY, defaultRoutingKey);
     }
 
     public static ProcessingInstruction timeout(long timeout) {

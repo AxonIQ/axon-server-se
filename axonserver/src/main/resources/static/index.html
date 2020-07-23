@@ -218,6 +218,8 @@
             class="fas fa-window-restore fa-2x"></i>Apps</a>
     <a href="#users" class="menu-users" v-if="admin"><i class="fas fa-users fa-2x"></i> Users</a>
     <a href="#context" class="menu-context" v-if="admin && hasFeature('MULTI_CONTEXT')"><i class="fas fa-sitemap fa-2x"></i> Contexts</a>
+    <a href="#replicationgroups" class="menu-replicationgroups" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
+            class="fas fa-clone fa-2x"></i>Replication groups</a>
     <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
     </span>
 </nav>

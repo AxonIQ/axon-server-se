@@ -13,7 +13,6 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -36,13 +35,19 @@ public interface EventStorageEngine {
 
     /**
      * Initializes the storage engine.
+     *
      * @param validate perform validations on the existing data
      */
-    void init(boolean validate);
+    void init(boolean validate, long defaultFirstIndex);
+
+    default void init(boolean validate) {
+        init(validate, 0L);
+    }
 
     /**
      * Stores a number of events.
      * Completes the returned completable future when the write is confirmed.
+     *
      * @param eventList list of events
      * @return completable future containing the token of the first stored event
      */
@@ -63,17 +68,24 @@ public interface EventStorageEngine {
     /**
      * Retrieves the last sequence number for a specific aggregate. In some implementations
      * searching for a non-existing aggregate may be an expensive operation, in which case you could
-     * provide {@link SearchHint} RECENT_ONLY, to only look for the aggregate in recent events (the exact meaning of recent
+     * provide {@link SearchHint} RECENT_ONLY, to only look for the aggregate in recent events (the exact meaning of
+     * recent
      * depends on the EventStorageEngine implementation)
      * Returns empty optional when aggregate is not found.
+     *
      * @param aggregateIdentifier the aggregate identifier
-     * @param searchHints flags to optimize serarch process
+     * @param searchHints         flags to optimize search process
      * @return the last sequence number
      */
     Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint... searchHints);
 
+    default Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegmentsHint, long maxTokenHint) {
+        return getLastSequenceNumber(aggregateIdentifier);
+    }
+
     /**
      * Close the storage engine. Free all resources used by the storage engine.
+     *
      * @param deleteData if true all event data is deleted
      */
     default void close(boolean deleteData) {
@@ -100,21 +112,24 @@ public interface EventStorageEngine {
      * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
      * @param aggregateId the aggregate identifier
      * @param minSequenceNumber the first sequence number to retrieve
-     * @param eventConsumer the consumer to apply for each event
+     * @param maxSequenceNumber the last sequence number to retrieve (exlusive)
+     * @param eventConsumer     the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long minSequenceNumber,
+    void processEventsPerAggregate(String aggregateId, long minSequenceNumber, long maxSequenceNumber, long minToken,
                                    Consumer<SerializedEvent> eventConsumer);
 
     /**
-     * Find events for an aggregate and execute the consumer for each event.
-     * @param aggregateId the aggregate identifier
+     * Find events for an aggregate and execute the consumer for each event. The event with the highest sequence number
+     * is returned first.
+     *
+     * @param aggregateId       the aggregate identifier
      * @param minSequenceNumber the first sequence number to retrieve
      * @param maxSequenceNumber the last sequence number to retrieve
-     * @param maxResults maximum number of events to apply
-     * @param eventConsumer the consumer to apply for each event
+     * @param maxResults        maximum number of events to apply
+     * @param eventConsumer     the consumer to apply for each event
      */
-    void processEventsPerAggregate(String aggregateId, long minSequenceNumber, long maxSequenceNumber,
-                                   int maxResults, Consumer<SerializedEvent> eventConsumer);
+    void processEventsPerAggregateHighestFirst(String aggregateId, long minSequenceNumber, long maxSequenceNumber,
+                                               int maxResults, Consumer<SerializedEvent> eventConsumer);
 
 
     /**
@@ -125,19 +140,21 @@ public interface EventStorageEngine {
 
     /**
      * Creates an iterator that iterates over the transactions stored in the storage engine.
+     *
      * @param firstToken first tracking token to include in the iterator
      * @param limitToken last tracking token to include in the iterator (exclusive)
      * @return iterator of transactions
      */
-    Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken);
+    CloseableIterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken);
 
     /**
-     * Iterates through the events and calls {@link Predicate} for each event. When the predicate returns false processing stops.
-     * @param minToken minumum token of events to process
-     * @param minTimestamp minimum timestamp of events to process
-     * @param consumer applied for each event
+     * Iterates through the events and calls {@link Predicate} for each event. When the predicate returns false
+     * processing stops.
+     *
+     * @param queryOptions
+     * @param consumer     applied for each event
      */
-    void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer);
+    void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer);
 
     /**
      * Gets filenames to back up for this storage engine. Only relevant for file based storage.

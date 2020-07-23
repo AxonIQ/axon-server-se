@@ -102,7 +102,7 @@ public class CommandOptions {
             .builder("r")
             .longOpt("role")
             .hasArg()
-            .desc("Role of the node (PRIMARY,MESSAGING_ONLY,ACTIVE_BACKUP,PASSIVE_BACKUP")
+            .desc("Role of the node (PRIMARY,MESSAGING_ONLY,ACTIVE_BACKUP,PASSIVE_BACKUP,SECONDARY")
             .build();
     /**
      * The name of the context.
@@ -115,42 +115,89 @@ public class CommandOptions {
             .desc("Name of the context")
             .build();
     /**
-     * Comma separated list of Axon Server node names as primary members for the context.
+     * The name of the replication group.
      */
-    public static final Option NODES = Option
+    public static final Option REPLICATIONGROUP = Option
+            .builder("g")
+            .longOpt("replication-group")
+            .required()
+            .hasArg()
+            .desc("Name of the replication group")
+            .build();
+
+    public static final Option CONTEXTREPLICATIONGROUP = Option
+            .builder("g")
+            .longOpt("replication-group")
+            .hasArg()
+            .desc("Name of the replication group")
+            .build();
+    /**
+     * Comma separated list of Axon Server node names as primary members for the replication group.
+     */
+    public static final Option PRIMARY_NODES = Option
             .builder("n")
             .longOpt("nodes")
             .hasArgs().valueSeparator(',')
             .required()
-            .desc("[Enterprise Edition only] primary member nodes for context")
+            .desc("Primary member nodes for replication group")
             .build();
     /**
-     * Comma separated list of Axon Server node names as active backup nodes for the context.
+     * Comma separated list of Axon Server node names as primary members for the replication group as created during
+     * create context.
+     */
+    public static final Option CONTEXT_PRIMARY_NODES = Option
+            .builder("n")
+            .longOpt("nodes")
+            .hasArgs().valueSeparator(',')
+            .desc("Primary member nodes for replication group when creating as part of context")
+            .build();
+    /**
+     * Comma separated list of Axon Server node names as active backup nodes for the replication group.
      */
     public static final Option ACTIVE_BACKUP_NODES = Option
             .builder("a")
             .longOpt("active-backup")
             .hasArgs().valueSeparator(',')
-            .desc("[Optional - Enterprise Edition only] active backup member nodes for context")
+            .desc("[Optional] active backup member nodes for replication group")
             .build();
     /**
-     * Comma separated list of Axon Server node names as passive backup nodes for the context.
+     * Comma separated list of Axon Server node names as passive backup nodes for the replication group.
      */
     public static final Option PASSIVE_BACKUP_NODES = Option
             .builder("p")
             .longOpt("passive-backup")
             .hasArgs().valueSeparator(',')
-            .desc("[Optional - Enterprise Edition only] passive backup member nodes for context")
+            .desc("[Optional] passive backup member nodes for replication group")
             .build();
     /**
-     * Comma separated list of Axon Server node names as messaging-only nodes for the context.
+     * Comma separated list of Axon Server node names as messaging-only nodes for the replication group.
      */
     public static final Option MESSAGING_ONLY_NODES = Option
             .builder("m")
             .hasArgs()
             .valueSeparator(',')
             .longOpt("messaging-only")
-            .desc("[Optional - Enterprise Edition only] messaging-only member nodes for context")
+            .desc("[Optional] messaging-only member nodes for replication group")
+            .build();
+    /**
+     * Comma separated list of Axon Server node names as secondary nodes for the replication group.
+     */
+    public static final Option SECONDARY_NODES = Option
+            .builder("s")
+            .hasArgs()
+            .valueSeparator(',')
+            .longOpt("secondary")
+            .desc("[Optional] secondary member nodes for replication group")
+            .build();
+    /**
+     * Properties that can be set on a context. Values are in the form name=value
+     */
+    public static final Option PROPERTIES = Option
+            .builder("prop")
+            .hasArgs()
+            .valueSeparator(',')
+            .longOpt("property")
+            .desc("[Optional] properties for a context (specify as name=value)")
             .build();
     /**
      * The name of the context, where the nodes should be added to.
@@ -159,7 +206,7 @@ public class CommandOptions {
             .builder("c")
             .longOpt("context")
             .hasArg()
-            .desc("[Optional - Enterprise Edition only] context to register node in")
+            .desc("[Optional] context to register node in")
             .build();
     /**
      * Indicator to register a node without adding it to any contexts.
@@ -167,7 +214,7 @@ public class CommandOptions {
     public static final Option DONT_REGISTER_IN_CONTEXTS = Option
             .builder()
             .longOpt("no-contexts")
-            .desc("[Optional - Enterprise Edition only] add node to cluster, but don't register it in any contexts")
+            .desc("[Optional] add node to cluster, but don't register it in any contexts")
             .build();
     /**
      * While removing a node from a context, preserve the event store to be able to add it again (with a different
@@ -177,7 +224,7 @@ public class CommandOptions {
     public static final Option PRESERVE_EVENT_STORE = Option
             .builder()
             .longOpt("preserve-event-store")
-            .desc("[Optional - Enterprise Edition only] keep event store contents")
+            .desc("[Optional] keep event store contents")
             .build();
     /**
      * The internal hostname of the AxonServer node to register the node to.
@@ -244,5 +291,14 @@ public class CommandOptions {
             .longOpt("output")
             .hasArg()
             .desc("Output format (txt,json)")
+            .build();
+    /**
+     * Output format for the command (text or json).
+     */
+    public static final Option FILE = Option
+            .builder("f")
+            .longOpt("file")
+            .hasArg()
+            .desc("license file to upload")
             .build();
 }

@@ -19,6 +19,9 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
 import org.springframework.data.util.CloseableIterator;
@@ -45,18 +48,29 @@ public class PrimaryEventStoreTest {
 
     @Before
     public void setUp() throws IOException {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
-        embeddedDBProperties.getEvent().setStorage(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+        });
+        embeddedDBProperties.getEvent().setStorage(
+                tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
         String context = "junit";
-        IndexManager indexManager = new IndexManager(context, embeddedDBProperties.getEvent());
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                                     EventType.EVENT,
+                                                                     meterFactory);
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
-        testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT), indexManager, eventTransformerFactory, embeddedDBProperties.getEvent());
-        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
-                                                             eventTransformerFactory,
-                                                             embeddedDBProperties.getEvent());
+        testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
+                                            indexManager,
+                                            eventTransformerFactory,
+                                            embeddedDBProperties.getEvent(),
+                                            meterFactory);
+        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
+                                                                 indexManager,
+                                                                 eventTransformerFactory,
+                                                                 embeddedDBProperties.getEvent(),
+                                                                 meterFactory);
         testSubject.next(second);
         testSubject.init(false);
     }
@@ -93,12 +107,12 @@ public class PrimaryEventStoreTest {
         testSubject.rollback(2);
         assertEquals(2, testSubject.getLastToken());
 
-        testSubject.initSegments(Long.MAX_VALUE);
+        testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(2, testSubject.getLastToken());
 
         storeEvent();
 
-        testSubject.initSegments(Long.MAX_VALUE);
+        testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(3, testSubject.getLastToken());
     }
 

@@ -1,0 +1,378 @@
+<!--
+  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~ under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+
+<script>
+    //# sourceURL=replicationGroups.js
+    globals.pageView = new Vue(
+            {
+                el: '#replicationGroups',
+                data: {
+                    replicationGroups: [],
+                    newReplicationGroup: {nodes: []},
+                    admin: globals.admin,
+                    webSocketInfo: globals.webSocketInfo,
+                    nodes: [],
+                    removeNodeData: {},
+                    deleteReplicationGroupData: {},
+                    confirmData: {},
+                    roles: []
+                }, mounted() {
+                    this.loadReplicationGroups();
+                    axios.get("v1/replicationgroups/roles").then(response => {
+                        this.roles = response.data;
+                    });
+                    axios.get("v1/public").then(response => {
+                        this.nodes = response.data;
+                        this.initNewReplicationGroup();
+                    });
+                    this.connect();
+                }, beforeDestroy() {
+                    if (this.subscription) {
+                        this.subscription.unsubscribe();
+                    }
+                }, methods: {
+                    initNewReplicationGroup() {
+                        this.newReplicationGroup.name = "";
+                        for (var a = 0; a < this.nodes.length; a++) {
+                            this.newReplicationGroup.nodes[a] = {
+                                name: this.nodes[a].name,
+                                selectedRole: "none"
+                            };
+                        }
+
+                    },
+                    deleteNodeFromReplicationGroup(node, replicationGroup) {
+                        if (replicationGroup.roles.length == 1) {
+                            alert("Cannot delete the last node from " + replicationGroup.name);
+                            return;
+                        } else {
+                            this.removeNodeData = {
+                                "node": node,
+                                "replicationGroup": replicationGroup.name,
+                                "preserveData": false
+                            };
+                            this.$modal.show('delete-node-from-replication-group');
+                        }
+                    },
+                    doDeleteNodeFromReplicationGroup() {
+                        axios.delete("v1/replicationgroups/" + this.removeNodeData.replicationGroup + "/"
+                                             + this.removeNodeData.node
+                                             + "?preserveEventStore=" + this.removeNodeData.preserveData).then(
+                                response => {
+                                    this.loadReplicationGroups();
+                                    this.hideModal('delete-node-from-replication-group');
+                                });
+                    },
+                    addNodeToReplicationGroup(replicationGroup) {
+                        if (!replicationGroup.selectedNode) {
+                            return;
+                        }
+                        if (this.containsSelectedNode(replicationGroup)) {
+                            alert("Node already linked to context");
+                            return;
+                        }
+
+                        let me = this;
+
+                        this.confirmData = {
+                            "title": "Add node",
+                            "message": "Add node " + replicationGroup.selectedNode + " to replication group "
+                                    + replicationGroup.name,
+                            "apply": function () {
+                                var queryString = "";
+                                if (replicationGroup.selectedRole) {
+                                    queryString = "?role=" + replicationGroup.selectedRole;
+                                }
+                                axios.post("v1/replicationgroups/" + replicationGroup.name + "/"
+                                                   + replicationGroup.selectedNode
+                                                   + queryString).then(
+                                        response => {
+                                            me.loadReplicationGroups();
+                                            me.hideModal("confirm");
+                                        }
+                                )
+
+                            }
+                        };
+                        this.$modal.show("confirm");
+                    },
+                    containsSelectedNode(replicationGroup) {
+                        for (var a = 0; a < replicationGroup.roles.length; a++) {
+                            if (replicationGroup.roles[a].name === replicationGroup.selectedNode) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    },
+                    loadReplicationGroups() {
+                        axios.get("v1/public/replicationgroups").then(response => {
+                            this.replicationGroups = response.data;
+                        });
+                    },
+                    createReplicationGroup() {
+                        if (!this.newReplicationGroup.name) {
+                            alert("No Replication Group Name set");
+                            return;
+                        }
+                        if (this.existsReplicationGroup()) {
+                            alert("Replication Group " + this.newReplicationGroup.name + " already exists");
+                            return;
+                        }
+                        let replicationGroup = {name: this.newReplicationGroup.name, roles: []};
+                        let primaryNode = false;
+                        for (var i = 0; i < this.newReplicationGroup.nodes.length; i++) {
+                            if (this.newReplicationGroup.nodes[i].selectedRole !== "none") {
+                                replicationGroup.roles.push({
+                                                                "node": this.newReplicationGroup.nodes[i].name,
+                                                                "role": this.newReplicationGroup.nodes[i].selectedRole,
+                                                            });
+                                if (this.newReplicationGroup.nodes[i].selectedRole === "PRIMARY") {
+                                    primaryNode = true;
+                                }
+                            }
+                        }
+
+                        if (!primaryNode) {
+                            alert("Select at least one node as primary node");
+                            return;
+                        }
+
+                        axios.post("v1/replicationgroups", replicationGroup).then(response => {
+                            this.initNewReplicationGroup();
+                            this.loadReplicationGroups();
+                        });
+                    },
+                    existsReplicationGroup() {
+                        for (let i = 0; i < this.replicationGroups.length; i++) {
+                            if (this.replicationGroups[i].name === this.newReplicationGroup.name) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    },
+                    deleteReplicationGroup(replicationGroup) {
+                        if (this.isInternalReplicationGroup(replicationGroup)) {
+                            alert("Cannot delete internal replication group")
+                        } else {
+                            this.deleteReplicationGroupData = {
+                                "name": replicationGroup.name,
+                                "retypeName": "",
+                                "preserveData": false
+                            };
+                            this.$modal.show('delete-replication-group');
+                        }
+                    },
+                    doDeleteReplicationGroup() {
+                        if (this.deleteReplicationGroupData.name === this.deleteReplicationGroupData.retypeName) {
+                            axios.delete("v1/replicationgroups/" + this.deleteReplicationGroupData.name
+                                                 + "?preserveEventStore="
+                                                 + this.deleteReplicationGroupData.preserveData).then(
+                                    response => {
+                                        this.loadReplicationGroups();
+                                        this.hideModal('delete-replication-group');
+                                    }
+                            )
+                        } else {
+                            alert('Invalid replication group name');
+                        }
+                    },
+                    hideModal(name) {
+                        this.$modal.hide(name);
+                    },
+                    connect() {
+                        let me = this;
+                        me.webSocketInfo.subscribe('/topic/cluster', function () {
+                            me.loadReplicationGroups();
+                        }, function (sub) {
+                            me.subscription = sub;
+                        });
+                    },
+                    isInternalReplicationGroup(replicationGroup) {
+                        return replicationGroup.name.charAt(0) === '_';
+                    }
+                }
+            });
+
+</script>
+<span id="replicationGroups">
+    <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
+                <div class="results singleHeader">
+
+        <table>
+            <thead>
+            <tr>
+                <th class="contextColumn">Replication Group Name</th>
+                <th class="nodesColumn">Nodes</th>
+                <th class="contextColumn">Contexts</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="replicationGroup in replicationGroups">
+                <td>{{replicationGroup.name}}
+                    <span v-if="replicationGroup.changePending" title="Pending change"><i
+                            class="fas fa-exclamation-circle"></i></span>
+                    <span @click="deleteReplicationGroup(replicationGroup)"
+                          v-if="admin && !isInternalReplicationGroup(replicationGroup)"
+                          title="Delete Replication Group">
+                        <i class="far fa-trash-alt"></i>
+                    </span>
+                </td>
+                <td>
+                    <ul>
+                        <li v-for="node in replicationGroup.roles">
+                            <span class="nodeName">{{node.node}}</span>
+                            <span class="nodeRoleName">{{node.role}}</span>
+                            <span v-if="admin && replicationGroup.roles.length > 1"
+                                  @click="deleteNodeFromReplicationGroup(node.node,replicationGroup)"
+                                  title="Delete"><i
+                                    class="far fa-trash-alt"></i></span></li>
+                    </ul>
+                    <span v-if="admin">
+                    <select class="nodeName" v-model="replicationGroup.selectedNode">
+                        <option v-for="n in nodes">{{n.name}}</option>
+                    </select>
+                    <select class="nodeRoleName" v-model="replicationGroup.selectedRole">
+                        <option v-for="n in roles">{{n}}</option>
+                    </select>
+                    <span @click="addNodeToReplicationGroup(replicationGroup)" title="Add"><i
+                            class="fas fa-plus"></i></span>
+                </span>
+                </td>
+                <td>
+                    <ul>
+                        <li v-for="context in replicationGroup.contexts">
+                            <span class="nodeName">{{context.context}}</span>
+                        </li>
+                    </ul>
+                </td>
+
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+    <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
+        Multi-context is not allowed
+    </div>
+
+    <section id="applicationDetails" v-if="admin && hasFeature('MULTI_CONTEXT')">
+    <div class="column configuration">
+        <form id="contextForm">
+                    <ul>
+                        <li>
+                            <span class="narrow">Replication Group Name</span>
+                            <span><input v-model="newReplicationGroup.name"/></span>
+                        </li>
+                        <li>
+                            <span class="narrow">Nodes</span>
+                            <span>
+                                <div v-for="node in newReplicationGroup.nodes">
+                                    <span class="nodeName">{{node.name}}</span>
+                                    <select class="nodeRoleName" v-model="node.selectedRole">
+                                        <option value="none">-- none --</option>
+                                        <option v-for="n in roles" :value="n">{{n}}</option>
+                                    </select>
+                                </div>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="narrow">&nbsp;</span>
+                            <span><button @click.prevent="createReplicationGroup()" class="button">Save</button></span>
+                        </li>
+                    </ul>
+                </form>
+            </div>
+    </section>
+
+    <modal name="delete-node-from-replication-group" width="500" height="250">
+            <div id="remove-node" class="column configuration modal">
+                <h2>Remove node from replication group</h2>
+
+                <form>
+                    <ul>
+                        <li>
+                            <span>Replication group</span>
+                            <span><input disabled v-model="removeNodeData.replicationGroup"/></span>
+                        </li>
+                        <li>
+                            <span>Node</span>
+                            <span><input disabled v-model="removeNodeData.node"/></span>
+                        </li>
+                        <li>
+                            <span>Preserve Event Stores</span>
+                            <span><input type="checkbox" v-model="removeNodeData.preserveData"/></span>
+                        </li>
+                        <li>
+                            <span>&nbsp;</span>
+                            <span>
+                                <button @click.prevent="doDeleteNodeFromReplicationGroup()"
+                                        class="button">Remove</button>
+                                <button @click.prevent="hideModal('delete-node-from-replication-group')"
+                                        class="button">Cancel</button>
+                            </span>
+                        </li>
+                    </ul>
+                </form>
+
+            </div>
+    </modal>
+    <modal name="delete-replication-group" width="600" height="270">
+            <div class="column configuration modal">
+                <h2>Delete replication group {{deleteReplicationGroupData.name}}</h2>
+                <p>
+                    This will delete all data for this replication group. Please re-type the name of the replication group to delete to continue.
+                </p>
+                <form>
+                    <ul>
+                        <li>
+                            <span>Replication Group Name</span>
+                            <span><input v-model="deleteReplicationGroupData.retypeName"/></span>
+                        </li>
+                        <li>
+                            <span>Preserve Event Stores</span>
+                            <span><input type="checkbox" v-model="deleteReplicationGroupData.preserveData"/></span>
+                        </li>
+                        <li>
+                            <span></span>
+                        </li>
+                        <li>
+                            <span>&nbsp;</span>
+                            <span>
+                                <button @click.prevent="doDeleteReplicationGroup()" class="button">Delete</button>
+                                <button @click.prevent="hideModal('delete-replication-group')"
+                                        class="button">Cancel</button>
+                            </span>
+                        </li>
+                    </ul>
+                </form>
+
+            </div>
+    </modal>
+    <modal name="confirm" width="450" height="220">
+            <div class="column configuration modal">
+                <h2>{{confirmData.title}}</h2>
+                <p>
+                    {{confirmData.message}}
+                </p>
+                <form>
+                    <ul>
+                        <li>
+                            <span>&nbsp;</span>
+                            <span>
+                                <button @click.prevent="confirmData.apply()" class="button">OK</button>
+                                <button @click.prevent="hideModal('confirm')" class="button">Cancel</button>
+                            </span>
+                        </li>
+                    </ul>
+                </form>
+
+            </div>
+    </modal>
+</span>

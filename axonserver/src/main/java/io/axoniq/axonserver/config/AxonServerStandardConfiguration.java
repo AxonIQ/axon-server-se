@@ -24,12 +24,12 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
-import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
+import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
+import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.file.DatafileEventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.LowMemoryEventStoreFactory;
+import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
@@ -38,9 +38,10 @@ import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricCollector;
-import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
+import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
 import io.axoniq.axonserver.taskscheduler.TaskRepository;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
@@ -96,9 +97,14 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
-    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties, EventTransformerFactory eventTransformerFactory,
-                                               StorageTransactionManagerFactory storageTransactionManagerFactory) {
-        return new LowMemoryEventStoreFactory(embeddedDBProperties, eventTransformerFactory, storageTransactionManagerFactory);
+    public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
+                                               EventTransformerFactory eventTransformerFactory,
+                                               StorageTransactionManagerFactory storageTransactionManagerFactory,
+                                               MeterFactory meterFactory) {
+        return new StandardEventStoreFactory(embeddedDBProperties,
+                                             eventTransformerFactory,
+                                             storageTransactionManagerFactory,
+                                             meterFactory);
     }
 
     @Bean
@@ -133,16 +139,17 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(EventStoreExistChecker.class)
-    public EventStoreExistChecker eventStoreExistChecker(EmbeddedDBProperties embeddedDBProperties) {
-        return new DatafileEventStoreExistChecker(embeddedDBProperties);
+    @ConditionalOnMissingBean(EventSchedulerGrpc.EventSchedulerImplBase.class)
+    public AxonServerClientService eventSchedulerService(StandaloneTaskManager localTaskManager,
+                                                         TaskPayloadSerializer taskPayloadSerializer) {
+        logger.info("Creating SE EventSchedulerService");
+        return new EventSchedulerService(localTaskManager, taskPayloadSerializer);
     }
 
     @Bean
-    @ConditionalOnMissingBean(EventSchedulerGrpc.EventSchedulerImplBase.class)
-    public AxonServerClientService eventSchedulerService(StandaloneTaskManager localTaskManager) {
-        logger.info("Creating SE EventSchedulerService");
-        return new EventSchedulerService(localTaskManager);
+    @ConditionalOnMissingBean(EventDecorator.class)
+    public EventDecorator eventDecorator() {
+        return new DefaultEventDecorator();
     }
 
     @Bean

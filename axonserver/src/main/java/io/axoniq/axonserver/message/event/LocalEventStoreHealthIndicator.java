@@ -35,7 +35,7 @@ public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
         builder.up();
         clusterController.getMyContextNames().forEach(context -> {
             try {
-                builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastToken(context));
+                builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastEvent(context));
                 builder.withDetail(String.format("%s.lastSnapshot", context), localEventStore.getLastSnapshot(context));
                 builder.withDetail(String.format("%s.waitingEventTransactions", context),
                                    localEventStore.getWaitingEventTransactions(context));

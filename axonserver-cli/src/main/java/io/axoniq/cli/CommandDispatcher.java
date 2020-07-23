@@ -25,6 +25,7 @@ public class CommandDispatcher {
 
     enum Group {
         APPLICATION(true, false, "Applications"),
+        REPLICATIONGROUP(true, false, "Replication Group"),
         CLUSTER(true, false, "Cluster"),
         CONTEXT(true, false, "Context"),
         METRICS(true, true, "Metrics"),
@@ -83,12 +84,23 @@ public class CommandDispatcher {
         executorMap.put("add-node-to-context", new CommandInformation(Group.CONTEXT, AddNodeToContext::run));
         executorMap.put("delete-node-from-context", new CommandInformation(Group.CONTEXT, DeleteNodeFromContext::run));
         executorMap.put("contexts", new CommandInformation(Group.CONTEXT, ListContexts::run));
+        executorMap.put("register-replication-group",
+                        new CommandInformation(Group.REPLICATIONGROUP, RegisterReplicationGroup::run));
+        executorMap.put("delete-replication-group",
+                        new CommandInformation(Group.REPLICATIONGROUP, DeleteReplicationGroup::run));
+        executorMap.put("add-node-to-replication-group",
+                        new CommandInformation(Group.REPLICATIONGROUP, AddNodeToReplicationGroup::run));
+        executorMap.put("delete-node-from-replication-group",
+                        new CommandInformation(Group.REPLICATIONGROUP, DeleteNodeFromReplicationGroup::run));
+        executorMap.put("replication-groups",
+                        new CommandInformation(Group.REPLICATIONGROUP, ListReplicationGroups::run));
         executorMap.put("register-user", new CommandInformation(Group.USER, RegisterUser::run));
         executorMap.put("delete-user", new CommandInformation(Group.USER, DeleteUser::run));
         executorMap.put("users", new CommandInformation(Group.USER, ListUsers::run));
         executorMap.put("metrics", new CommandInformation(Group.METRICS, Metrics::run));
         executorMap.put("init-cluster", new CommandInformation(Group.CLUSTER, InitNode::run));
         executorMap.put("purge-events", new CommandInformation(Group.OTHER, DeleteEvents::run));
+        executorMap.put("update-license", new CommandInformation(Group.CLUSTER, UpdateLicense::run));
     }
 
     public static void main(String[] args)  {

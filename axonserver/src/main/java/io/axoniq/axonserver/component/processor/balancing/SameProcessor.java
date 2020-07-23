@@ -9,40 +9,54 @@
 
 package io.axoniq.axonserver.component.processor.balancing;
 
+import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 /**
  * Predicate which checks if a {@link ClientProcessor} belongs to specific event processor
+ *
  * @author Sara Pellegrini
  * @since 4.0
  */
 public class SameProcessor implements Predicate<ClientProcessor> {
 
-    private final Supplier<String> context;
+    private final String context;
 
-    private final Supplier<String> processorName;
+    private final EventProcessorIdentifier eventProcessorIdentifier;
 
     /**
-     * Creates an instance with specified {@link TrackingEventProcessor}
+     * Creates an instance for the specified {@link TrackingEventProcessor}
      *
      * @param processor the tracking event processor
      */
     public SameProcessor(TrackingEventProcessor processor) {
-        this(processor::context, processor::name);
+        this(processor.context(), new EventProcessorIdentifier(processor.name(), processor.tokenStoreIdentifier()));
     }
 
     /**
-     * Creates an instance with specified context and processor name.
+     * Creates an instance for the specified context and {@link ClientProcessor}.
      *
-     * @param context       the context of the event processor
-     * @param processorName the name of the event processor
+     * @param context         the context of the client processor
+     * @param clientProcessor the event processor instance
      */
-    public SameProcessor(Supplier<String> context, Supplier<String> processorName) {
+    public SameProcessor(String context, ClientProcessor clientProcessor) {
+        this(context, new EventProcessorIdentifier(clientProcessor.eventProcessorInfo().getProcessorName(),
+                                                   clientProcessor.eventProcessorInfo().getTokenStoreIdentifier()));
+    }
+
+
+    /**
+     * Creates an instance for the specified context and {@link EventProcessorIdentifier}
+     *
+     * @param context                  the context of the event processor
+     * @param eventProcessorIdentifier the identifier of the event processor
+     */
+    public SameProcessor(String context, EventProcessorIdentifier eventProcessorIdentifier) {
         this.context = context;
-        this.processorName = processorName;
+        this.eventProcessorIdentifier = eventProcessorIdentifier;
     }
 
     /**
@@ -54,7 +68,8 @@ public class SameProcessor implements Predicate<ClientProcessor> {
      */
     @Override
     public boolean test(ClientProcessor processor) {
-        return processor.belongsToContext(context.get()) &&
-                processor.eventProcessorInfo().getProcessorName().equals(processorName.get());
+        EventProcessorInfo i = processor.eventProcessorInfo();
+        EventProcessorIdentifier id = new EventProcessorIdentifier(i.getProcessorName(), i.getTokenStoreIdentifier());
+        return processor.belongsToContext(context) && id.equals(eventProcessorIdentifier);
     }
 }

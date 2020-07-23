@@ -193,6 +193,9 @@ h2,h3{
 	h2{
 		font-size: 24px;
 		line-height: 36px;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
 	}
 	h3{
 		font-size: 18px;
@@ -201,13 +204,19 @@ h2,h3{
 
 input[type="text"],
 input[type="password"],
-input[type="search"]{
+input[type="search"] {
 	border: 1px solid #a1a4aa;
 	border-radius: 4px;
 	padding: 12px 18px 13px 18px;
 	font-size: 16px;
 }
-.button{
+
+.userPassword {
+	padding: 2px 2px 2px 2px;
+
+}
+
+.button {
 	padding: 13px 32px 14px 32px;
 	font-size: 16px;
 	border-radius: 4px;
@@ -215,7 +224,8 @@ input[type="search"]{
 	border: none;
 	color: #fff;
 }
-.button-reset{
+
+.button-reset {
 	padding: 14px 14px 14px 14px;
 	font-size: 12px;
 	border-radius: 4px;
@@ -623,8 +633,8 @@ ul {
 }
 
 select {
-	font-family: Lato, sans-serif;
-	font-size: 16px;
+    font-family: Lato, sans-serif;
+    font-size: 14px;
 }
 
 #applicationDetails, #userDetails {
@@ -675,15 +685,38 @@ select {
     margin-top: 20px;
 }
 
-@media only screen and (max-width: 1024px){
-	.column-wrapper{
-		display: block;
-		margin: 20px 0;
-	}
-		.column{
-			display: block;
-			border: none;
-		}
+.propertyName {
+    width: 100%;
+}
+
+.propertyValue {
+	width: 95%;
+}
+
+.nestedTable td {
+    border-top: none;
+    padding-top: 0;
+    padding-bottom: 2px;
+    padding-left: 0;
+}
+
+.nestedTable th {
+    border-top: none;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 0;
+}
+
+@media only screen and (max-width: 1024px) {
+    .column-wrapper {
+        display: block;
+        margin: 20px 0;
+    }
+
+    .column {
+        display: block;
+        border: none;
+    }
 		.configuration,
 		.status,
 		.license{

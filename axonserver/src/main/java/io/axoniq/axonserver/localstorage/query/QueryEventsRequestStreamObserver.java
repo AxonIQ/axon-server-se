@@ -9,18 +9,23 @@
 
 package io.axoniq.axonserver.localstorage.query;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.ColumnsResponse;
 import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.QueryValue;
 import io.axoniq.axonserver.grpc.event.RowResponse;
+import io.axoniq.axonserver.localstorage.AggregateReader;
+import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
+import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.query.result.AbstractMapExpressionResult;
@@ -31,7 +36,10 @@ import io.axoniq.axonserver.localstorage.query.result.MapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.NumericExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.TimestampExpressionResult;
 import io.axoniq.axonserver.queryparser.EventStoreQueryParser;
+import io.axoniq.axonserver.queryparser.FunctionExpr;
+import io.axoniq.axonserver.queryparser.Numeric;
 import io.axoniq.axonserver.queryparser.Query;
+import io.axoniq.axonserver.queryparser.QueryElement;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +47,7 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -57,28 +66,36 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEventsRequest> {
 
+    public static final int TIME_WINDOW_FIELD = 100;
+    public static final String TIME_WINDOW_CUSTOM = "custom";
     private static final Logger logger = LoggerFactory.getLogger(QueryEventsRequestStreamObserver.class);
 
     private static final ScheduledExecutorService senderService = Executors.newScheduledThreadPool(3,
                                                                                                    new CustomizableThreadFactory(
                                                                                                            "ad-hoc-query-"));
+    public static final String COLUMN_NAME_TOKEN = "token";
 
     private final EventWriteStorage eventWriteStorage;
     private final EventStreamReader eventStreamReader;
+    private final AggregateReader aggregateReader;
     private final long defaultLimit;
     private final long timeout;
+    private final EventDecorator eventDecorator;
     private final StreamObserver<QueryEventsResponse> responseObserver;
+    private final AtomicReference<Sender> senderRef = new AtomicReference<>();
     private volatile Registration registration;
     private volatile Pipeline pipeLine;
-    private final AtomicReference<Sender> senderRef = new AtomicReference<>();
 
     public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader,
-                                            long defaultLimit, long timeout,
+                                            AggregateReader aggregateReader,
+                                            long defaultLimit, long timeout, EventDecorator eventDecorator,
                                             StreamObserver<QueryEventsResponse> responseObserver) {
         this.eventWriteStorage = eventWriteStorage;
         this.eventStreamReader = eventStreamReader;
+        this.aggregateReader = aggregateReader;
         this.defaultLimit = defaultLimit;
         this.timeout = timeout;
+        this.eventDecorator = eventDecorator;
         this.responseObserver = responseObserver;
     }
 
@@ -93,31 +110,74 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 }
                 return s;
             });
-            if(sender.start()) {
+            if (sender.start()) {
                 long connectionToken = eventStreamReader.getLastToken();
+                long maxToken = Long.MAX_VALUE;
                 long minConnectionToken = StringUtils.isEmpty(queryEventsRequest.getQuery()) ? Math.max(
                         connectionToken - defaultLimit, 0) : 0;
                 String queryString = StringUtils.isEmpty(queryEventsRequest.getQuery()) ?
                         "token >= " + minConnectionToken + "| sortby(token)" : queryEventsRequest.getQuery();
+                String timeWindow = getTimeWindow(queryEventsRequest);
+                if (!TIME_WINDOW_CUSTOM.equals(timeWindow)) {
+                    queryString = queryString + " | " + timeWindow;
+                }
 
                 Query query = new EventStoreQueryParser().parse(queryString);
                 query.addDefaultLimit(defaultLimit);
+                String aggregateIdentifier = null;
+                for (int i = 0; i < query.size(); i++) {
+                    if (query.get(i) instanceof FunctionExpr) {
+                        FunctionExpr functionExpr = (FunctionExpr) query.get(i);
+                        if (isProjectOperation(functionExpr.operator())) {
+                            break;
+                        }
+                        if (COLUMN_NAME_TOKEN.equals(functionExpr.getParameters().get(0).getLiteral()) &&
+                                operatorIn(functionExpr.operator(), "=", ">", ">=")) {
+                            minConnectionToken = getValueAsLong(minConnectionToken,
+                                                                functionExpr.getParameters().get(1));
+                        }
+                        if (COLUMN_NAME_TOKEN.equals(functionExpr.getParameters().get(0).getLiteral()) &&
+                                operatorIn(functionExpr.operator(), "<", "<=", "=")) {
+                            maxToken = getValueAsLong(maxToken, functionExpr.getParameters().get(1));
+                        }
+                        if ("aggregateIdentifier".equals(functionExpr.getParameters().get(0).getLiteral()) &&
+                                "=".equals(functionExpr.operator())) {
+                            aggregateIdentifier = functionExpr.getParameters().get(1).getLiteral();
+                        }
+                    }
+                }
                 logger.info("Executing query: {}", query);
-
                 pipeLine = new QueryProcessor().buildPipeline(query, this::send);
-                sendColumns(pipeLine);
-                if (queryEventsRequest.getLiveEvents()) {
+                sendColumns(pipeLine, aggregateIdentifier != null);
+                if (queryEventsRequest.getLiveEvents() && maxToken > connectionToken) {
                     registration = eventWriteStorage.registerEventListener((token, events) -> pushEventFromStream(token,
                                                                                                                   events,
                                                                                                                   pipeLine));
                 }
-                senderService.submit(() -> {
-                    eventStreamReader.query(minConnectionToken,
-                                            query.getStartTime(),
-                                            event -> pushEvent(event, pipeLine));
-                    Optional.ofNullable(senderRef.get())
-                            .ifPresent(Sender::completed);
-                });
+                if (aggregateIdentifier == null) {
+                    QueryOptions queryOptions = new QueryOptions(minConnectionToken, maxToken, query.getStartTime());
+                    senderService.submit(() -> {
+                        eventStreamReader.query(queryOptions,
+                                                event -> pushEvent(event, pipeLine));
+                        Optional.ofNullable(senderRef.get())
+                                .ifPresent(Sender::completed);
+                    });
+                } else {
+                    String finalAggregateIdentifier = aggregateIdentifier;
+                    senderService.submit(() -> {
+                        aggregateReader.readEvents(finalAggregateIdentifier, false, 0, serializedEvent -> {
+                            Event event = serializedEvent.asEvent();
+                            if (event.getTimestamp() >= query.getStartTime()) {
+                                pushEvent(EventWithToken.newBuilder()
+                                                        .setEvent(event)
+                                                        .setToken(event.getAggregateSequenceNumber())
+                                                        .build(), pipeLine);
+                            }
+                        });
+                        Optional.ofNullable(senderRef.get())
+                                .ifPresent(Sender::completed);
+                    });
+                }
             } else {
                 Optional.ofNullable(senderRef.get())
                         .ifPresent(s -> s.addPermits(queryEventsRequest.getNumberOfPermits()));
@@ -126,6 +186,46 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             responseObserver.onError(pe);
             senderRef.set(null);
         }
+    }
+
+    private long getValueAsLong(long maxToken, QueryElement value) {
+        if (value instanceof Numeric) {
+            try {
+                maxToken = Long.parseLong(value.getLiteral());
+            } catch (NumberFormatException ignore) {
+                // ignore exception as this code is for optimization only
+            }
+        }
+        return maxToken;
+    }
+
+    private boolean operatorIn(String operator, String... choices) {
+        for (String choice : choices) {
+            if (choice.equals(operator)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isProjectOperation(String operator) {
+        return "count".equals(operator)
+                || "min".equals(operator)
+                || "max".equals(operator)
+                || "avg".equals(operator)
+                || "sum".equals(operator)
+                || "select".equals(operator)
+                || "groupby".equals(operator);
+    }
+
+    private String getTimeWindow(QueryEventsRequest queryEventsRequest) {
+        List<ByteString> timeWindowList = queryEventsRequest.getUnknownFields().getField(TIME_WINDOW_FIELD)
+                                                            .getLengthDelimitedList();
+        if (timeWindowList.isEmpty()) {
+            return TIME_WINDOW_CUSTOM;
+        }
+
+        return timeWindowList.get(0).toStringUtf8();
     }
 
     private void pushEventFromStream(long firstToken, List<SerializedEvent> events, Pipeline pipeLine) {
@@ -159,7 +259,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             return false;
         }
         try {
-            return pipeLine.process(new DefaultQueryResult(new EventExpressionResult(event)));
+            return pipeLine.process(new DefaultQueryResult(new EventExpressionResult(eventDecorator
+                                                                                             .decorateEventWithToken(
+                                                                                                     event))));
         } catch (RuntimeException re) {
             try {
                 cancelRegistration();
@@ -171,9 +273,17 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
     }
 
-    private void sendColumns(Pipeline pipeLine) {
+    private void sendColumns(Pipeline pipeLine, boolean hideToken) {
         Optional.ofNullable(senderRef.get())
-                .ifPresent(sender -> sender.sendColumnNames(pipeLine.columnNames(EventExpressionResult.COLUMN_NAMES)));
+                .ifPresent(sender -> {
+                    if (hideToken) {
+                        List<String> names = new ArrayList<>(pipeLine.columnNames(EventExpressionResult.COLUMN_NAMES));
+                        names.remove("token");
+                        sender.sendColumnNames(names);
+                    } else {
+                        sender.sendColumnNames(pipeLine.columnNames(EventExpressionResult.COLUMN_NAMES));
+                    }
+                });
     }
 
     private boolean send(QueryResult exp) {
@@ -209,10 +319,10 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         private final Map<Object, QueryResult> messages = new HashMap<>();
         private final AtomicLong generatedId = new AtomicLong(0);
         private final AtomicLong permits;
+        private final AtomicBoolean started = new AtomicBoolean(false);
         private ScheduledFuture<?> sendTask;
         private List<String> columns;
         private volatile QueryEventsResponse completeMessage;
-        private final AtomicBoolean started = new AtomicBoolean(false);
 
         public Sender(long permits, boolean liveUpdates, long deadline) {
             this.liveUpdates = liveUpdates;

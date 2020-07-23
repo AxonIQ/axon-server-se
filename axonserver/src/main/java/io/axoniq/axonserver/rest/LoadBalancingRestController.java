@@ -57,36 +57,31 @@ public class LoadBalancingRestController {
     }
 
     @GetMapping("processors/loadbalance/strategies/factories")
-    public Set<String> getLoadBalancingStrategyFactoryBean(final Principal principal){
+    public Set<String> getLoadBalancingStrategyFactoryBean(final Principal principal) {
         auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));
 
         return strategyController.getFactoryBeans();
     }
 
-    @PatchMapping("components/{component}/processors/{processor}/loadbalance")
-    @Deprecated
-    public void loadBalance(@PathVariable("component") String component,
-                            @PathVariable("processor") String processor,
-                            @RequestParam("context") String context,
-                            @RequestParam("strategy") String strategyName,
-                            final Principal principal) {
-        auditLog.debug("[{}@{}] Request to set load-balancing strategy for processor \"{}\" in component \"{}\" to \"{}\", using a deprecated API.",
-                       AuditLog.username(principal), context,
-                       processor, component, strategyName);
-
-        loadBalance(processor, component, strategyName, principal);
-    }
-
+    /**
+     * Balance the load for the specified event processor among the connected client.
+     *
+     * @param processor            the event processor name
+     * @param context              the principal context of the event processor
+     * @param tokenStoreIdentifier the token store identifier of the event processor
+     * @param strategyName         the strategy to be used to balance the load
+     */
     @PatchMapping("processors/{processor}/loadbalance")
-    public void loadBalance(@PathVariable("processor") String processor,
-                            @RequestParam("context") String context,
-                            @RequestParam("strategy") String strategyName,
-                            final Principal principal) {
+    public void balanceProcessorLoad(@PathVariable("processor") String processor,
+                                     @RequestParam("context") String context,
+                                     @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                     @RequestParam("strategy") String strategyName,
+                                     final Principal principal) {
         auditLog.debug("[{}@{}] Request to set load-balancing strategy for processor \"{}\" to \"{}\".",
                        AuditLog.username(principal), context,
                        processor, strategyName);
 
-        TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context);
+        TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context, tokenStoreIdentifier);
         processorLoadBalanceStrategy.balance(trackingProcessor, strategyName).perform();
     }
 }

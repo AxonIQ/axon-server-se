@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.rest;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.UnknownFieldSet;
 import io.axoniq.axonserver.grpc.event.ColumnsResponse;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
@@ -30,11 +32,14 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import static io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver.TIME_WINDOW_FIELD;
+
 /**
  * @author Marc Gathier
  */
 @Component
 public class HttpStreamingQuery {
+
     private final Logger logger = LoggerFactory.getLogger(HttpStreamingQuery.class);
     private final ConcurrentMap<String, Sender> senderPerClient = new ConcurrentHashMap<>();
     private final EventStoreLocator eventStoreManager;
@@ -44,21 +49,22 @@ public class HttpStreamingQuery {
     }
 
     @Async
-    public void query(String context, String queryString, String clientToken, SseEmitter sseEmitter) {
+    public void query(String context, String queryString, String timeWindow, boolean liveUpdates,
+                      boolean forceReadFromLeader, String clientToken, SseEmitter sseEmitter) {
         Sender oldSender = senderPerClient.remove(clientToken);
-        if( oldSender != null) {
+        if (oldSender != null) {
             logger.debug("Stopping sender for {}", clientToken);
             oldSender.stop();
         }
         try {
-            EventStore eventStore =eventStoreManager.getEventStore(context);
-            if( eventStore == null) {
+            EventStore eventStore = eventStoreManager.getEventStore(context, forceReadFromLeader);
+            if (eventStore == null) {
                 sseEmitter.send(SseEmitter.event().name("error").data("No leader for context: " + context));
                 sseEmitter.complete();
                 return;
             }
-            Sender sender = new Sender(sseEmitter, eventStore, context, queryString);
-            senderPerClient.put( clientToken, sender);
+            Sender sender = new Sender(sseEmitter, eventStore, context, queryString, timeWindow, liveUpdates);
+            senderPerClient.put(clientToken, sender);
             sseEmitter.onTimeout(sender::stop);
         } catch (Exception e) {
             try {
@@ -72,17 +78,21 @@ public class HttpStreamingQuery {
     }
 
     private class Sender {
+
         private final SseEmitter sseEmitter;
         private final StreamObserver<QueryEventsRequest> querySender;
         private volatile boolean closed;
 
-        public Sender( SseEmitter sseEmitter, EventStore eventStore, String context, String query) {
+        public Sender(SseEmitter sseEmitter, EventStore eventStore, String context, String query, String timeWindow,
+                      boolean liveUpdates) {
             this.sseEmitter = sseEmitter;
             this.querySender = eventStore.queryEvents(context, new StreamObserver<QueryEventsResponse>() {
                 @Override
                 public void onNext(QueryEventsResponse queryEventsResponse) {
                     try {
-                        if( closed) return;
+                        if (closed) {
+                            return;
+                        }
                         switch (queryEventsResponse.getDataCase()) {
                             case COLUMNS:
                                 emitColumns(queryEventsResponse.getColumns());
@@ -119,16 +129,32 @@ public class HttpStreamingQuery {
                     sseEmitter.complete();
                 }
             });
-            querySender.onNext(QueryEventsRequest.newBuilder().setLiveEvents(true).setNumberOfPermits(Long.MAX_VALUE).setQuery(query).build());
+
+            querySender.onNext(QueryEventsRequest.newBuilder()
+                                                 .setLiveEvents(liveUpdates)
+                                                 .setNumberOfPermits(Long.MAX_VALUE)
+                                                 .setForceReadFromLeader(liveUpdates)
+                                                 .setQuery(query)
+                                                 .setUnknownFields(UnknownFieldSet.newBuilder()
+                                                                                  .addField(TIME_WINDOW_FIELD,
+                                                                                            UnknownFieldSet.Field
+                                                                                                    .newBuilder()
+                                                                                                    .addLengthDelimited(
+                                                                                                            ByteString
+                                                                                                                    .copyFromUtf8(
+                                                                                                                            timeWindow))
+                                                                                                    .build())
+                                                                                  .build())
+                                                 .build());
         }
 
         private void emitCompleted() throws IOException {
             sseEmitter.send(SseEmitter.event().name("done").data("Done"));
         }
 
-        private void emitRows(RowResponse row) throws IOException, JSONException {
+        private void emitRows(RowResponse row) throws IOException {
             JSONObject jsonObject = new JSONObject();
-            if( row.getIdValuesCount() > 0) {
+            if (row.getIdValuesCount() > 0) {
                 JSONArray array = new JSONArray();
                 row.getIdValuesList().forEach(qv -> addToArray(qv, array));
                 jsonObject.put("idValues", array);
