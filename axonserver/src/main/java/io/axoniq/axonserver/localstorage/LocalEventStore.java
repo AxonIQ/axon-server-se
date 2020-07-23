@@ -471,6 +471,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         Workers workers = workers(context);
         return new QueryEventsRequestStreamObserver(workers.eventWriteStorage,
                                                     workers.eventStreamReader,
+                                                    workers.aggregateReader,
                                                     defaultLimit,
                                                     timeout,
                                                     eventDecorator,

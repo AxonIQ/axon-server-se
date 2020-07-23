@@ -14,6 +14,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
@@ -156,36 +157,46 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
 
     @Override
-    public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
+    public void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer) {
         for (long segment : getSegments()) {
-            Optional<EventSource> eventSource = getEventSource(segment);
-            AtomicBoolean done = new AtomicBoolean();
-            eventSource.ifPresent(e -> {
-                long minTimestampInSegment = Long.MAX_VALUE;
-                EventInformation eventWithToken;
-                EventIterator iterator = createEventIterator(e, segment, segment);
-                while (iterator.hasNext()) {
-                    eventWithToken = iterator.next();
-                    minTimestampInSegment = Math.min(minTimestampInSegment, eventWithToken.getEvent().getTimestamp());
-                    if (eventWithToken.getToken() >= minToken
-                            && eventWithToken.getEvent().getTimestamp() >= minTimestamp
-                            && !consumer.test(eventWithToken.asEventWithToken())) {
-                        iterator.close();
-                        return;
+            if (segment <= queryOptions.getMaxToken()) {
+                Optional<EventSource> eventSource = getEventSource(segment);
+                AtomicBoolean done = new AtomicBoolean();
+                eventSource.ifPresent(e -> {
+                    long minTimestampInSegment = Long.MAX_VALUE;
+                    EventInformation eventWithToken;
+                    EventIterator iterator = createEventIterator(e, segment, segment);
+                    while (iterator.hasNext()) {
+                        eventWithToken = iterator.next();
+                        minTimestampInSegment = Math.min(minTimestampInSegment,
+                                                         eventWithToken.getEvent().getTimestamp());
+                        if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
+                            iterator.close();
+                            return;
+                        }
+                        if (eventWithToken.getToken() >= queryOptions.getMinToken()
+                                && eventWithToken.getEvent().getTimestamp() >= queryOptions.getMinTimestamp()
+                                && !consumer.test(eventWithToken.asEventWithToken())) {
+                            iterator.close();
+                            return;
+                        }
                     }
+                    if (queryOptions.getMinToken() > segment || minTimestampInSegment < queryOptions
+                            .getMinTimestamp()) {
+                        done.set(true);
+                    }
+                    iterator.close();
+                });
+                if (done.get()) {
+                    return;
                 }
-                if (minToken > segment || minTimestampInSegment < minTimestamp) {
-                    done.set(true);
-                }
-                iterator.close();
-            });
-            if (done.get()) {
-                return;
             }
         }
 
         if (next != null) {
-            next.query(minToken, minTimestamp, consumer);
+            next.query(new QueryOptions(queryOptions.getMinToken(),
+                                        queryOptions.getMaxToken(),
+                                        queryOptions.getMinTimestamp()), consumer);
         }
     }
 

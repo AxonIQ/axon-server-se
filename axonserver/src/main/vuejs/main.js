@@ -9,6 +9,7 @@
 
 import Vue from 'vue'
 import VModal from 'vue-js-modal'
+import VClipboard from 'vue-clipboard2'
 import ComponentInstances from './components/component/Instances.vue';
 import ComponentCommands from './components/component/Commands.vue';
 import ComponentQueries from './components/component/Queries.vue';
@@ -17,6 +18,7 @@ import ComponentCommandMetrics from './components/component/CommandMetrics.vue';
 import ComponentSubscriptionsMetrics from './components/component/SubscriptionsMetrics.vue';
 
 Vue.use(VModal)
+Vue.use(VClipboard)
 
 Vue.component('component-instances', ComponentInstances);
 Vue.component('component-commands', ComponentCommands);

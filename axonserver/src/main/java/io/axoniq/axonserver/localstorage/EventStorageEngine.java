@@ -148,12 +148,13 @@ public interface EventStorageEngine {
     CloseableIterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken);
 
     /**
-     * Iterates through the events and calls {@link Predicate} for each event. When the predicate returns false processing stops.
-     * @param minToken minumum token of events to process
-     * @param minTimestamp minimum timestamp of events to process
-     * @param consumer applied for each event
+     * Iterates through the events and calls {@link Predicate} for each event. When the predicate returns false
+     * processing stops.
+     *
+     * @param queryOptions
+     * @param consumer     applied for each event
      */
-    void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer);
+    void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer);
 
     /**
      * Gets filenames to back up for this storage engine. Only relevant for file based storage.

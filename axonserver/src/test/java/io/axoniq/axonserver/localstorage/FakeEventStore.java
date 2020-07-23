@@ -76,7 +76,7 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
+    public void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer) {
 
     }
 

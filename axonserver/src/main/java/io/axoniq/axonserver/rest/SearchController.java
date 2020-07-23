@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import static io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver.TIME_WINDOW_CUSTOM;
+
 /**
  * Rest service to perform queries on the event store.
  *
@@ -41,9 +43,12 @@ public class SearchController {
     @GetMapping
     public SseEmitter query(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
                             @RequestParam("query") String query,
+                            @RequestParam(value = "timewindow", required = false, defaultValue = TIME_WINDOW_CUSTOM) String timewindow,
+                            @RequestParam(value = "liveupdates", required = false, defaultValue = "false") Boolean liveupdates,
+                            @RequestParam(value = "forceleader", required = false, defaultValue = "false") Boolean forceReadFromLeader,
                             @RequestParam("clientToken") String clientToken) {
         SseEmitter sseEmitter = new SseEmitter(timeout);
-        httpStreamingQuery.query(context, query, clientToken, sseEmitter);
+        httpStreamingQuery.query(context, query, timewindow, liveupdates, forceReadFromLeader, clientToken, sseEmitter);
         return sseEmitter;
     }
 

@@ -19,18 +19,20 @@ import java.util.function.Predicate;
  * @author Marc Gathier
  */
 public class EventStreamReader {
+
     private final EventStorageEngine eventStorageEngine;
 
     public EventStreamReader(EventStorageEngine datafileManagerChain) {
         this.eventStorageEngine = datafileManagerChain;
     }
 
-    public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
-        eventStorageEngine.query(minToken, minTimestamp, consumer);
+    public void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer) {
+        eventStorageEngine.query(queryOptions, consumer);
     }
 
     /**
      * Returns the first token in the event store for the current context. Returns -1 if event store is empty.
+     *
      * @return the first token in this event store
      */
     public long getFirstToken() {
