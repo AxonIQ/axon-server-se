@@ -20,6 +20,7 @@ import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import io.axoniq.axonserver.licensing.Feature;
+import io.axoniq.axonserver.licensing.LicenseException;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import org.slf4j.Logger;
@@ -204,13 +205,17 @@ public class ClusterRestController {
                       AuditLog.username(principal));
         String axoniq_license = System.getenv("AXONIQ_LICENSE");
         if (axoniq_license != null) {
-            throw new MessagingPlatformException(ErrorCode.OTHER,
+            throw new MessagingPlatformException(ErrorCode.INVALID_PROPERTY_VALUE,
                                                  "License path hardcoded to AXONIQ_LICENSE=" + axoniq_license
                                                          + ". Remove this environment key to dynamically manage license.");
         }
 
         logger.info("New license uploaded, performing license update...");
-        distributeLicenseService.distributeLicense(licenseFile.getBytes());
+        try {
+            distributeLicenseService.distributeLicense(licenseFile.getBytes());
+        } catch (LicenseException licenseException) {
+            throw new MessagingPlatformException(ErrorCode.INVALID_PROPERTY_VALUE, licenseException.getMessage());
+        }
     }
 
     @GetMapping(path = "{name}")
