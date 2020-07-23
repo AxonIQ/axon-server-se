@@ -149,7 +149,7 @@ podTemplate(label: label,
 
             def sonarOptions = "-Dsonar.branch.name=${gitBranch}"
             if (gitBranch.startsWith("PR-") && env.CHANGE_ID) {
-                sonarOptions = "-Dsonar.pullrequest.key=" + env.CHANGE_ID
+                sonarOptions = "-Dsonar.pullrequest.branch=" + gitBranch + " -Dsonar.pullrequest.key=" + env.CHANGE_ID
             }
             stage ('Run SonarQube') {
                 container("maven") {

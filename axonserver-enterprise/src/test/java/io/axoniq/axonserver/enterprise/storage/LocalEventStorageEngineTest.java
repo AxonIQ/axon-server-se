@@ -3,6 +3,8 @@ package io.axoniq.axonserver.enterprise.storage;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DefaultMultiContextEventTransformerFactory;
+import io.axoniq.axonserver.enterprise.storage.file.EmbeddedDBPropertiesProvider;
+import io.axoniq.axonserver.enterprise.storage.multitier.MultiTierInformationProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
@@ -12,6 +14,8 @@ import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
@@ -22,27 +26,37 @@ import java.io.InputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static org.mockito.Mockito.*;
+
 /**
  * @author Marc Gathier
  */
 public class LocalEventStorageEngineTest {
+
     private LocalEventStore testSubject;
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     @Before
     public void init()  {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+        });
         embeddedDBProperties.getEvent().setStorage(tempFolder.getRoot().getAbsolutePath());
-        embeddedDBProperties.getEvent().setSegmentSize(512*1024L);
+        embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
         embeddedDBProperties.getEvent().setForceInterval(100);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
-        EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties,
-                                                                            new DefaultMultiContextEventTransformerFactory(
-                                                                                    new DefaultEventTransformerFactory()));
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        EventStoreFactory eventStoreFactory =
+                new DatafileEventStoreFactory(
+                        new EmbeddedDBPropertiesProvider(embeddedDBProperties),
+                        new DefaultMultiContextEventTransformerFactory(new DefaultEventTransformerFactory()),
+                        mock(MultiTierInformationProvider.class),
+                        null,
+                        meterFactory);
 
-        testSubject = new LocalEventStore(eventStoreFactory, new SimpleMeterRegistry(), SingleInstanceTransactionManager::new,
-                                          c -> true);
+        testSubject = new LocalEventStore(eventStoreFactory,
+                                          new SimpleMeterRegistry(),
+                                          SingleInstanceTransactionManager::new);
         testSubject.initContext("default", false);
     }
 
@@ -196,6 +210,6 @@ public class LocalEventStorageEngineTest {
 
             testSubject.deleteAllEventData("default");
 
-            Assert.assertEquals(-1,testSubject.getLastToken("default"));
+        Assert.assertEquals(-1, testSubject.getLastEvent("default"));
     }
 }

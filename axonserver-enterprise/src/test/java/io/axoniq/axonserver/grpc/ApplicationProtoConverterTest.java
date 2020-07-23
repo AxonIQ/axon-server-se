@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.access.application.ApplicationContext;
-import io.axoniq.axonserver.access.application.JpaApplication;
+import io.axoniq.axonserver.access.application.AdminApplicationContext;
+import io.axoniq.axonserver.access.application.AdminApplication;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
 import org.junit.*;
@@ -29,17 +29,17 @@ public class ApplicationProtoConverterTest {
 
     @Test
     public void createApplication() throws Exception {
-        JpaApplication jpaApplication = ApplicationProtoConverter
+        AdminApplication jpaApplication = ApplicationProtoConverter
                 .createJpaApplication(application);
         assertEquals("Description", jpaApplication.getDescription());
         assertEquals("Name", jpaApplication.getName());
         assertEquals(1, jpaApplication.getContexts().size());
-        ApplicationContext applicationContext = jpaApplication.getContexts().iterator()
-                                                              .next();
+        AdminApplicationContext applicationContext = jpaApplication.getContexts().iterator()
+                                                                   .next();
 
         assertEquals(2, applicationContext.getRoles().size());
         assertTrue(
-                     applicationContext.getRoles().stream().anyMatch(r -> r.getRole().equals("Role1")));
+                applicationContext.getRoles().stream().anyMatch(r -> r.getRole().equals("Role1")));
         assertTrue(
                 applicationContext.getRoles().stream().anyMatch(r -> r.getRole().equals("Role2")));
 

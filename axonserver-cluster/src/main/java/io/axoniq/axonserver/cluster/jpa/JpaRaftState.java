@@ -2,12 +2,14 @@ package io.axoniq.axonserver.cluster.jpa;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.Table;
 
 /**
  * @author Marc Gathier
  * @since 4.1
  */
 @Entity
+@Table(name = "rg_state")
 public class JpaRaftState {
 
     @Id

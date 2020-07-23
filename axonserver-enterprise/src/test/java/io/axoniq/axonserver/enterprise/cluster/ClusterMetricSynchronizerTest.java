@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
+import com.google.common.util.concurrent.AtomicDouble;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -45,7 +46,7 @@ public class ClusterMetricSynchronizerTest {
 
     @Test
     public void shareGauge() {
-        meterRegistry.gauge("axon.gauge", Tags.of("context", "context1"), 1.34d);
+        meterRegistry.gauge("axon.gauge", Tags.of("context", "context1"), new AtomicDouble(1.34d));
         testSubject.shareMetrics();
 
         assertEquals(1, commands.size());

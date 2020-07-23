@@ -1,12 +1,16 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ReleaseSegmentRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentRequest;
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.grpc.internal.ClientEventProcessor;
 import io.axoniq.axonserver.licensing.LicenseManager;
 import io.axoniq.axonserver.grpc.internal.*;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
@@ -81,8 +85,9 @@ public class MessagingClusterServiceTest {
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
         requestStream.onNext(ConnectorCommand.newBuilder().setConnect(ConnectRequest.newBuilder()
                                                                                     .setNodeInfo(NodeInfo.newBuilder()
-                                                                                                         .setNodeName("node-1")
-                                                                                                         )
+                                                                                                         .setNodeName(
+                                                                                                                 "node-1")
+                                                                                    )
         ).build());
 
         requestStream.onNext(ConnectorCommand.newBuilder().setSubscribeQuery(testMessage).build());
@@ -103,16 +108,17 @@ public class MessagingClusterServiceTest {
         StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
         requestStream.onNext(ConnectorCommand.newBuilder().setConnect(ConnectRequest.newBuilder()
                                                                                     .setNodeInfo(NodeInfo.newBuilder()
-                                                                                                         .setNodeName("node-1")
+                                                                                                         .setNodeName(
+                                                                                                                 "node-1")
                                                                                     )
         ).build());
 
         requestStream.onNext(ConnectorCommand.newBuilder()
                                              .setClientStatus(ClientStatus.newBuilder()
-                                                              .setClientName("client1")
-                                                              .setComponentName("demoComponent")
-                                                              .setContext("demo")
-                                                              .setConnected(true)
+                                                                          .setClientName("client1")
+                                                                          .setComponentName("demoComponent")
+                                                                          .setContext("demo")
+                                                                          .setConnected(true)
                                              )
                                              .build());
         testSubject.on(new TopologyEvents.ApplicationConnected("demo", "demoComponent", "client1"));
@@ -172,9 +178,11 @@ public class MessagingClusterServiceTest {
     public void testSplitSegmentConnectorCommandComingIn() {
         String expectedClientName = "clientName";
         String expectedProcessorName = "processorName";
+        String expectedContext = "context!";
         int expectedSegmentId = 1;
         ClientEventProcessorSegment testSplitMessage =
                 ClientEventProcessorSegment.newBuilder()
+                                           .setContext(expectedContext)
                                            .setClient(expectedClientName)
                                            .setProcessorName(expectedProcessorName)
                                            .setSegmentIdentifier(expectedSegmentId)
@@ -192,6 +200,7 @@ public class MessagingClusterServiceTest {
         assertTrue(publishedEvents.hasNext());
         SplitSegmentRequest splitSegmentRequest = (SplitSegmentRequest) publishedEvents.next();
         assertEquals(expectedClientName, splitSegmentRequest.getClientName());
+        assertEquals(expectedContext, splitSegmentRequest.context());
         assertEquals(expectedProcessorName, splitSegmentRequest.getProcessorName());
         assertEquals(expectedSegmentId, splitSegmentRequest.getSegmentId());
     }
@@ -200,9 +209,12 @@ public class MessagingClusterServiceTest {
     public void testMergeSegmentConnectorCommandComingIn() {
         String expectedClientName = "clientName";
         String expectedProcessorName = "processorName";
+        String expectedContext = "context!";
+
         int expectedSegmentId = 1;
         ClientEventProcessorSegment testMergeMessage =
                 ClientEventProcessorSegment.newBuilder()
+                                           .setContext(expectedContext)
                                            .setClient(expectedClientName)
                                            .setProcessorName(expectedProcessorName)
                                            .setSegmentIdentifier(expectedSegmentId)
@@ -219,6 +231,7 @@ public class MessagingClusterServiceTest {
         Iterator<Object> publishedEvents = eventPublisher.events().iterator();
         assertTrue(publishedEvents.hasNext());
         MergeSegmentRequest mergeSegmentRequest = (MergeSegmentRequest) publishedEvents.next();
+        assertEquals(expectedContext, mergeSegmentRequest.context());
         assertEquals(expectedClientName, mergeSegmentRequest.getClientName());
         assertEquals(expectedProcessorName, mergeSegmentRequest.getProcessorName());
         assertEquals(expectedSegmentId, mergeSegmentRequest.getSegmentId());
@@ -230,5 +243,68 @@ public class MessagingClusterServiceTest {
         assertFalse(testSubject.connectedClients().isEmpty());
         testSubject.on(new ClusterEvents.AxonServerInstanceDisconnected("proxy"));
         assertTrue(testSubject.connectedClients().isEmpty());
+    }
+
+    @Test
+    public void testStartEventProcessor() {
+        ClientEventProcessor eventProcessor = ClientEventProcessor.newBuilder()
+                                                                  .setContext("context!")
+                                                                  .setClient("client!")
+                                                                  .setProcessorName("processor!")
+                                                                  .build();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
+        StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
+        requestStream.onNext(ConnectorCommand.newBuilder().setStartClientEventProcessor(eventProcessor).build());
+        Iterator<Object> iterator = eventPublisher.events().iterator();
+        assertTrue(iterator.hasNext());
+        Object next = iterator.next();
+        assertTrue(next instanceof StartEventProcessorRequest);
+        StartEventProcessorRequest event = (StartEventProcessorRequest) next;
+        assertEquals("context!", event.context());
+        assertEquals("client!", event.clientName());
+        assertEquals("processor!", event.processorName());
+    }
+
+    @Test
+    public void testPauseEventProcessor() {
+        ClientEventProcessor eventProcessor = ClientEventProcessor.newBuilder()
+                                                                  .setContext("context!")
+                                                                  .setClient("client!")
+                                                                  .setProcessorName("processor!")
+                                                                  .build();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
+        StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
+        requestStream.onNext(ConnectorCommand.newBuilder().setPauseClientEventProcessor(eventProcessor).build());
+        Iterator<Object> iterator = eventPublisher.events().iterator();
+        assertTrue(iterator.hasNext());
+        Object next = iterator.next();
+        assertTrue(next instanceof PauseEventProcessorRequest);
+        PauseEventProcessorRequest event = (PauseEventProcessorRequest) next;
+        assertEquals("context!", event.context());
+        assertEquals("client!", event.clientName());
+        assertEquals("processor!", event.processorName());
+    }
+
+
+    @Test
+    public void testReleaseSegment() {
+        ClientEventProcessorSegment eventProcessor = ClientEventProcessorSegment.newBuilder()
+                                                                  .setContext("context!")
+                                                                  .setClient("client!")
+                                                                  .setProcessorName("processor!")
+                                                                         .setSegmentIdentifier(4)
+                                                                  .build();
+        FakeStreamObserver<ConnectorResponse> responseStream = new FakeStreamObserver<>();
+        StreamObserver<ConnectorCommand> requestStream = testSubject.openStream(responseStream);
+        requestStream.onNext(ConnectorCommand.newBuilder().setReleaseSegment(eventProcessor).build());
+        Iterator<Object> iterator = eventPublisher.events().iterator();
+        assertTrue(iterator.hasNext());
+        Object next = iterator.next();
+        assertTrue(next instanceof ReleaseSegmentRequest);
+        ReleaseSegmentRequest event = (ReleaseSegmentRequest) next;
+        assertEquals("context!", event.context());
+        assertEquals("client!", event.getClientName());
+        assertEquals("processor!", event.getProcessorName());
+        assertEquals(4, event.getSegmentId());
     }
 }

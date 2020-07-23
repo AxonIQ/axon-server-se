@@ -2,10 +2,8 @@ package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.cluster.grpc.LeaderElectionService;
 import io.axoniq.axonserver.cluster.grpc.LogReplicationService;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.licensing.LicenseConfiguration;
-import io.axoniq.axonserver.licensing.LicenseException;
 import io.axoniq.axonserver.rest.PluginImportSelector;
 import io.axoniq.axonserver.version.VersionInfo;
 import io.axoniq.axonserver.version.VersionInfoProvider;

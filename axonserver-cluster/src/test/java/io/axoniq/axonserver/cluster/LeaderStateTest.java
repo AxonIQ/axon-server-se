@@ -38,10 +38,10 @@ public class LeaderStateTest {
 
     private LeaderState testSubject;
 
-    private AtomicReference<String> timeoutTarget = new AtomicReference<>();
-    private AtomicInteger responseDelay = new AtomicInteger(1000);
-    private FakeScheduler fakeScheduler = new FakeScheduler();
-    private AtomicReference<MembershipState> stateRef = new AtomicReference<>();
+    private final AtomicReference<String> timeoutTarget = new AtomicReference<>();
+    private final AtomicInteger responseDelay = new AtomicInteger(1000);
+    private final FakeScheduler fakeScheduler = new FakeScheduler();
+    private final AtomicReference<MembershipState> stateRef = new AtomicReference<>();
     private RaftGroup raftGroup;
 
     @Before
@@ -51,6 +51,7 @@ public class LeaderStateTest {
         RaftConfiguration raftConfiguration = new RaftConfiguration() {
             private List<Node> groupMembers = Arrays.asList(Node.newBuilder().setNodeId("test").build(),
                                                             Node.newBuilder().setNodeId("Other").build());
+
             @Override
             public List<Node> groupMembers() {
                 return groupMembers;
@@ -239,14 +240,16 @@ public class LeaderStateTest {
 
             testSubject.start();
 
-            ConfigChangeResult configuration = testSubject
+            CompletableFuture<ConfigChangeResult> configChangeResultCompletableFuture = testSubject
                     .addServer(Node.newBuilder()
                                    .setNodeId("NewNode")
                                    .setHost("localhost")
                                    .setPort(1234)
                                    .setNodeName("NewNodeName")
                                    .setRole(Role.ACTIVE_BACKUP)
-                                   .build()).get(15, TimeUnit.SECONDS);
+                                   .build());
+
+            ConfigChangeResult configuration = configChangeResultCompletableFuture.get(15, TimeUnit.SECONDS);
 
             assertTrue(configuration.hasSuccess());
 

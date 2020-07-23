@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.replication.admin.RaftConfigServiceFactory;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import org.springframework.stereotype.Component;

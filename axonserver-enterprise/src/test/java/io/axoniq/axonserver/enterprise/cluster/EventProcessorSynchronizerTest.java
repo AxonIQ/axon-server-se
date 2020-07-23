@@ -20,6 +20,7 @@ import static org.mockito.Mockito.*;
 public class EventProcessorSynchronizerTest {
 
     private static final boolean PROXIED = false;
+    private static final String CONTEXT = "context";
     private static final String CLIENT_NAME = "clientName";
     private static final String PROCESSOR_NAME = "processorName";
     private static final int SEGMENT_ID = 1;
@@ -30,7 +31,7 @@ public class EventProcessorSynchronizerTest {
 
     @Test
     public void testOnSplitSegmentRequestASplitSegmentConnectorCommandIsPublished() {
-        testSubject.on(new SplitSegmentRequest(PROXIED, CLIENT_NAME, PROCESSOR_NAME, SEGMENT_ID));
+        testSubject.on(new SplitSegmentRequest(PROXIED, CONTEXT, CLIENT_NAME, PROCESSOR_NAME, SEGMENT_ID));
 
         ArgumentCaptor<ConnectorCommand> argumentCaptor = ArgumentCaptor.forClass(ConnectorCommand.class);
         verify(clusterPublisher).publish(argumentCaptor.capture());
@@ -45,7 +46,7 @@ public class EventProcessorSynchronizerTest {
 
     @Test
     public void testOnMergeSegmentRequestAMergeSegmentConnectorCommandIsPublished() {
-        testSubject.on(new MergeSegmentRequest(PROXIED, CLIENT_NAME, PROCESSOR_NAME, SEGMENT_ID));
+        testSubject.on(new MergeSegmentRequest(PROXIED, CONTEXT, CLIENT_NAME, PROCESSOR_NAME, SEGMENT_ID));
 
         ArgumentCaptor<ConnectorCommand> argumentCaptor = ArgumentCaptor.forClass(ConnectorCommand.class);
         verify(clusterPublisher).publish(argumentCaptor.capture());

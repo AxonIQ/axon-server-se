@@ -206,24 +206,32 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
 
     @Override
     public boolean contains(long logIndex, long logTerm) {
-        if( logIndex == 0) return true;
+        if (logIndex == 0) {
+            return true;
+        }
         return logTerm == getTerm(logIndex);
     }
+
     @Override
     public Entry getEntry(long index) {
-        if( index == 0) return null;
+        if (index == 0) {
+            return null;
+        }
         return primaryLogEntryStore.getEntry(index);
     }
 
-    private long getTerm(long index) {
+    @Override
+    public long getTerm(long index) {
         return primaryLogEntryStore.getTerm(index);
     }
 
     @Override
     public TermIndex lastLog() {
-        Entry entry = getEntry(primaryLogEntryStore.getLastToken());
-
-        return entry == null ? new TermIndex(0, 0) : new TermIndex(entry.getTerm(), entry.getIndex());
+        long token = primaryLogEntryStore.getLastToken();
+        if (token > 0) {
+            return new TermIndex(primaryLogEntryStore.getTerm(token), token);
+        }
+        return new TermIndex(0, 0);
     }
 
     @Override
@@ -285,6 +293,7 @@ public class FileSegmentLogEntryStore implements LogEntryStore {
         primaryLogEntryStore.clearOlderThan(time, timeUnit, lastAppliedIndexSupplier);
     }
 
+    @Override
     public Stream<String> getBackupFilenames(){
         return primaryLogEntryStore.getBackupFilenames(0L);
     }

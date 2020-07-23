@@ -45,10 +45,10 @@ Release Notes for version 4.3.4
 
 * Reduced risk for contention when opening an index file
 * Offload expensive data-fetching operations to separate thread pool
-* Option to configure the way that index files are opened (memory mapped or file channel based)
-* Limit the amount of commands/queries held in Axon Server waiting for the handlers to be ready to handle them, to avoid
+* Option to configure the way that index files are opened (memory-mapped or file-channel based)
+* Limit the number of commands/queries held in Axon Server waiting for the handlers to be ready to handle them, to avoid
   out of memory errors on Axon Server
-* Fix for high number of cluster-request threads being created
+* Fix for a high number of cluster-request threads being created
 * Fix for timing issue in delete context. This could leave the context existing on one of the member nodes
 * Fix RAFT bug: configuration changes are not allowed before an entry has been committed in the current term.
 

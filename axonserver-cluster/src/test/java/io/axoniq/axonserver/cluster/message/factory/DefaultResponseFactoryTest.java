@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster.message.factory;
 
+import com.google.protobuf.CodedInputStream;
 import io.axoniq.axonserver.cluster.LogEntryProcessor;
 import io.axoniq.axonserver.cluster.RaftConfiguration;
 import io.axoniq.axonserver.cluster.RaftGroup;
@@ -9,6 +10,8 @@ import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import org.junit.*;
+
+import java.io.IOException;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -41,26 +44,76 @@ public class DefaultResponseFactoryTest {
         RaftNode localNode = mock(RaftNode.class);
         RaftConfiguration conf = mock(RaftConfiguration.class);
         when(raftGroup.raftConfiguration()).thenReturn(conf);
+        when(raftGroup.lastAppliedEventSequence(anyString())).thenReturn(100L);
+        when(raftGroup.lastAppliedSnapshotSequence(anyString())).thenReturn(-1L);
 
         when(conf.groupId()).thenReturn(groupId);
         when(raftGroup.localNode()).thenReturn(localNode);
         when(electionStore.currentTerm()).thenReturn(currentTerm);
         when(localNode.nodeId()).thenReturn(localNodeId);
-        when(raftGroup.lastAppliedEventSequence()).thenReturn(lastAppliedEventSequence);
-        when(raftGroup.lastAppliedSnapshotSequence()).thenReturn(lastAppliedSnapshotSequence);
         when(logEntryProcessor.lastAppliedIndex()).thenReturn(lastAppliedIndex);
     }
 
     @Test
     public void testAppendEntryFailure() {
-        AppendEntriesResponse response = testSubject.appendEntriesFailure(requestId, failureCause);
+        AppendEntriesResponse response = testSubject.appendEntriesFailure(requestId, true, failureCause);
         assertEquals(currentTerm, response.getTerm());
         assertEquals(localNodeId, response.getResponseHeader().getNodeId());
         assertEquals(requestId, response.getResponseHeader().getRequestId());
         assertEquals(failureCause, response.getFailure().getCause());
         assertEquals(lastAppliedIndex, response.getFailure().getLastAppliedIndex());
-        assertEquals(lastAppliedEventSequence, response.getFailure().getLastAppliedEventSequence());
-        assertEquals(lastAppliedSnapshotSequence, response.getFailure().getLastAppliedSnapshotSequence());
+        assertEquals(groupId, response.getGroupId());
+        assertFalse(response.hasSuccess());
+    }
+
+    @Test
+    public void testAppendEntryFailureWithoutReplicationGroup() throws IOException {
+        AppendEntriesResponse response = testSubject.appendEntriesFailure(requestId, false, failureCause);
+        CodedInputStream input = CodedInputStream.newInstance(response.getFailure().toByteArray());
+        boolean done = false;
+        long lastAppliedEventSequence_ = 0;
+        long lastAppliedSnapshotSequence_ = 0;
+        while (!done) {
+            int tag = input
+                    .readTag(); // tag value is field number * 8 + values for wire type (0 for int values, 2 for string)
+            switch (tag) {
+                case 0:
+                    done = true;
+                    break;
+                case 10:
+                case 50: {
+                    input.readStringRequireUtf8();
+                    break;
+                }
+                case 16: {
+                    input.readUInt64();
+                    break;
+                }
+                case 24: {
+                    lastAppliedEventSequence_ = input.readSInt64();
+                    break;
+                }
+                case 32: {
+                    lastAppliedSnapshotSequence_ = input.readSInt64();
+                    break;
+                }
+                case 40:
+                case 56: {
+                    input.readBool();
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+        }
+        assertEquals(100, lastAppliedEventSequence_);
+        assertEquals(-1, lastAppliedSnapshotSequence_);
+        assertEquals(currentTerm, response.getTerm());
+        assertEquals(localNodeId, response.getResponseHeader().getNodeId());
+        assertEquals(requestId, response.getResponseHeader().getRequestId());
+        assertEquals(failureCause, response.getFailure().getCause());
+        assertEquals(lastAppliedIndex, response.getFailure().getLastAppliedIndex());
         assertEquals(groupId, response.getGroupId());
         assertFalse(response.hasSuccess());
     }

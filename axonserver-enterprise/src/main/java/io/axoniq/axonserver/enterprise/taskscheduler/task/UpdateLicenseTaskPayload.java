@@ -1,7 +1,10 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
+import io.axoniq.axonserver.KeepNames;
+
 import java.io.Serializable;
 
+@KeepNames
 public class UpdateLicenseTaskPayload implements Serializable {
 
     private String nodeName;
@@ -31,6 +34,4 @@ public class UpdateLicenseTaskPayload implements Serializable {
     public byte[] getLicensePayload() {
         return licensePayload;
     }
-
-
 }

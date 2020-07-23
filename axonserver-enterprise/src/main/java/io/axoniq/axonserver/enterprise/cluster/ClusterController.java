@@ -4,13 +4,13 @@ import io.axoniq.axonserver.ClusterTagsCache;
 import io.axoniq.axonserver.cluster.util.AxonThreadFactory;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.enterprise.config.FlowControl;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNodeRepository;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ChannelCloser;
@@ -95,7 +95,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
 
 
     @EventListener
-    public void on(ContextEvents.ContextUpdated contextUpdated) {
+    public void on(ClusterEvents.ReplicationGroupUpdated contextUpdated) {
         nodeMap.clear();
     }
 
@@ -339,8 +339,7 @@ public class ClusterController implements SmartLifecycle, ApplicationContextAwar
                 clusterNode.setHttpPort(nodeInfo.getHttpPort());
                 clusterNode.setInternalHostName(nodeInfo.getInternalHostName());
             }
-            clusterNodeRepository.save(clusterNode);
-            return clusterNode;
+            return clusterNodeRepository.save(clusterNode);
         }
     }
 

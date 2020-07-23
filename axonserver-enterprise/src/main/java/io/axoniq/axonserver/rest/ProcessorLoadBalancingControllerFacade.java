@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.AdminProcessorLoadBalancing;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import java.util.List;
  */
 public interface ProcessorLoadBalancingControllerFacade {
 
-    void save(ProcessorLoadBalancing processorLoadBalancing);
+    void save(AdminProcessorLoadBalancing processorLoadBalancing);
 
-    List<ProcessorLoadBalancing> findByContext(String context);
+    List<AdminProcessorLoadBalancing> findByContext(String context);
 }

@@ -4,7 +4,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
+import io.axoniq.axonserver.enterprise.replication.ContextLeaderProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -31,8 +31,8 @@ public class AutoLoadBalancer {
     private final Map<TrackingEventProcessor, Map<String, Integer>> cache = new ConcurrentHashMap<>();
 
     @Autowired
-    public AutoLoadBalancer(LoadBalancerDelegate balancer, RaftLeaderProvider raftLeaderProvider) {
-        this(balancer::balance, raftLeaderProvider::isLeader);
+    public AutoLoadBalancer(LoadBalancerDelegate balancer, ContextLeaderProvider contextLeaderProvider) {
+        this(balancer::balance, contextLeaderProvider::isLeader);
     }
 
     AutoLoadBalancer(Consumer<TrackingEventProcessor> balancer,
@@ -53,8 +53,11 @@ public class AutoLoadBalancer {
         String context = eventProcessorStatus.getContext();
         String client = eventProcessorStatus.getClientName();
         String processor = eventProcessorStatus.getEventProcessorInfo().getProcessorName();
+        String tokenStoreIdentifier = eventProcessorStatus.getEventProcessorInfo().getTokenStoreIdentifier();
         Integer newActiveThreads = eventProcessorStatus.getEventProcessorInfo().getActiveThreads();
-        TrackingEventProcessor trackingEventProcessor = new TrackingEventProcessor(processor, context);
+        TrackingEventProcessor trackingEventProcessor = new TrackingEventProcessor(processor,
+                                                                                   context,
+                                                                                   tokenStoreIdentifier);
         Integer previousActiveThreads = cache.computeIfAbsent(trackingEventProcessor, s -> new ConcurrentHashMap<>())
                                              .put(client, newActiveThreads);
 

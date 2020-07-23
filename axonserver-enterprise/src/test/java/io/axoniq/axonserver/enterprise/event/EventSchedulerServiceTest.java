@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.event;
 
 import io.axoniq.axonserver.enterprise.cluster.CompletableStreamObserver;
+import io.axoniq.axonserver.enterprise.replication.group.ReplicationGroupController;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -13,6 +14,7 @@ import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +53,10 @@ public class EventSchedulerServiceTest {
         when(taskPublisher.cancelScheduledTask(eq(NOLEADER), anyString()))
                 .thenReturn((CompletableFuture<Void>) noLeader);
 
-        testSubject = new EventSchedulerService(() -> contextHolder.get(), taskPublisher);
+        ReplicationGroupController replicationGroupController = mock(ReplicationGroupController.class);
+        when(replicationGroupController.findReplicationGroupByContext(anyString())).thenAnswer(invocation -> Optional
+                .of(invocation.getArgument(0)));
+        testSubject = new EventSchedulerService(() -> contextHolder.get(), taskPublisher, replicationGroupController);
     }
 
     @Test

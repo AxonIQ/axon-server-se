@@ -97,15 +97,15 @@ public class AccessController implements AxonServerAccessController {
 
     @Override
     public String usersByUsernameQuery() {
-        return "select distinct username,password, 1 from jpa_context_user where username=? and password is not null";
+        return "select distinct username,password, 1 from rg_user_context where username=? and password is not null";
     }
 
     @Override
     public String authoritiesByUsernameQuery() {
-        return "select jpa_context_user.username, concat(jpa_context_user_roles.roles, '@', jpa_context_user.context) "
-                + "from jpa_context_user_roles,jpa_context_user "
-                + "where jpa_context_user.username=? "
-                + "and jpa_context_user_roles.jpa_context_user_id = jpa_context_user.id";
+        return "select rg_user_context.username, concat(rg_user_context_role.roles, '@', rg_user_context.context) "
+                + "from rg_user_context_role,rg_user_context "
+                + "where rg_user_context.username=? "
+                + "and rg_user_context_role.REPLICATION_GROUP_USER_ID = rg_user_context.id";
     }
 
 }

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
+import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroup;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import io.axoniq.axonserver.enterprise.taskscheduler.task.PrepareUpdateLicenseTask;
@@ -12,13 +13,11 @@ import io.axoniq.axonserver.grpc.internal.ConnectorCommand;
 import io.axoniq.axonserver.licensing.LicenseManager;
 import io.axoniq.axonserver.taskscheduler.TransientException;
 import junit.framework.TestCase;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
+import org.junit.*;
+import org.junit.runner.*;
+import org.mockito.*;
+import org.mockito.junit.*;
+import org.mockito.stubbing.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Duration;
@@ -33,8 +32,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -55,16 +56,18 @@ public class DistributeLicenseServiceTest {
     }
 
     private class AdminDB {
-        private Map<String, io.axoniq.axonserver.enterprise.jpa.Context> contextMap = new ConcurrentHashMap<>();
+
+        private Map<String, AdminReplicationGroup> contextMap = new ConcurrentHashMap<>();
         private Map<String, ClusterNode> nodeMap = new ConcurrentHashMap<>();
 
         public void addContext(String name, String... nodes) {
-            io.axoniq.axonserver.enterprise.jpa.Context context = contextMap.computeIfAbsent(name, io.axoniq.axonserver.enterprise.jpa.Context::new);
+            AdminReplicationGroup context = contextMap.computeIfAbsent(name, AdminReplicationGroup::new);
             for (String node : nodes) {
-                nodeMap.computeIfAbsent(node, DistributeLicenseServiceTest.this::createNode).addContext(context,
-                        node + "/"
-                                + context,
-                        Role.PRIMARY);
+                nodeMap.computeIfAbsent(node, DistributeLicenseServiceTest.this::createNode)
+                       .addReplicationGroup(context,
+                                            node + "/"
+                                                    + context,
+                                            Role.PRIMARY);
             }
         }
     }

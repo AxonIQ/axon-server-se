@@ -3,17 +3,19 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
 import io.axoniq.axonserver.grpc.cluster.Node;
-import io.axoniq.axonserver.grpc.cluster.Role;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 import io.swagger.annotations.Api;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,6 +29,8 @@ import java.util.List;
 @Api(tags = "internal", hidden = true)
 public class RaftStatusRestController {
 
+    private static final Logger auditLog = AuditLog.getLogger();
+
     private final GrpcRaftController grpcRaftController;
 
     public RaftStatusRestController(GrpcRaftController grpcRaftController) {
@@ -34,7 +38,9 @@ public class RaftStatusRestController {
     }
 
     @GetMapping("status")
-    public List<RaftContext> status() {
+    public List<RaftContext> status(Principal principal) {
+        auditLog.info("[{}] Request to get status of all replication groups.",
+                      AuditLog.username(principal));
         Iterable<String> myContexts = grpcRaftController.raftGroups();
         List<RaftContext> raftContexts = new LinkedList<>();
         for (String context : myContexts) {
@@ -55,7 +61,7 @@ public class RaftStatusRestController {
         @Override
         public void printOn(Media media) {
             media.with("nodeId", raftGroup.localNode().nodeId());
-            media.with("context", raftGroup.raftConfiguration().groupId());
+            media.with("replicationGroup", raftGroup.raftConfiguration().groupId());
             media.with("commitIndex", raftGroup.logEntryProcessor().commitIndex());
             media.with("commitTerm", raftGroup.logEntryProcessor().commitTerm());
             media.with("lastAppliedIndex", raftGroup.logEntryProcessor().lastAppliedIndex());

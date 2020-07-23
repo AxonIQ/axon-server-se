@@ -12,8 +12,10 @@ import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.cluster.internal.StubFactory;
 import io.axoniq.axonserver.enterprise.config.ClusterConfiguration;
 import io.axoniq.axonserver.enterprise.config.TagsConfiguration;
+import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroup;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNodeRepository;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
 import io.axoniq.axonserver.grpc.ChannelCloser;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
@@ -75,14 +77,15 @@ public class ClusterControllerTest {
     @MockBean
     private VersionInfoProvider versionInfoProvider;
 
-    private Context context;
+    private AdminReplicationGroup context;
 
     @Autowired
     private ClusterNodeRepository clusterNodeRepository;
 
     @Before
-    public void setUp()  {
-        context = new Context(Topology.DEFAULT_CONTEXT);
+    public void setUp() {
+        context = new AdminReplicationGroup();
+        context.setName(Topology.DEFAULT_CONTEXT);
         entityManager.persist(context);
         FeatureChecker limits = new FeatureChecker() {
             @Override
@@ -96,7 +99,7 @@ public class ClusterControllerTest {
             }
         };
         ClusterNode clusterNode = new ClusterNode("MyName", "LAPTOP-1QH9GIHL.axoniq.io", "LAPTOP-1QH9GIHL.axoniq.net", 8124, 8224, 8024);
-        clusterNode.addContext(context, "MyName", Role.PRIMARY);
+        clusterNode.addReplicationGroup(context, "MyName", Role.PRIMARY);
         entityManager.persist(clusterNode);
 
         MessagingPlatformConfiguration messagingPlatformConfiguration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());

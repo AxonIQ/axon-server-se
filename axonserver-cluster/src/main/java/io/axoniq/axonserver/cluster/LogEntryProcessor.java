@@ -11,7 +11,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.LongFunction;
 
 /**
  * @author Marc Gathier
@@ -29,7 +29,7 @@ public class LogEntryProcessor {
         this.processorStore = processorStore;
     }
 
-    public ApplyResult apply(Function<Long, EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
+    public ApplyResult apply(LongFunction<EntryIterator> entryIteratorSupplier, Consumer<Entry> consumer) {
         ApplyResult result = ApplyResult.NO_WORK;
         if (applyRunning.compareAndSet(false, true)) {
             try {
@@ -58,7 +58,6 @@ public class LogEntryProcessor {
                 result = ApplyResult.FAILED;
                 health.set(false);
             } catch (Exception ex) {
-                logger.error("{}: Apply failed", processorStore.groupId(), ex);
                 String error = String.format("%s: Apply failed last applied : %d, commitIndex: %d, %s",
                                              processorStore.groupId(),
                                              processorStore.lastAppliedIndex(),

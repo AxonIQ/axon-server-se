@@ -1,13 +1,11 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
-import io.axoniq.axonserver.grpc.cluster.Role;
+import io.axoniq.axonserver.enterprise.jpa.AdminContext;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.validation.constraints.NotNull;
 
 /**
  * Definition of a context for the REST interface
@@ -21,28 +19,14 @@ public class ContextJSON {
      * the name of the context
      */
     private String context;
-    /**
-     * the current leader of the context
-     */
-    private String leader;
-    /**
-     * List of current members
-     */
-    private List<String> nodes = new ArrayList<>();
-    /**
-     * List of current members and their roles
-     */
-    private List<NodeAndRole> roles = new ArrayList<>();
-    /**
-     * Indicator for pending changes on the context
-     */
-    private boolean changePending;
-    /**
-     * Timestamp of the start of the pending change
-     */
-    private long pendingSince;
 
-    private Map<String, String> metaData;
+    private String replicationGroup;
+
+    private Map<String, String> metaData = new HashMap<>();
+    private boolean changePending;
+    private long pendingSince;
+    private String leader;
+    private List<NodeAndRole> roles;
 
 
     public ContextJSON() {
@@ -52,53 +36,18 @@ public class ContextJSON {
         this.context = context;
     }
 
+    public ContextJSON(AdminContext adminContext) {
+        this(adminContext.getName());
+        this.metaData = adminContext.getMetaDataMap();
+        this.replicationGroup = adminContext.getReplicationGroup().getName();
+    }
+
     public String getContext() {
         return context;
     }
 
-    public List<String> getNodes() {
-        return nodes;
-    }
-
-    @Deprecated
-    public void setNodes(List<String> nodes) {
-        this.nodes = nodes;
-    }
-
     public void setContext(String context) {
         this.context = context;
-    }
-
-    public String getLeader() {
-        return leader;
-    }
-
-    public void setLeader(String leader) {
-        this.leader = leader;
-    }
-
-    public boolean isChangePending() {
-        return changePending;
-    }
-
-    public void setChangePending(boolean changePending) {
-        this.changePending = changePending;
-    }
-
-    public long getPendingSince() {
-        return pendingSince;
-    }
-
-    public void setPendingSince(long pendingSince) {
-        this.pendingSince = pendingSince;
-    }
-
-    public List<NodeAndRole> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(List<NodeAndRole> roles) {
-        this.roles = roles;
     }
 
     public Map<String, String> getMetaData() {
@@ -109,48 +58,43 @@ public class ContextJSON {
         this.metaData = metaData;
     }
 
-    public boolean hasRoles() {
-        return roles != null && !roles.isEmpty();
+    public String getReplicationGroup() {
+        return replicationGroup;
     }
 
-    @KeepNames
-    public static class NodeAndRole implements Comparable<NodeAndRole> {
+    public void setReplicationGroup(String replicationGroup) {
+        this.replicationGroup = replicationGroup;
+    }
 
-        private String node;
-        private Role role = Role.PRIMARY;
+    public void setChangePending(boolean changePending) {
+        this.changePending = changePending;
+    }
 
-        public NodeAndRole() {
-        }
+    public boolean getChangePending() {
+        return changePending;
+    }
 
-        public NodeAndRole(ContextClusterNode n) {
-            role = n.getRole();
-            node = n.getClusterNode().getName();
-        }
+    public void setPendingSince(long pendingSince) {
+        this.pendingSince = pendingSince;
+    }
 
-        public NodeAndRole(String node, Role role) {
-            this.role = role;
-            this.node = node;
-        }
+    public long getPendingSince() {
+        return pendingSince;
+    }
 
-        public String getNode() {
-            return node;
-        }
+    public void setLeader(String leader) {
+        this.leader = leader;
+    }
 
-        public Role getRole() {
-            return role;
-        }
+    public String getLeader() {
+        return leader;
+    }
 
-        public void setNode(String node) {
-            this.node = node;
-        }
+    public void setRoles(List<NodeAndRole> roles) {
+        this.roles = roles;
+    }
 
-        public void setRole(Role role) {
-            this.role = role;
-        }
-
-        @Override
-        public int compareTo(@NotNull NodeAndRole o) {
-            return node.compareTo(o.node);
-        }
+    public List<NodeAndRole> getRoles() {
+        return roles;
     }
 }

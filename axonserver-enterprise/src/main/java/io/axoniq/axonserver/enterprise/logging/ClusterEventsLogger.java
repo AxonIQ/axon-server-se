@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.logging;
 
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,18 +26,31 @@ public class ClusterEventsLogger {
 
     @EventListener
     public void on(ClusterEvents.LeaderConfirmation event) {
-        logger.info("{}: Leader is {}", event.getContext(), event.getNode());
+        logger.info("{}: Leader is {}", event.replicationGroup(), event.node());
+    }
+
+    @EventListener
+    public void on(ClusterEvents.LeaderNotification event) {
+        logger.info("{}: (notification) Leader is {}", event.replicationGroup(), event.node());
     }
 
     @EventListener
     public void on(ClusterEvents.BecomeLeader event) {
-        logger.info("{}: Leader", event.getContext());
+        logger.info("{}: Leader", event.replicationGroup());
     }
 
     @EventListener
     public void on(ClusterEvents.LeaderStepDown event) {
-        logger.info("{}: No longer leader", event.getContextName());
+        logger.info("{}: No longer leader", event.replicationGroup());
     }
 
-
+    @EventListener
+    public void on(ContextEvents.ContextCreated event) {
+        logger.info("{}: context {} created, my role {}, min event token {}, min snapshot token {}",
+                    event.replicationGroup(),
+                    event.context(),
+                    event.role(),
+                    event.defaultFirstEventToken(),
+                    event.defaultFirstSnapshotToken());
+    }
 }

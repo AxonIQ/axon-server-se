@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.replication.admin.RaftConfigServiceFactory;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.taskscheduler.TransientException;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -39,9 +39,9 @@ public class AddNodeToContextTask implements ScheduledTask {
 
     private CompletableFuture<Void> doExecute(AddNodeToContext addNodeToContext) {
         try {
-            return raftServiceFactory.getRaftConfigService().addNodeToContext(addNodeToContext.getContext(),
-                                                                              clusterController.getName(),
-                                                                              Role.PRIMARY)
+            return raftServiceFactory.getRaftConfigService().addNodeToReplicationGroup(addNodeToContext.getContext(),
+                                                                                       clusterController.getName(),
+                                                                                       Role.PRIMARY)
                                      .exceptionally(this::checkTransient);
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_LEADER_AVAILABLE.equals(ex.getErrorCode()) ||

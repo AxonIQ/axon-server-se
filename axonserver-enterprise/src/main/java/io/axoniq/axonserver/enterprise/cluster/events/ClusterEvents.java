@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.enterprise.cluster.events;
 
 import io.axoniq.axonserver.KeepNames;
+import io.axoniq.axonserver.applicationevents.AxonServerEvent;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
@@ -76,19 +77,108 @@ public class ClusterEvents {
 
 
     /**
-     * Event when current node is no longer leader for a context.
+     * Event when current node is no longer leader for a replication group.
      */
     @KeepNames
     public static class LeaderStepDown extends TopologyEvents.TopologyBaseEvent {
 
+        private final String replicationGroup;
+
+        public LeaderStepDown(String replicationGroup) {
+            super(false);
+            this.replicationGroup = replicationGroup;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
+    }
+
+    /**
+     * Event when there is a change of leader for a replication group.
+     */
+    @KeepNames
+    public static class LeaderConfirmation extends TopologyEvents.TopologyBaseEvent {
+
+        private final String replicationGroup;
+        private final String node;
+
+        public LeaderConfirmation(String replicationGroup, String node) {
+            super(false);
+            this.replicationGroup = replicationGroup;
+            this.node = node;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
+
+        public String node() {
+            return node;
+        }
+    }
+
+    /**
+     * Event sent by leader to cluster when it becomes leader.
+     */
+    @KeepNames
+    public static class LeaderNotification implements AxonServerEvent {
+
+        private final String replicationGroup;
+        private final String node;
+
+        public LeaderNotification(String replicationGroup, String node) {
+            this.replicationGroup = replicationGroup;
+            this.node = node;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
+
+        public String node() {
+            return node;
+        }
+    }
+
+    /**
+     * Event when the current node becomes leader for a replication group.
+     */
+    @KeepNames
+    public static class BecomeLeader extends TopologyEvents.TopologyBaseEvent {
+
+        private final String replicationGroup;
+        private final Supplier<EntryIterator> unappliedEntries;
+
+        public BecomeLeader(String replicationGroup, Supplier<EntryIterator> unappliedEntries) {
+            super(false);
+            this.replicationGroup = replicationGroup;
+            this.unappliedEntries = unappliedEntries;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
+
+        public Supplier<EntryIterator> unappliedEntriesSupplier() {
+            return unappliedEntries;
+        }
+    }
+
+    /**
+     * Event when current node is no longer leader for a context.
+     */
+    @KeepNames
+    public static class ContextLeaderStepDown extends TopologyEvents.TopologyBaseEvent {
+
         private final String contextName;
 
-        public LeaderStepDown(String contextName, boolean forwarded) {
-            super(forwarded);
+        public ContextLeaderStepDown(String contextName) {
+            super(false);
             this.contextName = contextName;
         }
 
-        public String getContextName() {
+        public String context() {
             return contextName;
         }
     }
@@ -97,22 +187,22 @@ public class ClusterEvents {
      * Event when there is a change of leader for a context.
      */
     @KeepNames
-    public static class LeaderConfirmation extends TopologyEvents.TopologyBaseEvent {
+    public static class ContextLeaderConfirmation extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
         private final String node;
 
-        public LeaderConfirmation(String context, String node, boolean forwarded) {
-            super(forwarded);
+        public ContextLeaderConfirmation(String context, String node) {
+            super(false);
             this.context = context;
             this.node = node;
         }
 
-        public String getContext() {
+        public String context() {
             return context;
         }
 
-        public String getNode() {
+        public String node() {
             return node;
         }
     }
@@ -121,26 +211,25 @@ public class ClusterEvents {
      * Event when the current node becomes leader for a context.
      */
     @KeepNames
-    public static class BecomeLeader extends TopologyEvents.TopologyBaseEvent {
+    public static class BecomeContextLeader extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
         private final Supplier<EntryIterator> unappliedEntries;
 
-        public BecomeLeader(String context, Supplier<EntryIterator> unappliedEntries) {
+        public BecomeContextLeader(String context, Supplier<EntryIterator> unappliedEntries) {
             super(false);
             this.context = context;
             this.unappliedEntries = unappliedEntries;
         }
 
-        public String getContext() {
+        public String context() {
             return context;
         }
 
-        public Supplier<EntryIterator> getUnappliedEntries() {
+        public Supplier<EntryIterator> unappliedEntriesSupplier() {
             return unappliedEntries;
         }
     }
-
     /**
      * Event when an axon server node is deleted from the cluster.
      */
@@ -151,7 +240,7 @@ public class ClusterEvents {
 
         public AxonServerNodeDeleted(String name) {
             super(false);
-            this.node =name;
+            this.node = name;
         }
 
         public String node() {
@@ -168,6 +257,72 @@ public class ClusterEvents {
 
         public byte[] getLicense() {
             return license;
+        }
+    }
+    @KeepNames
+    public static class ReplicationGroupUpdated extends TopologyEvents.TopologyBaseEvent {
+
+        private final String replicationGroup;
+
+        public ReplicationGroupUpdated(String replicationGroup) {
+            super(false);
+            this.replicationGroup = replicationGroup;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
+    }
+
+    /**
+     * Event published when there is an intent to remove a node from a context.
+     */
+    @KeepNames
+    public static class DeleteNodeFromReplicationGroupRequested extends TopologyEvents.TopologyBaseEvent {
+
+        private final String replicationGroup;
+        private final String node;
+
+        /**
+         * Constructor for the event.
+         *
+         * @param replicationGroup the context where the node will be deleted
+         * @param node             the node that will be deleted from the context
+         */
+        public DeleteNodeFromReplicationGroupRequested(
+                String replicationGroup, String node) {
+            super(false);
+            this.replicationGroup = replicationGroup;
+            this.node = node;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
+
+        public String node() {
+            return node;
+        }
+    }
+
+    @KeepNames
+    public static class ReplicationGroupDeleted extends TopologyEvents.TopologyBaseEvent {
+
+        private final String replicationGroup;
+        private final boolean preserveEventStore;
+
+        public ReplicationGroupDeleted(String replicationGroup, boolean preserveEventStore) {
+            super(false);
+            this.replicationGroup = replicationGroup;
+            this.preserveEventStore = preserveEventStore;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
+
+        public boolean preserveEventStore() {
+            return preserveEventStore;
         }
     }
 }

@@ -1,13 +1,16 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
+import io.axoniq.axonserver.logging.AuditLog;
+import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +26,8 @@ import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
 @RestController
 @RequestMapping("/v1/backup")
 public class ClusterBackupInfoRestController {
+
+    private static final Logger auditLog = AuditLog.getLogger();
 
     private final BackupInfoRestController backupInfoRestController;
     private final GrpcRaftController grpcRaftController;
@@ -40,7 +45,9 @@ public class ClusterBackupInfoRestController {
      * @return the list of the log entry files that should be backed up
      */
     @GetMapping("/log/filenames")
-    public List<String> getFilenames(@RequestParam(value = "context", defaultValue = DEFAULT_CONTEXT) String context) {
+    public List<String> getFilenames(@RequestParam(value = "context", defaultValue = DEFAULT_CONTEXT) String context,
+                                     Principal principal) {
+        auditLog.info("[{}] Request to list backup files for context {}.", AuditLog.username(principal), context);
         LogEntryStore logEntryStore = grpcRaftController.getRaftGroup(context).localLogEntryStore();
         return logEntryStore.getBackupFilenames().collect(Collectors.toList());
     }
@@ -55,11 +62,12 @@ public class ClusterBackupInfoRestController {
      * @throws SQLException if a database access error occurs
      */
     @PostMapping("/createControlDbBackup")
-    public String createControlDbBackup() throws SQLException {
+    public String createControlDbBackup(Principal principal) throws SQLException {
+        auditLog.info("[{}] Request to create controldb backup.", AuditLog.username(principal));
         try {
             return backupInfoRestController.createControlDbBackup();
         } finally {
-            grpcRaftController.getContexts()
+            grpcRaftController.getRaftGroups()
                               .forEach(c -> grpcRaftController.getRaftGroup(c).localNode().restartLogCleaning());
         }
     }

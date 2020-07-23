@@ -55,6 +55,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class LeaderState extends AbstractMembershipState {
 
     private static final Logger logger = LoggerFactory.getLogger(LeaderState.class);
+    public static final String HEALTH_SECTION_FOLLOWER = ".follower.";
     private final ClusterConfiguration clusterConfiguration;
 
     private final Map<Long, CompletableFuture<Void>> pendingEntries = new ConcurrentHashMap<>();
@@ -189,7 +190,9 @@ public class LeaderState extends AbstractMembershipState {
                     currentTerm(),
                     request.getLeaderId(),
                     request.getTerm());
-        return responseFactory().appendEntriesFailure(request.getRequestId(), "Request rejected because I'm a leader");
+        return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                      request.getSupportsReplicationGroups(),
+                                                      "Request rejected because I'm a leader");
     }
 
 
@@ -355,7 +358,7 @@ public class LeaderState extends AbstractMembershipState {
                 completableFuture = pendingEntries.remove(e.getIndex());
             }
             if (completableFuture != null) {
-                completableFuture.complete(null);
+                complete(completableFuture);
                 lastConfirmed.set(e.getIndex());
             } else {
                 logger.debug(
@@ -366,6 +369,10 @@ public class LeaderState extends AbstractMembershipState {
             Thread.currentThread().interrupt();
             logger.debug("interrupted in apply");
         }
+    }
+
+    private void complete(CompletableFuture<Void> completableFuture) {
+        execute(() -> completableFuture.complete(null));
     }
 
     @Override
@@ -431,13 +438,15 @@ public class LeaderState extends AbstractMembershipState {
                     long lastMessageAge = now - rp.lastMessageReceived();
                     long raftMsgBuffer = lastLogIndex - (rp.nextIndex() - 1);
                     if (lastMessageAge > maxElectionTimeout()) {
-                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "NO_ACK_RECEIVED");
+                        statusConsumer.accept(groupId() + HEALTH_SECTION_FOLLOWER + rp.nodeName() + ".status",
+                                              "NO_ACK_RECEIVED");
                         result.set(false);
                     } else if (raftMsgBuffer > 100) {
-                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "BEHIND");
+                        statusConsumer.accept(groupId() + HEALTH_SECTION_FOLLOWER + rp.nodeName() + ".status",
+                                              "BEHIND");
                         result.set(false);
                     } else {
-                        statusConsumer.accept(groupId() + ".follower." + rp.nodeName() + ".status", "UP");
+                        statusConsumer.accept(groupId() + HEALTH_SECTION_FOLLOWER + rp.nodeName() + ".status", "UP");
                     }
                 }
         );
@@ -543,9 +552,9 @@ public class LeaderState extends AbstractMembershipState {
                 updateCommit = true;
             }
 
-            Entry entry = raftGroup().localLogEntryStore().getEntry(nextCommitCandidate);
-            if (updateCommit && entry.getTerm() == raftGroup().localElectionStore().currentTerm()) {
-                raftGroup().logEntryProcessor().markCommitted(entry.getIndex(), entry.getTerm());
+            long termForCandidate = raftGroup().localLogEntryStore().getTerm(nextCommitCandidate);
+            if (updateCommit && termForCandidate == raftGroup().localElectionStore().currentTerm()) {
+                raftGroup().logEntryProcessor().markCommitted(nextCommitCandidate, termForCandidate);
             }
         }
 

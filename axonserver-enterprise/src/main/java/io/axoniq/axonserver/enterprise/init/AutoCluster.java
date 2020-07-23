@@ -35,6 +35,9 @@ public class AutoCluster implements ApplicationRunner {
     private final InitClusterTask initClusterTask;
     private final RegisterNodeTask registerNodeTask;
 
+    @Value("${axoniq.axonserver.cluster-template.first:}")
+    private String hasClusterTemplateOn;
+
     public AutoCluster(@Value("${axoniq.axonserver.autocluster.first}") String firstNode,
                        @Value("${axoniq.axonserver.autocluster.contexts:#{null}}") String[] contexts,
                        ClusterController clusterController,
@@ -49,6 +52,13 @@ public class AutoCluster implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+
+        if (!hasClusterTemplateOn.isEmpty()) {
+            logger.error("Not allowed to use 'Auto Cluster' and 'Cluster Template' simultaneously." +
+                    "Please remove configuration: 'axoniq.axonserver.cluster-template'");
+            return;
+        }
+
         logger.info("Starting auto-clustering with first node {} and contexts {}", firstNode, contexts);
 
         String internalHostname = firstNode;
@@ -61,8 +71,9 @@ public class AutoCluster implements ApplicationRunner {
 
         ClusterNode me = clusterController.getMe();
         if (me.getInternalHostName().equals(internalHostname) && me.getGrpcInternalPort().equals(internalPort)) {
-            logger.info("This is the initial node for the cluster, already have {} contexts", me.getContexts().size());
-            if (me.getContexts().isEmpty()) {
+            logger.info("This is the initial node for the cluster, already have {} contexts",
+                        me.getReplicationGroups().size());
+            if (me.getReplicationGroups().isEmpty()) {
                 initClusterTask.schedule(contexts);
             }
         } else {
@@ -71,8 +82,8 @@ public class AutoCluster implements ApplicationRunner {
                     me.getInternalHostName(),
                     me.getGrpcInternalPort(),
                     clusterController.remoteNodeNames().size(),
-                    me.getContexts().size());
-            if (me.getContexts().isEmpty() && clusterController.remoteNodeNames().isEmpty()) {
+                    me.getReplicationGroups().size());
+            if (me.getReplicationGroups().isEmpty() && clusterController.remoteNodeNames().isEmpty()) {
                 registerNodeTask.schedule(internalHostname, internalPort, Arrays.asList(contexts));
             }
         }

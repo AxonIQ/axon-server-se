@@ -21,6 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 import static java.util.Arrays.asList;
@@ -51,10 +52,15 @@ public class FollowerStateTest {
     private SnapshotManager snapshotManager;
     private LogEntryProcessor logEntryProcessor;
     private RaftNode localNode;
+    private final AtomicReference<MembershipState> currentState = new AtomicReference<>();
 
     @Before
     public void setup() {
         transitionHandler = mock(StateTransitionHandler.class);
+        doAnswer(invocation -> {
+            currentState.set(invocation.getArgument(1));
+            return null;
+        }).when(transitionHandler).updateState(any(), any(), anyString());
 
         logEntryStore = spy(new InMemoryLogEntryStore("Test"));
         electionStore = spy(new InMemoryElectionStore());
@@ -69,7 +75,6 @@ public class FollowerStateTest {
         when(raftConfiguration.maxElectionTimeout()).thenReturn(MAX_ELECTION_TIMEOUT);
 
         RaftGroup raftGroup = mock(RaftGroup.class);
-        when(raftGroup.lastAppliedEventSequence()).thenReturn(LAST_APPLIED_EVENT_SEQUENCE);
         when(raftGroup.localLogEntryStore()).thenReturn(logEntryStore);
         when(raftGroup.localElectionStore()).thenReturn(electionStore);
         when(raftGroup.logEntryProcessor()).thenReturn(logEntryProcessor);
@@ -81,7 +86,7 @@ public class FollowerStateTest {
         fakeScheduler = new FakeScheduler();
 
         snapshotManager = mock(SnapshotManager.class);
-        when(snapshotManager.applySnapshotData(anyList())).thenReturn(Mono.empty());
+        when(snapshotManager.applySnapshotData(anyList(), any(Role.class))).thenReturn(Mono.empty());
 
         CurrentConfiguration currentConfiguration = mock(CurrentConfiguration.class);
         when(currentConfiguration.groupMembers()).thenReturn(asList(node("node1", Role.PRIMARY),
@@ -234,7 +239,7 @@ public class FollowerStateTest {
 
         assertEquals("defaultGroup", response.getGroupId());
         assertEquals(1L, response.getTerm());
-        assertEquals(LAST_APPLIED_EVENT_SEQUENCE, response.getFailure().getLastAppliedEventSequence());
+//        assertEquals(LAST_APPLIED_EVENT_SEQUENCE, response.getFailure().getLastAppliedEventSequence());
         assertEquals(0L, response.getFailure().getLastAppliedIndex());
         verify(logEntryStore, times(0)).appendEntry(any());
     }
@@ -259,7 +264,7 @@ public class FollowerStateTest {
 
         assertEquals("defaultGroup", response.getGroupId());
         assertEquals(0L, response.getTerm());
-        assertEquals(LAST_APPLIED_EVENT_SEQUENCE, response.getFailure().getLastAppliedEventSequence());
+//        assertEquals(LAST_APPLIED_EVENT_SEQUENCE, response.getFailure().getLastAppliedEventSequence());
         assertEquals(0L, response.getFailure().getLastAppliedIndex());
         verify(logEntryStore, times(0)).appendEntry(any());
         assertEquals(0L, logEntryProcessor.commitIndex());
@@ -308,13 +313,8 @@ public class FollowerStateTest {
         doThrow(new IOException("oops")).when(logEntryStore).appendEntry(any());
 
         AppendEntriesResponse response = followerState.appendEntries(firstAppend());
-
-//        assertEquals("defaultGroup", response.getGroupId());
-//        assertEquals(0L, response.getTerm());
-//        assertEquals(LAST_APPLIED_EVENT_SEQUENCE, response.getFailure().getLastAppliedEventSequence());
-//        assertEquals(0L, response.getFailure().getLastAppliedIndex());
-//        assertEquals(0L, logEntryProcessor.commitIndex());
-//        verify(followerState).stop();
+        assertTrue(response.hasFailure());
+        assertEquals(FatalState.class, currentState.get().getClass());
     }
 
     @Test
@@ -379,7 +379,7 @@ public class FollowerStateTest {
         assertTrue(response.hasSuccess());
         verify(logEntryStore).clear(anyLong());
         verify(raftConfiguration).update(request.getLastConfig().getNodesList());
-        verify(snapshotManager).applySnapshotData(request.getDataList());
+        verify(snapshotManager).applySnapshotData(request.getDataList(), request.getPeerRole());
 
         fakeScheduler.timeElapses(MAX_ELECTION_TIMEOUT + electionTimeout + 1);
         verify(transitionHandler).updateState(any(), any(PreVoteState.class), any());
@@ -403,7 +403,7 @@ public class FollowerStateTest {
         assertEquals("defaultGroup", response.getGroupId());
         assertEquals(0L, response.getTerm());
         assertTrue(response.hasSuccess());
-        verify(snapshotManager).applySnapshotData(request.getDataList());
+        verify(snapshotManager).applySnapshotData(request.getDataList(), request.getPeerRole());
         verify(logEntryProcessor).updateLastApplied(2L, 0L);
         verify(logEntryProcessor).markCommitted(2L, 0L);
     }

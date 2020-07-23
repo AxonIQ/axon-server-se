@@ -92,9 +92,11 @@ public class FileSegmentLogEntryStoreTest {
         primary = PrimaryEventStoreFactory.create(tempFolder.getRoot().getAbsolutePath() + "/node5");
         testSubject = new FileSegmentLogEntryStore("Test", primary, () -> 0L);
         EntryIterator iterator = testSubject.createIterator(900);
+        int counter = 0;
         while (iterator.hasNext()) {
             Entry entry = iterator.next();
-            System.out.println(entry.getIndex());
+            counter++;
         }
+        assertEquals(0, counter);
     }
 }

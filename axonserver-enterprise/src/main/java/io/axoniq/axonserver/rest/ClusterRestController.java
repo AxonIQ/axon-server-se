@@ -1,19 +1,26 @@
 package io.axoniq.axonserver.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.config.FeatureChecker;
+import io.axoniq.axonserver.enterprise.ClusterTemplateController;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.DistributeLicenseService;
-import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.config.ClusterTemplate;
 import io.axoniq.axonserver.enterprise.context.ContextNameValidation;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.enterprise.replication.admin.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.topology.ClusterTopology;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import io.axoniq.axonserver.licensing.Feature;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,15 +31,20 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.invoke.MethodHandles;
+import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * @author Marc Gathier
@@ -41,6 +53,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 @RequestMapping("/v1/cluster")
 public class ClusterRestController {
 
+    private static final Logger auditLog = AuditLog.getLogger();
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     public static final String CONTEXT_NONE = "_none";
@@ -51,29 +64,40 @@ public class ClusterRestController {
     private final Predicate<String> contextNameValidation = new ContextNameValidation();
     private final DistributeLicenseService distributeLicenseService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ClusterTopology clusterTopology;
+    private final ClusterTemplateController clusterTemplateController;
 
     public ClusterRestController(ClusterController clusterController,
                                  RaftConfigServiceFactory raftServiceFactory,
                                  FeatureChecker limits,
-                                 DistributeLicenseService distributeLicenseService, ApplicationEventPublisher eventPublisher) {
+                                 DistributeLicenseService distributeLicenseService,
+                                 ApplicationEventPublisher eventPublisher,
+                                 ClusterTopology clusterTopology,
+                                 ClusterTemplateController clusterTemplateController) {
         this.clusterController = clusterController;
         this.raftServiceFactory = raftServiceFactory;
         this.limits = limits;
         this.distributeLicenseService = distributeLicenseService;
         this.eventPublisher = eventPublisher;
+        this.clusterTopology = clusterTopology;
+        this.clusterTemplateController = clusterTemplateController;
     }
 
 
     @PostMapping
-    public ResponseEntity<RestResponse> add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode) {
-
+    public ResponseEntity<RestResponse> add(@Valid @RequestBody ClusterJoinRequest jsonClusterNode,
+                                            Principal principal) {
+        auditLog.info("[{}] Request to join cluster at {}:{}.",
+                      AuditLog.username(principal),
+                      jsonClusterNode.getInternalHostName(),
+                      jsonClusterNode.internalGrpcPort);
         NodeInfo.Builder nodeInfoBuilder = NodeInfo.newBuilder(clusterController.getMe().toNodeInfo());
         String context = jsonClusterNode.getContext();
         // Check for both context and noContext
         if (context != null && !context.isEmpty()) {
             if ((jsonClusterNode.getNoContexts() != null) && jsonClusterNode.getNoContexts()) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
-                        "Cannot combine joining context with noContexts.");
+                                                     "Cannot combine joining context with noContexts.");
             } else if (!isAdmin(context) && !contextNameValidation.test(context)) {
                 throw new MessagingPlatformException(ErrorCode.INVALID_CONTEXT_NAME,
                                                      "Invalid context name: " + context);
@@ -110,38 +134,93 @@ public class ClusterRestController {
     }
 
 
-    @DeleteMapping( path = "{name}")
-    public void deleteNode(@PathVariable("name") String name) {
-        if( !Feature.CLUSTERING.enabled(limits) ) {
-            throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED, "License does not allow clustering of Axon servers");
+    @DeleteMapping(path = "{name}")
+    public void deleteNode(@PathVariable("name") String name, Principal principal) {
+        auditLog.info("[{}] Request to delete node {}.",
+                      AuditLog.username(principal),
+                      name);
+        if (!Feature.CLUSTERING.enabled(limits)) {
+            throw new MessagingPlatformException(ErrorCode.CLUSTER_NOT_ALLOWED,
+                                                 "License does not allow clustering of Axon servers");
         }
         raftServiceFactory.getRaftConfigService().deleteNode(name);
     }
 
 
     @GetMapping
-    public List<JsonClusterNode> list() {
+    public List<JsonClusterNode> list(Principal principal) {
+        auditLog.info("[{}] Request to list nodes.",
+                      AuditLog.username(principal));
         return clusterController
                 .nodes()
                 .map(e -> JsonClusterNode.from(e, clusterController.isActive(e.getName())))
                 .collect(Collectors.toList());
     }
 
+    @GetMapping("/download-template")
+    public @ResponseBody
+    void downloadClusterTemplate(HttpServletResponse resp, Principal principal) throws IOException {
+        auditLog.info("[{}] Request cluster template download.",
+                AuditLog.username(principal));
+
+        if (clusterTopology.isAdminNode()) {
+            String downloadFileName = "cluster-template.yml";
+            YAMLFactory yamlFactory = new YAMLFactory()
+                    .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+                    .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
+                    .enable(YAMLGenerator.Feature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
+                    .disable(YAMLGenerator.Feature.INDENT_ARRAYS)
+                    .disable(YAMLGenerator.Feature.SPLIT_LINES);
+
+            ObjectMapper mapper = new ObjectMapper(yamlFactory);
+
+            ClusterTemplate clusterTemplate = clusterTemplateController.buildTemplate();
+
+            Map<String, Map<String, ClusterTemplate>> clusterTemplateWithRoot =
+                    Collections.singletonMap("axonserver",
+                            Collections.singletonMap("cluster-template", clusterTemplate)
+                    );
+
+            String downloadStringContent = mapper
+                    .writer()
+                    .withRootName("axoniq")
+                    .writeValueAsString(clusterTemplateWithRoot);
+
+            OutputStream out = resp.getOutputStream();
+            resp.setContentType("text/plain; charset=utf-8");
+            resp.addHeader("Content-Disposition", "attachment; filename=\"" + downloadFileName + "\"");
+            out.write(downloadStringContent.getBytes(UTF_8));
+            out.flush();
+            out.close();
+        } else {
+            throw new RuntimeException("You can use this functionality only from admin node");
+        }
+    }
+
     @PostMapping("/upload-license")
-    public void distributeLicense(@RequestParam("licenseFile") MultipartFile licenseFile) throws IOException {
+    public void distributeLicense(@RequestParam("licenseFile") MultipartFile licenseFile, Principal principal)
+            throws IOException {
+        auditLog.info("[{}] Request license update.",
+                      AuditLog.username(principal));
         String axoniq_license = System.getenv("AXONIQ_LICENSE");
-        if(axoniq_license != null) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "License path hardcoded to AXONIQ_LICENSE=" + axoniq_license + ". Remove this environment key to dynamically manage license.");
+        if (axoniq_license != null) {
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "License path hardcoded to AXONIQ_LICENSE=" + axoniq_license
+                                                         + ". Remove this environment key to dynamically manage license.");
         }
 
         logger.info("New license uploaded, performing license update...");
         distributeLicenseService.distributeLicense(licenseFile.getBytes());
     }
 
-    @GetMapping(path="{name}")
-    public JsonClusterNode getOne(@PathVariable("name") String name) {
+    @GetMapping(path = "{name}")
+    public JsonClusterNode getOne(@PathVariable("name") String name, Principal principal) {
+        auditLog.info("[{}] Request node details for {}.",
+                      AuditLog.username(principal), name);
         ClusterNode node = clusterController.getNode(name);
-        if( node == null ) throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, "Node " + name + " not found");
+        if (node == null) {
+            throw new MessagingPlatformException(ErrorCode.NO_SUCH_NODE, "Node " + name + " not found");
+        }
 
         return JsonClusterNode.from(node, clusterController.isActive(name));
     }

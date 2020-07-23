@@ -1,11 +1,13 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
+import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.context.ContextRepository;
+import io.axoniq.axonserver.enterprise.context.AdminContextController;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.Context;
+import io.axoniq.axonserver.enterprise.jpa.AdminContext;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNodeRepository;
+import io.axoniq.axonserver.enterprise.replication.RaftGroupRepositoryManager;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -37,8 +39,8 @@ public class NodeSelector {
     private final String nodeName;
     private final Function<String, ClusterNode> clusterNodeSelector;
     private final NodeSelectionStrategy nodeSelectionStrategy;
-    private final Function<String, Context> contextSelector;
-    private final Function<String, Set<JpaRaftGroupNode>> raftNodeSelector;
+    private final Function<String, Set<String>> contextSelector;
+    private final Function<String, Set<ReplicationGroupMember>> raftNodeSelector;
     private final Iterable<String> activeConnections;
 
     /**
@@ -47,15 +49,15 @@ public class NodeSelector {
      * @param nodeName              the name of the current node
      * @param nodeSelectionStrategy the node selection strategy to use
      * @param clusterNodeSelector   function to find a {@link ClusterNode} based on its name
-     * @param contextSelector       function to fina a {@link Context} based on its name
-     * @param raftNodeSelector      function to retrieve the {@link JpaRaftGroupNode}s for a context
+     * @param contextSelector       function to fina a {@link AdminContext} based on its name
+     * @param raftNodeSelector      function to retrieve the {@link ReplicationGroupMember}s for a context
      * @param activeConnections     provides names of axon server nodes that are currently connected to this node
      */
     NodeSelector(String nodeName,
                  NodeSelectionStrategy nodeSelectionStrategy,
                  Function<String, ClusterNode> clusterNodeSelector,
-                 Function<String, Context> contextSelector,
-                 Function<String, Set<JpaRaftGroupNode>> raftNodeSelector,
+                 Function<String, Set<String>> contextSelector,
+                 Function<String, Set<ReplicationGroupMember>> raftNodeSelector,
                  Iterable<String> activeConnections) {
         this.nodeName = nodeName;
         this.clusterNodeSelector = clusterNodeSelector;
@@ -78,13 +80,13 @@ public class NodeSelector {
     public NodeSelector(MessagingPlatformConfiguration messagingPlatformConfiguration,
                         NodeSelectionStrategy nodeSelectionStrategy,
                         ClusterNodeRepository clusterNodeRepository,
-                        ContextRepository contextRepository,
+                        AdminContextController contextRepository,
                         RaftGroupRepositoryManager raftGroupRepositoryManager,
                         ActiveConnections activeConnections) {
         this(messagingPlatformConfiguration.getName(),
              nodeSelectionStrategy,
              n -> clusterNodeRepository.findById(n).orElse(null),
-             c -> contextRepository.findById(c).orElse(null),
+             c -> contextRepository.findConnectableNodes(c),
              raftGroupRepositoryManager::findByGroupId,
              activeConnections
         );
@@ -139,15 +141,12 @@ public class NodeSelector {
 
     private Collection<String> getNodesInContext(ClusterNode me, String context) {
         if (me.isAdmin()) {
-            Context contextJPA = contextSelector.apply(context);
-            if (contextJPA != null) {
-                return contextJPA.getNodeNames(n -> RoleUtils.allowsClientConnect(n.getRole()) && !n.isPendingDelete());
-            }
+            return contextSelector.apply(context);
         }
-        Set<JpaRaftGroupNode> nodes = raftNodeSelector.apply(context);
+        Set<ReplicationGroupMember> nodes = raftNodeSelector.apply(context);
         return nodes.stream()
                     .filter(n -> !n.isPendingDelete() && RoleUtils.allowsClientConnect(n.getRole()))
-                    .map(JpaRaftGroupNode::getNodeName)
+                    .map(ReplicationGroupMember::getNodeName)
                     .collect(Collectors.toSet());
     }
 

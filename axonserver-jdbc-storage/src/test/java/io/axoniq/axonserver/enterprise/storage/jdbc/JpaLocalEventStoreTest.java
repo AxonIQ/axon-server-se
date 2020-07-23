@@ -6,6 +6,7 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -36,8 +37,7 @@ public class JpaLocalEventStoreTest {
                                           new SingleSchemaMultiContextStrategy(storageProperties.getVendorSpecific()),
                                           c -> true),
                 new SimpleMeterRegistry(),
-                SingleInstanceTransactionManager::new,
-                c -> true);
+                SingleInstanceTransactionManager::new);
         testSubject.start();
         testSubject.initContext("default", false);
     }
@@ -52,14 +52,14 @@ public class JpaLocalEventStoreTest {
         GetAggregateEventsRequest request = GetAggregateEventsRequest.newBuilder().setAggregateId(aggregateIds[0])
                                                                      .build();
 
-        CollectingStreamObserver<InputStream> responseObserver = new CollectingStreamObserver<>();
+        CollectingStreamObserver<SerializedEvent> responseObserver = new CollectingStreamObserver<>();
         testSubject.listAggregateEvents("default", request, responseObserver);
         waitForCompleted(responseObserver);
 
         TestCase.assertEquals(eventsPerAggregate, responseObserver.messages.size());
     }
 
-    private void waitForCompleted(CollectingStreamObserver<InputStream> responseObserver)
+    private void waitForCompleted(CollectingStreamObserver<?> responseObserver)
             throws InterruptedException {
         int retries = 10;
         while (!responseObserver.success && retries-- > 0) {
@@ -81,7 +81,7 @@ public class JpaLocalEventStoreTest {
                                                                      .setAllowSnapshots(true)
                                                                      .build();
 
-        CollectingStreamObserver<InputStream> responseObserver = new CollectingStreamObserver<>();
+        CollectingStreamObserver<SerializedEvent> responseObserver = new CollectingStreamObserver<>();
         testSubject.listAggregateEvents("default", request, responseObserver);
         waitForCompleted(responseObserver);
 

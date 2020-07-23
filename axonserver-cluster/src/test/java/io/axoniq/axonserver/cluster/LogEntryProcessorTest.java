@@ -9,7 +9,7 @@ import org.junit.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
+import java.util.function.LongFunction;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -28,11 +28,8 @@ public class LogEntryProcessorTest {
 
     @Test
     public void applyEntries() {
-
-
-
         AtomicInteger entryCounter = new AtomicInteger();
-        Function<Long, EntryIterator> entryIteratorFunction = (seq) -> new EntryIterator() {
+        LongFunction<EntryIterator> entryIteratorFunction = (seq) -> new EntryIterator() {
             List<Entry> entryList = new ArrayList<>(asList(newEntry(1, 1), newEntry(1, 2), newEntry(1, 3)));
 
             @Override
@@ -57,10 +54,6 @@ public class LogEntryProcessorTest {
         testSubject.markCommitted(2,1);
         testSubject.apply(entryIteratorFunction, e -> entryCounter.incrementAndGet());
         assertEquals(2, entryCounter.get());
-    }
-
-    @Test
-    public void markCommitted() {
     }
 
     private static Entry newEntry(long term, long index) {

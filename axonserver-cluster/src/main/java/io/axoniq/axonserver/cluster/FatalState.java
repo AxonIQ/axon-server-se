@@ -73,7 +73,8 @@ public class FatalState implements MembershipState {
                 raftGroup.localNode().notifyNewLeader(request.getLeaderId());
             }
         }
-        return raftResponseFactory.appendEntriesFailure(request.getRequestId(), "In fatal state", true);
+        return raftResponseFactory.appendEntriesFailure(request.getRequestId(), "In fatal state",
+                                                        request.getSupportsReplicationGroups(), true);
     }
 
     /**

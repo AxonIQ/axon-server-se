@@ -4,7 +4,7 @@ import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -56,9 +56,9 @@ public class RaftTransactionManager implements StorageTransactionManager {
         eventStorageEngine.registerCloseListener(this.sequenceNumberCache::close);
     }
 
-    public void on(ClusterEvents.BecomeLeader becomeMaster) {
+    public void on(ClusterEvents.BecomeContextLeader becomeMaster) {
         lock.lock();
-        try (EntryIterator iterator = becomeMaster.getUnappliedEntries().get()) {
+        try (EntryIterator iterator = becomeMaster.unappliedEntriesSupplier().get()) {
             sequenceNumberCache.clear();
             waitingTransactions.set(0);
             nextTransactionToken.set(eventStorageEngine.getLastToken() + 1);
@@ -112,7 +112,7 @@ public class RaftTransactionManager implements StorageTransactionManager {
         return entry.hasSerializedObject() && entry.getSerializedObject().getType().equals(entryType);
     }
 
-    public void on(ClusterEvents.LeaderStepDown masterStepDown) {
+    public void on(ClusterEvents.ContextLeaderStepDown masterStepDown) {
         nextTransactionToken.set(-1);
         logger.info("{}: Step down", eventStorageEngine.getType());
         sequenceNumberCache.clear();
@@ -129,15 +129,18 @@ public class RaftTransactionManager implements StorageTransactionManager {
             TransactionWithToken transactionWithToken;
             lock.lock();
             try {
-                RaftNode node = clusterController.getRaftNode(eventStorageEngine.getType().getContext());
+                RaftNode node = clusterController.getRaftNodeForContext(eventStorageEngine.getType().getContext());
                 if( node == null || !node.isLeader()) {
-                    completableFuture.completeExceptionally(new RuntimeException("No longer leader"));
+                    completableFuture
+                            .completeExceptionally(new MessagingPlatformException(ErrorCode.NO_LEADER_AVAILABLE,
+                                                                                  "No longer leader"));
                     return completableFuture;
                 }
 
                 transactionWithToken =
                         TransactionWithToken.newBuilder().setToken(nextTransactionToken.getAndAdd(eventList.size()))
                                             .setVersion(eventStorageEngine.transactionVersion())
+                                            .setContext(eventStorageEngine.getType().getContext())
                                             .addAllEvents(events).build();
 
                 if( logger.isTraceEnabled()) {

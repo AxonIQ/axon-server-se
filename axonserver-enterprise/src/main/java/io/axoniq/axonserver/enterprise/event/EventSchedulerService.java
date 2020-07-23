@@ -1,11 +1,12 @@
 package io.axoniq.axonserver.enterprise.event;
 
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupService;
+import io.axoniq.axonserver.enterprise.replication.group.ReplicationGroupController;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.InstructionAck;
-import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.CancelScheduledEventRequest;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
@@ -13,6 +14,7 @@ import io.axoniq.axonserver.grpc.event.RescheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleToken;
 import io.axoniq.axonserver.message.event.ScheduledEventExecutor;
+import io.axoniq.axonserver.message.event.ScheduledEventWrapper;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
 
@@ -29,16 +31,19 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
 
     private final ContextProvider contextProvider;
     private final TaskPublisher taskPublisher;
+    private final ReplicationGroupController replicationGroupController;
 
     /**
      * @param contextProvider component that returns the context for a specific request.
-     * @param taskPublisher   factory to get a {@link io.axoniq.axonserver.enterprise.cluster.RaftGroupService}
+     * @param taskPublisher   factory to get a {@link RaftGroupService}
      *                        instance for a context
      */
     public EventSchedulerService(ContextProvider contextProvider,
-                                 TaskPublisher taskPublisher) {
+                                 TaskPublisher taskPublisher,
+                                 ReplicationGroupController replicationGroupController) {
         this.contextProvider = contextProvider;
         this.taskPublisher = taskPublisher;
+        this.replicationGroupController = replicationGroupController;
     }
 
     /**
@@ -55,7 +60,10 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
 
     private void doScheduleEvent(Event event, long instant, StreamObserver<ScheduleToken> responseObserver,
                                  String context) {
-        taskPublisher.publishScheduledTask(context, ScheduledEventExecutor.class.getName(), serialize(event), instant)
+        taskPublisher.publishScheduledTask(replicationGroupFor(context),
+                                           ScheduledEventExecutor.class.getName(),
+                                           serialize(context, event),
+                                           instant)
                      .thenApply(taskId -> {
                          responseObserver.onNext(ScheduleToken.newBuilder()
                                                               .setToken(taskId)
@@ -69,11 +77,8 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
                      });
     }
 
-    private SerializedObject serialize(Event event) {
-        return SerializedObject.newBuilder()
-                               .setType("ScheduledEvent")
-                               .setData(event.toByteString())
-                               .build();
+    private ScheduledEventWrapper serialize(String context, Event event) {
+        return new ScheduledEventWrapper(context, event.toByteArray());
     }
 
     /**
@@ -87,7 +92,7 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
     public void rescheduleEvent(RescheduleEventRequest request, StreamObserver<ScheduleToken> responseObserver) {
         String context = contextProvider.getContext();
         if (!"".equals(request.getToken())) {
-            taskPublisher.cancelScheduledTask(context, request.getToken())
+            taskPublisher.cancelScheduledTask(replicationGroupFor(context), request.getToken())
                          .thenAccept(r -> doScheduleEvent(request.getEvent(),
                                                           request.getInstant(),
                                                           responseObserver,
@@ -110,7 +115,7 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
     @Override
     public void cancelScheduledEvent(CancelScheduledEventRequest request,
                                      StreamObserver<InstructionAck> responseObserver) {
-        taskPublisher.cancelScheduledTask(contextProvider.getContext(), request.getToken())
+        taskPublisher.cancelScheduledTask(replicationGroupFor(contextProvider.getContext()), request.getToken())
                      .whenComplete((r, ex) -> {
                          if (ex == null) {
                              responseObserver.onNext(InstructionAck.newBuilder()
@@ -121,5 +126,9 @@ public class EventSchedulerService extends EventSchedulerGrpc.EventSchedulerImpl
                              responseObserver.onError(GrpcExceptionBuilder.build(ex));
                          }
                      });
+    }
+
+    private String replicationGroupFor(String context) {
+        return replicationGroupController.findReplicationGroupByContext(context).orElse(null);
     }
 }

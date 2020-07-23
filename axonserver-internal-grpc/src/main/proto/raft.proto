@@ -60,6 +60,7 @@ message AppendEntriesRequest {
     repeated Entry entries = 7;
     uint64 commitIndex = 8;
     string targetId = 9; // The nodeId of the receiver, used to initialize raft group
+    bool supportsReplicationGroups = 10;
 }
 
 message Entry {
@@ -95,24 +96,27 @@ message AppendEntrySuccess {
 message AppendEntryFailure {
     string cause = 1;
     uint64 lastAppliedIndex = 2;
-    sint64 lastAppliedEventSequence = 3; // only relevant for storage groups
-    sint64 lastAppliedSnapshotSequence = 4; // only relevant for storage groups
+    reserved 3, 4;
+    //    sint64 lastAppliedEventSequence = 3; // only relevant for storage groups
+    //    sint64 lastAppliedSnapshotSequence = 4; // only relevant for storage groups
     bool fatal = 5;
     string errorCode = 6;
+    bool supportsReplicationGroups = 7;
 }
-
 
 message InstallSnapshotRequest {
     string requestId = 1;
     string groupId = 2;
     uint64 term = 3; // Leader's term
     string leaderId = 4;
-    uint64 lastIncludedTerm= 5;
+    uint64 lastIncludedTerm = 5;
     uint64 lastIncludedIndex = 6;
     Config lastConfig = 7;
     uint32 offset = 8; // starts from 0
     bool done = 9;
     repeated SerializedObject data = 10;
+    bool configDone = 11;
+    Role peerRole = 12;
 }
 
 message SerializedObject {
@@ -128,11 +132,18 @@ message InstallSnapshotResponse {
     oneof result {
         InstallSnapshotSuccess success = 4;
         InstallSnapshotFailure failure = 5;
+        RequestIncrementalData requestIncrementalData = 6;
     }
 }
 
 message InstallSnapshotSuccess {
     uint32 lastReceivedOffset = 3;
+}
+
+message RequestIncrementalData {
+    uint32 lastReceivedOffset = 1;
+    map<string, sint64> lastEventTokenPerContext = 2;
+    map<string, sint64> lastSnapshotTokenPerContext = 3;
 }
 
 message InstallSnapshotFailure {
@@ -164,6 +175,7 @@ enum Role {
     ACTIVE_BACKUP = 2;
     PASSIVE_BACKUP = 3;
     MESSAGING_ONLY = 4;
+    SECONDARY = 5;
 }
 
 message ConfigChangeResult {

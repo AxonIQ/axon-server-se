@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.enterprise.messaging.event;
 
-import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.cluster.internal.ContextAddingInterceptor;
 import io.axoniq.axonserver.enterprise.cluster.internal.InternalTokenAddingInterceptor;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
@@ -23,6 +22,8 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.event.NoOpStreamObserver;
 import io.grpc.CallOptions;
@@ -30,26 +31,43 @@ import io.grpc.Channel;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.ClientCalls;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Client for the event store used by Axon Server when the leader of the event store is on a different Axon Server node.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
 public class RemoteEventStore implements io.axoniq.axonserver.message.event.EventStore {
-    private final ClusterNode clusterNode;
-    private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final ChannelProvider channelProvider;
+
+    private static final Logger logger = LoggerFactory.getLogger(RemoteEventStore.class);
+    protected final ClusterNode clusterNode;
+    protected final String internalToken;
+    protected final ChannelProvider channelProvider;
+    private final LocalEventStore localEventStore;
+    private final BiFunction<String, Boolean, String> leaderProvider;
+    private final Function<String, ClusterNode> clusterNodeSupplier;
 
     public RemoteEventStore(ClusterNode clusterNode,
-                            MessagingPlatformConfiguration messagingPlatformConfiguration,
-                            ChannelProvider channelProvider) {
+                            String internalToken,
+                            ChannelProvider channelProvider,
+                            LocalEventStore localEventStore,
+                            BiFunction<String, Boolean, String> leaderProvider,
+                            Function<String, ClusterNode> clusterNodeSupplier) {
         this.clusterNode = clusterNode;
-        this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+        this.internalToken = internalToken;
         this.channelProvider = channelProvider;
+        this.localEventStore = localEventStore;
+        this.leaderProvider = leaderProvider;
+        this.clusterNodeSupplier = clusterNodeSupplier;
     }
 
     private EventStoreGrpc.EventStoreStub getEventStoreStub(String context) {
@@ -58,16 +76,33 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
                                                                   "No connection to event store available");
         return EventStoreGrpc.newStub(channel).withInterceptors(
                 new ContextAddingInterceptor(() -> context),
-                new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken()));
+                new InternalTokenAddingInterceptor(internalToken));
     }
 
     private EventDispatcherStub getNonMarshallingStub(String context) {
         Channel channel = channelProvider.get(clusterNode);
-        if (channel == null) throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
-                                                                  "No connection to event store available");
+        if (channel == null) {
+            throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
+                                                 "No connection to event store available");
+        }
         return new EventDispatcherStub(channel).withInterceptors(
                 new ContextAddingInterceptor(() -> context),
-                new InternalTokenAddingInterceptor(messagingPlatformConfiguration.getAccesscontrol().getInternalToken()));
+                new InternalTokenAddingInterceptor(internalToken));
+    }
+
+    private EventDispatcherStub getNonMarshallingStub(String context, String leader) {
+        if (leader == null) {
+            throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
+                                                 "No leader for event store available");
+        }
+        Channel channel = channelProvider.get(clusterNodeSupplier.apply(leader));
+        if (channel == null) {
+            throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE,
+                                                 "No connection to event store available");
+        }
+        return new EventDispatcherStub(channel).withInterceptors(
+                new ContextAddingInterceptor(() -> context),
+                new InternalTokenAddingInterceptor(internalToken));
     }
 
     @Override
@@ -96,18 +131,53 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
 
     @Override
     public void listAggregateEvents(String context, GetAggregateEventsRequest request,
-                                    StreamObserver<InputStream> responseStreamObserver) {
-        EventDispatcherStub stub = getNonMarshallingStub(context);
-        stub.listAggregateEvents(request, new RemoteAxonServerStreamObserver<>(responseStreamObserver));
+                                    StreamObserver<SerializedEvent> responseStreamObserver) {
+        if (localEventStore == null || !localEventStore.hasContext(context)) {
+            EventDispatcherStub stub = getNonMarshallingStub(context);
+            stub.listAggregateEvents(request, new RemoteAxonServerStreamObserver<>(responseStreamObserver));
+            return;
+        }
 
+        long minToken = localEventStore.getLastEvent(context) + 1;
+        localEventStore.listAggregateEvents(context, request, new StreamObserver<SerializedEvent>() {
+            private final AtomicLong first = new AtomicLong(request.getInitialSequence());
+
+            @Override
+            public void onNext(SerializedEvent serializedEvent) {
+                responseStreamObserver.onNext(serializedEvent);
+                first.set(serializedEvent.getAggregateSequenceNumber() + 1);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                responseStreamObserver.onError(throwable);
+            }
+
+            @Override
+            public void onCompleted() {
+                EventDispatcherStub stub = getNonMarshallingStub(context, leaderProvider.apply(context, false));
+                GetAggregateEventsRequest leaderRequest = GetAggregateEventsRequest.newBuilder(request)
+                                                                                   .setInitialSequence(first.get())
+                                                                                   .setAllowSnapshots(false)
+                                                                                   .setMinToken(minToken)
+                                                                                   .build();
+                logger.debug("{}: reading events from leader for {} from sequence number {} or token {}",
+                             context,
+                             request.getAggregateId(),
+                             first,
+                             leaderRequest.getMinToken());
+
+                stub.listAggregateEvents(leaderRequest,
+                                         new RemoteAxonServerStreamObserver<>(responseStreamObserver));
+            }
+        });
     }
 
     @Override
     public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
-                                    StreamObserver<InputStream> responseStreamObserver) {
+                                       StreamObserver<SerializedEvent> responseStreamObserver) {
         EventDispatcherStub stub = getNonMarshallingStub(context);
         stub.listAggregateSnapshots(request, new RemoteAxonServerStreamObserver<>(responseStreamObserver));
-
     }
 
     @Override
@@ -152,7 +222,8 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
     @Override
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        getEventStoreStub(context).readHighestSequenceNr(request, new RemoteAxonServerStreamObserver<>(responseObserver));
+        getEventStoreStub(context).readHighestSequenceNr(request,
+                                                         new RemoteAxonServerStreamObserver<>(responseObserver));
     }
 
     @Override
@@ -214,14 +285,20 @@ public class RemoteEventStore implements io.axoniq.axonserver.message.event.Even
                     getChannel().newCall(EventDispatcher.METHOD_LIST_EVENTS, getCallOptions()), inputStream);
         }
 
-        private void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseStream) {
+        private void listAggregateEvents(GetAggregateEventsRequest request,
+                                         StreamObserver<SerializedEvent> responseStream) {
             ClientCalls.asyncServerStreamingCall(
-                    getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_EVENTS, getCallOptions()), request, responseStream);
+                    getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_EVENTS, getCallOptions()),
+                    request,
+                    responseStream);
         }
 
-        public void listAggregateSnapshots(GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseStream) {
+        public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
+                                           StreamObserver<SerializedEvent> responseStream) {
             ClientCalls.asyncServerStreamingCall(
-                    getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_SNAPSHOTS, getCallOptions()), request, responseStream);
+                    getChannel().newCall(EventDispatcher.METHOD_LIST_AGGREGATE_SNAPSHOTS, getCallOptions()),
+                    request,
+                    responseStream);
         }
 
         public StreamObserver<InputStream> appendEvent(

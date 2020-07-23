@@ -322,9 +322,7 @@ public class GrpcRaftPeer implements RaftPeer {
      */
     private <T> void send(StreamObserver<T> stream, T request) {
         try {
-            synchronized (stream) {
-                stream.onNext(request);
-            }
+            stream.onNext(request);
         } catch( IllegalStateException e) {
             throw new StreamAlreadyClosedException(e);
         } catch( Throwable e) {

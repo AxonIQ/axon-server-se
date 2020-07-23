@@ -84,4 +84,59 @@ public class AutoLoadBalancerTest {
                                                                                     "testClient"));
         assertEquals(2, balanceCounter);
     }
+
+    @Test
+    public void testMultipleTokenStoreIdentifiers() {
+        testSubject.onEventProcessorStatusChange(new EventProcessorEvents.EventProcessorStatusUpdated(
+                new ClientEventProcessorInfo("testClient", "testContext", EventProcessorInfo.newBuilder()
+                                                                                            .setProcessorName(
+                                                                                                    "sampleProcessor")
+                                                                                            .setActiveThreads(1)
+                                                                                            .setTokenStoreIdentifier(
+                                                                                                    "TS1")
+                                                                                            .addSegmentStatus(
+                                                                                                    EventProcessorInfo.SegmentStatus
+                                                                                                            .newBuilder()
+                                                                                                            .setSegmentId(
+                                                                                                                    1)
+                                                                                                            .setTokenPosition(
+                                                                                                                    1000)
+                                                                                                            .build())
+                                                                                            .build()), false));
+        assertEquals(1, balanceCounter);
+        testSubject.onEventProcessorStatusChange(new EventProcessorEvents.EventProcessorStatusUpdated(
+                new ClientEventProcessorInfo("testClient", "testContext", EventProcessorInfo.newBuilder()
+                                                                                            .setProcessorName(
+                                                                                                    "sampleProcessor")
+                                                                                            .setActiveThreads(1)
+                                                                                            .setTokenStoreIdentifier(
+                                                                                                    "TS1")
+                                                                                            .addSegmentStatus(
+                                                                                                    EventProcessorInfo.SegmentStatus
+                                                                                                            .newBuilder()
+                                                                                                            .setSegmentId(
+                                                                                                                    1)
+                                                                                                            .setTokenPosition(
+                                                                                                                    1000)
+                                                                                                            .build())
+                                                                                            .build()), false));
+        assertEquals(1, balanceCounter);
+        testSubject.onEventProcessorStatusChange(new EventProcessorEvents.EventProcessorStatusUpdated(
+                new ClientEventProcessorInfo("testClient", "testContext", EventProcessorInfo.newBuilder()
+                                                                                            .setProcessorName(
+                                                                                                    "sampleProcessor")
+                                                                                            .setActiveThreads(1)
+                                                                                            .setTokenStoreIdentifier(
+                                                                                                    "TS2")
+                                                                                            .addSegmentStatus(
+                                                                                                    EventProcessorInfo.SegmentStatus
+                                                                                                            .newBuilder()
+                                                                                                            .setSegmentId(
+                                                                                                                    1)
+                                                                                                            .setTokenPosition(
+                                                                                                                    1000)
+                                                                                                            .build())
+                                                                                            .build()), false));
+        assertEquals(2, balanceCounter);
+    }
 }

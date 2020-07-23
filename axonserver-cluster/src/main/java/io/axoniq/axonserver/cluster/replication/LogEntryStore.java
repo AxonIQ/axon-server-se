@@ -77,8 +77,11 @@ public interface LogEntryStore {
      */
     CompletableFuture<Entry> createEntry(long currentTerm, LeaderElected config);
 
+    long getTerm(long index);
+
     /**
      * Returns the term and index of the last entry in the log entry store.
+     *
      * @return the term and index of the last entry in the log entry store
      */
     TermIndex lastLog();

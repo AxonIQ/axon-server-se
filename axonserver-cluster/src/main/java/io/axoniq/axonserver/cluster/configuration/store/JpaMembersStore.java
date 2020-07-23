@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.cluster.configuration.store;
 
 import io.axoniq.axonserver.cluster.configuration.MembersStore;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
+import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
+import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,17 +21,18 @@ public class JpaMembersStore implements MembersStore {
     private static final Logger logger = LoggerFactory.getLogger(JpaMembersStore.class);
     private final Supplier<String> groupId;
 
-    private final JpaRaftGroupNodeRepository raftGroupNodeRepository;
+    private final ReplicationGroupMemberRepository raftGroupNodeRepository;
+
     public JpaMembersStore(Supplier<String> groupId,
-                           JpaRaftGroupNodeRepository raftGroupNodeRepository) {
+                           ReplicationGroupMemberRepository raftGroupNodeRepository) {
         this.groupId = groupId;
         this.raftGroupNodeRepository = raftGroupNodeRepository;
     }
 
     @Override
     public List<Node> get() {
-        Set<JpaRaftGroupNode> jpaNodes = raftGroupNodeRepository.findByGroupId(this.groupId.get());
-        return jpaNodes.stream().map(JpaRaftGroupNode::asNode)
+        Set<ReplicationGroupMember> jpaNodes = raftGroupNodeRepository.findByGroupId(this.groupId.get());
+        return jpaNodes.stream().map(ReplicationGroupMember::asNode)
                        .collect(Collectors.toList());
     }
 
@@ -39,7 +40,7 @@ public class JpaMembersStore implements MembersStore {
     public void set(List<Node> nodes) {
         String group = this.groupId.get();
         raftGroupNodeRepository.deleteAllByGroupId(group);
-        nodes.forEach(node -> raftGroupNodeRepository.save(new JpaRaftGroupNode(group, node)));
+        nodes.forEach(node -> raftGroupNodeRepository.save(new ReplicationGroupMember(group, node)));
         raftGroupNodeRepository.flush();
     }
 }

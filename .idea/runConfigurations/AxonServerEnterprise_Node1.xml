@@ -41,11 +41,13 @@
         <option name="value" value="./dev/node1/controldb" />
       </param>
       <param>
-        <option name="enabled" value="true" />
         <option name="name" value="axoniq.axonserver.enterprise.license-directory" />
         <option name="value" value="./dev/node1/license" />
       </param>
     </additionalParameters>
+    <envs>
+      <env name="AXONIQ_LICENSE" value="./dev/developer.license" />
+    </envs>
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

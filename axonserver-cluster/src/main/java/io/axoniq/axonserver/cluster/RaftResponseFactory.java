@@ -3,6 +3,7 @@ package io.axoniq.axonserver.cluster;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
+import io.axoniq.axonserver.grpc.cluster.Role;
 
 /**
  * Interface responsible for the creation of the responses to RAFT apis.
@@ -30,11 +31,14 @@ public interface RaftResponseFactory {
      * @param failureCause the cause of the failure
      * @return the failure {@link AppendEntriesResponse}
      */
-    default AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause) {
-        return appendEntriesFailure(requestId, failureCause, false);
+    default AppendEntriesResponse appendEntriesFailure(String requestId, boolean supportsReplicationGroup,
+                                                       String failureCause) {
+        return appendEntriesFailure(requestId, failureCause, supportsReplicationGroup, false);
     }
 
-    AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause, boolean fatal);
+    AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause, boolean supportsReplicationGroup,
+                                               boolean fatal);
+
     /**
      * Builds an {@link InstallSnapshotResponse} to confirm that
      * the {@link io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest} has been successfully processed.
@@ -73,4 +77,15 @@ public interface RaftResponseFactory {
     default RequestVoteResponse voteRejected(String requestId) {
         return voteResponse(requestId, false);
     }
+
+    /**
+     * Builds a {@link InstallSnapshotResponse} containing an indication that the first phase of the install snapshot
+     * process is applied on the follower.
+     *
+     * @param requestId the request id to respond to
+     * @param offset    the offset of the snapshot chuck to respond to
+     * @param role      the role of the node in the raft group
+     * @return the {@link InstallSnapshotResponse}
+     */
+    InstallSnapshotResponse installSnapshotConfigDone(String requestId, int offset, Role role);
 }

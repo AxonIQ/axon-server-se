@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupServiceFactory;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.TaskStatus;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
@@ -94,6 +94,7 @@ public class TaskPublisher {
                                           .appendEntry(context, ScheduleTask.class.getName(), task.toByteArray())
                                           .thenApply(r -> task.getTaskId());
         } catch (Exception ex) {
+            logger.info("{}: Publish task {} failed", context, taskHandler, ex);
             CompletableFuture<String> exceptionHolder = new CompletableFuture<>();
             exceptionHolder.completeExceptionally(ex);
             return exceptionHolder;

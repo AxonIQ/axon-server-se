@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.persistence.CascadeType;
@@ -20,7 +19,6 @@ import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
-import javax.persistence.PreRemove;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
@@ -29,6 +27,7 @@ import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * Stores cluster nodes in the controldb.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
@@ -48,8 +47,8 @@ public class ClusterNode implements Serializable, AxonServerNode {
     @Transient
     private Map<String, String> tags = new HashMap<>();
 
-    @OneToMany(mappedBy = "key.clusterNode", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ContextClusterNode> contexts = new HashSet<>();
+    @OneToMany(mappedBy = "clusterNode", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<AdminReplicationGroupMember> replicationGroups = new HashSet<>();
 
 
     public ClusterNode() {
@@ -143,7 +142,17 @@ public class ClusterNode implements Serializable, AxonServerNode {
     }
 
     public Collection<String> getContextNames() {
-        return contexts.stream().map(ccn -> ccn.getContext().getName()).collect(Collectors.toSet());
+        return replicationGroups.stream()
+                                .map(AdminReplicationGroupMember::getReplicationGroup)
+                                .flatMap(rg -> rg.getContexts().stream().map(AdminContext::getName))
+                                .collect(Collectors.toSet());
+    }
+
+    public Collection<String> getReplicatorGroupNames() {
+        return replicationGroups.stream()
+                                .map(AdminReplicationGroupMember::getReplicationGroup)
+                                .map(AdminReplicationGroup::getName)
+                                .collect(Collectors.toSet());
     }
 
     /**
@@ -155,27 +164,12 @@ public class ClusterNode implements Serializable, AxonServerNode {
      */
     @Override
     public Collection<String> getStorageContextNames() {
-        return contexts.stream()
-                       .filter(ccn -> RoleUtils.hasStorage(ccn.getRole()))
-                       .map(ccn -> ccn.getContext().getName())
-                       .filter(n -> !RaftAdminGroup.isAdmin(n))
-                       .collect(Collectors.toSet());
-    }
-
-    /**
-     * Adds this node the specified context with given label and role. If this node is already a member of the context
-     * this is a no-op.
-     *
-     * @param context          the context where to add the node to
-     * @param clusterNodeLabel unique label for the node
-     * @param role             the role of this node in the context
-     */
-    public void addContext(Context context, String clusterNodeLabel, Role role) {
-        if (!getContext(context.getName()).isPresent()) {
-            ContextClusterNode newMember = new ContextClusterNode(context, this, clusterNodeLabel, role);
-            addContext(newMember);
-            context.addClusterNode(newMember);
-        }
+        return replicationGroups.stream()
+                                .filter(ccn -> RoleUtils.hasStorage(ccn.getRole()))
+                                .map(AdminReplicationGroupMember::getReplicationGroup)
+                                .flatMap(rg -> rg.getContexts().stream().map(AdminContext::getName))
+                                .filter(n -> !RaftAdminGroup.isAdmin(n))
+                                .collect(Collectors.toSet());
     }
 
     @Override
@@ -210,35 +204,33 @@ public class ClusterNode implements Serializable, AxonServerNode {
                        .build();
     }
 
-    @PreRemove
-    public void clearContexts() {
-        contexts.forEach(ccn -> ccn.getContext().remove(ccn));
-        contexts.clear();
-    }
-
-    public void remove(ContextClusterNode ccn) {
-        contexts.remove(ccn);
-    }
-
-    public void addContext(ContextClusterNode contextClusterNode) {
-        contexts.add(contextClusterNode);
-    }
-
-    public Set<ContextClusterNode> getContexts() {
-        return contexts;
-    }
-
-    public void removeContext(String context) {
-        getContext(context).ifPresent(ContextClusterNode::preDelete);
-    }
-
     public boolean isAdmin() {
-        return getContextNames().contains(getAdmin());
+        return getReplicatorGroupNames().contains(getAdmin());
     }
 
-    public Optional<ContextClusterNode> getContext(String contextName) {
-        return getContexts().stream()
-                            .filter(c -> c.getContext().getName().equals(contextName))
-                            .findFirst();
+    public Collection<AdminReplicationGroupMember> getReplicationGroups() {
+        return replicationGroups;
+    }
+
+    public void removeReplicationGroup(AdminReplicationGroup replicationGroup) {
+        AdminReplicationGroupMember toDelete = replicationGroups.stream().filter(member -> replicationGroup.getName()
+                                                                                                           .equals(member.getReplicationGroup()
+                                                                                                                         .getName()))
+                                                                .findFirst().orElse(null);
+        if (toDelete != null) {
+            toDelete.getReplicationGroup().removeMember(toDelete);
+            toDelete.setClusterNode(null);
+            replicationGroups.remove(toDelete);
+        }
+    }
+
+    public void addReplicationGroup(AdminReplicationGroup replicationGroup, String label, Role role) {
+        AdminReplicationGroupMember member = new AdminReplicationGroupMember();
+        member.setReplicationGroup(replicationGroup);
+        member.setClusterNodeLabel(label);
+        member.setRole(role);
+        member.setClusterNode(this);
+        replicationGroups.add(member);
+        replicationGroup.addMember(member);
     }
 }

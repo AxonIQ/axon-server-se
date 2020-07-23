@@ -42,7 +42,6 @@ public class CompletableStreamObserver<T, R> implements StreamObserver<T> {
 
     @Override
     public void onError(Throwable throwable) {
-        logger.warn("{}: Remote action failed", action, throwable);
         completableFuture.completeExceptionally(GrpcExceptionBuilder.parse(throwable));
     }
 

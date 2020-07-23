@@ -1,8 +1,9 @@
 package io.axoniq.axonserver.grpc;
 
 
-import io.axoniq.axonserver.access.application.ApplicationContext;
-import io.axoniq.axonserver.access.application.JpaApplication;
+import io.axoniq.axonserver.access.application.AdminApplicationContext;
+import io.axoniq.axonserver.access.application.AdminApplication;
+import io.axoniq.axonserver.access.application.AdminApplicationContextRole;
 import io.axoniq.axonserver.grpc.internal.Application;
 import io.axoniq.axonserver.grpc.internal.ApplicationContextRole;
 import io.axoniq.axonserver.rest.ApplicationJSON;
@@ -19,7 +20,7 @@ public class ApplicationProtoConverter {
         applicationContext.toApplicationRole();
         List<String> roles = applicationContext.toApplicationRole().getRoles()
                                                .stream()
-                                               .map(io.axoniq.axonserver.access.application.ApplicationContextRole::getRole)
+                                               .map(AdminApplicationContextRole::getRole)
                                                .collect(Collectors.toList());
         return ApplicationContextRole.newBuilder()
                                      .setContext(applicationContext.getContext())
@@ -41,7 +42,7 @@ public class ApplicationProtoConverter {
         return builder.build();
     }
 
-    public static Application createApplication(JpaApplication app) {
+    public static Application createApplication(AdminApplication app) {
         Application.Builder builder = Application.newBuilder().setName(app.getName());
         if (app.getDescription() != null) {
             builder.setDescription(app.getDescription());
@@ -60,10 +61,10 @@ public class ApplicationProtoConverter {
         return builder.build();
     }
 
-    public static ApplicationContextRole createApplicationContextRole(ApplicationContext applicationContext) {
+    public static ApplicationContextRole createApplicationContextRole(AdminApplicationContext applicationContext) {
         List<String> roles = applicationContext.getRoles()
                                                .stream()
-                                               .map(io.axoniq.axonserver.access.application.ApplicationContextRole::getRole)
+                                               .map(AdminApplicationContextRole::getRole)
                                                .collect(Collectors.toList());
         return ApplicationContextRole.newBuilder()
                                      .setContext(applicationContext.getContext())
@@ -72,30 +73,27 @@ public class ApplicationProtoConverter {
     }
 
 
+    public static AdminApplication createJpaApplication(Application application) {
+        List<AdminApplicationContext> applicationContexts = application.getRolesPerContextList()
+                                                                       .stream()
+                                                                       .map(ApplicationProtoConverter::createJpaApplicationContext)
+                                                                       .collect(Collectors.toList());
 
-    public static JpaApplication createJpaApplication(Application application) {
-        List<ApplicationContext> applicationContexts = application.getRolesPerContextList()
-                                                                  .stream()
-                                                                  .map(ApplicationProtoConverter::createJpaApplicationContext)
-                                                                  .collect(Collectors.toList());
-
-        return new JpaApplication(application.getName(),
-                                  application.getDescription(),
-                                  application.getTokenPrefix(),
-                                  application.getToken(),
-                                  applicationContexts,
-                                  application.getMetaDataMap());
+        return new AdminApplication(application.getName(),
+                                    application.getDescription(),
+                                    application.getTokenPrefix(),
+                                    application.getToken(),
+                                    applicationContexts,
+                                    application.getMetaDataMap());
     }
 
-    public static ApplicationContext createJpaApplicationContext(ApplicationContextRole applicationContextRole) {
-        List<io.axoniq.axonserver.access.application.ApplicationContextRole> roles =
+    public static AdminApplicationContext createJpaApplicationContext(ApplicationContextRole applicationContextRole) {
+        List<AdminApplicationContextRole> roles =
                 applicationContextRole.getRolesList()
                                       .stream()
-                                      .map(io.axoniq.axonserver.access.application.ApplicationContextRole::new)
+                                      .map(AdminApplicationContextRole::new)
                                       .collect(Collectors.toList());
 
-        return new ApplicationContext(applicationContextRole.getContext(), roles);
+        return new AdminApplicationContext(applicationContextRole.getContext(), roles);
     }
-
-
 }

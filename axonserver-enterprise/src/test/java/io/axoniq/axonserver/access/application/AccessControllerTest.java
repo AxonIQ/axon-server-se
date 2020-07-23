@@ -31,29 +31,29 @@ public class AccessControllerTest {
     private AccessControllerDB testSubject;
 
     @Mock
-    private JpaContextApplicationRepository applicationRepository;
+    private ReplicationGroupApplicationRepository applicationRepository;
 
     @Mock
-    private JpaApplicationRepository centralApplicationRepository;
+    private AdminApplicationRepository centralApplicationRepository;
 
 
     @Before
     public void setup() {
         Hasher hasher = new BcryptHasher();
-        List<JpaContextApplication> applications = new ArrayList<>();
-        JpaContextApplication app = new JpaContextApplication("default", "Test");
+        List<ReplicationGroupApplication> applications = new ArrayList<>();
+        ReplicationGroupApplication app = new ReplicationGroupApplication("default", "Test");
         app.setHashedToken(hasher.hash("1234567890"));
         app.setTokenPrefix("12345678");
         app.setRoles(Collections.singleton("READ"));
         applications.add(app);
-        app = new JpaContextApplication("context2", "Test");
+        app = new ReplicationGroupApplication("context2", "Test");
         app.setHashedToken(hasher.hash("1234567890"));
         app.setTokenPrefix("12345678");
         app.setRoles(Collections.singleton("WRITE"));
         applications.add(app);
 
         when(applicationRepository.findAllByTokenPrefixAndContext(any(), any()))
-                .thenAnswer((Answer<List<JpaContextApplication>>) invocationOnMock -> {
+                .thenAnswer((Answer<List<ReplicationGroupApplication>>) invocationOnMock -> {
                     String prefix = invocationOnMock.getArgument(0);
                     String context = invocationOnMock.getArgument(1);
                     return applications.stream()
@@ -62,7 +62,7 @@ public class AccessControllerTest {
                                        .collect(Collectors.toList());
                 });
         when(applicationRepository.findAllByTokenPrefix(any()))
-                .thenAnswer((Answer<List<JpaContextApplication>>) invocationOnMock -> {
+                .thenAnswer((Answer<List<ReplicationGroupApplication>>) invocationOnMock -> {
                     String prefix = invocationOnMock.getArgument(0);
                     return applications.stream()
                                        .filter(app1 -> app1.getTokenPrefix().equals(prefix))

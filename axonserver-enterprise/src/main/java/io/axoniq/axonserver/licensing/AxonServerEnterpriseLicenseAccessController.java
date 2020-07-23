@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.licensing;
 
 import io.axoniq.axonserver.LicenseAccessController;
-import io.axoniq.axonserver.enterprise.cluster.ClusterNodeRepository;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.enterprise.context.ContextRepository;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNodeRepository;
+import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,9 +22,11 @@ public class AxonServerEnterpriseLicenseAccessController implements LicenseAcces
 
     private final LicenseManager licenseManager;
     private final ClusterNodeRepository clusterNodeRepository;
-    private final ContextRepository contextRepository;
+    private final ReplicationGroupContextRepository contextRepository;
 
-    public AxonServerEnterpriseLicenseAccessController(LicenseManager licenseManager, ClusterNodeRepository clusterNodeRepository, ContextRepository contextRepository) {
+    public AxonServerEnterpriseLicenseAccessController(LicenseManager licenseManager,
+                                                       ClusterNodeRepository clusterNodeRepository,
+                                                       ReplicationGroupContextRepository contextRepository) {
         this.licenseManager = licenseManager;
         this.clusterNodeRepository = clusterNodeRepository;
         this.contextRepository = contextRepository;

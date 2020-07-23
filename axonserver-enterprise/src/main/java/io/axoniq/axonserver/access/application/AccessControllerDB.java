@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class AccessControllerDB {
 
     private final Logger logger = LoggerFactory.getLogger(AccessControllerDB.class);
-    private final JpaContextApplicationRepository contextApplicationRepository;
+    private final ReplicationGroupApplicationRepository contextApplicationRepository;
     private final PathToFunctionRepository pathToFunctionRepository;
     private final FunctionRoleRepository functionRoleRepository;
     private final Hasher hasher;
@@ -38,7 +38,7 @@ public class AccessControllerDB {
      * @param hasher                       hasher to hash the provided token
      * @param systemTokenProvider          provider of the system token
      */
-    public AccessControllerDB(JpaContextApplicationRepository contextApplicationRepository,
+    public AccessControllerDB(ReplicationGroupApplicationRepository contextApplicationRepository,
                               PathToFunctionRepository pathToFunctionRepository,
                               FunctionRoleRepository functionRoleRepository,
                               Hasher hasher,
@@ -61,17 +61,19 @@ public class AccessControllerDB {
         if (token != null && token.equals(systemTokenProvider.get())) {
             return Collections.singleton("ADMIN@_admin");
         }
-        Set<JpaContextApplication> apps = contextApplicationRepository.findAllByTokenPrefix(ApplicationController
-                                                                                                    .tokenPrefix(token))
-                                                                      .stream()
-                                                                      .filter(app -> hasher
-                                                                              .checkpw(token, app.getHashedToken()))
-                                                                      .collect(Collectors.toSet());
+        Set<ReplicationGroupApplication> apps = contextApplicationRepository.findAllByTokenPrefix(
+                AdminApplicationController
+                        .tokenPrefix(token))
+                                                                            .stream()
+                                                                            .filter(app -> hasher
+                                                                                    .checkpw(token,
+                                                                                             app.getHashedToken()))
+                                                                            .collect(Collectors.toSet());
 
         if (apps.isEmpty()) {
             throw new InvalidTokenException();
         }
-        return apps.stream().map(JpaContextApplication::getQualifiedRoles)
+        return apps.stream().map(ReplicationGroupApplication::getQualifiedRoles)
                    .flatMap(Set::stream)
                    .collect(Collectors.toSet());
     }
@@ -80,12 +82,13 @@ public class AccessControllerDB {
         if (token != null && token.equals(systemTokenProvider.get())) {
             return Collections.singleton("ADMIN@_admin");
         }
-        return contextApplicationRepository.findAllByTokenPrefixAndContext(ApplicationController.tokenPrefix(token),
+        return contextApplicationRepository.findAllByTokenPrefixAndContext(AdminApplicationController
+                                                                                   .tokenPrefix(token),
                                                                            context)
                                            .stream()
                                            .filter(app -> hasher.checkpw(token, app.getHashedToken()))
                                            .findFirst()
-                                           .map(JpaContextApplication::getQualifiedRoles)
+                                           .map(ReplicationGroupApplication::getQualifiedRoles)
                                            .orElse(null);
     }
 

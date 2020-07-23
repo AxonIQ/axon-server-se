@@ -8,6 +8,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
@@ -27,7 +28,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -134,10 +134,11 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
      * @return iterator of transactions
      */
     @Override
-    public Iterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+    public CloseableIterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
         CloseableIterator<SerializedEventWithToken> globalIterator = getGlobalIterator(firstToken, limitToken);
-        return new Iterator<SerializedTransactionWithToken>() {
+        return new CloseableIterator<SerializedTransactionWithToken>() {
             boolean closed;
+
             @Override
             public boolean hasNext() {
                 if (closed) {
@@ -161,11 +162,17 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
                                                           VERSION,
                                                           Collections.singletonList(event.getSerializedEvent()));
             }
+
+            @Override
+            public void close() {
+                closed = true;
+                globalIterator.close();
+            }
         };
     }
 
     @Override
-    public void init(boolean validating) {
+    public void init(boolean validating, long defaultFirstToken) {
         try (Connection connection = dataSource.getConnection()) {
             multiContextStrategy.init(eventTypeContext, connection);
             try (PreparedStatement preparedStatement = connection.prepareStatement(
@@ -176,6 +183,9 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
                     if (last != null) {
                         nextToken.set(last.longValue() + 1);
                         lastToken.set(last.longValue());
+                    } else {
+                        nextToken.set(defaultFirstToken);
+                        lastToken.set(defaultFirstToken - 1);
                     }
                 }
             }
@@ -412,9 +422,9 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
     }
 
     @Override
-    public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
-                                          long actualMaxSequenceNumber, int maxResults,
-                                          Consumer<SerializedEvent> eventConsumer) {
+    public void processEventsPerAggregateHighestFirst(String aggregateId, long actualMinSequenceNumber,
+                                                      long actualMaxSequenceNumber, int maxResults,
+                                                      Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      readEventsForAggidWithinRangeDesc)) {
@@ -434,6 +444,7 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long actualMinSequenceNumber,
+                                          long actualMaxSequenceNumber, long minToken,
                                           Consumer<SerializedEvent> eventConsumer) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
@@ -494,15 +505,15 @@ public class JdbcEventStorageEngine implements EventStorageEngine {
     }
 
     @Override
-    public void query(long minToken, long minTimestamp, Predicate<EventWithToken> consumer) {
+    public void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer) {
         String query = String.format(
                 "select * from %s where global_index >= ? and time_stamp >= ? order by global_index desc",
                 getTableName());
         try (Connection connection = dataSource.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      query)) {
-            preparedStatement.setLong(1, minToken);
-            preparedStatement.setLong(2, minTimestamp);
+            preparedStatement.setLong(1, queryOptions.getMinToken());
+            preparedStatement.setLong(2, queryOptions.getMinTimestamp());
 
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {

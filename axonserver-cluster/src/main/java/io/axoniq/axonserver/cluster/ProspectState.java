@@ -2,6 +2,8 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotRequest;
+import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteRequest;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
@@ -46,6 +48,14 @@ public class ProspectState extends BaseFollowerState {
         }
 
         return handleAsSecondary(f -> f.appendEntries(request), "Found node as " + currentNode.getRole());
+    }
+
+    @Override
+    public InstallSnapshotResponse installSnapshot(InstallSnapshotRequest request) {
+        if (Role.PRIMARY.equals(request.getPeerRole())) {
+            return handleAsFollower(f -> f.installSnapshot(request), "Received node as primary");
+        }
+        return handleAsSecondary(f -> f.installSnapshot(request), "Found node as " + request.getPeerRole());
     }
 
     /**

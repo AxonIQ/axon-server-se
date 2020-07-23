@@ -2,10 +2,13 @@ package io.axoniq.axonserver.enterprise.topology;
 
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
+import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
+import io.axoniq.axonserver.enterprise.replication.ContextLeaderProvider;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
-import io.axoniq.axonserver.enterprise.cluster.internal.RemoteConnection;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
+import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Component;
@@ -17,7 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
@@ -30,13 +32,19 @@ public class ClusterTopology implements Topology {
     private final ClusterController clusterController;
     private final GrpcRaftController raftController;
     private final NodeSelector nodeSelector;
+    private final ContextLeaderProvider contextLeaderProvider;
+    private final ReplicationGroupContextRepository replicationGroupContextRepository;
 
     public ClusterTopology(ClusterController clusterController,
                            GrpcRaftController raftController,
-                           NodeSelector nodeSelector) {
+                           NodeSelector nodeSelector,
+                           ContextLeaderProvider contextLeaderProvider,
+                           ReplicationGroupContextRepository replicationGroupContextRepository) {
         this.clusterController = clusterController;
         this.raftController = raftController;
         this.nodeSelector = nodeSelector;
+        this.contextLeaderProvider = contextLeaderProvider;
+        this.replicationGroupContextRepository = replicationGroupContextRepository;
     }
 
     @Override
@@ -55,17 +63,17 @@ public class ClusterTopology implements Topology {
     }
 
     @Override
+    public boolean isLeader(String nodeName, String contextName) {
+        return nodeName.equals(contextLeaderProvider.getLeaderOrWait(contextName, false));
+    }
+
+    @Override
     public Stream<? extends AxonServerNode> nodes() {
-        if( clusterController.isAdminNode()) {
+        if (clusterController.isAdminNode()) {
             return clusterController.nodes();
         }
 
         return nodesFromRaftGroups();
-    }
-
-    @Override
-    public List<AxonServerNode> getRemoteConnections() {
-        return clusterController.getRemoteConnections().stream().map(RemoteConnection::getClusterNode).collect(Collectors.toList());
     }
 
     @Override
@@ -80,7 +88,7 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Iterable<String> getMyContextNames() {
-        return raftController.getContexts();
+        return raftController.getStorageContexts();
     }
 
     @Override
@@ -112,16 +120,18 @@ public class ClusterTopology implements Topology {
         Map<ClusterNode, Set<String>> contextPerNode = new HashMap<>();
         Map<ClusterNode, Set<String>> storageContextPerNode = new HashMap<>();
         clusterController.nodes().forEach(n -> contextPerNode.put(n, new HashSet<>()));
-        raftController.getContexts().forEach(context -> {
-            raftController.getRaftGroup(context).raftConfiguration().groupMembers().forEach(
-                    node -> {
-                        ClusterNode clusterNode = clusterController.getNode(node.getNodeName());
-                        contextPerNode.computeIfAbsent(clusterNode, c -> new HashSet<>()).add(context);
-                        if (RoleUtils.hasStorage(node.getRole())) {
-                            storageContextPerNode.computeIfAbsent(clusterNode, c -> new HashSet<>()).add(context);
-                        }
+        raftController.getRaftGroups().forEach(replicationGroup -> {
+            for (Node node : raftController.getRaftGroup(replicationGroup).raftConfiguration().groupMembers()) {
+                ClusterNode clusterNode = clusterController.getNode(node.getNodeName());
+                List<ReplicationGroupContext> contexts = replicationGroupContextRepository
+                        .findByReplicationGroupName(replicationGroup);
+                contexts.forEach(context -> {
+                    contextPerNode.computeIfAbsent(clusterNode, c -> new HashSet<>()).add(context.getName());
+                    if (RoleUtils.hasStorage(node.getRole())) {
+                        storageContextPerNode.computeIfAbsent(clusterNode, c -> new HashSet<>()).add(context.getName());
                     }
-            );
+                });
+            }
         });
         return contextPerNode.entrySet().stream().map(e -> new AxonServerNode() {
             @Override

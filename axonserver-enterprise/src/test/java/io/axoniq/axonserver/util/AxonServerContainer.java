@@ -20,7 +20,7 @@ public class AxonServerContainer {
 
     public static GenericContainer getInstance(String name, String publicHostname) {
         if (container == null) {
-            container = new GenericContainer("eu.gcr.io/axoniq-devops/axonserver-enterprise:4.4-SNAPSHOT")
+            container = new GenericContainer("eu.gcr.io/axoniq-devops/axonserver-enterprise:4.4-RC1-SNAPSHOT")
                     .withExposedPorts(AXON_SERVER_HTTP_PORT, AXON_SERVER_GRPC_PORT, AXON_SERVER_INTERNAL_PORT)
                     .waitingFor(Wait.forHttp("/actuator/info").forPort(AXON_SERVER_HTTP_PORT))
                     .withClasspathResourceMapping("/axonserver/axoniq.license",

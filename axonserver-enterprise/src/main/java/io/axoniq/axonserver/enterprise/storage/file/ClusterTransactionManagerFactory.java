@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.storage.file;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.cluster.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.storage.transaction.RaftTransactionManager;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -40,16 +40,16 @@ public class ClusterTransactionManagerFactory implements StorageTransactionManag
 
     @EventListener
     @Order(1)
-    public void on(ClusterEvents.BecomeLeader becomeMaster) {
-        if( transactionManagersPerContext.containsKey(becomeMaster.getContext())) {
-            transactionManagersPerContext.get(becomeMaster.getContext()).forEach(tm -> tm.on(becomeMaster));
+    public void on(ClusterEvents.BecomeContextLeader becomeMaster) {
+        if (transactionManagersPerContext.containsKey(becomeMaster.context())) {
+            transactionManagersPerContext.get(becomeMaster.context()).forEach(tm -> tm.on(becomeMaster));
         }
     }
 
     @EventListener
-    public void on(ClusterEvents.LeaderStepDown masterStepDown) {
-        if( transactionManagersPerContext.containsKey(masterStepDown.getContextName())) {
-            transactionManagersPerContext.get(masterStepDown.getContextName()).forEach(tm -> tm.on(masterStepDown));
+    public void on(ClusterEvents.ContextLeaderStepDown masterStepDown) {
+        if (transactionManagersPerContext.containsKey(masterStepDown.context())) {
+            transactionManagersPerContext.get(masterStepDown.context()).forEach(tm -> tm.on(masterStepDown));
         }
     }
 

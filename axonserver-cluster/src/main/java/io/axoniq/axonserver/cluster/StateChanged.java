@@ -54,11 +54,17 @@ public class StateChanged {
     public boolean toLeader() {
         return LeaderState.class.equals(to);
     }
+
     public boolean toFollower() {
         return FollowerState.class.equals(to);
     }
+
     public boolean toCandidate() {
         return CandidateState.class.equals(to);
+    }
+
+    public String toState() {
+        return to.getSimpleName();
     }
 
     public String getGroupId() {

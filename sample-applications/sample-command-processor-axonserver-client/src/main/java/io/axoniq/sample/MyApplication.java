@@ -1,21 +1,22 @@
 package io.axoniq.sample;
 
-import org.axonframework.axonserver.connector.AxonServerConfiguration;
-import org.axonframework.axonserver.connector.AxonServerConnectionManager;
-import org.axonframework.axonserver.connector.event.axon.AxonServerEventScheduler;
 import org.axonframework.common.jpa.EntityManagerProvider;
-import org.axonframework.serialization.Serializer;
+import org.axonframework.eventhandling.EventBus;
+import org.axonframework.eventhandling.scheduling.EventScheduler;
+import org.axonframework.eventhandling.scheduling.java.SimpleEventScheduler;
 import org.axonframework.springboot.util.jpa.ContainerManagedEntityManagerProvider;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+
+import java.util.concurrent.Executors;
 
 /**
  * @author Marc Gathier
  */
 @SpringBootApplication
 public class MyApplication {
+
     public static void main(String[] args) {
         SpringApplication.run(MyApplication.class, args);
     }
@@ -25,7 +26,7 @@ public class MyApplication {
         return new ContainerManagedEntityManagerProvider();
     }
 
-//    @Bean
+    //    @Bean
 //    public EventStore eventStore(AxonServerConfiguration axonServerConfiguration,
 //                                 AxonConfiguration configuration,
 //                                 PlatformConnectionManager platformConnectionManager,
@@ -41,15 +42,21 @@ public class MyApplication {
 //                                   .build();
 //    }
 //
-@Bean
-public AxonServerEventScheduler eventScheduler(AxonServerConfiguration axonServerConfiguration,
-                                               AxonServerConnectionManager axonServerConnectionManager,
-                                               @Qualifier("eventSerializer") Serializer eventSerializer) {
-    return AxonServerEventScheduler.builder()
-                                   .eventSerializer(eventSerializer)
-                                   .configuration(axonServerConfiguration)
-                                   .connectionManager(axonServerConnectionManager)
+//@Bean
+//public AxonServerEventScheduler eventScheduler(AxonServerConfiguration axonServerConfiguration,
+//                                               AxonServerConnectionManager axonServerConnectionManager,
+//                                               @Qualifier("eventSerializer") Serializer eventSerializer) {
+//    return AxonServerEventScheduler.builder()
+//                                   .eventSerializer(eventSerializer)
+//                                   .configuration(axonServerConfiguration)
+//                                   .connectionManager(axonServerConnectionManager)
+//                                   .build();
+//}
+    @Bean
+    public EventScheduler eventScheduler(EventBus eventBus) {
+        return SimpleEventScheduler.builder()
+                                   .eventBus(eventBus)
+                                   .scheduledExecutorService(Executors.newSingleThreadScheduledExecutor())
                                    .build();
-}
-
+    }
 }

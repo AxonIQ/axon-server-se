@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -116,10 +115,15 @@ public abstract class SegmentBasedLogEntryStore {
     }
 
     public long getSegmentFor(long token) {
-        return getSegments().stream()
-                            .filter( segment ->segment <= token)
-                            .findFirst()
-                            .orElse(next == null ? -1 : next.getSegmentFor(token));
+        for (Long segment : getSegments()) {
+            if (segment <= token) {
+                return segment;
+            }
+        }
+        if (next == null) {
+            return -1;
+        }
+        return next.getSegmentFor(token);
     }
 
     protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {

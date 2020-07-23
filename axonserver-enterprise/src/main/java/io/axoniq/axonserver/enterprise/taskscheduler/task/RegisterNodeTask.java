@@ -2,16 +2,18 @@ package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
 import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
-import io.axoniq.axonserver.enterprise.cluster.RaftConfigServiceFactory;
+import io.axoniq.axonserver.enterprise.replication.admin.RaftConfigServiceFactory;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.grpc.internal.ContextRole;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
-import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.TransientException;
+import io.axoniq.axonserver.grpc.internal.UpdateLicense;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +32,7 @@ import static io.axoniq.axonserver.rest.ClusterRestController.CONTEXT_NONE;
 @Component
 public class RegisterNodeTask implements ScheduledTask {
 
+    private final Logger logger = LoggerFactory.getLogger(RegisterNodeTask.class);
     private final StandaloneTaskManager taskManager;
     private final ClusterController clusterController;
     private final RaftConfigServiceFactory raftServiceFactory;
@@ -66,6 +69,7 @@ public class RegisterNodeTask implements ScheduledTask {
                                     Duration.ZERO));
 
         } catch (StatusRuntimeException ex) {
+            logger.warn("Register node failed", ex);
             if (ex.getStatus().getCode().equals(Status.Code.UNAVAILABLE)
                     || ex.getStatus().getCode().equals(Status.Code.NOT_FOUND)) {
                 throw new TransientException(ex.getMessage(), ex);

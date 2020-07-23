@@ -65,7 +65,7 @@ public abstract class VotingState extends AbstractMembershipState {
                     groupId(),
                     currentTerm(),
                     request.getTerm());
-        return responseFactory().appendEntriesFailure(request.getRequestId(),
+        return responseFactory().appendEntriesFailure(request.getRequestId(), request.getSupportsReplicationGroups(),
                                                       "Request rejected because I'm a candidate");
     }
 

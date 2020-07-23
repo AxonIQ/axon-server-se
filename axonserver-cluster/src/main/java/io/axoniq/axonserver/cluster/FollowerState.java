@@ -21,7 +21,6 @@ public class FollowerState extends BaseFollowerState {
     private static final Logger logger = LoggerFactory.getLogger(FollowerState.class);
 
     private final AtomicLong nextTimeout = new AtomicLong();
-    private final AtomicLong lastMessage = new AtomicLong();
 
     private FollowerState(Builder builder) {
         super(builder);

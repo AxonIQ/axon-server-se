@@ -1,15 +1,19 @@
 package io.axoniq.axonserver.cluster.message.factory;
 
+import com.google.protobuf.UnknownFieldSet;
 import io.axoniq.axonserver.cluster.RaftGroup;
 import io.axoniq.axonserver.cluster.RaftResponseFactory;
+import io.axoniq.axonserver.cluster.util.GrpcSignedLongUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
 import io.axoniq.axonserver.grpc.cluster.AppendEntryFailure;
 import io.axoniq.axonserver.grpc.cluster.AppendEntrySuccess;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotFailure;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotResponse;
 import io.axoniq.axonserver.grpc.cluster.InstallSnapshotSuccess;
+import io.axoniq.axonserver.grpc.cluster.RequestIncrementalData;
 import io.axoniq.axonserver.grpc.cluster.RequestVoteResponse;
 import io.axoniq.axonserver.grpc.cluster.ResponseHeader;
+import io.axoniq.axonserver.grpc.cluster.Role;
 
 import java.util.UUID;
 
@@ -38,15 +42,34 @@ public class DefaultResponseFactory implements RaftResponseFactory {
     }
 
     @Override
-    public AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause, boolean fatal) {
-        AppendEntryFailure failure = AppendEntryFailure
+    public AppendEntriesResponse appendEntriesFailure(String requestId, String failureCause,
+                                                      boolean supportsReplicationGroup, boolean fatal) {
+        AppendEntryFailure.Builder failure = AppendEntryFailure
                 .newBuilder()
                 .setCause(failureCause)
                 .setLastAppliedIndex(raftGroup.logEntryProcessor().lastAppliedIndex())
-                .setLastAppliedEventSequence(raftGroup.lastAppliedEventSequence())
-                .setLastAppliedSnapshotSequence(raftGroup.lastAppliedSnapshotSequence())
-                .setFatal(fatal)
-                .build();
+                .setSupportsReplicationGroups(true)
+                .setFatal(fatal);
+
+        // if leader is running in older version we need to add the last event and snapshot token for the context with
+        // the same name as the replication group
+        if (!supportsReplicationGroup) {
+            failure.setUnknownFields(UnknownFieldSet.newBuilder()
+                                                    .addField(3,
+                                                              GrpcSignedLongUtils.createSignedIntField(raftGroup
+                                                                                                               .lastAppliedEventSequence(
+                                                                                                                       raftGroup
+                                                                                                                               .raftConfiguration()
+                                                                                                                               .groupId())))
+                                                    .addField(4,
+                                                              GrpcSignedLongUtils.createSignedIntField(raftGroup
+                                                                                                               .lastAppliedSnapshotSequence(
+                                                                                                                       raftGroup
+                                                                                                                               .raftConfiguration()
+                                                                                                                               .groupId())))
+                                                    .build());
+        }
+
         return AppendEntriesResponse
                 .newBuilder()
                 .setResponseHeader(responseHeader(requestId))
@@ -54,6 +77,26 @@ public class DefaultResponseFactory implements RaftResponseFactory {
                 .setTerm(raftGroup.localElectionStore().currentTerm())
                 .setFailure(failure)
                 .build();
+    }
+
+
+    @Override
+    public InstallSnapshotResponse installSnapshotConfigDone(String requestId, int offset, Role role) {
+        return InstallSnapshotResponse.newBuilder()
+                                      .setResponseHeader(responseHeader(requestId))
+                                      .setTerm(raftGroup.localElectionStore().currentTerm())
+                                      .setGroupId(raftGroup.raftConfiguration().groupId())
+                                      .setRequestIncrementalData(RequestIncrementalData.newBuilder()
+                                                                                       .putAllLastEventTokenPerContext(
+                                                                                               raftGroup
+                                                                                                       .lastEventTokenPerContext(
+                                                                                                               role))
+                                                                                       .putAllLastSnapshotTokenPerContext(
+                                                                                               raftGroup
+                                                                                                       .lastSnapshotTokenPerContext(
+                                                                                                               role))
+                                                                                       .setLastReceivedOffset(offset))
+                                      .build();
     }
 
     @Override

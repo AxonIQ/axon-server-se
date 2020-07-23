@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler;
 
-import io.axoniq.axonserver.enterprise.cluster.RaftGroupService;
-import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupService;
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupServiceFactory;
 import io.axoniq.axonserver.grpc.TaskStatus;
 import io.axoniq.axonserver.grpc.tasks.UpdateTask;
 import org.springframework.stereotype.Component;

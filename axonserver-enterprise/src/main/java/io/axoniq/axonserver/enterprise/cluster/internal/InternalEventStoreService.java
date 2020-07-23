@@ -18,6 +18,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.message.event.ForwardingStreamObserver;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.stub.StreamObserver;
@@ -32,7 +33,10 @@ import static io.axoniq.axonserver.message.event.EventDispatcher.*;
 import static io.grpc.stub.ServerCalls.*;
 
 /**
+ * Handles event store requests that are forwarded by another Axon Server node.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 @Controller
 public class InternalEventStoreService implements AxonServerInternalService {
@@ -110,12 +114,22 @@ public class InternalEventStoreService implements AxonServerInternalService {
         });
     }
 
-    private void listAggregateEvents(GetAggregateEventsRequest request, StreamObserver<InputStream> responseObserver) {
-        localEventStore.listAggregateEvents(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "listAggregateEvents", responseObserver));
+    private void listAggregateEvents(GetAggregateEventsRequest request,
+                                     StreamObserver<SerializedEvent> responseObserver) {
+        localEventStore.listAggregateEvents(contextProvider.getContext(),
+                                            request,
+                                            new ForwardingStreamObserver<>(logger,
+                                                                           "listAggregateEvents",
+                                                                           responseObserver));
     }
 
-    private void listAggregateSnapshots(GetAggregateSnapshotsRequest request, StreamObserver<InputStream> responseObserver) {
-        localEventStore.listAggregateSnapshots(contextProvider.getContext(), request, new ForwardingStreamObserver<>(logger, "listAggregateSnapshots", responseObserver));
+    private void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
+                                        StreamObserver<SerializedEvent> responseObserver) {
+        localEventStore.listAggregateSnapshots(contextProvider.getContext(),
+                                               request,
+                                               new ForwardingStreamObserver<>(logger,
+                                                                              "listAggregateSnapshots",
+                                                                              responseObserver));
     }
 
     private StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {

@@ -3,6 +3,8 @@ package io.axoniq.axonserver.enterprise.storage;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.storage.file.DatafileEventStoreFactory;
 import io.axoniq.axonserver.enterprise.storage.file.DefaultMultiContextEventTransformerFactory;
+import io.axoniq.axonserver.enterprise.storage.file.EmbeddedDBPropertiesProvider;
+import io.axoniq.axonserver.enterprise.storage.multitier.MultiTierInformationProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -12,6 +14,9 @@ import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
 
@@ -21,6 +26,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
+
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -34,13 +41,22 @@ public class EventWriteStorageTest {
 
     @Before
     public void setUp() {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {});
-        embeddedDBProperties.getEvent().setStorage(tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
+        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+        });
+        embeddedDBProperties.getEvent().setStorage(
+                tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(5120 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
-        EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(embeddedDBProperties,
+
+MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+
+        EventStoreFactory eventStoreFactory = new DatafileEventStoreFactory(new EmbeddedDBPropertiesProvider(
+                embeddedDBProperties),
                                                                             new DefaultMultiContextEventTransformerFactory(
-                                                                                    new DefaultEventTransformerFactory()));
+                                                                                    new DefaultEventTransformerFactory()),
+                                                                            mock(MultiTierInformationProvider.class),
+                                                                            null,
+                                                                            meterFactory);
         datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");
         datafileManagerChain.init(false);
         testSubject = new EventWriteStorage(new SingleInstanceTransactionManager(datafileManagerChain));

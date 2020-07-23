@@ -47,7 +47,9 @@ public class IdleState implements MembershipState {
         logger.info("Ignored AppendEntriesRequest with requestId {}: I ({}) am in idle state.",
                     request.getRequestId(),
                     nodeId);
-        return raftResponseFactory.appendEntriesFailure(request.getRequestId(), "In idle state.");
+        return raftResponseFactory.appendEntriesFailure(request.getRequestId(),
+                                                        request.getSupportsReplicationGroups(),
+                                                        "In idle state.");
     }
 
     @Override

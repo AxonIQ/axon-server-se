@@ -48,6 +48,7 @@ public class EventProcessorSynchronizer {
     public void on(PauseEventProcessorRequest event) {
         if( event.isProxied()) return;
         ClientEventProcessor pauseProcessorRequest = ClientEventProcessor.newBuilder()
+                                                                         .setContext(event.context())
                                                                          .setClient(event.clientName())
                                                                          .setProcessorName(event.processorName())
                                                                          .build();
@@ -69,6 +70,7 @@ public class EventProcessorSynchronizer {
     public void on(StartEventProcessorRequest event) {
         if( event.isProxied()) return;
         ClientEventProcessor startProcessorRequest = ClientEventProcessor.newBuilder()
+                                                                         .setContext(event.context())
                                                                          .setClient(event.clientName())
                                                                          .setProcessorName(event.processorName())
                                                                          .build();
@@ -92,6 +94,7 @@ public class EventProcessorSynchronizer {
 
         ClientEventProcessorSegment releaseSegmentRequest =
                 ClientEventProcessorSegment.newBuilder()
+                                           .setContext(event.context())
                                            .setClient(event.getClientName())
                                            .setProcessorName(event.getProcessorName())
                                            .setSegmentIdentifier(event.getSegmentId())
@@ -111,6 +114,7 @@ public class EventProcessorSynchronizer {
     public void on(ProcessorStatusRequest event) {
         if( event.isProxied()) return;
         ClientEventProcessor processorStatusRequest = ClientEventProcessor.newBuilder()
+                                                                          .setContext(event.context())
                                                                           .setClient(event.clientName())
                                                                           .setProcessorName(event.processorName())
                                                                           .build();
@@ -133,6 +137,7 @@ public class EventProcessorSynchronizer {
         if( event.isProxied()) return;
         ClientEventProcessorSegment splitSegmentRequest =
                 ClientEventProcessorSegment.newBuilder()
+                                           .setContext(event.context())
                                            .setClient(event.getClientName())
                                            .setProcessorName(event.getProcessorName())
                                            .setSegmentIdentifier(event.getSegmentId())
@@ -153,6 +158,7 @@ public class EventProcessorSynchronizer {
         if( event.isProxied()) return;
         ClientEventProcessorSegment mergeSegmentRequest =
                 ClientEventProcessorSegment.newBuilder()
+                                           .setContext(event.context())
                                            .setClient(event.getClientName())
                                            .setProcessorName(event.getProcessorName())
                                            .setSegmentIdentifier(event.getSegmentId())

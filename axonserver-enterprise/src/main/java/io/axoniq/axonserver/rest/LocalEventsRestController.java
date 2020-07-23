@@ -5,11 +5,14 @@ import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.rest.EventsRestController.JsonEvent;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
+import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.InputStream;
+import java.security.Principal;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -34,6 +38,8 @@ import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 @RequestMapping("/v1/local")
 public class LocalEventsRestController {
 
+    private static final Logger auditLog = AuditLog.getLogger();
+
     private final LocalEventStore localEventStore;
 
     public LocalEventsRestController(LocalEventStore localEventStore) {
@@ -49,14 +55,18 @@ public class LocalEventsRestController {
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestParam(value = "aggregateId", required = true) String aggregateId,
             @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
-            @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence) {
+            @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
+            Principal principal) {
+        auditLog.info("[{}] Request to read snapshots from local event store for aggregate {} in context {}.",
+                      AuditLog.username(principal), aggregateId, context);
         SseEmitter sseEmitter = new SseEmitter();
-        Function<InputStream, Object> mapping = new UncheckedFunction<>(input -> new JsonEvent(Event.parseFrom(input)));
-        SSEEmitterStreamObserver<InputStream> streamObserver = new SSEEmitterStreamObserver<>(sseEmitter, mapping);
+        Function<SerializedEvent, Object> mapping = new UncheckedFunction<>(input -> new JsonEvent(input.asEvent()));
+        SSEEmitterStreamObserver<SerializedEvent> streamObserver = new SSEEmitterStreamObserver<>(sseEmitter, mapping);
         GetAggregateSnapshotsRequest request = GetAggregateSnapshotsRequest.newBuilder()
                                                                            .setAggregateId(aggregateId)
                                                                            .setInitialSequence(initialSequence)
-                                                                           .setMaxSequence(maxSequence >= 0? maxSequence : Long.MAX_VALUE)
+                                                                           .setMaxSequence(maxSequence
+                                                                                                   >= 0 ? maxSequence : Long.MAX_VALUE)
                                                                            .build();
         localEventStore.listAggregateSnapshots(context, request, streamObserver);
         return sseEmitter;
@@ -73,11 +83,14 @@ public class LocalEventsRestController {
             @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
             @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
             @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
-            @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout) {
+            @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout,
+            Principal principal) {
+        auditLog.info("[{}] Request to read events from local event store for aggregate {} in context {}.",
+                      AuditLog.username(principal), aggregateId, context);
         SseEmitter sseEmitter = new SseEmitter(TimeUnit.SECONDS.toMillis(timeout));
-        Function<InputStream, Object> mapping = new UncheckedFunction<>(input -> new JsonEvent(Event.parseFrom(input)));
-        SSEEmitterStreamObserver<InputStream> streamObserver = new SSEEmitterStreamObserver<>(sseEmitter, mapping);
         if (aggregateId == null) {
+            Function<InputStream, Object> mapping = new UncheckedFunction<>(input -> new JsonEvent(Event.parseFrom(input)));
+            SSEEmitterStreamObserver<InputStream> streamObserver = new SSEEmitterStreamObserver<>(sseEmitter, mapping);
             StreamObserver<GetEventsRequest> requestStream = localEventStore.listEvents(context, streamObserver);
             requestStream.onNext(GetEventsRequest.newBuilder()
                                                  .setTrackingToken(trackingToken)
@@ -88,6 +101,9 @@ public class LocalEventsRestController {
             sseEmitter.onTimeout(requestStream::onCompleted);
             sseEmitter.onError(requestStream::onError);
         } else {
+            Function<SerializedEvent, Object> mapping = new UncheckedFunction<>(input -> new JsonEvent(input.asEvent()));
+            SSEEmitterStreamObserver<SerializedEvent> streamObserver = new SSEEmitterStreamObserver<>(sseEmitter,
+                                                                                                      mapping);
             GetAggregateEventsRequest request = GetAggregateEventsRequest.newBuilder()
                                                                          .setAggregateId(aggregateId)
                                                                          .setAllowSnapshots(allowSnapshots)

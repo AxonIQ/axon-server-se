@@ -1,7 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
-import io.axoniq.axonserver.grpc.internal.Context;
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupService;
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupServiceFactory;
+import io.axoniq.axonserver.enterprise.replication.RaftLeaderProvider;
+import io.axoniq.axonserver.grpc.internal.ReplicationGroup;
 import io.axoniq.axonserver.grpc.internal.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,9 +99,7 @@ public class LeadershipStatusNotifier implements SmartLifecycle {
                                     String.join(",", leaders));
                     }
                     if (lastKnownLeader == null || !leaders.contains(lastKnownLeader)) {
-                        String anyLeader = leaders.stream()
-                                                  .findAny()
-                                                  .get();
+                        String anyLeader = leaders.iterator().next();
                         publishLeaderConfirmation(context, anyLeader);
                     }
                 }
@@ -124,7 +125,7 @@ public class LeadershipStatusNotifier implements SmartLifecycle {
         }
     }
 
-    private void updateLeader(Context context, Map<String, Set<String>> leadersPerContext) {
+    private void updateLeader(ReplicationGroup context, Map<String, Set<String>> leadersPerContext) {
         leadersPerContext.computeIfAbsent(context.getName(), n -> newKeySet());
         context.getMembersList()
                .stream()
@@ -135,7 +136,7 @@ public class LeadershipStatusNotifier implements SmartLifecycle {
     }
 
     private void publishLeaderConfirmation(String context, String leader) {
-        eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context, leader, true));
+        eventPublisher.publishEvent(new ClusterEvents.LeaderConfirmation(context, leader));
     }
 
     @Override

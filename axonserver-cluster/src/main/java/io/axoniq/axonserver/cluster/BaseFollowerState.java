@@ -2,10 +2,8 @@ package io.axoniq.axonserver.cluster;
 
 import io.axoniq.axonserver.cluster.configuration.ClusterConfiguration;
 import io.axoniq.axonserver.cluster.configuration.FollowerConfiguration;
-import io.axoniq.axonserver.cluster.exception.LogException;
 import io.axoniq.axonserver.cluster.exception.RaftException;
 import io.axoniq.axonserver.cluster.replication.LogEntryStore;
-import io.axoniq.axonserver.cluster.scheduler.Scheduler;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesRequest;
 import io.axoniq.axonserver.grpc.cluster.AppendEntriesResponse;
@@ -38,7 +36,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
     private static final Logger logger = LoggerFactory.getLogger(BaseFollowerState.class);
     private final ClusterConfiguration clusterConfiguration;
 
-    private final AtomicLong lastMessage = new AtomicLong();
+    protected final AtomicLong lastMessage = new AtomicLong();
     private final AtomicReference<String> leaderId = new AtomicReference<>();
     private final AtomicInteger lastSnapshotChunk = new AtomicInteger(-1);
     protected final AtomicBoolean processing = new AtomicBoolean();
@@ -130,7 +128,9 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
                                                     request.getTerm(),
                                                     currentTerm());
                 logger.info(failureCause);
-                return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
+                return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                              request.getSupportsReplicationGroups(),
+                                                              failureCause);
             }
 
             heardFromLeader = true;
@@ -156,7 +156,9 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
                 // Allow for extra time from leader, the current node is not up to date and should not move to candidate state too soon
                 rescheduleElection(request.getTerm(), raftGroup().raftConfiguration().maxElectionTimeout());
 
-                return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
+                return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                              request.getSupportsReplicationGroups(),
+                                                              failureCause);
             }
 
             //3. If an existing entry conflicts with a new one (same index but different terms), delete the existing entry
@@ -171,10 +173,14 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
                                                     e.getMessage());
                 logger.error(failureCause + ". Shutting down.", e);
                 fatalShutdown(failureCause);
-                return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
+                return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                              request.getSupportsReplicationGroups(),
+                                                              failureCause);
             } catch (RaftException raftException) {
                 logger.error("Unexpected condition occurred.", raftException);
-                return responseFactory().appendEntriesFailure(request.getRequestId(), raftException.getMessage());
+                return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                              request.getSupportsReplicationGroups(),
+                                                              raftException.getMessage());
             }
 
             //5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
@@ -204,7 +210,9 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
                                                 ex.getMessage());
             logger.error(failureCause + ". Shutting down.", ex);
             fatalShutdown(failureCause);
-            return responseFactory().appendEntriesFailure(request.getRequestId(), failureCause);
+            return responseFactory().appendEntriesFailure(request.getRequestId(),
+                                                          request.getSupportsReplicationGroups(),
+                                                          failureCause);
         }
     }
 
@@ -310,7 +318,7 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
         }
 
         try {
-            snapshotManager().applySnapshotData(request.getDataList())
+            snapshotManager().applySnapshotData(request.getDataList(), request.getPeerRole())
                              .block();
         } catch (Exception ex) {
             String failureCause = String.format(
@@ -323,6 +331,13 @@ public abstract class BaseFollowerState extends AbstractMembershipState {
         }
 
         lastSnapshotChunk.set(request.getOffset());
+        if (request.getConfigDone()) {
+            logger.debug("{} in term {}: config done", groupId(), currentTerm());
+            return responseFactory().installSnapshotConfigDone(request.getRequestId(),
+                                                               request.getOffset(),
+                                                               request.getPeerRole());
+        }
+
         //When install snapshot request is completed, update commit and last applied indexes.
         if (request.getDone()) {
             long index = request.getLastIncludedIndex();

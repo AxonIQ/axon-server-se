@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.cluster.snapshot;
 
+import io.axoniq.axonserver.grpc.cluster.Role;
 import io.axoniq.axonserver.grpc.cluster.SerializedObject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -18,10 +19,17 @@ public interface SnapshotManager {
     /**
      * Streams snapshot data within given event sequence boundaries.
      *
-     * @param installationContext information (boundaries for data streams) related to the current snapshot installation
      * @return a flux of serialized snapshot data
      */
     Flux<SerializedObject> streamSnapshotData(SnapshotContext installationContext);
+
+    /**
+     * Streams snapshot data for types that are append only (events/snapshots).
+     *
+     * @param installationContext information (boundaries for data streams) related to the current snapshot installation
+     * @return a flux of serialized snapshot data
+     */
+    Flux<SerializedObject> streamAppendOnlyData(SnapshotContext installationContext);
 
     /**
      * Applies a list of serialized snapshot data.
@@ -29,9 +37,9 @@ public interface SnapshotManager {
      * @param serializedObjects a list of serialized snapshot data
      * @return a mono indicating that applying is done
      */
-    default Mono<Void> applySnapshotData(List<SerializedObject> serializedObjects) {
+    default Mono<Void> applySnapshotData(List<SerializedObject> serializedObjects, Role peerRole) {
         return Mono.when(serializedObjects.stream()
-                                          .map(this::applySnapshotData)
+                                          .map(serializedObject -> applySnapshotData(serializedObject, peerRole))
                                           .collect(Collectors.toList()));
     }
 
@@ -41,11 +49,12 @@ public interface SnapshotManager {
      * @param serializedObject a single piece of serialized snapshot data
      * @return a mono indicating that applying is done
      */
-    Mono<Void> applySnapshotData(SerializedObject serializedObject);
+    Mono<Void> applySnapshotData(SerializedObject serializedObject, Role peerRole);
 
     /**
-     * Clears the snapshot data stores. Usually invoked before {@link #applySnapshotData(SerializedObject)} or {@link
-     * #applySnapshotData(List)} in order to prepare the stores for applying.
+     * Clears the snapshot data stores. Usually invoked before {@link #applySnapshotData(SerializedObject, Role)} or
+     * {@link
+     * #applySnapshotData(List, Role)} in order to prepare the stores for applying.
      */
     void clear();
 }

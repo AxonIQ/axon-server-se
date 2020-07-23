@@ -1,9 +1,9 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.KeepNames;
-import io.axoniq.axonserver.access.application.ApplicationContext;
-import io.axoniq.axonserver.access.application.ApplicationContextRole;
-import io.axoniq.axonserver.access.application.JpaApplication;
+import io.axoniq.axonserver.access.application.AdminApplicationContext;
+import io.axoniq.axonserver.access.application.AdminApplicationContextRole;
+import io.axoniq.axonserver.access.application.AdminApplication;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +28,7 @@ public class ApplicationJSON {
     public ApplicationJSON() {
     }
 
-    public ApplicationJSON(JpaApplication application) {
+    public ApplicationJSON(AdminApplication application) {
         name = application.getName();
         description = application.getDescription();
         roles = application.getContexts().stream().map(ApplicationRoleJSON::new).collect(Collectors.toList());
@@ -82,10 +82,10 @@ public class ApplicationJSON {
 
         }
 
-        public ApplicationRoleJSON(ApplicationContext applicationRole) {
+        public ApplicationRoleJSON(AdminApplicationContext applicationRole) {
             roles = applicationRole.getRoles()
                                    .stream()
-                                   .map(ApplicationContextRole::getRole)
+                                   .map(AdminApplicationContextRole::getRole)
                                    .collect(Collectors.toList());
             context = applicationRole.getContext();
         }
@@ -108,10 +108,15 @@ public class ApplicationJSON {
             this.roles = roles;
         }
 
-        public ApplicationContext toApplicationRole() {
-            return new ApplicationContext(context, roles.stream()
-                                                        .map(ApplicationContextRole::new)
-                                                        .collect(Collectors.toList()));
+        public AdminApplicationContext toApplicationRole() {
+            return new AdminApplicationContext(context, roles.stream()
+                                                             .map(AdminApplicationContextRole::new)
+                                                             .collect(Collectors.toList()));
+        }
+
+        @Override
+        public String toString() {
+            return roles.stream().map(r -> r + "@" + context).collect(Collectors.joining(","));
         }
     }
 }

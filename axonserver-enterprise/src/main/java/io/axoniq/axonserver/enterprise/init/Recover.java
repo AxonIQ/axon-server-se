@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.enterprise.init;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNodeRepository;
-import io.axoniq.axonserver.enterprise.cluster.ClusterNodeRepository;
+import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
+import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNodeRepository;
+import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupMember;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.ContextClusterNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +37,7 @@ public class Recover implements SmartLifecycle {
     private boolean running;
 
     private final ClusterNodeRepository clusterNodeRepository;
-    private final JpaRaftGroupNodeRepository jpaRaftGroupNodeRepository;
+    private final ReplicationGroupMemberRepository jpaRaftGroupNodeRepository;
 
     private final EntityManager entityManager;
 
@@ -45,7 +45,7 @@ public class Recover implements SmartLifecycle {
 
     public Recover(EntityManager entityManager,
                    ClusterNodeRepository clusterNodeRepository,
-                   JpaRaftGroupNodeRepository jpaRaftGroupNodeRepository,
+                   ReplicationGroupMemberRepository jpaRaftGroupNodeRepository,
                    @Value("${axoniq.axonserver.recoveryfile:recovery.json}") String recoveryFileName) {
         this.clusterNodeRepository = clusterNodeRepository;
         this.entityManager = entityManager;
@@ -87,7 +87,7 @@ public class Recover implements SmartLifecycle {
         clusterNode.setHttpPort(getOrDefault(node.getHttpPort(), clusterNode.getHttpPort()));
         clusterNodeRepository.save(clusterNode);
 
-        Set<JpaRaftGroupNode> raftGroups = jpaRaftGroupNodeRepository.findByNodeName(
+        Set<ReplicationGroupMember> raftGroups = jpaRaftGroupNodeRepository.findByNodeName(
                 clusterNode.getName());
         raftGroups.forEach(raftGroup -> {
             raftGroup.setHost(getOrDefault(node.getInternalHostName(), raftGroup.getNodeName()));
@@ -99,7 +99,7 @@ public class Recover implements SmartLifecycle {
     private void rename(ClusterNode clusterNode, RecoverNode node) {
         if (clusterNode.getName().equals(node.getName())) return;
         logger.warn("Renaming {} to {}", clusterNode.getName(), node.getName());
-        Set<ContextClusterNode> contexts = new HashSet<>(clusterNode.getContexts());
+        Set<AdminReplicationGroupMember> contexts = new HashSet<>(clusterNode.getReplicationGroups());
 
         ClusterNode newNode = new ClusterNode(node.getName(),
                                               clusterNode.getHostName(),
@@ -113,12 +113,14 @@ public class Recover implements SmartLifecycle {
         clusterNodeRepository.flush();
         // Hibernates keeps some entries in its cache, so use entityManager.clear() to remove them from cache.
         entityManager.clear();
-        for (ContextClusterNode context : contexts) {
-            newNode.addContext(context.getContext(), context.getClusterNodeLabel(), context.getRole());
+        for (AdminReplicationGroupMember context : contexts) {
+            newNode.addReplicationGroup(context.getReplicationGroup(),
+                                        context.getClusterNodeLabel(),
+                                        context.getRole());
         }
         clusterNodeRepository.saveAndFlush(newNode);
 
-        Set<JpaRaftGroupNode> raftGroups = jpaRaftGroupNodeRepository.findByNodeName(
+        Set<ReplicationGroupMember> raftGroups = jpaRaftGroupNodeRepository.findByNodeName(
                 clusterNode.getName());
         raftGroups.forEach(raftGroup -> raftGroup.setNodeName(node.getName()));
         jpaRaftGroupNodeRepository.saveAll(raftGroups);

@@ -1,13 +1,13 @@
 package io.axoniq.axonserver.cluster;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.*;
+import org.junit.runner.*;
+import org.junit.runners.*;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static io.axoniq.axonserver.cluster.TestUtils.assertWithin;
@@ -45,8 +45,12 @@ public class RaftClusterIntegrationTest {
 
     @Test
     public void testClusterStart() {
+        Map<String, String> statePerNode = new HashMap<>();
+        fixture.nodes().forEach(n -> n
+                .registerStateChangeListener(stateChanged -> statePerNode.put(n.nodeId(), stateChanged.toState())));
         fixture.nodes().forEach(n -> n.appendEntry("mock", "Mock".getBytes()));
         fixture.startNodes();
+        fixture.nodes().forEach(n -> assertEquals(FollowerState.class.getSimpleName(), statePerNode.get(n.nodeId())));
     }
 
     @Test

@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.licensing;
 
-import io.axoniq.axonserver.enterprise.cluster.ClusterNodeRepository;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.config.AxonServerEnterpriseProperties;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNodeRepository;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.jetbrains.annotations.NotNull;
@@ -13,15 +13,30 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
-import java.security.*;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Properties;
 
+import static io.axoniq.axonserver.util.StringUtils.isEmpty;
 import static java.lang.Math.toIntExact;
 
 /**
@@ -88,16 +103,21 @@ public class LicenseManager {
         Properties licenseProperties = loadProperties(license);
         validate(licenseProperties);
 
+        String licenseFilePath = System.getProperty("license", System.getenv("AXONIQ_LICENSE"));
+
+        if(isEmpty(licenseFilePath)){
         File path = new File(LICENSE_DIRECTORY);
         if (!path.exists() && !path.mkdirs()) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
                     "Failed to create directory: " + path.getAbsolutePath());
         }
+            licenseFilePath = path + "/" + LICENSE_FILENAME;
+        }
 
-        try (FileOutputStream out = new FileOutputStream(path + "/" + LICENSE_FILENAME)) {
+        try (FileOutputStream out = new FileOutputStream(licenseFilePath)) {
             out.write(license);
         } catch (IOException e) {
-            throw LicenseException.unableToWrite(path, e);
+            throw LicenseException.unableToWrite(licenseFilePath, e);
         }
 
         logger.info("New license saved!");
@@ -147,12 +167,10 @@ public class LicenseManager {
 
         File file = new File(licenseFilePath);
 
-        try {
-            FileInputStream fileInputStream = new FileInputStream(file);
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
             byte[] licenseContent = new byte[toIntExact(file.length())];
             fileInputStream.read(licenseContent);
             return licenseContent;
-
         } catch (IOException ex) {
             throw LicenseException.unableToRead(file);
         }
@@ -252,7 +270,7 @@ public class LicenseManager {
             long clusterNodes = nodesCount();
 
             if (clusterNodes > allowedClusterNodes) {
-                logger.error("Cluster limited to " + allowedClusterNodes + " but found " + clusterNodes + " nodes.");
+                logger.error("Cluster limited to {} but found {} nodes.", allowedClusterNodes, clusterNodes);
                 throw LicenseException.allowedClusterNodesExceeded(allowedClusterNodes,clusterNodes);
             }
 

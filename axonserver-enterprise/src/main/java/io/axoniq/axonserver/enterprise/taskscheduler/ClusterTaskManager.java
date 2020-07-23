@@ -1,15 +1,14 @@
 package io.axoniq.axonserver.enterprise.taskscheduler;
 
-import io.axoniq.axonserver.enterprise.ContextEvents;
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
+import io.axoniq.axonserver.enterprise.replication.RaftLeaderProvider;
 import io.axoniq.axonserver.grpc.TaskStatus;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
 import io.axoniq.axonserver.grpc.tasks.UpdateTask;
 import io.axoniq.axonserver.taskscheduler.BaseTaskManager;
-import io.axoniq.axonserver.taskscheduler.TaskPayload;
 import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
 import io.axoniq.axonserver.taskscheduler.Task;
+import io.axoniq.axonserver.taskscheduler.TaskPayload;
 import io.axoniq.axonserver.taskscheduler.TaskRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
@@ -24,8 +23,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-
-import static io.axoniq.axonserver.RaftAdminGroup.getAdmin;
 
 /**
  * Component that reads tasks from the controldb and tries to execute them.
@@ -84,16 +81,17 @@ public class ClusterTaskManager extends BaseTaskManager {
     }
 
     /**
-     * Deletes all scheduled tasks for a context.
-     * @param context the name of the context
+     * Deletes all scheduled tasks for a replicationGroup.
+     *
+     * @param replicationGroup the name of the replicationGroup
      */
     @Transactional
-    public void deleteAllByContext(String context) {
-        unscheduleTasksForContext(context);
-        taskRepository.deleteAllByContext(context);
+    public void deleteAllByReplicationGroup(String replicationGroup) {
+        unscheduleTasksForReplicationGroup(replicationGroup);
+        taskRepository.deleteAllByContext(replicationGroup);
     }
 
-    private void unscheduleTasksForContext(String context) {
+    private void unscheduleTasksForReplicationGroup(String context) {
         Map<String, ScheduledFuture<?>> scheduled = scheduledProcessors.remove(context);
         if (scheduled != null) {
             scheduled.values().forEach(scheduledRegistration -> scheduledRegistration.cancel(false));
@@ -101,40 +99,27 @@ public class ClusterTaskManager extends BaseTaskManager {
     }
 
     /**
-     * Returns all scheduled tasks for a context
+     * Returns all scheduled tasks for a replicationGroup
      *
-     * @param context the context name
+     * @param replicationGroup the replication group name
      * @return the scheduled tasks
      */
-    public List<Task> findAllByContext(String context) {
-        return taskRepository.findAllByContext(context);
+    public List<Task> findAllByReplicationGroup(String replicationGroup) {
+        return taskRepository.findAllByContext(replicationGroup);
     }
-
 
     /**
      * Event handler for the contextDeleted event. Deletes all tasks for the context.
      *
-     * @param contextDeleted the event
+     * @param event the event
      */
     @EventListener
     @Transactional
-    public void on(ContextEvents.ContextDeleted contextDeleted) {
-        logger.debug("Deleting tasks for {}", contextDeleted.getContext());
-        deleteAllByContext(contextDeleted.getContext());
+    public void on(ClusterEvents.ReplicationGroupDeleted event) {
+        logger.debug("Deleting tasks for {}", event.replicationGroup());
+        deleteAllByReplicationGroup(event.replicationGroup());
     }
 
-    /**
-     * Event handler for the adminContextDeleted event. Deletes all tasks for the _admin context.
-     *
-     * @param contextDeleted only used to listen to this event type
-     */
-    @SuppressWarnings("unused")
-    @EventListener
-    @Transactional
-    public void on(ContextEvents.AdminContextDeleted contextDeleted) {
-        logger.debug("Deleting tasks for _admin");
-        deleteAllByContext(getAdmin());
-    }
 
     /**
      * Event handler for the {@link io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents.BecomeLeader} event.
@@ -145,7 +130,8 @@ public class ClusterTaskManager extends BaseTaskManager {
      */
     @EventListener
     public void on(ClusterEvents.BecomeLeader becomeLeader) {
-        taskRepository.findScheduled(becomeLeader.getContext(), 0, nextTimestamp.get()).forEach(this::doScheduleTask);
+        taskRepository.findScheduled(becomeLeader.replicationGroup(), 0, nextTimestamp.get())
+                      .forEach(this::doScheduleTask);
     }
 
     /**
@@ -156,7 +142,7 @@ public class ClusterTaskManager extends BaseTaskManager {
      */
     @EventListener
     public void on(ClusterEvents.LeaderStepDown leaderStepDown) {
-        unscheduleTasksForContext(leaderStepDown.getContextName());
+        unscheduleTasksForReplicationGroup(leaderStepDown.replicationGroup());
     }
 
     /**

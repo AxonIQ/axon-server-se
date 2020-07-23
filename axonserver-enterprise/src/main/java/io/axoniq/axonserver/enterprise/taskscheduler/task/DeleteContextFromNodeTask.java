@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
-import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupServiceFactory;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
@@ -30,7 +30,8 @@ public class DeleteContextFromNodeTask implements ScheduledTask {
         NodeContext nodeContext = (NodeContext) payload;
         try {
             return raftGroupServiceFactory.getRaftGroupServiceForNode(nodeContext.getNode())
-                                          .deleteContext(nodeContext.getContext(), nodeContext.isPreserveEventStore())
+                                          .deleteReplicationGroup(nodeContext.getContext(),
+                                                              nodeContext.isPreserveEventStore())
                                           .exceptionally(t -> {
                                               throw new TransientException(t.getMessage(), t);
                                           });

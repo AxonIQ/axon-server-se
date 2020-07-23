@@ -1,11 +1,10 @@
 package io.axoniq.axonserver.enterprise.storage.jdbc;
 
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
+import io.axoniq.axonserver.enterprise.replication.ContextLeaderProvider;
 import io.axoniq.axonserver.enterprise.config.AxonServerEnterpriseConfiguration;
 import io.axoniq.axonserver.enterprise.storage.jdbc.multicontext.SchemaPerContextMultiContextStrategy;
 import io.axoniq.axonserver.enterprise.storage.jdbc.multicontext.SingleSchemaMultiContextStrategy;
 import io.axoniq.axonserver.enterprise.storage.jdbc.serializer.ProtoMetaDataSerializer;
-import io.axoniq.axonserver.localstorage.EventStoreExistChecker;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,22 +28,17 @@ public class JdbcEventStoreConfiguration {
     /**
      * Returns the JdbcEventStoreFactory as Spring bean eventStoreFactory.
      *
-     * @param storageProperties                specific storage properties for the JDBC event store
-     * @param leaderProvider                   a leader provider that returns the leader node for a specific context
+     * @param storageProperties specific storage properties for the JDBC event store
+     * @param leaderProvider    a leader provider that returns the leader node for a specific context
      * @return the eventStore factory
      */
     @Bean
     public EventStoreFactory eventStoreFactory(StorageProperties storageProperties,
-                                               RaftLeaderProvider leaderProvider) {
+                                               ContextLeaderProvider leaderProvider) {
         return new JdbcEventStoreFactory(storageProperties,
                                          metaDataSerializer(),
                                          multiContextStrategy(storageProperties),
                                          leaderProvider::isLeader);
-    }
-
-    @Bean
-    public EventStoreExistChecker eventStoreExistChecker(StorageProperties storageProperties) {
-        return new JdbcEventStoreExistChecker(multiContextStrategy(storageProperties), storageProperties.dataSource());
     }
 
     /**

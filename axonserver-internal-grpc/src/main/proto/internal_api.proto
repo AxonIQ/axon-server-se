@@ -4,11 +4,12 @@ import "common.proto";
 import "command.proto";
 import "query.proto";
 import "control.proto";
+import "event.proto";
 import "raft.proto";
 option java_multiple_files = true;
 
 service MessagingClusterService {
-    // Creates a stream between 2 nodes in the cluser
+    // Creates a stream between 2 nodes in the cluster
     // calling side is service provider to called side
     rpc OpenStream (stream ConnectorCommand) returns (stream ConnectorResponse) {
     }
@@ -19,6 +20,29 @@ service MessagingClusterService {
 
     rpc GetCluster (EmptyRequest) returns (stream NodeInfo) {
     }
+}
+
+/**
+ * Service that contains specific operations to retrieve information from a lower tier in a multi tier context
+ */
+service LowerTierEventStoreService {
+    /* creates a flow controlled stream for events from the lower tier */
+    rpc ListEvents (stream GetTransactionsRequest) returns (stream TransactionWithToken) {
+    }
+
+    /* creates a flow controlled stream for snapshots from the lower tier */
+    rpc ListSnapshots (stream GetTransactionsRequest) returns (stream TransactionWithToken) {
+    }
+
+    /* finds the highest sequence number for an aggregate from the lower tier */
+    rpc GetHighestSequenceNumber (GetHighestSequenceNumberRequest) returns (GetHighestSequenceNumberResponse) {
+    }
+
+    // Retrieves the last committed token in event store. Returns -1 when no events in store.
+    rpc GetLastSnapshotToken (GetLastSnapshotTokenRequest) returns (io.axoniq.axonserver.grpc.event.TrackingToken) {
+    }
+
+
 }
 
 /**
@@ -34,16 +58,22 @@ service RaftConfigService {
     rpc DeleteNode (NodeName) returns (InstructionAck) {
     }
 
-    rpc CreateContext (Context) returns (InstructionAck) {
+    rpc CreateReplicationGroup (ReplicationGroup) returns (InstructionAck) {
     }
 
-    rpc AddNodeToContext (NodeContext) returns (InstructionAck) {
+    rpc AddNodeToReplicationGroup (NodeReplicationGroup) returns (InstructionAck) {
     }
 
-    rpc DeleteNodeFromContext (NodeContext) returns (InstructionAck) {
+    rpc DeleteNodeFromReplicationGroup (NodeReplicationGroup) returns (InstructionAck) {
     }
 
-    rpc DeleteContext (ContextName) returns (InstructionAck) {
+    rpc DeleteReplicationGroup (DeleteReplicationGroupRequest) returns (InstructionAck) {
+    }
+
+    rpc CreateContext (ReplicationGroupContext) returns (InstructionAck) {
+    }
+
+    rpc DeleteContext (DeleteContextRequest) returns (InstructionAck) {
     }
 
     rpc UpdateApplication (Application) returns (Application) {
@@ -61,12 +91,6 @@ service RaftConfigService {
     rpc DeleteUser (User) returns (InstructionAck) {
     }
 
-    rpc UpdateLoadBalanceStrategy (LoadBalanceStrategy) returns (InstructionAck) {
-    }
-
-    rpc DeleteLoadBalanceStrategy (LoadBalanceStrategy) returns (InstructionAck) {
-    }
-
     rpc UpdateProcessorLBStrategy (ProcessorLBStrategy) returns (InstructionAck) {
     }
 
@@ -80,56 +104,32 @@ service RaftConfigService {
  */
 service RaftGroupService {
 
-    rpc InitContext (Context) returns (ContextConfiguration) {
+    rpc InitReplicationGroup (ReplicationGroup) returns (ReplicationGroupConfiguration) {
     }
 
-    rpc DeleteContext (DeleteContextRequest) returns (InstructionAck) {
+    rpc DeleteReplicationGroup (DeleteReplicationGroupRequest) returns (InstructionAck) {
     }
 
-    rpc AddServer (Context) returns (ContextUpdateConfirmation) {
+    rpc AddServer (ReplicationGroup) returns (ReplicationGroupUpdateConfirmation) {
     }
 
-    rpc RemoveServer (Context) returns (ContextUpdateConfirmation) {
+    rpc RemoveServer (ReplicationGroup) returns (ReplicationGroupUpdateConfirmation) {
     }
 
-    rpc MergeAppAuthorization (ContextApplication) returns (InstructionAck) {
+    rpc GetStatus (ReplicationGroup) returns (stream ReplicationGroup) {
     }
 
-    rpc DeleteAppAuthorization (ContextApplication) returns (InstructionAck) {
+    rpc AppendEntry (ReplicationGroupEntry) returns (InstructionAck) {
     }
 
-    rpc MergeUserAuthorization (ContextUser) returns (InstructionAck) {
+    rpc Configuration (ReplicationGroupName) returns (ReplicationGroupConfiguration) {
     }
 
-    rpc DeleteUserAuthorization (ContextUser) returns (InstructionAck) {
-    }
-
-    rpc MergeLoadBalanceStrategy (ContextLoadBalanceStrategy) returns (InstructionAck) {
-    }
-
-    rpc DeleteLoadBalanceStrategy (ContextLoadBalanceStrategy) returns (InstructionAck) {
-    }
-
-    rpc MergeProcessorLBStrategy (ContextProcessorLBStrategy) returns (InstructionAck) {
-    }
-
-    rpc DeleteProcessorLBStrategy (ContextProcessorLBStrategy) returns (InstructionAck) {
-    }
-
-    rpc GetStatus (Context) returns (stream Context) {
-    }
-
-    rpc AppendEntry (ContextEntry) returns (InstructionAck) {
-    }
-
-    rpc Configuration (ContextName) returns (ContextConfiguration) {
-    }
-
-    rpc TransferLeadership (ContextName) returns (InstructionAck) {
+    rpc TransferLeadership (ReplicationGroupName) returns (InstructionAck) {
     }
 
     // Notify a node that a node will be deleted from a context.
-    rpc PreDeleteNodeFromContext (NodeContext) returns (InstructionAck) {
+    rpc PreDeleteNodeFromReplicationGroup (NodeReplicationGroup) returns (InstructionAck) {
     }
 }
 
@@ -137,9 +137,9 @@ message EmptyRequest {
 
 }
 
-message NodeContext {
+message NodeReplicationGroup {
     string node_name = 1;
-    string context = 2;
+    string replication_group_name = 2;
     io.axoniq.axonserver.grpc.cluster.Role role = 3;
 }
 
@@ -341,9 +341,34 @@ enum Group {
     QUERY = 1;
 }
 
-
-message ContextEntry {
+message GetHighestSequenceNumberRequest {
     string context = 1;
+    string aggregate_identifier = 2;
+    /* contains the maximum number of segments to check (for checking new aggregates) */
+    int32 max_segments_hint = 3;
+    /* contains the maximum token to check, events above this token have already been checked by the primary node */
+    int64 max_token_hint = 4;
+}
+
+message GetHighestSequenceNumberResponse {
+    int64 sequence_number = 1;
+}
+
+message GetTransactionsRequest {
+    string context = 1;
+
+    /* The token to start streaming from */
+    int64 tracking_token = 2;
+
+    /* The token to stop streaming (exclusive), 0 means no limit */
+    int64 to_tracking_token = 3;
+
+    /* The number of messages the server may send before it needs to wait for more permits */
+    int64 number_of_permits = 4;
+}
+
+message ReplicationGroupEntry {
+    string replication_group_name = 1;
     string entry_name = 2;
     bytes entry = 3;
 }
@@ -396,64 +421,40 @@ message Metric {
     reserved 4, 6, 8, 9, 10, 12;
 }
 
-message SynchronizationReplicaOutbound {
-    oneof request {
-        StartSynchronization start = 1;
-        Permits permits = 2;
-        TransactionConfirmation confirmation = 3;
-    }
-    // Reserved for backwards compatibility - safepoint_confirmation
-    reserved 4;
-}
-
-message SynchronizationReplicaInbound {
-    oneof request {
-        TransactionWithToken event = 1;
-        TransactionWithToken snapshot = 2;
-    }
-    // Reserved for backwards compatibility - safepoint
-    reserved 3;
-}
-message StartSynchronization {
-    int64 event_token = 1;
-    int64 snaphshot_token = 2;
-    string context = 3;
-    int64 permits = 4;
-    string node_name = 5;
-}
-
 message Permits {
     int64 permits = 1;
-}
-
-message TransactionConfirmation {
-    int64 token = 1;
-    string type = 2;
 }
 
 message TransactionWithToken {
     int64 token = 1;
     int32 version = 2;
     repeated bytes events = 3;
+    string context = 4;
 }
 
 /*
 * Sent to members of config cluster to update context
 */
-message Context {
+message ReplicationGroup {
     string name = 1;
-    repeated ContextMember members = 2;
+    repeated ReplicationGroupMember members = 2;
+}
+
+message ReplicationGroupContext {
+    string replication_group_name = 1;
+    string context_name = 2;
     map<string, string> meta_data = 3;
 }
 
-message ContextUpdateConfirmation {
+
+message ReplicationGroupUpdateConfirmation {
     bool success = 1;
     string message = 2;
-    repeated ContextMember members = 3;
+    repeated ReplicationGroupMember members = 3;
     bool pending = 4;
 }
 
-message ContextMember {
+message ReplicationGroupMember {
     string node_id = 1;
     string host = 2;
     int32 port = 3;
@@ -506,11 +507,22 @@ enum State {
     INITIALIZING = 3;
 }
 
+message ClusterConfiguration {
+    repeated ReplicationGroupConfiguration replication_groups = 1;
+    repeated ReplicationGroupContext contexts = 2;
+}
+
 message ContextConfiguration {
     string context = 1;
     repeated NodeInfoWithLabel nodes = 2;
     bool pending = 3;
     map<string, string> meta_data = 4;
+}
+
+message ReplicationGroupConfiguration {
+    string replication_group_name = 1;
+    repeated NodeInfoWithLabel nodes = 2;
+    bool pending = 3;
 }
 
 message NodeInfoWithLabel {
@@ -522,22 +534,24 @@ message NodeInfoWithLabel {
 message ContextName {
     string context = 1;
 }
+message ReplicationGroupName {
+    string name = 1;
+}
 
 message DeleteContextRequest {
     string context = 1;
     bool preserve_eventstore = 2;
+    string replication_group_name = 3;
 }
 
+message DeleteReplicationGroupRequest {
+    string replication_group_name = 1;
+    bool preserve_eventstore = 2;
+}
 
 message NodeName {
     string node = 1;
     bool require_empty = 2;
-}
-
-message LoadBalanceStrategy {
-     string name = 1;
-     string factoryBean = 2;
-     string label = 3;
 }
 
 message ProcessorLBStrategy {
@@ -545,6 +559,7 @@ message ProcessorLBStrategy {
     string processor = 2;
     string context = 3;
     string strategy = 4;
+    string token_store_identifier = 5;
 }
 
 message ContextApplication {
@@ -560,11 +575,6 @@ message ContextUser {
     User user = 2;
 }
 
-message ContextLoadBalanceStrategy {
-    string context = 1;
-    LoadBalanceStrategy loadBalanceStrategy = 2;
-}
-
 message ContextProcessorLBStrategy {
     string context = 1;
     ProcessorLBStrategy processorLBStrategy = 2;
@@ -572,4 +582,20 @@ message ContextProcessorLBStrategy {
 
 message MetaData {
     map<string, MetaDataValue> meta_data = 1;
+}
+
+message ReplicationGroupContexts {
+    string replication_group_name = 1;
+    repeated Context context = 2;
+
+}
+message Context {
+    string context_name = 1;
+    map<string, string> meta_data = 2;
+    int64 firstEventToken = 3;
+    int64 firstSnapshotToken = 4;
+}
+
+message GetLastSnapshotTokenRequest {
+    string context = 1;
 }

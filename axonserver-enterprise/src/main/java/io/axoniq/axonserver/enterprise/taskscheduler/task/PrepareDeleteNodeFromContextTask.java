@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.enterprise.taskscheduler.task;
 
-import io.axoniq.axonserver.enterprise.cluster.RaftGroupServiceFactory;
-import io.axoniq.axonserver.enterprise.context.ContextController;
+import io.axoniq.axonserver.enterprise.replication.admin.AdminReplicationGroupController;
+import io.axoniq.axonserver.enterprise.replication.group.RaftGroupServiceFactory;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import io.axoniq.axonserver.enterprise.taskscheduler.TaskPublisher;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -36,13 +36,13 @@ public class PrepareDeleteNodeFromContextTask implements ScheduledTask {
 
     private final Logger logger = LoggerFactory.getLogger(PrepareDeleteNodeFromContextTask.class);
 
-    private final ContextController contextController;
+    private final AdminReplicationGroupController contextController;
     private final TaskPublisher taskPublisher;
     private final RaftGroupServiceFactory raftGroupServiceFactory;
 
     public PrepareDeleteNodeFromContextTask(
             RaftGroupServiceFactory raftGroupServiceFactory,
-            ContextController contextController, TaskPublisher taskPublisher) {
+            AdminReplicationGroupController contextController, TaskPublisher taskPublisher) {
         this.raftGroupServiceFactory = raftGroupServiceFactory;
         this.contextController = contextController;
         this.taskPublisher = taskPublisher;
@@ -51,8 +51,8 @@ public class PrepareDeleteNodeFromContextTask implements ScheduledTask {
     @Override
     public CompletableFuture<Void> executeAsync(String context, Object payload) {
         NodeContext nodeContext = (NodeContext) payload;
-        Collection<String> nodesInContext = contextController.getContext(nodeContext.getContext()).getNodeNames();
-        Collection<String> adminNodes = contextController.getContext(getAdmin()).getNodeNames();
+        Collection<String> nodesInContext = contextController.getNodeNames(nodeContext.getContext());
+        Collection<String> adminNodes = contextController.getNodeNames(getAdmin());
         Set<String> targetNodes = new HashSet<>(nodesInContext);
         targetNodes.addAll(adminNodes);
         targetNodes.forEach(n -> sendPreDeleteNodeFromContext(n, nodeContext));
@@ -66,7 +66,8 @@ public class PrepareDeleteNodeFromContextTask implements ScheduledTask {
     private void sendPreDeleteNodeFromContext(String node, NodeContext nodeContext) {
         try {
             raftGroupServiceFactory.getRaftGroupServiceForNode(node)
-                                   .prepareDeleteNodeFromContext(nodeContext.getContext(), nodeContext.getNode())
+                                   .prepareDeleteNodeFromReplicationGroup(nodeContext.getContext(),
+                                                                          nodeContext.getNode())
                                    .get(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

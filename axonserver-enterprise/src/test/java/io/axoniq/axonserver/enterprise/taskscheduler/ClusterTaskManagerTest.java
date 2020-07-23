@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.enterprise.taskscheduler;
 
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
+import io.axoniq.axonserver.enterprise.replication.RaftLeaderProvider;
 import io.axoniq.axonserver.grpc.TaskStatus;
 import io.axoniq.axonserver.grpc.tasks.ScheduleTask;
 import io.axoniq.axonserver.grpc.tasks.UpdateTask;
@@ -106,11 +106,6 @@ public class ClusterTaskManagerTest {
                                                  public boolean isLeader(String context) {
                                                      return true;
                                                  }
-
-                                          @Override
-                                          public String getLeaderOrWait(String context, boolean aBoolean) {
-                                              return null;
-                                          }
 
                                           @Override
                                           public Set<String> leaderFor() {

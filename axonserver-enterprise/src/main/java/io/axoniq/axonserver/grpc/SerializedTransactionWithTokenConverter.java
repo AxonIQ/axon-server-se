@@ -26,13 +26,13 @@ public class SerializedTransactionWithTokenConverter {
     }
 
 
-    public static ByteString asByteString(SerializedTransactionWithToken transactionWithToken) {
-        List<ByteString> events = transactionWithToken.getEvents().stream().map(s -> s.asByteString()).collect(
+    public static ByteString asByteString(SerializedTransactionWithToken transactionWithToken, String context) {
+        List<ByteString> events = transactionWithToken.getEvents().stream().map(SerializedEvent::asByteString).collect(
                 Collectors.toList());
         return TransactionWithToken.newBuilder().setVersion(transactionWithToken.getVersion())
-                .setToken(transactionWithToken.getToken())
-                .addAllEvents(events)
-                .build().toByteString();
-
+                                   .setToken(transactionWithToken.getToken())
+                                   .setContext(context)
+                                   .addAllEvents(events)
+                                   .build().toByteString();
     }
 }

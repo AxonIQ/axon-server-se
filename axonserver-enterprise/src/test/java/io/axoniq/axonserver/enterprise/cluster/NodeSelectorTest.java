@@ -1,9 +1,10 @@
 package io.axoniq.axonserver.enterprise.cluster;
 
 
-import io.axoniq.axonserver.cluster.jpa.JpaRaftGroupNode;
+import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
+import io.axoniq.axonserver.cluster.util.RoleUtils;
+import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroup;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
-import io.axoniq.axonserver.enterprise.jpa.Context;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -31,22 +32,25 @@ public class NodeSelectorTest {
 
     private NodeSelector testSubject;
     private ClusterNode me = new ClusterNode("me", "myHost", null, null, null, null);
-    private Map<String, Context> contextMap;
+    private Map<String, AdminReplicationGroup> contextMap;
     private Set<String> connectedAxonServerNodes = new HashSet<>();
 
     @Before
     public void setUp() {
         ClusterNode secondNode = new ClusterNode("aSecondNode", "secondHost", null, null, null, null);
-        Context admin = new Context(getAdmin());
-        Context firstContext = new Context("first");
+        AdminReplicationGroup admin = new AdminReplicationGroup();
+        admin.setName(getAdmin());
+        AdminReplicationGroup firstContext = new AdminReplicationGroup();
+        firstContext.setName("first");
 
-        me.addContext(admin, "Admin", Role.PRIMARY);
-        me.addContext(firstContext, "First", Role.PRIMARY);
+        me.addReplicationGroup(admin, "Admin", Role.PRIMARY);
+        me.addReplicationGroup(firstContext, "First", Role.PRIMARY);
 
-        Context secondContext = new Context("second");
-        me.addContext(firstContext, "Second", Role.ACTIVE_BACKUP);
-        secondNode.addContext(firstContext, "First", Role.PRIMARY);
-        secondNode.addContext(secondContext, "Second", Role.PRIMARY);
+        AdminReplicationGroup secondContext = new AdminReplicationGroup();
+        secondContext.setName("second");
+        me.addReplicationGroup(firstContext, "Second", Role.ACTIVE_BACKUP);
+        secondNode.addReplicationGroup(firstContext, "First", Role.PRIMARY);
+        secondNode.addReplicationGroup(secondContext, "Second", Role.PRIMARY);
 
         contextMap = new HashMap<>();
         contextMap.put(firstContext.getName(), firstContext);
@@ -70,16 +74,27 @@ public class NodeSelectorTest {
                                         List<String> activeNodes) {
                 return !me.getName().equals(selectNode(clientName, componentName, activeNodes));
             }
-        }, clusterMap::get, contextMap::get, this::asRaftGroups, connectedAxonServerNodes);
+        }, clusterMap::get, this::nodesPerContext, this::asRaftGroups, connectedAxonServerNodes);
     }
 
-    private Set<JpaRaftGroupNode> asRaftGroups(String context) {
-        return contextMap.get(context).getNodes().stream().map(c -> new JpaRaftGroupNode(context, Node.newBuilder()
-                                                                                                      .setRole(c.getRole())
-                                                                                                      .setNodeId(c.getClusterNodeLabel())
-                                                                                                      .setNodeName(c.getClusterNode()
-                                                                                                                    .getName())
-                                                                                                      .build()))
+    private Set<String> nodesPerContext(String c) {
+        if (!contextMap.containsKey(c)) {
+            return Collections.emptySet();
+        }
+        return contextMap.get(c).getMembers().stream()
+                         .filter(m -> RoleUtils.allowsClientConnect(m.getRole()))
+                         .map(m -> m.getClusterNode().getName())
+                         .collect(Collectors.toSet());
+    }
+
+    private Set<ReplicationGroupMember> asRaftGroups(String context) {
+        return contextMap.get(context).getMembers().stream().map(c -> new ReplicationGroupMember(context,
+                                                                                                 Node.newBuilder()
+                                                                                                     .setRole(c.getRole())
+                                                                                                     .setNodeId(c.getClusterNodeLabel())
+                                                                                                     .setNodeName(c.getClusterNode()
+                                                                                                                   .getName())
+                                                                                                     .build()))
                          .collect(
                                  Collectors.toSet());
     }
@@ -91,7 +106,7 @@ public class NodeSelectorTest {
 
     @Test
     public void findNodeForClientNotAdmin() {
-        me.removeContext(getAdmin());
+//        me.removeReplicationGroup(getAdmin());
         assertEquals("me", testSubject.findNodeForClient("myClient", "myApplication", "first").getName());
     }
 

@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.access.application.JpaContextUser;
+import io.axoniq.axonserver.access.user.ReplicationGroupUser;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.grpc.internal.ContextUser;
 import io.axoniq.axonserver.grpc.internal.User;
@@ -44,7 +44,7 @@ public class UserProtoConverter {
                    .build();
     }
 
-    public static ContextUser createContextUser(JpaContextUser user) {
+    public static ContextUser createContextUser(ReplicationGroupUser user) {
         return ContextUser.newBuilder().setContext(user.getContext())
                           .setUser(User.newBuilder()
                                        .setName(user.getUsername())
@@ -58,8 +58,9 @@ public class UserProtoConverter {
                           ).build();
     }
 
-    public static JpaContextUser createJpaContextUser(ContextUser userMessage) {
-        JpaContextUser jpaContextUser = new JpaContextUser(userMessage.getContext(), userMessage.getUser().getName());
+    public static ReplicationGroupUser createJpaContextUser(ContextUser userMessage) {
+        ReplicationGroupUser jpaContextUser = new ReplicationGroupUser(userMessage.getContext(),
+                                                                       userMessage.getUser().getName());
         jpaContextUser.setPassword(userMessage.getUser().getPassword());
         jpaContextUser.setRoles(userMessage.getUser()
                                            .getRolesList()

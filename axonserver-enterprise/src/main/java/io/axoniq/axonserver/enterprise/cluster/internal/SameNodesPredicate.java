@@ -1,21 +1,22 @@
 package io.axoniq.axonserver.enterprise.cluster.internal;
 
-import io.axoniq.axonserver.grpc.internal.ContextConfiguration;
 import io.axoniq.axonserver.grpc.internal.NodeInfo;
 import io.axoniq.axonserver.grpc.internal.NodeInfoWithLabel;
+import io.axoniq.axonserver.grpc.internal.ReplicationGroupConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.function.BiPredicate;
 
 /**
- * Predicate that checks if two {@link ContextConfiguration contextConfiguration} contains the same nodes.
+ * Predicate that checks if two {@link ReplicationGroupConfiguration contextConfiguration} contains the same nodes.
  */
-public class SameNodesPredicate implements BiPredicate<ContextConfiguration, ContextConfiguration> {
+public class SameNodesPredicate implements BiPredicate<ReplicationGroupConfiguration, ReplicationGroupConfiguration> {
+
     private static final Logger logger = LoggerFactory.getLogger(SameNodesPredicate.class);
 
     @Override
-    public boolean test(ContextConfiguration configuration, ContextConfiguration configuration2) {
+    public boolean test(ReplicationGroupConfiguration configuration, ReplicationGroupConfiguration configuration2) {
         if (configuration.getNodesCount() != configuration2.getNodesCount()) {
             return false;
         }
@@ -31,7 +32,7 @@ public class SameNodesPredicate implements BiPredicate<ContextConfiguration, Con
                             n1.getGrpcInternalPort() != n2.getGrpcInternalPort() ||
                             !n1.getNodeName().equals(n2.getNodeName())) {
                         logger.warn("{}: Node with different configuration, first: {} -> {}:{}, second {} -> {}:{}",
-                                    configuration.getContext(),
+                                    configuration.getReplicationGroupName(),
                                     n1.getNodeName(),
                                     n1.getInternalHostName(),
                                     n1.getGrpcInternalPort(),

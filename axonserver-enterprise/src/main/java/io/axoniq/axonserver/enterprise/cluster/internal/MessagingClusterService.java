@@ -10,7 +10,7 @@ import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
 import io.axoniq.axonserver.cluster.Registration;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
 import io.axoniq.axonserver.enterprise.cluster.MetricsEvents;
-import io.axoniq.axonserver.enterprise.cluster.RaftLeaderProvider;
+import io.axoniq.axonserver.enterprise.replication.RaftLeaderProvider;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -184,10 +184,10 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
 
     private NodeInfo toNodeInfo(ClusterNode n) {
         return NodeInfo.newBuilder(n.toNodeInfo())
-                       .addAllContexts(n.getContexts()
+                       .addAllContexts(n.getReplicationGroups()
                                         .stream()
                                         .map(ccn -> ContextRole.newBuilder()
-                                                               .setName(ccn.getContext().getName())
+                                                               .setName(ccn.getReplicationGroup().getName())
                                                                .build())
                                         .collect(Collectors.toList()))
                        .build();
@@ -432,18 +432,19 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 case START_CLIENT_EVENT_PROCESSOR:
                     ClientEventProcessor startProcessor = connectorCommand.getStartClientEventProcessor();
                     eventPublisher.publishEvent(new EventProcessorEvents.StartEventProcessorRequest(
-                            startProcessor.getClient(), startProcessor.getProcessorName(), PROXIED
+                            startProcessor.getContext(), startProcessor.getClient(), startProcessor.getProcessorName(), PROXIED
                     ));
                     break;
                 case PAUSE_CLIENT_EVENT_PROCESSOR:
                     ClientEventProcessor pauseProcessor = connectorCommand.getPauseClientEventProcessor();
                     eventPublisher.publishEvent(new EventProcessorEvents.PauseEventProcessorRequest(
-                            pauseProcessor.getClient(), pauseProcessor.getProcessorName(), PROXIED
+                            pauseProcessor.getContext(), pauseProcessor.getClient(), pauseProcessor.getProcessorName(), PROXIED
                     ));
                     break;
                 case RELEASE_SEGMENT:
                     ClientEventProcessorSegment releaseSegment = connectorCommand.getReleaseSegment();
                     eventPublisher.publishEvent(new EventProcessorEvents.ReleaseSegmentRequest(
+                            releaseSegment.getContext(),
                             releaseSegment.getClient(),
                             releaseSegment.getProcessorName(),
                             releaseSegment.getSegmentIdentifier(),
@@ -453,7 +454,7 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 case REQUEST_PROCESSOR_STATUS:
                     ClientEventProcessor requestStatus = connectorCommand.getRequestProcessorStatus();
                     eventPublisher.publishEvent(new EventProcessorEvents.ProcessorStatusRequest(
-                            requestStatus.getClient(), requestStatus.getProcessorName(), PROXIED
+                            requestStatus.getContext(), requestStatus.getClient(), requestStatus.getProcessorName(), PROXIED
                     ));
                     break;
                 case SUBSCRIPTION_QUERY_RESPONSE:
@@ -465,14 +466,14 @@ public class MessagingClusterService extends MessagingClusterServiceGrpc.Messagi
                 case SPLIT_SEGMENT:
                     ClientEventProcessorSegment splitSegment = connectorCommand.getSplitSegment();
                     eventPublisher.publishEvent(new SplitSegmentRequest(
-                            PROXIED, splitSegment.getClient(), splitSegment.getProcessorName(),
+                            PROXIED, splitSegment.getContext(), splitSegment.getClient(), splitSegment.getProcessorName(),
                             splitSegment.getSegmentIdentifier()
                     ));
                     break;
                 case MERGE_SEGMENT:
                     ClientEventProcessorSegment mergeSegment = connectorCommand.getMergeSegment();
                     eventPublisher.publishEvent(new MergeSegmentRequest(
-                            PROXIED, mergeSegment.getClient(), mergeSegment.getProcessorName(),
+                            PROXIED, mergeSegment.getContext(), mergeSegment.getClient(), mergeSegment.getProcessorName(),
                             mergeSegment.getSegmentIdentifier()
                     ));
                     break;

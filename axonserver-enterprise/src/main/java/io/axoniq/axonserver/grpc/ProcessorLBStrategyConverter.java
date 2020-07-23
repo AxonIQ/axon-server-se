@@ -2,8 +2,8 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.BaseProcessorLoadBalancing;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ProcessorLoadBalancing;
-import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.RaftProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.AdminProcessorLoadBalancing;
+import io.axoniq.axonserver.enterprise.component.processor.balancing.jpa.ReplicationGroupProcessorLoadBalancing;
 import io.axoniq.axonserver.grpc.internal.ProcessorLBStrategy;
 
 /**
@@ -18,31 +18,34 @@ public class ProcessorLBStrategyConverter {
                                   .setStrategy(processorLoadBalancing.strategy())
                                   .setContext(processorLoadBalancing.processor().context())
                                   .setProcessor(processorLoadBalancing.processor().name())
+                                  .setTokenStoreIdentifier(processorLoadBalancing.processor().tokenStoreIdentifier())
                                   .build();
     }
 
     /**
-     * Converts to a {@link ProcessorLoadBalancing} JPA object (used in admin nodes)
+     * Converts to a {@link AdminProcessorLoadBalancing} JPA object (used in admin nodes)
      *
      * @param processorLBStrategy the Proto object
      * @return the jpa objecct
      */
-    public static ProcessorLoadBalancing createJpaProcessorLoadBalancing(ProcessorLBStrategy processorLBStrategy) {
+    public static AdminProcessorLoadBalancing createJpaProcessorLoadBalancing(ProcessorLBStrategy processorLBStrategy) {
         TrackingEventProcessor processor = new TrackingEventProcessor(processorLBStrategy.getProcessor(),
-                                                                      processorLBStrategy.getContext());
-        return new ProcessorLoadBalancing(processor, processorLBStrategy.getStrategy());
+                                                                      processorLBStrategy.getContext(),
+                                                                      processorLBStrategy.getTokenStoreIdentifier());
+        return new AdminProcessorLoadBalancing(processor, processorLBStrategy.getStrategy());
     }
 
     /**
-     * Converts to a {@link RaftProcessorLoadBalancing} JPA object (used in nodes members of the context)
+     * Converts to a {@link ReplicationGroupProcessorLoadBalancing} JPA object (used in nodes members of the context)
      *
      * @param processorLBStrategy the Proto object
      * @return the jpa objecct
      */
-    public static RaftProcessorLoadBalancing createJpaRaftProcessorLoadBalancing(
+    public static ReplicationGroupProcessorLoadBalancing createJpaRaftProcessorLoadBalancing(
             ProcessorLBStrategy processorLBStrategy) {
         TrackingEventProcessor processor = new TrackingEventProcessor(processorLBStrategy.getProcessor(),
-                                                                      processorLBStrategy.getContext());
-        return new RaftProcessorLoadBalancing(processor, processorLBStrategy.getStrategy());
+                                                                      processorLBStrategy.getContext(),
+                                                                      processorLBStrategy.getTokenStoreIdentifier());
+        return new ReplicationGroupProcessorLoadBalancing(processor, processorLBStrategy.getStrategy());
     }
 }

@@ -97,7 +97,12 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
 
     @Override
     protected int getPosition(long segment, long nextIndex) {
-        return positionsPerSegmentMap.get(segment).get(nextIndex);
+        try {
+            return positionsPerSegmentMap.get(segment).get(nextIndex);
+        } catch (NullPointerException npe) {
+            throw new LogException(ErrorCode.DATAFILE_READ_ERROR,
+                                   String.format("Null in get position %d lastIndex %d", nextIndex, lastToken.get()));
+        }
     }
 
     public long getTerm(long index) {
@@ -415,7 +420,7 @@ public class PrimaryLogEntryStore extends SegmentBasedLogEntryStore {
         logger.info("{}: Deleting context.", context);
         clear(0);
         File storageDir = new File(storageProperties.getStorage(context));
-        storageDir.delete();
+        FileUtils.delete(storageDir);
         synchronizer.shutdown(true);
     }
 

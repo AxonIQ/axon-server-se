@@ -294,6 +294,7 @@ public class RaftNode {
             case MESSAGING_ONLY:
             case ACTIVE_BACKUP:
             case PASSIVE_BACKUP:
+            case SECONDARY:
                 updateState(state.get(), stateFactory.secondaryState(), "Role " + role);
                 break;
             default:

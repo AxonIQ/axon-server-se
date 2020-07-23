@@ -5,6 +5,9 @@ import io.axoniq.axonserver.cluster.RaftNode;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.enterprise.config.RaftProperties;
+import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
+import io.axoniq.axonserver.enterprise.replication.RaftGroupRepositoryManager;
+import io.axoniq.axonserver.enterprise.replication.group.ReplicationGroupController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.junit.*;
@@ -49,10 +52,12 @@ public class GrpcRaftControllerTest {
             when(raftGroup.localNode()).thenReturn(raftNode);
             return raftGroup;
         });
+        ReplicationGroupController replicationGroupController = mock(ReplicationGroupController.class);
         testSubject = new GrpcRaftController(messagingPlatformConfiguration,
                                              raftProperties,
                                              raftGroupNodeRepository,
                                              eventPublisher,
+                                             replicationGroupController,
                                              groupFactory);
     }
 
