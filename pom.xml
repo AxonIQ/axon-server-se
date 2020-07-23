@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-se</artifactId>
     <packaging>pom</packaging>
-    <version>4.4-RC1-SNAPSHOT</version>
+    <version>4.4-SNAPSHOT</version>
 
     <name>AxonIQ Axon Server SE</name>
     <inceptionYear>2019</inceptionYear>
