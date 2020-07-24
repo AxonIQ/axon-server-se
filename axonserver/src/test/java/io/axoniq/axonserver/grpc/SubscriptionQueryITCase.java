@@ -39,18 +39,23 @@ public class SubscriptionQueryITCase {
 
     private final AxonServerConfiguration configuration = AxonServerConfiguration.builder().build();
 
-    private final AxonServerConnectionManager connectionManager = new AxonServerConnectionManager(configuration);
+    private final AxonServerConnectionManager connectionManager =
+            AxonServerConnectionManager.builder().axonServerConfiguration(configuration).build();
 
     private final SimpleQueryBus queryBus = SimpleQueryBus.builder().build();
 
-    private final QueryBus axonServerQueryBus = new AxonServerQueryBus(connectionManager,
-                                                                       configuration,
-                                                                       queryBus.queryUpdateEmitter(),
-                                                                       queryBus,
-                                                                       XStreamSerializer.defaultSerializer(),
-                                                                       XStreamSerializer.defaultSerializer(),
-                                                                       QueryPriorityCalculator
-                                                                               .defaultQueryPriorityCalculator());
+    private final QueryBus axonServerQueryBus = AxonServerQueryBus.builder()
+                                                                  .axonServerConnectionManager(connectionManager)
+                                                                  .configuration(configuration)
+                                                                  .updateEmitter(queryBus.queryUpdateEmitter())
+                                                                  .localSegment(queryBus)
+                                                                  .genericSerializer(XStreamSerializer
+                                                                                             .defaultSerializer())
+                                                                  .messageSerializer(XStreamSerializer
+                                                                                             .defaultSerializer())
+                                                                  .priorityCalculator(QueryPriorityCalculator
+                                                                                              .defaultQueryPriorityCalculator())
+                                                                  .build();
 
     private final List<String> initialResult = new ArrayList<>();
     private final List<String> updates = new ArrayList<>();
@@ -73,7 +78,7 @@ public class SubscriptionQueryITCase {
         connectionManager.shutdown();
     }
 
-    private Object invokeQuery() throws InterruptedException {
+    private Object invokeQuery() {
         GenericSubscriptionQueryMessage<String, String, String> query =
                 new GenericSubscriptionQueryMessage<>("hi",
                                                       "test",
