@@ -46,7 +46,7 @@
         <netty.version>4.1.42.Final</netty.version>
         <axonserver.api.version>4.4-SNAPSHOT</axonserver.api.version>
         <axonserver.se.version>4.4-SNAPSHOT</axonserver.se.version>
-        <axon.version>4.3.5</axon.version>
+        <axon.version>4.4-SNAPSHOT</axon.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <opencensus.version>0.25.0</opencensus.version>
         <prometheus.version>0.6.0</prometheus.version>

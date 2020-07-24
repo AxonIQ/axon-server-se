@@ -7,10 +7,7 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.migration.db.MigrationStatus;
 import io.axoniq.axonserver.migration.db.MigrationStatusRepository;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
-import org.axonframework.axonserver.connector.event.AppendEventTransaction;
-import org.axonframework.axonserver.connector.event.AxonServerEventStoreClient;
+import org.axonframework.axonserver.connector.AxonServerConnectionManager;
 import org.axonframework.axonserver.connector.util.GrpcMetaDataConverter;
 import org.axonframework.messaging.MetaData;
 import org.axonframework.serialization.SerializedMetaData;
@@ -19,62 +16,73 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 
-import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * @author Marc Gathier
  */
 @Component
 public class MigrationRunner implements CommandLineRunner {
+
     private final EventProducer eventProducer;
-    private final AxonServerEventStoreClient axonDBClient;
+    private final AxonServerConnectionManager axonDBClient;
     private final Serializer serializer;
     private final MigrationStatusRepository migrationStatusRepository;
     private final Logger logger = LoggerFactory.getLogger(MigrationRunner.class);
-    private final Counter eventsMigrated;
-    private final Counter snapshotsMigrated;
-    private final MetricReporter metricReporter;
     private final GrpcMetaDataConverter grpcMetaDataConverter;
 
     @Value("${axoniq.migration.batchSize:100}")
     private int batchSize;
     @Value("${axoniq.migration.recentMillis:10000}")
     private int recentMillis;
+    private final AtomicLong snapshotsMigrated = new AtomicLong();
+    private final AtomicLong eventsMigrated = new AtomicLong();
+    private final ApplicationContext context;
 
     public MigrationRunner(EventProducer eventProducer, Serializer serializer,
-                           MigrationStatusRepository migrationStatusRepository, MeterRegistry meterRegistry,
-                           MetricReporter metricReporter, AxonServerEventStoreClient axonDBClient
-                           ) {
+                           MigrationStatusRepository migrationStatusRepository,
+                           AxonServerConnectionManager axonDBClient,
+                           ApplicationContext context) {
         this.eventProducer = eventProducer;
         this.axonDBClient = axonDBClient;
         this.serializer = serializer;
         this.migrationStatusRepository = migrationStatusRepository;
-        this.metricReporter = metricReporter;
+        this.context = context;
         this.grpcMetaDataConverter = new GrpcMetaDataConverter(this.serializer);
-        this.eventsMigrated = meterRegistry.counter(name(this.getClass(), "eventsMigrated"));
-        this.snapshotsMigrated = meterRegistry.counter(name(this.getClass(), "snapshotsMigrated"));
     }
 
     @Override
-    public void run(String... options) throws Exception {
-        metricReporter.beginReporting();
+    public void run(String... options) {
         try {
             migrateEvents();
             migrateSnapshots();
+            logger.info("Migration completed");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Migration interrupted");
+        } catch (ExecutionException executionException) {
+            logger.error("Error during migration", executionException.getCause());
+        } catch (TimeoutException e) {
+            logger.error("Error during migration", e);
         } finally {
-            metricReporter.endReporting();
+            logger.info("Migrated {} events and {} snapshots", eventsMigrated.get(), snapshotsMigrated.get());
+            SpringApplication.exit(context);
         }
     }
 
-    private void migrateSnapshots() {
+    private void migrateSnapshots() throws InterruptedException, ExecutionException, TimeoutException {
         MigrationStatus migrationStatus = migrationStatusRepository.findById(1L).orElse(new MigrationStatus());
 
         String lastProcessedTimestamp = migrationStatus.getLastSnapshotTimestamp();
@@ -82,7 +90,9 @@ public class MigrationRunner implements CommandLineRunner {
 
         boolean keepRunning = true;
 
-        logger.info("Starting migration of snapshots from timestamp: {}, batchSize = {}", lastProcessedTimestamp, batchSize);
+        logger.info("Starting migration of snapshots from timestamp: {}, batchSize = {}",
+                    lastProcessedTimestamp,
+                    batchSize);
 
         try {
             while(keepRunning) {
@@ -108,10 +118,13 @@ public class MigrationRunner implements CommandLineRunner {
                     eventBuilder.setTimestamp(entry.getTimeStampAsLong());
                     convertMetadata(entry.getMetaData(), eventBuilder);
 
-                    axonDBClient.appendSnapshot(eventBuilder.build());
+                    axonDBClient.getConnection().eventChannel().appendSnapshot(eventBuilder.build()).get(30,
+                                                                                                         TimeUnit.SECONDS);
                     lastProcessedTimestamp = entry.getTimeStamp();
                     lastEventId = entry.getEventIdentifier();
-                    snapshotsMigrated.increment();
+                    if (snapshotsMigrated.incrementAndGet() % 1000 == 0) {
+                        logger.debug("Migrated {} snapshots", snapshotsMigrated.get());
+                    }
                     keepRunning = true;
                 }
             }
@@ -133,7 +146,7 @@ public class MigrationRunner implements CommandLineRunner {
         }
     }
 
-    private void migrateEvents() throws InterruptedException, ExecutionException, TimeoutException {
+    private void migrateEvents() throws ExecutionException, InterruptedException, TimeoutException {
         MigrationStatus migrationStatus = migrationStatusRepository.findById(1L).orElse(new MigrationStatus());
 
         long lastProcessedToken = migrationStatus.getLastEventGlobalIndex();
@@ -141,23 +154,26 @@ public class MigrationRunner implements CommandLineRunner {
 
         logger.info("Starting migration of event from globalIndex: {}, batchSize = {}", lastProcessedToken, batchSize);
 
-        while(keepRunning) {
+        while (keepRunning) {
             List<? extends DomainEvent> result = eventProducer.findEvents(lastProcessedToken, batchSize);
-            if( result.isEmpty()) {
+            if (result.isEmpty()) {
                 logger.info("No more events found");
                 return;
             }
-            AppendEventTransaction appendEventConnection = axonDBClient.createAppendEventConnection();
-            for( DomainEvent entry : result) {
 
-                if( entry.getGlobalIndex() != lastProcessedToken + 1 && recentEvent(entry)) {
-                    logger.error("Missing event at: {}, found globalIndex {}, stopping migration", (lastProcessedToken + 1), entry.getGlobalIndex());
+            List<Event> events = new ArrayList<>();
+            for (DomainEvent entry : result) {
+
+                if (entry.getGlobalIndex() != lastProcessedToken + 1 && recentEvent(entry)) {
+                    logger.error("Missing event at: {}, found globalIndex {}, stopping migration",
+                                 (lastProcessedToken + 1),
+                                 entry.getGlobalIndex());
                     keepRunning = false;
                     break;
                 }
 
                 Event.Builder eventBuilder = Event.newBuilder()
-                        .setPayload(toPayload(entry))
+                                                  .setPayload(toPayload(entry))
                         .setMessageIdentifier(entry.getEventIdentifier())
                         ;
 
@@ -171,11 +187,14 @@ public class MigrationRunner implements CommandLineRunner {
                 eventBuilder.setTimestamp(entry.getTimeStampAsLong());
                 convertMetadata(entry.getMetaData(), eventBuilder);
 
-                appendEventConnection.append(eventBuilder.build());
+                events.add(eventBuilder.build());
                 lastProcessedToken = entry.getGlobalIndex();
-                eventsMigrated.increment();
             }
-            appendEventConnection.commit();
+            axonDBClient.getConnection().eventChannel().appendEvents(events.toArray(new Event[0])).get(30,
+                                                                                                       TimeUnit.SECONDS);
+            if (eventsMigrated.addAndGet(events.size()) % 1000 == 0) {
+                logger.debug("Migrated {} events", eventsMigrated.get());
+            }
             migrationStatus.setLastEventGlobalIndex(lastProcessedToken);
             migrationStatusRepository.save(migrationStatus);
         }

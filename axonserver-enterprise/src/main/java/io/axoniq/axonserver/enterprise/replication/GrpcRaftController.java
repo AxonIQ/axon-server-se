@@ -302,8 +302,6 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
     public void delete(String replicationGroup, boolean preserveEventStore) {
         blacklist(replicationGroup);
         raftGroupMap.remove(replicationGroup);
-        logger.warn("{}: Removed", replicationGroup);
-
         replicationGroupController.deleteReplicationGroup(replicationGroup, preserveEventStore);
         eventPublisher.publishEvent(new ClusterEvents.ReplicationGroupDeleted(replicationGroup, preserveEventStore));
     }
