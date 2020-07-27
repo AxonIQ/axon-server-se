@@ -57,3 +57,8 @@ set role = 'ADMIN'
 where function = 'LIST_QUERIES'
   and role = 'CONTEXT_ADMIN';
 
+insert into PATHS_TO_FUNCTIONS
+values ('GET:/v1/commands', 'LIST_COMMANDS');
+
+insert into FUNCTION_ROLES(function, role)
+values ('LIST_COMMANDS', 'ADMIN');
