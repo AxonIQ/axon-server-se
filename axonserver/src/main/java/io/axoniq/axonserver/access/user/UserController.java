@@ -90,7 +90,7 @@ public class UserController {
     }
 
     public User findUser(String name) {
-        return userRepository.getOne(name);
+        return userRepository.findById(name).orElse(null);
     }
 
     /**
