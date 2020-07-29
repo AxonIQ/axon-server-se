@@ -406,7 +406,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         segments.forEach(this::renameFileIfNecessary);
         long firstValidIndex = segments.stream().filter(indexManager::validIndex).findFirst().orElse(-1L);
         logger.debug("First valid index: {}", firstValidIndex);
-        SortedSet<Long> recreate = new TreeSet<>(segments.headSet(firstValidIndex));
+        SortedSet<Long> recreate = new TreeSet<>();
+        recreate.addAll(segments.headSet(firstValidIndex));
         recreate.forEach(this::recreateIndex);
         return segments;
     }
