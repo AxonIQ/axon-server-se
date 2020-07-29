@@ -110,8 +110,8 @@ public class ReadOnlyEventStoreSegments extends SegmentBasedEventStore {
     @Override
     public void handover(Long segment, Runnable callback) {
         segments.add(segment);
-        if (multiTierInformationProvider.isMultiTier(context)) {
-            try {
+        try {
+            if (multiTierInformationProvider.isMultiTier(context)) {
                 long minTimestamp = System.currentTimeMillis() - storageProperties.getRetentionTime(
                         multiTierInformationProvider.tier(context));
                 long minTokenAtSecondaryNodes = multiTierInformationProvider.safeToken(context,
@@ -131,9 +131,9 @@ public class ReadOnlyEventStoreSegments extends SegmentBasedEventStore {
                 scheduledExecutorService.schedule(() -> deleteFiles(segmentsToDelete),
                                                   deleteDelay,
                                                   TimeUnit.MILLISECONDS);
-            } catch (Exception ex) {
-                logger.warn("{}: handover {} failed", context, type.getEventType(), ex);
             }
+        } catch (Exception ex) {
+            logger.warn("{}: handover {} failed", context, type.getEventType(), ex);
         }
         callback.run();
     }
