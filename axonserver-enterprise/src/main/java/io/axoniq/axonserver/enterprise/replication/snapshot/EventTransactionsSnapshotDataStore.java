@@ -127,13 +127,12 @@ public class EventTransactionsSnapshotDataStore implements SnapshotDataStore {
         if (fromToken < localEventStore.firstToken(context)) {
             // Leader no longer has the first requested token
             LowerTierEventStore lowerTier = lowerTierEventStoreLocator.getEventStore(context);
-            logger.warn("{}: lowertier {}", context, lowerTier);
             long lastTokenFromLowerTier = lowerTier.getLastToken(context);
-            logger.warn("{}: last token at secondary node {}", context, lastTokenFromLowerTier);
-            return result.concatWith(lowerTier.eventTransactions(context, fromToken, lastTokenFromLowerTier)
+            logger.debug("{}: last token at secondary node {}", context, lastTokenFromLowerTier);
+            return result.concatWith(lowerTier.eventTransactions(context, fromToken, lastTokenFromLowerTier + 1)
                                               .map(this::toSerializedObject))
                          .concatWith(Flux.fromIterable(() -> localEventStore
-                                 .eventTransactionsIterator(context, lastTokenFromLowerTier, toToken))
+                                 .eventTransactionsIterator(context, lastTokenFromLowerTier + 1, toToken))
                                          .map(transactionWithToken -> toSerializedObject(transactionWithToken,
                                                                                          context)));
         }
