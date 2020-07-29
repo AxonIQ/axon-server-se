@@ -216,9 +216,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         if( next != null) next.close(deleteData);
 
+        indexManager.cleanup(deleteData);
         if (deleteData) {
             File storageDir = new File(storageProperties.getStorage(context));
-            indexManager.cleanup(deleteData);
             storageDir.delete();
         }
         closeListeners.forEach(Runnable::run);
