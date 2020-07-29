@@ -60,13 +60,17 @@ public class EmbeddedDBPropertiesProvider {
         // after that the index type was changed to JUMP_SKIP_INDEX. Primary nodes do not have all data anymore
         // so they cannot recreate a new global index
 
+        File storageDirectory = new File(properties.getStorage(contextName));
+        if (!storageDirectory.exists()) {
+            return true;
+        }
+
         File initialSegment = properties.dataFile(contextName, 0);
         if (initialSegment.exists()) {
             // initial segment is available so we can initiate the global index if needed
             return true;
         }
 
-        File storageDirectory = new File(properties.getStorage(contextName));
         File[] dataFiles = storageDirectory.listFiles((dir, name) -> name.endsWith(properties.getEventsSuffix()));
         if (dataFiles != null && dataFiles.length == 0) {
             // new context without datafiles
