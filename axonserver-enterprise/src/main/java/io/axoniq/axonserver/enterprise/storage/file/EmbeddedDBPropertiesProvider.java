@@ -9,6 +9,7 @@ import io.axoniq.axonserver.localstorage.file.StorageProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -43,12 +44,45 @@ public class EmbeddedDBPropertiesProvider {
     public StorageProperties getEventProperties(String contextName) {
         return metaDataProvider.apply(contextName)
                                .map(metaData -> mergeEvent(embeddedDBProperties.getEvent(), metaData))
+                               .map(properties -> validate(contextName, properties))
                                .orElse(embeddedDBProperties.getEvent());
+    }
+
+    private StorageProperties validate(String contextName, StorageProperties properties) {
+        if (JUMP_SKIP_INDEX.equals(properties.getIndexFormat()) && !canUseJumpSkipIndex(contextName, properties)) {
+            return properties.withIndexFormat(BLOOM_FILTER_INDEX);
+        }
+        return properties;
+    }
+
+    private boolean canUseJumpSkipIndex(String contextName, StorageProperties properties) {
+        // specific scenario, context was created with bloom filter index and multi-tier storage
+        // after that the index type was changed to JUMP_SKIP_INDEX. Primary nodes do not have all data anymore
+        // so they cannot recreate a new global index
+
+        File initialSegment = properties.dataFile(contextName, 0);
+        if (initialSegment.exists()) {
+            // initial segment is available so we can initiate the global index if needed
+            return true;
+        }
+
+        File storageDirectory = new File(properties.getStorage(contextName));
+        File[] dataFiles = storageDirectory.listFiles((dir, name) -> name.endsWith(properties.getEventsSuffix()));
+        if (dataFiles != null && dataFiles.length == 0) {
+            // new context without datafiles
+            return true;
+        }
+
+
+        File[] globalIndexFiles = storageDirectory.listFiles((dir, name) -> name
+                .endsWith(properties.getGlobalIndexSuffix()));
+        return globalIndexFiles != null && globalIndexFiles.length > 0;
     }
 
     public StorageProperties getSnapshotProperties(String contextName) {
         return metaDataProvider.apply(contextName)
                                .map(metaData -> mergeSnapshot(embeddedDBProperties.getSnapshot(), metaData))
+                               .map(properties -> validate(contextName, properties))
                                .orElse(embeddedDBProperties.getSnapshot());
     }
 
