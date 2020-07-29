@@ -111,23 +111,29 @@ public class ReadOnlyEventStoreSegments extends SegmentBasedEventStore {
     public void handover(Long segment, Runnable callback) {
         segments.add(segment);
         if (multiTierInformationProvider.isMultiTier(context)) {
-            long minTimestamp = System.currentTimeMillis() - storageProperties.getRetentionTime(
-                    multiTierInformationProvider.tier(context));
-            long minTokenAtSecondaryNodes = multiTierInformationProvider.safeToken(context,
-                                                                                   isEvent() ? BaseMetricName.AXON_EVENT_LAST_TOKEN : BaseMetricName.AXON_SNAPSHOT_LAST_TOKEN);
-            long nextSegment = Long.MAX_VALUE;
-            SortedSet<Long> segmentsToDelete = new TreeSet<>();
-            for (Long candidate : segments) {
-                if (candidate < minTokenAtSecondaryNodes
-                        && nextSegment < minTokenAtSecondaryNodes
-                        && storageProperties.dataFile(context, candidate).lastModified() < minTimestamp) {
-                    segmentsToDelete.add(candidate);
+            try {
+                long minTimestamp = System.currentTimeMillis() - storageProperties.getRetentionTime(
+                        multiTierInformationProvider.tier(context));
+                long minTokenAtSecondaryNodes = multiTierInformationProvider.safeToken(context,
+                                                                                       isEvent() ? BaseMetricName.AXON_EVENT_LAST_TOKEN : BaseMetricName.AXON_SNAPSHOT_LAST_TOKEN);
+                long nextSegment = Long.MAX_VALUE;
+                SortedSet<Long> segmentsToDelete = new TreeSet<>();
+                for (Long candidate : segments) {
+                    if (candidate < minTokenAtSecondaryNodes
+                            && nextSegment < minTokenAtSecondaryNodes
+                            && storageProperties.dataFile(context, candidate).lastModified() < minTimestamp) {
+                        segmentsToDelete.add(candidate);
+                    }
+                    nextSegment = candidate;
                 }
-                nextSegment = candidate;
-            }
 
-            segmentsToDelete.forEach(segments::remove);
-            scheduledExecutorService.schedule(() -> deleteFiles(segmentsToDelete), deleteDelay, TimeUnit.MILLISECONDS);
+                segmentsToDelete.forEach(segments::remove);
+                scheduledExecutorService.schedule(() -> deleteFiles(segmentsToDelete),
+                                                  deleteDelay,
+                                                  TimeUnit.MILLISECONDS);
+            } catch (Exception ex) {
+                logger.warn("{}: handover {} failed", context, type.getEventType(), ex);
+            }
         }
         callback.run();
     }
