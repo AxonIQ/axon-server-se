@@ -37,11 +37,11 @@ public class ConsistentHashRoutingSelector implements RoutingSelector<String> {
     @Override
     public void register(String handler) {
         int loadFactor = loadFactorSolver.apply(handler);
-        consistentHash.set(consistentHash.get().with(handler, loadFactor));
+        consistentHash.getAndUpdate(old -> old.with(handler, loadFactor));
     }
 
     @Override
     public void unregister(String handler) {
-        consistentHash.set(consistentHash.get().without(handler));
+        consistentHash.getAndUpdate(old -> old.without(handler));
     }
 }
