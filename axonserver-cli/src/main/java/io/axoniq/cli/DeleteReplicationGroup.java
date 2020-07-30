@@ -5,6 +5,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
 
+import static io.axoniq.cli.CommandOptions.PRESERVE_EVENT_STORE;
 import static io.axoniq.cli.CommandOptions.REPLICATIONGROUP;
 
 /**
@@ -17,9 +18,14 @@ public class DeleteReplicationGroup extends AxonIQCliCommand {
         CommandLine commandLine = processCommandLine(args[0],
                                                      args,
                                                      REPLICATIONGROUP,
+                                                     PRESERVE_EVENT_STORE,
                                                      CommandOptions.TOKEN);
 
         String url = createUrl(commandLine, "/v1/replicationgroups", REPLICATIONGROUP);
+
+        if (commandLine.hasOption(PRESERVE_EVENT_STORE.getLongOpt())) {
+            url += "?preserveEventStore=true";
+        }
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {

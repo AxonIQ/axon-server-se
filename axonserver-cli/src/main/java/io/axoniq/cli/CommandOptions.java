@@ -297,6 +297,7 @@ public class CommandOptions {
      */
     public static final Option FILE = Option
             .builder("f")
+            .required()
             .longOpt("file")
             .hasArg()
             .desc("license file to upload")
