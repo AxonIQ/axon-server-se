@@ -28,6 +28,10 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.3.7
+-------------------------------
+* Fixed concurrency issue in subscribing/unsubscribing commands
+
 Release Notes for version 4.3.6
 -------------------------------
 
