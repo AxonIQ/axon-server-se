@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -245,6 +246,13 @@ public class JumpSkipIndexManager implements IndexManager {
                      storageProperties.newIndex(context, segment),
                      updatedPositions.keySet());
         File tempIndex = storageProperties.newIndexTemp(context, segment);
+        try {
+            Files.deleteIfExists(tempIndex.toPath());
+        } catch (IOException ioException) {
+            throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
+                                                 "Failed to delete temporary index file",
+                                                 ioException);
+        }
         DB index = DBMaker.fileDB(tempIndex)
                           .fileMmapEnable()
                           .cleanerHackEnable()
@@ -253,7 +261,7 @@ public class JumpSkipIndexManager implements IndexManager {
         try (HTreeMap<String, JumpSkipIndexEntries> segmentIndexMap = index.hashMap("index",
                                                                                     Serializer.STRING,
                                                                                     INDEX_SERIALIZER)
-                                                                           .createOrOpen()) {
+                                                                           .create()) {
             updatedPositions.forEach(segmentIndexMap::put);
         }
         index.close();
@@ -384,12 +392,47 @@ public class JumpSkipIndexManager implements IndexManager {
      */
     @Override
     public boolean validIndex(long segment) {
+        boolean valid = false;
         try {
-            return storageProperties.newIndex(context, segment).exists();
+            valid = storageProperties.newIndex(context, segment).exists();
+
+            if (!valid) {
+                File tempIndex = storageProperties.newIndexTemp(context, segment);
+                if (tempIndex.exists()) {
+                    try (DB db = DBMaker.fileDB(tempIndex)
+                                        .readOnly()
+                                        .fileChannelEnable()
+                                        .make();
+
+                         HTreeMap<String, JumpSkipIndexEntries> positions = db.hashMap("index",
+                                                                                       Serializer.STRING,
+                                                                                       INDEX_SERIALIZER).open()) {
+
+                        logger.warn("Opened temp index file");
+                        Iterator<Map.Entry<String, JumpSkipIndexEntries>> entryIterator = positions.entrySet()
+                                                                                                   .iterator();
+                        if (entryIterator.hasNext()) {
+                            logger.warn("Got first entry");
+                            Map.Entry<String, JumpSkipIndexEntries> entry = entryIterator.next();
+
+                            LastEventPositionInfo globalIndexEntry = globalIndex.get(entry.getKey());
+                            logger.warn("Got entry from global index: {}", globalIndexEntry);
+                            valid = globalIndexEntry != null && globalIndexEntry.lastSequence() >= entry.getValue()
+                                                                                                        .firstSequenceNumber();
+                        }
+                    } catch (Exception ex) {
+                        logger.warn("Failed to check {}", tempIndex, ex);
+                    }
+
+                    if (valid) {
+                        Files.move(tempIndex.toPath(), storageProperties.newIndex(context, segment).toPath());
+                    }
+                }
+            }
         } catch (Exception ex) {
             logger.warn("Failed to validate index for segment: {}", segment, ex);
         }
-        return false;
+        return valid;
     }
 
     /**
