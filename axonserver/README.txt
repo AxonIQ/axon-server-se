@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.3
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.3.6
+-------------------------------
+* Fixed concurrency issue in subscribing/unsubscribing commands
+
 Release Notes for version 4.3.5
 -------------------------------
 * Fixed logging in IndexManager
