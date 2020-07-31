@@ -1,4 +1,4 @@
-This is the Axon Server Enterprise Edition, version 4.3
+This is the Axon Server Enterprise Edition, version 4.4
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
@@ -27,6 +27,31 @@ For more information on setting up clusters and context check the reference guid
 https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
+
+Release Notes for version 4.4
+-----------------------------
+* Scalability improvements:
+  - tracking event processors can now read from any primary node,
+  - reading aggregates will read events from followers and only request the leader for latest events
+  - introduction of replication groups containing one or more contexts to reduce overhead in replication process
+* Performance improvements:
+  - new index type to improve speed in reading aggregates
+* Usability improvements:
+  - Axon Server Enterprise can now start without a license and has the option to upload licenses to the cluster
+  - cluster templates to initialize a cluster including replication groups, contexts, users and applications based on a
+    template
+* Miscellaneous:
+  - multi-tier storage to keep only recent data at primary nodes
+  - Axon Server can now act as an event scheduler
+  - tag-based routing of commands and queries
+  - some storage properties can now be set at the context level
+  - support fom token store identifiers to identify which tracking event processors share a token store
+
+Migration notes:
+Axon Server 4.4 has changes to its internal control db schema. To be able to rollback to a previous version,
+it is recommended to create a backup of the control database before upgrading.
+It is possible to perform a rolling upgrade to version 4.4, but during this upgrade process you should not create
+new replication groups, contexts, users and applications.
 
 Release Notes for version 4.3.7
 -------------------------------
