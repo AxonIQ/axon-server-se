@@ -100,7 +100,7 @@ public class ReadOnlyEventStoreSegmentsTest {
         File copy = new File(datafile.getAbsolutePath() + ".temp");
         copy(datafile, copy);
         testSubject.handover(20L, () -> System.out.println("Done"));
-        assertWithin(1, TimeUnit.SECONDS, () -> assertFalse(datafile.exists()));
+        assertWithin(5, TimeUnit.SECONDS, () -> assertFalse(datafile.exists()));
         copy.renameTo(datafile);
     }
 
