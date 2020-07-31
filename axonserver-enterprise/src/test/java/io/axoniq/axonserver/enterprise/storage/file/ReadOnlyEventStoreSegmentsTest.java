@@ -47,6 +47,7 @@ public class ReadOnlyEventStoreSegmentsTest {
         embeddedDBProperties.getEvent().setStorage(TestUtils
                                                            .fixPathOnWindows(InputStreamEventStore.class
                                                                                      .getResource("/data").getFile()));
+        embeddedDBProperties.getEvent().setUseMmapIndex(false);
         String context = Topology.DEFAULT_CONTEXT;
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
         IndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(), EventType.EVENT,
