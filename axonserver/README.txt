@@ -1,4 +1,4 @@
-This is the Axon Server Standard Edition, version 4.3
+This is the Axon Server Standard Edition, version 4.4
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
