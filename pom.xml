@@ -53,6 +53,7 @@
         <netty.version>4.1.42.Final</netty.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <axonserver.api.version>4.4</axonserver.api.version>
+        <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
         <jackson.version>2.9.10.5</jackson.version>
     </properties>
