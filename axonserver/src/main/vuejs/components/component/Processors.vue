@@ -58,15 +58,20 @@
                                 <i class="fas fa-plus fa-lg"></i>
                             </span>
 
-                            <span v-if="processor.mode === 'Tracking'"
-                                  :class="{hidden : !processor.canMerge}"
-                                  @click="mergeSegment(processor)" title="Merge the smallest segments in to one">
+                          <span v-if="processor.mode === 'Tracking'"
+                                :class="{hidden : !processor.canMerge}"
+                                @click="mergeSegment(processor)" title="Merge the smallest segments in to one">
                                 <i class="fas fa-minus fa-lg"></i>
                             </span>
-                            <span v-if="processor.mode === 'Tracking'"
-                                  @click="showLoadBalance(processor)"
-                                  title="Load balance this Event Processor automatically">
+                          <span v-if="processor.mode === 'Tracking'"
+                                @click="showLoadBalance(processor)"
+                                title="Load balance this Event Processor automatically">
                                 <i class="fas fa-balance-scale fa-lg"></i>
+                            </span>
+                          <span @click="showLoadBalance(processor)"
+                                title="Reset Tokens"
+                                v-if="processor.mode === 'Tracking'">
+                                <i class="fas fa-reply-all"></i>
                             </span>
                         </td>
                         <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="right">

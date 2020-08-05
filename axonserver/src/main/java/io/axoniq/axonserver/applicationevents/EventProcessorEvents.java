@@ -373,7 +373,13 @@ public class EventProcessorEvents {
          * @return the principal context of the event processor
          */
         public String context() {
+
             return context;
         }
+    }
+
+    public static class ResetTokensRequested implements AxonServerEvent {
+
+
     }
 }

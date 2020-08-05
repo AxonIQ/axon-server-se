@@ -187,12 +187,27 @@ public class EventProcessorRestController {
         return clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
     }
 
-    private ClientsByEventProcessor clientsByEventProcessor(String context,
-                                                            String processorName,
-                                                            String tokenStoreIdentifier) {
-        return new ClientsByEventProcessor(new EventProcessorIdentifier(processorName, tokenStoreIdentifier),
-                                           context,
-                                           clients,
-                                           eventProcessors);
+    private ClientsByEventProcessor clientsByEventProcessor( String context,
+                                                             String processorName,
+                                                             String tokenStoreIdentifier ) {
+
+        return new ClientsByEventProcessor( new EventProcessorIdentifier( processorName, tokenStoreIdentifier ),
+                                            context,
+                                            clients,
+                                            eventProcessors );
     }
+
+    @PatchMapping( "components/{component}/processors/{processor}/reset" )
+    public void resetTokens( @PathVariable( "component" ) String component,
+                             @PathVariable( "processor" ) String processor,
+                             @RequestParam( "context" ) String context,
+                             @RequestParam( "tokenStoreIdentifier" ) String tokenStoreIdentifier,
+                             final Principal principal ) {
+
+        auditLog.info( "[{}@{}] Request to reset Event processor \"{}\" tokens in component \"{}\".",
+                       AuditLog.username( principal ), context, processor, component );
+        clientsByEventProcessor( context, processor, tokenStoreIdentifier )
+                .forEach( client -> processorEventsSource.pauseProcessorRequest( context, client.name(), processor ) );
+    }
+
 }
