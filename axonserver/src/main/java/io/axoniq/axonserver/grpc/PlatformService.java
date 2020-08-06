@@ -48,7 +48,9 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -70,6 +72,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
     private final InstructionAckSource<PlatformOutboundInstruction> instructionAckSource;
+    private final ClientNameRegistry clientNameRegistry;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
@@ -79,16 +82,19 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      *                             working under
      * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
      * @param instructionAckSource responsible for sending instruction acknowledgements
+     * @param clientNameRegistry
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher,
                            @Qualifier("platformInstructionAckSource")
-                           InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
+                                   InstructionAckSource<PlatformOutboundInstruction> instructionAckSource,
+                           ClientNameRegistry clientNameRegistry) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
+        this.clientNameRegistry = clientNameRegistry;
         onInboundInstruction(RequestCase.ACK, (client, context, instruction) -> {
             InstructionAck ack = instruction.getAck();
             if (isUnsupportedInstructionErrorResult(ack)) {
@@ -137,12 +143,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     @Override
     public StreamObserver<PlatformInboundInstruction> openStream(
             StreamObserver<PlatformOutboundInstruction> responseObserver) {
+        String uuid = UUID.randomUUID().toString();
         String context = contextProvider.getContext();
         SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver =
                 new SendingStreamObserver<>(responseObserver);
 
         return new ReceivingStreamObserver<PlatformInboundInstruction>(logger) {
-            private ClientComponent clientComponent;
+            private final AtomicReference<ClientComponent> clientComponent = new AtomicReference<>();
 
             @Override
             protected void consume(PlatformInboundInstruction instruction) {
@@ -150,12 +157,16 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
                     instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(), sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
-                    eventPublisher.publishEvent(new ClientTagsUpdate(client.getClientId(),
+                    String clientUUID = clientNameRegistry.register(client.getClientId());
+                    eventPublisher.publishEvent(new ClientTagsUpdate(clientUUID,
                                                                      context,
                                                                      client.getTagsMap()));
-                    clientComponent = new ClientComponent(client.getClientId(), client.getComponentName(), context);
-                    registerClient(clientComponent, sendingStreamObserver);
-                    eventPublisher.publishEvent(new ClientVersionUpdate(client.getClientId(),
+
+                    clientComponent.compareAndSet(null, new ClientComponent(clientUUID,
+                                                                            client.getComponentName(),
+                                                                            context));
+                    registerClient(clientComponent.get(), sendingStreamObserver);
+                    eventPublisher.publishEvent(new ClientVersionUpdate(clientUUID,
                                                                         context,
                                                                         client.getVersion()));
                 } else if (!handlers.containsKey(requestCase)) {
@@ -167,14 +178,14 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .forEach(consumer -> {
                                 instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
                                                                        sendingStreamObserver);
-                                consumer.accept(clientComponent.client, context, instruction);
+                                consumer.accept(clientComponent.get().client, context, instruction);
                             });
                 }
             }
 
             @Override
             protected String sender() {
-                return clientComponent == null ? null : clientComponent.client;
+                return clientComponent.get() == null ? null : clientComponent.get().client;
             }
 
             @Override
@@ -182,12 +193,12 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 if (!ExceptionUtils.isCancelled(throwable)) {
                     logger.warn("{}: error on connection - {}", sender(), throwable.getMessage());
                 }
-                deregisterClient(clientComponent);
+                deregisterClient(clientComponent.get());
             }
 
             @Override
             public void onCompleted() {
-                deregisterClient(clientComponent);
+                deregisterClient(clientComponent.get());
             }
         };
     }
@@ -205,10 +216,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         return false;
     }
 
-    public boolean requestReconnect(String client) {
-        logger.debug("Request reconnect: {}", client);
+    public boolean requestReconnect(String clientName) {
+        logger.debug("Request reconnect: {}", clientName);
+        Set<String> clientUuids = clientNameRegistry.clientUuidsFor(clientName);
         return connectionMap.entrySet().stream()
-                            .filter(e -> e.getKey().client.equals(client))
+                            .filter(e -> clientUuids.contains(e.getKey().client))
                             .map(e -> requestReconnect(e.getKey()))
                             .findFirst().orElse(false);
     }

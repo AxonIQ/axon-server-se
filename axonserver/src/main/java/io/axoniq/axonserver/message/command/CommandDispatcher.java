@@ -17,8 +17,8 @@ import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -86,11 +86,6 @@ public class CommandDispatcher {
         return commandRatePerContext.computeIfAbsent(context,
                                                      c -> metricRegistry
                                                              .rateMeter(c, BaseMetricName.AXON_COMMAND_RATE));
-    }
-
-    @EventListener
-    public void on(TopologyEvents.ApplicationDisconnected event) {
-        handleDisconnection(event.clientIdentification(), event.isProxied());
     }
 
     @EventListener

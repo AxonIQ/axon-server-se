@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message;
 
 import java.util.Comparator;
 import java.util.Objects;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
@@ -52,7 +53,7 @@ public class ClientIdentification implements Comparable<ClientIdentification> {
         return Objects.hash(context, client);
     }
 
-    public int compareTo(ClientIdentification client) {
+    public int compareTo(@Nonnull ClientIdentification client) {
         return COMPARATOR.compare(this, client);
     }
 

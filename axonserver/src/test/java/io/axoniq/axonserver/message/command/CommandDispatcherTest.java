@@ -23,12 +23,10 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.*;
+import org.junit.runner.*;
+import org.mockito.*;
+import org.mockito.junit.*;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +62,7 @@ public class CommandDispatcherTest {
 
     @Test
     public void unregisterCommandHandler()  {
-        commandDispatcher.on(new TopologyEvents.ApplicationDisconnected(null, null, "client"));
+        commandDispatcher.on(new TopologyEvents.CommandHandlerDisconnected(null, "client", false));
     }
 
     @Test

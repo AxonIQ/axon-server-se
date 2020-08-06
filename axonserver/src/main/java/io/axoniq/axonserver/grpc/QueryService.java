@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeQuery;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
@@ -53,7 +54,8 @@ import javax.annotation.PreDestroy;
  * GRPC service to handle query bus requests from Axon Application
  * Client can sent two requests:
  * query: sends a singe query to AxonServer
- * openStream: used by application providing query handlers, maintains an open bi directional connection between the application and AxonServer
+ * openStream: used by application providing query handlers, maintains an open bi directional connection between the
+ * application and AxonServer
  *
  * @author Marc Gathier
  */
@@ -67,6 +69,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<QueryProviderInbound> instructionAckSource;
+    private final ClientNameRegistry clientNameRegistry;
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -75,12 +78,14 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     public QueryService(Topology topology, QueryDispatcher queryDispatcher, ContextProvider contextProvider,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
-                        InstructionAckSource<QueryProviderInbound> instructionAckSource) {
+                                InstructionAckSource<QueryProviderInbound> instructionAckSource,
+                        ClientNameRegistry clientNameRegistry) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
+        this.clientNameRegistry = clientNameRegistry;
     }
 
     @PreDestroy
@@ -94,7 +99,6 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     public StreamObserver<QueryProviderOutbound> openStream(
             StreamObserver<QueryProviderInbound> inboundStreamObserver) {
         String context = contextProvider.getContext();
-
         SendingStreamObserver<QueryProviderInbound> wrappedQueryProviderInboundObserver = new SendingStreamObserver<>(
                 inboundStreamObserver);
 
@@ -109,28 +113,34 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     case SUBSCRIBE:
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
-                        QuerySubscription subscription = queryProviderOutbound
-                                .getSubscribe();
+                        QuerySubscription subscription = queryProviderOutbound.getSubscribe();
                         checkInitClient(subscription.getClientId(), subscription.getComponentName());
+                        String clientUuid = client.get().getClient();
                         logger.debug("{}: Subscribe Query {} for {}",
                                      context,
                                      subscription.getQuery(),
                                      subscription.getClientId());
+                        SubscribeQuery subscribeQuery = new SubscribeQuery(context,
+                                                                           QuerySubscription.newBuilder(subscription)
+                                                                                            .setClientId(clientUuid)
+                                                                                            .build(),
+                                                                           queryHandler.get());
                         eventPublisher.publishEvent(
-                                new SubscriptionEvents.SubscribeQuery(context,
-                                                                      queryProviderOutbound
-                                                                              .getSubscribe(),
-                                                                      queryHandler.get()));
+                                subscribeQuery);
                         break;
                     case UNSUBSCRIBE:
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         if (client.get() != null) {
+                            QuerySubscription unsubscribe = queryProviderOutbound.getUnsubscribe();
+                            UnsubscribeQuery unsubscribeQuery = new UnsubscribeQuery(
+                                    context,
+                                    QuerySubscription.newBuilder(unsubscribe)
+                                                     .setClientId(client.get().getClient())
+                                                     .build(),
+                                    false);
                             eventPublisher.publishEvent(
-                                    new SubscriptionEvents.UnsubscribeQuery(context,
-                                                                            queryProviderOutbound
-                                                                                    .getUnsubscribe(),
-                                                                            false));
+                                    unsubscribeQuery);
                         }
                         break;
                     case FLOW_CONTROL:
@@ -195,7 +205,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             }
 
             private void checkInitClient(String clientId, String componentName) {
-                client.compareAndSet(null, new ClientIdentification(context, clientId));
+                String clientUUID = clientNameRegistry.register(clientId);
+                client.compareAndSet(null, new ClientIdentification(context, clientUUID));
                 queryHandler.compareAndSet(null,
                                            new DirectQueryHandler(wrappedQueryProviderInboundObserver, client.get(),
                                                                   componentName));
@@ -310,5 +321,4 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     public void on(ApplicationInactivityTimeout evt) {
         stopListenerFor(evt.clientIdentification());
     }
-
 }

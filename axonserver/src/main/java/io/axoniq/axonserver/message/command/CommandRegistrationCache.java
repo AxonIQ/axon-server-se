@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeCommand;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
@@ -181,16 +182,16 @@ public class CommandRegistrationCache {
     }
 
     @EventListener
-    public void on(SubscriptionEvents.SubscribeCommand event) {
+    public void on(SubscribeCommand event) {
         CommandSubscription request = event.getRequest();
         int loadFactor = request.getLoadFactor() == 0 ? 100 : request.getLoadFactor();
         add(request.getCommand(), event.getHandler(), loadFactor);
     }
 
     @EventListener
-    public void on(SubscriptionEvents.UnsubscribeCommand event) {
+    public void on(UnsubscribeCommand event) {
         CommandSubscription request = event.getRequest();
-        remove(event.clientIdentification(),request.getCommand());
+        remove(event.clientIdentification(), request.getCommand());
     }
 
 

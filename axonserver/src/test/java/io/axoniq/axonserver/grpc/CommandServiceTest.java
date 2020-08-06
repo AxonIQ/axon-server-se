@@ -60,7 +60,8 @@ public class CommandServiceTest {
                                          () -> Topology.DEFAULT_CONTEXT,
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
-                                                 CommandProviderInbound.newBuilder().setAck(ack).build())));
+                                                 CommandProviderInbound.newBuilder().setAck(ack).build())),
+                                         new ClientNameRegistryImpl());
     }
 
     @Test

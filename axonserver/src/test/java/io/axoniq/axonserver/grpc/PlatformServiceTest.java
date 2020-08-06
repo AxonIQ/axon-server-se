@@ -29,7 +29,6 @@ import org.mockito.runners.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -51,7 +50,7 @@ public class PlatformServiceTest {
                                               () -> Topology.DEFAULT_CONTEXT,
                                               eventPublisher,
                                               new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
-                                                      .newBuilder().setAck(ack).build()));
+                                                      .newBuilder().setAck(ack).build()), new ClientNameRegistryImpl());
     }
 
     @Test

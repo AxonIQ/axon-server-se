@@ -35,8 +35,8 @@ import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -62,7 +62,8 @@ public class QueryServiceTest {
                                        eventPublisher,
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                                                     .setAck(ack)
-                                                                                                    .build()));
+                                                                                                    .build()),
+                                       new ClientNameRegistryImpl());
     }
 
     @Test

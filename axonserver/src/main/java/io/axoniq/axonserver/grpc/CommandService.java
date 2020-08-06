@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeCommand;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -17,6 +18,7 @@ import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
+import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
@@ -39,6 +41,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
@@ -50,7 +53,9 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
  * GRPC service to handle command bus requests from Axon Application
  * Client can sent two requests:
  * dispatch: sends a singe command to AxonServer
- * openStream: used by application providing command handlers, maintains an open bi directional connection between the application and AxonServer
+ * openStream: used by application providing command handlers, maintains an open bi directional connection between the
+ * application and AxonServer
+ *
  * @author Marc Gathier
  */
 @Service("CommandService")
@@ -77,6 +82,8 @@ public class CommandService implements AxonServerClientService {
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
+    private final ClientNameRegistry clientNameRegistry;
+
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
@@ -85,12 +92,14 @@ public class CommandService implements AxonServerClientService {
                           ContextProvider contextProvider,
                           ApplicationEventPublisher eventPublisher,
                           @Qualifier("commandInstructionAckSource")
-                          InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
+                                  InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource,
+                          ClientNameRegistry clientNameRegistry) {
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
+        this.clientNameRegistry = clientNameRegistry;
     }
 
     @PreDestroy
@@ -118,6 +127,7 @@ public class CommandService implements AxonServerClientService {
 
     public StreamObserver<CommandProviderOutbound> openStream(
             StreamObserver<SerializedCommandProviderInbound> responseObserver) {
+        String uuid = UUID.randomUUID().toString();
         String context = contextProvider.getContext();
         SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver = new SendingStreamObserver<>(
                 responseObserver);
@@ -132,21 +142,30 @@ public class CommandService implements AxonServerClientService {
                     case SUBSCRIBE:
                         instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
                                                                wrappedResponseObserver);
-                        checkInitClient(commandFromSubscriber.getSubscribe().getClientId(),
-                                        commandFromSubscriber.getSubscribe().getComponentName());
-                        eventPublisher.publishEvent(new SubscriptionEvents.SubscribeCommand(context,
-                                                                                            commandFromSubscriber
-                                                                                                    .getSubscribe()
-                                , commandHandlerRef.get()));
+                        CommandSubscription subscribe = commandFromSubscriber.getSubscribe();
+
+                        checkInitClient(subscribe.getClientId(), subscribe.getComponentName());
+                        SubscribeCommand event =
+                                new SubscribeCommand(context,
+                                                     CommandSubscription
+                                                             .newBuilder(commandFromSubscriber.getSubscribe())
+                                                             .setClientId(clientRef.get().getClient())
+                                                             .build(),
+                                                     commandHandlerRef.get());
+                        eventPublisher.publishEvent(event);
                         break;
                     case UNSUBSCRIBE:
                         instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
                                                                wrappedResponseObserver);
                         if (clientRef.get() != null) {
-                            eventPublisher.publishEvent(new SubscriptionEvents.UnsubscribeCommand(context,
-                                                                                                  commandFromSubscriber
-                                                                                                          .getUnsubscribe(),
-                                                                                                  false));
+                            CommandSubscription unsubscribe = commandFromSubscriber.getUnsubscribe();
+                            UnsubscribeCommand unsubscribeCommand = new UnsubscribeCommand(
+                                    context,
+                                    CommandSubscription.newBuilder(unsubscribe)
+                                                       .setClientId(clientRef.get().getClient())
+                                                       .build(),
+                                    false);
+                            eventPublisher.publishEvent(unsubscribeCommand);
                         }
                         break;
                     case FLOW_CONTROL:
@@ -178,9 +197,11 @@ public class CommandService implements AxonServerClientService {
             }
 
             private void flowControl(FlowControl flowControl) {
-                ClientIdentification clientIdentification = new ClientIdentification(context,
-                                                                                     flowControl.getClientId());
-                clientRef.compareAndSet(null, clientIdentification);
+                String clientUUID = clientNameRegistry.register(flowControl.getClientId());
+                ClientIdentification clientIdentification = new ClientIdentification(context, clientUUID);
+                if (!clientRef.compareAndSet(null, clientIdentification)) {
+                    clientNameRegistry.unregister(clientUUID);
+                }
                 if (listenerRef.compareAndSet(null,
                                               new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
                                                                                 clientRef.get().toString(),
@@ -192,7 +213,11 @@ public class CommandService implements AxonServerClientService {
             }
 
             private void checkInitClient(String clientId, String component) {
-                clientRef.compareAndSet(null, new ClientIdentification(context, clientId));
+                String clientUUID = clientNameRegistry.register(clientId);
+                if (!clientRef.compareAndSet(null, new ClientIdentification(context, clientUUID))) {
+                    clientNameRegistry.unregister(clientUUID);
+                }
+                ;
                 commandHandlerRef.compareAndSet(null, new DirectCommandHandler(wrappedResponseObserver,
                                                                                clientRef.get(), component));
             }
