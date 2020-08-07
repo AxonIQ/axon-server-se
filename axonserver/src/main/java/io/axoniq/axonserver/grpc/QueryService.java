@@ -103,9 +103,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                 inboundStreamObserver);
 
         return new ReceivingStreamObserver<QueryProviderOutbound>(logger) {
-            private AtomicReference<GrpcQueryDispatcherListener> listener = new AtomicReference<>();
-            private AtomicReference<ClientIdentification> client = new AtomicReference<>();
-            private AtomicReference<QueryHandler> queryHandler = new AtomicReference<>();
+            private final AtomicReference<GrpcQueryDispatcherListener> listener = new AtomicReference<>();
+            private final AtomicReference<ClientIdentification> client = new AtomicReference<>();
+            private final AtomicReference<QueryHandler<QueryProviderInbound>> queryHandler = new AtomicReference<>();
 
             @Override
             protected void consume(QueryProviderOutbound queryProviderOutbound) {
@@ -271,7 +271,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                               result -> responseConsumer.onCompleted());
     }
 
-    @Override
+    @Override //TODO
     public StreamObserver<SubscriptionQueryRequest> subscription(
             StreamObserver<SubscriptionQueryResponse> responseObserver) {
         String context = contextProvider.getContext();

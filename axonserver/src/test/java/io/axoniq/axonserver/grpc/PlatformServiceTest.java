@@ -132,10 +132,12 @@ public class PlatformServiceTest {
         CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("Release")
-                                                                                                     .setComponentName("component")
+                                                                                                     .setClientId(
+                                                                                                             "Release")
+                                                                                                     .setComponentName(
+                                                                                                             "component")
         ).build());
-        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest("Release", "processor", false));
+        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest("Release", "processor", false));
         assertEquals(1, responseObserver.count);
     }
 
@@ -144,10 +146,12 @@ public class PlatformServiceTest {
         CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("Release")
-                                                                                                     .setComponentName("component")
+                                                                                                     .setClientId(
+                                                                                                             "Release")
+                                                                                                     .setComponentName(
+                                                                                                             "component")
         ).build());
-        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest("Release", "processor", false));
+        platformService.on(new EventProcessorEvents.StartEventProcessorRequest("Release", "processor", false));
         assertEquals(1, responseObserver.count);
     }
 

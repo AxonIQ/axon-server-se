@@ -242,14 +242,15 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
     public void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
+        Set<String> clientUuids = clientNameRegistry.clientUuidsFor(clientName);
         connectionMap.entrySet().stream()
-                     .filter(e -> e.getKey().client.equals(clientName))
+                     .filter(e -> clientUuids.contains(e.getKey().client))
                      .map(Map.Entry::getValue)
                      .forEach(stream -> stream.onNext(instruction));
     }
 
     @EventListener
-    public void onPauseEventProcessorRequest(PauseEventProcessorRequest evt) {
+    public void on(PauseEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
                 .newBuilder()
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
@@ -259,7 +260,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
     @EventListener
-    public void onStartEventProcessorRequest(StartEventProcessorRequest evt) {
+    public void on(StartEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
                 .newBuilder()
                 .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))

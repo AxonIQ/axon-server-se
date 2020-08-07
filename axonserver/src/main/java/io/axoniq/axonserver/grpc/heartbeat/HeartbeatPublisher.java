@@ -30,7 +30,7 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
      * @param clients         clients which support heartbeat feature
      * @param platformService used to send heartbeat as gRPC message
      */
-    @Autowired
+    @Autowired //TODO
     public HeartbeatPublisher(HeartbeatProvidedClients clients,
                               PlatformService platformService) {
         this(clients, platformService::sendToClient);

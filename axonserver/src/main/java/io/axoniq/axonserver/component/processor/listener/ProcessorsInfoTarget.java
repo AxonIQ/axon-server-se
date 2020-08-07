@@ -13,6 +13,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcesso
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdated;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
+import io.axoniq.axonserver.grpc.ClientNameRegistry;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import javax.annotation.Nonnull;
 
 /**
  * Created by Sara Pellegrini on 21/03/2018.
@@ -35,17 +37,25 @@ public class ProcessorsInfoTarget implements ClientProcessors {
 
     private final ClientProcessorMapping mapping;
 
-    public ProcessorsInfoTarget() {
-        this.mapping = new ClientProcessorMapping() {};
+    private final ClientNameRegistry clientNameRegistry;
+
+    public ProcessorsInfoTarget(ClientNameRegistry clientNameRegistry) {
+        this.clientNameRegistry = clientNameRegistry;
+        this.mapping = new ClientProcessorMapping() {
+        };
     }
 
     @EventListener
     public EventProcessorStatusUpdated onEventProcessorStatusChange(EventProcessorStatusUpdate event) {
         ClientEventProcessorInfo processorStatus = event.eventProcessorStatus();
-        String clientName = processorStatus.getClientName();
-        Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientName, c -> new HashMap<>());
+        String clientId = processorStatus.getClientId();
+        Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientId, c -> new HashMap<>());
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
-        ClientProcessor clientProcessor = mapping.map(clientName, clients.get(clientName), processorStatus.getContext(), eventProcessorInfo);
+        String clientName = clientNameRegistry.clientNameOf(clientId);
+        ClientProcessor clientProcessor = mapping.map(clientName,
+                                                      clients.get(clientId),
+                                                      processorStatus.getContext(),
+                                                      eventProcessorInfo);
         clientData.put(eventProcessorInfo.getProcessorName(), clientProcessor);
         return new EventProcessorStatusUpdated(processorStatus, event.isProxied());
     }
@@ -61,10 +71,11 @@ public class ProcessorsInfoTarget implements ClientProcessors {
         cache.remove(event.getClient());
     }
 
+    @Nonnull
     @Override
     public Iterator<ClientProcessor> iterator() {
         return cache.entrySet().stream()
-                    .flatMap(client -> client.getValue().entrySet().stream().map(Map.Entry::getValue))
+                    .flatMap(client -> client.getValue().values().stream())
                     .iterator();
     }
 

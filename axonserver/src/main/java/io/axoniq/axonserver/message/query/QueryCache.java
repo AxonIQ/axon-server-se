@@ -60,11 +60,13 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         }
     }
 
+    //TODO
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         forEach((key, value) -> completeForApplication(value, applicationDisconnected.getClient()));
     }
 
+    //TODO
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected queryHandlerDisconnected) {
         forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClient()));
