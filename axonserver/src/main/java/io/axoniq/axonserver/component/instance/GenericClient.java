@@ -12,20 +12,21 @@ package io.axoniq.axonserver.component.instance;
 import io.axoniq.axonserver.serializer.Media;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Default implementation of a {@link Client}.
  */
 public class GenericClient implements Client {
 
-    private final String clientId;
-
+    private final String clientName;
     private final String componentName;
 
     private final String context;
     private final String axonServerNode;
 
-    public GenericClient(String clientId, String componentName, String context, String axonServerNode) {
-        this.clientId = clientId;
+    public GenericClient(String clientName,
+                         String componentName,
+                         String context,
+                         String axonServerNode) {
+        this.clientName = clientName;
         this.componentName = componentName;
         this.context = context;
         this.axonServerNode = axonServerNode;
@@ -33,8 +34,9 @@ public class GenericClient implements Client {
 
     @Override
     public String name() {
-        return clientId;
+        return clientName;
     }
+
 
     @Override
     public String context() {

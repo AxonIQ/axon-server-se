@@ -36,13 +36,13 @@ public class RoundRobinQueryHandlerSelectorTest {
         clients.add(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"));
         ClientIdentification selected = testSubject.select(new QueryDefinition("context", "request"), "component",
                                                            clients);
-        assertEquals("client1", selected.getClient());
+        assertEquals("client1", selected.getClientId());
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client2", selected.getClient());
+                                      clients);
+        assertEquals("client2", selected.getClientId());
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client1", selected.getClient());
+                                      clients);
+        assertEquals("client1", selected.getClientId());
     }
 
     @Test
@@ -50,16 +50,16 @@ public class RoundRobinQueryHandlerSelectorTest {
         NavigableSet<ClientIdentification> clients = new TreeSet<>();
         clients.add(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1"));
         ClientIdentification selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client1", selected.getClient());
+                                                           clients);
+        assertEquals("client1", selected.getClientId());
         clients = new TreeSet<>();
         clients.add(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"));
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client2", selected.getClient());
+                                      clients);
+        assertEquals("client2", selected.getClientId());
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client2", selected.getClient());
+                                      clients);
+        assertEquals("client2", selected.getClientId());
     }
 
 }

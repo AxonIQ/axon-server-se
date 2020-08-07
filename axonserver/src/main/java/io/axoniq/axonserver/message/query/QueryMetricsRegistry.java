@@ -10,10 +10,10 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.Metrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
@@ -72,7 +72,7 @@ public class QueryMetricsRegistry {
     public ClusterMetric clusterMetric(QueryDefinition query, ClientIdentification clientId){
         Tags tags = Tags.of(MeterFactory.CONTEXT, clientId.getContext(),
                             MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
-                            MeterFactory.TARGET, clientId.getClient());
+                            MeterFactory.TARGET, clientId.getClientId());
         return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_QUERY, tags),
                                    new Metrics(BaseMetricName.AXON_QUERY.metric(), tags, meterFactory.clusterMetrics()));
     }
@@ -86,7 +86,7 @@ public class QueryMetricsRegistry {
                                            MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
                                            MeterFactory.CONTEXT, clientId.getContext(),
                                            MeterFactory.SOURCE, sourceClientId,
-                                           MeterFactory.TARGET, clientId.getClient())));
+                                           MeterFactory.TARGET, clientId.getClientId())));
     }
 
     private String metricName(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {

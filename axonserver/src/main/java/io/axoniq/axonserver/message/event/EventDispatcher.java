@@ -31,8 +31,8 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.message.ClientIdentification;
-import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
@@ -197,15 +197,20 @@ public class EventDispatcher implements AxonServerClientService {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
-        List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected.clientIdentification());
-        logger.debug("application disconnected: {}, eventsStreams: {}", applicationDisconnected.getClient(), eventsStreams);
+        List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected
+                                                                                      .clientIdentification());
+        logger.debug("application disconnected: {}, eventsStreams: {}",
+                     applicationDisconnected.getClientId(),
+                     eventsStreams);
 
-        if( eventsStreams != null) {
+        if (eventsStreams != null) {
             eventsStreams.forEach(streamObserver -> {
                 try {
                     streamObserver.responseObserver.onCompleted();
-                } catch( Exception ex) {
-                    logger.debug("Error while closing tracking event processor connection from {} - {}", applicationDisconnected.getClient(), ex.getMessage());
+                } catch (Exception ex) {
+                    logger.debug("Error while closing tracking event processor connection from {} - {}",
+                                 applicationDisconnected.getClientId(),
+                                 ex.getMessage());
                 }
             });
         }

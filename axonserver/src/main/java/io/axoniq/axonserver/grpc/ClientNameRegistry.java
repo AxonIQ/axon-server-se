@@ -16,5 +16,5 @@ public interface ClientNameRegistry {
 
     String clientNameOf(String clientUUID) throws IllegalStateException;
 
-    Set<String> clientUuidsFor(String clientName);
+    Set<String> clientUuidsFor(String clientName) throws IllegalStateException;
 }

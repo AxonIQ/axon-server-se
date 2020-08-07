@@ -85,6 +85,6 @@ public abstract class QueryHandler<T>  {
     }
 
     public String getClientId() {
-        return client.getClient();
+        return client.getClientId();
     }
 }

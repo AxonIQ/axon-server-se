@@ -11,7 +11,7 @@ package io.axoniq.axonserver.component.processor.listener;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
-import io.axoniq.axonserver.grpc.ClientNameRegistryImpl;
+import io.axoniq.axonserver.grpc.DefaultClientNameRegistry;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.junit.*;
 
@@ -25,7 +25,7 @@ import static org.junit.Assert.*;
  */
 public class ProcessorsInfoTargetTest {
 
-    private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget(new ClientNameRegistryImpl());
+    private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget(new DefaultClientNameRegistry());
 
     @Test
     public void onEventProcessorStatusChange() {
@@ -43,8 +43,10 @@ public class ProcessorsInfoTargetTest {
                 .onEventProcessorStatusChange(event);
         assertEquals("client", updatedEvent.eventProcessorStatus().getClientId());
         assertEquals("context", updatedEvent.eventProcessorStatus().getContext());
-        ClientProcessor clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0), false).
-                filter(cp -> cp.clientId().equals("client")).findFirst().orElse(null);
+        ClientProcessor clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0),
+                                                               false).
+                                                               filter(cp -> cp.clientName().equals("client"))
+                                                       .findFirst().orElse(null);
         assertNotNull(clientProcessor);
     }
 

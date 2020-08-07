@@ -50,7 +50,8 @@ public class PlatformServiceTest {
                                               () -> Topology.DEFAULT_CONTEXT,
                                               eventPublisher,
                                               new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
-                                                      .newBuilder().setAck(ack).build()), new ClientNameRegistryImpl());
+                                                      .newBuilder().setAck(ack).build()),
+                                              new DefaultClientNameRegistry());
     }
 
     @Test

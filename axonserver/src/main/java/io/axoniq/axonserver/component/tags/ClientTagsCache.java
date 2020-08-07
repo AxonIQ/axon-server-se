@@ -49,7 +49,7 @@ public class ClientTagsCache implements Function<ClientIdentification, Map<Strin
      */
     @EventListener
     public void on(ApplicationDisconnected evt) {
-        ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClient());
+        ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClientId());
         tags.remove(client);
     }
 }

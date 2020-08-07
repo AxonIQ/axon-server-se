@@ -30,6 +30,7 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
@@ -61,20 +62,26 @@ public class CommandServiceTest {
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
                                                  CommandProviderInbound.newBuilder().setAck(ack).build())),
-                                         new ClientNameRegistryImpl());
+                                         new DefaultClientNameRegistry());
     }
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
+        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1)
+                                                                                            .setClientId("name")
+                                                                                            .build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
+        BlockingQueue<FlowControlQueues<WrappedCommand>.DestinationNode> queue = commandQueue.getSegments().values()
+                                                                                             .iterator().next();
+
         ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                             "name");
+                                                                             "name");
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
-                                                            new SerializedCommand(Command.newBuilder().build())));
+                                                                             new SerializedCommand(Command.newBuilder()
+                                                                                                          .build())));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);
     }

@@ -63,7 +63,7 @@ public class QueryServiceTest {
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                                                     .setAck(ack)
                                                                                                     .build()),
-                                       new ClientNameRegistryImpl());
+                                       new DefaultClientNameRegistry());
     }
 
     @Test

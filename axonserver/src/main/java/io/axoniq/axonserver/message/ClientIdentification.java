@@ -17,22 +17,24 @@ import javax.annotation.Nonnull;
  * @author Marc Gathier
  */
 public class ClientIdentification implements Comparable<ClientIdentification> {
-    private static final Comparator<ClientIdentification> COMPARATOR = Comparator.comparing(ClientIdentification::getContext).thenComparing(ClientIdentification::getClient);
+
+    private static final Comparator<ClientIdentification> COMPARATOR = Comparator
+            .comparing(ClientIdentification::getContext).thenComparing(ClientIdentification::getClientId);
     private final String context;
-    private final String client;
+    private final String clientId;
 
 
-    public ClientIdentification(String context, String client) {
+    public ClientIdentification(String context, String clientId) {
         this.context = context;
-        this.client = client;
+        this.clientId = clientId;
     }
 
     public String getContext() {
         return context;
     }
 
-    public String getClient() {
-        return client;
+    public String getClientId() {
+        return clientId;
     }
 
     @Override
@@ -45,12 +47,12 @@ public class ClientIdentification implements Comparable<ClientIdentification> {
         }
         ClientIdentification that = (ClientIdentification) o;
         return Objects.equals(context, that.context) &&
-                Objects.equals(client, that.client);
+                Objects.equals(clientId, that.clientId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(context, client);
+        return Objects.hash(context, clientId);
     }
 
     public int compareTo(@Nonnull ClientIdentification client) {
@@ -59,10 +61,10 @@ public class ClientIdentification implements Comparable<ClientIdentification> {
 
     @Override
     public String toString() {
-        return client + "." + context;
+        return clientId + "." + context;
     }
 
     public String metricName() {
-        return client + "." + context;
+        return clientId + "." + context;
     }
 }

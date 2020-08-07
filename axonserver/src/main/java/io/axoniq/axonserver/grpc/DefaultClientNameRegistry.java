@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * @since 4.3.8, 4.4.1
  */
 @Component
-public class ClientNameRegistryImpl implements ClientNameRegistry {
+public class DefaultClientNameRegistry implements ClientNameRegistry {
 
     private final ConcurrentMap<String, String> clientMap = new ConcurrentHashMap();
 

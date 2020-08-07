@@ -26,18 +26,32 @@ public class TopologyEventsLogger {
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
         if( event.isProxied()) {
-            logger.info("Application connected via {}: {}, clientId = {}, context = {}", event.getProxy(), event.getComponentName(), event.getClient(), event.getContext());
+            logger.info("Application connected via {}: {}, clientId = {}, context = {}",
+                        event.getProxy(),
+                        event.getComponentName(),
+                        event.getClientId(),
+                        event.getContext());
         } else {
-            logger.info("Application connected: {}, clientId = {}, context = {}", event.getComponentName(), event.getClient(), event.getContext());
+            logger.info("Application connected: {}, clientId = {}, context = {}",
+                        event.getComponentName(),
+                        event.getClientId(),
+                        event.getContext());
         }
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
         if( event.isProxied()) {
-            logger.info("Application disconnected via {}: {}, clientId = {}, context = {}", event.getProxy(), event.getComponentName(), event.getClient(), event.getContext());
+            logger.info("Application disconnected via {}: {}, clientId = {}, context = {}",
+                        event.getProxy(),
+                        event.getComponentName(),
+                        event.getClientId(),
+                        event.getContext());
         } else {
-            logger.info("Application disconnected: {}, clientId = {}, context = {}", event.getComponentName(), event.getClient(), event.getContext());
+            logger.info("Application disconnected: {}, clientId = {}, context = {}",
+                        event.getComponentName(),
+                        event.getClientId(),
+                        event.getContext());
         }
     }
 

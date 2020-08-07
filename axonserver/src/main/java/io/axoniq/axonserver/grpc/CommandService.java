@@ -149,7 +149,7 @@ public class CommandService implements AxonServerClientService {
                                 new SubscribeCommand(context,
                                                      CommandSubscription
                                                              .newBuilder(commandFromSubscriber.getSubscribe())
-                                                             .setClientId(clientRef.get().getClient())
+                                                             .setClientId(clientRef.get().getClientId())
                                                              .build(),
                                                      commandHandlerRef.get());
                         eventPublisher.publishEvent(event);
@@ -162,7 +162,7 @@ public class CommandService implements AxonServerClientService {
                             UnsubscribeCommand unsubscribeCommand = new UnsubscribeCommand(
                                     context,
                                     CommandSubscription.newBuilder(unsubscribe)
-                                                       .setClientId(clientRef.get().getClient())
+                                                       .setClientId(clientRef.get().getClientId())
                                                        .build(),
                                     false);
                             eventPublisher.publishEvent(unsubscribeCommand);
@@ -238,7 +238,7 @@ public class CommandService implements AxonServerClientService {
             private void cleanup() {
                 if (clientRef.get() != null) {
                     eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get().getContext(),
-                                                                               clientRef.get().getClient()));
+                                                                               clientRef.get().getClientId()));
                 }
                 GrpcCommandDispatcherListener listener = listenerRef.get();
                 if (listener != null) {

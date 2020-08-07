@@ -62,13 +62,13 @@ public class ProcessorsInfoTarget implements ClientProcessors {
 
     @EventListener
     public void onClientConnected( TopologyEvents.ApplicationConnected event) {
-        clients.put(event.getClient(), event.getComponentName());
+        clients.put(event.getClientId(), event.getComponentName());
     }
 
     @EventListener
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
-        clients.remove(event.getClient());
-        cache.remove(event.getClient());
+        clients.remove(event.getClientId());
+        cache.remove(event.getClientId());
     }
 
     @Nonnull

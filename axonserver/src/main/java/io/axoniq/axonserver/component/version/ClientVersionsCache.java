@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.component.version;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
+import io.axoniq.axonserver.grpc.ClientNameRegistry;
 import io.axoniq.axonserver.message.ClientIdentification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,12 @@ public class ClientVersionsCache implements Function<ClientIdentification, Strin
     private Logger logger = LoggerFactory.getLogger(ClientVersionsCache.class);
 
     private final Map<ClientIdentification, String> versions = new HashMap<>();
+
+    private final ClientNameRegistry clientNameRegistry;
+
+    public ClientVersionsCache(ClientNameRegistry clientNameRegistry) {
+        this.clientNameRegistry = clientNameRegistry;
+    }
 
     /**
      * Returns the version for the specified client.
@@ -53,7 +60,7 @@ public class ClientVersionsCache implements Function<ClientIdentification, Strin
      */
     @EventListener
     public void on(ApplicationDisconnected evt) {
-        ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClient());
+        ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClientId());
         versions.remove(client);
         logger.trace("Version cleaned for client {} because disconnected.", client);
     }

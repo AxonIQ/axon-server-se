@@ -235,13 +235,27 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .forEach(stream -> stream.onNext(instruction));
     }
 
+    /**
+     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
+     *
+     * @param clientId    the client id for platform stream
+     * @param instruction the {@link PlatformInboundInstruction} to be sent
+     */
+    public void sendToClientId(String clientId, PlatformOutboundInstruction instruction) {
+        connectionMap.entrySet().stream()
+                     .filter(e -> clientId.equals(e.getKey().client))
+                     .map(Map.Entry::getValue)
+                     .forEach(stream -> stream.onNext(instruction));
+    }
+
 
     /**
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
+     * @param clientName  the client name
      * @param instruction the {@link PlatformInboundInstruction} to be sent
-     */
-    public void sendToClient(String clientName, PlatformOutboundInstruction instruction) {
+     */ //TODO
+    public void sendToClientName(String clientName, PlatformOutboundInstruction instruction) {
         Set<String> clientUuids = clientNameRegistry.clientUuidsFor(clientName);
         connectionMap.entrySet().stream()
                      .filter(e -> clientUuids.contains(e.getKey().client))
@@ -256,7 +270,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
                                                                .setProcessorName(evt.processorName()))
                 .build();
-        this.sendToClient(evt.clientName(), instruction);
+        this.sendToClientName(evt.clientName(), instruction);
     }
 
     @EventListener
@@ -265,7 +279,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .newBuilder()
                 .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
                 .build();
-        this.sendToClient(evt.clientName(), instruction);
+        this.sendToClientName(evt.clientName(), instruction);
     }
 
     @EventListener
@@ -280,20 +294,20 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setReleaseSegment(releaseSegmentRequest)
                                            .build();
-        sendToClient(event.getClientName(), outboundInstruction);
+        sendToClientName(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
         StreamObserver<PlatformOutboundInstruction> connection = connectionMap
-                .remove(new ClientComponent(event.getClient(), event.getComponentName(), event.getContext()));
-        logger.debug("application disconnected: {}, connection: {}", event.getClient(), connection);
+                .remove(new ClientComponent(event.getClientId(), event.getComponentName(), event.getContext()));
+        logger.debug("application disconnected: {}, connection: {}", event.getClientId(), connection);
         if (connection != null) {
             try {
                 connection.onCompleted();
             } catch (Exception ex) {
                 logger.debug("Error while closing tracking event processor connection from {} - {}",
-                             event.getClient(),
+                             event.getClientId(),
                              ex.getMessage());
             }
         }
@@ -316,7 +330,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
                                            .build();
-        sendToClient(event.getClientName(), outboundInstruction);
+        sendToClientName(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
@@ -331,7 +345,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        sendToClient(event.getClientName(), outboundInstruction);
+        sendToClientName(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
@@ -345,7 +359,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setRequestEventProcessorInfo(eventProcessorInfoRequest)
                                            .build();
-        sendToClient(event.clientName(), outboundInstruction);
+        sendToClientName(event.clientName(), outboundInstruction);
     }
 
     private void registerClient(ClientComponent clientComponent,
@@ -379,7 +393,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      */
     @EventListener
     public void on(TopologyEvents.ApplicationInactivityTimeout evt) {
-        ClientComponent clientComponent = new ClientComponent(evt.clientIdentification().getClient(),
+        ClientComponent clientComponent = new ClientComponent(evt.clientIdentification().getClientId(),
                                                               evt.componentName(),
                                                               evt.clientIdentification().getContext());
         deregisterClient(clientComponent);

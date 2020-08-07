@@ -46,7 +46,7 @@ public class CommandRegistrationCacheLoadFactorTest {
         for (int i = 0; i < 100000; i++) {
             String routingKey = randomUUID().toString();
             CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
-            counter.computeIfAbsent(handler.getClient().getClient(), c -> new AtomicInteger()).incrementAndGet();
+            counter.computeIfAbsent(handler.getClient().getClientId(), c -> new AtomicInteger()).incrementAndGet();
         }
 
         assertTrue(matchPercentage("client1", 10, counter));
@@ -68,7 +68,7 @@ public class CommandRegistrationCacheLoadFactorTest {
         for (int i = 0; i < 100000; i++) {
             String routingKey = randomUUID().toString();
             CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
-            counter.computeIfAbsent(handler.getClient().getClient(), c -> new AtomicInteger()).incrementAndGet();
+            counter.computeIfAbsent(handler.getClient().getClientId(), c -> new AtomicInteger()).incrementAndGet();
         }
 
         assertTrue(matchPercentage("client1", 33, counter));

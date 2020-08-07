@@ -106,7 +106,7 @@ public class HeartbeatMonitor {
      */
     @EventListener
     public void on(ApplicationConnected evt) {
-        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClient());
+        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClientId());
         clientComponents.put(clientIdentification, evt.getComponentName());
     }
 
@@ -146,7 +146,7 @@ public class HeartbeatMonitor {
      */
     @EventListener
     public void on(ApplicationDisconnected evt) {
-        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClient());
+        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClientId());
         lastReceivedHeartBeats.remove(clientIdentification);
         clientComponents.remove(clientIdentification);
     }

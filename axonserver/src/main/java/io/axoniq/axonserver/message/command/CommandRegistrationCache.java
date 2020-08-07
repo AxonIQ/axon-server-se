@@ -65,7 +65,7 @@ public class CommandRegistrationCache {
         Map<String, Integer> remove = registrationsPerClient.remove(client);
         if (remove != null) {
             Set<String> commands = remove.keySet();
-            commands.forEach(command -> routingSelector(client.getContext(), command).unregister(client.getClient()));
+            commands.forEach(command -> routingSelector(client.getContext(), command).unregister(client.getClientId()));
         }
     }
 
@@ -83,7 +83,7 @@ public class CommandRegistrationCache {
             }
             return commandsMap;
         });
-        routingSelector(client.getContext(), command).unregister(client.getClient());
+        routingSelector(client.getContext(), command).unregister(client.getClientId());
         if( registrations == null) {
             remove(client);
         }
@@ -105,7 +105,7 @@ public class CommandRegistrationCache {
         registrationsPerClient.computeIfAbsent(clientIdentification, key -> new ConcurrentHashMap<>()).put(command,
                                                                                                            loadFactor);
         commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
-        routingSelector(context, command).register(clientIdentification.getClient());
+        routingSelector(context, command).register(clientIdentification.getClientId());
     }
 
 

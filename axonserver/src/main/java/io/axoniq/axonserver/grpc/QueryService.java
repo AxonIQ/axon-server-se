@@ -115,7 +115,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         QuerySubscription subscription = queryProviderOutbound.getSubscribe();
                         checkInitClient(subscription.getClientId(), subscription.getComponentName());
-                        String clientUuid = client.get().getClient();
+                        String clientUuid = client.get().getClientId();
                         logger.debug("{}: Subscribe Query {} for {}",
                                      context,
                                      subscription.getQuery(),
@@ -136,7 +136,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                             UnsubscribeQuery unsubscribeQuery = new UnsubscribeQuery(
                                     context,
                                     QuerySubscription.newBuilder(unsubscribe)
-                                                     .setClientId(client.get().getClient())
+                                                     .setClientId(client.get().getClientId())
                                                      .build(),
                                     false);
                             eventPublisher.publishEvent(
@@ -152,14 +152,14 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
-                                                       client.get().getClient(),
+                                                       client.get().getClientId(),
                                                        false);
                         break;
                     case QUERY_COMPLETE:
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
-                                                       client.get().getClient(),
+                                                       client.get().getClientId(),
                                                        false);
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
@@ -174,11 +174,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         InstructionAck ack = queryProviderOutbound.getAck();
                         if (isUnsupportedInstructionErrorResult(ack)) {
                             logger.warn("Unsupported instruction sent to the client {} of context {}.",
-                                        client.get().getClient(),
+                                        client.get().getClientId(),
                                         context);
                         } else {
                             logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
-                                         client.get().getClient(),
+                                         client.get().getClientId(),
                                          context,
                                          ack);
                         }
@@ -228,7 +228,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
             private void cleanup() {
                 if (client.get() != null) {
-                    eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client.get().getClient()));
+                    eventPublisher.publishEvent(new QueryHandlerDisconnected(context, client.get().getClientId()));
                 }
                 if (listener.get() != null) {
                     dispatcherListeners.remove(client.get());

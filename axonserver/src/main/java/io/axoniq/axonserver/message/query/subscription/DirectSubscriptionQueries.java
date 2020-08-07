@@ -43,7 +43,7 @@ public class DirectSubscriptionQueries implements Iterable<DirectSubscriptionQue
     //TODO
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected){
-        map.remove(applicationDisconnected.getClient());
+        map.remove(applicationDisconnected.getClientId());
     }
 
     @EventListener

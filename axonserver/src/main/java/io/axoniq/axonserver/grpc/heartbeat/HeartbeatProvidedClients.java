@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.component.instance.Client;
+import io.axoniq.axonserver.component.instance.ClientIdentifications;
 import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.version.BackwardsCompatibleVersion;
 import io.axoniq.axonserver.component.version.ClientVersionsCache;
@@ -27,7 +28,7 @@ import static java.util.stream.StreamSupport.stream;
  * @since 4.2.3
  */
 @Component
-public class HeartbeatProvidedClients implements Clients {
+public class HeartbeatProvidedClients implements ClientIdentifications {
 
     private static final Logger log = LoggerFactory.getLogger(HeartbeatProvidedClients.class);
 
@@ -35,7 +36,7 @@ public class HeartbeatProvidedClients implements Clients {
                                                                         new BackwardsCompatibleVersion("4.3"),
                                                                         new BackwardsCompatibleVersion("5"));
 
-    private final Clients clients;
+    private final ClientIdentifications clients;
 
     private final Function<ClientIdentification, Version> versionSupplier;
 
@@ -47,7 +48,7 @@ public class HeartbeatProvidedClients implements Clients {
      * @param versionsCache the {@link ClientVersionsCache} used to retrieve the Axon Framework version of each client
      */
     @Autowired
-    public HeartbeatProvidedClients(Clients allClients, ClientVersionsCache versionsCache) {
+    public HeartbeatProvidedClients(ClientIdentifications allClients, ClientVersionsCache versionsCache) {
         this(allClients,
              clientIdentification -> {
                  String version = versionsCache.apply(clientIdentification);
@@ -60,10 +61,10 @@ public class HeartbeatProvidedClients implements Clients {
      * Constructs a {@link HeartbeatProvidedClients} starting from all clients and a function to retrieve
      * the Axon Framework version for each of them.
      *
-     * @param allClients all the clients available
+     * @param allClients      all the clients available
      * @param versionSupplier the function used to retrieve the Axon Framework version of each client
      */
-    public HeartbeatProvidedClients(Clients allClients,
+    public HeartbeatProvidedClients(ClientIdentifications allClients,
                                     Function<ClientIdentification, Version> versionSupplier) {
         this.clients = allClients;
         this.versionSupplier = versionSupplier;
@@ -76,14 +77,14 @@ public class HeartbeatProvidedClients implements Clients {
      */
     @Nonnull
     @Override
-    public Iterator<Client> iterator() {
+    public Iterator<ClientIdentification> iterator() {
         return stream(clients.spliterator(), false)
                 .filter(this::supportHeartbeat)
                 .iterator();
     }
 
-    private boolean supportHeartbeat(Client client) {
-        Version clientVersion = versionSupplier.apply(new ClientIdentification(client.context(), client.name()));
+    private boolean supportHeartbeat(ClientIdentification clientIdentification) {
+        Version clientVersion = versionSupplier.apply(clientIdentification);
         for (Version supportedVersion : supportedAxonFrameworkVersions) {
             try {
                 if (clientVersion.greaterOrEqualThan(supportedVersion)) {

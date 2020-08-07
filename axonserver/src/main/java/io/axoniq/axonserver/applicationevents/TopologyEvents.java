@@ -33,26 +33,27 @@ public class TopologyEvents {
     public static class ApplicationConnected extends TopologyBaseEvent {
         private final String context;
         private final String componentName;
-        private final String client;
+        private final String clientId;
         private final String proxy;
 
-        public ApplicationConnected(String context, String componentName, String client, String proxy) {
+        public ApplicationConnected(String context, String componentName, String clientId, String proxy) {
             super(proxy != null);
             this.context = context;
             this.componentName = componentName;
-            this.client = client;
+            this.clientId = clientId;
             this.proxy = proxy;
         }
-        public ApplicationConnected(String context, String componentName, String client) {
-            this(context, componentName, client, null);
+
+        public ApplicationConnected(String context, String componentName, String clientId) {
+            this(context, componentName, clientId, null);
         }
 
         public String getComponentName() {
             return componentName;
         }
 
-        public String getClient() {
-            return client;
+        public String getClientId() {
+            return clientId;
         }
 
         public String getContext() {
@@ -68,36 +69,36 @@ public class TopologyEvents {
         }
 
         public ClientIdentification clientIdentification() {
-            return new ClientIdentification(context, client);
+            return new ClientIdentification(context, clientId);
         }
     }
 
     public static class ApplicationDisconnected extends TopologyBaseEvent {
         private final String context;
         private final String componentName;
-        private final String client;
+        private final String clientId;
         private final String proxy;
 
-        public ApplicationDisconnected(String context, String componentName, String client, String proxy) {
+        public ApplicationDisconnected(String context, String componentName, String clientId, String proxy) {
             super(proxy != null);
             this.context = context;
             this.componentName = componentName;
-            this.client = client;
+            this.clientId = clientId;
             this.proxy = proxy;
         }
 
         public ApplicationDisconnected(String context,
-                                       String componentName, String client
+                                       String componentName, String clientId
         ) {
-            this(context, componentName, client, null);
+            this(context, componentName, clientId, null);
         }
 
         public String getComponentName() {
             return componentName;
         }
 
-        public String getClient() {
-            return client;
+        public String getClientId() {
+            return clientId;
         }
 
         public String getContext() {
@@ -113,7 +114,7 @@ public class TopologyEvents {
         }
 
         public ClientIdentification clientIdentification() {
-            return new ClientIdentification(context, client);
+            return new ClientIdentification(context, clientId);
         }
 
     }

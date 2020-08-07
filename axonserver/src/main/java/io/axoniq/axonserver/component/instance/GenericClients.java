@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nonnull;
 
 /**
  * Cache for connected client applications.
@@ -40,6 +41,7 @@ public class GenericClients implements Clients {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
+    @Nonnull
     @Override
     public Iterator<Client> iterator() {
         return clientRegistrations.values().iterator();
@@ -52,8 +54,9 @@ public class GenericClients implements Clients {
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
+        String clientName = clientNameRegistry.clientNameOf(event.getClientId());
         this.clientRegistrations.put(event.clientIdentification(),
-                                     new GenericClient(clientNameRegistry.clientNameOf(event.getClient()),
+                                     new GenericClient(clientName,
                                                        event.getComponentName(),
                                                        event.getContext(),
                                                        event.isProxied() ? event

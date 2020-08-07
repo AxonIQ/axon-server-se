@@ -41,7 +41,7 @@ public class FakeClientProcessor implements ClientProcessor {
     }
 
     @Override
-    public String clientId() {
+    public String clientName() {
         return clientId;
     }
 
