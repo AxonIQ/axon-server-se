@@ -12,13 +12,14 @@ package io.axoniq.axonserver.message.command;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -110,24 +111,38 @@ public class CommandDispatcher {
                                           Consumer<SerializedCommandResponse> responseObserver,
                                           ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
-            logger.warn("No Handler for command: {}", command.getName() );
+            logger.warn("No Handler for command: {}", command.getName());
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                                                   .setMessageIdentifier(command.getMessageIdentifier())
-                                                   .setRequestIdentifier(command.getMessageIdentifier())
-                                                   .setErrorCode(noHandlerErrorCode.getCode())
-                                                   .setErrorMessage(ErrorMessageFactory.build(noHandlerMessage))
-                                                   .build()));
+                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
+                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
+                                                                                 .setErrorCode(noHandlerErrorCode
+                                                                                                       .getCode())
+                                                                                 .setErrorMessage(ErrorMessageFactory
+                                                                                                          .build(noHandlerMessage))
+                                                                                 .build()));
             return;
         }
 
-        logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClient());
-        commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(),
-                                                                                command.wrapped().getClientId(),
-                                                                                responseObserver,
-                                                                                commandHandler.getClient(),
-                                                                                commandHandler.getComponentName()));
-        WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClient(), command);
-        commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+        try {
+            logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClient());
+            commandCache.put(command.getMessageIdentifier(), new CommandInformation(command.getName(),
+                                                                                    command.wrapped().getClientId(),
+                                                                                    responseObserver,
+                                                                                    commandHandler.getClient(),
+                                                                                    commandHandler.getComponentName()));
+            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClient(), command);
+            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+        } catch (MessagingPlatformException mpe) {
+            commandCache.remove(command.getMessageIdentifier());
+            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
+                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
+                                                                                 .setErrorCode(mpe.getErrorCode()
+                                                                                                  .getCode())
+                                                                                 .setErrorMessage(ErrorMessageFactory
+                                                                                                          .build(mpe.getMessage()))
+                                                                                 .build()));
+        }
     }
 
 
