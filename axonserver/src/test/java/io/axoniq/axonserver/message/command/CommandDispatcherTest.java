@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.command;
 
-import com.google.common.collect.Sets;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.SerializedCommand;
@@ -23,16 +22,12 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.*;
+import org.junit.runner.*;
+import org.mockito.*;
+import org.mockito.junit.*;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.time.Clock;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -43,23 +38,18 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class CommandDispatcherTest {
+
     private CommandDispatcher commandDispatcher;
+    MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
     private CommandMetricsRegistry metricsRegistry;
-    @Mock
-    private CommandCache commandCache;
+    private CommandCache commandCache = new CommandCache(1000, Clock.systemUTC());
     @Mock
     private CommandRegistrationCache registrations;
 
     @Before
     public void setup() {
-        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
         metricsRegistry = new CommandMetricsRegistry(meterFactory);
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory, 10_000);
-        ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
-        Set<CommandRegistrationCache.RegistrationEntry> commands =
-                Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "Command"));
-        dummyRegistrations.put(new DirectCommandHandler(new CountingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),"component"),
-                commands);
     }
 
     @Test
@@ -87,7 +77,7 @@ public class CommandDispatcherTest {
         }, false);
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
         assertEquals(0, responseObserver.count);
-        Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
+        assertTrue(commandCache.isEmpty());
 
     }
     @Test
@@ -106,8 +96,31 @@ public class CommandDispatcherTest {
         }, false);
         assertEquals(1, responseObserver.count);
         assertNotEquals("", responseObserver.responseList.get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
+        assertTrue(commandCache.isEmpty());
+    }
 
+    @Test
+    public void dispatchQueueFull() {
+        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory, 0);
+        CountingStreamObserver<SerializedCommandResponse> responseObserver = new CountingStreamObserver<>();
+        Command request = Command.newBuilder()
+                                 .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
+                                 .setName("Command")
+                                 .setMessageIdentifier("12")
+                                 .build();
+        CountingStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
+        ClientIdentification client = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
+        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
+                                                               client, "component");
+        when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(result);
+
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }, false);
+        assertEquals(1, responseObserver.count);
+        assertNotEquals("", responseObserver.responseList.get(0).getErrorCode());
+        assertTrue(commandCache.isEmpty());
     }
 
     @Test
@@ -146,7 +159,7 @@ public class CommandDispatcherTest {
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.toString()).size());
         assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command().getMessageIdentifier());
         assertEquals(0, responseObserver.count);
-        Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
+        assertTrue(commandCache.isEmpty());
     }
 
     @Test
@@ -160,7 +173,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), responseObserver::onNext, true);
         assertEquals(1, responseObserver.count);
-        Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
+        assertTrue(commandCache.isEmpty());
     }
 
     @Test
