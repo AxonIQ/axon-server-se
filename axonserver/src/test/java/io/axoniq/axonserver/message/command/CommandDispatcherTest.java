@@ -77,7 +77,7 @@ public class CommandDispatcherTest {
         }, false);
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
         assertEquals(0, responseObserver.count);
-        assertTrue(commandCache.isEmpty());
+        assertEquals(1, commandCache.size());
 
     }
     @Test
@@ -139,8 +139,6 @@ public class CommandDispatcherTest {
         }, false);
         assertEquals(1, responseObserver.count);
         assertEquals("AXONIQ-4000", responseObserver.responseList.get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
-
     }
 
     @Test
@@ -159,7 +157,7 @@ public class CommandDispatcherTest {
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(clientIdentification.toString()).size());
         assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command().getMessageIdentifier());
         assertEquals(0, responseObserver.count);
-        assertTrue(commandCache.isEmpty());
+        assertEquals(1, commandCache.size());
     }
 
     @Test
@@ -184,9 +182,13 @@ public class CommandDispatcherTest {
                                                                        "Source",
                                                                        (r) -> responseHandled.set(true),
                                                                        client, "Component");
-        when(commandCache.remove(any(String.class))).thenReturn(commandInformation);
+        commandCache.put(commandInformation.getRequestIdentifier(), commandInformation);
 
-        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()), false);
+        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                      .setRequestIdentifier(
+                                                                                              commandInformation
+                                                                                                      .getRequestIdentifier())
+                                                                                      .build()), false);
         assertTrue(responseHandled.get());
 //        assertEquals(1, metricsRegistry.commandMetric("TheCommand", client, "Component").getCount());
 
