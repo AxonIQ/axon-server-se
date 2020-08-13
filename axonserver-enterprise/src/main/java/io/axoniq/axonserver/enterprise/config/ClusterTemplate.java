@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.enterprise.config;
 
+import io.axoniq.axonserver.KeepNames;
 import io.axoniq.axonserver.util.YamlPropertySourceFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -29,9 +30,10 @@ public class ClusterTemplate {
     private static final String UNDEFINED = "UNDEFINED";
 
     private String first;
-    private List<ReplicationsGroup> replicationsGroups = new ArrayList<>();
+    private List<ReplicationsGroup> replicationGroups = new ArrayList<>();
     private List<Application> applications = new ArrayList<>();
-    private List<User> users = new ArrayList<>();;
+    private List<User> users = new ArrayList<>();
+    ;
 
     public String getFirst() {
         return first;
@@ -41,12 +43,12 @@ public class ClusterTemplate {
         this.first = first;
     }
 
-    public List<ReplicationsGroup> getReplicationsGroups() {
-        return replicationsGroups;
+    public List<ReplicationsGroup> getReplicationGroups() {
+        return replicationGroups;
     }
 
-    public void setReplicationsGroups(List<ReplicationsGroup> replicationsGroups) {
-        this.replicationsGroups = replicationsGroups;
+    public void setReplicationGroups(List<ReplicationsGroup> replicationGroups) {
+        this.replicationGroups = replicationGroups;
     }
 
     public List<Application> getApplications() {
@@ -66,6 +68,7 @@ public class ClusterTemplate {
     }
 
 
+    @KeepNames
     public static class ReplicationsGroup {
 
         private String name = UNDEFINED;
@@ -109,13 +112,15 @@ public class ClusterTemplate {
         public void setContexts(List<Context> contexts) {
             this.contexts = contexts;
         }
-
     }
 
+    @KeepNames
     public static class Context {
+
         private String name = UNDEFINED;
 
         private Map<String,String> metaData = Collections.emptyMap();
+
         /**
          * No args constructor for use in serialization
          *
@@ -148,15 +153,15 @@ public class ClusterTemplate {
             this.metaData = metaData;
         }
     }
-    public static class ReplicationGroupRole {
 
+    @KeepNames
+    public static class ReplicationGroupRole {
 
         private String node = UNDEFINED;
         private String role = UNDEFINED;
 
         /**
          * No args constructor for use in serialization
-         *
          */
         public ReplicationGroupRole() {
         }
@@ -187,9 +192,9 @@ public class ClusterTemplate {
         public void setRole(String role) {
             this.role = role;
         }
-
     }
 
+    @KeepNames
     public static class Application {
 
         private String name = UNDEFINED;
@@ -246,6 +251,7 @@ public class ClusterTemplate {
 
     }
 
+    @KeepNames
     public static class ApplicationRole {
 
         private String context = UNDEFINED;
@@ -282,6 +288,7 @@ public class ClusterTemplate {
 
     }
 
+    @KeepNames
     public static class User {
 
         private String userName = UNDEFINED;
@@ -327,6 +334,7 @@ public class ClusterTemplate {
 
     }
 
+    @KeepNames
     public static class UserRole {
 
         private String context = UNDEFINED;

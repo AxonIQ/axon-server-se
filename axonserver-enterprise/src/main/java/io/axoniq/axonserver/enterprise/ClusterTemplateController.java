@@ -59,7 +59,7 @@ public class ClusterTemplateController {
         clusterTemplate.setFirst(first);
         clusterTemplate.setApplications(applications);
         clusterTemplate.setUsers(users);
-        clusterTemplate.setReplicationsGroups(replicationsGroups);
+        clusterTemplate.setReplicationGroups(replicationsGroups);
         return clusterTemplate;
     }
 
