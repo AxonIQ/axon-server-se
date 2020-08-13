@@ -543,7 +543,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.gauge = meterFactory.gauge(BaseMetricName.AXON_EVENT_LAST_TOKEN,
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,
-                                            c -> (double) getLastToken(c));
+                                            c -> (double) eventStorageEngine.getLastToken());
 
         }
 
