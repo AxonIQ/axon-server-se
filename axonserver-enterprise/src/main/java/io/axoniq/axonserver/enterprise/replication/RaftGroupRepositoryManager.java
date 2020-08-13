@@ -67,16 +67,12 @@ public class RaftGroupRepositoryManager {
         return filter(contextsCache(), RoleUtils::hasStorage);
     }
 
-    private Set<String> filter(Map<String, String> contextReplicationGroup, Predicate<Role> roleFilter) {
-        Set<String> contexts = new HashSet<>();
-        contextReplicationGroup.forEach((context, replicationGroup) -> {
-            if (roleFilter.test(myRole(replicationGroup))) {
-                contexts.add(context);
-            }
-        });
-        return contexts;
+    /**
+     * @return the names of all contexts on this node
+     */
+    public Set<String> contexts() {
+        return contextsCache().keySet();
     }
-
 
     /**
      * Checks whether there is a given {@code context} within this node.
@@ -186,6 +182,23 @@ public class RaftGroupRepositoryManager {
         contextsCache().put(contextCreated.context(), contextCreated.replicationGroup());
     }
 
+    @EventListener
+    public void on(ContextEvents.ContextDeleted contextDeleted) {
+        if (contextsCache.get() != null) {
+            contextsCache.get().remove(contextDeleted.context());
+        }
+    }
+
+    private Set<String> filter(Map<String, String> contextReplicationGroup, Predicate<Role> roleFilter) {
+        Set<String> contexts = new HashSet<>();
+        contextReplicationGroup.forEach((context, replicationGroup) -> {
+            if (roleFilter.test(myRole(replicationGroup))) {
+                contexts.add(context);
+            }
+        });
+        return contexts;
+    }
+
     private Map<String, String> contextsCache() {
         return contextsCache.updateAndGet(old -> {
             if (old == null) {
@@ -193,13 +206,6 @@ public class RaftGroupRepositoryManager {
             }
             return old;
         });
-    }
-
-    @EventListener
-    public void on(ContextEvents.ContextDeleted contextDeleted) {
-        if (contextsCache.get() != null) {
-            contextsCache.get().remove(contextDeleted.context());
-        }
     }
 
     private String replicationGroup(String context) {

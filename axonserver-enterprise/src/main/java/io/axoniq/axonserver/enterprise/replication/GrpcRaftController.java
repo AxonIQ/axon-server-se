@@ -274,8 +274,8 @@ public class GrpcRaftController implements SmartLifecycle, RaftGroupManager {
      *
      * @return Iterable of context names
      */
-    public Iterable<String> getStorageContexts() {
-        return raftGroupNodeRepository.storageContexts();
+    public Iterable<String> getAllNonAdminContexts() {
+        return raftGroupNodeRepository.contexts();
     }
 
     public Set<String> raftGroups() {
