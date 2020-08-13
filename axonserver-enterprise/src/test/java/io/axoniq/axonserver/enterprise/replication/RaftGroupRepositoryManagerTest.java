@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.enterprise.cluster;
+package io.axoniq.axonserver.enterprise.replication;
 
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
@@ -9,7 +9,6 @@ import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroup;
 import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
-import io.axoniq.axonserver.enterprise.replication.RaftGroupRepositoryManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
 import org.junit.*;
