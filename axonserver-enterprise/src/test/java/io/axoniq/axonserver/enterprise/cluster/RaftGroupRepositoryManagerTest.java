@@ -3,6 +3,7 @@ package io.axoniq.axonserver.enterprise.cluster;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.jpa.AdminContextRepository;
 import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
@@ -63,9 +64,11 @@ public class RaftGroupRepositoryManagerTest {
         when(replicationGroupContextRepository.findByReplicationGroupName(anyString()))
                 .then(invocation -> Collections.singletonList(new ReplicationGroupContext(invocation.getArgument(0),
                                                                                           invocation.getArgument(0))));
+        AdminContextRepository adminContextRepository = mock(AdminContextRepository.class);
         testSubject = new RaftGroupRepositoryManager(raftGroupNodeRepository,
                                                      replicationGroupContextRepository,
                                                      adminReplicationGroupRepository,
+                                                     adminContextRepository,
                                                      messagingPlatformConfiguration);
     }
 
