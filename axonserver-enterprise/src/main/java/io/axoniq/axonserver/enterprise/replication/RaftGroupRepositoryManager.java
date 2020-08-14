@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
@@ -77,6 +78,13 @@ public class RaftGroupRepositoryManager {
     }
 
     private Map<String, String> refreshContextCache() {
+        Map<String, String> contexts = loadContextCache();
+        contextsCache.set(contexts);
+        return contexts;
+    }
+
+    @Nonnull
+    private Map<String, String> loadContextCache() {
         Map<String, String> contexts = raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
                                                               .stream()
                                                               .map(ReplicationGroupMember::getGroupId)
@@ -87,9 +95,6 @@ public class RaftGroupRepositoryManager {
                                                               .collect(Collectors
                                                                                .toMap(ReplicationGroupContext::getName,
                                                                                       ReplicationGroupContext::getReplicationGroupName));
-
-
-        contextsCache.set(contexts);
         return contexts;
     }
 
@@ -188,7 +193,7 @@ public class RaftGroupRepositoryManager {
     private Map<String, String> contextsCache() {
         return contextsCache.updateAndGet(old -> {
             if (old == null) {
-                return refreshContextCache();
+                return loadContextCache();
             }
             return old;
         });
