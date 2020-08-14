@@ -43,6 +43,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
@@ -66,7 +67,6 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<QueryProviderInbound> instructionAckSource;
-    private final ClientIdRegistry clientIdRegistry;
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -75,14 +75,12 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     public QueryService(Topology topology, QueryDispatcher queryDispatcher, ContextProvider contextProvider,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
-                                InstructionAckSource<QueryProviderInbound> instructionAckSource,
-                        ClientIdRegistry clientIdRegistry) {
+                                InstructionAckSource<QueryProviderInbound> instructionAckSource) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
-        this.clientIdRegistry = clientIdRegistry;
     }
 
     @PreDestroy
@@ -100,8 +98,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                 inboundStreamObserver);
 
         return new ReceivingStreamObserver<QueryProviderOutbound>(logger) {
+            private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<GrpcQueryDispatcherListener> listener = new AtomicReference<>();
-            private final AtomicReference<ClientStreamIdentification> client = new AtomicReference<>();
+            private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<QueryHandler<QueryProviderInbound>> queryHandler = new AtomicReference<>();
 
             @Override
@@ -112,7 +111,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         QuerySubscription subscription = queryProviderOutbound.getSubscribe();
                         checkInitClient(subscription.getClientId(), subscription.getComponentName());
-                        String clientStreamId = client.get().getClientStreamId();
+                        String clientStreamId = clientRef.get().getClientStreamId();
                         logger.debug("{}: Subscribe Query {} for {}",
                                      context,
                                      subscription.getQuery(),
@@ -127,10 +126,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     case UNSUBSCRIBE:
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
-                        if (client.get() != null) {
+                        if (clientRef.get() != null) {
                             QuerySubscription unsubscribe = queryProviderOutbound.getUnsubscribe();
                             UnsubscribeQuery unsubscribeQuery = new UnsubscribeQuery(context,
-                                                                                     client.get().getClientStreamId(),
+                                                                                     clientRef.get()
+                                                                                              .getClientStreamId(),
                                                                                      unsubscribe,
                                                                                      false);
                             eventPublisher.publishEvent(unsubscribeQuery);
@@ -145,14 +145,14 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
-                                                       client.get().getClientStreamId(),
+                                                       clientRef.get().getClientStreamId(),
                                                        false);
                         break;
                     case QUERY_COMPLETE:
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
-                                                       client.get().getClientStreamId(),
+                                                       clientRef.get().getClientStreamId(),
                                                        false);
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
@@ -167,11 +167,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         InstructionAck ack = queryProviderOutbound.getAck();
                         if (isUnsupportedInstructionErrorResult(ack)) {
                             logger.warn("Unsupported instruction sent to the client {} of context {}.",
-                                        client.get().getClientStreamId(),
+                                        clientRef.get().getClientStreamId(),
                                         context);
                         } else {
                             logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
-                                         client.get().getClientStreamId(),
+                                         clientRef.get().getClientStreamId(),
                                          context,
                                          ack);
                         }
@@ -185,54 +185,54 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             }
 
             private void flowControl(FlowControl flowControl) {
-                String clientStreamId = clientIdRegistry.register(flowControl.getClientId());
-                if (!client.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
-                    clientIdRegistry.unregister(clientStreamId);
-                }
+                initClientReference(flowControl.getClientId());
                 if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
-                                                                                 client.get().toString(),
+                                                                                 clientRef.get().toString(),
                                                                                  wrappedQueryProviderInboundObserver,
                                                                                  processingThreads))) {
-                    dispatcherListeners.put(client.get(), listener.get());
+                    dispatcherListeners.put(clientRef.get(), listener.get());
                 }
                 listener.get().addPermits(flowControl.getPermits());
             }
 
+            private void initClientReference(String clientId) {
+                String clientStreamId = clientId + "." + UUID.randomUUID().toString();
+                ;
+                clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId));
+                clientIdRef.compareAndSet(null, clientId);
+            }
+
             private void checkInitClient(String clientId, String componentName) {
-                String clientStreamId = clientIdRegistry.register(clientId);
-                if (!client.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
-                    clientIdRegistry.unregister(clientStreamId);
-                }
+                initClientReference(clientId);
                 queryHandler.compareAndSet(null,
-                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver, client.get(),
+                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver, clientRef.get(),
                                                                   componentName, clientId));
             }
 
             @Override
             protected String sender() {
-                return client.toString();
+                return clientRef.toString();
             }
 
             @Override
             public void onError(Throwable cause) {
                 if (!ExceptionUtils.isCancelled(cause)) {
-                    logger.warn("{}: Error on connection from subscriber - {}", client, cause.getMessage());
+                    logger.warn("{}: Error on connection from subscriber - {}", clientRef, cause.getMessage());
                 }
 
                 cleanup();
             }
 
             private void cleanup() {
-                if (client.get() != null) {
-                    String clientStreamId = client.get().getClientStreamId();
-                    String clientId = clientIdRegistry.clientId(clientStreamId);
+                if (clientRef.get() != null) {
+                    String clientStreamId = clientRef.get().getClientStreamId();
+                    String clientId = this.clientIdRef.get();
                     eventPublisher.publishEvent(new QueryHandlerDisconnected(context,
                                                                              clientId,
                                                                              clientStreamId));
-                    clientIdRegistry.unregister(clientStreamId);
                 }
                 if (listener.get() != null) {
-                    dispatcherListeners.remove(client.get());
+                    dispatcherListeners.remove(clientRef.get());
                     listener.get().cancel();
                 }
                 StreamObserverUtils.complete(inboundStreamObserver);

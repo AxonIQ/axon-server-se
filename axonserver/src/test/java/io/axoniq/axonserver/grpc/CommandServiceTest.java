@@ -30,8 +30,6 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
@@ -45,7 +43,6 @@ public class CommandServiceTest {
     private FlowControlQueues<WrappedCommand> commandQueue;
     private ApplicationEventPublisher eventPublisher;
     private CommandDispatcher commandDispatcher;
-    private DefaultClientIdRegistry clientIdRegistry;
 
     @SuppressWarnings("unchecked")
     @Before
@@ -58,14 +55,12 @@ public class CommandServiceTest {
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
-        clientIdRegistry = new DefaultClientIdRegistry();
         testSubject = new CommandService(topology,
                                          commandDispatcher,
                                          () -> Topology.DEFAULT_CONTEXT,
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
-                                                 CommandProviderInbound.newBuilder().setAck(ack).build())),
-                                         clientIdRegistry);
+                                                 CommandProviderInbound.newBuilder().setAck(ack).build())));
     }
 
     @Test
@@ -78,11 +73,9 @@ public class CommandServiceTest {
                                                                                             .build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
-        BlockingQueue<FlowControlQueues<WrappedCommand>.DestinationNode> queue = commandQueue.getSegments().values()
-                                                                                             .iterator().next();
-        Set<String> clientStreamIds = clientIdRegistry.clientStreamIdsFor("name");
-        assertEquals(1, clientStreamIds.size());
-        String clientStreamId = clientStreamIds.iterator().next();
+
+        String key = commandQueue.getSegments().entrySet().iterator().next().getKey();
+        String clientStreamId = key.substring(0, key.lastIndexOf("."));
 
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                          clientStreamId);

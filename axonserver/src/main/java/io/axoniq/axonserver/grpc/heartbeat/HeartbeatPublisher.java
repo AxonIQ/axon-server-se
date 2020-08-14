@@ -31,7 +31,7 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
     @Autowired
     public HeartbeatPublisher(HeartbeatProvidedClients clients,
                               PlatformService platformService) {
-        this(clients, platformService::sendToClientId);
+        this(clients, platformService::sendToClientStreamId);
     }
 
     /**

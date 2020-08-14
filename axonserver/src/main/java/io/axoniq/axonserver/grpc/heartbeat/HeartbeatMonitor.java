@@ -38,6 +38,8 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
 @ConditionalOnProperty(value = "axoniq.axonserver.heartbeat.enabled")
 public class HeartbeatMonitor {
 
+    private final Map<ClientStreamIdentification, ClientInformation> clientInfos = new ConcurrentHashMap<>();
+
     private final Clock clock;
 
     private final long heartbeatTimeout;
@@ -48,7 +50,17 @@ public class HeartbeatMonitor {
 
     private final Map<ClientStreamIdentification, Instant> lastReceivedHeartBeats = new ConcurrentHashMap<>();
 
-    private final Map<ClientStreamIdentification, String> clientComponents = new ConcurrentHashMap<>();
+    /**
+     * Collects components when application connect to AxonServer.
+     *
+     * @param evt the connection event
+     */
+    @EventListener
+    public void on(ApplicationConnected evt) {
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
+                                                                                         evt.getClientStreamId());
+        clientInfos.put(clientIdentification, new ClientInformation(evt.getComponentName(), evt.getClientId()));
+    }
 
     /**
      * Constructs a {@link HeartbeatMonitor} that uses {@link PlatformService} to send and receive heartbeats messages.
@@ -100,18 +112,6 @@ public class HeartbeatMonitor {
     }
 
     /**
-     * Collects components when application connect to AxonServer.
-     *
-     * @param evt the connection event
-     */
-    @EventListener
-    public void on(ApplicationConnected evt) {
-        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
-                                                                                         evt.getClientStreamId());
-        clientComponents.put(clientIdentification, evt.getComponentName());
-    }
-
-    /**
      * Checks if the connections are still alive, if not publish an {@link ApplicationInactivityTimeout} event.
      */
     @Scheduled(initialDelayString = "${axoniq.axonserver.client-heartbeat-check-initial-delay:10000}",
@@ -119,11 +119,26 @@ public class HeartbeatMonitor {
     public void checkClientsStillAlive() {
         Instant timeout = Instant.now(clock).minus(heartbeatTimeout, ChronoUnit.MILLIS);
         lastReceivedHeartBeats.forEach((clientStreamIdentification, instant) -> {
-            if (instant.isBefore(timeout) && clientComponents.containsKey(clientStreamIdentification)) {
-                String component = clientComponents.get(clientStreamIdentification);
-                eventPublisher.publishEvent(new ApplicationInactivityTimeout(clientStreamIdentification, component));
+            if (instant.isBefore(timeout) && clientInfos.containsKey(clientStreamIdentification)) {
+                String component = clientInfos.get(clientStreamIdentification).component;
+                String clientId = clientInfos.get(clientStreamIdentification).clientId;
+                eventPublisher.publishEvent(new ApplicationInactivityTimeout(clientStreamIdentification, component,
+                                                                             clientId));
             }
         });
+    }
+
+    /**
+     * Clears last heartbeat received from a client that disconnects from AxonServer.
+     *
+     * @param evt the disconnection event
+     */
+    @EventListener
+    public void on(ApplicationDisconnected evt) {
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
+                                                                                         evt.getClientStreamId());
+        lastReceivedHeartBeats.remove(clientIdentification);
+        clientInfos.remove(clientIdentification);
     }
 
 
@@ -139,17 +154,14 @@ public class HeartbeatMonitor {
                                            .build());
     }
 
+    private static final class ClientInformation {
 
-    /**
-     * Clears last heartbeat received from a client that disconnects from AxonServer.
-     *
-     * @param evt the disconnection event
-     */
-    @EventListener
-    public void on(ApplicationDisconnected evt) {
-        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
-                                                                                         evt.getClientStreamId());
-        lastReceivedHeartBeats.remove(clientIdentification);
-        clientComponents.remove(clientIdentification);
+        private final String component;
+        private final String clientId;
+
+        private ClientInformation(String component, String clientId) {
+            this.component = component;
+            this.clientId = clientId;
+        }
     }
 }

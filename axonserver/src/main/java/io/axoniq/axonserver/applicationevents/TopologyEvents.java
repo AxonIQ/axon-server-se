@@ -312,16 +312,20 @@ public class TopologyEvents {
 
         private final String componentName;
 
+        private final String clientId;
+
         /**
          * Creates an {@link ApplicationInactivityTimeout} event.
          *
          * @param clientStreamIdentification the client identifier
          * @param componentName              the client component name
+         * @param clientId
          */
         public ApplicationInactivityTimeout(ClientStreamIdentification clientStreamIdentification,
-                                            String componentName) {
+                                            String componentName, String clientId) {
             this.clientStreamIdentification = clientStreamIdentification;
             this.componentName = componentName;
+            this.clientId = clientId;
         }
 
         /**
@@ -335,10 +339,20 @@ public class TopologyEvents {
 
         /**
          * Returns the component name.
+         *
          * @return the component name.
          */
         public String componentName() {
             return componentName;
+        }
+
+        /**
+         * Returns the unique identifier of the client
+         *
+         * @return the unique identifier of the client
+         */
+        public String clientId() {
+            return clientId;
         }
     }
 }

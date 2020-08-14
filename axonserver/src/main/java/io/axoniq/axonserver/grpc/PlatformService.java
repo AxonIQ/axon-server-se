@@ -75,7 +75,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
     private final InstructionAckSource<PlatformOutboundInstruction> instructionAckSource;
-    private final ClientIdRegistry clientIdRegistry;
+//    private final ClientIdRegistry clientIdRegistry;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
@@ -91,13 +91,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher,
                            @Qualifier("platformInstructionAckSource")
-                                   InstructionAckSource<PlatformOutboundInstruction> instructionAckSource,
-                           ClientIdRegistry clientIdRegistry) {
+                                   InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
-        this.clientIdRegistry = clientIdRegistry;
         onInboundInstruction(RequestCase.ACK, (client, context, instruction) -> {
             InstructionAck ack = instruction.getAck();
             if (isUnsupportedInstructionErrorResult(ack)) {
@@ -146,7 +144,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     @Override
     public StreamObserver<PlatformInboundInstruction> openStream(
             StreamObserver<PlatformOutboundInstruction> responseObserver) {
-        String uuid = UUID.randomUUID().toString();
         String context = contextProvider.getContext();
         SendingStreamObserver<PlatformOutboundInstruction> sendingStreamObserver =
                 new SendingStreamObserver<>(responseObserver);
@@ -160,16 +157,19 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
                     instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(), sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
-                    String clientUUID = clientIdRegistry.register(client.getClientId());
-                    eventPublisher.publishEvent(new ClientTagsUpdate(clientUUID,
+                    String clientId = client.getClientId();
+                    String clientStreamId = clientId + "." + UUID.randomUUID().toString();
+                    eventPublisher.publishEvent(new ClientTagsUpdate(clientStreamId,
                                                                      context,
                                                                      client.getTagsMap()));
 
-                    clientComponent.compareAndSet(null, new ClientComponent(clientUUID,
-                                                                            client.getComponentName(),
-                                                                            context));
-                    registerClient(clientComponent.get(), sendingStreamObserver);
-                    eventPublisher.publishEvent(new ClientVersionUpdate(clientUUID,
+                    ClientComponent clientComponent = new ClientComponent(clientStreamId,
+                                                                          clientId,
+                                                                          client.getComponentName(),
+                                                                          context);
+                    this.clientComponent.compareAndSet(null, clientComponent);
+                    registerClient(this.clientComponent.get(), sendingStreamObserver);
+                    eventPublisher.publishEvent(new ClientVersionUpdate(clientStreamId,
                                                                         context,
                                                                         client.getVersion()));
                 } else if (!handlers.containsKey(requestCase)) {
@@ -181,14 +181,14 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .forEach(consumer -> {
                                 instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
                                                                        sendingStreamObserver);
-                                consumer.accept(clientComponent.get().clientId, context, instruction);
+                                consumer.accept(clientComponent.get().clientStreamId, context, instruction);
                             });
                 }
             }
 
             @Override
             protected String sender() {
-                return clientComponent.get() == null ? null : clientComponent.get().clientId;
+                return clientComponent.get() == null ? null : clientComponent.get().clientStreamId;
             }
 
             @Override
@@ -219,11 +219,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         return false;
     }
 
-    public boolean requestReconnect(String clientName) {
-        logger.debug("Request reconnect: {}", clientName);
-        Set<String> clientUuids = clientIdRegistry.clientStreamIdsFor(clientName);
+    public boolean requestReconnect(String clientId) {
+        logger.debug("Request reconnect: {}", clientId);
         return connectionMap.entrySet().stream()
-                            .filter(e -> clientUuids.contains(e.getKey().clientId))
+                            .filter(e -> e.getKey().clientId.equals(clientId))
                             .map(e -> requestReconnect(e.getKey()))
                             .findFirst().orElse(false);
     }
@@ -241,12 +240,12 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     /**
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
-     * @param clientId    the client id for platform stream
-     * @param instruction the {@link PlatformInboundInstruction} to be sent
+     * @param clientStreamId the client id for platform stream
+     * @param instruction    the {@link PlatformInboundInstruction} to be sent
      */
-    public void sendToClientId(String clientId, PlatformOutboundInstruction instruction) {
+    public void sendToClientStreamId(String clientStreamId, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
-                     .filter(e -> clientId.equals(e.getKey().clientId))
+                     .filter(e -> clientStreamId.equals(e.getKey().clientStreamId))
                      .map(Map.Entry::getValue)
                      .forEach(stream -> stream.onNext(instruction));
     }
@@ -255,13 +254,12 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     /**
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
-     * @param clientName  the client name
+     * @param clientId    the unique identifier of the client
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
-    public void sendToClientName(String clientName, PlatformOutboundInstruction instruction) {
-        Set<String> clientUuids = clientIdRegistry.clientStreamIdsFor(clientName);
+    public void sendToClientId(String clientId, PlatformOutboundInstruction instruction) {
         connectionMap.entrySet().stream()
-                     .filter(e -> clientUuids.contains(e.getKey().clientId))
+                     .filter(e -> e.getKey().clientId.equals(clientId))
                      .map(Map.Entry::getValue)
                      .forEach(stream -> stream.onNext(instruction));
     }
@@ -273,7 +271,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
                                                                .setProcessorName(evt.processorName()))
                 .build();
-        sendToClientName(evt.clientName(), instruction);
+        sendToClientId(evt.clientName(), instruction);
     }
 
     @EventListener
@@ -282,7 +280,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .newBuilder()
                 .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
                 .build();
-        sendToClientName(evt.clientName(), instruction);
+        sendToClientId(evt.clientName(), instruction);
     }
 
     @EventListener
@@ -297,13 +295,16 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setReleaseSegment(releaseSegmentRequest)
                                            .build();
-        sendToClientName(event.getClientName(), outboundInstruction);
+        sendToClientId(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
     public void on(ApplicationDisconnected event) {
         StreamObserver<PlatformOutboundInstruction> connection = connectionMap
-                .remove(new ClientComponent(event.getClientStreamId(), event.getComponentName(), event.getContext()));
+                .remove(new ClientComponent(event.getClientStreamId(),
+                                            event.getClientId(),
+                                            event.getComponentName(),
+                                            event.getContext()));
         logger.debug("application disconnected: {}, connection: {}", event.getClientStreamId(), connection);
         if (connection != null) {
             try {
@@ -333,7 +334,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
                                            .build();
-        sendToClientName(event.getClientName(), outboundInstruction);
+        sendToClientId(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
@@ -348,7 +349,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        sendToClientName(event.getClientName(), outboundInstruction);
+        sendToClientId(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
@@ -362,7 +363,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setRequestEventProcessorInfo(eventProcessorInfoRequest)
                                            .build();
-        sendToClientName(event.clientName(), outboundInstruction);
+        sendToClientId(event.clientName(), outboundInstruction);
     }
 
     private void registerClient(ClientComponent clientComponent,
@@ -372,8 +373,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         connectionMap.put(clientComponent, responseObserver);
         eventPublisher.publishEvent(new ApplicationConnected(clientComponent.context,
                                                              clientComponent.component,
+                                                             clientComponent.clientStreamId,
                                                              clientComponent.clientId,
-                                                             clientIdRegistry.clientId(clientComponent.clientId),
                                                              null
         ));
     }
@@ -390,11 +391,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             eventPublisher.publishEvent(new ApplicationDisconnected(
                     clientComponent.context,
                     clientComponent.component,
-                    clientComponent.clientId,
-                    clientIdRegistry.clientId(clientComponent.clientId),
+                    clientComponent.clientStreamId,
+                    clientComponent.clientStreamId,
                     null
             ));
-            clientIdRegistry.unregister(clientComponent.clientId);
         }
     }
 
@@ -407,6 +407,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public void on(ApplicationInactivityTimeout evt) {
         ClientStreamIdentification clientStreamIdentification = evt.clientStreamIdentification();
         ClientComponent clientComponent = new ClientComponent(clientStreamIdentification.getClientStreamId(),
+                                                              evt.clientId(),
                                                               evt.componentName(),
                                                               clientStreamIdentification.getContext());
         deregisterClient(clientComponent);
@@ -456,6 +457,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      */
     public static class ClientComponent {
 
+        private final String clientStreamId;
         private final String clientId;
         private final String component;
         private final String context;
@@ -463,11 +465,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         /**
          * Creates an instance with specified parameters.
          *
-         * @param clientId  the unique identifier of the client platform connection
-         * @param component the component name
-         * @param context   the principal context of the client
+         * @param clientStreamId the unique identifier of the client platform stream
+         * @param clientId       the unique identifier of the client
+         * @param component      the component name
+         * @param context        the principal context of the client
          */
-        public ClientComponent(String clientId, String component, String context) {
+        public ClientComponent(String clientStreamId, String clientId, String component, String context) {
+            this.clientStreamId = clientStreamId;
             this.clientId = clientId;
             this.component = component;
             this.context = context;
@@ -482,13 +486,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 return false;
             }
             ClientComponent that = (ClientComponent) o;
-            return clientId.equals(that.clientId) &&
+            return clientStreamId.equals(that.clientStreamId) &&
                     context.equals(that.context);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(clientId, context);
+            return Objects.hash(clientStreamId, context);
         }
 
         /**
@@ -496,8 +500,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
          *
          * @return a {@link String} representing the unique identifier of the platform connection of this client
          */
-        public String getClientId() {
-            return clientId;
+        public String getClientStreamId() {
+            return clientStreamId;
         }
 
         /**
@@ -521,7 +525,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         @Override
         public String toString() {
             return "ClientComponent{" +
-                    "client='" + clientId + '\'' +
+                    "client='" + clientStreamId + '\'' +
                     ", component='" + component + '\'' +
                     ", context='" + context + '\'' +
                     '}';

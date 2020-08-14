@@ -28,7 +28,6 @@ import org.junit.runner.*;
 import org.mockito.runners.*;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -43,20 +42,17 @@ public class PlatformServiceTest {
     private PlatformService platformService;
 
     private Topology clusterController;
-    private DefaultClientIdRegistry clientIdRegistry;
 
     @Before
     public void setUp() {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         clusterController = new DefaultTopology(configuration);
-        clientIdRegistry = new DefaultClientIdRegistry();
         platformService = new PlatformService(clusterController,
                                               () -> Topology.DEFAULT_CONTEXT,
                                               eventPublisher,
                                               new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
-                                                      .newBuilder().setAck(ack).build()),
-                                              clientIdRegistry);
+                                                      .newBuilder().setAck(ack).build()));
     }
 
     @Test
@@ -256,9 +252,7 @@ public class PlatformServiceTest {
                                                                                         .setComponentName(component)
                                                        ).build());
         assertEquals(1, platformService.getConnectedClients().size());
-        Set<String> clientStreamIds = clientIdRegistry.clientStreamIdsFor(clientId);
-        assertEquals(1, clientStreamIds.size());
-        String clientStreamId = clientStreamIds.iterator().next();
+        String clientStreamId = platformService.getConnectedClients().iterator().next().getClientStreamId();
         platformService.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
                                                                       component, clientStreamId));
         assertEquals(0, platformService.getConnectedClients().size());
