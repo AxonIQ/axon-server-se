@@ -33,7 +33,6 @@ public class ClusterTemplate {
     private List<ReplicationsGroup> replicationGroups = new ArrayList<>();
     private List<Application> applications = new ArrayList<>();
     private List<User> users = new ArrayList<>();
-    ;
 
     public String getFirst() {
         return first;
@@ -248,7 +247,6 @@ public class ClusterTemplate {
         public void setToken(String token) {
             this.token = token;
         }
-
     }
 
     @KeepNames

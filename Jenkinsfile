@@ -8,10 +8,10 @@ properties([
 def label = "worker-${UUID.randomUUID().toString()}"
 
 def deployingBranches = [
-    "master", "axonserver-ee-4.3.x"
+    "master", "axonserver-ee-4.4.x"
 ]
 def dockerBranches = [
-    "master", "axonserver-ee-4.3.x"
+    "master", "axonserver-ee-4.4.x"
 ]
 
 /*
