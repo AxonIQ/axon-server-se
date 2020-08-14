@@ -113,8 +113,8 @@ public class RaftLeaderProviderImpl implements RaftLeaderProvider {
 
     /**
      * Handles a {@link io.axoniq.axonserver.enterprise.ContextEvents.ContextDeleted} event.
-     * Checks if the context is still member of the replication group and if not publishes an event that there is no
-     * longer a leader for the context
+     * Checks if the context is still member of the replication group and if it is, publishes a
+     * ContextLeaderConfirmation event with the leader of the replication group.
      *
      * @param event the context created event
      */
