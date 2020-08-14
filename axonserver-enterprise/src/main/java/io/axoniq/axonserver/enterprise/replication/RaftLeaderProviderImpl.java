@@ -1,8 +1,12 @@
 package io.axoniq.axonserver.enterprise.replication;
 
+import io.axoniq.axonserver.cluster.TermIndex;
+import io.axoniq.axonserver.cluster.replication.EntryIterator;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.cluster.events.ClusterEvents;
 import io.axoniq.axonserver.enterprise.replication.admin.AdminReplicationGroupController;
+import io.axoniq.axonserver.grpc.cluster.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,11 +22,32 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
+ * Maintains the leader node for each replication group. When the leader for a replication group changes, this
+ * class will publish the related events for the contexts in the replication group.
+ *
  * @author Marc Gathier
  * @since 4.1
  */
 @Component
 public class RaftLeaderProviderImpl implements RaftLeaderProvider {
+
+    private static final EntryIterator EMPTY_ENTRY_ITERATOR = new EntryIterator() {
+
+        @Override
+        public boolean hasNext() {
+            return false;
+        }
+
+        @Override
+        public Entry next() {
+            return null;
+        }
+
+        @Override
+        public TermIndex previous() {
+            return null;
+        }
+    };
 
     private final Logger logger = LoggerFactory.getLogger(RaftLeaderProviderImpl.class);
     private final Map<String, String> leaderMap = new ConcurrentHashMap<>();
@@ -62,6 +87,27 @@ public class RaftLeaderProviderImpl implements RaftLeaderProvider {
                                                new ClusterEvents.ContextLeaderConfirmation(context,
                                                                                            leaderMap
                                                                                                    .get(event.replicationGroup()))));
+        }
+    }
+
+    /**
+     * Handles a {@link io.axoniq.axonserver.enterprise.ContextEvents.ContextCreated} event. Finds the leader for the
+     * replication group of the context and publishes the leader on the application event bus.
+     * Executed after the other event handlers for this event type, to ensure that context creation is completely
+     * handled.
+     *
+     * @param event the context created event
+     */
+    @EventListener
+    @Order(100)
+    public void on(ContextEvents.ContextCreated event) {
+        String leader = leaderMap.get(event.replicationGroup());
+        if (node.equals(leader)) {
+            applicationEventPublisher.publishEvent(new ClusterEvents.BecomeContextLeader(event.context(),
+                                                                                         () -> EMPTY_ENTRY_ITERATOR));
+        } else {
+            applicationEventPublisher.publishEvent(new ClusterEvents.ContextLeaderConfirmation(event.context(),
+                                                                                               leader));
         }
     }
 

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 /**
  * Component that provides information on the leader for a raft group containing contexts.
@@ -26,30 +25,25 @@ public class ContextLeaderProviderImpl implements ContextLeaderProvider {
 
     private final String node;
     private final int waitForLeaderTimeout;
-    private final Function<String, String> raftLeaderProvider;
 
     /**
      * Constructor autowired by application
      * @param configuration configuration of the Axon Server node
-     * @param raftLeaderProvider provides the leader for a raft group
      * @param raftProperties raft properties
      */
     @Autowired
     public ContextLeaderProviderImpl(MessagingPlatformConfiguration configuration,
-                                     RaftLeaderProvider raftLeaderProvider,
                                      RaftProperties raftProperties) {
-        this(configuration.getName(), raftProperties.getWaitForLeaderTimeout(), raftLeaderProvider::getLeader);
+        this(configuration.getName(), raftProperties.getWaitForLeaderTimeout());
     }
 
     /**
-     * @param node the name of the current node
+     * @param node                 the name of the current node
      * @param waitForLeaderTimeout timeout to keep checking when there is no leader for a context
-     * @param raftLeaderProvider function to get the leader for a replication group
      */
-    ContextLeaderProviderImpl(String node, int waitForLeaderTimeout, Function<String, String> raftLeaderProvider) {
+    ContextLeaderProviderImpl(String node, int waitForLeaderTimeout) {
         this.node = node;
         this.waitForLeaderTimeout = waitForLeaderTimeout;
-        this.raftLeaderProvider = raftLeaderProvider;
     }
 
     /**
@@ -74,16 +68,6 @@ public class ContextLeaderProviderImpl implements ContextLeaderProvider {
     @EventListener
     public void on(ContextEvents.ContextPreDelete contextDeleted) {
         leaderMap.remove(contextDeleted.context());
-    }
-
-    @EventListener
-    public void on(ContextEvents.ContextCreated event) {
-        String leader = raftLeaderProvider.apply(event.replicationGroup());
-        if (leader == null) {
-            leaderMap.remove(event.context());
-        } else {
-            leaderMap.put(event.context(), leader);
-        }
     }
 
     @EventListener
