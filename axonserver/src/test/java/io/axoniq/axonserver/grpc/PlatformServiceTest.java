@@ -51,7 +51,7 @@ public class PlatformServiceTest {
                                               eventPublisher,
                                               new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
                                                       .newBuilder().setAck(ack).build()),
-                                              new DefaultClientNameRegistry());
+                                              new DefaultClientIdRegistry());
     }
 
     @Test

@@ -19,7 +19,7 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
@@ -62,7 +62,7 @@ public class CommandServiceTest {
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
                                                  CommandProviderInbound.newBuilder().setAck(ack).build())),
-                                         new DefaultClientNameRegistry());
+                                         new DefaultClientIdRegistry());
     }
 
     @Test
@@ -77,9 +77,10 @@ public class CommandServiceTest {
         BlockingQueue<FlowControlQueues<WrappedCommand>.DestinationNode> queue = commandQueue.getSegments().values()
                                                                                              .iterator().next();
 
-        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                             "name");
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                         "name");
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
+                                                                             clientIdentification.getClientStreamId(),
                                                                              new SerializedCommand(Command.newBuilder()
                                                                                                           .build())));
         Thread.sleep(50);

@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
@@ -22,11 +22,15 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class QueryMetricsRegistryTest {
+
     private QueryMetricsRegistry testSubject;
-    private ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT, "processor");
+    private ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                             "processor");
+
     @Before
     public void setUp() {
-        testSubject = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
+        testSubject = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                new DefaultMetricCollector()));
     }
 
     @Test
@@ -41,7 +45,8 @@ public class QueryMetricsRegistryTest {
                 .queryMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), clientIdentification, "");
         assertEquals(1, queryMetric.getCount());
         queryMetric = testSubject.queryMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"),
-                                              new ClientIdentification(Topology.DEFAULT_CONTEXT, "processor1"),
+                                              new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                             "processor1"),
                                               "");
         assertEquals(0, queryMetric.getCount());
     }

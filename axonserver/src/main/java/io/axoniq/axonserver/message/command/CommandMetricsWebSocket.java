@@ -74,7 +74,8 @@ public class CommandMetricsWebSocket {
                                                                     Set<CommandRegistrationCache.RegistrationEntry> registrations) {
         return registrations.stream()
                             .map(registration -> commandMetricsRegistry.commandMetric(registration.getCommand(),
-                                                                                      commandHander.getClient(),
+                                                                                      commandHander
+                                                                                              .getClientStreamIdentification(),
                                                                                       commandHander.getComponentName()));
     }
 }

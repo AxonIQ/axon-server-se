@@ -12,7 +12,7 @@ package io.axoniq.axonserver.component.instance;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.grpc.DefaultClientNameRegistry;
+import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
@@ -25,7 +25,7 @@ import static org.junit.Assert.*;
  */
 public class GenericClientsTest {
 
-    private GenericClients testSubject = new GenericClients(new DefaultClientNameRegistry(),
+    private GenericClients testSubject = new GenericClients(new DefaultClientIdRegistry(),
                                                             new MessagingPlatformConfiguration(new SystemInfoProvider() {
                                                                 @Override
                                                                 public String getHostName() {

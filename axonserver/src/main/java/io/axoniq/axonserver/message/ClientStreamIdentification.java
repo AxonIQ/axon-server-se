@@ -16,25 +16,26 @@ import javax.annotation.Nonnull;
 /**
  * @author Marc Gathier
  */
-public class ClientIdentification implements Comparable<ClientIdentification> {
+public class ClientStreamIdentification implements Comparable<ClientStreamIdentification> {
 
-    private static final Comparator<ClientIdentification> COMPARATOR = Comparator
-            .comparing(ClientIdentification::getContext).thenComparing(ClientIdentification::getClientId);
+    private static final Comparator<ClientStreamIdentification> COMPARATOR = Comparator
+            .comparing(ClientStreamIdentification::getContext)
+            .thenComparing(ClientStreamIdentification::getClientStreamId);
     private final String context;
-    private final String clientId;
+    private final String clientStreamId;
 
 
-    public ClientIdentification(String context, String clientId) {
+    public ClientStreamIdentification(String context, String clientStreamId) {
         this.context = context;
-        this.clientId = clientId;
+        this.clientStreamId = clientStreamId;
     }
 
     public String getContext() {
         return context;
     }
 
-    public String getClientId() {
-        return clientId;
+    public String getClientStreamId() {
+        return clientStreamId;
     }
 
     @Override
@@ -45,26 +46,26 @@ public class ClientIdentification implements Comparable<ClientIdentification> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ClientIdentification that = (ClientIdentification) o;
+        ClientStreamIdentification that = (ClientStreamIdentification) o;
         return Objects.equals(context, that.context) &&
-                Objects.equals(clientId, that.clientId);
+                Objects.equals(clientStreamId, that.clientStreamId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(context, clientId);
+        return Objects.hash(context, clientStreamId);
     }
 
-    public int compareTo(@Nonnull ClientIdentification client) {
+    public int compareTo(@Nonnull ClientStreamIdentification client) {
         return COMPARATOR.compare(this, client);
     }
 
     @Override
     public String toString() {
-        return clientId + "." + context;
+        return clientStreamId + "." + context;
     }
 
     public String metricName() {
-        return clientId + "." + context;
+        return clientStreamId + "." + context;
     }
 }

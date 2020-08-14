@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.component.instance;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -20,11 +20,11 @@ import javax.annotation.Nonnull;
 @Component @Primary
 public class PlatformConnectedClients implements ClientIdentifications {
 
-    private final Set<ClientIdentification> clientIdentifications = new CopyOnWriteArraySet<>();
+    private final Set<ClientStreamIdentification> clientIdentifications = new CopyOnWriteArraySet<>();
 
     @Nonnull
     @Override
-    public Iterator<ClientIdentification> iterator() {
+    public Iterator<ClientStreamIdentification> iterator() {
         return clientIdentifications.iterator();
     }
 

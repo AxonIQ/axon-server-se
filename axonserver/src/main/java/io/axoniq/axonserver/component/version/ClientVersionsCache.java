@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.component.version;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
-import io.axoniq.axonserver.grpc.ClientNameRegistry;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -19,15 +19,15 @@ import java.util.function.Function;
  * @since 4.2.3
  */
 @Component
-public class ClientVersionsCache implements Function<ClientIdentification, String> {
+public class ClientVersionsCache implements Function<ClientStreamIdentification, String> {
 
     private Logger logger = LoggerFactory.getLogger(ClientVersionsCache.class);
 
-    private final Map<ClientIdentification, String> versions = new HashMap<>();
+    private final Map<ClientStreamIdentification, String> versions = new HashMap<>();
 
-    private final ClientNameRegistry clientNameRegistry;
+    private final ClientIdRegistry clientNameRegistry;
 
-    public ClientVersionsCache(ClientNameRegistry clientNameRegistry) {
+    public ClientVersionsCache(ClientIdRegistry clientNameRegistry) {
         this.clientNameRegistry = clientNameRegistry;
     }
 
@@ -38,7 +38,7 @@ public class ClientVersionsCache implements Function<ClientIdentification, Strin
      * @return the axon framework version
      */
     @Override
-    public String apply(ClientIdentification client) {
+    public String apply(ClientStreamIdentification client) {
         return versions.get(client);
     }
 
@@ -60,7 +60,7 @@ public class ClientVersionsCache implements Function<ClientIdentification, Strin
      */
     @EventListener
     public void on(ApplicationDisconnected evt) {
-        ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClientId());
+        ClientStreamIdentification client = new ClientStreamIdentification(evt.getContext(), evt.getClientStreamId());
         versions.remove(client);
         logger.trace("Version cleaned for client {} because disconnected.", client);
     }

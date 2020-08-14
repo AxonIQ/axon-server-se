@@ -5,7 +5,7 @@ import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -53,9 +53,9 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
      * @param heartbeat the heartbeat instruction
      */
     public void publish(PlatformOutboundInstruction heartbeat) {
-        for (ClientIdentification client : clientsSupportingHeartbeat) {
+        for (ClientStreamIdentification client : clientsSupportingHeartbeat) {
             try {
-                clientPublisher.publish(client.getClientId(), heartbeat);
+                clientPublisher.publish(client.getClientStreamId(), heartbeat);
             } catch (RuntimeException ignore) {
                 // failing to send heartbeat can be ignored
             }

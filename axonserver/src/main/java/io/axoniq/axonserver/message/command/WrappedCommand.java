@@ -10,18 +10,22 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 /**
  * @author Marc Gathier
  */
 public class WrappedCommand {
-    private final ClientIdentification client;
+
+    private final ClientStreamIdentification clientStreamIdentification;
+    private final String clientId;
     private final SerializedCommand command;
     private final long priority;
 
-    public WrappedCommand(ClientIdentification client, SerializedCommand command) {
-        this.client = client;
+    public WrappedCommand(ClientStreamIdentification clientStreamIdentification, String clientId,
+                          SerializedCommand command) {
+        this.clientStreamIdentification = clientStreamIdentification;
+        this.clientId = clientId;
         this.command = command;
         this.priority = command.getPriority();
     }
@@ -30,12 +34,23 @@ public class WrappedCommand {
         return command;
     }
 
-    public ClientIdentification client() {
-        return client;
+    public ClientStreamIdentification client() {
+        return clientStreamIdentification;
     }
 
     public long priority() {
         return priority;
     }
 
+    public String targetClientId() {
+        return clientId;
+    }
+
+    public String targetClientStreamId() {
+        return clientStreamIdentification.getClientStreamId();
+    }
+
+    public String targetContext() {
+        return clientStreamIdentification.getContext();
+    }
 }

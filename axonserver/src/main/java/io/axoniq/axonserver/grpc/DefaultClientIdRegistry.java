@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * @since 4.3.8, 4.4.1
  */
 @Component
-public class DefaultClientNameRegistry implements ClientNameRegistry {
+public class DefaultClientIdRegistry implements ClientIdRegistry {
 
     private final ConcurrentMap<String, String> clientMap = new ConcurrentHashMap();
 
@@ -26,26 +26,26 @@ public class DefaultClientNameRegistry implements ClientNameRegistry {
     }
 
     @Override
-    public boolean register(String clientUUID, String clientName) {
-        String prev = clientMap.put(clientUUID, clientName);
+    public boolean register(String clientStreamId, String clientId) {
+        String prev = clientMap.put(clientStreamId, clientId);
         return prev == null;
     }
 
     @Override
-    public boolean unregister(String clientUUID) {
-        return clientMap.remove(clientUUID) != null;
+    public boolean unregister(String clientStreamId) {
+        return clientMap.remove(clientStreamId) != null;
     }
 
     @Override
-    public String clientNameOf(String clientUUID) throws IllegalStateException {
-        if (!clientMap.containsKey(clientUUID)) {
-            throw new IllegalStateException("Client " + clientUUID + " is not present in this registry.");
+    public String clientId(String clientStreamId) throws IllegalStateException {
+        if (!clientMap.containsKey(clientStreamId)) {
+            throw new IllegalStateException("Client " + clientStreamId + " is not present in this registry.");
         }
-        return clientMap.get(clientUUID);
+        return clientMap.get(clientStreamId);
     }
 
     @Override
-    public Set<String> clientUuidsFor(String clientName) {
+    public Set<String> clientStreamIdsFor(String clientName) {
         return clientMap.entrySet()
                         .stream()
                         .filter(e -> clientName.equals(e.getValue()))

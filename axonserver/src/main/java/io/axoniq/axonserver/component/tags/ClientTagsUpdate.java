@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.component.tags;
 
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 import java.util.Collections;
 import java.util.Map;
@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public class ClientTagsUpdate {
 
-    private final ClientIdentification client;
+    private final ClientStreamIdentification client;
 
     private final Map<String, String> tags;
 
@@ -27,25 +27,26 @@ public class ClientTagsUpdate {
      * @param tags       the client's tags
      */
     public ClientTagsUpdate(String clientName, String context, Map<String, String> tags) {
-        this(new ClientIdentification(context, clientName), tags);
+        this(new ClientStreamIdentification(context, clientName), tags);
     }
 
     /**
      * Creates an instance for the specified client and tags.
      *
      * @param client the client identifier
-     * @param tags the client's tags
+     * @param tags   the client's tags
      */
-    public ClientTagsUpdate(ClientIdentification client, Map<String, String> tags) {
+    public ClientTagsUpdate(ClientStreamIdentification client, Map<String, String> tags) {
         this.client = client;
         this.tags = tags;
     }
 
     /**
      * Returns the client identifier.
+     *
      * @return the client identifier.
      */
-    public ClientIdentification client() {
+    public ClientStreamIdentification client() {
         return client;
     }
 

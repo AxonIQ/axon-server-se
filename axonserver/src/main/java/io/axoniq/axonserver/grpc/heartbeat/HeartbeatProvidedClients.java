@@ -7,7 +7,7 @@ import io.axoniq.axonserver.component.version.BackwardsCompatibleVersion;
 import io.axoniq.axonserver.component.version.ClientVersionsCache;
 import io.axoniq.axonserver.component.version.UnknownVersion;
 import io.axoniq.axonserver.component.version.Version;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ public class HeartbeatProvidedClients implements ClientIdentifications {
 
     private final ClientIdentifications clients;
 
-    private final Function<ClientIdentification, Version> versionSupplier;
+    private final Function<ClientStreamIdentification, Version> versionSupplier;
 
     /**
      * Constructs a {@link HeartbeatProvidedClients} starting from all clients and the {@link ClientVersionsCache} used
@@ -65,7 +65,7 @@ public class HeartbeatProvidedClients implements ClientIdentifications {
      * @param versionSupplier the function used to retrieve the Axon Framework version of each client
      */
     public HeartbeatProvidedClients(ClientIdentifications allClients,
-                                    Function<ClientIdentification, Version> versionSupplier) {
+                                    Function<ClientStreamIdentification, Version> versionSupplier) {
         this.clients = allClients;
         this.versionSupplier = versionSupplier;
     }
@@ -77,13 +77,13 @@ public class HeartbeatProvidedClients implements ClientIdentifications {
      */
     @Nonnull
     @Override
-    public Iterator<ClientIdentification> iterator() {
+    public Iterator<ClientStreamIdentification> iterator() {
         return stream(clients.spliterator(), false)
                 .filter(this::supportHeartbeat)
                 .iterator();
     }
 
-    private boolean supportHeartbeat(ClientIdentification clientIdentification) {
+    private boolean supportHeartbeat(ClientStreamIdentification clientIdentification) {
         Version clientVersion = versionSupplier.apply(clientIdentification);
         for (Version supportedVersion : supportedAxonFrameworkVersions) {
             try {

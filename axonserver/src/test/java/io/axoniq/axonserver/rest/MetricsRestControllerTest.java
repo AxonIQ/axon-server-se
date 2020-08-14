@@ -11,7 +11,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
@@ -37,20 +37,22 @@ import static org.mockito.Mockito.*;
  * @author Marc Gathier
  */
 public class MetricsRestControllerTest {
+
     private MetricsRestController testSubject;
     private CommandMetricsRegistry commandMetricsRegistry;
     private QueryMetricsRegistry queryMetricsRegistry;
-    private ClientIdentification testclient;
-    private ClientIdentification queryClient;
+    private ClientStreamIdentification testclient;
+    private ClientStreamIdentification queryClient;
     private Principal principal;
 
     @Before
-    public void setUp()  {
+    public void setUp() {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
-        testclient = new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                   "testclient");
+        testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                    "testclient");
         commandRegistrationCache.add("Sample", new CommandHandler<Object>(null,
-                                                                          testclient, "testcomponent") {
+                                                                          testclient, "testclient",
+                                                                          "testcomponent") {
             @Override
             public void dispatch(SerializedCommand request) {
 
@@ -69,15 +71,15 @@ public class MetricsRestControllerTest {
         commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
-        queryClient = new ClientIdentification("context", "testclient");
+        queryClient = new ClientStreamIdentification("context", "testclient");
         queryRegistrationCache.add(new QueryDefinition("context", "query"), "result",
                                    new QueryHandler<Object>(null,
-                                                            queryClient, "testcomponent") {
-            @Override
-            public void dispatch(SubscriptionQueryRequest query) {
+                                                            queryClient, "testcomponent", "testclient") {
+                                       @Override
+                                       public void dispatch(SubscriptionQueryRequest query) {
 
-            }
-        });
+                                       }
+                                   });
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));

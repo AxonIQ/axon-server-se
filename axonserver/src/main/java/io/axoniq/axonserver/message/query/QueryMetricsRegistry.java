@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
@@ -50,35 +50,40 @@ public class QueryMetricsRegistry {
 
     /**
      * Registers the duration of the handling of a query by a client.
-     * @param query the name of the query
+     *
+     * @param query          the name of the query
      * @param sourceClientId the source application requesting the query
-     * @param clientId the application handling the query
-     * @param duration the duration
+     * @param clientId       the application handling the query
+     * @param duration       the duration
      */
-    public void add(QueryDefinition query, String sourceClientId, ClientIdentification clientId, long duration) {
+    //TODO
+    public void add(QueryDefinition query, String sourceClientId, ClientStreamIdentification clientId, long duration) {
         try {
             timer(query, sourceClientId, clientId).record(duration, TimeUnit.MILLISECONDS);
-        } catch( Exception ex) {
+        } catch (Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
     /**
      * Retrieves the number of times that a query has been handled by a specific client.
-     * @param query the definition of the query
+     *
+     * @param query    the definition of the query
      * @param clientId the client handling the query
      * @return cluster metric with access to the number of times the client has handled the query
      */
-    public ClusterMetric clusterMetric(QueryDefinition query, ClientIdentification clientId){
+    public ClusterMetric clusterMetric(QueryDefinition query, ClientStreamIdentification clientId) {
         Tags tags = Tags.of(MeterFactory.CONTEXT, clientId.getContext(),
                             MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
-                            MeterFactory.TARGET, clientId.getClientId());
+                            MeterFactory.TARGET, clientId.getClientStreamId());
         return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_QUERY, tags),
-                                   new Metrics(BaseMetricName.AXON_QUERY.metric(), tags, meterFactory.clusterMetrics()));
+                                   new Metrics(BaseMetricName.AXON_QUERY.metric(),
+                                               tags,
+                                               meterFactory.clusterMetrics()));
     }
 
 
-    private Timer timer(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
+    private Timer timer(QueryDefinition query, String sourceClientId, ClientStreamIdentification clientId) {
         String metricName = metricName(query, sourceClientId, clientId);
         return timerMap.computeIfAbsent(metricName, n ->
                 meterFactory.timer(BaseMetricName.AXON_QUERY,
@@ -86,21 +91,22 @@ public class QueryMetricsRegistry {
                                            MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
                                            MeterFactory.CONTEXT, clientId.getContext(),
                                            MeterFactory.SOURCE, sourceClientId,
-                                           MeterFactory.TARGET, clientId.getClientId())));
+                                           MeterFactory.TARGET, clientId.getClientStreamId())));
     }
 
-    private String metricName(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
+    private String metricName(QueryDefinition query, String sourceClientId, ClientStreamIdentification clientId) {
         return String.format("%s.%s.%s", query.getQueryName(), sourceClientId, clientId.metricName());
     }
 
     /**
      * Retrieves the number of times that a query has been handled by a specific client.
-     * @param query the definition of the query
-     * @param clientId the client handling the query
+     *
+     * @param query         the definition of the query
+     * @param clientId      the client handling the query
      * @param componentName the client application name
      * @return QueryMetric containing the number of times that the query has been handled by this client
      */
-    public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
+    public QueryMetric queryMetric(QueryDefinition query, ClientStreamIdentification clientId, String componentName) {
         ClusterMetric clusterMetric = clusterMetric(query, clientId);
         return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.count());
     }

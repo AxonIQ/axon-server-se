@@ -2,7 +2,7 @@ package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.component.instance.ClientIdentifications;
 import io.axoniq.axonserver.component.version.BackwardsCompatibleVersion;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.junit.*;
 
 import java.util.Arrays;
@@ -21,15 +21,16 @@ public class HeartbeatProvidedClientsTest {
 
     @Test
     public void iterator() {
-        ClientIdentifications clients = () -> Arrays.asList((ClientIdentification) new ClientIdentification("context",
-                                                                                                            "A"),
-                                                            new ClientIdentification("context", "B"),
-                                                            new ClientIdentification("context", "C"),
-                                                            new ClientIdentification("context", "D"),
-                                                            new ClientIdentification("context", "E"),
-                                                            new ClientIdentification("context", "F"),
-                                                            new ClientIdentification("context", "G"),
-                                                            new ClientIdentification("context", "H")
+        ClientIdentifications clients = () -> Arrays.asList((ClientStreamIdentification) new ClientStreamIdentification(
+                                                                    "context",
+                                                                    "A"),
+                                                            new ClientStreamIdentification("context", "B"),
+                                                            new ClientStreamIdentification("context", "C"),
+                                                            new ClientStreamIdentification("context", "D"),
+                                                            new ClientStreamIdentification("context", "E"),
+                                                            new ClientStreamIdentification("context", "F"),
+                                                            new ClientStreamIdentification("context", "G"),
+                                                            new ClientStreamIdentification("context", "H")
         ).iterator();
         Map<String, String> versionSupplier = new HashMap<>();
         versionSupplier.put("A", "3.8.1");
@@ -41,13 +42,13 @@ public class HeartbeatProvidedClientsTest {
         versionSupplier.put("G", "5.1.3");
         HeartbeatProvidedClients testSubjects = new HeartbeatProvidedClients(
                 clients,
-                clientId -> new BackwardsCompatibleVersion(versionSupplier.get(clientId.getClientId())));
+                clientId -> new BackwardsCompatibleVersion(versionSupplier.get(clientId.getClientStreamId())));
 
-        Iterator<ClientIdentification> iterator = testSubjects.iterator();
-        assertEquals("D", iterator.next().getClientId());
-        assertEquals("E", iterator.next().getClientId());
-        assertEquals("F", iterator.next().getClientId());
-        assertEquals("G", iterator.next().getClientId());
+        Iterator<ClientStreamIdentification> iterator = testSubjects.iterator();
+        assertEquals("D", iterator.next().getClientStreamId());
+        assertEquals("E", iterator.next().getClientStreamId());
+        assertEquals("F", iterator.next().getClientStreamId());
+        assertEquals("G", iterator.next().getClientStreamId());
         assertFalse(iterator.hasNext());
     }
 }

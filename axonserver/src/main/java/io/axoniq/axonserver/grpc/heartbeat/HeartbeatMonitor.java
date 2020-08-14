@@ -8,7 +8,7 @@ import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -46,9 +46,9 @@ public class HeartbeatMonitor {
 
     private final Publisher<PlatformOutboundInstruction> heartbeatPublisher;
 
-    private final Map<ClientIdentification, Instant> lastReceivedHeartBeats = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, Instant> lastReceivedHeartBeats = new ConcurrentHashMap<>();
 
-    private final Map<ClientIdentification, String> clientComponents = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, String> clientComponents = new ConcurrentHashMap<>();
 
     /**
      * Constructs a {@link HeartbeatMonitor} that uses {@link PlatformService} to send and receive heartbeats messages.
@@ -66,7 +66,7 @@ public class HeartbeatMonitor {
                             @Value("${axoniq.axonserver.client-heartbeat-timeout:5000}") long heartbeatTimeout) {
         this(listener ->
                      platformService.onInboundInstruction(HEARTBEAT, (client, context, instruction) ->
-                             listener.accept(new ClientIdentification(context, client), instruction)),
+                             listener.accept(new ClientStreamIdentification(context, client), instruction)),
              eventPublisher,
              heartbeatPublisher,
              heartbeatTimeout, Clock.systemUTC());
@@ -84,7 +84,7 @@ public class HeartbeatMonitor {
      * @param clock                         the clock
      */
     public HeartbeatMonitor(
-            Consumer<BiConsumer<ClientIdentification, PlatformInboundInstruction>> heartbeatListenerRegistration,
+            Consumer<BiConsumer<ClientStreamIdentification, PlatformInboundInstruction>> heartbeatListenerRegistration,
             ApplicationEventPublisher eventPublisher,
             Publisher<PlatformOutboundInstruction> heartbeatPublisher,
             long heartbeatTimeout, Clock clock) {
@@ -95,7 +95,7 @@ public class HeartbeatMonitor {
         this.heartbeatPublisher = heartbeatPublisher;
     }
 
-    private void onHeartBeat(ClientIdentification clientIdentification, PlatformInboundInstruction heartbeat) {
+    private void onHeartBeat(ClientStreamIdentification clientIdentification, PlatformInboundInstruction heartbeat) {
         lastReceivedHeartBeats.put(clientIdentification, Instant.now(clock));
     }
 
@@ -106,7 +106,8 @@ public class HeartbeatMonitor {
      */
     @EventListener
     public void on(ApplicationConnected evt) {
-        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClientId());
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
+                                                                                         evt.getClientStreamId());
         clientComponents.put(clientIdentification, evt.getComponentName());
     }
 
@@ -117,10 +118,10 @@ public class HeartbeatMonitor {
             fixedRateString = "${axoniq.axonserver.client-heartbeat-check-rate:1000}")
     public void checkClientsStillAlive() {
         Instant timeout = Instant.now(clock).minus(heartbeatTimeout, ChronoUnit.MILLIS);
-        lastReceivedHeartBeats.forEach((client, instant) -> {
-            if (instant.isBefore(timeout) && clientComponents.containsKey(client)) {
-                String component = clientComponents.get(client);
-                eventPublisher.publishEvent(new ApplicationInactivityTimeout(client, component));
+        lastReceivedHeartBeats.forEach((clientStreamIdentification, instant) -> {
+            if (instant.isBefore(timeout) && clientComponents.containsKey(clientStreamIdentification)) {
+                String component = clientComponents.get(clientStreamIdentification);
+                eventPublisher.publishEvent(new ApplicationInactivityTimeout(clientStreamIdentification, component));
             }
         });
     }
@@ -146,7 +147,8 @@ public class HeartbeatMonitor {
      */
     @EventListener
     public void on(ApplicationDisconnected evt) {
-        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClientId());
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
+                                                                                         evt.getClientStreamId());
         lastReceivedHeartBeats.remove(clientIdentification);
         clientComponents.remove(clientIdentification);
     }

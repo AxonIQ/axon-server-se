@@ -3,7 +3,7 @@ package io.axoniq.axonserver.grpc.heartbeat;
 import io.axoniq.axonserver.component.instance.ClientIdentifications;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.junit.*;
 
 import java.util.Arrays;
@@ -22,8 +22,8 @@ public class HeartbeatPublisherTest {
 
     @Test
     public void publish() {
-        ClientIdentifications clients = () -> Arrays.asList(new ClientIdentification("context", "A"),
-                                                            new ClientIdentification("context", "B"))
+        ClientIdentifications clients = () -> Arrays.asList(new ClientStreamIdentification("context", "A"),
+                                                            new ClientStreamIdentification("context", "B"))
                                                     .iterator();
         Map<String, PlatformOutboundInstruction> receivedHeartbeat = new ConcurrentHashMap<>();
         PlatformOutboundInstruction instruction = newBuilder().setHeartbeat(Heartbeat.newBuilder().build()).build();

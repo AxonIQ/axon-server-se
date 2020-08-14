@@ -13,7 +13,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcesso
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdated;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
-import io.axoniq.axonserver.grpc.ClientNameRegistry;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -37,9 +37,9 @@ public class ProcessorsInfoTarget implements ClientProcessors {
 
     private final ClientProcessorMapping mapping;
 
-    private final ClientNameRegistry clientNameRegistry;
+    private final ClientIdRegistry clientNameRegistry;
 
-    public ProcessorsInfoTarget(ClientNameRegistry clientNameRegistry) {
+    public ProcessorsInfoTarget(ClientIdRegistry clientNameRegistry) {
         this.clientNameRegistry = clientNameRegistry;
         this.mapping = new ClientProcessorMapping() {
         };
@@ -51,7 +51,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
         String clientId = processorStatus.getClientId();
         Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientId, c -> new HashMap<>());
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
-        String clientName = clientNameRegistry.clientNameOf(clientId);
+        String clientName = clientNameRegistry.clientId(clientId);
         ClientProcessor clientProcessor = mapping.map(clientName,
                                                       clients.get(clientId),
                                                       processorStatus.getContext(),
@@ -62,13 +62,13 @@ public class ProcessorsInfoTarget implements ClientProcessors {
 
     @EventListener
     public void onClientConnected( TopologyEvents.ApplicationConnected event) {
-        clients.put(event.getClientId(), event.getComponentName());
+        clients.put(event.getClientStreamId(), event.getComponentName());
     }
 
     @EventListener
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
-        clients.remove(event.getClientId());
-        cache.remove(event.getClientId());
+        clients.remove(event.getClientStreamId());
+        cache.remove(event.getClientStreamId());
     }
 
     @Nonnull

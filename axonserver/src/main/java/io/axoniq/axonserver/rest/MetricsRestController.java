@@ -64,9 +64,12 @@ public class MetricsRestController {
 
     private List<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHander, Set<CommandRegistrationCache.RegistrationEntry> registrations) {
         return registrations.stream()
-                .map(registration -> commandMetricsRegistry.commandMetric(registration.getCommand(), commandHander.getClient(), commandHander.getComponentName()))
-               // .filter(m -> m.getCount() == 0)
-                .collect(Collectors.toList());
+                            .map(registration -> commandMetricsRegistry.commandMetric(registration.getCommand(),
+                                                                                      commandHander
+                                                                                              .getClientStreamIdentification(),
+                                                                                      commandHander.getComponentName()))
+                            // .filter(m -> m.getCount() == 0)
+                            .collect(Collectors.toList());
     }
 
     @GetMapping("/query-metrics")
@@ -78,12 +81,19 @@ public class MetricsRestController {
         return metrics;
     }
 
-    private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition, Map<String, Set<QueryHandler>> handlersPerComponent) {
+    private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition,
+                                                                   Map<String, Set<QueryHandler<?>>> handlersPerComponent) {
         return handlersPerComponent.entrySet().stream()
-                .map(queryHandlers -> queryHandlers.getValue().stream().map(queryHandler ->
-                        queryMetricsRegistry.queryMetric(queryDefinition, queryHandler.getClient(), queryHandlers.getKey())
-                ).collect(Collectors.toList()))
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+                                   .map(queryHandlers -> queryHandlers.getValue().stream().map(queryHandler ->
+                                                                                                       queryMetricsRegistry
+                                                                                                               .queryMetric(
+                                                                                                                       queryDefinition,
+                                                                                                                       queryHandler
+                                                                                                                               .getClientStreamIdentification(),
+                                                                                                                       queryHandlers
+                                                                                                                               .getKey())
+                                   ).collect(Collectors.toList()))
+                                   .flatMap(Collection::stream)
+                                   .collect(Collectors.toList());
     }
 }

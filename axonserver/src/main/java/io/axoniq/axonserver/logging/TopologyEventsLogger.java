@@ -26,15 +26,17 @@ public class TopologyEventsLogger {
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
         if( event.isProxied()) {
-            logger.info("Application connected via {}: {}, clientId = {}, context = {}",
+            logger.info("Application connected via {}: {}, clientId = {}, clientStreamId = {}, context = {}",
                         event.getProxy(),
                         event.getComponentName(),
                         event.getClientId(),
+                        event.getClientStreamId(),
                         event.getContext());
         } else {
-            logger.info("Application connected: {}, clientId = {}, context = {}",
+            logger.info("Application connected: {}, clientId = {}, clientStreamId = {}, context = {}",
                         event.getComponentName(),
                         event.getClientId(),
+                        event.getClientStreamId(),
                         event.getContext());
         }
     }
@@ -45,12 +47,12 @@ public class TopologyEventsLogger {
             logger.info("Application disconnected via {}: {}, clientId = {}, context = {}",
                         event.getProxy(),
                         event.getComponentName(),
-                        event.getClientId(),
+                        event.getClientStreamId(),
                         event.getContext());
         } else {
             logger.info("Application disconnected: {}, clientId = {}, context = {}",
                         event.getComponentName(),
-                        event.getClientId(),
+                        event.getClientStreamId(),
                         event.getContext());
         }
     }

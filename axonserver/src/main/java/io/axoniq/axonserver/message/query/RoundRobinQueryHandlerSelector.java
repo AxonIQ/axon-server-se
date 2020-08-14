@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 import java.util.NavigableSet;
 import java.util.Objects;
@@ -21,20 +21,24 @@ import java.util.concurrent.ConcurrentMap;
  * @author Marc Gathier
  */
 public class RoundRobinQueryHandlerSelector implements QueryHandlerSelector {
-    private final ConcurrentMap<QueryDefinitionComponent, ClientIdentification> lastClientMap = new ConcurrentHashMap<>();
+
+    private final ConcurrentMap<QueryDefinitionComponent, ClientStreamIdentification> lastClientMap = new ConcurrentHashMap<>();
 
     @Override
-    public ClientIdentification select(QueryDefinition queryDefinition, String componentName, NavigableSet<ClientIdentification> queryHandlers) {
-        if( queryHandlers.isEmpty()) return null;
+    public ClientStreamIdentification select(QueryDefinition queryDefinition, String componentName,
+                                             NavigableSet<ClientStreamIdentification> queryHandlers) {
+        if (queryHandlers.isEmpty()) {
+            return null;
+        }
         QueryDefinitionComponent key = new QueryDefinitionComponent(queryDefinition, componentName);
-        ClientIdentification last = lastClientMap.get(key);
-        if( last == null) {
+        ClientStreamIdentification last = lastClientMap.get(key);
+        if (last == null) {
             last = queryHandlers.first();
             lastClientMap.put(key, last);
             return last;
         }
 
-        SortedSet<ClientIdentification> tail = queryHandlers.tailSet(last, false);
+        SortedSet<ClientStreamIdentification> tail = queryHandlers.tailSet(last, false);
         if( tail.isEmpty()) {
             last = queryHandlers.first();
         } else  {

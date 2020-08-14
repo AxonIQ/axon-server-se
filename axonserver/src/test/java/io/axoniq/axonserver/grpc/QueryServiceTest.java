@@ -20,7 +20,7 @@ import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
@@ -63,26 +63,34 @@ public class QueryServiceTest {
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                                                     .setAck(ack)
                                                                                                     .build()),
-                                       new DefaultClientNameRegistry());
+                                       new DefaultClientIdRegistry());
     }
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<QueryProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
+        CountingStreamObserver<QueryProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2).setClientId("name").build()).build());
+        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2)
+                                                                                          .setClientId("name").build())
+                                                  .build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
-        ClientIdentification name = new ClientIdentification(Topology.DEFAULT_CONTEXT, "name");
-        queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
-                                                                     QueryRequest.newBuilder()
-                                                                                 .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
-                                                                                 .build()), System.currentTimeMillis() + 2000));
+        ClientStreamIdentification clientStreamIdentification =
+                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "name");
+        queryQueue.put(clientStreamIdentification.toString(), new WrappedQuery(
+                clientStreamIdentification,
+                "name",
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
+                                    QueryRequest.newBuilder()
+                                                .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
+                                                .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
+        queryQueue.put(clientStreamIdentification.toString(), new WrappedQuery(
+                clientStreamIdentification,
+                "name",
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()),
+                System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
         verify(queryDispatcher).removeFromCache(any(), any());

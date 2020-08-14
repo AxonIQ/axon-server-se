@@ -10,13 +10,13 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.util.ChangeableClock;
 import org.junit.*;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
@@ -35,7 +35,7 @@ public class CommandCacheTest {
     public void clearOnTimeout() {
         AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
         testSubject.put("1234", new CommandInformation("1234", "Source", responseAtomicReference::set,
-                                                       new ClientIdentification("context", "client"),
+                                                       new ClientStreamIdentification("context", "client"),
                                                        "component"));
         clock.forward(100000);
         testSubject.clearOnTimeout();

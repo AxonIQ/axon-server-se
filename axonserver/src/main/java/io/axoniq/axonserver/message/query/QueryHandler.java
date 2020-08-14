@@ -12,7 +12,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.grpc.stub.StreamObserver;
 
@@ -23,25 +23,31 @@ import java.util.Objects;
  * @author Marc Gathier
  * @since 4.0
  */
-public abstract class QueryHandler<T>  {
-    private final ClientIdentification client;
+public abstract class QueryHandler<T> {
+
+    private final ClientStreamIdentification clientStreamIdentification;
     private final String componentName;
+    private final String clientId;
     protected final StreamObserver<T> streamObserver;
 
-    protected QueryHandler(StreamObserver<T> streamObserver, ClientIdentification client, String componentName) {
-        this.client = client;
+    protected QueryHandler(StreamObserver<T> streamObserver,
+                           ClientStreamIdentification clientStreamIdentification,
+                           String componentName, String clientId) {
+        this.clientStreamIdentification = clientStreamIdentification;
         this.streamObserver = streamObserver;
         this.componentName = componentName;
+        this.clientId = clientId;
     }
 
     /**
      * Directly sends a query (initial query for a subscription query to the target client)
+     *
      * @param query the query to send
      */
     public abstract void dispatch(SubscriptionQueryRequest query);
 
-    public ClientIdentification getClient() {
-        return client;
+    public ClientStreamIdentification getClientStreamIdentification() {
+        return clientStreamIdentification;
     }
 
     public String getComponentName() {
@@ -49,11 +55,11 @@ public abstract class QueryHandler<T>  {
     }
 
     public String queueName() {
-        return client.toString();
+        return clientStreamIdentification.toString();
     }
 
     public String toString() {
-        return client.toString();
+        return clientStreamIdentification.toString();
     }
 
     /**
@@ -63,7 +69,9 @@ public abstract class QueryHandler<T>  {
      * @param timeout timeout of the query
      */
     public void enqueue(SerializedQuery request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
-        WrappedQuery wrappedQuery = new WrappedQuery(request.withClient(getClientId()), timeout);
+        WrappedQuery wrappedQuery = new WrappedQuery(getClientStreamIdentification(),
+                                                     clientId(),
+                                                     request.withClient(getClientStreamId()), timeout);
         queryQueue.put(queueName(), wrappedQuery, wrappedQuery.priority());
     }
 
@@ -76,15 +84,19 @@ public abstract class QueryHandler<T>  {
             return false;
         }
         QueryHandler<?> that = (QueryHandler<?>) o;
-        return Objects.equals(client, that.client);
+        return Objects.equals(clientStreamIdentification, that.clientStreamIdentification);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(client);
+        return Objects.hash(clientStreamIdentification);
     }
 
-    public String getClientId() {
-        return client.getClientId();
+    public String getClientStreamId() {
+        return clientStreamIdentification.getClientStreamId();
+    }
+
+    public String clientId() {
+        return clientId;
     }
 }
