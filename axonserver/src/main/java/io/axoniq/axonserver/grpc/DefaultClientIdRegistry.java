@@ -37,7 +37,7 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
     }
 
     @Override
-    public String clientId(String clientStreamId) throws IllegalStateException {
+    public String clientId(String clientStreamId) {
         if (!clientMap.containsKey(clientStreamId)) {
             throw new IllegalStateException("Client " + clientStreamId + " is not present in this registry.");
         }
@@ -45,10 +45,10 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
     }
 
     @Override
-    public Set<String> clientStreamIdsFor(String clientName) {
+    public Set<String> clientStreamIdsFor(String clientId) {
         return clientMap.entrySet()
                         .stream()
-                        .filter(e -> clientName.equals(e.getValue()))
+                        .filter(e -> clientId.equals(e.getValue()))
                         .map(Map.Entry::getKey)
                         .collect(Collectors.toSet());
     }

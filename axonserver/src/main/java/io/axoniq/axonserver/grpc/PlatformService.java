@@ -75,7 +75,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
     private final InstructionAckSource<PlatformOutboundInstruction> instructionAckSource;
-    private final ClientIdRegistry clientNameRegistry;
+    private final ClientIdRegistry clientIdRegistry;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
@@ -85,19 +85,19 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      *                             working under
      * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
      * @param instructionAckSource responsible for sending instruction acknowledgements
-     * @param clientNameRegistry
+     * @param clientIdRegistry
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
                            ApplicationEventPublisher eventPublisher,
                            @Qualifier("platformInstructionAckSource")
                                    InstructionAckSource<PlatformOutboundInstruction> instructionAckSource,
-                           ClientIdRegistry clientNameRegistry) {
+                           ClientIdRegistry clientIdRegistry) {
         this.topology = topology;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
-        this.clientNameRegistry = clientNameRegistry;
+        this.clientIdRegistry = clientIdRegistry;
         onInboundInstruction(RequestCase.ACK, (client, context, instruction) -> {
             InstructionAck ack = instruction.getAck();
             if (isUnsupportedInstructionErrorResult(ack)) {
@@ -160,7 +160,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 if (instruction.hasRegister()) { // TODO: 11/1/2019 register this as instruction handler
                     instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(), sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
-                    String clientUUID = clientNameRegistry.register(client.getClientId());
+                    String clientUUID = clientIdRegistry.register(client.getClientId());
                     eventPublisher.publishEvent(new ClientTagsUpdate(clientUUID,
                                                                      context,
                                                                      client.getTagsMap()));
@@ -221,7 +221,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     public boolean requestReconnect(String clientName) {
         logger.debug("Request reconnect: {}", clientName);
-        Set<String> clientUuids = clientNameRegistry.clientStreamIdsFor(clientName);
+        Set<String> clientUuids = clientIdRegistry.clientStreamIdsFor(clientName);
         return connectionMap.entrySet().stream()
                             .filter(e -> clientUuids.contains(e.getKey().clientId))
                             .map(e -> requestReconnect(e.getKey()))
@@ -259,7 +259,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
     public void sendToClientName(String clientName, PlatformOutboundInstruction instruction) {
-        Set<String> clientUuids = clientNameRegistry.clientStreamIdsFor(clientName);
+        Set<String> clientUuids = clientIdRegistry.clientStreamIdsFor(clientName);
         connectionMap.entrySet().stream()
                      .filter(e -> clientUuids.contains(e.getKey().clientId))
                      .map(Map.Entry::getValue)
@@ -373,7 +373,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         eventPublisher.publishEvent(new ApplicationConnected(clientComponent.context,
                                                              clientComponent.component,
                                                              clientComponent.clientId,
-                                                             clientNameRegistry.clientId(clientComponent.clientId),
+                                                             clientIdRegistry.clientId(clientComponent.clientId),
                                                              null
         ));
     }
@@ -391,10 +391,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     clientComponent.context,
                     clientComponent.component,
                     clientComponent.clientId,
-                    clientNameRegistry.clientId(clientComponent.clientId),
+                    clientIdRegistry.clientId(clientComponent.clientId),
                     null
             ));
-            clientNameRegistry.unregister(clientComponent.clientId);
+            clientIdRegistry.unregister(clientComponent.clientId);
         }
     }
 

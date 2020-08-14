@@ -66,7 +66,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<QueryProviderInbound> instructionAckSource;
-    private final ClientIdRegistry clientNameRegistry;
+    private final ClientIdRegistry clientIdRegistry;
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -76,13 +76,13 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
                                 InstructionAckSource<QueryProviderInbound> instructionAckSource,
-                        ClientIdRegistry clientNameRegistry) {
+                        ClientIdRegistry clientIdRegistry) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
-        this.clientNameRegistry = clientNameRegistry;
+        this.clientIdRegistry = clientIdRegistry;
     }
 
     @PreDestroy
@@ -185,22 +185,24 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             }
 
             private void flowControl(FlowControl flowControl) {
-                ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context,
-                                                                                                 flowControl
-                                                                                                         .getClientId());
-                client.compareAndSet(null, clientIdentification);
+                String clientStreamId = clientIdRegistry.register(flowControl.getClientId());
+                if (!client.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
+                    clientIdRegistry.unregister(clientStreamId);
+                }
                 if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
                                                                                  client.get().toString(),
                                                                                  wrappedQueryProviderInboundObserver,
                                                                                  processingThreads))) {
-                    dispatcherListeners.put(clientIdentification, listener.get());
+                    dispatcherListeners.put(client.get(), listener.get());
                 }
                 listener.get().addPermits(flowControl.getPermits());
             }
 
             private void checkInitClient(String clientId, String componentName) {
-                String clientStreamId = clientNameRegistry.register(clientId);
-                client.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId));
+                String clientStreamId = clientIdRegistry.register(clientId);
+                if (!client.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
+                    clientIdRegistry.unregister(clientStreamId);
+                }
                 queryHandler.compareAndSet(null,
                                            new DirectQueryHandler(wrappedQueryProviderInboundObserver, client.get(),
                                                                   componentName, clientId));
@@ -223,11 +225,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void cleanup() {
                 if (client.get() != null) {
                     String clientStreamId = client.get().getClientStreamId();
-                    String clientId = clientNameRegistry.clientId(clientStreamId);
+                    String clientId = clientIdRegistry.clientId(clientStreamId);
                     eventPublisher.publishEvent(new QueryHandlerDisconnected(context,
                                                                              clientId,
                                                                              clientStreamId));
-                    clientNameRegistry.unregister(clientStreamId);
+                    clientIdRegistry.unregister(clientStreamId);
                 }
                 if (listener.get() != null) {
                     dispatcherListeners.remove(client.get());

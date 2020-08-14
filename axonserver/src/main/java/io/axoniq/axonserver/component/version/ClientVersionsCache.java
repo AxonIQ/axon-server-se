@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.component.version;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
-import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +24,7 @@ public class ClientVersionsCache implements Function<ClientStreamIdentification,
 
     private final Map<ClientStreamIdentification, String> versions = new HashMap<>();
 
-    private final ClientIdRegistry clientNameRegistry;
-
-    public ClientVersionsCache(ClientIdRegistry clientNameRegistry) {
-        this.clientNameRegistry = clientNameRegistry;
+    public ClientVersionsCache() {
     }
 
     /**

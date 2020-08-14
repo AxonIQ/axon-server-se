@@ -11,7 +11,6 @@ package io.axoniq.axonserver.component.instance;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
@@ -31,13 +30,10 @@ import javax.annotation.Nonnull;
 @Primary @Component
 public class GenericClients implements Clients {
 
-    private final ClientIdRegistry clientNameRegistry;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final Map<ClientStreamIdentification, Client> clientRegistrations = new ConcurrentHashMap<>();
 
-    public GenericClients(ClientIdRegistry clientNameRegistry,
-                          MessagingPlatformConfiguration messagingPlatformConfiguration) {
-        this.clientNameRegistry = clientNameRegistry;
+    public GenericClients(MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
@@ -54,9 +50,8 @@ public class GenericClients implements Clients {
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
-        String clientName = clientNameRegistry.clientId(event.getClientStreamId());
         this.clientRegistrations.put(event.clientIdentification(),
-                                     new GenericClient(clientName,
+                                     new GenericClient(event.getClientId(),
                                                        event.getComponentName(),
                                                        event.getContext(),
                                                        event.isProxied() ? event

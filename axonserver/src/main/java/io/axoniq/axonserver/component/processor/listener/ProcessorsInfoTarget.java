@@ -13,7 +13,6 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcesso
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdated;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
-import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -37,10 +36,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
 
     private final ClientProcessorMapping mapping;
 
-    private final ClientIdRegistry clientNameRegistry;
-
-    public ProcessorsInfoTarget(ClientIdRegistry clientNameRegistry) {
-        this.clientNameRegistry = clientNameRegistry;
+    public ProcessorsInfoTarget() {
         this.mapping = new ClientProcessorMapping() {
         };
     }
@@ -51,8 +47,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
         String clientId = processorStatus.getClientId();
         Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientId, c -> new HashMap<>());
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
-        String clientName = clientNameRegistry.clientId(clientId);
-        ClientProcessor clientProcessor = mapping.map(clientName,
+        ClientProcessor clientProcessor = mapping.map(clientId,
                                                       clients.get(clientId),
                                                       processorStatus.getContext(),
                                                       eventProcessorInfo);

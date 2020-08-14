@@ -31,6 +31,7 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Set;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
@@ -47,6 +48,7 @@ public class QueryServiceTest {
     private FlowControlQueues<WrappedQuery> queryQueue;
 
     private ApplicationEventPublisher eventPublisher;
+    private DefaultClientIdRegistry clientIdRegistry;
 
     @Before
     public void setUp()  {
@@ -56,6 +58,7 @@ public class QueryServiceTest {
         when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
+        clientIdRegistry = new DefaultClientIdRegistry();
         testSubject = new QueryService(topology,
                                        queryDispatcher,
                                        () -> Topology.DEFAULT_CONTEXT,
@@ -63,7 +66,7 @@ public class QueryServiceTest {
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                                                     .setAck(ack)
                                                                                                     .build()),
-                                       new DefaultClientIdRegistry());
+                                       clientIdRegistry);
     }
 
     @Test
@@ -75,8 +78,11 @@ public class QueryServiceTest {
                                                   .build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
+        Set<String> clientStreamIds = clientIdRegistry.clientStreamIdsFor("name");
+        assertEquals(1, clientStreamIds.size());
+        String clientStreamId = clientStreamIds.iterator().next();
         ClientStreamIdentification clientStreamIdentification =
-                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "name");
+                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, clientStreamId);
         queryQueue.put(clientStreamIdentification.toString(), new WrappedQuery(
                 clientStreamIdentification,
                 "name",

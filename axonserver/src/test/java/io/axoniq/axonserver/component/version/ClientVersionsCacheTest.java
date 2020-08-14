@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.component.version;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.junit.*;
 
@@ -15,7 +14,7 @@ public class ClientVersionsCacheTest {
     @Test
     public void apply() {
 
-        ClientVersionsCache testSubject = new ClientVersionsCache(new DefaultClientIdRegistry());
+        ClientVersionsCache testSubject = new ClientVersionsCache();
         testSubject.on(new ClientVersionUpdate("A", "context1", "4.2.1"));
         testSubject.on(new ClientVersionUpdate("B", "context1", "4.2.2"));
         testSubject.on(new ClientVersionUpdate("C", "context2", "4.2.1"));

@@ -38,7 +38,6 @@ import org.springframework.stereotype.Service;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
@@ -79,7 +78,7 @@ public class CommandService implements AxonServerClientService {
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
-    private final ClientIdRegistry clientNameRegistry;
+    private final ClientIdRegistry clientIdRegistry;
 
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
@@ -90,13 +89,13 @@ public class CommandService implements AxonServerClientService {
                           ApplicationEventPublisher eventPublisher,
                           @Qualifier("commandInstructionAckSource")
                                   InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource,
-                          ClientIdRegistry clientNameRegistry) {
+                          ClientIdRegistry clientIdRegistry) {
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
-        this.clientNameRegistry = clientNameRegistry;
+        this.clientIdRegistry = clientIdRegistry;
     }
 
     @PreDestroy
@@ -124,14 +123,13 @@ public class CommandService implements AxonServerClientService {
 
     public StreamObserver<CommandProviderOutbound> openStream(
             StreamObserver<SerializedCommandProviderInbound> responseObserver) {
-        String uuid = UUID.randomUUID().toString();
         String context = contextProvider.getContext();
         SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver = new SendingStreamObserver<>(
                 responseObserver);
         return new ReceivingStreamObserver<CommandProviderOutbound>(logger) {
-            private AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
-            private AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
-            private AtomicReference<CommandHandler> commandHandlerRef = new AtomicReference<>();
+            private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
+            private final AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
+            private final AtomicReference<CommandHandler<?>> commandHandlerRef = new AtomicReference<>();
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
@@ -189,28 +187,25 @@ public class CommandService implements AxonServerClientService {
             }
 
             private void flowControl(FlowControl flowControl) {
-                String clientUUID = clientNameRegistry.register(flowControl.getClientId());
-                ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context,
-                                                                                                 clientUUID);
-                if (!clientRef.compareAndSet(null, clientIdentification)) {
-                    clientNameRegistry.unregister(clientUUID);
+                String clientStreamId = clientIdRegistry.register(flowControl.getClientId());
+                if (!clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
+                    clientIdRegistry.unregister(clientStreamId);
                 }
                 if (listenerRef.compareAndSet(null,
                                               new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
                                                                                 clientRef.get().toString(),
                                                                                 wrappedResponseObserver,
                                                                                 processingThreads))) {
-                    dispatcherListeners.put(clientIdentification, listenerRef.get());
+                    dispatcherListeners.put(clientRef.get(), listenerRef.get());
                 }
                 listenerRef.get().addPermits(flowControl.getPermits());
             }
 
             private void checkInitClient(String clientId, String component) {
-                String clientUUID = clientNameRegistry.register(clientId);
-                if (!clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientUUID))) {
-                    clientNameRegistry.unregister(clientUUID);
+                String clientStreamId = clientIdRegistry.register(clientId);
+                if (!clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
+                    clientIdRegistry.unregister(clientStreamId);
                 }
-                ;
                 commandHandlerRef.compareAndSet(null,
                                                 new DirectCommandHandler(wrappedResponseObserver,
                                                                          clientRef.get(),
@@ -234,11 +229,11 @@ public class CommandService implements AxonServerClientService {
             private void cleanup() {
                 if (clientRef.get() != null) {
                     String clientStreamId = clientRef.get().getClientStreamId();
-                    String clientId = clientNameRegistry.clientId(clientStreamId);
+                    String clientId = clientIdRegistry.clientId(clientStreamId);
                     eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get().getContext(),
                                                                                clientId,
                                                                                clientStreamId));
-                    clientNameRegistry.unregister(clientStreamId);
+                    clientIdRegistry.unregister(clientStreamId);
                 }
                 GrpcCommandDispatcherListener listener = listenerRef.get();
                 if (listener != null) {

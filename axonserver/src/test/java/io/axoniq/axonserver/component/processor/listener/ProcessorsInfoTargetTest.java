@@ -11,7 +11,6 @@ package io.axoniq.axonserver.component.processor.listener;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
-import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.junit.*;
 
@@ -25,7 +24,7 @@ import static org.junit.Assert.*;
  */
 public class ProcessorsInfoTargetTest {
 
-    private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget(new DefaultClientIdRegistry());
+    private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget();
 
     @Test
     public void onEventProcessorStatusChange() {

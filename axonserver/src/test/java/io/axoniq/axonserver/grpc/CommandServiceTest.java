@@ -30,6 +30,7 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
 
@@ -44,6 +45,7 @@ public class CommandServiceTest {
     private FlowControlQueues<WrappedCommand> commandQueue;
     private ApplicationEventPublisher eventPublisher;
     private CommandDispatcher commandDispatcher;
+    private DefaultClientIdRegistry clientIdRegistry;
 
     @SuppressWarnings("unchecked")
     @Before
@@ -56,29 +58,34 @@ public class CommandServiceTest {
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
+        clientIdRegistry = new DefaultClientIdRegistry();
         testSubject = new CommandService(topology,
                                          commandDispatcher,
                                          () -> Topology.DEFAULT_CONTEXT,
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
                                                  CommandProviderInbound.newBuilder().setAck(ack).build())),
-                                         new DefaultClientIdRegistry());
+                                         clientIdRegistry);
     }
 
     @Test
     public void flowControl() throws Exception {
         CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1)
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder()
+                                                                                            .setPermits(1)
                                                                                             .setClientId("name")
                                                                                             .build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
         BlockingQueue<FlowControlQueues<WrappedCommand>.DestinationNode> queue = commandQueue.getSegments().values()
                                                                                              .iterator().next();
+        Set<String> clientStreamIds = clientIdRegistry.clientStreamIdsFor("name");
+        assertEquals(1, clientStreamIds.size());
+        String clientStreamId = clientStreamIds.iterator().next();
 
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                         "name");
+                                                                                         clientStreamId);
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
                                                                              clientIdentification.getClientStreamId(),
                                                                              new SerializedCommand(Command.newBuilder()
