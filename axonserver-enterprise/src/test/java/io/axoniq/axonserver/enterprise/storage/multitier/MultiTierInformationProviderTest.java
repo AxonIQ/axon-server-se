@@ -24,7 +24,6 @@ public class MultiTierInformationProviderTest {
         RaftGroupRepositoryManager raftGroupRepositoryManager = new RaftGroupRepositoryManager(null,
                                                                                                null,
                                                                                                null,
-                                                                                               null,
                                                                                                null) {
             @Override
             public boolean hasLowerTier(String replicationGroup) {

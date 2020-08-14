@@ -7,12 +7,12 @@ import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
 import io.axoniq.axonserver.enterprise.jpa.AdminContext;
-import io.axoniq.axonserver.enterprise.jpa.AdminContextRepository;
 import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
+import io.axoniq.axonserver.util.ContextNotFoundException;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +37,6 @@ public class RaftGroupRepositoryManager {
     private final ReplicationGroupMemberRepository raftGroupNodeRepository;
     private final ReplicationGroupContextRepository replicationGroupContextRepository;
     private final AdminReplicationGroupRepository adminReplicationGroupRepository;
-    private final AdminContextRepository adminContextRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final AtomicReference<Map<String, String>> contextsCache = new AtomicReference<>();
     private final Map<String, Map<Role, Set<String>>> nodesPerRolePerReplicationGroup = new ConcurrentHashMap<>();
@@ -47,13 +46,11 @@ public class RaftGroupRepositoryManager {
             ReplicationGroupMemberRepository raftGroupNodeRepository,
             ReplicationGroupContextRepository replicationGroupContextRepository,
             AdminReplicationGroupRepository adminReplicationGroupRepository,
-            AdminContextRepository adminContextRepository,
             MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.raftGroupNodeRepository = raftGroupNodeRepository;
         this.replicationGroupContextRepository = replicationGroupContextRepository;
         this.adminReplicationGroupRepository = adminReplicationGroupRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
-        this.adminContextRepository = adminContextRepository;
     }
 
     public Set<ReplicationGroupMember> getMyReplicationGroups() {
@@ -214,15 +211,7 @@ public class RaftGroupRepositoryManager {
             return replicationGroup;
         }
 
-        replicationGroup = adminContextRepository.findById(context)
-                                                 .map(adminContext -> adminContext.getReplicationGroup()
-                                                                                  .getName())
-                                                 .orElse(null);
-        if (replicationGroup != null) {
-            return replicationGroup;
-        }
-
-        throw new RuntimeException(context + ": not found in any replication group");
+        throw new ContextNotFoundException(context + ": not found in any replication group");
     }
 
     private Map<Role, Set<String>> initNodesPerRole(String replicationGroup) {

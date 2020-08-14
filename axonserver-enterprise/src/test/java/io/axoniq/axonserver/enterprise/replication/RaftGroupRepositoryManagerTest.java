@@ -3,14 +3,12 @@ package io.axoniq.axonserver.enterprise.replication;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.jpa.AdminContext;
-import io.axoniq.axonserver.enterprise.jpa.AdminContextRepository;
-import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroup;
 import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
+import io.axoniq.axonserver.util.ContextNotFoundException;
 import org.junit.*;
 
 import java.util.Collections;
@@ -65,19 +63,9 @@ public class RaftGroupRepositoryManagerTest {
         when(replicationGroupContextRepository.findByReplicationGroupName(anyString()))
                 .then(invocation -> Collections.singletonList(new ReplicationGroupContext(invocation.getArgument(0),
                                                                                           invocation.getArgument(0))));
-        AdminContextRepository adminContextRepository = mock(AdminContextRepository.class);
-        when(adminContextRepository.findById(anyString())).then(invocation -> {
-            String contextName = invocation.getArgument(0);
-            return nodes.stream().filter(n -> n.getGroupId().equals(contextName)).findFirst().map(member -> {
-                AdminContext adminContext = new AdminContext(contextName);
-                adminContext.setReplicationGroup(new AdminReplicationGroup(member.getGroupId()));
-                return adminContext;
-            });
-        });
         testSubject = new RaftGroupRepositoryManager(raftGroupNodeRepository,
                                                      replicationGroupContextRepository,
                                                      adminReplicationGroupRepository,
-                                                     adminContextRepository,
                                                      messagingPlatformConfiguration);
     }
 
@@ -158,20 +146,15 @@ public class RaftGroupRepositoryManagerTest {
         assertFalse(testSubject.hasLowerTier("context2"));
     }
 
-    @Test
+    @Test(expected = ContextNotFoundException.class)
     public void hasLowerTierContextNotOnCurrentNode() {
         when(messagingPlatformConfiguration.getName()).thenReturn("messaging");
-        assertFalse(testSubject.hasLowerTier("context2"));
+        testSubject.hasLowerTier("context2");
     }
 
-    @Test
+    @Test(expected = ContextNotFoundException.class)
     public void hasLowerTierFailsForUnknownContext() {
         when(messagingPlatformConfiguration.getName()).thenReturn("messaging");
-        try {
-            testSubject.hasLowerTier("context3");
-            fail("Unknown context should throw an exception");
-        } catch (Exception ex) {
-            assertTrue(ex.getMessage().contains("context3"));
-        }
+        testSubject.hasLowerTier("context3");
     }
 }
