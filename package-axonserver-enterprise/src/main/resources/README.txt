@@ -28,6 +28,14 @@ https://docs.axoniq.io/reference-guide/operations-guide/setting-up-axon-server
 
 Once Axon Server is running you can view its configuration using the Axon Dashboard at http://<axonserver>:8024.
 
+Release Notes for version 4.4.2
+-------------------------------
+* Fix for downloading and starting with cluster templates
+* Renamed field replicationsGroups to replicationGroup in cluster template
+* Fix storing entries when a context is created with pre-existing event store
+* Fix query from dashboard when query is executed from admin node and the target context is not defined on this admin node
+* Fix for timing issue in sharing metrics between Axon Server nodes causing exception during delete context
+
 Release Notes for version 4.4.1
 -------------------------------
 * Fix for migration of contexts created before version 4.3
