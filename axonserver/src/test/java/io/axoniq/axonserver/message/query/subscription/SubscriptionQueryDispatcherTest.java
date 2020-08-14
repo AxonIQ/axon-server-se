@@ -52,7 +52,7 @@ public class SubscriptionQueryDispatcherTest {
     }
 
     @Ignore
-    @Test  //TODO 
+    @Test  //TODO
     public void onApplicationDisconnect() {
         AtomicInteger dispatchedSubscriptions = new AtomicInteger();
         SubscriptionEvents.SubscribeQuery subscribeQuery =
