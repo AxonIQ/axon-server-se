@@ -2,12 +2,12 @@ package io.axoniq.axonserver.enterprise.topology;
 
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.enterprise.cluster.ClusterController;
+import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
+import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
 import io.axoniq.axonserver.enterprise.replication.ContextLeaderProvider;
 import io.axoniq.axonserver.enterprise.replication.GrpcRaftController;
-import io.axoniq.axonserver.enterprise.cluster.NodeSelector;
-import io.axoniq.axonserver.enterprise.jpa.ClusterNode;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
-
-import static io.axoniq.axonserver.RaftAdminGroup.isAdmin;
 
 /**
  * @author Marc Gathier
@@ -88,20 +86,14 @@ public class ClusterTopology implements Topology {
 
     @Override
     public Iterable<String> getMyContextNames() {
-        return raftController.getStorageContexts();
+        return raftController.getAllNonAdminContexts();
     }
 
     @Override
     public Iterable<String> getMyStorageContextNames() {
-        Set<String> names = new HashSet<>();
-        raftController.getStorageContexts().forEach(c -> {
-            if (!isAdmin(c)) {
-                names.add(c);
-            }
-        });
-        return names;
+        // TODO: check usages and change to getMyContextNames where applicable
+        return raftController.getAllNonAdminContexts();
     }
-
 
     @Override
     public boolean isAdminNode() {

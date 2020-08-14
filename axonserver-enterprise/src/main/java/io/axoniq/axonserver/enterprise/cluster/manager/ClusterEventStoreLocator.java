@@ -7,7 +7,10 @@ import io.axoniq.axonserver.enterprise.storage.multitier.MultiTierEventStore;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.topology.EventStoreLocator;
+import io.axoniq.axonserver.util.ContextNotFoundException;
 import org.springframework.stereotype.Controller;
+
+import javax.annotation.Nullable;
 
 /**
  * Finds an event store facade in an Axon Server cluster.
@@ -60,15 +63,7 @@ public class ClusterEventStoreLocator implements EventStoreLocator {
         if (raftGroupRepositoryManager.hasLowerTier(context)) {
             return multiTierEventStore;
         }
-        String leader = leaderProvider.getLeaderOrWait(context, true);
-        if (nodeName.equals(leader)) {
-            return localEventStore;
-        }
-
-        if (leader == null) {
-            return null;
-        }
-        return remoteEventStoreFactory.create(leader);
+        return leaderEventStore(context);
     }
 
     /**
@@ -82,14 +77,32 @@ public class ClusterEventStoreLocator implements EventStoreLocator {
      */
     @Override
     public EventStore getEventStore(String context, boolean forceLeader) {
-        if (raftGroupRepositoryManager.hasLowerTier(context)) {
-            return multiTierEventStore;
+        try {
+            if (raftGroupRepositoryManager.hasLowerTier(context)) {
+                return multiTierEventStore;
+            }
+
+            if (!forceLeader && raftGroupRepositoryManager.containsStorageContext(context)) {
+                return localEventStore;
+            }
+        } catch (ContextNotFoundException contextNotFoundException) {
+            // No information on the specified context found to determine if it is a multi-tier context
+            // request is sent to the leader
         }
 
-        if (!forceLeader && raftGroupRepositoryManager.containsStorageContext(context)) {
+        return leaderEventStore(context);
+    }
+
+    @Nullable
+    private EventStore leaderEventStore(String context) {
+        String leader = leaderProvider.getLeaderOrWait(context, true);
+        if (nodeName.equals(leader)) {
             return localEventStore;
         }
 
-        return getEventStore(context);
+        if (leader == null) {
+            return null;
+        }
+        return remoteEventStoreFactory.create(leader);
     }
 }

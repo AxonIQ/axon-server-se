@@ -64,7 +64,9 @@ public class RaftLeaderProviderImpl implements RaftLeaderProvider {
         this(configuration.getName(),
              r -> {
                  Set<String> local = raftGroupRepositoryManager.contextsPerReplicationGroup(r);
-                 local.addAll(adminContextController.contextsPerReplicationGroup(r));
+                 if (local.isEmpty()) {
+                     local = adminContextController.contextsPerReplicationGroup(r);
+                 }
                  return local;
              },
              applicationEventPublisher);
@@ -107,6 +109,24 @@ public class RaftLeaderProviderImpl implements RaftLeaderProvider {
             applicationEventPublisher.publishEvent(new ClusterEvents.ContextLeaderConfirmation(event.context(),
                                                                                                leader));
         }
+    }
+
+    /**
+     * Handles a {@link io.axoniq.axonserver.enterprise.ContextEvents.ContextDeleted} event.
+     * Checks if the context is still member of the replication group and if it is, publishes a
+     * ContextLeaderConfirmation event with the leader of the replication group.
+     *
+     * @param event the context created event
+     */
+    @EventListener
+    public void on(ContextEvents.ContextDeleted event) {
+        contextsPerReplicationGroup.apply(event.replicationGroup())
+                                   .stream()
+                                   .filter(context -> context.equals(event.context()))
+                                   .forEach(context -> applicationEventPublisher.publishEvent(
+                                           new ClusterEvents.ContextLeaderConfirmation(context,
+                                                                                       leaderMap
+                                                                                               .get(event.replicationGroup()))));
     }
 
     @EventListener

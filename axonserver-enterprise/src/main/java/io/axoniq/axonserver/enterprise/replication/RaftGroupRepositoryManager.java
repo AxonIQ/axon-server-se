@@ -6,12 +6,11 @@ import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
-import io.axoniq.axonserver.enterprise.jpa.AdminContext;
-import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
+import io.axoniq.axonserver.util.ContextNotFoundException;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -34,21 +34,17 @@ public class RaftGroupRepositoryManager {
 
     private final ReplicationGroupMemberRepository raftGroupNodeRepository;
     private final ReplicationGroupContextRepository replicationGroupContextRepository;
-    private final AdminReplicationGroupRepository adminReplicationGroupRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final AtomicReference<Map<String, String>> storageContextsCache = new AtomicReference<>();
-    private final AtomicReference<Map<String, String>> messagingContextsCache = new AtomicReference<>();
-    private final Map<String, Map<Role, Set<String>>> nodesPerRolePerContext = new ConcurrentHashMap<>();
-    private final Map<String, Role> rolePerContext = new ConcurrentHashMap<>();
+    private final AtomicReference<Map<String, String>> contextsCache = new AtomicReference<>();
+    private final Map<String, Map<Role, Set<String>>> nodesPerRolePerReplicationGroup = new ConcurrentHashMap<>();
+    private final Map<String, Role> rolePerReplicationGroup = new ConcurrentHashMap<>();
 
     public RaftGroupRepositoryManager(
             ReplicationGroupMemberRepository raftGroupNodeRepository,
             ReplicationGroupContextRepository replicationGroupContextRepository,
-            AdminReplicationGroupRepository adminReplicationGroupRepository,
             MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.raftGroupNodeRepository = raftGroupNodeRepository;
         this.replicationGroupContextRepository = replicationGroupContextRepository;
-        this.adminReplicationGroupRepository = adminReplicationGroupRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
@@ -60,11 +56,14 @@ public class RaftGroupRepositoryManager {
      * @return the names of all contexts that have an event store on this node
      */
     public Set<String> storageContexts() {
-        Map<String, String> contexts = storageContextsCache.get();
-        if (contexts == null) {
-            contexts = refreshContextCache();
-        }
-        return contexts.keySet();
+        return filter(contextsCache(), RoleUtils::hasStorage);
+    }
+
+    /**
+     * @return the names of all contexts on this node
+     */
+    public Set<String> contexts() {
+        return contextsCache().keySet();
     }
 
     /**
@@ -80,7 +79,6 @@ public class RaftGroupRepositoryManager {
     private Map<String, String> refreshContextCache() {
         Map<String, String> contexts = raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
                                                               .stream()
-                                                              .filter(group -> RoleUtils.hasStorage(group.getRole()))
                                                               .map(ReplicationGroupMember::getGroupId)
                                                               .filter(n -> !RaftAdminGroup.isAdmin(n))
                                                               .flatMap(replicationGroup -> replicationGroupContextRepository
@@ -91,26 +89,7 @@ public class RaftGroupRepositoryManager {
                                                                                       ReplicationGroupContext::getReplicationGroupName));
 
 
-        storageContextsCache.set(contexts);
-        return contexts;
-    }
-
-    private Map<String, String> refreshMessagingContextCache() {
-        Map<String, String> contexts = raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
-                                                              .stream()
-                                                              .filter(group -> Role.MESSAGING_ONLY
-                                                                      .equals(group.getRole()))
-                                                              .map(ReplicationGroupMember::getGroupId)
-                                                              .filter(n -> !RaftAdminGroup.isAdmin(n))
-                                                              .flatMap(replicationGroup -> replicationGroupContextRepository
-                                                                      .findByReplicationGroupName(replicationGroup)
-                                                                      .stream())
-                                                              .collect(Collectors
-                                                                               .toMap(ReplicationGroupContext::getName,
-                                                                                      ReplicationGroupContext::getReplicationGroupName));
-
-
-        messagingContextsCache.set(contexts);
+        contextsCache.set(contexts);
         return contexts;
     }
 
@@ -120,8 +99,8 @@ public class RaftGroupRepositoryManager {
 
     public void delete(String groupId) {
         raftGroupNodeRepository.deleteAll(raftGroupNodeRepository.findByGroupId(groupId));
-        nodesPerRolePerContext.remove(groupId);
-        rolePerContext.remove(groupId);
+        nodesPerRolePerReplicationGroup.remove(groupId);
+        rolePerReplicationGroup.remove(groupId);
         refreshContextCache();
     }
 
@@ -131,8 +110,8 @@ public class RaftGroupRepositoryManager {
             ReplicationGroupMember jpaRaftGroupNode = new ReplicationGroupMember(groupId, n);
             raftGroupNodeRepository.save(jpaRaftGroupNode);
         });
-        nodesPerRolePerContext.remove(groupId);
-        rolePerContext.remove(groupId);
+        nodesPerRolePerReplicationGroup.remove(groupId);
+        rolePerReplicationGroup.remove(groupId);
         refreshContextCache();
     }
 
@@ -150,16 +129,10 @@ public class RaftGroupRepositoryManager {
     }
 
     public Set<String> contextsPerReplicationGroup(String replicationGroupName) {
-        return adminReplicationGroupRepository
-                .findByName(replicationGroupName)
-                .map(replicationGroup -> replicationGroup.getContexts()
-                                                         .stream()
-                                                         .map(AdminContext::getName)
-                                                         .collect(Collectors.toSet())
-                ).orElseGet(() -> replicationGroupContextRepository.findByReplicationGroupName(replicationGroupName)
-                                                                   .stream()
-                                                                   .map(ReplicationGroupContext::getName)
-                                                                   .collect(Collectors.toSet()));
+        return replicationGroupContextRepository.findByReplicationGroupName(replicationGroupName)
+                                                .stream()
+                                                .map(ReplicationGroupContext::getName)
+                                                .collect(Collectors.toSet());
     }
 
     /**
@@ -186,51 +159,48 @@ public class RaftGroupRepositoryManager {
             return Collections.emptySet();
         }
 
-        return nodesPerRolePerContext.computeIfAbsent(replicationGroup, this::initNodesPerRole)
-                                     .getOrDefault(nextTierRole, Collections.emptySet());
+        return nodesPerRolePerReplicationGroup.computeIfAbsent(replicationGroup, this::initNodesPerRole)
+                                              .getOrDefault(nextTierRole, Collections.emptySet());
     }
 
     @EventListener
     public void on(ContextEvents.ContextCreated contextCreated) {
-        if (Role.MESSAGING_ONLY.equals(contextCreated.role())) {
-            if (messagingContextsCache.get() == null) {
-                refreshMessagingContextCache();
-            }
-            messagingContextsCache.get().put(contextCreated.context(), contextCreated.replicationGroup());
-        } else {
-            if (storageContextsCache.get() == null) {
-                refreshContextCache();
-            }
-            storageContextsCache.get().put(contextCreated.context(), contextCreated.replicationGroup());
-        }
+        contextsCache().put(contextCreated.context(), contextCreated.replicationGroup());
     }
 
     @EventListener
     public void on(ContextEvents.ContextDeleted contextDeleted) {
-        if (messagingContextsCache.get() != null) {
-            messagingContextsCache.get().remove(contextDeleted.context());
-        }
-        if (storageContextsCache.get() != null) {
-            storageContextsCache.get().remove(contextDeleted.context());
+        if (contextsCache.get() != null) {
+            contextsCache.get().remove(contextDeleted.context());
         }
     }
 
+    private Set<String> filter(Map<String, String> contextReplicationGroup, Predicate<Role> roleFilter) {
+        Set<String> contexts = new HashSet<>();
+        contextReplicationGroup.forEach((context, replicationGroup) -> {
+            if (roleFilter.test(myRole(replicationGroup))) {
+                contexts.add(context);
+            }
+        });
+        return contexts;
+    }
+
+    private Map<String, String> contextsCache() {
+        return contextsCache.updateAndGet(old -> {
+            if (old == null) {
+                return refreshContextCache();
+            }
+            return old;
+        });
+    }
+
     private String replicationGroup(String context) {
-        Map<String, String> contexts = storageContextsCache.get();
-        if (contexts == null || contexts.isEmpty()) {
-            contexts = refreshContextCache();
+        String replicationGroup = contextsCache().get(context);
+        if (replicationGroup != null) {
+            return replicationGroup;
         }
-        if (contexts.containsKey(context)) {
-            return contexts.get(context);
-        }
-        contexts = messagingContextsCache.get();
-        if (contexts == null) {
-            contexts = refreshMessagingContextCache();
-        }
-        if (contexts.containsKey(context)) {
-            return contexts.get(context);
-        }
-        throw new RuntimeException(context + ": not found in any replication group");
+
+        throw new ContextNotFoundException(context + ": not found in any replication group");
     }
 
     private Map<Role, Set<String>> initNodesPerRole(String replicationGroup) {
@@ -253,7 +223,7 @@ public class RaftGroupRepositoryManager {
     }
 
     private Role myRole(String replicationGroup) {
-        return rolePerContext.computeIfAbsent(replicationGroup, c ->
+        return rolePerReplicationGroup.computeIfAbsent(replicationGroup, c ->
                 raftGroupNodeRepository.findByGroupIdAndNodeName(c, messagingPlatformConfiguration.getName())
                                        .map(ReplicationGroupMember::getRole)
                                        .orElse(Role.UNRECOGNIZED));

@@ -599,7 +599,9 @@ public class LocalRaftConfigService implements RaftConfigService {
         if (context == null) {
             return;
         }
-        applicationEventPublisher.publishEvent(new ContextEvents.ContextPreDelete(name));
+        applicationEventPublisher.publishEvent(new ContextEvents.ContextPreDelete(name,
+                                                                                  context.getReplicationGroup()
+                                                                                         .getName()));
         DeleteContextRequest deleteContextRequest = DeleteContextRequest.newBuilder()
                                                                         .setContext(name)
                                                                         .setReplicationGroupName(context.getReplicationGroup()

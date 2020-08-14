@@ -1,14 +1,13 @@
-package io.axoniq.axonserver.enterprise.cluster;
+package io.axoniq.axonserver.enterprise.replication;
 
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
-import io.axoniq.axonserver.enterprise.replication.RaftGroupRepositoryManager;
 import io.axoniq.axonserver.grpc.cluster.Node;
 import io.axoniq.axonserver.grpc.cluster.Role;
+import io.axoniq.axonserver.util.ContextNotFoundException;
 import org.junit.*;
 
 import java.util.Collections;
@@ -57,7 +56,6 @@ public class RaftGroupRepositoryManagerTest {
         });
 
         messagingPlatformConfiguration = mock(MessagingPlatformConfiguration.class);
-        AdminReplicationGroupRepository adminReplicationGroupRepository = mock(AdminReplicationGroupRepository.class);
 
         ReplicationGroupContextRepository replicationGroupContextRepository = mock(ReplicationGroupContextRepository.class);
         when(replicationGroupContextRepository.findByReplicationGroupName(anyString()))
@@ -65,7 +63,6 @@ public class RaftGroupRepositoryManagerTest {
                                                                                           invocation.getArgument(0))));
         testSubject = new RaftGroupRepositoryManager(raftGroupNodeRepository,
                                                      replicationGroupContextRepository,
-                                                     adminReplicationGroupRepository,
                                                      messagingPlatformConfiguration);
     }
 
@@ -121,5 +118,40 @@ public class RaftGroupRepositoryManagerTest {
     public void nextTierEventStoresForBackup() {
         when(messagingPlatformConfiguration.getName()).thenReturn("passive_backup");
         assertEquals(Collections.emptySet(), testSubject.nextTierEventStores("context"));
+    }
+
+    @Test
+    public void storageContexts() {
+        when(messagingPlatformConfiguration.getName()).thenReturn("primary");
+        Set<String> storageContexts = testSubject.storageContexts();
+        assertEquals(2, storageContexts.size());
+        assertTrue((storageContexts.contains("context")));
+        assertTrue((storageContexts.contains("context2")));
+    }
+
+    @Test
+    public void storageContextsFromMessagingOnlyNode() {
+        when(messagingPlatformConfiguration.getName()).thenReturn("messaging");
+        Set<String> storageContexts = testSubject.storageContexts();
+        assertEquals(0, storageContexts.size());
+    }
+
+    @Test
+    public void hasLowerTier() {
+        when(messagingPlatformConfiguration.getName()).thenReturn("primary");
+        assertTrue(testSubject.hasLowerTier("context"));
+        assertFalse(testSubject.hasLowerTier("context2"));
+    }
+
+    @Test(expected = ContextNotFoundException.class)
+    public void hasLowerTierContextNotOnCurrentNode() {
+        when(messagingPlatformConfiguration.getName()).thenReturn("messaging");
+        testSubject.hasLowerTier("context2");
+    }
+
+    @Test(expected = ContextNotFoundException.class)
+    public void hasLowerTierFailsForUnknownContext() {
+        when(messagingPlatformConfiguration.getName()).thenReturn("messaging");
+        testSubject.hasLowerTier("context3");
     }
 }

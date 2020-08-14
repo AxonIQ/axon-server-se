@@ -137,7 +137,9 @@ public class ReplicationGroupController {
 
         current.forEach(context -> {
             replicationGroupContextRepository.deleteById(context);
-            applicationEventPublisher.publishEvent(new ContextEvents.ContextDeleted(context, false));
+            applicationEventPublisher.publishEvent(new ContextEvents.ContextDeleted(context,
+                                                                                    contexts.getReplicationGroupName(),
+                                                                                    false));
         });
     }
 
@@ -148,12 +150,14 @@ public class ReplicationGroupController {
      * @param preserveEventStore save the event store for this context
      */
     @Transactional
-    public void deleteContext(String context, boolean preserveEventStore) {
+    public void deleteContext(String context, String replicationGroup, boolean preserveEventStore) {
         applicationController.deleteByContext(context);
         userController.deleteByContext(context);
         processorLoadBalancingRepository.deleteAllByProcessorContext(context);
         replicationGroupContextRepository.findById(context).ifPresent(replicationGroupContextRepository::delete);
-        applicationEventPublisher.publishEvent(new ContextEvents.ContextDeleted(context, preserveEventStore));
+        applicationEventPublisher.publishEvent(new ContextEvents.ContextDeleted(context,
+                                                                                replicationGroup,
+                                                                                preserveEventStore));
         replicationGroupPerContext.remove(context);
     }
 
@@ -165,7 +169,9 @@ public class ReplicationGroupController {
      */
     @Transactional
     public void deleteReplicationGroup(String replicationGroup, boolean preserveEventStore) {
-        getContextNames(replicationGroup).forEach(context -> deleteContext(context, preserveEventStore));
+        getContextNames(replicationGroup).forEach(context -> deleteContext(context,
+                                                                           replicationGroup,
+                                                                           preserveEventStore));
     }
 
     /**
