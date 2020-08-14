@@ -85,17 +85,16 @@ public class RaftGroupRepositoryManager {
 
     @Nonnull
     private Map<String, String> loadContextCache() {
-        Map<String, String> contexts = raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
-                                                              .stream()
-                                                              .map(ReplicationGroupMember::getGroupId)
-                                                              .filter(n -> !RaftAdminGroup.isAdmin(n))
-                                                              .flatMap(replicationGroup -> replicationGroupContextRepository
-                                                                      .findByReplicationGroupName(replicationGroup)
-                                                                      .stream())
-                                                              .collect(Collectors
-                                                                               .toMap(ReplicationGroupContext::getName,
-                                                                                      ReplicationGroupContext::getReplicationGroupName));
-        return contexts;
+        return raftGroupNodeRepository.findByNodeName(messagingPlatformConfiguration.getName())
+                                      .stream()
+                                      .map(ReplicationGroupMember::getGroupId)
+                                      .filter(n -> !RaftAdminGroup.isAdmin(n))
+                                      .flatMap(replicationGroup -> replicationGroupContextRepository
+                                              .findByReplicationGroupName(replicationGroup)
+                                              .stream())
+                                      .collect(Collectors
+                                                       .toMap(ReplicationGroupContext::getName,
+                                                              ReplicationGroupContext::getReplicationGroupName));
     }
 
     public Set<ReplicationGroupMember> findByGroupId(String groupId) {
@@ -191,11 +190,11 @@ public class RaftGroupRepositoryManager {
     }
 
     private Map<String, String> contextsCache() {
-        return contextsCache.updateAndGet(old -> {
-            if (old == null) {
+        return contextsCache.updateAndGet(current -> {
+            if (current == null) {
                 return loadContextCache();
             }
-            return old;
+            return current;
         });
     }
 
