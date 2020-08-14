@@ -64,12 +64,12 @@ public class CreateReplicationGroupsAndContextsTask implements ScheduledTask {
     }
 
     private void createReplicationGroupsAndContexts(NodeInfo nodeInfo) {
-        clusterTemplate.getReplicationsGroups()
-                .stream()
-                .filter(currentNodeConfiguration(nodeInfo))
-                .filter(hasAtLeastOnePrimaryNode())
-                .peek(rp -> addNodeToReplicationGroup(nodeInfo, rp))
-                .forEach(rp-> rp.getContexts().forEach(ctx-> {
+        clusterTemplate.getReplicationGroups()
+                       .stream()
+                       .filter(currentNodeConfiguration(nodeInfo))
+                       .filter(hasAtLeastOnePrimaryNode())
+                       .peek(rp -> addNodeToReplicationGroup(nodeInfo, rp))
+                       .forEach(rp-> rp.getContexts().forEach(ctx-> {
                     addContextToReplicationGroup(rp, ctx.getName(), ctx.getMetaData());
                 }));
     }

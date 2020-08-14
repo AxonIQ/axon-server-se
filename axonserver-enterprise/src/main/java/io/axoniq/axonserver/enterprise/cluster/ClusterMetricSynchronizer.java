@@ -13,6 +13,8 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.distribution.ValueAtPercentile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -29,6 +31,7 @@ import java.util.Map;
 @Component
 public class ClusterMetricSynchronizer {
 
+    private final Logger logger = LoggerFactory.getLogger(ClusterMetricSynchronizer.class);
     private final Publisher<ConnectorCommand> clusterPublisher;
 
     private final MeterRegistry meterRegistry;
@@ -79,11 +82,16 @@ public class ClusterMetricSynchronizer {
                                   .setCount((long) ((Counter) meter).count())
                     );
                 } else if( meter instanceof Gauge) {
+                    try {
                         metrics.addMetrics(
                                 Metric.newBuilder().setName(meter.getId().getName())
                                       .putAllTags(tags(meter.getId().getTags()))
                                       .setValue(((Gauge) meter).value())
                         );
+                    } catch (Exception ex) {
+                        logger.info("Failed to retrieve gauge value for {} with tags {} - {}", meter.getId().getName(),
+                                    meter.getId().getTags(), ex.getMessage());
+                    }
                 }
             }
         });
