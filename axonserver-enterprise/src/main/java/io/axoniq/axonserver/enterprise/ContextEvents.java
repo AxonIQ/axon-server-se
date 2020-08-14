@@ -55,11 +55,13 @@ public class ContextEvents {
     public static class ContextDeleted extends TopologyEvents.TopologyBaseEvent {
 
         private final String context;
+        private final String replicationGroup;
         private final boolean preserveEventStore;
 
-        public ContextDeleted(String context, boolean preserveEventStore) {
+        public ContextDeleted(String context, String replicationGroup, boolean preserveEventStore) {
             super(false);
             this.context = context;
+            this.replicationGroup = replicationGroup;
             this.preserveEventStore = preserveEventStore;
         }
 
@@ -70,19 +72,29 @@ public class ContextEvents {
         public boolean preserveEventStore() {
             return preserveEventStore;
         }
+
+        public String replicationGroup() {
+            return replicationGroup;
+        }
     }
 
     @KeepNames
     public static class ContextPreDelete implements AxonServerEvent {
 
         private final String context;
+        private final String replicationGroup;
 
-        public ContextPreDelete(String context) {
+        public ContextPreDelete(String context, String replicationGroup) {
             this.context = context;
+            this.replicationGroup = replicationGroup;
         }
 
         public String context() {
             return context;
+        }
+
+        public String replicationGroup() {
+            return replicationGroup;
         }
     }
 }

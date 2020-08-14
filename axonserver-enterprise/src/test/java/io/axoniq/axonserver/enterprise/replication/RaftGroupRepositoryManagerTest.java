@@ -3,7 +3,6 @@ package io.axoniq.axonserver.enterprise.replication;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMember;
 import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -57,7 +56,6 @@ public class RaftGroupRepositoryManagerTest {
         });
 
         messagingPlatformConfiguration = mock(MessagingPlatformConfiguration.class);
-        AdminReplicationGroupRepository adminReplicationGroupRepository = mock(AdminReplicationGroupRepository.class);
 
         ReplicationGroupContextRepository replicationGroupContextRepository = mock(ReplicationGroupContextRepository.class);
         when(replicationGroupContextRepository.findByReplicationGroupName(anyString()))
@@ -65,7 +63,6 @@ public class RaftGroupRepositoryManagerTest {
                                                                                           invocation.getArgument(0))));
         testSubject = new RaftGroupRepositoryManager(raftGroupNodeRepository,
                                                      replicationGroupContextRepository,
-                                                     adminReplicationGroupRepository,
                                                      messagingPlatformConfiguration);
     }
 

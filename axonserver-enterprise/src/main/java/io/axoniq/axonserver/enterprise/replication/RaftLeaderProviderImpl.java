@@ -39,7 +39,9 @@ public class RaftLeaderProviderImpl implements RaftLeaderProvider {
         this(configuration.getName(),
              r -> {
                  Set<String> local = raftGroupRepositoryManager.contextsPerReplicationGroup(r);
-                 local.addAll(adminContextController.contextsPerReplicationGroup(r));
+                 if (local.isEmpty()) {
+                     local = adminContextController.contextsPerReplicationGroup(r);
+                 }
                  return local;
              },
              applicationEventPublisher);
@@ -62,7 +64,6 @@ public class RaftLeaderProviderImpl implements RaftLeaderProvider {
                                                                                                    .get(event.replicationGroup()))));
         }
     }
-
 
     @EventListener
     public void on(ClusterEvents.LeaderConfirmation masterConfirmation) {

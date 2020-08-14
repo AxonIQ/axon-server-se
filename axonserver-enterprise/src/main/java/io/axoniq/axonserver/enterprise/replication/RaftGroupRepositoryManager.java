@@ -6,8 +6,6 @@ import io.axoniq.axonserver.cluster.jpa.ReplicationGroupMemberRepository;
 import io.axoniq.axonserver.cluster.util.RoleUtils;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.enterprise.ContextEvents;
-import io.axoniq.axonserver.enterprise.jpa.AdminContext;
-import io.axoniq.axonserver.enterprise.jpa.AdminReplicationGroupRepository;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContext;
 import io.axoniq.axonserver.enterprise.jpa.ReplicationGroupContextRepository;
 import io.axoniq.axonserver.grpc.cluster.Node;
@@ -36,7 +34,6 @@ public class RaftGroupRepositoryManager {
 
     private final ReplicationGroupMemberRepository raftGroupNodeRepository;
     private final ReplicationGroupContextRepository replicationGroupContextRepository;
-    private final AdminReplicationGroupRepository adminReplicationGroupRepository;
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final AtomicReference<Map<String, String>> contextsCache = new AtomicReference<>();
     private final Map<String, Map<Role, Set<String>>> nodesPerRolePerReplicationGroup = new ConcurrentHashMap<>();
@@ -45,11 +42,9 @@ public class RaftGroupRepositoryManager {
     public RaftGroupRepositoryManager(
             ReplicationGroupMemberRepository raftGroupNodeRepository,
             ReplicationGroupContextRepository replicationGroupContextRepository,
-            AdminReplicationGroupRepository adminReplicationGroupRepository,
             MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.raftGroupNodeRepository = raftGroupNodeRepository;
         this.replicationGroupContextRepository = replicationGroupContextRepository;
-        this.adminReplicationGroupRepository = adminReplicationGroupRepository;
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
@@ -134,16 +129,10 @@ public class RaftGroupRepositoryManager {
     }
 
     public Set<String> contextsPerReplicationGroup(String replicationGroupName) {
-        return adminReplicationGroupRepository
-                .findByName(replicationGroupName)
-                .map(replicationGroup -> replicationGroup.getContexts()
-                                                         .stream()
-                                                         .map(AdminContext::getName)
-                                                         .collect(Collectors.toSet())
-                ).orElseGet(() -> replicationGroupContextRepository.findByReplicationGroupName(replicationGroupName)
-                                                                   .stream()
-                                                                   .map(ReplicationGroupContext::getName)
-                                                                   .collect(Collectors.toSet()));
+        return replicationGroupContextRepository.findByReplicationGroupName(replicationGroupName)
+                                                .stream()
+                                                .map(ReplicationGroupContext::getName)
+                                                .collect(Collectors.toSet());
     }
 
     /**

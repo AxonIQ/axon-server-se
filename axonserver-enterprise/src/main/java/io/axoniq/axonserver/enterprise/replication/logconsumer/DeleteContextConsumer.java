@@ -30,6 +30,6 @@ public class DeleteContextConsumer implements LogEntryConsumer {
     @Override
     public void consumeLogEntry(String groupId, Entry entry) throws Exception {
         DeleteContextRequest request = DeleteContextRequest.parseFrom(entry.getSerializedObject().getData());
-        replicationGroupController.deleteContext(request.getContext(), request.getPreserveEventstore());
+        replicationGroupController.deleteContext(request.getContext(), groupId, request.getPreserveEventstore());
     }
 }

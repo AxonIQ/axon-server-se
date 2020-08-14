@@ -208,13 +208,13 @@ public class ReplicationGroupControllerTest {
 
     @Test
     public void deleteContext() {
-        testSubject.deleteContext("Context1", false);
+        testSubject.deleteContext("Context1", "Default", false);
         assertEquals(1, replicationGroupContexts.get("Default").size());
     }
 
     @Test
     public void deleteContextNotFound() {
-        testSubject.deleteContext("Context12", false);
+        testSubject.deleteContext("Context12", "Default", false);
         assertEquals(2, replicationGroupContexts.get("Default").size());
     }
 
