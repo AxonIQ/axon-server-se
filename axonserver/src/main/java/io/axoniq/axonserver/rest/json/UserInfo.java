@@ -15,6 +15,9 @@ import java.util.Set;
  * @author Marc Gathier
  */
 public class UserInfo {
+    public static final String ROLE_ADMIN = "ADMIN";
+    public static final String ROLE_ADMIN_IN_ADMIN = "ADMIN@_admin";
+
     private final String user;
     private final Set<String> roles;
     private final boolean adminUser;
@@ -23,7 +26,7 @@ public class UserInfo {
     public UserInfo(String user, Set<String> roles) {
         this.user = user;
         this.roles = roles;
-        this.adminUser = roles.contains("ADMIN@_admin") || roles.contains("ADMIN");
+        this.adminUser = roles.contains(ROLE_ADMIN_IN_ADMIN) || roles.contains(ROLE_ADMIN);
     }
 
     public String getUser() {
