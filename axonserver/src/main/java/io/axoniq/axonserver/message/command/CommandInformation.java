@@ -28,13 +28,15 @@ public class CommandInformation {
     private final ClientStreamIdentification clientStreamIdentification;
     private final String componentName;
     private final String sourceClientId;
+    private final String targetClientId;
 
     public CommandInformation(String requestIdentifier, String sourceClientId,
-                              Consumer<SerializedCommandResponse> responseConsumer,
+                              String targetClientId, Consumer<SerializedCommandResponse> responseConsumer,
                               ClientStreamIdentification clientStreamIdentification,
                               String componentName) {
         this.requestIdentifier = requestIdentifier;
         this.sourceClientId = sourceClientId;
+        this.targetClientId = targetClientId;
         this.responseConsumer = responseConsumer;
         this.clientStreamIdentification = clientStreamIdentification;
         this.componentName = componentName;
@@ -75,7 +77,22 @@ public class CommandInformation {
         responseConsumer.accept(new SerializedCommandResponse(commandResponse));
     }
 
+    /**
+     * Returns the unique client identifier that sent the command request.
+     *
+     * @return the unique client identifier that sent the command request.
+     */
     public String getSourceClientId() {
         return sourceClientId;
+    }
+
+
+    /**
+     * Returns the unique identifier of the target client for the command request.
+     *
+     * @return the unique identifier of the target client for the command request.
+     */
+    public String getTargetClientId() {
+        return targetClientId;
     }
 }

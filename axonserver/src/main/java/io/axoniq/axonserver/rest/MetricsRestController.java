@@ -31,7 +31,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Rest service to retrieve metrics on commands and queries. Returns the counters of commands/queries per handling application.
+ * Rest service to retrieve metrics on commands and queries. Returns the counters of commands/queries per handling
+ * application.
+ *
  * @author Marc Gathier
  */
 @RestController
@@ -45,7 +47,10 @@ public class MetricsRestController {
     private final QueryRegistrationCache queryRegistrationCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
 
-    public MetricsRestController(CommandRegistrationCache commandRegistrationCache, CommandMetricsRegistry commandMetricsRegistry, QueryRegistrationCache queryRegistrationCache, QueryMetricsRegistry queryMetricsRegistry) {
+    public MetricsRestController(CommandRegistrationCache commandRegistrationCache,
+                                 CommandMetricsRegistry commandMetricsRegistry,
+                                 QueryRegistrationCache queryRegistrationCache,
+                                 QueryMetricsRegistry queryMetricsRegistry) {
         this.commandRegistrationCache = commandRegistrationCache;
         this.commandMetricsRegistry = commandMetricsRegistry;
         this.queryRegistrationCache = queryRegistrationCache;
@@ -58,16 +63,19 @@ public class MetricsRestController {
         auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
 
         List<CommandMetricsRegistry.CommandMetric> metrics = new ArrayList<>();
-        commandRegistrationCache.getAll().forEach((commandHander, registrations) -> metrics.addAll(getMetrics(commandHander, registrations)));
+        commandRegistrationCache.getAll().forEach((commandHander, registrations) -> metrics
+                .addAll(getMetrics(commandHander, registrations)));
         return metrics;
     }
 
-    private List<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHander, Set<CommandRegistrationCache.RegistrationEntry> registrations) {
+    private List<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHander,
+                                                                  Set<CommandRegistrationCache.RegistrationEntry> registrations) {
         return registrations.stream()
-                            .map(registration -> commandMetricsRegistry.commandMetric(registration.getCommand(),
-                                                                                      commandHander
-                                                                                              .getClientStreamIdentification(),
-                                                                                      commandHander.getComponentName()))
+                            .map(registration -> commandMetricsRegistry
+                                    .commandMetric(registration.getCommand(),
+                                                   commandHander.getClientId(),
+                                                   commandHander.getClientStreamIdentification().getContext(),
+                                                   commandHander.getComponentName()))
                             // .filter(m -> m.getCount() == 0)
                             .collect(Collectors.toList());
     }
@@ -77,7 +85,8 @@ public class MetricsRestController {
         auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
 
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();
-        queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics.addAll(getQueryMetrics(queryDefinition, handlersPerComponent)));
+        queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics
+                .addAll(getQueryMetrics(queryDefinition, handlersPerComponent)));
         return metrics;
     }
 

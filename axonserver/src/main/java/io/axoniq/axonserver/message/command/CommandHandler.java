@@ -85,7 +85,7 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
         return null;
     }
 
-    public String clientId() {
+    public String getClientId() {
         return clientId;
     }
 }

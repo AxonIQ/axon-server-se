@@ -78,9 +78,9 @@ public class CommandDispatcher {
                                              , clientStreamId, request.getCommand()));
         } else {
             commandRate(context).mark();
-            CommandHandler commandHandler = registrations.getHandlerForCommand(context,
-                                                                               request.wrapped(),
-                                                                               request.getRoutingKey());
+            CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
+                                                                                  request.wrapped(),
+                                                                                  request.getRoutingKey());
             dispatchToCommandHandler(request, commandHandler, responseObserver,
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
                                      "No Handler for command: " + request.getCommand()
@@ -107,7 +107,7 @@ public class CommandDispatcher {
         handlePendingCommands(client);
     }
 
-    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
+    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler<?> commandHandler,
                                           Consumer<SerializedCommandResponse> responseObserver,
                                           ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
@@ -126,12 +126,13 @@ public class CommandDispatcher {
         logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
         CommandInformation commandInformation = new CommandInformation(command.getName(),
                                                                        command.wrapped().getClientId(),
+                                                                       commandHandler.getClientId(),
                                                                        responseObserver,
                                                                        commandHandler.getClientStreamIdentification(),
                                                                        commandHandler.getComponentName());
         commandCache.put(command.getMessageIdentifier(), commandInformation);
         WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
-                                                           commandHandler.clientId(),
+                                                           commandHandler.getClientId(),
                                                            command);
         commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
     }
@@ -144,7 +145,8 @@ public class CommandDispatcher {
             if (!proxied) {
                 metricRegistry.add(toPublisher.getRequestIdentifier(),
                                    toPublisher.getSourceClientId(),
-                                   toPublisher.getClientStreamIdentification(),
+                                   toPublisher.getTargetClientId(),
+                                   toPublisher.getClientStreamIdentification().getContext(),
                                    System.currentTimeMillis() - toPublisher.getTimestamp());
             }
             toPublisher.getResponseConsumer().accept(commandResponse);
@@ -168,8 +170,8 @@ public class CommandDispatcher {
             return null;
         }
 
-        CommandHandler client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
-                                                                   request.getRoutingKey());
+        CommandHandler<?> client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
+                                                                      request.getRoutingKey());
         if (client == null) {
             commandInformation.getResponseConsumer().accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                                          .setMessageIdentifier(
@@ -192,6 +194,7 @@ public class CommandDispatcher {
 
         commandCache.put(request.getMessageIdentifier(), new CommandInformation(request.getName(),
                                                                                 request.wrapped().getClientId(),
+                                                                                client.getClientId(),
                                                                                 commandInformation
                                                                                         .getResponseConsumer(),
                                                                                 client.getClientStreamIdentification(),

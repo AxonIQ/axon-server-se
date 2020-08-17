@@ -179,6 +179,7 @@ public class CommandDispatcherTest {
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "Client");
         CommandInformation commandInformation = new CommandInformation("TheCommand",
                                                                        "Source",
+                                                                       "Target",
                                                                        (r) -> responseHandled.set(true),
                                                                        client, "Component");
         when(commandCache.remove(any(String.class))).thenReturn(commandInformation);

@@ -28,6 +28,7 @@ import java.util.stream.Stream;
  */
 @Component
 public class CommandMetricsWebSocket {
+
     public static final String DESTINATION = "/topic/commands";
     private final Set<SubscriptionKey> subscriptions = new CopyOnWriteArraySet<>();
     private final CommandMetricsRegistry commandMetricsRegistry;
@@ -59,8 +60,8 @@ public class CommandMetricsWebSocket {
     @EventListener
     public void on(SessionSubscribeEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-        if( DESTINATION.equals(sha.getDestination())) {
-            subscriptions.add( new SubscriptionKey(sha));
+        if (DESTINATION.equals(sha.getDestination())) {
+            subscriptions.add(new SubscriptionKey(sha));
         }
     }
 
@@ -73,9 +74,10 @@ public class CommandMetricsWebSocket {
     private Stream<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHander,
                                                                     Set<CommandRegistrationCache.RegistrationEntry> registrations) {
         return registrations.stream()
-                            .map(registration -> commandMetricsRegistry.commandMetric(registration.getCommand(),
-                                                                                      commandHander
-                                                                                              .getClientStreamIdentification(),
-                                                                                      commandHander.getComponentName()));
+                            .map(registration -> commandMetricsRegistry
+                                    .commandMetric(registration.getCommand(),
+                                                   commandHander.getClientId(),
+                                                   commandHander.getClientStreamIdentification().getContext(),
+                                                   commandHander.getComponentName()));
     }
 }

@@ -48,10 +48,9 @@ public class MetricsRestControllerTest {
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
-        testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                    "testclient");
+        testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
         commandRegistrationCache.add("Sample", new CommandHandler<Object>(null,
-                                                                          testclient, "testclient",
+                                                                          testclient, "Target",
                                                                           "testcomponent") {
             @Override
             public void dispatch(SerializedCommand request) {
@@ -74,7 +73,7 @@ public class MetricsRestControllerTest {
         queryClient = new ClientStreamIdentification("context", "testclient");
         queryRegistrationCache.add(new QueryDefinition("context", "query"), "result",
                                    new QueryHandler<Object>(null,
-                                                            queryClient, "testcomponent", "testclient") {
+                                                            queryClient, "testcomponent", "Target") {
                                        @Override
                                        public void dispatch(SubscriptionQueryRequest query) {
 
@@ -91,12 +90,12 @@ public class MetricsRestControllerTest {
     public void getCommandMetrics() {
         List<CommandMetricsRegistry.CommandMetric> commands = testSubject.getCommandMetrics(principal);
         assertEquals(1, commands.size());
-        assertEquals(testclient.toString(), commands.get(0).getClientId());
+        assertEquals("Target." + testclient.getContext(), commands.get(0).getClientId());
         assertEquals(0, commands.get(0).getCount());
-        commandMetricsRegistry.add("Sample", "Source", testclient, 1);
+        commandMetricsRegistry.add("Sample", "Source", "Target", testclient.getContext(), 1);
         commands = testSubject.getCommandMetrics(principal);
         assertEquals(1, commands.size());
-        assertEquals(testclient.toString(), commands.get(0).getClientId());
+        assertEquals("Target." + testclient.getContext(), commands.get(0).getClientId());
         assertEquals(1, commands.get(0).getCount());
     }
 
