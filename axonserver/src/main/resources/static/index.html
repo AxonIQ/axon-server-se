@@ -142,17 +142,6 @@
                                 globals.license = response.data.edition.toLowerCase();
                                 globals.features = response.data.featureList;
                                 this.licenseLoaded = true;
-                                if( globals.license === 'enterprise edition') {
-                                    axios.get("v1/public/pages").then(response => {
-                                        response.data.forEach(page => {
-                                            $("nav").append($("<a/>")
-                                                                    .attr("href", "#" + page.url)
-                                                                    .attr("class", "menu-" + page.url)
-                                                                    .append($("<i/>").attr("class", "fas fa-cog fa-2x"))
-                                                                    .append(page.title));
-                                        })
-                                    });
-                                }
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
                                     globals.adminNode = response.data.adminNode;
