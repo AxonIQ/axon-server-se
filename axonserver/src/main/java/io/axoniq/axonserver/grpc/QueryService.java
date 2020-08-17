@@ -146,6 +146,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
                                                        clientRef.get().getClientStreamId(),
+                                                       clientIdRef.get(),
                                                        false);
                         break;
                     case QUERY_COMPLETE:
@@ -153,6 +154,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
                                                        clientRef.get().getClientStreamId(),
+                                                       clientIdRef.get(),
                                                        false);
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:

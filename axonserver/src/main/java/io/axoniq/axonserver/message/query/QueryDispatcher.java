@@ -69,10 +69,14 @@ public class QueryDispatcher {
      *
      * @param queryResponse  the {@link QueryResponse} has been received
      * @param clientStreamId the query long living stream identifier that the client used to send the response
+     * @param clientId
      * @param proxied        {@code true} if the response has been proxied by another AS node, {@code true} if the
      *                       response is directly received from the client handler.
      */
-    public void handleResponse(QueryResponse queryResponse, String clientStreamId, boolean proxied) {
+    public void handleResponse(QueryResponse queryResponse,
+                               String clientStreamId,
+                               String clientId,
+                               boolean proxied) {
         String requestIdentifier = queryResponse.getRequestIdentifier();
         QueryInformation queryInformation = getQueryInformation(clientStreamId, requestIdentifier);
         if (queryInformation != null) {
@@ -82,8 +86,8 @@ public class QueryDispatcher {
                 queryCache.remove(queryInformation.getKey());
                 if (!proxied) {
                     queryMetricsRegistry.add(queryInformation.getQuery(),
-                                             queryInformation.getSourceClientId(),
-                                             clientStream,
+                                             queryInformation.getSourceClientId(), clientId,
+                                             clientStream.getContext(),
                                              System.currentTimeMillis() - queryInformation.getTimestamp());
                 }
             }
@@ -101,7 +105,7 @@ public class QueryDispatcher {
         return queryInformation;
     }
 
-    public void handleComplete(String requestId, String clientStreamId, boolean proxied) {
+    public void handleComplete(String requestId, String clientStreamId, String clientId, boolean proxied) {
         QueryInformation queryInformation = getQueryInformation(clientStreamId, requestId);
         if (queryInformation != null) {
             if (queryInformation.completed(clientStreamId)) {
@@ -110,7 +114,8 @@ public class QueryDispatcher {
             if (!proxied) {
                 queryMetricsRegistry.add(queryInformation.getQuery(),
                                          queryInformation.getSourceClientId(),
-                                         new ClientStreamIdentification(queryInformation.getContext(), clientStreamId),
+                                         clientId,
+                                         queryInformation.getContext(),
                                          System.currentTimeMillis() - queryInformation.getTimestamp());
             }
         } else {

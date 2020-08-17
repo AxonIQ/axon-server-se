@@ -29,6 +29,7 @@ import java.util.stream.Stream;
  */
 @Component
 public class QueryMetricsWebSocket {
+
     public static final String DESTINATION = "/topic/queries";
     private final Set<SubscriptionKey> subscriptions = new CopyOnWriteArraySet<>();
 
@@ -61,8 +62,8 @@ public class QueryMetricsWebSocket {
     @EventListener
     public void on(SessionSubscribeEvent event) {
         StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-        if( DESTINATION.equals(sha.getDestination())) {
-            subscriptions.add( new SubscriptionKey(sha));
+        if (DESTINATION.equals(sha.getDestination())) {
+            subscriptions.add(new SubscriptionKey(sha));
         }
     }
 
@@ -77,9 +78,13 @@ public class QueryMetricsWebSocket {
                                                                 Map<String, Set<QueryHandler<?>>> handlersPerComponents) {
         return handlersPerComponents
                 .entrySet().stream()
-                .flatMap(queryHandlers -> queryHandlers.getValue().stream().map(
-                        queryHandler -> queryMetricsRegistry.queryMetric(queryDefinition,
-                                                                         queryHandler.getClientStreamIdentification(),
-                                                                         queryHandlers.getKey())));
+                .flatMap(queryHandlers -> queryHandlers
+                        .getValue()
+                        .stream()
+                        .map(queryHandler -> queryMetricsRegistry
+                                .queryMetric(queryDefinition,
+                                             queryHandler.getClientId(),
+                                             queryHandler.getClientStreamIdentification().getContext(),
+                                             queryHandlers.getKey())));
     }
 }

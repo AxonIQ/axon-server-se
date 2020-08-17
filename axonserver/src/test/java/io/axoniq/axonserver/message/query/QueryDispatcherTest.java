@@ -75,7 +75,7 @@ public class QueryDispatcherTest {
         queryDispatcher.handleResponse(QueryResponse.newBuilder()
                                                     .setMessageIdentifier("12345")
                                                     .setRequestIdentifier("1234")
-                                                    .build(), "client", false);
+                                                    .build(), "client", "clientId", false);
         verify(queryCache, times(1)).get("1234");
         assertEquals(1, dispatchCalled.get());
         assertFalse(doneCalled.get());
@@ -83,7 +83,7 @@ public class QueryDispatcherTest {
         queryDispatcher.handleResponse(QueryResponse.newBuilder()
                                                     .setMessageIdentifier("1234")
                                                     .setRequestIdentifier("1234")
-                                                    .build(), "client", false);
+                                                    .build(), "client", "clientId", false);
         verify(queryCache, times(2)).get("1234");
         assertEquals(2, dispatchCalled.get());
         assertTrue(doneCalled.get());

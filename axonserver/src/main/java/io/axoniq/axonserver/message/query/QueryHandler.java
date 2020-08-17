@@ -70,7 +70,7 @@ public abstract class QueryHandler<T> {
      */
     public void enqueue(SerializedQuery request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
         WrappedQuery wrappedQuery = new WrappedQuery(getClientStreamIdentification(),
-                                                     clientId(),
+                                                     getClientId(),
                                                      request.withClient(getClientStreamId()), timeout);
         queryQueue.put(queueName(), wrappedQuery, wrappedQuery.priority());
     }
@@ -96,7 +96,7 @@ public abstract class QueryHandler<T> {
         return clientStreamIdentification.getClientStreamId();
     }
 
-    public String clientId() {
+    public String getClientId() {
         return clientId;
     }
 }
