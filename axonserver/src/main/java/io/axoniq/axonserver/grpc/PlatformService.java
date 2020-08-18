@@ -392,7 +392,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     clientComponent.context,
                     clientComponent.component,
                     clientComponent.clientStreamId,
-                    clientComponent.clientStreamId,
+                    clientComponent.clientId,
                     null
             ));
         }
