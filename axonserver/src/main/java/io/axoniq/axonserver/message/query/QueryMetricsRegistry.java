@@ -56,7 +56,6 @@ public class QueryMetricsRegistry {
      * @param context        the principal context application handling the query
      * @param duration       the duration
      */
-    //TODO
     public void add(QueryDefinition query,
                     String sourceClientId,
                     String targetClientId,

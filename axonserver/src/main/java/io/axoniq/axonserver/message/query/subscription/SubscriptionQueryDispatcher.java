@@ -101,13 +101,13 @@ public class SubscriptionQueryDispatcher {
 
     @EventListener
     public void on(SubscriptionEvents.SubscribeQuery event) {
-        ClientStreamIdentification clientName = new ClientStreamIdentification(event.getContext(),
-                                                                               event.getSubscription().getClientId());
+        ClientStreamIdentification clientStreamIdentification = event.clientIdentification();
         QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), event.getSubscription().getQuery());
         directSubscriptions.forEach(subscription -> {
             String subscriptionId = subscription.subscriptionQuery().getSubscriptionIdentifier();
             QueryDefinition query = new QueryDefinition(subscription.context(), subscription.queryName());
-            Set<String> ids = subscriptionsSent.computeIfAbsent(clientName, client -> new CopyOnWriteArraySet<>());
+            Set<String> ids = subscriptionsSent.computeIfAbsent(clientStreamIdentification,
+                                                                client -> new CopyOnWriteArraySet<>());
             if (queryDefinition.equals(query) && !ids.contains(subscriptionId)) {
                 SubscriptionQuery subscriptionQuery = subscription.subscriptionQuery();
                 event.getQueryHandler().dispatch(SubscriptionQueryRequest.newBuilder()

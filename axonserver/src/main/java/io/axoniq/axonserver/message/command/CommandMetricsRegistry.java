@@ -33,7 +33,6 @@ import java.util.function.ToDoubleFunction;
  * @author Marc Gathier
  * @since 4.0
  */
-//TODO
 @Service("CommandMetricsRegistry")
 public class CommandMetricsRegistry {
 
