@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.query.subscription;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
@@ -51,18 +52,17 @@ public class SubscriptionQueryDispatcherTest {
         return subscriptionQueries.iterator();
     }
 
-    @Ignore
-    @Test  //TODO
-    public void onApplicationDisconnect() {
+    @Test
+    public void onQueryDisconnected() {
         AtomicInteger dispatchedSubscriptions = new AtomicInteger();
         SubscriptionEvents.SubscribeQuery subscribeQuery =
                 new SubscriptionEvents.SubscribeQuery("Demo",
                                                       "clientStreamId",
-                                                      QuerySubscription.newBuilder().setClientId("client")
+                                                      QuerySubscription.newBuilder().setClientId("clientId")
                                                                        .setQuery("test").build(),
                                                       new QueryHandler<QueryProviderInbound>(
                                                               new FakeStreamObserver<>(),
-                                                              new ClientStreamIdentification("Demo", "client"),
+                                                              new ClientStreamIdentification("Demo", "clientStreamId"),
                                                               "component", "client") {
                                                           @Override
                                                           public void dispatch(SubscriptionQueryRequest query) {
@@ -71,6 +71,7 @@ public class SubscriptionQueryDispatcherTest {
                                                       });
         testSubject.on(subscribeQuery);
         assertEquals(1, dispatchedSubscriptions.get());
+        testSubject.on(new TopologyEvents.QueryHandlerDisconnected("Demo", "clientId", "clientStreamId"));
         testSubject.on(subscribeQuery);
         assertEquals(2, dispatchedSubscriptions.get());
     }

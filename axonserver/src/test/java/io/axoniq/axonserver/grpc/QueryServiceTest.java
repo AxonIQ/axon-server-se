@@ -73,7 +73,7 @@ public class QueryServiceTest {
                                                   .build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
-        String key = queryQueue.getSegments().entrySet().iterator().next().getKey(); //TODO
+        String key = queryQueue.getSegments().entrySet().iterator().next().getKey();
         String clientStreamId = key.substring(0, key.lastIndexOf("."));
         ClientStreamIdentification clientStreamIdentification =
                 new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, clientStreamId);
