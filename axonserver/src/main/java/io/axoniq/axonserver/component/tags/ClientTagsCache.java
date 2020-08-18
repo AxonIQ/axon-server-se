@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.component.tags;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -17,9 +17,9 @@ import java.util.function.Function;
  * @since 4.2
  */
 @Component
-public class ClientTagsCache implements Function<ClientIdentification, Map<String, String>> {
+public class ClientTagsCache implements Function<ClientStreamIdentification, Map<String, String>> {
 
-    private final Map<ClientIdentification, Map<String, String>> tags = new HashMap<>();
+    private final Map<ClientStreamIdentification, Map<String, String>> tags = new HashMap<>();
 
     /**
      * Returns a map of all tags defined from the specified client.
@@ -28,7 +28,7 @@ public class ClientTagsCache implements Function<ClientIdentification, Map<Strin
      * @return the tags map
      */
     @Override
-    public Map<String, String> apply(ClientIdentification client) {
+    public Map<String, String> apply(ClientStreamIdentification client) {
         return Collections.unmodifiableMap(tags.getOrDefault(client, Collections.emptyMap()));
     }
 
@@ -49,7 +49,7 @@ public class ClientTagsCache implements Function<ClientIdentification, Map<Strin
      */
     @EventListener
     public void on(ApplicationDisconnected evt) {
-        ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClient());
+        ClientStreamIdentification client = new ClientStreamIdentification(evt.getContext(), evt.getClientStreamId());
         tags.remove(client);
     }
 }

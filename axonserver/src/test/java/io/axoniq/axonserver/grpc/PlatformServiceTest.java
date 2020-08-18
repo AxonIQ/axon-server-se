@@ -38,11 +38,12 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class PlatformServiceTest {
+
     private PlatformService platformService;
     private Topology clusterController;
     private final String context = Topology.DEFAULT_CONTEXT;
     @Before
-    public void setUp()  {
+    public void setUp() {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         clusterController = new DefaultTopology(configuration);
@@ -58,7 +59,7 @@ public class PlatformServiceTest {
         StreamObserver<PlatformInfo> responseObserver = new StreamObserver<PlatformInfo>() {
             @Override
             public void onNext(PlatformInfo platformInfo) {
-                System.out.println( platformInfo.getPrimary());
+                System.out.println(platformInfo.getPrimary());
             }
 
             @Override
@@ -71,32 +72,36 @@ public class PlatformServiceTest {
 
             }
         };
-        ClientIdentification client = ClientIdentification.newBuilder().setClientId("client").setComponentName("component").build();
+        ClientIdentification client = ClientIdentification.newBuilder().setClientId("client").setComponentName(
+                "component").build();
         platformService.getPlatformServer(client, responseObserver);
     }
 
     @Test
     public void openStream() {
-        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(new StreamObserver<PlatformOutboundInstruction>() {
-            @Override
-            public void onNext(PlatformOutboundInstruction platformOutboundInstruction) {
-                System.out.println( platformOutboundInstruction);
-            }
+        StreamObserver<PlatformInboundInstruction> requestStream = platformService
+                .openStream(new StreamObserver<PlatformOutboundInstruction>() {
+                    @Override
+                    public void onNext(PlatformOutboundInstruction platformOutboundInstruction) {
+                        System.out.println(platformOutboundInstruction);
+                    }
 
-            @Override
-            public void onError(Throwable throwable) {
+                    @Override
+                    public void onError(Throwable throwable) {
 
-            }
+                    }
 
-            @Override
-            public void onCompleted() {
+                    @Override
+                    public void onCompleted() {
 
-            }
-        });
+                    }
+                });
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                .setClientId("client")
-                .setComponentName("component")
-                ).build());
+                                                                                                     .setClientId(
+                                                                                                             "client")
+                                                                                                     .setComponentName(
+                                                                                                             "component")
+        ).build());
 
         platformService.requestReconnect("client");
     }
@@ -132,10 +137,12 @@ public class PlatformServiceTest {
         FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("Release")
-                                                                                                     .setComponentName("component")
+                                                                                                     .setClientId(
+                                                                                                             "Release")
+                                                                                                     .setComponentName(
+                                                                                                             "component")
         ).build());
-        platformService.onPauseEventProcessorRequest(new EventProcessorEvents.PauseEventProcessorRequest(context,
+        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest(context,
                                                                                                          "Release",
                                                                                                          "processor",
                                                                                                          false));
@@ -147,10 +154,12 @@ public class PlatformServiceTest {
         FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("Release")
-                                                                                                     .setComponentName("component")
+                                                                                                     .setClientId(
+                                                                                                             "Release")
+                                                                                                     .setComponentName(
+                                                                                                             "component")
         ).build());
-        platformService.onStartEventProcessorRequest(new EventProcessorEvents.StartEventProcessorRequest(context,
+        platformService.on(new EventProcessorEvents.StartEventProcessorRequest(context,
                                                                                                          "Release",
                                                                                                          "processor",
                                                                                                          false));
@@ -164,24 +173,48 @@ public class PlatformServiceTest {
                                              (client, context, instruction) -> eventProcessorInfoReceived.set(true));
         StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService
                 .openStream(new FakeStreamObserver<>());
-        clientStreamObserver.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("MergeClient")
-                                                                                                     .setComponentName("component")
-        ).build());
-        clientStreamObserver.onNext(PlatformInboundInstruction.newBuilder().setEventProcessorInfo(EventProcessorInfo.getDefaultInstance()).build());
+        clientStreamObserver.onNext(PlatformInboundInstruction.newBuilder()
+                                                              .setRegister(ClientIdentification.newBuilder()
+                                                                                               .setClientId(
+                                                                                                       "MergeClient")
+                                                                                               .setComponentName(
+                                                                                                       "component")
+                                                              ).build());
+        clientStreamObserver.onNext(PlatformInboundInstruction.newBuilder().setEventProcessorInfo(EventProcessorInfo
+                                                                                                          .getDefaultInstance())
+                                                              .build());
         assertTrue(eventProcessorInfoReceived.get());
+    }
+
+    @Test
+    public void onReleaseSegmentRequest() {
+        CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
+        requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
+                                                                                                     .setClientId(
+                                                                                                             "Release")
+                                                                                                     .setComponentName(
+                                                                                                             "component")
+        ).build());
+        platformService.on(new EventProcessorEvents.ReleaseSegmentRequest("Release", "processor", 1, false));
+        assertEquals(1, responseObserver.count);
     }
 
     @Test
     public void onApplicationDisconnected() {
         FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
-        requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId("Release")
-                                                                                                     .setComponentName("component")
-        ).build());
+        String component = "component";
+        String clientId = "Release";
+        requestStream.onNext(PlatformInboundInstruction.newBuilder()
+                                                       .setRegister(ClientIdentification.newBuilder()
+                                                                                        .setClientId(clientId)
+                                                                                        .setComponentName(component)
+                                                       ).build());
         assertEquals(1, platformService.getConnectedClients().size());
-        platformService.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT, "component", "Release"));
+        String clientStreamId = platformService.getConnectedClients().iterator().next().getClientStreamId();
+        platformService.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
+                                                                      component, clientStreamId));
         assertEquals(0, platformService.getConnectedClients().size());
         assertTrue(responseObserver.completedCount() == 1);
     }

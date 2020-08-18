@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
@@ -30,11 +30,14 @@ import java.util.function.ToDoubleFunction;
 
 /**
  * Provides access to metrics regarding command execution.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
+//TODO
 @Service("CommandMetricsRegistry")
 public class CommandMetricsRegistry {
+
     private final Logger logger = LoggerFactory.getLogger(CommandMetricsRegistry.class);
 
     private final Map<String, Timer> timerMap = new ConcurrentHashMap<>();
@@ -50,30 +53,46 @@ public class CommandMetricsRegistry {
     }
 
 
+    private static String metricName(String command,
+                                     String sourceClientId,
+                                     String targetClientId,
+                                     String context) {
+        return String.format("%s.%s.%s", command, sourceClientId, targetClientId + "." + context);
+    }
+
     /**
      * Registers the duration of a command in the registry. Timer name is "axon.command", tags are the context,
      * the source, the target and the command name.
-     * @param command the name of the command
+     *
+     * @param command        the name of the command
      * @param sourceClientId the client issuing the command
-     * @param clientId the client handling the command
-     * @param duration the duration of the command handling
+     * @param targetClientId the client handling the command
+     * @param context        the principal context of the client handling the command
+     * @param duration       the duration of the command handling
      */
-    public void add(String command, String sourceClientId, ClientIdentification clientId, long duration) {
+    public void add(String command,
+                    String sourceClientId,
+                    String targetClientId,
+                    String context,
+                    long duration) {
         try {
-            timer(command, sourceClientId, clientId).record(duration, TimeUnit.MILLISECONDS);
-        } catch( Exception ex) {
+            timer(command, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
+        } catch (Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
-    private Timer timer(String command, String sourceClientId, ClientIdentification targetClientId) {
-        return timerMap.computeIfAbsent(metricName(command, sourceClientId, targetClientId),
+    private Timer timer(String command,
+                        String sourceClientId,
+                        String targetClientId,
+                        String context) {
+        return timerMap.computeIfAbsent(metricName(command, sourceClientId, targetClientId, context),
                                         n -> meterFactory.timer(BaseMetricName.AXON_COMMAND,
                                                                 Tags.of(
                                                                         MeterFactory.REQUEST,
                                                                         command.replaceAll("\\.", "/"),
                                                                         MeterFactory.CONTEXT,
-                                                                        targetClientId.getContext(),
+                                                                        context,
                                                                         MeterFactory.SOURCE,
                                                                         sourceClientId,
                                                                         MeterFactory.TARGET,
@@ -84,29 +103,38 @@ public class CommandMetricsRegistry {
         return String.join(".", command, sourceClientId, targetClientId.metricName());
     }
 
-    private ClusterMetric clusterMetric(String command, ClientIdentification clientId){
+    private ClusterMetric clusterMetric(String command,
+                                        String targetClientId,
+                                        String context) {
         Tags tags = Tags.of(MeterFactory.CONTEXT,
-                            clientId.getContext(),
+                            context,
                             MeterFactory.REQUEST,
                             command.replaceAll("\\.", "/"),
                             MeterFactory.TARGET,
-                            clientId.getClient());
+                            targetClientId);
         return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_COMMAND, tags),
-                                   new Metrics(BaseMetricName.AXON_COMMAND.metric(), tags, meterFactory.clusterMetrics()));
+                                   new Metrics(BaseMetricName.AXON_COMMAND.metric(),
+                                               tags,
+                                               meterFactory.clusterMetrics()));
     }
 
     /**
      * Retrieves the number of times that a command has been handled by a client.
-     * @param command the name of the command
-     * @param clientId the client handling the command
-     * @param componentName the client application name handling the command
+     *
+     * @param command        the name of the command
+     * @param targetClientId the client handling the command
+     * @param context        the principal context of the client handling the command
+     * @param componentName  the client application name handling the command
      * @return CommandMetric containing the number of times that the command has been handled by this client
      */
-    public CommandMetric commandMetric(String command, ClientIdentification clientId, String componentName) {
+    public CommandMetric commandMetric(String command,
+                                       String targetClientId,
+                                       String context,
+                                       String componentName) {
         return new CommandMetric(command,
-                                 clientId.metricName(),
+                                 targetClientId + "." + context,
                                  componentName,
-                                 clusterMetric(command, clientId).count());
+                                 clusterMetric(command, targetClientId, context).count());
     }
 
     /**
@@ -136,6 +164,7 @@ public class CommandMetricsRegistry {
     }
 
     public static class CommandMetric {
+
         private final String command;
         private final String clientId;
         private final String componentName;

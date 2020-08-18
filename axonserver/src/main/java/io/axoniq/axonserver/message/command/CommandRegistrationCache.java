@@ -9,11 +9,12 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeCommand;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.hashing.ConsistentHashRoutingSelector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,14 +37,15 @@ import static java.util.Collections.emptyMap;
 
 /**
  * Registers the commands registered per client/context.
+ *
  * @author Marc Gathier
  */
 @Component("CommandRegistrationCache")
 public class CommandRegistrationCache {
 
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
-    private final ConcurrentMap<ClientIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
-    private final ConcurrentMap<ClientIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ClientStreamIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ClientStreamIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
     private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
     private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
@@ -97,22 +99,24 @@ public class CommandRegistrationCache {
      *
      * @param client the clientId to remove
      */
-    public void remove(ClientIdentification client) {
+    public void remove(ClientStreamIdentification client) {
         logger.trace("Remove {}", client);
         commandHandlersPerClientContext.remove(client);
         Map<String, Integer> remove = registrationsPerClient.remove(client);
         if (remove != null) {
             Set<String> commands = remove.keySet();
-            commands.forEach(command -> routingSelector(client.getContext(), command).unregister(client.getClient()));
+            commands.forEach(command -> routingSelector(client.getContext(), command)
+                    .unregister(client.getClientStreamId()));
         }
     }
 
     /**
      * Removes a particular command registration for a client within a context
-     * @param client the client handling the command
+     *
+     * @param client  the client handling the command
      * @param command the command that was registered
      */
-    public void remove(ClientIdentification client, String command) {
+    public void remove(ClientStreamIdentification client, String command) {
         logger.trace("Remove command {} from {}", command, client);
         Map<String, Integer> registrations = registrationsPerClient.computeIfPresent(client, (c, commandsMap) -> {
             commandsMap.remove(command);
@@ -121,8 +125,8 @@ public class CommandRegistrationCache {
             }
             return commandsMap;
         });
-        routingSelector(client.getContext(), command).unregister(client.getClient());
-        if( registrations == null) {
+        routingSelector(client.getContext(), command).unregister(client.getClientStreamId());
+        if (registrations == null) {
             remove(client);
         }
     }
@@ -137,13 +141,16 @@ public class CommandRegistrationCache {
     }
 
     private void add(String command, CommandHandler commandHandler, int loadFactor) {
-        logger.trace("Add command {} to {} with load factor {}", command, commandHandler.client, loadFactor);
-        ClientIdentification clientIdentification = commandHandler.getClient();
+        logger.trace("Add command {} to {} with load factor {}",
+                     command,
+                     commandHandler.clientStreamIdentification,
+                     loadFactor);
+        ClientStreamIdentification clientIdentification = commandHandler.getClientStreamIdentification();
         String context = clientIdentification.getContext();
         registrationsPerClient.computeIfAbsent(clientIdentification, key -> new ConcurrentHashMap<>()).put(command,
                                                                                                            loadFactor);
         commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
-        routingSelector(context, command).register(clientIdentification.getClient());
+        routingSelector(context, command).register(clientIdentification.getClientStreamId());
     }
 
 
@@ -169,10 +176,11 @@ public class CommandRegistrationCache {
 
     /**
      * Gets all commands handled by a specific client
+     *
      * @param clientNode the client identification
      * @return a set of commandName/context values
      */
-    public Set<String> getCommandsFor(ClientIdentification clientNode) {
+    public Set<String> getCommandsFor(ClientStreamIdentification clientNode) {
         return registrationsPerClient.get(clientNode).keySet();
     }
 
@@ -197,7 +205,7 @@ public class CommandRegistrationCache {
         RoutingSelector<String> routingSelector = routingSelector(context, command);
         return routingSelector
                 .selectHandler(routingKey, candidateNames)
-                .map(client -> commandHandlersPerClientContext.get(new ClientIdentification(context, client)))
+                .map(client -> commandHandlersPerClientContext.get(new ClientStreamIdentification(context, client)))
                 .orElse(null);
     }
 
@@ -224,18 +232,20 @@ public class CommandRegistrationCache {
     }
 
     private Function<String, Integer> loadFactorSolver(CommandTypeIdentifier command) {
-        return client -> registrationsPerClient.getOrDefault(new ClientIdentification(command.context(), client),
+        return client -> registrationsPerClient.getOrDefault(new ClientStreamIdentification(command.context(),
+                                                                                            client),
                                                              emptyMap())
                                                .getOrDefault(command.name(), 0);
     }
 
     /**
      * Find the command handler for a command based on the specified client/context
+     *
      * @param clientIdentification the client identification
-     * @param request the command name
+     * @param request              the command name
      * @return the command handler for the request, or null when not found
      */
-    public CommandHandler findByClientAndCommand(ClientIdentification clientIdentification, String request) {
+    public CommandHandler findByClientAndCommand(ClientStreamIdentification clientIdentification, String request) {
         boolean found = registrationsPerClient.getOrDefault(clientIdentification, emptyMap()).containsKey(request);
         if (!found) {
             return null;
@@ -244,16 +254,16 @@ public class CommandRegistrationCache {
     }
 
     @EventListener
-    public void on(SubscriptionEvents.SubscribeCommand event) {
+    public void on(SubscribeCommand event) {
         CommandSubscription request = event.getRequest();
         int loadFactor = request.getLoadFactor() == 0 ? 100 : request.getLoadFactor();
         add(request.getCommand(), event.getHandler(), loadFactor);
     }
 
     @EventListener
-    public void on(SubscriptionEvents.UnsubscribeCommand event) {
+    public void on(UnsubscribeCommand event) {
         CommandSubscription request = event.getRequest();
-        remove(event.clientIdentification(),request.getCommand());
+        remove(event.clientIdentification(), request.getCommand());
     }
 
 

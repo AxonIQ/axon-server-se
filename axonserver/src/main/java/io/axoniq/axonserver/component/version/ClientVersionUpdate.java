@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component.version;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 /**
  * Event containing client's Axon Framework version that is published any time a node
@@ -11,7 +11,7 @@ import io.axoniq.axonserver.message.ClientIdentification;
  */
 public class ClientVersionUpdate {
 
-    private final ClientIdentification client;
+    private final ClientStreamIdentification client;
 
     private final String version;
 
@@ -23,25 +23,26 @@ public class ClientVersionUpdate {
      * @param version    the client's Axon Framework version
      */
     public ClientVersionUpdate(String clientName, String context, String version) {
-        this(new ClientIdentification(context, clientName), version);
+        this(new ClientStreamIdentification(context, clientName), version);
     }
 
     /**
      * Creates an instance for the specified client and Axon Framework version.
      *
-     * @param client the client identifier
+     * @param client  the client identifier
      * @param version the client's Axon Framework version
      */
-    public ClientVersionUpdate(ClientIdentification client, String version) {
+    public ClientVersionUpdate(ClientStreamIdentification client, String version) {
         this.client = client;
         this.version = version;
     }
 
     /**
      * Returns the client identifier.
+     *
      * @return the client identifier.
      */
-    public ClientIdentification client() {
+    public ClientStreamIdentification client() {
         return client;
     }
 

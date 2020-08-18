@@ -1,7 +1,7 @@
 package io.axoniq.axonserver.component.version;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.junit.*;
 
 import static org.junit.Assert.*;
@@ -21,14 +21,14 @@ public class ClientVersionsCacheTest {
         testSubject.on(new ClientVersionUpdate("D", "context2", "4.2.3"));
         testSubject.on(new ClientVersionUpdate("E", "context2", "4.2.3"));
 
-        assertEquals("4.2.1", testSubject.apply(new ClientIdentification("context1", "A")));
-        assertNull(testSubject.apply(new ClientIdentification("A", "context2")));
-        assertEquals("4.2.2", testSubject.apply(new ClientIdentification("context1", "B")));
-        assertEquals("4.2.1", testSubject.apply(new ClientIdentification("context2", "C")));
-        assertEquals("4.2.3", testSubject.apply(new ClientIdentification("context2", "D")));
-        assertEquals("4.2.3", testSubject.apply(new ClientIdentification("context2", "E")));
+        assertEquals("4.2.1", testSubject.apply(new ClientStreamIdentification("context1", "A")));
+        assertNull(testSubject.apply(new ClientStreamIdentification("A", "context2")));
+        assertEquals("4.2.2", testSubject.apply(new ClientStreamIdentification("context1", "B")));
+        assertEquals("4.2.1", testSubject.apply(new ClientStreamIdentification("context2", "C")));
+        assertEquals("4.2.3", testSubject.apply(new ClientStreamIdentification("context2", "D")));
+        assertEquals("4.2.3", testSubject.apply(new ClientStreamIdentification("context2", "E")));
 
         testSubject.on(new TopologyEvents.ApplicationDisconnected("context2", "componentName", "E"));
-        assertNull(testSubject.apply(new ClientIdentification("E", "context2")));
+        assertNull(testSubject.apply(new ClientStreamIdentification("E", "context2")));
     }
 }

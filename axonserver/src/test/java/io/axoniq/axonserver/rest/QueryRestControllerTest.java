@@ -12,7 +12,7 @@ package io.axoniq.axonserver.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.query.Query;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -43,13 +43,15 @@ public class QueryRestControllerTest {
         QuerySubscription querySubscription = QuerySubscription.newBuilder()
                                                                .setQuery("Request")
                                                                .setComponentName("Component")
-                                                               .setClientId("client")
-                                                               .build();
-        registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription), "Response",
-                             new DirectQueryHandler(new FakeStreamObserver<>(),
-                                                    new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                                             querySubscription.getClientId()),
-                                                    querySubscription.getComponentName()));
+                                                               .setClientId("client").build();
+        ClientStreamIdentification clientStreamIdentification =
+                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, querySubscription.getClientId());
+        registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription.getQuery()),
+                             "Response",
+                             new DirectQueryHandler(new CountingStreamObserver<>(),
+                                                    clientStreamIdentification,
+                                                    querySubscription.getComponentName(),
+                                                    querySubscription.getClientId()));
 
         testSubject = new QueryRestController(registationCache, queryDispatcher);
     }

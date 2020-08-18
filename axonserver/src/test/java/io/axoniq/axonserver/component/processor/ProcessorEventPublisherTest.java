@@ -18,17 +18,15 @@ import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import org.assertj.core.util.Lists;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.*;
+import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -73,7 +71,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors = new ArrayList<>();
 
         ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
-        when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
+        when(splitClientProcessor.clientName()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
                                                                      .addAllSegmentStatus(segmentInfo)
@@ -82,7 +80,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors.add(splitClientProcessor);
 
         ClientProcessor mergeClientProcessor = mock(ClientProcessor.class);
-        when(mergeClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_MERGE);
+        when(mergeClientProcessor.clientName()).thenReturn(CLIENT_NAME_OF_MERGE);
         EventProcessorInfo eventProcessorToMerge = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_MERGE)
                                                                      .addAllSegmentStatus(segmentInfo)
@@ -164,7 +162,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors.clear();
 
         ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
-        when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
+        when(splitClientProcessor.clientName()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
                                                                      .addAllSegmentStatus(

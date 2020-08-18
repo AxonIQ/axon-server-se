@@ -71,7 +71,11 @@ public class QueryRestController {
 
     @GetMapping("queries")
     public List<JsonQueryMapping> get() {
-        return registrationCache.getAll().entrySet().stream().map(e-> JsonQueryMapping.from(e, registrationCache.getResponseTypes(e.getKey()))).collect(Collectors.toList());
+        return registrationCache.getAll()
+                                .entrySet()
+                                .stream()
+                                .map(e -> JsonQueryMapping.from(e, registrationCache.getResponseTypes(e.getKey())))
+                                .collect(Collectors.toList());
     }
 
     @PostMapping("queries/run")
@@ -112,11 +116,14 @@ public class QueryRestController {
             return components;
         }
 
-        public static JsonQueryMapping from(Map.Entry<QueryDefinition, Map<String, Set<QueryHandler>>> queryDefinitionEntry, Set<String> resultNames) {
+        public static JsonQueryMapping from(
+                Map.Entry<QueryDefinition, Map<String, Set<QueryHandler<?>>>> queryDefinitionEntry,
+                Set<String> resultNames) {
             JsonQueryMapping queryMapping = new JsonQueryMapping();
             queryMapping.query = queryDefinitionEntry.getKey().getQueryName();
             queryMapping.resultNames = resultNames;
-            queryMapping.components = queryDefinitionEntry.getValue().entrySet().stream().map(JsonComponentMapping::from).collect(Collectors.toList());
+            queryMapping.components = queryDefinitionEntry.getValue().entrySet().stream()
+                                                          .map(JsonComponentMapping::from).collect(Collectors.toList());
 
             return queryMapping;
         }
@@ -136,10 +143,11 @@ public class QueryRestController {
             return clients;
         }
 
-        public static JsonComponentMapping from(Map.Entry<String, Set<QueryHandler>> applicationEntry) {
+        public static JsonComponentMapping from(Map.Entry<String, Set<QueryHandler<?>>> applicationEntry) {
             JsonComponentMapping jsonApplicationMapping = new JsonComponentMapping();
             jsonApplicationMapping.component = applicationEntry.getKey();
-            jsonApplicationMapping.clients = applicationEntry.getValue().stream().map(QueryHandler::toString).collect(Collectors.toList());
+            jsonApplicationMapping.clients = applicationEntry.getValue().stream().map(QueryHandler::toString).collect(
+                    Collectors.toList());
             return jsonApplicationMapping;
         }
     }

@@ -1,11 +1,12 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
-import io.axoniq.axonserver.component.instance.Client;
+import io.axoniq.axonserver.component.instance.ClientIdentifications;
 import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.grpc.InstructionPublisher;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +19,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction> {
 
-    private final Clients clientsSupportingHeartbeat;
-
-    private final InstructionPublisher clientPublisher;
+    private final ClientIdentifications clientsSupportingHeartbeat;
+    private final ClientPublisher clientPublisher;
 
     /**
      * Constructs a {@link HeartbeatPublisher} that uses the {@link PlatformService} to send a gRPC heartbeat message to
@@ -32,7 +32,7 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
     @Autowired
     public HeartbeatPublisher(HeartbeatProvidedClients clients,
                               PlatformService platformService) {
-        this(clients, platformService::sendToClient);
+        this(clients, platformService::sendToClientStreamId);
     }
 
     /**
@@ -40,10 +40,10 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
      * feature.
      *
      * @param clientsSupportingHeartbeat clients which support heartbeat feature
-     * @param clientPublisher publisher used to send the heartbeat pulse to a single client
+     * @param clientPublisher            publisher used to send the heartbeat pulse to a single client
      */
-    public HeartbeatPublisher(Clients clientsSupportingHeartbeat,
-                              InstructionPublisher clientPublisher) {
+    public HeartbeatPublisher(ClientIdentifications clientsSupportingHeartbeat,
+                              ClientPublisher clientPublisher) {
         this.clientsSupportingHeartbeat = clientsSupportingHeartbeat;
         this.clientPublisher = clientPublisher;
     }
@@ -54,12 +54,24 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
      * @param heartbeat the heartbeat instruction
      */
     public void publish(PlatformOutboundInstruction heartbeat) {
-        for (Client client : clientsSupportingHeartbeat) {
+        for (ClientStreamIdentification client : clientsSupportingHeartbeat) {
             try {
-                clientPublisher.publish(client.context(), client.name(), heartbeat);
+                clientPublisher.publish(client.getClientStreamId(), heartbeat);
             } catch (RuntimeException ignore) {
                 // failing to send heartbeat can be ignored
             }
         }
+    }
+
+    @FunctionalInterface
+    public interface ClientPublisher {
+
+        /**
+         * Publishes an {@link PlatformOutboundInstruction} to a single client
+         *
+         * @param clientName  the platform stream identifier of the client
+         * @param instruction the {@link PlatformOutboundInstruction} to be sent
+         */
+        void publish(String clientName, PlatformOutboundInstruction instruction);
     }
 }

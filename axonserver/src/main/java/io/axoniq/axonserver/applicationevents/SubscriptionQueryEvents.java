@@ -21,23 +21,27 @@ import static io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest.RequestCa
 
 /**
  * Set of events used in handling of SubscriptionQueries.
+ *
  * @author Sara Pellegrini
  */
 public class SubscriptionQueryEvents {
+
+    private SubscriptionQueryEvents() {
+    }
 
     public static class ProxiedSubscriptionQueryRequest {
 
         private final SubscriptionQueryRequest request;
         private final String context;
         private final UpdateHandler handler;
-        private final String targetClient;
+        private final String targetClientStreamId;
 
         public ProxiedSubscriptionQueryRequest(SubscriptionQueryRequest request, String context,
-                                               UpdateHandler handler, String targetClient) {
+                                               UpdateHandler handler, String targetClientStreamId) {
             this.request = request;
             this.context = context;
             this.handler = handler;
-            this.targetClient = targetClient;
+            this.targetClientStreamId = targetClientStreamId;
         }
 
         public SubscriptionQueryRequest subscriptionQueryRequest() {
@@ -49,20 +53,24 @@ public class SubscriptionQueryEvents {
         }
 
         public String targetClient() {
-            return targetClient;
+            return targetClientStreamId;
         }
 
         public String context() {
             return context;
         }
 
-        public SubscriptionQuery subscriptionQuery(){
-            switch (request.getRequestCase()){
-                case SUBSCRIBE: return request.getSubscribe();
-                case GET_INITIAL_RESULT: return request.getGetInitialResult();
-                case UNSUBSCRIBE: return request.getUnsubscribe();
+        public SubscriptionQuery subscriptionQuery() {
+            switch (request.getRequestCase()) {
+                case SUBSCRIBE:
+                    return request.getSubscribe();
+                case GET_INITIAL_RESULT:
+                    return request.getGetInitialResult();
+                case UNSUBSCRIBE:
+                    return request.getUnsubscribe();
+                default:
+                    return null;
             }
-            return null;
         }
 
         public boolean isSubscription() {
@@ -111,7 +119,6 @@ public class SubscriptionQueryEvents {
         }
 
         public abstract SubscriptionQueryRequest subscriptionQueryRequest();
-
     }
 
     public static class SubscriptionQueryRequested extends SubscriptionQueryRequestEvent {
@@ -177,10 +184,12 @@ public class SubscriptionQueryEvents {
         private final Runnable unknownSubscriptionHandler;
 
         public SubscriptionQueryResponseReceived(SubscriptionQueryResponse response) {
-            this(response, () -> {});
+            this(response, () -> {
+            });
         }
 
-        public SubscriptionQueryResponseReceived(SubscriptionQueryResponse response, Runnable unknownSubscriptionHandler) {
+        public SubscriptionQueryResponseReceived(SubscriptionQueryResponse response,
+                                                 Runnable unknownSubscriptionHandler) {
 
             this.response = response;
             this.unknownSubscriptionHandler = unknownSubscriptionHandler;
@@ -194,10 +203,8 @@ public class SubscriptionQueryEvents {
             return unknownSubscriptionHandler;
         }
 
-        public String subscriptionId(){
+        public String subscriptionId() {
             return response.getSubscriptionIdentifier();
         }
     }
-
-
 }

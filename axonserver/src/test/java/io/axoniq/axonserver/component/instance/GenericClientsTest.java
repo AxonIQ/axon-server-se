@@ -30,7 +30,7 @@ import static org.junit.Assert.*;
  */
 public class GenericClientsTest {
 
-    private GenericClients testSubject = new GenericClients(new MessagingPlatformConfiguration(new SystemInfoProvider() {
+    private final GenericClients testSubject = new GenericClients(new MessagingPlatformConfiguration(new SystemInfoProvider() {
         @Override
         public String getHostName() {
             return "localhost";

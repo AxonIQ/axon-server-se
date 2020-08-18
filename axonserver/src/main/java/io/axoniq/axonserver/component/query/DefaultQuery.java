@@ -24,11 +24,11 @@ public class DefaultQuery implements Query{
 
     private final QueryDefinition definition;
 
-    private final Map<String, Set<QueryHandler>> handlers;
+    private final Map<String, Set<QueryHandler<?>>> handlers;
     private final Set<String> responseTypes;
 
     public DefaultQuery(QueryDefinition definition,
-                        Map<String, Set<QueryHandler>> handlers, Set<String> responseTypes) {
+                        Map<String, Set<QueryHandler<?>>> handlers, Set<String> responseTypes) {
         this.definition = definition;
         this.handlers = handlers;
         this.responseTypes = responseTypes;

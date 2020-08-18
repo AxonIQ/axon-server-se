@@ -12,15 +12,18 @@ package io.axoniq.axonserver.message.command;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.grpc.stub.StreamObserver;
 
 /**
  * @author Marc Gathier
  */
 public class DirectCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
-    public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver, ClientIdentification client, String componentName) {
-        super(responseObserver, client, componentName);
+
+    public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver,
+                                ClientStreamIdentification clientStreamIdentification, String clientId,
+                                String componentName) {
+        super(responseObserver, clientStreamIdentification, clientId, componentName);
     }
 
     @Override

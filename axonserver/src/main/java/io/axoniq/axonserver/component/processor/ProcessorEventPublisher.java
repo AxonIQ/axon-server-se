@@ -209,7 +209,7 @@ public class ProcessorEventPublisher {
 
         List<ClientProcessor> clientsWithProcessor =
                 StreamSupport.stream(clientProcessors.spliterator(), PARALLELIZE_STREAM)
-                             .filter(clientProcessor -> clientNames.contains(clientProcessor.clientId()))
+                             .filter(clientProcessor -> clientNames.contains(clientProcessor.clientName()))
                              .filter(clientProcessor -> clientProcessor.eventProcessorInfo().getProcessorName()
                                                                        .equals(processorName))
                              .collect(Collectors.toList());
@@ -217,7 +217,7 @@ public class ProcessorEventPublisher {
         for (ClientProcessor clientProcessor : clientsWithProcessor) {
             List<SegmentStatus> eventTrackers = clientProcessor.eventProcessorInfo().getSegmentStatusList();
             eventTrackers.forEach(eventTracker -> clientToTracker.put(
-                    new ClientSegmentPair(clientProcessor.clientId(), eventTracker.getSegmentId()), eventTracker)
+                    new ClientSegmentPair(clientProcessor.clientName(), eventTracker.getSegmentId()), eventTracker)
             );
         }
 

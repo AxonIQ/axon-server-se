@@ -14,17 +14,26 @@ import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Represents an instance of a client connected to AxonServer.
  */
 public interface Client extends Printable, ComponentItem {
 
+    /**
+     * Returns the name of the client
+     *
+     * @return the name of the client
+     */
     String name();
 
+    /**
+     * Returns the principal context of the client
+     *
+     * @return the principal context of the client
+     */
     String context();
 
     @Override
-    default boolean belongsToContext(String context){
+    default boolean belongsToContext(String context) {
         return context.equals(context());
     }
 

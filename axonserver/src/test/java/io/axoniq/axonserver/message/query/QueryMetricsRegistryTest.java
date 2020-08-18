@@ -9,39 +9,44 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
+import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
 import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
  */
 public class QueryMetricsRegistryTest {
+
     private QueryMetricsRegistry testSubject;
-    private ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT, "processor");
+    private ClientStreamIdentification clientIdentification = new ClientStreamIdentification(DEFAULT_CONTEXT,
+                                                                                             "processor");
+
     @Before
     public void setUp() {
-        testSubject = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
+        testSubject = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                new DefaultMetricCollector()));
     }
 
     @Test
     public void add() {
-        testSubject.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), "source", clientIdentification, 1L);
+        testSubject.add(new QueryDefinition(DEFAULT_CONTEXT, "a"), "source", "target", DEFAULT_CONTEXT, 1L);
     }
 
     @Test
-    public void get()  {
-        testSubject.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), "source", clientIdentification, 1L);
+    public void get() {
+        QueryDefinition queryDefinition = new QueryDefinition(DEFAULT_CONTEXT, "a");
+        testSubject.add(queryDefinition, "source", "target", DEFAULT_CONTEXT, 1L);
         QueryMetricsRegistry.QueryMetric queryMetric = testSubject
-                .queryMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"), clientIdentification, "");
+                .queryMetric(queryDefinition, "target", DEFAULT_CONTEXT, "");
         assertEquals(1, queryMetric.getCount());
-        queryMetric = testSubject.queryMetric(new QueryDefinition(Topology.DEFAULT_CONTEXT, "a"),
-                                              new ClientIdentification(Topology.DEFAULT_CONTEXT, "processor1"),
+        queryMetric = testSubject.queryMetric(queryDefinition, "target1",
+                                              DEFAULT_CONTEXT,
                                               "");
         assertEquals(0, queryMetric.getCount());
     }

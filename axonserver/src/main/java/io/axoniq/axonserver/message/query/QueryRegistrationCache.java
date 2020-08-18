@@ -13,7 +13,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.eclipse.collections.impl.factory.Sets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -85,7 +85,7 @@ public class QueryRegistrationCache {
     @EventListener
     public void on(SubscriptionEvents.UnsubscribeQuery event) {
         QuerySubscription unsubscribe = event.getUnsubscribe();
-        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), unsubscribe);
+        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), unsubscribe.getQuery());
         remove(queryDefinition, event.clientIdentification());
     }
 
@@ -97,7 +97,7 @@ public class QueryRegistrationCache {
     @EventListener
     public void on(SubscriptionEvents.SubscribeQuery event) {
         QuerySubscription subscription = event.getSubscription();
-        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), subscription);
+        QueryDefinition queryDefinition = new QueryDefinition(event.getContext(), subscription.getQuery());
         add(queryDefinition, subscription.getResultName(), event.getQueryHandler());
     }
 
@@ -106,12 +106,12 @@ public class QueryRegistrationCache {
      *
      * @param clientId the client identification
      */
-    public void remove(ClientIdentification clientId) {
-        registrationsPerQuery.forEach((k, v) -> v.removeClient(clientId));
+    public void remove(ClientStreamIdentification client) {
+        registrationsPerQuery.forEach((k, v) -> v.removeClient(client));
         registrationsPerQuery.entrySet().removeIf(v -> v.getValue().isEmpty());
     }
 
-    public void remove(QueryDefinition queryDefinition, ClientIdentification clientId) {
+    public void remove(QueryDefinition queryDefinition, ClientStreamIdentification clientId) {
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
         if (queryInformation != null) {
             queryInformation.removeClient(clientId);
@@ -171,12 +171,13 @@ public class QueryRegistrationCache {
     }
 
     private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName,
-                                 NavigableSet<ClientIdentification> queryHandlers,
+                                 NavigableSet<ClientStreamIdentification> queryHandlers,
                                  Set<ClientIdentification> filteredCandidates) {
         if (queryHandlers.isEmpty()) {
             return null;
         }
-        ClientIdentification client = queryHandlerSelector.select(queryDefinition,
+        }
+        ClientStreamIdentification client = queryHandlerSelector.select(queryDefinition,
                                                                   componentName,
                                                                   new TreeSet<>(Sets.intersect(queryHandlers,
                                                                                                filteredCandidates)));
@@ -186,32 +187,36 @@ public class QueryRegistrationCache {
         return registrationsPerQuery.get(queryDefinition).getHandler(client);
     }
 
-    public Map<QueryDefinition, Map<String, Set<QueryHandler>>> getAll() {
-        Map<QueryDefinition, Map<String, Set<QueryHandler>>> all = new HashMap<>();
-        registrationsPerQuery.forEach((query,queryInformation) -> {
-            Map<String, Set<QueryHandler>> componentsMap = new HashMap<>();
+    public Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> getAll() {
+        Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> all = new HashMap<>();
+        registrationsPerQuery.forEach((query, queryInformation) -> {
+            Map<String, Set<QueryHandler<?>>> componentsMap = new HashMap<>();
             all.put(query, componentsMap);
             queryInformation.handlers.values().forEach(h ->
-                componentsMap.computeIfAbsent(h.getComponentName(), c -> new HashSet<>()).add(h)
+                                                               componentsMap.computeIfAbsent(h.getComponentName(),
+                                                                                             c -> new HashSet<>())
+                                                                            .add(h)
             );
         });
         return all;
     }
 
-    public List<QueryRegistration> getForClient(ClientIdentification client) {
+    public List<QueryRegistration> getForClient(ClientStreamIdentification client) {
         return registrationsPerQuery.entrySet().stream()
                                     .map(e -> new QueryRegistration(e.getKey(),
                                                                     e.getValue().getHandler(client)))
-                                    .filter(r -> r.queryHandler != null && r.queryHandler.getClient().equals(client))
+                                    .filter(r -> r.queryHandler != null && r.queryHandler
+                                            .getClientStreamIdentification().equals(client))
                                     .collect(Collectors.toList());
     }
 
-    public QueryHandler find(String context, QueryRequest request, String client) {
+    public QueryHandler find(String context, QueryRequest request, String clientStreamId) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
-        return registrationsPerQuery.get(queryDefinition).getHandler(new ClientIdentification(context,client));
+        ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(context, clientStreamId);
+        return registrationsPerQuery.get(queryDefinition).getHandler(clientStreamIdentification);
     }
 
-    public Set<ClientIdentification> getClients() {
+    public Set<ClientStreamIdentification> getClients() {
         return registrationsPerQuery.values().stream().flatMap(q -> q.handlers.keySet().stream()).collect(toSet());
     }
 
@@ -238,9 +243,11 @@ public class QueryRegistrationCache {
     }
 
     private class QueryInformation {
-        private final Map<ClientIdentification,QueryHandler> handlers = new ConcurrentHashMap<>();
+
+        private final Map<ClientStreamIdentification, QueryHandler> handlers = new ConcurrentHashMap<>();
         private final Set<String> resultNames = new CopyOnWriteArraySet<>();
-        public void removeClient(ClientIdentification clientId) {
+
+        public void removeClient(ClientStreamIdentification clientId) {
             handlers.remove(clientId);
         }
 
@@ -254,17 +261,19 @@ public class QueryRegistrationCache {
         }
 
         public QueryInformation addHandler(QueryHandler queryHandler) {
-            handlers.put(queryHandler.getClient(), queryHandler);
+            handlers.put(queryHandler.getClientStreamIdentification(), queryHandler);
             return this;
         }
 
-        public QueryHandler getHandler(ClientIdentification client) {
+        public QueryHandler getHandler(ClientStreamIdentification client) {
             return handlers.get(client);
         }
 
-        public Map<String, NavigableSet<ClientIdentification>> getHandlersPerComponent() {
-            Map<String,NavigableSet<ClientIdentification>> map = new HashMap<>();
-            handlers.values().forEach(queryHandler -> map.computeIfAbsent(queryHandler.getComponentName(), c -> new TreeSet<>()).add(queryHandler.getClient()));
+        public Map<String, NavigableSet<ClientStreamIdentification>> getHandlersPerComponent() {
+            Map<String, NavigableSet<ClientStreamIdentification>> map = new HashMap<>();
+            handlers.values().forEach(queryHandler -> map
+                    .computeIfAbsent(queryHandler.getComponentName(), c -> new TreeSet<>())
+                    .add(queryHandler.getClientStreamIdentification()));
             return map;
         }
     }

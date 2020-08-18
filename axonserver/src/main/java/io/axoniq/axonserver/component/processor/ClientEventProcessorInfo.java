@@ -28,7 +28,7 @@ public class ClientEventProcessorInfo {
         this.eventProcessorInfo = eventProcessorInfo;
     }
 
-    public String getClientName() {
+    public String getClientId() {
         return clientName;
     }
 
