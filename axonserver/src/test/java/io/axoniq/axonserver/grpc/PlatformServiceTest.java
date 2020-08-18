@@ -188,7 +188,7 @@ public class PlatformServiceTest {
 
     @Test
     public void onReleaseSegmentRequest() {
-        CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
+        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
         requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
                                                                                                      .setClientId(
@@ -196,8 +196,12 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        platformService.on(new EventProcessorEvents.ReleaseSegmentRequest("Release", "processor", 1, false));
-        assertEquals(1, responseObserver.count);
+        platformService.on(new EventProcessorEvents.ReleaseSegmentRequest("Release",
+                                                                          "clientStreamId",
+                                                                          "processor",
+                                                                          1,
+                                                                          false));
+        assertEquals(1, responseObserver.values().size());
     }
 
     @Test

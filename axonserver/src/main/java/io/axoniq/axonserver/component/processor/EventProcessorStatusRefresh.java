@@ -86,12 +86,12 @@ public class EventProcessorStatusRefresh {
 
             ClientProcessorsByIdentifier matchingClients = new ClientProcessorsByIdentifier(all, context, processorId);
             Set<String> clientNames = StreamSupport.stream(matchingClients.spliterator(), false)
-                                                   .map(ClientProcessor::clientId)
+                                                   .map(ClientProcessor::clientName)
                                                    .collect(Collectors.toSet());
             CountDownLatch clientProcessorStatusUpdateLatch = new CountDownLatch(clientNames.size());
 
             Consumer<EventProcessorStatusUpdated> statusUpdateListener = statusEvent -> {
-                String clientName = statusEvent.eventProcessorStatus().getClientName();
+                String clientName = statusEvent.eventProcessorStatus().getClientId();
                 String processorName = statusEvent.eventProcessorStatus().getEventProcessorInfo().getProcessorName();
                 if (clientNames.remove(clientName) && processorName.equals(processorId.name())) {
                     clientProcessorStatusUpdateLatch.countDown();
@@ -101,7 +101,7 @@ public class EventProcessorStatusRefresh {
             updateListeners.add(statusUpdateListener);
             matchingClients.forEach(client -> eventPublisher.publishEvent(
                     new EventProcessorEvents.ProcessorStatusRequest(context,
-                                                                    client.clientId(), processorId.name(), false)
+                                                                    client.clientName(), processorId.name(), false)
             ));
             try {
                 boolean updated = clientProcessorStatusUpdateLatch.await(timeout.toMillis(), MILLISECONDS);

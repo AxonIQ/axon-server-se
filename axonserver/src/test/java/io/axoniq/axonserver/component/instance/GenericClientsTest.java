@@ -13,15 +13,11 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.message.ClientIdentification;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -35,17 +31,7 @@ public class GenericClientsTest {
         public String getHostName() {
             return "localhost";
         }
-    }), new ClientTagsCache() {
-        @Override
-        public Map<String, String> apply(ClientIdentification client) {
-            if (client.getClient().equals("1@node")) {
-                Map<String, String> tags = new HashMap<>();
-                tags.put("region", "Europe");
-                return tags;
-            }
-            return Collections.emptyMap();
-        }
-    });
+    }), new ClientTagsCache());
 
 
     @Test

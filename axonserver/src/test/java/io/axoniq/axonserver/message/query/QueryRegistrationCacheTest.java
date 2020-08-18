@@ -188,23 +188,26 @@ public class QueryRegistrationCacheTest {
             if (!metadata.containsKey("client")) {
                 return clients;
             }
-            return clients.stream().filter(c -> c.getClient().equals(metadata.getOrDefault("client",
-                                                                                           MetaDataValue
-                                                                                                   .getDefaultInstance())
-                                                                             .getTextValue())).collect(
+            return clients.stream().filter(c -> c.getClientStreamId().equals(metadata.getOrDefault("client",
+                                                                                                   MetaDataValue
+                                                                                                           .getDefaultInstance())
+                                                                                     .getTextValue())).collect(
                     Collectors.toSet());
         });
 
         queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    new DirectQueryHandler(dummyStreamObserver,
-                                                          new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
-                                                          "component"));
+                                                          new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                         "client"),
+                                                          "component",
+                                                          "client"));
         queryRegistrationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, "test"),
                                    "test",
                                    new DirectQueryHandler(dummyStreamObserver,
-                                                          new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"),
-                                                          "component"));
+                                                          new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                         "client2"),
+                                                          "component", "client2"));
 
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")

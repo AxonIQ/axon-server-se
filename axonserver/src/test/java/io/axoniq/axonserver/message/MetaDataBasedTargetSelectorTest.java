@@ -33,26 +33,26 @@ public class MetaDataBasedTargetSelectorTest {
     public void findOnOneMetaDataValue() {
         clientTagsCache.on(new ClientTagsUpdate("client1", "context1", Collections.singletonMap("location", "Europe")));
         clientTagsCache.on(new ClientTagsUpdate("client2", "context1", Collections.singletonMap("location", "Asia")));
-        Set<ClientIdentification> clientIdentifications = new HashSet<>();
-        clientIdentifications.add(new ClientIdentification("context1", "client1"));
-        clientIdentifications.add(new ClientIdentification("context1", "client2"));
+        Set<ClientStreamIdentification> clientIdentifications = new HashSet<>();
+        clientIdentifications.add(new ClientStreamIdentification("context1", "client1"));
+        clientIdentifications.add(new ClientStreamIdentification("context1", "client2"));
         Map<String, MetaDataValue> metaData = Collections.singletonMap("location",
                                                                        MetaDataValue.newBuilder().setTextValue("Asia")
                                                                                     .build());
-        Set<ClientIdentification> targets = testSubject.apply(metaData, clientIdentifications);
+        Set<ClientStreamIdentification> targets = testSubject.apply(metaData, clientIdentifications);
         assertEquals(1, targets.size());
-        ClientIdentification client = targets.iterator().next();
-        assertEquals("client2", client.getClient());
+        ClientStreamIdentification client = targets.iterator().next();
+        assertEquals("client2", client.getClientStreamId());
     }
 
     @Test
     public void findWithoutMetaData() {
         clientTagsCache.on(new ClientTagsUpdate("client1", "context1", Collections.singletonMap("location", "Europe")));
         clientTagsCache.on(new ClientTagsUpdate("client2", "context1", Collections.singletonMap("location", "Asia")));
-        Set<ClientIdentification> clientIdentifications = new HashSet<>();
-        clientIdentifications.add(new ClientIdentification("context1", "client1"));
-        clientIdentifications.add(new ClientIdentification("context1", "client2"));
-        Set<ClientIdentification> targets = testSubject.apply(Collections.emptyMap(), clientIdentifications);
+        Set<ClientStreamIdentification> clientIdentifications = new HashSet<>();
+        clientIdentifications.add(new ClientStreamIdentification("context1", "client1"));
+        clientIdentifications.add(new ClientStreamIdentification("context1", "client2"));
+        Set<ClientStreamIdentification> targets = testSubject.apply(Collections.emptyMap(), clientIdentifications);
         assertEquals(2, targets.size());
     }
 
@@ -60,25 +60,25 @@ public class MetaDataBasedTargetSelectorTest {
     public void findClientNotInCache() {
         clientTagsCache.on(new ClientTagsUpdate("client1", "context1", Collections.singletonMap("location", "Europe")));
         clientTagsCache.on(new ClientTagsUpdate("client2", "context1", Collections.singletonMap("location", "Asia")));
-        Set<ClientIdentification> clientIdentifications = new HashSet<>();
-        clientIdentifications.add(new ClientIdentification("context1", "client3"));
-        Set<ClientIdentification> targets = testSubject.apply(Collections.emptyMap(), clientIdentifications);
+        Set<ClientStreamIdentification> clientIdentifications = new HashSet<>();
+        clientIdentifications.add(new ClientStreamIdentification("context1", "client3"));
+        Set<ClientStreamIdentification> targets = testSubject.apply(Collections.emptyMap(), clientIdentifications);
         assertEquals(1, targets.size());
-        ClientIdentification client = targets.iterator().next();
-        assertEquals("client3", client.getClient());
+        ClientStreamIdentification client = targets.iterator().next();
+        assertEquals("client3", client.getClientStreamId());
     }
 
     @Test
     public void findWithoutMatchingMetaData() {
         clientTagsCache.on(new ClientTagsUpdate("client1", "context1", Collections.singletonMap("location", "Europe")));
         clientTagsCache.on(new ClientTagsUpdate("client2", "context1", Collections.singletonMap("location", "Asia")));
-        Set<ClientIdentification> clientIdentifications = new HashSet<>();
-        clientIdentifications.add(new ClientIdentification("context1", "client1"));
-        clientIdentifications.add(new ClientIdentification("context1", "client2"));
+        Set<ClientStreamIdentification> clientIdentifications = new HashSet<>();
+        clientIdentifications.add(new ClientStreamIdentification("context1", "client1"));
+        clientIdentifications.add(new ClientStreamIdentification("context1", "client2"));
         Map<String, MetaDataValue> metaData = Collections.singletonMap("location",
                                                                        MetaDataValue.newBuilder().setTextValue("Africa")
                                                                                     .build());
-        Set<ClientIdentification> targets = testSubject.apply(metaData, clientIdentifications);
+        Set<ClientStreamIdentification> targets = testSubject.apply(metaData, clientIdentifications);
         assertEquals(2, targets.size());
     }
 }

@@ -51,13 +51,13 @@ public class CommandCacheTest {
     public void onFullCapacityThrowError() {
         AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
 
-        testSubject.put("1234", new CommandInformation("1234", "Source", responseAtomicReference::set,
-                new ClientIdentification("context", "client"),
-                "component"));
+        testSubject.put("1234", new CommandInformation("1234", "Source", "Target", responseAtomicReference::set,
+                                                       new ClientStreamIdentification("context", "client"),
+                                                       "component"));
 
 
-        testSubject.put("4567", new CommandInformation("4567", "Source", responseAtomicReference::set,
-                new ClientIdentification("context", "client"),
-                "component"));
+        testSubject.put("4567", new CommandInformation("4567", "Source", "Target", responseAtomicReference::set,
+                                                       new ClientStreamIdentification("context", "client"),
+                                                       "component"));
     }
 }

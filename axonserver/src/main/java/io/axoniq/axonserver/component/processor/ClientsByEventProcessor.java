@@ -67,7 +67,7 @@ public class ClientsByEventProcessor implements Clients {
     @Override
     public Iterator<Client> iterator() {
         List<String> clients = stream(eventProcessors.spliterator(), false)
-                .map(ClientProcessor::clientId)
+                .map(ClientProcessor::clientName)
                 .collect(Collectors.toList());
 
         return stream(allClients.spliterator(), false)

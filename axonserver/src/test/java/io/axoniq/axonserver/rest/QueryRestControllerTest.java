@@ -48,7 +48,7 @@ public class QueryRestControllerTest {
                 new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, querySubscription.getClientId());
         registationCache.add(new QueryDefinition(Topology.DEFAULT_CONTEXT, querySubscription.getQuery()),
                              "Response",
-                             new DirectQueryHandler(new CountingStreamObserver<>(),
+                             new DirectQueryHandler(new FakeStreamObserver<>(),
                                                     clientStreamIdentification,
                                                     querySubscription.getComponentName(),
                                                     querySubscription.getClientId()));

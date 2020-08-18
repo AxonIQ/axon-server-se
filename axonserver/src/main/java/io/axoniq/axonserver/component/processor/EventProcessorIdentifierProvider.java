@@ -37,7 +37,7 @@ public class EventProcessorIdentifierProvider {
      */
     public EventProcessorIdentifier get(String context, String clientIdentifier, String processorName) {
         for (ClientProcessor clientProcessor : clientProcessors) {
-            if (clientProcessor.clientId().equals(clientIdentifier) &&
+            if (clientProcessor.clientName().equals(clientIdentifier) &&
                     clientProcessor.belongsToContext(context) &&
                     clientProcessor.eventProcessorInfo().getProcessorName().equals(processorName)) {
                 String tokenStoreIdentifier = clientProcessor.eventProcessorInfo().getTokenStoreIdentifier();

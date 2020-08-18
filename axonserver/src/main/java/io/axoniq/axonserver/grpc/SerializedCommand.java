@@ -32,7 +32,7 @@ public class SerializedCommand  {
 
     public SerializedCommand(byte[] serializedCommand) {
         this.serializedData = serializedCommand;
-        this.client = null;
+        this.clientStreamId = null;
         this.messageId = null;
     }
 

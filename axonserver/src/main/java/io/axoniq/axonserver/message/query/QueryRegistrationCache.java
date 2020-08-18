@@ -48,7 +48,7 @@ import static java.util.stream.Collectors.toSet;
 public class QueryRegistrationCache {
 
     private final QueryHandlerSelector queryHandlerSelector;
-    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector;
+    private final BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector;
 
     private final Map<QueryDefinition, QueryInformation> registrationsPerQuery = new ConcurrentHashMap<>();
 
@@ -62,7 +62,7 @@ public class QueryRegistrationCache {
      */
     @Autowired
     public QueryRegistrationCache(QueryHandlerSelector queryHandlerSelector,
-                                  BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
+                                  BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector) {
         this.queryHandlerSelector = queryHandlerSelector;
         this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
@@ -104,10 +104,10 @@ public class QueryRegistrationCache {
     /**
      * Removes all registered queries for a client
      *
-     * @param clientId the client identification
+     * @param clientStreamIdentification the client identification
      */
-    public void remove(ClientStreamIdentification client) {
-        registrationsPerQuery.forEach((k, v) -> v.removeClient(client));
+    public void remove(ClientStreamIdentification clientStreamIdentification) {
+        registrationsPerQuery.forEach((k, v) -> v.removeClient(clientStreamIdentification));
         registrationsPerQuery.entrySet().removeIf(v -> v.getValue().isEmpty());
     }
 
@@ -143,12 +143,12 @@ public class QueryRegistrationCache {
             return Collections.emptySet();
         }
 
-        Set<ClientIdentification> candidates = queryInformation.getHandlersPerComponent()
-                                                               .values()
-                                                               .stream()
-                                                               .flatMap(Collection::stream).collect(toSet());
-        Set<ClientIdentification> filteredCandidates = metaDataBasedNodeSelector.apply(request.getMetaDataMap(),
-                                                                                       candidates);
+        Set<ClientStreamIdentification> candidates = queryInformation.getHandlersPerComponent()
+                                                                     .values()
+                                                                     .stream()
+                                                                     .flatMap(Collection::stream).collect(toSet());
+        Set<ClientStreamIdentification> filteredCandidates = metaDataBasedNodeSelector.apply(request.getMetaDataMap(),
+                                                                                             candidates);
         return queryInformation.getHandlersPerComponent().entrySet().stream()
                                .map(entry -> pickOne(queryDefinition,
                                                      entry.getKey(),
@@ -172,15 +172,14 @@ public class QueryRegistrationCache {
 
     private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName,
                                  NavigableSet<ClientStreamIdentification> queryHandlers,
-                                 Set<ClientIdentification> filteredCandidates) {
+                                 Set<ClientStreamIdentification> filteredCandidates) {
         if (queryHandlers.isEmpty()) {
             return null;
         }
-        }
         ClientStreamIdentification client = queryHandlerSelector.select(queryDefinition,
-                                                                  componentName,
-                                                                  new TreeSet<>(Sets.intersect(queryHandlers,
-                                                                                               filteredCandidates)));
+                                                                        componentName,
+                                                                        new TreeSet<>(Sets.intersect(queryHandlers,
+                                                                                                     filteredCandidates)));
         if (client == null) {
             return null;
         }

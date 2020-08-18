@@ -49,7 +49,7 @@ public class CommandRegistrationCache {
     private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
     private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
-    private final BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector;
+    private final BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector;
 
     /**
      * Autowired constructor.
@@ -59,7 +59,7 @@ public class CommandRegistrationCache {
      */
     @Autowired
     public CommandRegistrationCache(
-            BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
+            BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
         this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
@@ -89,7 +89,7 @@ public class CommandRegistrationCache {
      *                                  request
      */
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory,
-                                    BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> metaDataBasedNodeSelector) {
+                                    BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = selectorFactory;
         this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
@@ -193,15 +193,16 @@ public class CommandRegistrationCache {
      */
     public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
         String command = request.getName();
-        Set<ClientIdentification> candidates = getCandidates(request);
+        Set<ClientStreamIdentification> candidates = getCandidates(request);
         if (candidates.isEmpty()) {
             return null;
         }
         if (candidates.size() == 1) {
             return commandHandlersPerClientContext.get(candidates.iterator().next());
         }
-        Set<String> candidateNames = candidates.stream().map(ClientIdentification::getClient).collect(Collectors
-                                                                                                              .toSet());
+        Set<String> candidateNames = candidates.stream().map(ClientStreamIdentification::getClientStreamId).collect(
+                Collectors
+                        .toSet());
         RoutingSelector<String> routingSelector = routingSelector(context, command);
         return routingSelector
                 .selectHandler(routingKey, candidateNames)
@@ -209,18 +210,18 @@ public class CommandRegistrationCache {
                 .orElse(null);
     }
 
-    private Set<ClientIdentification> getCandidates(Command command) {
+    private Set<ClientStreamIdentification> getCandidates(Command command) {
 
-        Set<ClientIdentification> candidates = registrationsPerClient.entrySet()
-                                                                     .stream()
-                                                                     .filter(entry -> entry
-                                                                             .getValue()
-                                                                             .containsKey(
-                                                                                     command.getName()))
-                                                                     .map(Map.Entry::getKey)
-                                                                     .collect(
-                                                                             Collectors
-                                                                                     .toSet());
+        Set<ClientStreamIdentification> candidates = registrationsPerClient.entrySet()
+                                                                           .stream()
+                                                                           .filter(entry -> entry
+                                                                                   .getValue()
+                                                                                   .containsKey(
+                                                                                           command.getName()))
+                                                                           .map(Map.Entry::getKey)
+                                                                           .collect(
+                                                                                   Collectors
+                                                                                           .toSet());
         return metaDataBasedNodeSelector.apply(command.getMetaDataMap(), candidates);
     }
 

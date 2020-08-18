@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
@@ -22,6 +23,7 @@ import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.EventProcessorReference;
+import io.axoniq.axonserver.grpc.control.EventProcessorSegmentReference;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
@@ -81,7 +83,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      *                             working under
      * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
      * @param instructionAckSource responsible for sending instruction acknowledgements
-     * @param clientIdRegistry
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
@@ -269,7 +270,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
                                                                .setProcessorName(evt.processorName()))
                 .build();
-        sendToClientId(evt.context(), evt.clientName(), instruction);
+        sendToClientStreamId(evt.clientName(), instruction);
     }
 
     @EventListener
@@ -278,12 +279,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .newBuilder()
                 .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
                 .build();
-        this.sendToClient(evt.context(),evt.clientName(), instruction);
-        sendToClientId(evt.clientName(), instruction);
+        sendToClientStreamId(evt.clientName(), instruction);
     }
 
     @EventListener
-    public void on(ReleaseSegmentRequest event) {
+    public void on(EventProcessorEvents.ReleaseSegmentRequest event) {
         EventProcessorSegmentReference releaseSegmentRequest =
                 EventProcessorSegmentReference.newBuilder()
                                               .setProcessorName(event.getProcessorName())
@@ -294,7 +294,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setReleaseSegment(releaseSegmentRequest)
                                            .build();
-        sendToClientId(event.getClientName(), outboundInstruction);
+        sendToClientStreamId(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
@@ -322,7 +322,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
     @EventListener
-    public void on(SplitSegmentRequest event) {
+    public void on(EventProcessorEvents.SplitSegmentRequest event) {
         EventProcessorSegmentReference splitSegmentRequest =
                 EventProcessorSegmentReference.newBuilder()
                                               .setProcessorName(event.getProcessorName())
@@ -333,11 +333,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
                                            .build();
-        sendToClientId(event.getClientName(), outboundInstruction);
+        sendToClientStreamId(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
-    public void on(MergeSegmentRequest event) {
+    public void on(EventProcessorEvents.MergeSegmentRequest event) {
         EventProcessorSegmentReference mergeSegmentRequest =
                 EventProcessorSegmentReference.newBuilder()
                                               .setProcessorName(event.getProcessorName())
@@ -348,7 +348,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        sendToClientId(event.getClientName(), outboundInstruction);
+        sendToClientStreamId(event.getClientName(), outboundInstruction);
     }
 
     @EventListener
@@ -362,7 +362,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setRequestEventProcessorInfo(eventProcessorInfoRequest)
                                            .build();
-        sendToClientId(event.context(), event.clientName(), outboundInstruction);
+        sendToClientStreamId(event.clientName(), outboundInstruction);
     }
 
     private void registerClient(ClientComponent clientComponent,
