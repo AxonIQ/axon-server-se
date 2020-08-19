@@ -17,6 +17,10 @@ public interface ClientIdRegistry {
      */
     boolean register(String clientStreamId, String clientId);
 
+    void registerPlatform(String clientStreamId, String clientId);
+
+    void unregisterPlatform(String clientStreamId);
+
     /**
      * Unregisters the relation between a stream and a client id
      *

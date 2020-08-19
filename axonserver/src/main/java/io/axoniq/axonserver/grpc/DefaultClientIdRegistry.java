@@ -1,9 +1,5 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -19,29 +15,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Component
 public class DefaultClientIdRegistry implements ClientIdRegistry {
 
-    private final Logger logger = LoggerFactory.getLogger(DefaultClientIdRegistry.class);
     private final ConcurrentMap<String, String> clientMap = new ConcurrentHashMap();
     private final ConcurrentMap<String, Set<String>> platformStreamMap = new ConcurrentHashMap<>();
-
-    public boolean registerPlatformConnection(String clientStreamId, String clientId) {
-        String prev = clientMap.put(clientStreamId, clientId);
-        platformStreamMap.computeIfAbsent(clientId, c -> new CopyOnWriteArraySet<>()).add(clientStreamId);
-        return prev == null;
-    }
-
-    public boolean unregisterPlatformConnection(String clientStreamId) {
-        String clientId = clientMap.remove(clientStreamId);
-        if (clientId != null) {
-            platformStreamMap.computeIfPresent(clientId, (c, current) -> {
-                current.remove(clientStreamId);
-                if (current.isEmpty()) {
-                    return null;
-                }
-                return current;
-            });
-        }
-        return clientId == null;
-    }
 
     @Override
     public boolean register(String clientStreamId, String clientId) {
@@ -71,13 +46,31 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
         return Collections.unmodifiableSet(current);
     }
 
-    @EventListener
-    public void on(TopologyEvents.ApplicationConnected event) {
-        registerPlatformConnection(event.getClientStreamId(), event.getClientId());
+    @Override
+    public void registerPlatform(String clientStreamId, String clientId) {
+        register(clientStreamId, clientId);
+        registerPlatformConnection(clientStreamId, clientId);
     }
 
-    @EventListener
-    public void on(TopologyEvents.ApplicationDisconnected event) {
-        unregisterPlatformConnection(event.getClientStreamId());
+    @Override
+    public void unregisterPlatform(String clientStreamId) {
+        String clientId = clientMap.remove(clientStreamId);
+        if (clientId != null) {
+            unregisterPlatformConnection(clientStreamId, clientId);
+        }
+    }
+
+    private void registerPlatformConnection(String clientStreamId, String clientId) {
+        platformStreamMap.computeIfAbsent(clientId, c -> new CopyOnWriteArraySet<>()).add(clientStreamId);
+    }
+
+    private void unregisterPlatformConnection(String clientStreamId, String clientId) {
+        platformStreamMap.computeIfPresent(clientId, (c, current) -> {
+            current.remove(clientStreamId);
+            if (current.isEmpty()) {
+                return null;
+            }
+            return current;
+        });
     }
 }

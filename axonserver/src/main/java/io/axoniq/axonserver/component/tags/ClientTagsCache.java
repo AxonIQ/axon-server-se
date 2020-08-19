@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
- * Provides the tags of all clients connected directly to the local Axon Server instance.
+ * Provides the tags of all clients connected to the local Axon Server instance.
  *
  * @author Sara Pellegrini
  * @since 4.2

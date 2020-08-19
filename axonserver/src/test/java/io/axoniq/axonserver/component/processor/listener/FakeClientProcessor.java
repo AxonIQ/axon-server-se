@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.component.processor.listener;
 
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.topology.Topology;
 
 /**
  * {@link ClientProcessor} Fake implementation for test purpose .
@@ -23,7 +24,7 @@ public class FakeClientProcessor implements ClientProcessor {
 
     private final boolean belongsToComponent;
 
-    private final boolean belongsToContext;
+    private final String belongsToContext;
 
     private final EventProcessorInfo eventProcessorInfo;
 
@@ -35,10 +36,10 @@ public class FakeClientProcessor implements ClientProcessor {
 
     public FakeClientProcessor(String clientId, boolean belongsToComponent,
                                EventProcessorInfo eventProcessorInfo) {
-        this(clientId, belongsToComponent, true, eventProcessorInfo);
+        this(clientId, belongsToComponent, Topology.DEFAULT_CONTEXT, eventProcessorInfo);
     }
 
-    public FakeClientProcessor(String clientId, boolean belongsToComponent, boolean belongsToContext,
+    public FakeClientProcessor(String clientId, boolean belongsToComponent, String belongsToContext,
                                EventProcessorInfo eventProcessorInfo) {
         this.clientId = clientId;
         this.belongsToComponent = belongsToComponent;
@@ -68,6 +69,6 @@ public class FakeClientProcessor implements ClientProcessor {
 
     @Override
     public boolean belongsToContext(String context) {
-        return belongsToContext;
+        return belongsToContext.equals(context);
     }
 }

@@ -73,7 +73,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     private final ApplicationEventPublisher eventPublisher;
     private final Map<RequestCase, Deque<InstructionConsumer>> handlers = new EnumMap<>(RequestCase.class);
     private final InstructionAckSource<PlatformOutboundInstruction> instructionAckSource;
-//    private final ClientIdRegistry clientIdRegistry;
+    private final ClientIdRegistry clientIdRegistry;
 
     /**
      * Instantiate a {@link PlatformService}, used to track all connected applications and deal with internal events.
@@ -81,16 +81,19 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param topology             the {@link Topology} of the group this Axon Server instance participates in
      * @param contextProvider      a {@link ContextProvider} used to retrieve the context this Axon Server instance is
      *                             working under
+     * @param clientIdRegistry
      * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
      * @param instructionAckSource responsible for sending instruction acknowledgements
      */
     public PlatformService(Topology topology,
                            ContextProvider contextProvider,
+                           ClientIdRegistry clientIdRegistry,
                            ApplicationEventPublisher eventPublisher,
                            @Qualifier("platformInstructionAckSource")
                                    InstructionAckSource<PlatformOutboundInstruction> instructionAckSource) {
         this.topology = topology;
         this.contextProvider = contextProvider;
+        this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
         onInboundInstruction(RequestCase.ACK, (clientComponent, instruction) -> {
@@ -158,6 +161,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     ClientIdentification client = instruction.getRegister();
                     String clientId = client.getClientId();
                     String clientStreamId = clientId + "." + UUID.randomUUID().toString();
+                    clientIdRegistry.registerPlatform(clientStreamId, clientId);
                     eventPublisher.publishEvent(new ClientTagsUpdate(clientStreamId,
                                                                      context,
                                                                      client.getTagsMap()));
@@ -388,6 +392,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             if (stream != null) {
                 StreamObserverUtils.complete(stream);
             }
+
+            clientIdRegistry.unregisterPlatform(clientComponent.clientStreamId);
 
             eventPublisher.publishEvent(new ApplicationDisconnected(
                     clientComponent.context,

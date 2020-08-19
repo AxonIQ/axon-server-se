@@ -25,7 +25,7 @@ import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,17 +39,17 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class PlatformServiceTest {
 
-    private PlatformService platformService;
-    private Topology clusterController;
     private final String context = Topology.DEFAULT_CONTEXT;
+    private PlatformService platformService;
+    private ClientIdRegistry clientIdRegistry = new DefaultClientIdRegistry();
+
     @Before
     public void setUp() {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
-        clusterController = new DefaultTopology(configuration);
-        platformService = new PlatformService(clusterController,
+        platformService = new PlatformService(new DefaultTopology(configuration),
                                               () -> Topology.DEFAULT_CONTEXT,
-                                              eventPublisher,
+                                              clientIdRegistry, eventPublisher,
                                               new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
                                                       .newBuilder().setAck(ack).build()));
     }
@@ -142,10 +142,13 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest(context,
-                                                                                                         "Release",
-                                                                                                         "processor",
-                                                                                                         false));
+        clientIdRegistry.platformStreamIdsFor("Release").forEach(streamId -> {
+            platformService.on(new EventProcessorEvents.PauseEventProcessorRequest("Release",
+                                                                                   streamId,
+                                                                                   "processor",
+                                                                                   false));
+        });
+
         assertEquals(1, responseObserver.values().size());
     }
 
@@ -159,10 +162,13 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        platformService.on(new EventProcessorEvents.StartEventProcessorRequest(context,
-                                                                                                         "Release",
-                                                                                                         "processor",
-                                                                                                         false));
+
+        clientIdRegistry.platformStreamIdsFor("Release").forEach(streamId -> {
+            platformService.on(new EventProcessorEvents.StartEventProcessorRequest("Release",
+                                                                                   streamId,
+                                                                                   "processor",
+                                                                                   false));
+        });
         assertEquals(1, responseObserver.values().size());
     }
 
@@ -196,11 +202,14 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        platformService.on(new EventProcessorEvents.ReleaseSegmentRequest("Release",
-                                                                          "clientStreamId",
-                                                                          "processor",
-                                                                          1,
-                                                                          false));
+
+        clientIdRegistry.platformStreamIdsFor("Release").forEach(streamId -> {
+            platformService.on(new EventProcessorEvents.ReleaseSegmentRequest("Release",
+                                                                              streamId,
+                                                                              "processor",
+                                                                              1,
+                                                                              false));
+        });
         assertEquals(1, responseObserver.values().size());
     }
 
@@ -234,8 +243,8 @@ public class PlatformServiceTest {
                                                                              .setClientId("MyClient")
                                                                              .setComponentName("component")).build());
         platformService.sendToClient("default", "MyClient", i);
-        assertEquals(1,responseObserver.values().size());
-        assertEquals(i,responseObserver.values().get(0));
+        assertEquals(1, responseObserver.values().size());
+        assertEquals(i, responseObserver.values().get(0));
     }
 
     @Test
@@ -249,6 +258,6 @@ public class PlatformServiceTest {
                                                                              .setClientId("MyClient")
                                                                              .setComponentName("component")).build());
         platformService.sendToClient("wrong-context", "MyClient", i);
-        assertEquals(0,responseObserver.values().size());
+        assertEquals(0, responseObserver.values().size());
     }
 }

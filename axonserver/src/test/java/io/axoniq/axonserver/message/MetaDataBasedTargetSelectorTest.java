@@ -34,6 +34,16 @@ public class MetaDataBasedTargetSelectorTest {
         }
 
         @Override
+        public void registerPlatform(String clientStreamId, String clientId) {
+
+        }
+
+        @Override
+        public void unregisterPlatform(String clientStreamId) {
+
+        }
+
+        @Override
         public boolean unregister(String clientStreamId) {
             return false;
         }
