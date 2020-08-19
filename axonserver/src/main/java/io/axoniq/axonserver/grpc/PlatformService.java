@@ -93,14 +93,16 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         this.contextProvider = contextProvider;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
-        onInboundInstruction(RequestCase.ACK, (client, context, instruction) -> {
+        onInboundInstruction(RequestCase.ACK, (clientComponent, instruction) -> {
             InstructionAck ack = instruction.getAck();
             if (isUnsupportedInstructionErrorResult(ack)) {
-                logger.warn("Unsupported instruction sent to the client {} of context {}.", client, context);
+                logger.warn("Unsupported instruction sent to the client {} of context {}.",
+                            clientComponent.getClientId(),
+                            clientComponent.getContext());
             } else {
                 logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
-                             client,
-                             context,
+                             clientComponent.getClientId(),
+                             clientComponent.getContext(),
                              ack);
             }
         });
@@ -178,7 +180,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .forEach(consumer -> {
                                 instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
                                                                        sendingStreamObserver);
-                                consumer.accept(clientComponent.get().clientStreamId, context, instruction);
+                                consumer.accept(clientComponent.get(), instruction);
                             });
                 }
             }
@@ -441,13 +443,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public interface InstructionConsumer {
 
         /**
-         * Consume the given {@code client}, {@code context} and {@link PlatformInboundInstruction}.
+         * Consume the given {@code clientComponent} and {@link PlatformInboundInstruction}.
          *
-         * @param client      a {@link String} specifying the name of the client
-         * @param context     a {@link String} specifying the context of the client
-         * @param instruction a {@link PlatformOutboundInstruction} describing the inbound instruction to be consumed
+         * @param clientComponent a {@link ClientComponent} specifying the client
+         * @param instruction     a {@link PlatformOutboundInstruction} describing the inbound instruction to be
+         *                        consumed
          */
-        void accept(String client, String context, PlatformInboundInstruction instruction);
+        void accept(ClientComponent clientComponent, PlatformInboundInstruction instruction);
     }
 
     /**
@@ -495,12 +497,19 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         }
 
         /**
-         * Return the id of this client.
+         * Return the stream id of this client.
          *
          * @return a {@link String} representing the unique identifier of the platform connection of this client
          */
         public String getClientStreamId() {
             return clientStreamId;
+        }
+
+        /**
+         * @return a {@link String} representing the unique identifier of this client
+         */
+        public String getClientId() {
+            return clientId;
         }
 
         /**

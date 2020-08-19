@@ -81,7 +81,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
         Set<String> freeThreadInstances =
                 processors().stream()
                             .filter(processor -> processor.eventProcessorInfo().getAvailableThreads() > ZERO_THREADS)
-                            .map(ClientProcessor::clientName)
+                            .map(ClientProcessor::clientId)
                             .collect(Collectors.toSet());
 
         Integer activeThreads = processorInstances().stream()
@@ -112,7 +112,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
         return processors()
                 .stream()
                 .flatMap(client -> client.eventProcessorInfo().getSegmentStatusList().stream()
-                                         .map(tracker -> new TrackingProcessorSegment(client.clientName(), tracker)))
+                                         .map(tracker -> new TrackingProcessorSegment(client.clientId(), tracker)))
                 .sorted(Comparator.comparingInt(TrackingProcessorSegment::segmentId).thenComparing(TrackingProcessorSegment::clientId))
                 .collect(toList());
     }

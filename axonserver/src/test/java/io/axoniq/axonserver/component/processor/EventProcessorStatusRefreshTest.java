@@ -92,6 +92,7 @@ public class EventProcessorStatusRefreshTest {
         return new EventProcessorStatusUpdated(
                 new ClientEventProcessorInfo(
                         client,
+                        client,
                         "context",
                         EventProcessorInfo.newBuilder().setProcessorName(processorName).build()),
                 false);

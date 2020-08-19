@@ -77,8 +77,10 @@ public class HeartbeatMonitor {
                             ApplicationEventPublisher eventPublisher,
                             @Value("${axoniq.axonserver.client-heartbeat-timeout:5000}") long heartbeatTimeout) {
         this(listener ->
-                     platformService.onInboundInstruction(HEARTBEAT, (client, context, instruction) ->
-                             listener.accept(new ClientStreamIdentification(context, client), instruction)),
+                     platformService.onInboundInstruction(HEARTBEAT, (clientComponent, instruction) ->
+                             listener.accept(new ClientStreamIdentification(clientComponent.getContext(),
+                                                                            clientComponent.getClientStreamId()),
+                                             instruction)),
              eventPublisher,
              heartbeatPublisher,
              heartbeatTimeout, Clock.systemUTC());

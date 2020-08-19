@@ -71,7 +71,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors = new ArrayList<>();
 
         ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
-        when(splitClientProcessor.clientName()).thenReturn(CLIENT_NAME_OF_SPLIT);
+        when(splitClientProcessor.clientStreamId()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
                                                                      .addAllSegmentStatus(segmentInfo)
@@ -80,7 +80,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors.add(splitClientProcessor);
 
         ClientProcessor mergeClientProcessor = mock(ClientProcessor.class);
-        when(mergeClientProcessor.clientName()).thenReturn(CLIENT_NAME_OF_MERGE);
+        when(mergeClientProcessor.clientStreamId()).thenReturn(CLIENT_NAME_OF_MERGE);
         EventProcessorInfo eventProcessorToMerge = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_MERGE)
                                                                      .addAllSegmentStatus(segmentInfo)
@@ -162,7 +162,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors.clear();
 
         ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
-        when(splitClientProcessor.clientName()).thenReturn(CLIENT_NAME_OF_SPLIT);
+        when(splitClientProcessor.clientStreamId()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
                                                                      .addAllSegmentStatus(

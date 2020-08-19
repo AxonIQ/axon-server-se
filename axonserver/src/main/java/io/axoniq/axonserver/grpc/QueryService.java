@@ -63,6 +63,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Topology topology;
     private final QueryDispatcher queryDispatcher;
     private final ContextProvider contextProvider;
+    private final ClientIdRegistry clientIdRegistry;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
@@ -73,12 +74,14 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
 
     public QueryService(Topology topology, QueryDispatcher queryDispatcher, ContextProvider contextProvider,
+                        ClientIdRegistry clientIdRegistry,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
                                 InstructionAckSource<QueryProviderInbound> instructionAckSource) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
+        this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
     }
@@ -199,8 +202,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
             private void initClientReference(String clientId) {
                 String clientStreamId = clientId + "." + UUID.randomUUID().toString();
-                ;
-                clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId));
+                if (clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
+                    clientIdRegistry.register(clientStreamId, clientId);
+                }
                 clientIdRef.compareAndSet(null, clientId);
             }
 
@@ -229,6 +233,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                 if (clientRef.get() != null) {
                     String clientStreamId = clientRef.get().getClientStreamId();
                     String clientId = this.clientIdRef.get();
+                    clientIdRegistry.unregister(clientStreamId);
                     eventPublisher.publishEvent(new QueryHandlerDisconnected(context,
                                                                              clientId,
                                                                              clientStreamId));

@@ -75,6 +75,7 @@ public class CommandService implements AxonServerClientService {
     private final Topology topology;
     private final CommandDispatcher commandDispatcher;
     private final ContextProvider contextProvider;
+    private final ClientIdRegistry clientIdRegistry;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
@@ -86,12 +87,14 @@ public class CommandService implements AxonServerClientService {
     public CommandService(Topology topology,
                           CommandDispatcher commandDispatcher,
                           ContextProvider contextProvider,
+                          ClientIdRegistry clientIdRegistry,
                           ApplicationEventPublisher eventPublisher,
                           @Qualifier("commandInstructionAckSource")
                                   InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
+        this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
     }
@@ -187,8 +190,9 @@ public class CommandService implements AxonServerClientService {
 
             private void initClientReference(String clientId) {
                 String clientStreamId = clientId + "." + UUID.randomUUID().toString();
-                ;
-                clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId));
+                if (clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
+                    clientIdRegistry.register(clientStreamId, clientId);
+                }
                 clientIdRef.compareAndSet(null, clientId);
             }
 
@@ -230,6 +234,7 @@ public class CommandService implements AxonServerClientService {
                 if (clientRef.get() != null) {
                     String clientStreamId = clientRef.get().getClientStreamId();
                     String clientId = clientIdRef.get();
+                    clientIdRegistry.unregister(clientStreamId);
                     eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get().getContext(),
                                                                                clientId,
                                                                                clientStreamId));

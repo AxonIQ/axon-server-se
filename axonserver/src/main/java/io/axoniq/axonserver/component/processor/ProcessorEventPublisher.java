@@ -82,11 +82,12 @@ public class ProcessorEventPublisher {
         platformService.onInboundInstruction(EVENT_PROCESSOR_INFO, this::publishEventProcessorStatus);
     }
 
-    private void publishEventProcessorStatus(String clientName,
-                                             String context,
+    private void publishEventProcessorStatus(PlatformService.ClientComponent clientComponent,
                                              PlatformInboundInstruction inboundInstruction) {
         ClientEventProcessorInfo processorStatus =
-                new ClientEventProcessorInfo(clientName, context, inboundInstruction.getEventProcessorInfo());
+                new ClientEventProcessorInfo(clientComponent.getClientId(),
+                                             clientComponent.getClientStreamId(),
+                                             clientComponent.getContext(), inboundInstruction.getEventProcessorInfo());
         applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus));
     }
 
@@ -110,14 +111,14 @@ public class ProcessorEventPublisher {
      * Split the biggest segment of the given {@code processorName} in two, by publishing a {@link SplitSegmentRequest}
      * as an application event to be picked up by the component publishing this message towards the right Axon client.
      *
-     * @param context       the principal context of the event processor
-     * @param clientNames   a {@link List} of {@link String}s containing the specified tracking event processor
-     * @param processorName a {@link String} specifying the Tracking Event Processor for which the biggest segment
-     *                      should be split in two
+     * @param context         the principal context of the event processor
+     * @param clientStreamIds a {@link List} of {@link String}s containing the specified tracking event processor
+     * @param processorName   a {@link String} specifying the Tracking Event Processor for which the biggest segment
+     *                        should be split in two
      */
-    public void splitSegment(String context, List<String> clientNames, String processorName) {
+    public void splitSegment(String context, List<String> clientStreamIds, String processorName) {
         Map<ClientSegmentPair, SegmentStatus> clientToTracker =
-                buildClientToTrackerMap(clientNames, processorName, REGULAR_ORDER);
+                buildClientToTrackerMap(clientStreamIds, processorName, REGULAR_ORDER);
 
         Integer biggestSegment = clientToTracker.values().stream()
                                                 .min(Comparator.comparingInt(SegmentStatus::getOnePartOf))
@@ -209,7 +210,7 @@ public class ProcessorEventPublisher {
 
         List<ClientProcessor> clientsWithProcessor =
                 StreamSupport.stream(clientProcessors.spliterator(), PARALLELIZE_STREAM)
-                             .filter(clientProcessor -> clientNames.contains(clientProcessor.clientName()))
+                             .filter(clientProcessor -> clientNames.contains(clientProcessor.clientStreamId()))
                              .filter(clientProcessor -> clientProcessor.eventProcessorInfo().getProcessorName()
                                                                        .equals(processorName))
                              .collect(Collectors.toList());
@@ -217,7 +218,7 @@ public class ProcessorEventPublisher {
         for (ClientProcessor clientProcessor : clientsWithProcessor) {
             List<SegmentStatus> eventTrackers = clientProcessor.eventProcessorInfo().getSegmentStatusList();
             eventTrackers.forEach(eventTracker -> clientToTracker.put(
-                    new ClientSegmentPair(clientProcessor.clientName(), eventTracker.getSegmentId()), eventTracker)
+                    new ClientSegmentPair(clientProcessor.clientStreamId(), eventTracker.getSegmentId()), eventTracker)
             );
         }
 

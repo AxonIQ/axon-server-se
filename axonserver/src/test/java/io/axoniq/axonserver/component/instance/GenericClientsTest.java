@@ -13,6 +13,7 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
@@ -20,18 +21,20 @@ import org.junit.*;
 import java.util.Iterator;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
  */
 public class GenericClientsTest {
 
+    private ClientIdRegistry clientIdRegistry = mock(ClientIdRegistry.class);
     private final GenericClients testSubject = new GenericClients(new MessagingPlatformConfiguration(new SystemInfoProvider() {
         @Override
         public String getHostName() {
             return "localhost";
         }
-    }), new ClientTagsCache());
+    }), new ClientTagsCache(clientIdRegistry));
 
 
     @Test

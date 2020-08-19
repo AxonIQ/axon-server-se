@@ -44,11 +44,12 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     @EventListener
     public EventProcessorStatusUpdated onEventProcessorStatusChange(EventProcessorStatusUpdate event) {
         ClientEventProcessorInfo processorStatus = event.eventProcessorStatus();
-        String clientId = processorStatus.getClientId();
-        Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientId, c -> new HashMap<>());
+        String clientStreamId = processorStatus.getClientStreamId();
+        Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientStreamId, c -> new HashMap<>());
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
-        ClientProcessor clientProcessor = mapping.map(clientId,
-                                                      clients.get(clientId),
+        ClientProcessor clientProcessor = mapping.map(clientStreamId,
+                                                      event.eventProcessorStatus().getClientId(),
+                                                      clients.get(clientStreamId),
                                                       processorStatus.getContext(),
                                                       eventProcessorInfo);
         clientData.put(eventProcessorInfo.getProcessorName(), clientProcessor);

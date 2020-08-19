@@ -133,27 +133,24 @@ public class ClientsByEventProcessorTest {
     public void testIterator() {
         ClientsByEventProcessor testSubject = new ClientsByEventProcessor(blue1,
                                                                           "context",
-                                                                          clients,
                                                                           clientProcessors);
-        Iterator<Client> iterator = testSubject.iterator();
-        assertEquals(clientA, iterator.next());
-        assertEquals(clientB, iterator.next());
+        Iterator<String> iterator = testSubject.iterator();
+        assertEquals(CLIENT_A, iterator.next());
+        assertEquals(CLIENT_B, iterator.next());
         assertFalse(iterator.hasNext());
 
         ClientsByEventProcessor testSubject2 = new ClientsByEventProcessor(red2,
                                                                            "anotherContext",
-                                                                           clients,
                                                                            clientProcessors);
-        Iterator<Client> iterator2 = testSubject2.iterator();
+        Iterator<String> iterator2 = testSubject2.iterator();
         assertFalse(iterator2.hasNext());
 
         ClientsByEventProcessor testSubject3 = new ClientsByEventProcessor(green2,
                                                                            "context",
-                                                                           clients,
                                                                            clientProcessors);
-        Iterator<Client> iterator3 = testSubject3.iterator();
-        assertEquals(clientD, iterator3.next());
-        assertEquals(clientE, iterator3.next());
+        Iterator<String> iterator3 = testSubject3.iterator();
+        assertEquals(CLIENT_D, iterator3.next());
+        assertEquals(CLIENT_E, iterator3.next());
         assertFalse(iterator3.hasNext());
     }
 }
