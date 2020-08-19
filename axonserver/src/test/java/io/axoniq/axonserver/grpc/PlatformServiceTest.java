@@ -210,7 +210,7 @@ public class PlatformServiceTest {
     public void onInboundInstruction() {
         AtomicBoolean eventProcessorInfoReceived = new AtomicBoolean();
         platformService.onInboundInstruction(PlatformInboundInstruction.RequestCase.EVENT_PROCESSOR_INFO,
-                                             (client, context, instruction) -> eventProcessorInfoReceived.set(true));
+                                             (client, instruction) -> eventProcessorInfoReceived.set(true));
         StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService
                 .openStream(new CountingStreamObserver<>());
         clientStreamObserver.onNext(PlatformInboundInstruction.newBuilder()

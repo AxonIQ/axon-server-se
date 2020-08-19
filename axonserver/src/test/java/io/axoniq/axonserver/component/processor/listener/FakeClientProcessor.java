@@ -41,7 +41,12 @@ public class FakeClientProcessor implements ClientProcessor {
     }
 
     @Override
-    public String clientName() {
+    public String clientId() {
+        return clientId;
+    }
+
+    @Override
+    public String clientStreamId() {
         return clientId;
     }
 

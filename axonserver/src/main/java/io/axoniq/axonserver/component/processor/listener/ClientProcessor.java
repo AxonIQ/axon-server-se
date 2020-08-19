@@ -22,11 +22,13 @@ import javax.annotation.Nonnull;
  */
 public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> {
 
-    String clientName();
+    String clientStreamId();
+
+    String clientId();
 
     EventProcessorInfo eventProcessorInfo();
 
-    default Boolean running(){
+    default Boolean running() {
         return eventProcessorInfo().getRunning();
     }
 

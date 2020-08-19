@@ -18,12 +18,12 @@ public class ClientVersionUpdate {
     /**
      * Creates an instance with the specified client's name, context and Axon Framework version.
      *
-     * @param clientName the client's name
-     * @param context    the client's context
-     * @param version    the client's Axon Framework version
+     * @param clientStreamId the client's platform stream identifier
+     * @param context        the client's context
+     * @param version        the client's Axon Framework version
      */
-    public ClientVersionUpdate(String clientName, String context, String version) {
-        this(new ClientStreamIdentification(context, clientName), version);
+    public ClientVersionUpdate(String clientStreamId, String context, String version) {
+        this(new ClientStreamIdentification(context, clientStreamId), version);
     }
 
     /**
@@ -48,6 +48,7 @@ public class ClientVersionUpdate {
 
     /**
      * Returns the client's Axon Framework version.
+     *
      * @return the client's Axon Framework version.
      */
     public String version() {

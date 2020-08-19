@@ -52,6 +52,7 @@ public class GenericClients implements Clients {
     public void on(TopologyEvents.ApplicationConnected event) {
         this.clientRegistrations.put(event.clientIdentification(),
                                      new GenericClient(event.getClientId(),
+                                                       event.getClientStreamId(),
                                                        event.getComponentName(),
                                                        event.getContext(),
                                                        event.isProxied() ? event

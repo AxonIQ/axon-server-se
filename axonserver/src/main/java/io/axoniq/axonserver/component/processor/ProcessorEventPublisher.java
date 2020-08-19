@@ -65,11 +65,9 @@ public class ProcessorEventPublisher {
      *                                  Event Processor information
      * @param applicationEventPublisher the {@link ApplicationEventPublisher} used to publish the Event Processor
      *                                  specific application events
-     * @param clientProcessors          an {@link Iterable} of
-     *                                  {@link ClientProcessor}
-     *                                  instances used to deduce the segment to be split/merged on the {@link
-     *                                  #splitSegment(List, String)} and {@link #mergeSegment(List, String)}
-     *                                  operations.
+     * @param clientProcessors          an {@link Iterable} of {@link ClientProcessor}instances used to deduce the
+     *                                  segment to be split/merged on the {@link #splitSegment(List, String)}
+     *                                  and {@link #mergeSegment(List, String)} operations.
      */
     public ProcessorEventPublisher(PlatformService platformService,
                                    ApplicationEventPublisher applicationEventPublisher,
@@ -84,25 +82,26 @@ public class ProcessorEventPublisher {
         platformService.onInboundInstruction(EVENT_PROCESSOR_INFO, this::publishEventProcessorStatus);
     }
 
-    private void publishEventProcessorStatus(String clientName,
-                                             String context,
+    private void publishEventProcessorStatus(PlatformService.ClientComponent clientComponent,
                                              PlatformInboundInstruction inboundInstruction) {
         ClientEventProcessorInfo processorStatus =
-                new ClientEventProcessorInfo(clientName, context, inboundInstruction.getEventProcessorInfo());
+                new ClientEventProcessorInfo(clientComponent.getClientId(),
+                                             clientComponent.getClientStreamId(),
+                                             clientComponent.getContext(), inboundInstruction.getEventProcessorInfo());
         applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus, NOT_PROXIED));
     }
 
-    public void pauseProcessorRequest(String clientName, String processorName) {
-        applicationEventPublisher.publishEvent(new PauseEventProcessorRequest(clientName, processorName, NOT_PROXIED));
+    public void pauseProcessorRequest(String clientId, String processorName) {
+        applicationEventPublisher.publishEvent(new PauseEventProcessorRequest(clientId, processorName, NOT_PROXIED));
     }
 
-    public void startProcessorRequest(String clientName, String processorName) {
-        applicationEventPublisher.publishEvent(new StartEventProcessorRequest(clientName, processorName, NOT_PROXIED));
+    public void startProcessorRequest(String clientId, String processorName) {
+        applicationEventPublisher.publishEvent(new StartEventProcessorRequest(clientId, processorName, NOT_PROXIED));
     }
 
-    public void releaseSegment(String clientName, String processorName, int segmentId) {
+    public void releaseSegment(String clientId, String processorName, int segmentId) {
         applicationEventPublisher.publishEvent(
-                new ReleaseSegmentRequest(clientName, processorName, segmentId, NOT_PROXIED)
+                new ReleaseSegmentRequest(clientId, processorName, segmentId, NOT_PROXIED)
         );
     }
 
@@ -110,14 +109,13 @@ public class ProcessorEventPublisher {
      * Split the biggest segment of the given {@code processorName} in two, by publishing a {@link SplitSegmentRequest}
      * as an application event to be picked up by the component publishing this message towards the right Axon client.
      *
-     * @param clientNames   a {@link List} of {@link String}s specifying all the clients which are in the same context
-     *                      as the given {@code processorName}
+     * @param clientIds     a {@link List} of {@link String}s containing the specified tracking event processor
      * @param processorName a {@link String} specifying the Tracking Event Processor for which the biggest segment
      *                      should be split in two
      */
-    public void splitSegment(List<String> clientNames, String processorName) {
+    public void splitSegment(List<String> clientIds, String processorName) {
         Map<ClientSegmentPair, SegmentStatus> clientToTracker =
-                buildClientToTrackerMap(clientNames, processorName, REGULAR_ORDER);
+                buildClientToTrackerMap(clientIds, processorName, REGULAR_ORDER);
 
         Integer biggestSegment = clientToTracker.values().stream()
                                                 .min(Comparator.comparingInt(SegmentStatus::getOnePartOf))
@@ -128,7 +126,7 @@ public class ProcessorEventPublisher {
 
         applicationEventPublisher.publishEvent(new SplitSegmentRequest(
                 NOT_PROXIED,
-                getClientForSegment(clientToTracker, biggestSegment)
+                getClientIdForSegment(clientToTracker, biggestSegment)
                         .orElseThrow(() -> new IllegalArgumentException("No client found which has a claim on segment [" + biggestSegment + "]")),
                 processorName,
                 biggestSegment
@@ -141,14 +139,13 @@ public class ProcessorEventPublisher {
      * message towards the right Axon client. Prior to publishing the {@code MergeSegmentRequest} firstly all other
      * active clients should be notified to release the paired segment.
      *
-     * @param clientNames   a {@link List} of {@link String}s specifying all the clients which are in the same context
-     *                      as the given {@code processorName}
+     * @param clientIds     a {@link List} of {@link String}s containing the specified tracking event processor
      * @param processorName a {@link String} specifying the Tracking Event Processor for which the smallest segment
      *                      should be merged with the segment that it's paired with
      */
-    public void mergeSegment(List<String> clientNames, String processorName) {
+    public void mergeSegment(List<String> clientIds, String processorName) {
         Map<ClientSegmentPair, SegmentStatus> clientToTracker =
-                buildClientToTrackerMap(clientNames, processorName, REVERSE_ORDER);
+                buildClientToTrackerMap(clientIds, processorName, REVERSE_ORDER);
 
         SegmentStatus smallestSegment =
                 clientToTracker.values().stream()
@@ -158,26 +155,27 @@ public class ProcessorEventPublisher {
                                ));
 
         int segmentToMerge = deduceSegmentToMerge(smallestSegment);
-        Optional<String> clientOwningSegmentToMerge = getClientForSegment(clientToTracker, segmentToMerge);
+        Optional<String> clientIdOwningSegmentToMerge = getClientIdForSegment(clientToTracker, segmentToMerge);
 
-        clientOwningSegmentToMerge.ifPresent(
-                name -> {
-                    clientNames.stream()
-                               .filter(clientName -> !clientName.equals(name))
-                               .forEach(clientName -> releaseSegment(clientName, processorName, smallestSegment.getSegmentId()));
-
+        clientIdOwningSegmentToMerge.ifPresent(
+                clientId -> {
+                    clientIds.stream()
+                             .filter(client -> !client.equals(clientId))
+                             .forEach(client -> releaseSegment(client, processorName, smallestSegment.getSegmentId()));
                 }
         );
 
-        if (clientOwningSegmentToMerge.isPresent()) {
+        if (clientIdOwningSegmentToMerge.isPresent()) {
             applicationEventPublisher.publishEvent(new MergeSegmentRequest(
-                    NOT_PROXIED, clientOwningSegmentToMerge.get(), processorName, segmentToMerge
+                    NOT_PROXIED, clientIdOwningSegmentToMerge.get(), processorName, segmentToMerge
             ));
         } else {
             // the segment to merge with is unclaimed. We need to merge the known part
-            String clientOwningSmallestSegment = getClientForSegment(clientToTracker, smallestSegment.getSegmentId()).orElseThrow(() -> new IllegalArgumentException(
-                    "Attempt to merge segments [" + segmentToMerge + "] and [" + smallestSegment.getSegmentId() + "] failed")
-            );
+            String clientOwningSmallestSegment = getClientIdForSegment(clientToTracker, smallestSegment.getSegmentId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Attempt to merge segments [" + segmentToMerge + "] and [" + smallestSegment.getSegmentId()
+                                    + "] failed")
+                    );
 
             applicationEventPublisher.publishEvent(new MergeSegmentRequest(
                     NOT_PROXIED, clientOwningSmallestSegment, processorName, smallestSegment.getSegmentId()
@@ -190,7 +188,7 @@ public class ProcessorEventPublisher {
      * {@link SegmentStatus}, to be used to support the {@link #splitSegment(List, String)} and
      * {@link #mergeSegment(List, String)} operations.
      *
-     * @param clientNames   a {@link List} of {@link String}s specifying the clients to take into account when building
+     * @param clientIds     a {@link List} of {@link String}s specifying the clients to take into account when building
      *                      the {@link Map}
      * @param processorName a {@link String} specifying the Tracking Event Processor for which the supported split/merge
      *                      operation should be executed
@@ -200,7 +198,7 @@ public class ProcessorEventPublisher {
      * {@link #splitSegment(List, String)} and {@link #mergeSegment(List, String)} operations
      */
     @NotNull
-    private Map<ClientSegmentPair, SegmentStatus> buildClientToTrackerMap(List<String> clientNames,
+    private Map<ClientSegmentPair, SegmentStatus> buildClientToTrackerMap(List<String> clientIds,
                                                                           String processorName,
                                                                           boolean reverseOrder) {
         Map<ClientSegmentPair, SegmentStatus> clientToTracker =
@@ -208,7 +206,7 @@ public class ProcessorEventPublisher {
 
         List<ClientProcessor> clientsWithProcessor =
                 StreamSupport.stream(clientProcessors.spliterator(), PARALLELIZE_STREAM)
-                             .filter(clientProcessor -> clientNames.contains(clientProcessor.clientName()))
+                             .filter(clientProcessor -> clientIds.contains(clientProcessor.clientId()))
                              .filter(clientProcessor -> clientProcessor.eventProcessorInfo().getProcessorName()
                                                                        .equals(processorName))
                              .collect(Collectors.toList());
@@ -216,14 +214,15 @@ public class ProcessorEventPublisher {
         for (ClientProcessor clientProcessor : clientsWithProcessor) {
             List<SegmentStatus> eventTrackers = clientProcessor.eventProcessorInfo().getSegmentStatusList();
             eventTrackers.forEach(eventTracker -> clientToTracker.put(
-                    new ClientSegmentPair(clientProcessor.clientName(), eventTracker.getSegmentId()), eventTracker)
+                    new ClientSegmentPair(clientProcessor.clientId(), eventTracker.getSegmentId()), eventTracker)
             );
         }
 
         return clientToTracker;
     }
 
-    private Optional<String> getClientForSegment(Map<ClientSegmentPair, SegmentStatus> clientToTracker, Integer segmentId) {
+    private Optional<String> getClientIdForSegment(Map<ClientSegmentPair, SegmentStatus> clientToTracker,
+                                                   Integer segmentId) {
         return clientToTracker.keySet().stream()
                               .filter(clientAndSegment -> clientAndSegment.getSegmentId() == segmentId)
                               .findFirst()

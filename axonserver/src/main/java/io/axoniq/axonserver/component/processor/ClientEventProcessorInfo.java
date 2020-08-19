@@ -17,19 +17,26 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
  */
 public class ClientEventProcessorInfo {
 
-    private final String clientName;
+    private final String clientId;
+    private final String clientStreamId;
     private final String context;
     private final EventProcessorInfo eventProcessorInfo;
 
-    public ClientEventProcessorInfo(String clientName, String context, EventProcessorInfo eventProcessorInfo) {
+    public ClientEventProcessorInfo(String clientId, String clientStreamId, String context,
+                                    EventProcessorInfo eventProcessorInfo) {
 
-        this.clientName = clientName;
+        this.clientId = clientId;
+        this.clientStreamId = clientStreamId;
         this.context = context;
         this.eventProcessorInfo = eventProcessorInfo;
     }
 
     public String getClientId() {
-        return clientName;
+        return clientId;
+    }
+
+    public String getClientStreamId() {
+        return clientStreamId;
     }
 
     public String getContext() {

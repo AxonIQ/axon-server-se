@@ -19,11 +19,18 @@ import io.axoniq.axonserver.serializer.Printable;
 public interface Client extends Printable, ComponentItem {
 
     /**
-     * Returns the name of the client
+     * Returns the id of the client
      *
-     * @return the name of the client
+     * @return the id of the client
      */
-    String name();
+    String id();
+
+    /**
+     * Returns the platform stream id of the client
+     *
+     * @return the platform stream id of the client
+     */
+    String streamId();
 
     /**
      * Returns the principal context of the client
@@ -39,6 +46,6 @@ public interface Client extends Printable, ComponentItem {
 
     @Override
     default void printOn(Media media) {
-        media.with("name", name());
+        media.with("name", id());
     }
 }
