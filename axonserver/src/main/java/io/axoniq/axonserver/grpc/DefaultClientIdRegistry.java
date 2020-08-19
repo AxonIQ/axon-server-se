@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.serializer.Media;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -58,6 +59,13 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
         if (clientId != null) {
             unregisterPlatformConnection(clientStreamId, clientId);
         }
+    }
+
+    @Override
+    public void printOn(Media media) {
+        media.with("clientMap", clientMap);
+        platformStreamMap.forEach((clientId, platformStreamIds) -> media
+                .with(clientId, String.valueOf(platformStreamIds)));
     }
 
     private void registerPlatformConnection(String clientStreamId, String clientId) {

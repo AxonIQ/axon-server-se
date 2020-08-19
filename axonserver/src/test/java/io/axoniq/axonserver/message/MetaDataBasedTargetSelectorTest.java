@@ -11,7 +11,7 @@ package io.axoniq.axonserver.message;
 
 import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
-import io.axoniq.axonserver.grpc.ClientIdRegistry;
+import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import org.junit.*;
 
@@ -27,37 +27,7 @@ import static org.junit.Assert.*;
  */
 public class MetaDataBasedTargetSelectorTest {
 
-    private ClientTagsCache clientTagsCache = new ClientTagsCache(new ClientIdRegistry() {
-        @Override
-        public boolean register(String clientStreamId, String clientId) {
-            return false;
-        }
-
-        @Override
-        public void registerPlatform(String clientStreamId, String clientId) {
-
-        }
-
-        @Override
-        public void unregisterPlatform(String clientStreamId) {
-
-        }
-
-        @Override
-        public boolean unregister(String clientStreamId) {
-            return false;
-        }
-
-        @Override
-        public String clientId(String clientStreamId) {
-            return clientStreamId;
-        }
-
-        @Override
-        public Set<String> platformStreamIdsFor(String clientId) {
-            return Collections.singleton(clientId);
-        }
-    });
+    private ClientTagsCache clientTagsCache = new ClientTagsCache(new DefaultClientIdRegistry());
     private MetaDataBasedTargetSelector testSubject = new MetaDataBasedTargetSelector(clientTagsCache);
 
     @Test

@@ -99,7 +99,7 @@ public class QueryMetricsRegistry {
     }
 
     private String metricName(QueryDefinition query, String sourceClientId, String targetClientId, String context) {
-        return String.format("%s.%s.%s", query.getQueryName(), sourceClientId, targetClientId + "." + context);
+        return String.join(".", query.getQueryName(), sourceClientId, targetClientId, context);
     }
 
     /**

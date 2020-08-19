@@ -1,12 +1,14 @@
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.serializer.Printable;
+
 import java.util.Set;
 
 /**
  * @author Sara Pellegrini
  * @since 4.4.1
  */
-public interface ClientIdRegistry {
+public interface ClientIdRegistry extends Printable {
 
     /**
      * Registers the relation between a stream and a client id
