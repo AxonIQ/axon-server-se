@@ -142,12 +142,10 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        clientIdRegistry.streamIdsFor("Release", ClientIdRegistry.ConnectionType.PLATFORM).forEach(streamId -> {
-            platformService.on(new EventProcessorEvents.PauseEventProcessorRequest("Release",
-                                                                                   streamId,
-                                                                                   "processor",
-                                                                                   false));
-        });
+        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest(Topology.DEFAULT_CONTEXT,
+                                                                               "Release",
+                                                                               "processor",
+                                                                               false));
 
         assertEquals(1, responseObserver.values().size());
     }
@@ -163,12 +161,10 @@ public class PlatformServiceTest {
                                                                                                              "component")
         ).build());
 
-        clientIdRegistry.streamIdsFor("Release", ClientIdRegistry.ConnectionType.PLATFORM).forEach(streamId -> {
-            platformService.on(new EventProcessorEvents.StartEventProcessorRequest("Release",
-                                                                                   streamId,
-                                                                                   "processor",
-                                                                                   false));
-        });
+        platformService.on(new EventProcessorEvents.StartEventProcessorRequest(Topology.DEFAULT_CONTEXT,
+                                                                               "Release",
+                                                                               "processor",
+                                                                               false));
         assertEquals(1, responseObserver.values().size());
     }
 
