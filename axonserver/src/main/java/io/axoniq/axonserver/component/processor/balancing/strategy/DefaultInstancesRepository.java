@@ -42,7 +42,7 @@ public class DefaultInstancesRepository implements ThreadNumberBalancing.Instanc
                     int threadPoolSize = i.getAvailableThreads() + i.getSegmentStatusCount();
                     List<SegmentStatus> trackers = i.getSegmentStatusList();
                     Set<Integer> segments = trackers.stream().map(SegmentStatus::getSegmentId).collect(toSet());
-                    return new ThreadNumberBalancing.Application(p.clientStreamId(), threadPoolSize, segments);
+                    return new ThreadNumberBalancing.Application(p.clientId(), threadPoolSize, segments);
                 }).iterator();
     }
 
