@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction.newBuilder;
 import static org.junit.Assert.*;
 
 /**
@@ -59,13 +58,11 @@ public class EventProcessorServiceTest {
         testSubject.on(mergeSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("MergeClient").get(0);
-        PlatformOutboundInstruction expected = newBuilder()
-                .setMergeEventProcessorSegment(
-                        EventProcessorSegmentReference.newBuilder()
-                                                      .setSegmentIdentifier(1)
-                                                      .setProcessorName("Processor"))
-                .build();
-        assertEquals(expected, published);
+        EventProcessorSegmentReference expected = EventProcessorSegmentReference.newBuilder()
+                                                                                .setSegmentIdentifier(1)
+                                                                                .setProcessorName("Processor")
+                                                                                .build();
+        assertEquals(expected, published.getMergeEventProcessorSegment());
 
         notifySuccessForInstruction(published.getInstructionId());
         assertFalse(publishedInternalEvents.isEmpty());
@@ -85,13 +82,11 @@ public class EventProcessorServiceTest {
         testSubject.on(mergeSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("MergeClient").get(0);
-        PlatformOutboundInstruction expected = newBuilder()
-                .setMergeEventProcessorSegment(
-                        EventProcessorSegmentReference.newBuilder()
-                                                      .setSegmentIdentifier(1)
-                                                      .setProcessorName("Processor"))
-                .build();
-        assertEquals(expected, published);
+        EventProcessorSegmentReference expected =
+                EventProcessorSegmentReference.newBuilder()
+                                              .setSegmentIdentifier(1)
+                                              .setProcessorName("Processor").build();
+        assertEquals(expected, published.getMergeEventProcessorSegment());
 
         notifyFailureForInstruction(published.getInstructionId());
         assertTrue(publishedInternalEvents.isEmpty());
@@ -107,13 +102,11 @@ public class EventProcessorServiceTest {
         testSubject.on(splitSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("SplitClient").get(0);
-        PlatformOutboundInstruction expected = newBuilder()
-                .setSplitEventProcessorSegment(
-                        EventProcessorSegmentReference.newBuilder()
-                                                      .setSegmentIdentifier(1)
-                                                      .setProcessorName("processor"))
-                .build();
-        assertEquals(expected, published);
+        EventProcessorSegmentReference expected = EventProcessorSegmentReference.newBuilder()
+                                                                                .setSegmentIdentifier(1)
+                                                                                .setProcessorName("processor")
+                                                                                .build();
+        assertEquals(expected, published.getSplitEventProcessorSegment());
 
         notifySuccessForInstruction(published.getInstructionId());
         assertFalse(publishedInternalEvents.isEmpty());
@@ -133,13 +126,12 @@ public class EventProcessorServiceTest {
         testSubject.on(splitSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("SplitClient").get(0);
-        PlatformOutboundInstruction expected = newBuilder()
-                .setSplitEventProcessorSegment(
-                        EventProcessorSegmentReference.newBuilder()
-                                                      .setSegmentIdentifier(1)
-                                                      .setProcessorName("processor"))
-                .build();
-        assertEquals(expected, published);
+        EventProcessorSegmentReference expected =
+                EventProcessorSegmentReference.newBuilder()
+                                              .setSegmentIdentifier(1)
+                                              .setProcessorName("processor")
+                                              .build();
+        assertEquals(expected, published.getSplitEventProcessorSegment());
 
         notifyFailureForInstruction(published.getInstructionId());
         assertTrue(publishedInternalEvents.isEmpty());
@@ -155,13 +147,11 @@ public class EventProcessorServiceTest {
         testSubject.on(releaseSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("Release").get(0);
-        PlatformOutboundInstruction expected = newBuilder()
-                .setReleaseSegment(
-                        EventProcessorSegmentReference.newBuilder()
-                                                      .setSegmentIdentifier(1)
-                                                      .setProcessorName("processor"))
-                .build();
-        assertEquals(expected, published);
+        EventProcessorSegmentReference expected = EventProcessorSegmentReference.newBuilder()
+                                                                                .setSegmentIdentifier(1)
+                                                                                .setProcessorName("processor")
+                                                                                .build();
+        assertEquals(expected, published.getReleaseSegment());
     }
 
     private void notifySuccessForInstruction(String instructionId) {
