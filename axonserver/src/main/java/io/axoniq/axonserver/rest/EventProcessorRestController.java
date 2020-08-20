@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
@@ -110,7 +109,6 @@ public class EventProcessorRestController {
                             final Principal principal) {
         auditLog.info("[{}@{}] Request to move segment {} of event processor \"{}\" in component \"{}\" to \"{}\".",
                       AuditLog.username(principal), context, segment, processor, component, target);
-        Set<String> targetStreamIds = clientIdRegistry.platformStreamIdsFor(target);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier).forEach(clientId -> {
             if (!target.equals(clientId)) {
                 processorEventsSource.releaseSegment(context, clientId, processor, segment);

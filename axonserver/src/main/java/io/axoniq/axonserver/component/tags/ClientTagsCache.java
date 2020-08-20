@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -39,11 +38,9 @@ public class ClientTagsCache implements Function<ClientStreamIdentification, Map
         try {
             String clientId = clientIdRegistry.clientId(client.getClientStreamId());
             if (clientId != null) {
-                Set<String> platformClientStreamIds = clientIdRegistry.platformStreamIdsFor(clientId);
-                if (!platformClientStreamIds.isEmpty()) {
-                    client = new ClientStreamIdentification(client.getContext(),
-                                                            platformClientStreamIds.iterator().next());
-                }
+                client = new ClientStreamIdentification(client.getContext(),
+                                                        clientIdRegistry.streamIdFor(clientId,
+                                                                                     ClientIdRegistry.ConnectionType.PLATFORM));
             }
         } catch (IllegalStateException illegalStateException) {
 

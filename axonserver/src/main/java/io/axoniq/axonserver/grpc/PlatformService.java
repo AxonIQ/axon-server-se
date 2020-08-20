@@ -160,7 +160,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     ClientIdentification client = instruction.getRegister();
                     String clientId = client.getClientId();
                     String clientStreamId = clientId + "." + UUID.randomUUID().toString();
-                    clientIdRegistry.registerPlatform(clientStreamId, clientId);
+                    clientIdRegistry.register(clientStreamId, clientId, ClientIdRegistry.ConnectionType.PLATFORM);
                     eventPublisher.publishEvent(new ClientTagsUpdate(clientStreamId,
                                                                      context,
                                                                      client.getTagsMap()));
@@ -352,7 +352,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 StreamObserverUtils.complete(stream);
             }
 
-            clientIdRegistry.unregisterPlatform(clientComponent.clientStreamId);
+            clientIdRegistry.unregister(clientComponent.clientStreamId, ClientIdRegistry.ConnectionType.PLATFORM);
 
             eventPublisher.publishEvent(new ApplicationDisconnected(
                     clientComponent.context,

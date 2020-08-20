@@ -4,9 +4,9 @@ import io.axoniq.axonserver.serializer.Media;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
@@ -16,18 +16,24 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Component
 public class DefaultClientIdRegistry implements ClientIdRegistry {
 
-    private final ConcurrentMap<String, String> clientMap = new ConcurrentHashMap();
-    private final ConcurrentMap<String, Set<String>> platformStreamMap = new ConcurrentHashMap<>();
+    private final Map<String, String> clientMap = new ConcurrentHashMap<>();
+    private final Map<ConnectionType, Map<String, Set<String>>>
+            clientIdMapPerType = new ConcurrentHashMap<>();
 
     @Override
-    public boolean register(String clientStreamId, String clientId) {
+    public boolean register(String clientStreamId, String clientId, ConnectionType type) {
         String prev = clientMap.put(clientStreamId, clientId);
+        registerStreamForClient(clientStreamId, clientId, type);
         return prev == null;
     }
 
     @Override
-    public boolean unregister(String clientStreamId) {
-        return clientMap.remove(clientStreamId) != null;
+    public boolean unregister(String clientStreamId, ConnectionType type) {
+        String clientId = clientMap.remove(clientStreamId);
+        if (clientId != null) {
+            unregisterStreamForClient(clientStreamId, clientId, type);
+        }
+        return clientId != null;
     }
 
     @Override
@@ -39,46 +45,38 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
     }
 
     @Override
-    public Set<String> platformStreamIdsFor(String clientId) {
-        Set<String> current = platformStreamMap.getOrDefault(clientId, Collections.emptySet());
+    public Set<String> streamIdsFor(String clientId, ConnectionType type) {
+        Set<String> current = clientIdMapPerType.computeIfAbsent(type, t -> Collections.emptyMap())
+                                                .getOrDefault(clientId, Collections.emptySet());
         if (current.isEmpty()) {
             throw new IllegalStateException("No platform stream found for client " + clientId);
         }
         return Collections.unmodifiableSet(current);
     }
 
-    @Override
-    public void registerPlatform(String clientStreamId, String clientId) {
-        register(clientStreamId, clientId);
-        registerPlatformConnection(clientStreamId, clientId);
-    }
-
-    @Override
-    public void unregisterPlatform(String clientStreamId) {
-        String clientId = clientMap.remove(clientStreamId);
-        if (clientId != null) {
-            unregisterPlatformConnection(clientStreamId, clientId);
-        }
-    }
 
     @Override
     public void printOn(Media media) {
         media.with("clientMap", clientMap);
-        platformStreamMap.forEach((clientId, platformStreamIds) -> media
-                .with(clientId, String.valueOf(platformStreamIds)));
+        clientIdMapPerType.forEach((type, mappings) ->
+                                           mappings.forEach((clientId, streamIds) ->
+                                                                    media.with(type + "." + clientId,
+                                                                               String.valueOf(streamIds))));
     }
 
-    private void registerPlatformConnection(String clientStreamId, String clientId) {
-        platformStreamMap.computeIfAbsent(clientId, c -> new CopyOnWriteArraySet<>()).add(clientStreamId);
+    private void registerStreamForClient(String clientStreamId, String clientId, ConnectionType type) {
+        clientIdMapPerType.computeIfAbsent(type, t -> new ConcurrentHashMap<>())
+                          .computeIfAbsent(clientId, c -> new CopyOnWriteArraySet<>()).add(clientStreamId);
     }
 
-    private void unregisterPlatformConnection(String clientStreamId, String clientId) {
-        platformStreamMap.computeIfPresent(clientId, (c, current) -> {
-            current.remove(clientStreamId);
-            if (current.isEmpty()) {
-                return null;
-            }
-            return current;
-        });
+    private void unregisterStreamForClient(String clientStreamId, String clientId, ConnectionType type) {
+        clientIdMapPerType.getOrDefault(type, Collections.emptyMap())
+                          .computeIfPresent(clientId, (c, current) -> {
+                              current.remove(clientStreamId);
+                              if (current.isEmpty()) {
+                                  return null;
+                              }
+                              return current;
+                          });
     }
 }

@@ -142,7 +142,7 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        clientIdRegistry.platformStreamIdsFor("Release").forEach(streamId -> {
+        clientIdRegistry.streamIdsFor("Release", ClientIdRegistry.ConnectionType.PLATFORM).forEach(streamId -> {
             platformService.on(new EventProcessorEvents.PauseEventProcessorRequest("Release",
                                                                                    streamId,
                                                                                    "processor",
@@ -163,7 +163,7 @@ public class PlatformServiceTest {
                                                                                                              "component")
         ).build());
 
-        clientIdRegistry.platformStreamIdsFor("Release").forEach(streamId -> {
+        clientIdRegistry.streamIdsFor("Release", ClientIdRegistry.ConnectionType.PLATFORM).forEach(streamId -> {
             platformService.on(new EventProcessorEvents.StartEventProcessorRequest("Release",
                                                                                    streamId,
                                                                                    "processor",

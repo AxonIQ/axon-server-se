@@ -10,6 +10,12 @@ import java.util.Set;
  */
 public interface ClientIdRegistry extends Printable {
 
+    enum ConnectionType {
+        PLATFORM,
+        QUERY,
+        COMMAND
+    }
+
     /**
      * Registers the relation between a stream and a client id
      *
@@ -17,11 +23,7 @@ public interface ClientIdRegistry extends Printable {
      * @param clientId       the client identifier
      * @return true if new registration
      */
-    boolean register(String clientStreamId, String clientId);
-
-    void registerPlatform(String clientStreamId, String clientId);
-
-    void unregisterPlatform(String clientStreamId);
+    boolean register(String clientStreamId, String clientId, ConnectionType type);
 
     /**
      * Unregisters the relation between a stream and a client id
@@ -29,7 +31,7 @@ public interface ClientIdRegistry extends Printable {
      * @param clientStreamId the unique stream identifier of the stream
      * @return true if registration existed
      */
-    boolean unregister(String clientStreamId);
+    boolean unregister(String clientStreamId, ConnectionType type);
 
     /**
      * Returns the unique identifier of the client that opened the specified stream.
@@ -49,5 +51,9 @@ public interface ClientIdRegistry extends Printable {
      *
      * @throws IllegalStateException if the registry doesn't contain the specified client id
      */
-    Set<String> platformStreamIdsFor(String clientId);
+    Set<String> streamIdsFor(String clientId, ConnectionType type);
+
+    default String streamIdFor(String clientId, ConnectionType type) {
+        return streamIdsFor(clientId, type).iterator().next();
+    }
 }
