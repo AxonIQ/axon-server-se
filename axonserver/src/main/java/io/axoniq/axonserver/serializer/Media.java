@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.serializer;
 
+import java.util.Map;
+
 /**
  * Created by Sara Pellegrini on 21/03/2018.
  * sara.pellegrini@gmail.com
@@ -29,4 +31,5 @@ public interface Media {
 
     String toString();
 
+    void with(String property, Map<String, String> map);
 }
