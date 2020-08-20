@@ -49,8 +49,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
         String clientStreamId = processorStatus.getClientStreamId();
         Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientStreamId, c -> new HashMap<>());
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
-        ClientProcessor clientProcessor = mapping.map(clientStreamId,
-                                                      clientId,
+        ClientProcessor clientProcessor = mapping.map(clientId,
                                                       clients.get(clientStreamId),
                                                       processorStatus.getContext(),
                                                       eventProcessorInfo);

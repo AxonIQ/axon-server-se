@@ -22,8 +22,6 @@ import javax.annotation.Nonnull;
  */
 public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> {
 
-    String clientStreamId();
-
     String clientId();
 
     EventProcessorInfo eventProcessorInfo();
