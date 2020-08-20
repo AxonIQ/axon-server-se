@@ -6,15 +6,9 @@ import java.util.Set;
 
 /**
  * @author Sara Pellegrini
- * @since 4.4.1
+ * @since 4.3.8, 4.4.1
  */
 public interface ClientIdRegistry extends Printable {
-
-    enum ConnectionType {
-        PLATFORM,
-        QUERY,
-        COMMAND
-    }
 
     /**
      * Registers the relation between a stream and a client id
@@ -55,5 +49,11 @@ public interface ClientIdRegistry extends Printable {
 
     default String streamIdFor(String clientId, ConnectionType type) {
         return streamIdsFor(clientId, type).iterator().next();
+    }
+
+    enum ConnectionType {
+        PLATFORM,
+        QUERY,
+        COMMAND
     }
 }

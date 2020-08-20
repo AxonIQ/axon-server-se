@@ -1,5 +1,13 @@
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
+import io.axoniq.axonserver.serializer.Media;
+import org.springframework.context.event.EventListener;
 import io.axoniq.axonserver.serializer.Media;
 import org.springframework.stereotype.Component;
 
@@ -7,6 +15,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+import static io.axoniq.axonserver.grpc.ClientIdRegistry.ConnectionType.*;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
@@ -78,5 +89,35 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
                               }
                               return current;
                           });
+    }
+
+    @EventListener
+    public void on(ApplicationConnected event) {
+        register(event.getClientStreamId(), event.getClientId(), PLATFORM);
+    }
+
+    @EventListener
+    public void on(ApplicationDisconnected event) {
+        unregister(event.getClientStreamId(), PLATFORM);
+    }
+
+    @EventListener
+    public void on(SubscribeCommand event) {
+        register(event.clientStreamIdentification().getClientStreamId(), event.getHandler().getClientId(), COMMAND);
+    }
+
+    @EventListener
+    public void on(CommandHandlerDisconnected event) {
+        unregister(event.getClientStreamId(), COMMAND);
+    }
+
+    @EventListener
+    public void on(SubscribeQuery event) {
+        register(event.clientIdentification().getClientStreamId(), event.getQueryHandler().getClientId(), QUERY);
+    }
+
+    @EventListener
+    public void on(QueryHandlerDisconnected event) {
+        unregister(event.getClientStreamId(), QUERY);
     }
 }
