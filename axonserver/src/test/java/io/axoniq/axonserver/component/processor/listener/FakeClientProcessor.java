@@ -53,11 +53,6 @@ public class FakeClientProcessor implements ClientProcessor {
     }
 
     @Override
-    public String clientStreamId() {
-        return clientId;
-    }
-
-    @Override
     public EventProcessorInfo eventProcessorInfo() {
         return eventProcessorInfo;
     }

@@ -327,7 +327,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setRequestEventProcessorInfo(eventProcessorInfoRequest)
                                            .build();
-        sendToClientStreamId(event.clientId(), outboundInstruction);
+        sendToClient(event.context(), event.clientId(), outboundInstruction);
     }
 
     private void registerClient(ClientComponent clientComponent,

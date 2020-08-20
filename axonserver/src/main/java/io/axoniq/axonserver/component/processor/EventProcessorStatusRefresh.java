@@ -85,15 +85,15 @@ public class EventProcessorStatusRefresh {
         return CompletableFuture.runAsync(() -> {
 
             ClientProcessorsByIdentifier matchingClients = new ClientProcessorsByIdentifier(all, context, processorId);
-            Set<String> clientStreamIds = StreamSupport.stream(matchingClients.spliterator(), false)
-                                                       .map(ClientProcessor::clientStreamId)
-                                                       .collect(Collectors.toSet());
-            CountDownLatch clientProcessorStatusUpdateLatch = new CountDownLatch(clientStreamIds.size());
+            Set<String> clientIds = StreamSupport.stream(matchingClients.spliterator(), false)
+                                                 .map(ClientProcessor::clientId)
+                                                 .collect(Collectors.toSet());
+            CountDownLatch clientProcessorStatusUpdateLatch = new CountDownLatch(clientIds.size());
 
             Consumer<EventProcessorStatusUpdated> statusUpdateListener = statusEvent -> {
-                String clientStreamId = statusEvent.eventProcessorStatus().getClientStreamId();
+                String clientId = statusEvent.eventProcessorStatus().getClientId();
                 String processorName = statusEvent.eventProcessorStatus().getEventProcessorInfo().getProcessorName();
-                if (clientStreamIds.remove(clientStreamId) && processorName.equals(processorId.name())) {
+                if (clientIds.remove(clientId) && processorName.equals(processorId.name())) {
                     clientProcessorStatusUpdateLatch.countDown();
                 }
             };
@@ -101,7 +101,7 @@ public class EventProcessorStatusRefresh {
             updateListeners.add(statusUpdateListener);
             matchingClients.forEach(client -> eventPublisher.publishEvent(
                     new EventProcessorEvents.ProcessorStatusRequest(context,
-                                                                    client.clientStreamId(), processorId.name(), false)
+                                                                    client.clientId(), processorId.name(), false)
             ));
             try {
                 boolean updated = clientProcessorStatusUpdateLatch.await(timeout.toMillis(), MILLISECONDS);
