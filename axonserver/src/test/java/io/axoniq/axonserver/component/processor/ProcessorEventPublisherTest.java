@@ -71,7 +71,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors = new ArrayList<>();
 
         ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
-        when(splitClientProcessor.clientStreamId()).thenReturn(CLIENT_NAME_OF_SPLIT);
+        when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
                                                                      .addAllSegmentStatus(segmentInfo)
@@ -80,7 +80,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors.add(splitClientProcessor);
 
         ClientProcessor mergeClientProcessor = mock(ClientProcessor.class);
-        when(mergeClientProcessor.clientStreamId()).thenReturn(CLIENT_NAME_OF_MERGE);
+        when(mergeClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_MERGE);
         EventProcessorInfo eventProcessorToMerge = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_MERGE)
                                                                      .addAllSegmentStatus(segmentInfo)
@@ -116,7 +116,7 @@ public class ProcessorEventPublisherTest {
         SplitSegmentRequest result = argumentCaptor.getValue();
 
         assertFalse(result.isProxied());
-        assertEquals(CLIENT_NAME_OF_SPLIT, result.getClientName());
+        assertEquals(CLIENT_NAME_OF_SPLIT, result.getClientId());
         assertEquals(PROCESSOR_NAME_TO_SPLIT, result.getProcessorName());
         assertEquals(SEGMENT_ID_TO_SPLIT, result.getSegmentId());
     }
@@ -138,13 +138,13 @@ public class ProcessorEventPublisherTest {
 
         ReleaseSegmentRequest releaseRequest = (ReleaseSegmentRequest) publishedEvents.get(0);
         assertFalse(releaseRequest.isProxied());
-        assertEquals(CLIENT_NAME_OF_SPLIT, releaseRequest.getClientName());
+        assertEquals(CLIENT_NAME_OF_SPLIT, releaseRequest.getClientId());
         assertEquals(PROCESSOR_NAME_TO_MERGE, releaseRequest.getProcessorName());
         assertEquals(PAIRED_WITH_SEGMENT, releaseRequest.getSegmentId());
 
         MergeSegmentRequest mergeRequest = (MergeSegmentRequest) publishedEvents.get(1);
         assertFalse(mergeRequest.isProxied());
-        assertEquals(CLIENT_NAME_OF_MERGE, mergeRequest.getClientName());
+        assertEquals(CLIENT_NAME_OF_MERGE, mergeRequest.getClientId());
         assertEquals(PROCESSOR_NAME_TO_MERGE, mergeRequest.getProcessorName());
         assertEquals(SEGMENT_ID_TO_MERGE, mergeRequest.getSegmentId());
     }
@@ -162,7 +162,7 @@ public class ProcessorEventPublisherTest {
         eventProcessors.clear();
 
         ClientProcessor splitClientProcessor = mock(ClientProcessor.class);
-        when(splitClientProcessor.clientStreamId()).thenReturn(CLIENT_NAME_OF_SPLIT);
+        when(splitClientProcessor.clientId()).thenReturn(CLIENT_NAME_OF_SPLIT);
         EventProcessorInfo eventProcessorToSplit = EventProcessorInfo.newBuilder()
                                                                      .setProcessorName(PROCESSOR_NAME_TO_SPLIT)
                                                                      .addAllSegmentStatus(
@@ -183,7 +183,7 @@ public class ProcessorEventPublisherTest {
 
         MergeSegmentRequest mergeRequest = (MergeSegmentRequest) publishedEvents.get(0);
         assertFalse(mergeRequest.isProxied());
-        assertEquals(CLIENT_NAME_OF_SPLIT, mergeRequest.getClientName());
+        assertEquals(CLIENT_NAME_OF_SPLIT, mergeRequest.getClientId());
         assertEquals(PROCESSOR_NAME_TO_SPLIT, mergeRequest.getProcessorName());
         assertEquals(SEGMENT_ID_TO_MERGE, mergeRequest.getSegmentId());
     }

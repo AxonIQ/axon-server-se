@@ -18,19 +18,22 @@ import java.util.Map;
  */
 public class GenericClient implements Client {
 
-    private final String clientName;
+    private final String clientId;
+    private final String clientStreamId;
     private final String componentName;
 
     private final String context;
     private final String axonServerNode;
     private final Map<String, String> tags;
 
-    public GenericClient(String clientName,
+    public GenericClient(String clientId,
+                         String clientStreamId,
                          String componentName,
                          String context,
                          String axonServerNode,
                          Map<String, String> tags) {
-        this.clientName = clientName;
+        this.clientId = clientId;
+        this.clientStreamId = clientStreamId;
         this.componentName = componentName;
         this.context = context;
         this.axonServerNode = axonServerNode;
@@ -38,8 +41,13 @@ public class GenericClient implements Client {
     }
 
     @Override
-    public String name() {
-        return clientName;
+    public String id() {
+        return clientId;
+    }
+
+    @Override
+    public String streamId() {
+        return clientStreamId;
     }
 
 
@@ -55,7 +63,7 @@ public class GenericClient implements Client {
 
     @Override
     public void printOn(Media media) {
-        media.with("name", name())
+        media.with("name", id())
              .with("componentName", componentName)
              .with("axonServerNode", axonServerNode)
              .with("tags", tags);

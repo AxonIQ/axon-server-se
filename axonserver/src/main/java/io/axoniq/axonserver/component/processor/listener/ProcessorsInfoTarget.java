@@ -29,9 +29,10 @@ import javax.annotation.Nonnull;
 @Component
 public class ProcessorsInfoTarget implements ClientProcessors {
 
+    // Map<ClientStreamId,Component>
     private final Map<String, String> clients = new HashMap<>();
 
-    // Map<Client, Map<ProcessorName, ClientProcessor>>
+    // Map<ClientStreamId, Map<ProcessorName, ClientProcessor>>
     private final Map<String, Map<String, ClientProcessor>> cache = new HashMap<>();
 
     private final ClientProcessorMapping mapping;
@@ -44,11 +45,12 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     @EventListener
     public EventProcessorStatusUpdated onEventProcessorStatusChange(EventProcessorStatusUpdate event) {
         ClientEventProcessorInfo processorStatus = event.eventProcessorStatus();
+        String clientId = processorStatus.getClientId();
         String clientStreamId = processorStatus.getClientStreamId();
         Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientStreamId, c -> new HashMap<>());
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
         ClientProcessor clientProcessor = mapping.map(clientStreamId,
-                                                      event.eventProcessorStatus().getClientId(),
+                                                      clientId,
                                                       clients.get(clientStreamId),
                                                       processorStatus.getContext(),
                                                       eventProcessorInfo);
@@ -57,7 +59,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     }
 
     @EventListener
-    public void onClientConnected( TopologyEvents.ApplicationConnected event) {
+    public void onClientConnected(TopologyEvents.ApplicationConnected event) {
         clients.put(event.getClientStreamId(), event.getComponentName());
     }
 
@@ -74,5 +76,4 @@ public class ProcessorsInfoTarget implements ClientProcessors {
                     .flatMap(client -> client.getValue().values().stream())
                     .iterator();
     }
-
 }

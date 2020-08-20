@@ -69,9 +69,9 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
         /**
          * Publishes an {@link PlatformOutboundInstruction} to a single client
          *
-         * @param clientName  the platform stream identifier of the client
-         * @param instruction the {@link PlatformOutboundInstruction} to be sent
+         * @param clientStreamId the platform stream identifier of the client
+         * @param instruction    the {@link PlatformOutboundInstruction} to be sent
          */
-        void publish(String clientName, PlatformOutboundInstruction instruction);
+        void publish(String clientStreamId, PlatformOutboundInstruction instruction);
     }
 }

@@ -46,6 +46,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -96,16 +97,16 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
-        onInboundInstruction(RequestCase.ACK, (clientComponent, instruction) -> {
+        onInboundInstruction(RequestCase.ACK, (client, instruction) -> {
             InstructionAck ack = instruction.getAck();
             if (isUnsupportedInstructionErrorResult(ack)) {
                 logger.warn("Unsupported instruction sent to the client {} of context {}.",
-                            clientComponent.getClientId(),
-                            clientComponent.getContext());
+                            client.clientStreamId,
+                            client.context);
             } else {
                 logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
-                             clientComponent.getClientId(),
-                             clientComponent.getContext(),
+                             client.clientStreamId,
+                             client.context,
                              ack);
             }
         });
@@ -184,7 +185,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .forEach(consumer -> {
                                 instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
                                                                        sendingStreamObserver);
-                                consumer.accept(clientComponent.get(), instruction);
+                                consumer.accept(this.clientComponent.get(),
+                                                instruction);
                             });
                 }
             }
@@ -247,10 +249,12 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param instruction    the {@link PlatformInboundInstruction} to be sent
      */
     public void sendToClientStreamId(String clientStreamId, PlatformOutboundInstruction instruction) {
-        connectionMap.entrySet().stream()
-                     .filter(e -> clientStreamId.equals(e.getKey().clientStreamId))
-                     .map(Map.Entry::getValue)
-                     .forEach(stream -> stream.onNext(instruction));
+        List<SendingStreamObserver<PlatformOutboundInstruction>> stream =
+                connectionMap.entrySet().stream()
+                             .filter(e -> clientStreamId.equals(e.getKey().clientStreamId))
+                             .map(Map.Entry::getValue)
+                             .collect(Collectors.toList());
+        stream.forEach(s -> s.onNext(instruction));
     }
 
 
@@ -262,11 +266,14 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
     public void sendToClient(String context, String clientId, PlatformOutboundInstruction instruction) {
-        connectionMap.entrySet().stream()
-                     .filter(e -> e.getKey().clientId.equals(clientId))
+        List<SendingStreamObserver<PlatformOutboundInstruction>> stream =
+                connectionMap.entrySet().stream()
+                             .filter(e -> e.getKey().clientId
+                                     .equals(clientId))
                      .filter(e -> e.getKey().context.equals(context))
-                     .map(Map.Entry::getValue)
-                     .forEach(stream -> stream.onNext(instruction));
+                             .map(Map.Entry::getValue)
+                             .collect(Collectors.toList());
+        stream.forEach(s -> s.onNext(instruction));
     }
 
     @EventListener
@@ -276,7 +283,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
                                                                .setProcessorName(evt.processorName()))
                 .build();
-        sendToClientStreamId(evt.clientName(), instruction);
+        sendToClientStreamId(evt.clientId(), instruction);
     }
 
     @EventListener
@@ -285,7 +292,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .newBuilder()
                 .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
                 .build();
-        sendToClientStreamId(evt.clientName(), instruction);
+        sendToClientStreamId(evt.clientId(), instruction);
     }
 
     @EventListener
@@ -300,7 +307,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setReleaseSegment(releaseSegmentRequest)
                                            .build();
-        sendToClientStreamId(event.getClientName(), outboundInstruction);
+        sendToClientStreamId(event.getClientId(), outboundInstruction);
     }
 
     @EventListener
@@ -339,7 +346,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
                                            .build();
-        sendToClientStreamId(event.getClientName(), outboundInstruction);
+        sendToClientStreamId(event.getClientId(), outboundInstruction);
     }
 
     @EventListener
@@ -354,7 +361,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        sendToClientStreamId(event.getClientName(), outboundInstruction);
+        sendToClientStreamId(event.getClientId(), outboundInstruction);
     }
 
     @EventListener
@@ -368,7 +375,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setRequestEventProcessorInfo(eventProcessorInfoRequest)
                                            .build();
-        sendToClientStreamId(event.clientName(), outboundInstruction);
+        sendToClientStreamId(event.clientId(), outboundInstruction);
     }
 
     private void registerClient(ClientComponent clientComponent,
@@ -451,11 +458,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         /**
          * Consume the given {@code clientComponent} and {@link PlatformInboundInstruction}.
          *
-         * @param clientComponent a {@link ClientComponent} specifying the client
-         * @param instruction     a {@link PlatformOutboundInstruction} describing the inbound instruction to be
-         *                        consumed
+         * @param client      the {@link ClientComponent} sending the instruction
+         * @param instruction a {@link PlatformOutboundInstruction} describing the inbound instruction to be consumed
          */
-        void accept(ClientComponent clientComponent, PlatformInboundInstruction instruction);
+        void accept(ClientComponent client, PlatformInboundInstruction instruction);
     }
 
     /**

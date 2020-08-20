@@ -29,6 +29,9 @@ import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
