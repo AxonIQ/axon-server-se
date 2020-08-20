@@ -193,27 +193,6 @@ public class PlatformServiceTest {
     }
 
     @Test
-    public void onReleaseSegmentRequest() {
-        FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);
-        requestStream.onNext(PlatformInboundInstruction.newBuilder().setRegister(ClientIdentification.newBuilder()
-                                                                                                     .setClientId(
-                                                                                                             "Release")
-                                                                                                     .setComponentName(
-                                                                                                             "component")
-        ).build());
-
-        clientIdRegistry.platformStreamIdsFor("Release").forEach(streamId -> {
-            platformService.on(new EventProcessorEvents.ReleaseSegmentRequest("Release",
-                                                                              streamId,
-                                                                              "processor",
-                                                                              1,
-                                                                              false));
-        });
-        assertEquals(1, responseObserver.values().size());
-    }
-
-    @Test
     public void onApplicationDisconnected() {
         FakeStreamObserver<PlatformOutboundInstruction> responseObserver = new FakeStreamObserver<>();
         StreamObserver<PlatformInboundInstruction> requestStream = platformService.openStream(responseObserver);

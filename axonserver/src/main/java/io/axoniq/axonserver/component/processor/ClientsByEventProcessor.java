@@ -49,7 +49,7 @@ public class ClientsByEventProcessor implements Iterable<String> {
     @Override
     public Iterator<String> iterator() {
         return stream(eventProcessors.spliterator(), false)
-                .map(ClientProcessor::clientStreamId)
+                .map(ClientProcessor::clientId)
                 .iterator();
     }
 }
