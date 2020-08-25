@@ -563,8 +563,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public long syncEvents(String context, SerializedTransactionWithToken value) {
         try {
-            SyncStorage writeStorage = workers(context).eventSyncStorage;
-            writeStorage.sync(value.getToken(), value.getEvents());
+            Workers worker = workers(context);
+            worker.eventSyncStorage.sync(value.getToken(), value.getEvents());
+            worker.triggerTrackerEventProcessors();
             return value.getToken() + value.getEvents().size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
@@ -704,6 +705,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                            clientId,
                                                            forceReadingFromLeader,
                                                            eventStream);
+        }
+
+        private void triggerTrackerEventProcessors() {
+            trackingEventManager.reschedule();
         }
 
 
