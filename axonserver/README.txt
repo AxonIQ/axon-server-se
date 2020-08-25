@@ -3,6 +3,11 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.1
+-------------------------------
+
+Fix the refresh of the event processor status
+
 Release Notes for version 4.4
 -----------------------------
 * Axon Server can now act as an event scheduler

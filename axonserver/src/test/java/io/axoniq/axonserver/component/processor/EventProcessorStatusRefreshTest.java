@@ -58,6 +58,19 @@ public class EventProcessorStatusRefreshTest {
         assertWithin((int) timeout.toMillis(), MILLISECONDS, () -> assertTrue(completableFuture.isDone()));
     }
 
+    @Test
+    public void runSuccessfullyWithAnotherProcessorFromSameClient() throws InterruptedException {
+        CompletableFuture<Void> completableFuture = testSubject.run("context", processorB);
+        assertWithin(1000, MILLISECONDS, () -> assertFalse(publishedInternalEvents.isEmpty()));
+        testSubject.on(updateEvent("redClient", "processorA"));
+        testSubject.on(updateEvent("greenClient", "processorA"));
+        testSubject.on(updateEvent("blueClient", "processorA"));
+        testSubject.on(updateEvent("redClient", "processorB"));
+        testSubject.on(updateEvent("greenClient", "processorB"));
+        testSubject.on(updateEvent("blueClient", "processorB"));
+        assertWithin((int) timeout.toMillis(), MILLISECONDS, () -> assertTrue(completableFuture.isDone()));
+    }
+
     @Test()
     public void testFailureForMissingUpdate() throws InterruptedException {
         CompletableFuture<Void> completableFuture = testSubject.run("context", processorB);
