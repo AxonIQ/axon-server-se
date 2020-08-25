@@ -95,31 +95,53 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
 
     @EventListener
     public void on(ApplicationConnected event) {
+        logger.info("Platform stream connected: {} [stream id -> {}]",
+                    event.getClientId(),
+                    event.getClientStreamId());
         register(event.getClientStreamId(), event.getClientId(), PLATFORM);
     }
 
     @EventListener
     public void on(ApplicationDisconnected event) {
+        logger.info("Platform stream disconnected: {} [stream id -> {}]",
+                    event.getClientId(),
+                    event.getClientStreamId());
         unregister(event.getClientStreamId(), PLATFORM);
     }
 
     @EventListener
     public void on(SubscribeCommand event) {
-        register(event.clientStreamIdentification().getClientStreamId(), event.getHandler().getClientId(), COMMAND);
+        String clientId = event.getHandler().getClientId();
+        String clientStreamId = event.clientStreamIdentification().getClientStreamId();
+        if (!clientIdMapPerType.getOrDefault(COMMAND, Collections.emptyMap()).containsKey(clientStreamId)) {
+            logger.info("Command stream connected: {} [stream id -> {}]", clientId, clientStreamId);
+        }
+        register(clientStreamId, clientId, COMMAND);
     }
 
     @EventListener
     public void on(CommandHandlerDisconnected event) {
+        logger.info("Command stream disconnected: {} [stream id -> {}]",
+                    event.getClientId(),
+                    event.getClientStreamId());
         unregister(event.getClientStreamId(), COMMAND);
     }
 
     @EventListener
     public void on(SubscribeQuery event) {
-        register(event.clientIdentification().getClientStreamId(), event.getQueryHandler().getClientId(), QUERY);
+        String clientId = event.getQueryHandler().getClientId();
+        String clientStreamId = event.clientIdentification().getClientStreamId();
+        if (!clientIdMapPerType.getOrDefault(QUERY, Collections.emptyMap()).containsKey(clientStreamId)) {
+            logger.info("Command stream connected: {} [stream id -> {}]", clientId, clientStreamId);
+        }
+        register(clientStreamId, clientId, QUERY);
     }
 
     @EventListener
     public void on(QueryHandlerDisconnected event) {
+        logger.info("Query stream disconnected: {} [stream id -> {}]",
+                    event.getClientId(),
+                    event.getClientStreamId());
         unregister(event.getClientStreamId(), QUERY);
     }
 }
