@@ -13,6 +13,7 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
@@ -201,8 +202,13 @@ public class QueryDispatcher {
     }
 
     private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
-        queryHandler.enqueue( query, queryQueue, timeout);
+        try {
+            queryHandler.enqueue(query, queryQueue, timeout);
+        } catch (MessagingPlatformException mpe) {
+            QueryInformation information = queryCache.remove(query.getMessageIdentifier());
+            if (information != null) {
+                information.completeWithError(queryHandler.getClientId(), mpe.getErrorCode(), mpe.getMessage());
+            }
+        }
     }
-
-
 }
