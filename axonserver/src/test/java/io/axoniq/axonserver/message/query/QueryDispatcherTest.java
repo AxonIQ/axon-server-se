@@ -97,11 +97,35 @@ public class QueryDispatcherTest {
                                            .setMessageIdentifier("1234")
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
-        TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
-        queryDispatcher.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                              testResponseObserver::onNext,
-                              client -> testResponseObserver.onCompleted());
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          responseObserver::onNext,
+                          client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.completedCount());
+        assertEquals(1, responseObserver.completedCount());
+        assertNotEquals("", responseObserver.values().get(0).getErrorCode());
+    }
+
+    @Test
+    public void queryQueueFull() {
+        testSubject = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry, meterFactory, 0);
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setQuery("test")
+                                           .setMessageIdentifier("1234")
+                                           .setClientId("sampleClient")
+                                           .build();
+        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
+        Set<QueryHandler> handlers = new HashSet<>();
+
+        FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
+        handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName"));
+        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          responseObserver::onNext,
+                          client -> responseObserver.onCompleted());
+        assertEquals(1, responseObserver.completedCount());
+        assertTrue(queryCache.isEmpty());
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
     }
@@ -202,23 +226,4 @@ public class QueryDispatcherTest {
     }
 
 
-    class TestResponseObserver implements QueryResponseConsumer {
-
-        private final FakeStreamObserver<QueryResponse> responseObserver;
-
-        TestResponseObserver(FakeStreamObserver<QueryResponse> responseObserver) {
-            this.responseObserver = responseObserver;
-        }
-
-        @Override
-        public void onNext(QueryResponse queryResponse) {
-            responseObserver.onNext(queryResponse);
-        }
-
-        @Override
-        public void onCompleted() {
-            responseObserver.onCompleted();
-
-        }
-    }
 }
