@@ -102,7 +102,12 @@ public class TopologyEvents {
             return isForwarded();
         }
 
-        public ClientStreamIdentification clientIdentification() {
+        /**
+         * Returns the {@link ClientStreamIdentification} for the platform stream.
+         *
+         * @return the {@link ClientStreamIdentification} for the platform stream.
+         */
+        public ClientStreamIdentification clientStreamIdentification() {
             return new ClientStreamIdentification(context, clientStreamId);
         }
     }
@@ -177,7 +182,12 @@ public class TopologyEvents {
             return isForwarded();
         }
 
-        public ClientStreamIdentification clientIdentification() {
+        /**
+         * Returns the {@link ClientStreamIdentification} for the platform stream.
+         *
+         * @return the {@link ClientStreamIdentification} for the platform stream.
+         */
+        public ClientStreamIdentification clientStreamIdentification() {
             return new ClientStreamIdentification(context, clientStreamId);
         }
     }
@@ -237,7 +247,12 @@ public class TopologyEvents {
             return isForwarded();
         }
 
-        public ClientStreamIdentification clientIdentification() {
+        /**
+         * Returns the {@link ClientStreamIdentification} for the command stream.
+         *
+         * @return the {@link ClientStreamIdentification} for the command stream.
+         */
+        public ClientStreamIdentification clientStreamIdentification() {
             return new ClientStreamIdentification(context, clientStreamId);
         }
     }
@@ -297,7 +312,12 @@ public class TopologyEvents {
             return isForwarded();
         }
 
-        public ClientStreamIdentification clientIdentification() {
+        /**
+         * Returns the {@link ClientStreamIdentification} for the query stream.
+         *
+         * @return the {@link ClientStreamIdentification} for the query stream.
+         */
+        public ClientStreamIdentification clientStreamIdentification() {
             return new ClientStreamIdentification(context, clientStreamId);
         }
     }

@@ -96,7 +96,7 @@ public class CommandDispatcher {
 
     @EventListener
     public void on(TopologyEvents.CommandHandlerDisconnected event) {
-        handleDisconnection(event.clientIdentification(), event.isProxied());
+        handleDisconnection(event.clientStreamIdentification(), event.isProxied());
     }
 
     private void handleDisconnection(ClientStreamIdentification client, boolean proxied) {

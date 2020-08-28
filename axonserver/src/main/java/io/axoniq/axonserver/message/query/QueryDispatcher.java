@@ -125,7 +125,7 @@ public class QueryDispatcher {
 
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected event) {
-        registrationCache.remove(event.clientIdentification());
+        registrationCache.remove(event.clientStreamIdentification());
     }
 
     /**

@@ -45,12 +45,12 @@ public class GenericClients implements Clients {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        this.clientRegistrations.remove(event.clientIdentification());
+        this.clientRegistrations.remove(event.clientStreamIdentification());
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
-        this.clientRegistrations.put(event.clientIdentification(),
+        this.clientRegistrations.put(event.clientStreamIdentification(),
                                      new GenericClient(event.getClientId(),
                                                        event.getClientStreamId(),
                                                        event.getComponentName(),

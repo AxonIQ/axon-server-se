@@ -198,7 +198,7 @@ public class EventDispatcher implements AxonServerClientService {
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected
-                                                                                      .clientIdentification());
+                                                                                      .clientStreamIdentification());
         logger.debug("application disconnected: {}, eventsStreams: {}",
                      applicationDisconnected.getClientStreamId(),
                      eventsStreams);
