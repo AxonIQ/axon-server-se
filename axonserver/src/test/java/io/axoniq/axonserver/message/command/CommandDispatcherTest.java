@@ -109,9 +109,8 @@ public class CommandDispatcherTest {
                                  .setMessageIdentifier("12")
                                  .build();
         CountingStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new CountingStreamObserver<>();
-        ClientIdentification client = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
-        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client, "component");
+        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
+        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound, client, "client", "component");
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
