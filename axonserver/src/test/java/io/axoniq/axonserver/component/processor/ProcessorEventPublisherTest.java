@@ -18,17 +18,15 @@ import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import org.assertj.core.util.Lists;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.*;
+import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -116,7 +114,7 @@ public class ProcessorEventPublisherTest {
         SplitSegmentRequest result = argumentCaptor.getValue();
 
         assertFalse(result.isProxied());
-        assertEquals(CLIENT_NAME_OF_SPLIT, result.getClientName());
+        assertEquals(CLIENT_NAME_OF_SPLIT, result.getClientId());
         assertEquals(PROCESSOR_NAME_TO_SPLIT, result.getProcessorName());
         assertEquals(SEGMENT_ID_TO_SPLIT, result.getSegmentId());
     }
@@ -138,13 +136,13 @@ public class ProcessorEventPublisherTest {
 
         ReleaseSegmentRequest releaseRequest = (ReleaseSegmentRequest) publishedEvents.get(0);
         assertFalse(releaseRequest.isProxied());
-        assertEquals(CLIENT_NAME_OF_SPLIT, releaseRequest.getClientName());
+        assertEquals(CLIENT_NAME_OF_SPLIT, releaseRequest.getClientId());
         assertEquals(PROCESSOR_NAME_TO_MERGE, releaseRequest.getProcessorName());
         assertEquals(PAIRED_WITH_SEGMENT, releaseRequest.getSegmentId());
 
         MergeSegmentRequest mergeRequest = (MergeSegmentRequest) publishedEvents.get(1);
         assertFalse(mergeRequest.isProxied());
-        assertEquals(CLIENT_NAME_OF_MERGE, mergeRequest.getClientName());
+        assertEquals(CLIENT_NAME_OF_MERGE, mergeRequest.getClientId());
         assertEquals(PROCESSOR_NAME_TO_MERGE, mergeRequest.getProcessorName());
         assertEquals(SEGMENT_ID_TO_MERGE, mergeRequest.getSegmentId());
     }
@@ -183,7 +181,7 @@ public class ProcessorEventPublisherTest {
 
         MergeSegmentRequest mergeRequest = (MergeSegmentRequest) publishedEvents.get(0);
         assertFalse(mergeRequest.isProxied());
-        assertEquals(CLIENT_NAME_OF_SPLIT, mergeRequest.getClientName());
+        assertEquals(CLIENT_NAME_OF_SPLIT, mergeRequest.getClientId());
         assertEquals(PROCESSOR_NAME_TO_SPLIT, mergeRequest.getProcessorName());
         assertEquals(SEGMENT_ID_TO_MERGE, mergeRequest.getSegmentId());
     }

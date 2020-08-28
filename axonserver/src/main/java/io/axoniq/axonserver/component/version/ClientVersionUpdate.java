@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.component.version;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 /**
  * Event containing client's Axon Framework version that is published any time a node
@@ -11,42 +11,44 @@ import io.axoniq.axonserver.message.ClientIdentification;
  */
 public class ClientVersionUpdate {
 
-    private final ClientIdentification client;
+    private final ClientStreamIdentification client;
 
     private final String version;
 
     /**
      * Creates an instance with the specified client's name, context and Axon Framework version.
      *
-     * @param clientName the client's name
-     * @param context    the client's context
-     * @param version    the client's Axon Framework version
+     * @param clientStreamId the client's platform stream identifier
+     * @param context        the client's context
+     * @param version        the client's Axon Framework version
      */
-    public ClientVersionUpdate(String clientName, String context, String version) {
-        this(new ClientIdentification(context, clientName), version);
+    public ClientVersionUpdate(String clientStreamId, String context, String version) {
+        this(new ClientStreamIdentification(context, clientStreamId), version);
     }
 
     /**
      * Creates an instance for the specified client and Axon Framework version.
      *
-     * @param client the client identifier
+     * @param client  the client identifier
      * @param version the client's Axon Framework version
      */
-    public ClientVersionUpdate(ClientIdentification client, String version) {
+    public ClientVersionUpdate(ClientStreamIdentification client, String version) {
         this.client = client;
         this.version = version;
     }
 
     /**
      * Returns the client identifier.
+     *
      * @return the client identifier.
      */
-    public ClientIdentification client() {
+    public ClientStreamIdentification client() {
         return client;
     }
 
     /**
      * Returns the client's Axon Framework version.
+     *
      * @return the client's Axon Framework version.
      */
     public String version() {

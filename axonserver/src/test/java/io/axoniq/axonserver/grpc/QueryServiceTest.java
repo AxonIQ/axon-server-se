@@ -20,7 +20,7 @@ import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
@@ -35,8 +35,8 @@ import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -45,7 +45,6 @@ public class QueryServiceTest {
     private QueryService testSubject;
     private QueryDispatcher queryDispatcher;
     private FlowControlQueues<WrappedQuery> queryQueue;
-
     private ApplicationEventPublisher eventPublisher;
 
     @Before
@@ -67,21 +66,31 @@ public class QueryServiceTest {
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<QueryProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
+        CountingStreamObserver<QueryProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2).setClientId("name").build()).build());
+        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2)
+                                                                                          .setClientId("name").build())
+                                                  .build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
-        ClientIdentification name = new ClientIdentification(Topology.DEFAULT_CONTEXT, "name");
-        queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
-                                                                     QueryRequest.newBuilder()
-                                                                                 .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
-                                                                                 .build()), System.currentTimeMillis() + 2000));
+        String key = queryQueue.getSegments().entrySet().iterator().next().getKey();
+        String clientStreamId = key.substring(0, key.lastIndexOf("."));
+        ClientStreamIdentification clientStreamIdentification =
+                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, clientStreamId);
+        queryQueue.put(clientStreamIdentification.toString(), new WrappedQuery(
+                clientStreamIdentification,
+                "name",
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
+                                    QueryRequest.newBuilder()
+                                                .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
+                                                .build()), System.currentTimeMillis() + 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
-        queryQueue.put(name.toString(), new WrappedQuery(
-                                                        new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()), System.currentTimeMillis() - 2000));
+        queryQueue.put(clientStreamIdentification.toString(), new WrappedQuery(
+                clientStreamIdentification,
+                "name",
+                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()),
+                System.currentTimeMillis() - 2000));
         Thread.sleep(150);
         assertEquals(1, countingStreamObserver.count);
         verify(queryDispatcher).removeFromCache(any(), any());

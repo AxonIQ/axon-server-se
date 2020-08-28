@@ -1,10 +1,9 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
-import io.axoniq.axonserver.component.instance.Client;
-import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.component.instance.FakeClient;
+import io.axoniq.axonserver.component.instance.ClientIdentifications;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.junit.*;
 
 import java.util.Arrays;
@@ -23,8 +22,9 @@ public class HeartbeatPublisherTest {
 
     @Test
     public void publish() {
-        Clients clients = () -> Arrays.asList((Client) new FakeClient("A", false),
-                                              new FakeClient("B", false)).iterator();
+        ClientIdentifications clients = () -> Arrays.asList(new ClientStreamIdentification("context", "A"),
+                                                            new ClientStreamIdentification("context", "B"))
+                                                    .iterator();
         Map<String, PlatformOutboundInstruction> receivedHeartbeat = new ConcurrentHashMap<>();
         PlatformOutboundInstruction instruction = newBuilder().setHeartbeat(Heartbeat.newBuilder().build()).build();
 

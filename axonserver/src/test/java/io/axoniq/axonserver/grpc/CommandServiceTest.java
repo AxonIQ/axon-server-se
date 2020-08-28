@@ -19,7 +19,7 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
@@ -65,15 +65,24 @@ public class CommandServiceTest {
 
     @Test
     public void flowControl() throws Exception {
-        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver  = new CountingStreamObserver<>();
+        CountingStreamObserver<SerializedCommandProviderInbound> countingStreamObserver = new CountingStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(countingStreamObserver);
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder()
+                                                                                            .setPermits(1)
+                                                                                            .setClientId("name")
+                                                                                            .build()).build());
         Thread.sleep(150);
         assertEquals(1, commandQueue.getSegments().size());
-        ClientIdentification clientIdentification = new ClientIdentification(Topology.DEFAULT_CONTEXT,
-                                                             "name");
+
+        String key = commandQueue.getSegments().entrySet().iterator().next().getKey();
+        String clientStreamId = key.substring(0, key.lastIndexOf("."));
+
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                         clientStreamId);
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
-                                                            new SerializedCommand(Command.newBuilder().build())));
+                                                                             clientIdentification.getClientStreamId(),
+                                                                             new SerializedCommand(Command.newBuilder()
+                                                                                                          .build())));
         Thread.sleep(50);
         assertEquals(1, countingStreamObserver.count);
     }

@@ -11,7 +11,7 @@ package io.axoniq.axonserver.component.instance;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nonnull;
 
 /**
  * Cache for connected client applications.
@@ -30,12 +31,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GenericClients implements Clients {
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
-    private final Map<ClientIdentification, Client> clientRegistrations = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, Client> clientRegistrations = new ConcurrentHashMap<>();
 
     public GenericClients(MessagingPlatformConfiguration messagingPlatformConfiguration) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
     }
 
+    @Nonnull
     @Override
     public Iterator<Client> iterator() {
         return clientRegistrations.values().iterator();
@@ -43,16 +45,18 @@ public class GenericClients implements Clients {
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
-        this.clientRegistrations.remove(event.clientIdentification());
+        this.clientRegistrations.remove(event.clientStreamIdentification());
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
-        this.clientRegistrations.put(event.clientIdentification(),
-                                     new GenericClient(event.getClient(),
+        this.clientRegistrations.put(event.clientStreamIdentification(),
+                                     new GenericClient(event.getClientId(),
+                                                       event.getClientStreamId(),
                                                        event.getComponentName(),
                                                        event.getContext(),
-                                                       event.isProxied() ? event.getProxy() : messagingPlatformConfiguration
+                                                       event.isProxied() ? event
+                                                               .getProxy() : messagingPlatformConfiguration
                                                                .getName()));
     }
 }

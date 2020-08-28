@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import javax.annotation.Nonnull;
 
 /**
  * Created by Sara Pellegrini on 21/03/2018.
@@ -28,44 +29,50 @@ import java.util.Map;
 @Component
 public class ProcessorsInfoTarget implements ClientProcessors {
 
+    // Map<ClientStreamId,Component>
     private final Map<String, String> clients = new HashMap<>();
 
-    // Map<Client, Map<ProcessorName, ClientProcessor>>
+    // Map<ClientStreamId, Map<ProcessorName, ClientProcessor>>
     private final Map<String, Map<String, ClientProcessor>> cache = new HashMap<>();
 
     private final ClientProcessorMapping mapping;
 
     public ProcessorsInfoTarget() {
-        this.mapping = new ClientProcessorMapping() {};
+        this.mapping = new ClientProcessorMapping() {
+        };
     }
 
     @EventListener
     public EventProcessorStatusUpdated onEventProcessorStatusChange(EventProcessorStatusUpdate event) {
         ClientEventProcessorInfo processorStatus = event.eventProcessorStatus();
-        String clientName = processorStatus.getClientName();
-        Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientName, c -> new HashMap<>());
+        String clientId = processorStatus.getClientId();
+        String clientStreamId = processorStatus.getClientStreamId();
+        Map<String, ClientProcessor> clientData = cache.computeIfAbsent(clientStreamId, c -> new HashMap<>());
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
-        ClientProcessor clientProcessor = mapping.map(clientName, clients.get(clientName), processorStatus.getContext(), eventProcessorInfo);
+        ClientProcessor clientProcessor = mapping.map(clientId,
+                                                      clients.get(clientStreamId),
+                                                      processorStatus.getContext(),
+                                                      eventProcessorInfo);
         clientData.put(eventProcessorInfo.getProcessorName(), clientProcessor);
         return new EventProcessorStatusUpdated(processorStatus, event.isProxied());
     }
 
     @EventListener
-    public void onClientConnected( TopologyEvents.ApplicationConnected event) {
-        clients.put(event.getClient(), event.getComponentName());
+    public void onClientConnected(TopologyEvents.ApplicationConnected event) {
+        clients.put(event.getClientStreamId(), event.getComponentName());
     }
 
     @EventListener
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
-        clients.remove(event.getClient());
-        cache.remove(event.getClient());
+        clients.remove(event.getClientStreamId());
+        cache.remove(event.getClientStreamId());
     }
 
+    @Nonnull
     @Override
     public Iterator<ClientProcessor> iterator() {
         return cache.entrySet().stream()
-                    .flatMap(client -> client.getValue().entrySet().stream().map(Map.Entry::getValue))
+                    .flatMap(client -> client.getValue().values().stream())
                     .iterator();
     }
-
 }

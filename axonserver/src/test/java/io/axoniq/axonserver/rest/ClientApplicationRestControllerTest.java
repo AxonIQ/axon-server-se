@@ -12,6 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.instance.FakeClient;
+import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
 import org.junit.*;
 
 import java.util.Iterator;
@@ -30,11 +31,12 @@ public class ClientApplicationRestControllerTest {
 
     @Test
     public void getComponentInstances() {
-        Clients clients = () -> asList( (Client) new FakeClient("clientA",DEFAULT_CONTEXT, true),
-                                        new FakeClient("clientB",DEFAULT_CONTEXT, false),
-                                        new FakeClient("clientC",DEFAULT_CONTEXT, false)).iterator();
+        Clients clients = () -> asList((Client) new FakeClient("clientA", DEFAULT_CONTEXT, true),
+                                       new FakeClient("clientB", DEFAULT_CONTEXT, false),
+                                       new FakeClient("clientC", DEFAULT_CONTEXT, false)).iterator();
 
-        ClientApplicationRestController controller = new ClientApplicationRestController(clients);
+        ClientApplicationRestController controller = new ClientApplicationRestController(clients,
+                                                                                         new DefaultClientIdRegistry());
         Iterator iterator = controller.getComponentInstances("test", DEFAULT_CONTEXT, null).iterator();
         assertTrue(iterator.hasNext());
         iterator.next();
@@ -43,13 +45,14 @@ public class ClientApplicationRestControllerTest {
 
     @Test
     public void listClients() {
-        Client clientA = new FakeClient("clientA",DEFAULT_CONTEXT, true);
-        Client clientB = new FakeClient("clientB",DEFAULT_CONTEXT, true);
-        Client clientC = new FakeClient("clientC",DEFAULT_CONTEXT, true);
+        Client clientA = new FakeClient("clientA", DEFAULT_CONTEXT, true);
+        Client clientB = new FakeClient("clientB", DEFAULT_CONTEXT, true);
+        Client clientC = new FakeClient("clientC", DEFAULT_CONTEXT, true);
 
         Clients clients = () -> asList((Client) clientA, clientB, clientC).iterator();
 
-        ClientApplicationRestController controller = new ClientApplicationRestController(clients);
+        ClientApplicationRestController controller = new ClientApplicationRestController(clients,
+                                                                                         new DefaultClientIdRegistry());
         List<Client> clientList = controller.listClients(null).collect(Collectors.toList());
         assertEquals(3, clientList.size());
         assertTrue(clientList.contains(clientA));

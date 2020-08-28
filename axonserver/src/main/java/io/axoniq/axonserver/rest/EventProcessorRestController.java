@@ -28,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
@@ -84,7 +85,7 @@ public class EventProcessorRestController {
                       AuditLog.username(principal), context, processor, component);
 
         clientIterable(component, context)
-                .forEach(client -> processorEventsSource.pauseProcessorRequest(client.name(), processor));
+                .forEach(client -> processorEventsSource.pauseProcessorRequest(client.id(), processor));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/start")
@@ -96,7 +97,7 @@ public class EventProcessorRestController {
                       AuditLog.username(principal), context, processor, component);
 
         clientIterable(component, context)
-                .forEach(client -> processorEventsSource.startProcessorRequest(client.name(), processor));
+                .forEach(client -> processorEventsSource.startProcessorRequest(client.id(), processor));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/segments/{segment}/move")
@@ -110,8 +111,8 @@ public class EventProcessorRestController {
                       AuditLog.username(principal), context, segment, processor, component, target);
 
         clientIterable(component, context).forEach(client -> {
-            if (!target.equals(client.name())) {
-                processorEventsSource.releaseSegment(client.name(), processor, segment);
+            if (!target.equals(client.id())) {
+                processorEventsSource.releaseSegment(client.id(), processor, segment);
             }
         });
     }
@@ -131,10 +132,10 @@ public class EventProcessorRestController {
         auditLog.info("[{}@{}] Request to split segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
 
-        List<String> clientNames = StreamSupport.stream(clientIterable(component, context).spliterator(), false)
-                                                .map(Client::name)
-                                                .collect(Collectors.toList());
-        processorEventsSource.splitSegment(clientNames, processorName);
+        List<String> clientIds = stream(clientIterable(component, context).spliterator(), false)
+                .map(Client::id)
+                .collect(Collectors.toList());
+        processorEventsSource.splitSegment(clientIds, processorName);
     }
 
     /**
@@ -152,10 +153,10 @@ public class EventProcessorRestController {
         auditLog.info("[{}@{}] Request to merge segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
 
-        List<String> clientNames = StreamSupport.stream(clientIterable(component, context).spliterator(), false)
-                                                .map(Client::name)
-                                                .collect(Collectors.toList());
-        processorEventsSource.mergeSegment(clientNames, processorName);
+        List<String> clientIds = stream(clientIterable(component, context).spliterator(), false)
+                .map(Client::id)
+                .collect(Collectors.toList());
+        processorEventsSource.mergeSegment(clientIds, processorName);
     }
 
     @NotNull

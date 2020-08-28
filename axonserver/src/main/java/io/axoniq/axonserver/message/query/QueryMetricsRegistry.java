@@ -9,11 +9,10 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.Metrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
@@ -50,59 +49,71 @@ public class QueryMetricsRegistry {
 
     /**
      * Registers the duration of the handling of a query by a client.
-     * @param query the name of the query
+     *
+     * @param query          the name of the query
      * @param sourceClientId the source application requesting the query
-     * @param clientId the application handling the query
-     * @param duration the duration
+     * @param targetClientId the unique id of the client application handling the query
+     * @param context        the principal context application handling the query
+     * @param duration       the duration
      */
-    public void add(QueryDefinition query, String sourceClientId, ClientIdentification clientId, long duration) {
+    public void add(QueryDefinition query,
+                    String sourceClientId,
+                    String targetClientId,
+                    String context,
+                    long duration) {
         try {
-            timer(query, sourceClientId, clientId).record(duration, TimeUnit.MILLISECONDS);
-        } catch( Exception ex) {
+            timer(query, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
+        } catch (Exception ex) {
             logger.debug("Failed to create timer", ex);
         }
     }
 
     /**
      * Retrieves the number of times that a query has been handled by a specific client.
-     * @param query the definition of the query
-     * @param clientId the client handling the query
+     *
+     * @param query          the definition of the query
+     * @param targetClientId the client handling the query
+     * @param context        the principal context of the client handling the query
      * @return cluster metric with access to the number of times the client has handled the query
      */
-    public ClusterMetric clusterMetric(QueryDefinition query, ClientIdentification clientId){
-        Tags tags = Tags.of(MeterFactory.CONTEXT, clientId.getContext(),
+    public ClusterMetric clusterMetric(QueryDefinition query, String targetClientId, String context) {
+        Tags tags = Tags.of(MeterFactory.CONTEXT, context,
                             MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
-                            MeterFactory.TARGET, clientId.getClient());
+                            MeterFactory.TARGET, targetClientId);
         return new CompositeMetric(meterFactory.snapshot(BaseMetricName.AXON_QUERY, tags),
-                                   new Metrics(BaseMetricName.AXON_QUERY.metric(), tags, meterFactory.clusterMetrics()));
+                                   new Metrics(BaseMetricName.AXON_QUERY.metric(),
+                                               tags,
+                                               meterFactory.clusterMetrics()));
     }
 
 
-    private Timer timer(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
-        String metricName = metricName(query, sourceClientId, clientId);
+    private Timer timer(QueryDefinition query, String sourceClientId, String targetClientId, String context) {
+        String metricName = metricName(query, sourceClientId, targetClientId, context);
         return timerMap.computeIfAbsent(metricName, n ->
                 meterFactory.timer(BaseMetricName.AXON_QUERY,
                                    Tags.of(
                                            MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
-                                           MeterFactory.CONTEXT, clientId.getContext(),
+                                           MeterFactory.CONTEXT, context,
                                            MeterFactory.SOURCE, sourceClientId,
-                                           MeterFactory.TARGET, clientId.getClient())));
+                                           MeterFactory.TARGET, targetClientId)));
     }
 
-    private String metricName(QueryDefinition query, String sourceClientId, ClientIdentification clientId) {
-        return String.format("%s.%s.%s", query.getQueryName(), sourceClientId, clientId.metricName());
+    private String metricName(QueryDefinition query, String sourceClientId, String targetClientId, String context) {
+        return String.format("%s.%s.%s", query.getQueryName(), sourceClientId, targetClientId + "." + context);
     }
 
     /**
      * Retrieves the number of times that a query has been handled by a specific client.
-     * @param query the definition of the query
-     * @param clientId the client handling the query
-     * @param componentName the client application name
+     *
+     * @param query          the definition of the query
+     * @param targetClientId the client handling the query
+     * @param context        the principal context of the client handling the query
+     * @param componentName  the client application name
      * @return QueryMetric containing the number of times that the query has been handled by this client
      */
-    public QueryMetric queryMetric(QueryDefinition query, ClientIdentification clientId, String componentName){
-        ClusterMetric clusterMetric = clusterMetric(query, clientId);
-        return new QueryMetric(query, clientId.metricName(), componentName, clusterMetric.count());
+    public QueryMetric queryMetric(QueryDefinition query, String targetClientId, String context, String componentName) {
+        ClusterMetric clusterMetric = clusterMetric(query, targetClientId, context);
+        return new QueryMetric(query, targetClientId + "." + context, componentName, clusterMetric.count());
     }
 
     /**

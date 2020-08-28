@@ -5,7 +5,7 @@ import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.util.FakeStreamObserver;
 import org.junit.*;
 
@@ -46,7 +46,8 @@ public class CommandRegistrationCacheLoadFactorTest {
         for (int i = 0; i < 100000; i++) {
             String routingKey = randomUUID().toString();
             CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
-            counter.computeIfAbsent(handler.getClient().getClient(), c -> new AtomicInteger()).incrementAndGet();
+            counter.computeIfAbsent(handler.getClientStreamIdentification().getClientStreamId(),
+                                    c -> new AtomicInteger()).incrementAndGet();
         }
 
         assertTrue(matchPercentage("client1", 10, counter));
@@ -68,7 +69,8 @@ public class CommandRegistrationCacheLoadFactorTest {
         for (int i = 0; i < 100000; i++) {
             String routingKey = randomUUID().toString();
             CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
-            counter.computeIfAbsent(handler.getClient().getClient(), c -> new AtomicInteger()).incrementAndGet();
+            counter.computeIfAbsent(handler.getClientStreamIdentification().getClientStreamId(),
+                                    c -> new AtomicInteger()).incrementAndGet();
         }
 
         assertTrue(matchPercentage("client1", 33, counter));
@@ -86,12 +88,12 @@ public class CommandRegistrationCacheLoadFactorTest {
             String client, String command, int loadFactor) {
         return new SubscribeCommand(
                 "context",
-                CommandSubscription.newBuilder()
-                                   .setClientId(client)
-                                   .setComponentName("componentName")
-                                   .setCommand(command)
-                                   .setLoadFactor(loadFactor)
-                                   .build(),
+                "clientStreamId", CommandSubscription.newBuilder()
+                                                     .setClientId(client)
+                                                     .setComponentName("componentName")
+                                                     .setCommand(command)
+                                                     .setLoadFactor(loadFactor)
+                                                     .build(),
                 new FakeCommandHandler(client));
     }
 
@@ -100,8 +102,8 @@ public class CommandRegistrationCacheLoadFactorTest {
 
         public FakeCommandHandler(String clientId) {
             super(new FakeStreamObserver<>(),
-                  new ClientIdentification("context", clientId),
-                  "componentName");
+                  new ClientStreamIdentification("context", clientId),
+                  clientId, "componentName");
         }
 
         @Override

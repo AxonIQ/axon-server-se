@@ -12,7 +12,9 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.serializer.Printable;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,9 +39,11 @@ public class ClientApplicationRestController {
     private static final Logger auditLog = AuditLog.getLogger();
 
     private final Clients clients;
+    private final ClientIdRegistry clientIdRegistry;
 
-    public ClientApplicationRestController(Clients clients) {
+    public ClientApplicationRestController(Clients clients, ClientIdRegistry clientIdRegistry) {
         this.clients = clients;
+        this.clientIdRegistry = clientIdRegistry;
     }
 
     /**
@@ -70,5 +74,12 @@ public class ClientApplicationRestController {
         auditLog.info("[{}] Request for a list of all connected clients.", AuditLog.username(principal));
 
         return StreamSupport.stream(clients.spliterator(), false);
+    }
+
+    @GetMapping("clientIds")
+    public Printable listClientIds(Principal principal) {
+        auditLog.info("[{}] Request for a list of all connected clients.", AuditLog.username(principal));
+
+        return clientIdRegistry;
     }
 }

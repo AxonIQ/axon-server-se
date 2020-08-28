@@ -63,17 +63,17 @@ public class EventProcessorEvents {
 
     public static class PauseEventProcessorRequest extends BaseEventProcessorsEvent {
 
-        private final String clientName;
+        private final String clientId;
         private final String processorName;
 
-        public PauseEventProcessorRequest(String clientName, String processorName, boolean proxied) {
+        public PauseEventProcessorRequest(String clientId, String processorName, boolean proxied) {
             super(proxied);
-            this.clientName = clientName;
+            this.clientId = clientId;
             this.processorName = processorName;
         }
 
-        public String clientName() {
-            return clientName;
+        public String clientId() {
+            return clientId;
         }
 
         public String processorName() {
@@ -84,17 +84,17 @@ public class EventProcessorEvents {
 
     public static class StartEventProcessorRequest extends BaseEventProcessorsEvent {
 
-        private final String clientName;
+        private final String clientId;
         private final String processorName;
 
-        public StartEventProcessorRequest(String clientName, String processorName, boolean proxied) {
+        public StartEventProcessorRequest(String clientId, String processorName, boolean proxied) {
             super(proxied);
-            this.clientName = clientName;
+            this.clientId = clientId;
             this.processorName = processorName;
         }
 
-        public String clientName() {
-            return clientName;
+        public String clientId() {
+            return clientId;
         }
 
         public String processorName() {
@@ -103,13 +103,13 @@ public class EventProcessorEvents {
     }
 
     /**
-     * Base for a request to deal with segments. Contains the {@code clientName}, {@code processorName} and
+     * Base for a request to deal with segments. Contains the {@code clientId}, {@code processorName} and
      * {@code segmentId}, to respectively  find the right client, the right processor and the right segment to perform
      * the operation on/with.
      */
     public abstract static class BaseSegmentRequest extends BaseEventProcessorsEvent {
 
-        private final String clientName;
+        private final String clientId;
         private final String processorName;
         private final int segmentId;
 
@@ -118,15 +118,16 @@ public class EventProcessorEvents {
          * Processor.
          *
          * @param proxied       a {@code boolean} specifying whether this message has been proxied yes/no
-         * @param clientName    a {@link String} defining the name of the client which should handle this message
+         * @param clientId      a {@link String} defining the platform stream of the client which should handle this
+         *                      message
          * @param processorName a {@link String} defining the name of the processor which this message should perform
          *                      some operation on/with
          * @param segmentId     an {@code int} specifying the segment identifier which this message should perform some
          *                      operation on/with
          */
-        protected BaseSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
+        protected BaseSegmentRequest(boolean proxied, String clientId, String processorName, int segmentId) {
             super(proxied);
-            this.clientName = clientName;
+            this.clientId = clientId;
             this.processorName = processorName;
             this.segmentId = segmentId;
         }
@@ -136,8 +137,8 @@ public class EventProcessorEvents {
          *
          * @return a {@link String} specifying the name of the client
          */
-        public String getClientName() {
-            return clientName;
+        public String getClientId() {
+            return clientId;
         }
 
         /**
@@ -165,24 +166,24 @@ public class EventProcessorEvents {
      */
     public static class ReleaseSegmentRequest extends BaseSegmentRequest {
 
-        public ReleaseSegmentRequest(String clientName, String processorName, int segmentId, boolean proxied) {
-            super(proxied, clientName, processorName, segmentId);
+        public ReleaseSegmentRequest(String clientId, String processorName, int segmentId, boolean proxied) {
+            super(proxied, clientId, processorName, segmentId);
         }
     }
 
     public static class ProcessorStatusRequest extends BaseEventProcessorsEvent {
 
-        private final String clientName;
+        private final String clientId;
         private final String processorName;
 
-        public ProcessorStatusRequest(String clientName, String processorName, boolean proxied) {
+        public ProcessorStatusRequest(String clientId, String processorName, boolean proxied) {
             super(proxied);
-            this.clientName = clientName;
+            this.clientId = clientId;
             this.processorName = processorName;
         }
 
-        public String clientName() {
-            return clientName;
+        public String clientId() {
+            return clientId;
         }
 
         public String processorName() {
@@ -196,8 +197,8 @@ public class EventProcessorEvents {
      */
     public static class SplitSegmentRequest extends BaseSegmentRequest {
 
-        public SplitSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
-            super(proxied, clientName, processorName, segmentId);
+        public SplitSegmentRequest(boolean proxied, String clientId, String processorName, int segmentId) {
+            super(proxied, clientId, processorName, segmentId);
         }
     }
 
@@ -207,8 +208,8 @@ public class EventProcessorEvents {
      */
     public static class MergeSegmentRequest extends BaseSegmentRequest {
 
-        public MergeSegmentRequest(boolean proxied, String clientName, String processorName, int segmentId) {
-            super(proxied, clientName, processorName, segmentId);
+        public MergeSegmentRequest(boolean proxied, String clientId, String processorName, int segmentId) {
+            super(proxied, clientId, processorName, segmentId);
         }
     }
 }
