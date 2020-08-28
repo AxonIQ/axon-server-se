@@ -61,7 +61,7 @@ public class EventProcessorStatusRefreshTest {
 
     @Test
     public void runSuccessfullyWithAnotherProcessorFromSameClient() throws InterruptedException {
-        CompletableFuture<Void> completableFuture = testSubject.run("context", processorB);
+        CompletableFuture<Void> completableFuture = testSubject.run(Topology.DEFAULT_CONTEXT, processorB);
         assertWithin(1000, MILLISECONDS, () -> assertFalse(publishedInternalEvents.isEmpty()));
         testSubject.on(updateEvent("redClient", "processorA"));
         testSubject.on(updateEvent("greenClient", "processorA"));
