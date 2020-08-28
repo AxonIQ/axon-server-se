@@ -93,7 +93,8 @@ public class EventProcessorStatusRefresh {
             Consumer<EventProcessorStatusUpdated> statusUpdateListener = statusEvent -> {
                 String clientId = statusEvent.eventProcessorStatus().getClientId();
                 String processorName = statusEvent.eventProcessorStatus().getEventProcessorInfo().getProcessorName();
-                if (clientIds.remove(clientId) && processorName.equals(processorId.name())) {
+                if (clientIds.contains(clientId) && processorName.equals(processorId.name())) {
+                    clientIds.remove(clientId);
                     clientProcessorStatusUpdateLatch.countDown();
                 }
             };
