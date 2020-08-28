@@ -10,6 +10,7 @@ Release Notes for version 4.3.7
 Release Notes for version 4.3.6
 -------------------------------
 * Fixed concurrency issue in subscribing/unsubscribing commands
+* Improved handling of full queue to client
 
 Release Notes for version 4.3.5
 -------------------------------
