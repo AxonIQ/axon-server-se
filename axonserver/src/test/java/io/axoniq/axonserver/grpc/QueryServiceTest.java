@@ -12,6 +12,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -29,6 +30,7 @@ import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
+import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.function.Consumer;
@@ -46,6 +48,7 @@ public class QueryServiceTest {
     private QueryDispatcher queryDispatcher;
     private FlowControlQueues<WrappedQuery> queryQueue;
     private ApplicationEventPublisher eventPublisher;
+    private String clientId = "name";
 
     @Before
     public void setUp()  {
@@ -97,12 +100,14 @@ public class QueryServiceTest {
     }
 
     @Test
-    public void subscribe()  {
+    public void subscribe() {
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder()
-                .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("query"))
-                .build());
-        verify(eventPublisher).publishEvent(isA(SubscriptionEvents.SubscribeQuery.class));
+                                                  .setSubscribe(QuerySubscription.newBuilder().setClientId("name")
+                                                                                 .setComponentName("component")
+                                                                                 .setQuery("query"))
+                                                  .build());
+        verify(eventPublisher).publishEvent(isA(SubscribeQuery.class));
     }
 
     @Test
@@ -188,14 +193,36 @@ public class QueryServiceTest {
     }
 
     @Test
-    public void queryHandlerDisconnected(){
+    public void queryHandlerDisconnected() {
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
+        clientId = "name";
         requestStream.onNext(QueryProviderOutbound.newBuilder()
-                                                  .setSubscribe(QuerySubscription.newBuilder().setClientId("name").setComponentName("component").setQuery("command"))
+                                                  .setSubscribe(QuerySubscription.newBuilder().setClientId(clientId)
+                                                                                 .setComponentName("component")
+                                                                                 .setQuery("command"))
                                                   .build());
         requestStream.onError(new RuntimeException("failed"));
         verify(eventPublisher).publishEvent(isA(TopologyEvents.QueryHandlerDisconnected.class));
-
     }
 
+    @Test
+    public void disconnectClientStream() {
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        requestStream.onNext(QueryProviderOutbound.newBuilder()
+                                                  .setSubscribe(QuerySubscription.newBuilder()
+                                                                                 .setClientId(clientId)
+                                                                                 .setComponentName("component")
+                                                                                 .setQuery("query"))
+                                                  .build());
+        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder()
+                                                                                          .setPermits(100)
+                                                                                          .setClientId(clientId)
+                                                                                          .build()).build());
+        ArgumentCaptor<SubscribeQuery> subscribe = ArgumentCaptor.forClass(SubscribeQuery.class);
+        verify(eventPublisher).publishEvent(subscribe.capture());
+        SubscribeQuery subscribeQuery = subscribe.getValue();
+        ClientStreamIdentification streamIdentification = subscribeQuery.clientIdentification();
+        testSubject.completeStream(clientId, streamIdentification);
+        verify(eventPublisher).publishEvent(isA(TopologyEvents.QueryHandlerDisconnected.class));
+    }
 }
