@@ -42,13 +42,15 @@ public interface ClientIdRegistry extends Printable {
      *
      * @param clientId the unique identifier of the client
      * @return the identifiers of the set of platform streams opened by the specific client
-     *
-     * @throws IllegalStateException if the registry doesn't contain the specified client id
      */
     Set<String> streamIdsFor(String clientId, ConnectionType type);
 
     default String streamIdFor(String clientId, ConnectionType type) {
-        return streamIdsFor(clientId, type).iterator().next();
+        Set<String> streamIds = streamIdsFor(clientId, type);
+        if (streamIds.isEmpty()) {
+            throw new IllegalStateException("No " + type + " stream found for client " + clientId);
+        }
+        return streamIds.iterator().next();
     }
 
     enum ConnectionType {
