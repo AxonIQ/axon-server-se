@@ -21,7 +21,7 @@ import static org.junit.Assert.*;
  */
 public class DefaultClientIdRegistryTest {
 
-    private DefaultClientIdRegistry testSubject = new DefaultClientIdRegistry();
+    private final DefaultClientIdRegistry testSubject = new DefaultClientIdRegistry();
 
     @Test
     public void streamIdFor() {
@@ -29,7 +29,7 @@ public class DefaultClientIdRegistryTest {
         assertEquals("clientStreamId", testSubject.streamIdFor("clientId", ClientIdRegistry.ConnectionType.COMMAND));
         try {
             testSubject.streamIdFor("clientId", ClientIdRegistry.ConnectionType.QUERY);
-            fail("shold not find qeury stream");
+            fail("should not find query stream");
         } catch (IllegalStateException illegalStateException) {
 
         }

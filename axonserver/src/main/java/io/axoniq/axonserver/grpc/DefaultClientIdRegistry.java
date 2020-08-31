@@ -37,13 +37,15 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
         Map<String, String> connectionTypeMap = clientIdMapPerType.computeIfAbsent(type,
                                                                                    t -> new ConcurrentHashMap<>());
         String prev = connectionTypeMap.put(clientStreamId, clientId);
-        Set<String> streamSet = connectionTypeMap.entrySet()
-                                                 .stream()
-                                                 .filter(e -> e.getValue().equals(clientId))
-                                                 .map(Map.Entry::getKey)
-                                                 .collect(Collectors.toSet());
-        if (streamSet.size() != 1) {
-            logger.warn("Multiple mapping for {} stream for clientId {}: {}", type, clientId, streamSet);
+        if (logger.isInfoEnabled()) {
+            Set<String> streamSet = connectionTypeMap.entrySet()
+                                                     .stream()
+                                                     .filter(e -> e.getValue().equals(clientId))
+                                                     .map(Map.Entry::getKey)
+                                                     .collect(Collectors.toSet());
+            if (streamSet.size() != 1) {
+                logger.info("Multiple mappings for {} stream for clientId {}: {}", type, clientId, streamSet);
+            }
         }
         return prev == null;
     }
@@ -57,19 +59,14 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
 
     @Override
     public String clientId(String clientStreamId) {
-        Map<String, String> clientMap = clientMap();
-        if (!clientMap.containsKey(clientStreamId)) {
-            throw new IllegalStateException("Client " + clientStreamId + " is not present in this registry.");
+        for (ConnectionType connectionType : values()) {
+            String clientId = clientIdMapPerType.getOrDefault(connectionType, Collections.emptyMap())
+                                                .get(clientStreamId);
+            if (clientId != null) {
+                return clientId;
+            }
         }
-        return clientMap.get(clientStreamId);
-    }
-
-    private Map<String, String> clientMap() {
-        return clientIdMapPerType.values()
-                                 .stream()
-                                 .flatMap(map -> map.entrySet().stream())
-                                 .collect(Collectors.toMap(Map.Entry::getKey,
-                                                           Map.Entry::getValue));
+        throw new IllegalStateException("Client " + clientStreamId + " is not present in this registry.");
     }
 
     @Override
