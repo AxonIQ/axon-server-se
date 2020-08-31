@@ -132,6 +132,16 @@ public class CommandDispatcher {
                                                                                     commandHandler.getComponentName()));
             WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClient(), command);
             commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+        } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
+                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
+                                                                                 .setErrorCode(ErrorCode.COMMAND_DISPATCH_ERROR
+                                                                                                       .getCode())
+                                                                                 .setErrorMessage(ErrorMessageFactory
+                                                                                                          .build(insufficientCacheCapacityException
+                                                                                                                         .getMessage()))
+                                                                                 .build()));
         } catch (MessagingPlatformException mpe) {
             commandCache.remove(command.getMessageIdentifier());
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
