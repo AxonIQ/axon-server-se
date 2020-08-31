@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.message.FlowControlQueues;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
@@ -83,11 +84,19 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
         permitsLeft.set(0);
         getLogger().debug("cancel listener for {} ", queueName);
         IntStream.range(0, futures.length).forEach(i -> {
-            if( futures[i] != null) {
+            if (futures[i] != null) {
                 futures[i].cancel(true);
             }
         });
         running = false;
+    }
+
+    /**
+     * Cancels the listener and completes the stream to the client.
+     */
+    public void cancelAndCompleteStream() {
+        this.cancel();
+        StreamObserverUtils.complete(inboundStream);
     }
 
 
