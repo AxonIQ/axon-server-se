@@ -16,8 +16,8 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
-import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
@@ -287,4 +287,19 @@ public class CommandService implements AxonServerClientService {
         }
     }
 
+    /**
+     * Completes the command stream to the specified client.
+     *
+     * @param clientId                   the unique identifier of the client instance
+     * @param clientStreamIdentification the unique identifier of the command stream
+     */
+    public void completeStream(String clientId, ClientStreamIdentification clientStreamIdentification) {
+        if (dispatcherListeners.containsKey(clientStreamIdentification)) {
+            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStream();
+            logger.debug("Command Stream closed for client: {}", clientStreamIdentification);
+            eventPublisher.publishEvent(new CommandHandlerDisconnected(clientStreamIdentification.getContext(),
+                                                                       clientId,
+                                                                       clientStreamIdentification.getClientStreamId()));
+        }
+    }
 }

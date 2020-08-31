@@ -313,4 +313,19 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         }
     }
 
+    /**
+     * Completes the query stream to the specified client.
+     *
+     * @param clientId                   the unique identifier of the client instance
+     * @param clientStreamIdentification the unique identifier of the query stream
+     */
+    public void completeStream(String clientId, ClientStreamIdentification clientStreamIdentification) {
+        if (dispatcherListeners.containsKey(clientStreamIdentification)) {
+            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStream();
+            logger.debug("Query Stream closed for client: {}", clientStreamIdentification);
+            eventPublisher.publishEvent(new QueryHandlerDisconnected(clientStreamIdentification.getContext(),
+                                                                     clientId,
+                                                                     clientStreamIdentification.getClientStreamId()));
+        }
+    }
 }
