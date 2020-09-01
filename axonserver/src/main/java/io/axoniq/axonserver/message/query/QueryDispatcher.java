@@ -16,17 +16,16 @@ import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
@@ -34,11 +33,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static java.util.Collections.singleton;
+
 /**
  * @author Marc Gathier
  */
 @Component("QueryDispatcher")
 public class QueryDispatcher {
+
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
     private final QueryCache queryCache;
@@ -62,19 +64,31 @@ public class QueryDispatcher {
     }
 
 
-
-    public void handleResponse(QueryResponse queryResponse, String client, boolean proxied) {
-        String key = queryResponse.getRequestIdentifier();
-        QueryInformation queryInformation = getQueryInformation(client, key);
-        if( queryInformation != null) {
-            if( queryInformation.forward(client, queryResponse) <= 0) {
+    /**
+     * Handles a received {@link QueryResponse}.
+     *
+     * @param queryResponse  the {@link QueryResponse} has been received
+     * @param clientStreamId the query long living stream identifier that the client used to send the response
+     * @param clientId
+     * @param proxied        {@code true} if the response has been proxied by another AS node, {@code true} if the
+     *                       response is directly received from the client handler.
+     */
+    public void handleResponse(QueryResponse queryResponse,
+                               String clientStreamId,
+                               String clientId,
+                               boolean proxied) {
+        String requestIdentifier = queryResponse.getRequestIdentifier();
+        QueryInformation queryInformation = getQueryInformation(clientStreamId, requestIdentifier);
+        if (queryInformation != null) {
+            ClientStreamIdentification clientStream = new ClientStreamIdentification(queryInformation.getContext(),
+                                                                                     clientStreamId);
+            if (queryInformation.forward(clientStreamId, queryResponse) <= 0) {
                 queryCache.remove(queryInformation.getKey());
                 if (!proxied) {
                     queryMetricsRegistry.add(queryInformation.getQuery(),
-                                             queryInformation.getSourceClientId(),
-                                             new ClientIdentification(queryInformation.getContext(), client),
+                                             queryInformation.getSourceClientId(), clientId,
+                                             clientStream.getContext(),
                                              System.currentTimeMillis() - queryInformation.getTimestamp());
-
                 }
             }
         } else {
@@ -82,25 +96,26 @@ public class QueryDispatcher {
         }
     }
 
-    private QueryInformation getQueryInformation(String client, String requestIdentifier) {
+    private QueryInformation getQueryInformation(String clientStreamId, String requestIdentifier) {
         QueryInformation queryInformation = queryCache.get(requestIdentifier);
-        if( queryInformation == null) {
-            requestIdentifier = requestIdentifier + "/" + client;
+        if (queryInformation == null) {
+            requestIdentifier = requestIdentifier + "/" + clientStreamId;
             queryInformation = queryCache.get(requestIdentifier);
         }
         return queryInformation;
     }
 
-    public void handleComplete(String requestId, String client, boolean proxied) {
-        QueryInformation queryInformation = getQueryInformation(client, requestId);
-        if( queryInformation != null) {
-            if( queryInformation.completed(client)) {
+    public void handleComplete(String requestId, String clientStreamId, String clientId, boolean proxied) {
+        QueryInformation queryInformation = getQueryInformation(clientStreamId, requestId);
+        if (queryInformation != null) {
+            if (queryInformation.completed(clientStreamId)) {
                 queryCache.remove(queryInformation.getKey());
             }
             if (!proxied) {
                 queryMetricsRegistry.add(queryInformation.getQuery(),
                                          queryInformation.getSourceClientId(),
-                                         new ClientIdentification(queryInformation.getContext(), client),
+                                         clientId,
+                                         queryInformation.getContext(),
                                          System.currentTimeMillis() - queryInformation.getTimestamp());
             }
         } else {
@@ -109,15 +124,16 @@ public class QueryDispatcher {
     }
 
     @EventListener
-    public void on(TopologyEvents.ApplicationDisconnected event) {
-        registrationCache.remove(event.clientIdentification());
-    }
-
-    @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected event) {
         registrationCache.remove(event.clientIdentification());
     }
 
+    /**
+     * Removes the query from the cache and completes it with a {@link ErrorCode#COMMAND_TIMEOUT} error.
+     *
+     * @param client
+     * @param messageId
+     */
     public void removeFromCache(String client, String messageId) {
         QueryInformation query = queryCache.remove(messageId);
         if (query != null) {
@@ -133,25 +149,29 @@ public class QueryDispatcher {
     public void query(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
         QueryRequest query = serializedQuery.query();
-        long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
+        long timeout =
+                System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         Set<? extends QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
-        if( handlers.isEmpty()) {
+        if (handlers.isEmpty()) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
                                          .setMessageIdentifier(query.getMessageIdentifier())
-                                         .setErrorMessage(ErrorMessageFactory.build("No handler for query: " + query.getQuery()))
+                                         .setErrorMessage(ErrorMessageFactory
+                                                                  .build("No handler for query: " + query.getQuery()))
                                          .build());
             onCompleted.accept("NoClient");
         } else {
-            QueryDefinition queryDefinition =new QueryDefinition(serializedQuery.context(), query.getQuery());
+            QueryDefinition queryDefinition = new QueryDefinition(serializedQuery.context(), query.getQuery());
             int expectedResults = Integer.MAX_VALUE;
             int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
-            if( nrOfResults > 0) {
-                expectedResults = Math.min(nrOfResults, expectedResults);
+            if (nrOfResults > 0) {
+                expectedResults = nrOfResults;
             }
             QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(),
                                                                      query.getClientId(), queryDefinition,
-                                                                     handlers.stream().map(QueryHandler::getClientId).collect(Collectors.toSet()),
+                                                                     handlers.stream()
+                                                                             .map(QueryHandler::getClientStreamId)
+                                                                             .collect(Collectors.toSet()),
                                                                      expectedResults, callback,
                                                                      onCompleted);
             queryCache.put(query.getMessageIdentifier(), queryInformation);
@@ -165,33 +185,36 @@ public class QueryDispatcher {
                                                            .rateMeter(c, BaseMetricName.AXON_QUERY_RATE));
     }
 
-    public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
+    public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback,
+                                Consumer<String> onCompleted) {
         QueryRequest query = serializedQuery.query();
-        long timeout = System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
+        long timeout =
+                System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         String context = serializedQuery.context();
-        String client = serializedQuery.client();
-        QueryHandler queryHandler = registrationCache.find( context, query, client);
-        if( queryHandler == null) {
+        String clientId = serializedQuery.clientStreamId();
+        QueryHandler queryHandler = registrationCache.find(context, query, clientId);
+        if (queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
                                          .setMessageIdentifier(query.getMessageIdentifier())
                                          .setErrorMessage(
-                                                 ErrorMessageFactory.build(String.format("Client %s not found while processing: %s"
-                                                         , client, query.getQuery())))
+                                                 ErrorMessageFactory
+                                                         .build(String.format("Client %s not found while processing: %s"
+                                                                 , clientId, query.getQuery())))
                                          .build());
-            onCompleted.accept(client);
+            onCompleted.accept(clientId);
         } else {
             QueryDefinition queryDefinition = new QueryDefinition(context, query.getQuery());
             int expectedResults = Integer.MAX_VALUE;
             int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
-            if( nrOfResults > 0) {
-                expectedResults = Math.min(nrOfResults, expectedResults);
+            if (nrOfResults > 0) {
+                expectedResults = nrOfResults;
             }
-            String key = query.getMessageIdentifier() + "/" + client;
+            String key = query.getMessageIdentifier() + "/" + serializedQuery.clientStreamId();
             QueryInformation queryInformation = new QueryInformation(key,
                                                                      serializedQuery.query().getClientId(),
                                                                      queryDefinition,
-                                                                     Collections.singleton(queryHandler.getClientId()),
+                                                                     singleton(queryHandler.getClientStreamId()),
                                                                      expectedResults,
                                                                      callback,
                                                                      onCompleted);
@@ -201,8 +224,6 @@ public class QueryDispatcher {
     }
 
     private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
-        queryHandler.enqueue( query, queryQueue, timeout);
+        queryHandler.enqueue(query, queryQueue, timeout);
     }
-
-
 }

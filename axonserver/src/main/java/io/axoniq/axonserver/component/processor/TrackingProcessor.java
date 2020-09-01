@@ -75,7 +75,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
 
     @Override
     public void printOn(Media media) {
-        EventProcessor.super.printOn(media);
+        super.printOn(media);
         media.with("tokenStoreIdentifier", tokenStoreIdentifier);
 
         Set<String> freeThreadInstances =

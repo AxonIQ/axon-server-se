@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 
 import java.util.Iterator;
+import javax.annotation.Nonnull;
 
 /**
  * Created by Sara Pellegrini on 21/03/2018.
@@ -25,10 +26,11 @@ public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> 
 
     EventProcessorInfo eventProcessorInfo();
 
-    default Boolean running(){
+    default Boolean running() {
         return eventProcessorInfo().getRunning();
     }
 
+    @Nonnull
     @Override
     default Iterator<SegmentStatus> iterator() {
         return eventProcessorInfo().getSegmentStatusList().iterator();

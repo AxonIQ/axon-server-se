@@ -20,12 +20,12 @@ public class SameProcessorTest {
         EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "tokenStore");
         SameProcessor testSubject = new SameProcessor("context", id);
         ClientProcessor clientProcessor = new FakeClientProcessor("not-important",
-                                                                  false, true, EventProcessorInfo.newBuilder()
-                                                                                                 .setProcessorName(
-                                                                                                         "processorName")
-                                                                                                 .setTokenStoreIdentifier(
-                                                                                                         "tokenStore")
-                                                                                                 .build());
+                                                                  false, "context", EventProcessorInfo.newBuilder()
+                                                                                                      .setProcessorName(
+                                                                                                              "processorName")
+                                                                                                      .setTokenStoreIdentifier(
+                                                                                                              "tokenStore")
+                                                                                                      .build());
         assertTrue(testSubject.test(clientProcessor));
     }
 
@@ -34,26 +34,26 @@ public class SameProcessorTest {
         EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "tokenStore");
         SameProcessor testSubject = new SameProcessor("context", id);
         ClientProcessor clientProcessor1 = new FakeClientProcessor("not-important",
-                                                                   false, true, EventProcessorInfo.newBuilder()
-                                                                                                  .setProcessorName(
-                                                                                                          "anotherName")
-                                                                                                  .setTokenStoreIdentifier(
-                                                                                                          "tokenStore")
-                                                                                                  .build());
+                                                                   false, "context", EventProcessorInfo.newBuilder()
+                                                                                                       .setProcessorName(
+                                                                                                               "anotherName")
+                                                                                                       .setTokenStoreIdentifier(
+                                                                                                               "tokenStore")
+                                                                                                       .build());
         ClientProcessor clientProcessor2 = new FakeClientProcessor("not-important",
-                                                                   false, true, EventProcessorInfo.newBuilder()
-                                                                                                  .setProcessorName(
-                                                                                                          "processorName")
-                                                                                                  .setTokenStoreIdentifier(
-                                                                                                          "anotherTokenStore")
-                                                                                                  .build());
+                                                                   false, "context", EventProcessorInfo.newBuilder()
+                                                                                                       .setProcessorName(
+                                                                                                               "processorName")
+                                                                                                       .setTokenStoreIdentifier(
+                                                                                                               "anotherTokenStore")
+                                                                                                       .build());
         ClientProcessor clientProcessor3 = new FakeClientProcessor("not-important",
-                                                                   false, false, EventProcessorInfo.newBuilder()
-                                                                                                   .setProcessorName(
-                                                                                                           "processorName")
-                                                                                                   .setTokenStoreIdentifier(
-                                                                                                           "tokenStore")
-                                                                                                   .build());
+                                                                   false, "context2", EventProcessorInfo.newBuilder()
+                                                                                                        .setProcessorName(
+                                                                                                                "processorName")
+                                                                                                        .setTokenStoreIdentifier(
+                                                                                                                "tokenStore")
+                                                                                                        .build());
         assertFalse(testSubject.test(clientProcessor1));
         assertFalse(testSubject.test(clientProcessor2));
         assertFalse(testSubject.test(clientProcessor3));

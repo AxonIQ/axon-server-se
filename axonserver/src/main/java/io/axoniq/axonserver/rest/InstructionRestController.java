@@ -38,13 +38,13 @@ public class InstructionRestController {
     }
 
     @PatchMapping
-    public String requestReconnect(@RequestParam(value="client") String client, final Principal principal) {
-        auditLog.info("[{}] Request client \"{}\" to reconnect.", AuditLog.username(principal), client);
+    public String requestReconnect(@RequestParam(value = "client") String clientId, final Principal principal) {
+        auditLog.info("[{}] Request client \"{}\" to reconnect.", AuditLog.username(principal), clientId);
 
-        if( platformService.requestReconnect(client)) {
-            return client + ": requested reconnect";
+        if (platformService.requestReconnect(clientId)) {
+            return clientId + ": requested reconnect";
         } else {
-            return client +  ": not connected to this server";
+            return clientId + ": not connected to this server";
         }
     }
 }

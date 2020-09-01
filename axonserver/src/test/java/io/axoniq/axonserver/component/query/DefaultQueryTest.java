@@ -34,9 +34,9 @@ public class DefaultQueryTest {
     @Before
     public void setUp() throws Exception {
         QueryDefinition queryDefinition = new QueryDefinition("context", "queryName");
-        Map<String, Set<QueryHandler>> handlers = new HashMap<>();
-        handlers.put("componentA", ImmutableSet.of(new DirectQueryHandler(null, null, null),
-                                                   new DirectQueryHandler(null, null, null)));
+        Map<String, Set<QueryHandler<?>>> handlers = new HashMap<>();
+        handlers.put("componentA", ImmutableSet.of(new DirectQueryHandler(null, null, null, null),
+                                                   new DirectQueryHandler(null, null, null, null)));
         handlers.put("componentB", ImmutableSet.of());
         handlers.put("componentC", null);
 

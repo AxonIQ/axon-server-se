@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
@@ -31,35 +31,35 @@ public class RoundRobinQueryHandlerSelectorTest {
 
     @Test
     public void select() {
-        NavigableSet<ClientIdentification> clients = new TreeSet<>();
-        clients.add(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1"));
-        clients.add(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"));
-        ClientIdentification selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                                                           clients);
-        assertEquals("client1", selected.getClient());
+        NavigableSet<ClientStreamIdentification> clients = new TreeSet<>();
+        clients.add(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client1"));
+        clients.add(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client2"));
+        ClientStreamIdentification selected = testSubject.select(new QueryDefinition("context", "request"), "component",
+                                                                 clients);
+        assertEquals("client1", selected.getClientStreamId());
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client2", selected.getClient());
+                                      clients);
+        assertEquals("client2", selected.getClientStreamId());
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client1", selected.getClient());
+                                      clients);
+        assertEquals("client1", selected.getClientStreamId());
     }
 
     @Test
     public void selectWithoutLast() {
-        NavigableSet<ClientIdentification> clients = new TreeSet<>();
-        clients.add(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1"));
-        ClientIdentification selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client1", selected.getClient());
+        NavigableSet<ClientStreamIdentification> clients = new TreeSet<>();
+        clients.add(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client1"));
+        ClientStreamIdentification selected = testSubject.select(new QueryDefinition("context", "request"), "component",
+                                                                 clients);
+        assertEquals("client1", selected.getClientStreamId());
         clients = new TreeSet<>();
-        clients.add(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"));
+        clients.add(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client2"));
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client2", selected.getClient());
+                                      clients);
+        assertEquals("client2", selected.getClientStreamId());
         selected = testSubject.select(new QueryDefinition("context", "request"), "component",
-                clients);
-        assertEquals("client2", selected.getClient());
+                                      clients);
+        assertEquals("client2", selected.getClientStreamId());
     }
 
 }

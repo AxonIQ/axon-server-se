@@ -16,11 +16,12 @@ import io.axoniq.axonserver.grpc.query.QueryRequest;
 
 /**
  * Wrapper around {@link QueryRequest} to reduce serialization/deserialization.
+ *
  * @author Marc Gathier
  */
-public class SerializedQuery  {
+public class SerializedQuery {
 
-    private final String client;
+    private final String clientStreamId;
     private final String context;
     private volatile QueryRequest query;
     private final byte[] serializedData;
@@ -29,31 +30,32 @@ public class SerializedQuery  {
         this(context, null, query);
     }
 
-    public SerializedQuery(String context, String client, QueryRequest query) {
+    public SerializedQuery(String context, String clientStreamId, QueryRequest query) {
         this.context = context;
-        this.client = client;
+        this.clientStreamId = clientStreamId;
         this.serializedData = query.toByteArray();
         this.query = query;
     }
 
-    public SerializedQuery(String context, String client, byte[] readByteArray) {
+    public SerializedQuery(String context, String clientStreamId, byte[] readByteArray) {
         this.context = context;
-        this.client = client;
+        this.clientStreamId = clientStreamId;
         serializedData = readByteArray;
     }
 
 
     /**
      * Creates a copy of the object with client set to {@code newClient}.
-     * @param newClient the new clientId
+     *
+     * @param targetClientStreamId the client stream id to dispatch the query to
      * @return a copy of the serialized query
      */
-    public SerializedQuery withClient(String newClient) {
-        return new SerializedQuery(context, newClient, serializedData);
+    public SerializedQuery withClient(String targetClientStreamId) {
+        return new SerializedQuery(context, targetClientStreamId, serializedData);
     }
 
     public QueryRequest query() {
-        if( query == null) {
+        if (query == null) {
             try {
                 query = QueryRequest.parseFrom(serializedData);
             } catch (InvalidProtocolBufferException e) {
@@ -67,8 +69,8 @@ public class SerializedQuery  {
         return context;
     }
 
-    public String client() {
-        return client;
+    public String clientStreamId() {
+        return clientStreamId;
     }
 
     public ByteString toByteString() {
@@ -78,26 +80,25 @@ public class SerializedQuery  {
     public SerializedQuery withTimeout(long remainingTime) {
         int timeoutIndex = -1;
         QueryRequest request = query();
-        for(int i = 0; i < request.getProcessingInstructionsList().size(); i++) {
-            if(ProcessingKey.TIMEOUT.equals(request.getProcessingInstructions(i).getKey()) ) {
+        for (int i = 0; i < request.getProcessingInstructionsList().size(); i++) {
+            if (ProcessingKey.TIMEOUT.equals(request.getProcessingInstructions(i).getKey())) {
                 timeoutIndex = i;
                 break;
             }
         }
 
 
-        if( timeoutIndex >= 0) {
+        if (timeoutIndex >= 0) {
             request = QueryRequest.newBuilder(request)
-                    .removeProcessingInstructions(timeoutIndex)
-                    .addProcessingInstructions(ProcessingInstructionHelper.timeout(remainingTime))
-                    .build();
+                                  .removeProcessingInstructions(timeoutIndex)
+                                  .addProcessingInstructions(ProcessingInstructionHelper.timeout(remainingTime))
+                                  .build();
         } else {
             request = QueryRequest.newBuilder(request)
-                    .addProcessingInstructions(ProcessingInstructionHelper.timeout(remainingTime))
-                    .build();
+                                  .addProcessingInstructions(ProcessingInstructionHelper.timeout(remainingTime))
+                                  .build();
         }
-        return new SerializedQuery(context, client, request);
-
+        return new SerializedQuery(context, clientStreamId, request);
     }
 
     public String getMessageIdentifier() {

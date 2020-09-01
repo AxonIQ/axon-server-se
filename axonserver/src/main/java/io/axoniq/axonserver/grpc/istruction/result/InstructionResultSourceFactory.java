@@ -49,7 +49,7 @@ public class InstructionResultSourceFactory implements InstructionResultSource.F
     public InstructionResultSourceFactory(PlatformService platformService,
                                           @Value("${axoniq.axonserver.instruction.result.timeout:10}") int resultTimeout) {
         this(resultHandler -> platformService.onInboundInstruction(
-                RESULT, (client, context, instruction) -> resultHandler.accept(instruction.getResult())
+                RESULT, (clientComponent, instruction) -> resultHandler.accept(instruction.getResult())
         ), resultTimeout);
     }
 

@@ -220,7 +220,7 @@
                                   "&tokenStoreIdentifier=" + this.selected.tokenStoreIdentifier)
                         .then(response => {
                     this.segmentDestinationOptions = response.data
-                            .map(instance => instance.name)
+                        .map(instance => instance)
                             .filter(instanceName => instanceName !== tracker.clientId);
                     this.movingSegment = tracker;
                     this.$modal.show('move-segment');

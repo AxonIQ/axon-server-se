@@ -43,7 +43,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
 
     private final Consumer<Throwable> errorHandler;
 
-    private volatile String client;
+    private volatile String clientId;
 
     SubscriptionQueryRequestTarget(
             String context, StreamObserver<SubscriptionQueryResponse> responseObserver,
@@ -64,8 +64,8 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
     protected void consume(SubscriptionQueryRequest message) {
         switch (message.getRequestCase()) {
             case SUBSCRIBE:
-                if (client == null) {
-                    client = message.getSubscribe().getQueryRequest().getClientId();
+                if (clientId == null) {
+                    clientId = message.getSubscribe().getQueryRequest().getClientId();
                 }
                 subscriptionQuery.add(message.getSubscribe());
                 eventPublisher.publishEvent(new SubscriptionQueryRequested(context,
@@ -75,7 +75,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
 
                 break;
             case GET_INITIAL_RESULT:
-                if (subscriptionQuery.isEmpty()){
+                if (subscriptionQuery.isEmpty()) {
                     errorHandler.accept(new IllegalStateException("Initial result asked before subscription"));
                     break;
                 }
@@ -92,13 +92,14 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
                     unsubscribe(subscriptionQuery.get(0));
                 }
                 break;
+            default:
         }
 
     }
 
     @Override
     protected String sender() {
-        return client;
+        return clientId;
     }
 
     @Override

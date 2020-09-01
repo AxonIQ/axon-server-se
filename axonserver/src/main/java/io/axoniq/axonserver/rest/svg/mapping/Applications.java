@@ -47,7 +47,7 @@ public class Applications implements Iterable<Application> {
     public void on(TopologyEvents.ApplicationDisconnected event) {
         clientsPerComponent.forEach((k, v) -> {
             if (k.context.equals(event.getContext())) {
-                v.remove(new ConnectedClient(event.getClient(), null));
+                v.remove(new ConnectedClient(event.getClientStreamId(), null));
             }
         });
         clientsPerComponent.entrySet().removeIf(entry -> entry.getValue().isEmpty());
@@ -57,11 +57,13 @@ public class Applications implements Iterable<Application> {
     public void on(TopologyEvents.ApplicationConnected event) {
         clientsPerComponent.forEach((component, clients) -> {
             if (component.context.equals(event.getContext())) {
-                clients.removeIf(c -> c.client.equals(event.getClient()));
+                clients.removeIf(c -> c.client.equals(event.getClientStreamId()));
             }
         });
-        clientsPerComponent.computeIfAbsent(new ComponentContext(event.getComponentName(), event.getContext()), k -> new CopyOnWriteArraySet<>())
-                           .add(new ConnectedClient(event.getClient(), event.isProxied() ? event.getProxy() : getCurrentNode()));
+        clientsPerComponent.computeIfAbsent(new ComponentContext(event.getComponentName(), event.getContext()),
+                                            k -> new CopyOnWriteArraySet<>())
+                           .add(new ConnectedClient(event.getClientStreamId(),
+                                                    event.isProxied() ? event.getProxy() : getCurrentNode()));
     }
 
     private String getCurrentNode() {

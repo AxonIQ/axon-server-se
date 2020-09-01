@@ -31,7 +31,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -91,7 +91,7 @@ public class EventDispatcher implements AxonServerClientService {
     private final EventStoreLocator eventStoreLocator;
     private final MeterFactory meterFactory;
     private final ContextProvider contextProvider;
-    private final Map<ClientIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
 
@@ -200,7 +200,7 @@ public class EventDispatcher implements AxonServerClientService {
         List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected
                                                                                       .clientIdentification());
         logger.debug("application disconnected: {}, eventsStreams: {}",
-                     applicationDisconnected.getClient(),
+                     applicationDisconnected.getClientStreamId(),
                      eventsStreams);
 
         if (eventsStreams != null) {
@@ -209,7 +209,7 @@ public class EventDispatcher implements AxonServerClientService {
                     streamObserver.responseObserver.onCompleted();
                 } catch (Exception ex) {
                     logger.debug("Error while closing tracking event processor connection from {} - {}",
-                                 applicationDisconnected.getClient(),
+                                 applicationDisconnected.getClientStreamId(),
                                  ex.getMessage());
                 }
             });
@@ -553,7 +553,7 @@ public class EventDispatcher implements AxonServerClientService {
                     return false;
                 }
 
-                trackingEventProcessors.computeIfAbsent(new ClientIdentification(trackerInfo.context,
+                trackingEventProcessors.computeIfAbsent(new ClientStreamIdentification(trackerInfo.context,
                                                                                  trackerInfo.client),
                                                         key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
                 logger.info("Starting tracking event processor for {}:{} - {}",
@@ -575,7 +575,7 @@ public class EventDispatcher implements AxonServerClientService {
         private void removeTrackerInfo() {
             logger.info("Removed tracker info {}", trackerInfo);
             if (trackerInfo != null) {
-                trackingEventProcessors.computeIfPresent(new ClientIdentification(trackerInfo.context,
+                trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
                                                                                   trackerInfo.client),
                                                          (c, streams) -> {
                                                              logger.debug("{}: {} streams",
