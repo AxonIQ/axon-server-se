@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 /**
  * Service responsible to communicate instructions about event processor management with client applications.
  *
@@ -88,15 +90,18 @@ public class EventProcessorService {
         PlatformOutboundInstruction instruction =
                 PlatformOutboundInstruction.newBuilder()
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
+                                           .setInstructionId(UUID.randomUUID().toString())
                                            .build();
-        SplitSegmentsSucceeded success = new SplitSegmentsSucceeded(event.context(), event.getClientName(), event.getProcessorName());
+        SplitSegmentsSucceeded success = new SplitSegmentsSucceeded(event.context(),
+                                                                    event.getClientId(),
+                                                                    event.getProcessorName());
         instructionResultSource
                 .onInstructionResultFor(instruction.getInstructionId())
                 .subscribe(() -> eventPublisher.publishEvent(success),
                            error -> LOGGER.warn("Error during segment split: {}, {}", error, instruction),
                            timeout -> LOGGER.warn("The following operation is taking to long: {}", instruction));
 
-        instructionPublisher.publish(event.context(), event.getClientName(), instruction);
+        instructionPublisher.publish(event.context(), event.getClientId(), instruction);
     }
 
 
@@ -116,9 +121,12 @@ public class EventProcessorService {
                                               .build();
         PlatformOutboundInstruction instruction =
                 PlatformOutboundInstruction.newBuilder()
+                                           .setInstructionId(UUID.randomUUID().toString())
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        MergeSegmentsSucceeded success = new MergeSegmentsSucceeded(event.context(), event.getClientName(), event.getProcessorName());
+        MergeSegmentsSucceeded success = new MergeSegmentsSucceeded(event.context(),
+                                                                    event.getClientId(),
+                                                                    event.getProcessorName());
 
         instructionResultSource
                 .onInstructionResultFor(instruction.getInstructionId())
@@ -126,7 +134,7 @@ public class EventProcessorService {
                            error -> LOGGER.warn("Error during segment merge: {}, {}", error, instruction),
                            timeout -> LOGGER.warn("The following operation is taking to long: {}", instruction));
 
-        instructionPublisher.publish(event.context(), event.getClientName(), instruction);
+        instructionPublisher.publish(event.context(), event.getClientId(), instruction);
     }
 
     /**
@@ -144,8 +152,9 @@ public class EventProcessorService {
 
         PlatformOutboundInstruction outboundInstruction =
                 PlatformOutboundInstruction.newBuilder()
+                                           .setInstructionId(UUID.randomUUID().toString())
                                            .setReleaseSegment(releaseSegmentRequest)
                                            .build();
-        instructionPublisher.publish(event.context(), event.getClientName(), outboundInstruction);
+        instructionPublisher.publish(event.context(), event.getClientId(), outboundInstruction);
     }
 }

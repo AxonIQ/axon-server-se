@@ -68,7 +68,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
                 logger.warn("Cancelling command {} sent by {}, waiting for reply from {}",
                             e.getValue().getRequestIdentifier(),
                             e.getValue().getSourceClientId(),
-                            e.getValue().getClientId());
+                            e.getValue().getClientStreamIdentification());
                 remove(e.getKey());
                 e.getValue().cancel();
             });

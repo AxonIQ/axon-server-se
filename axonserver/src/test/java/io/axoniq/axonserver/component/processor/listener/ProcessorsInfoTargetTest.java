@@ -24,6 +24,7 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class ProcessorsInfoTargetTest {
+
     private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget();
 
     @Test
@@ -33,16 +34,18 @@ public class ProcessorsInfoTargetTest {
                                                              .setAvailableThreads(20)
                                                              .setProcessorName("Name")
                                                              .build();
-        ClientEventProcessorInfo clientEventProcessorInfo = new ClientEventProcessorInfo("client",
+        ClientEventProcessorInfo clientEventProcessorInfo = new ClientEventProcessorInfo("client", "client",
                                                                                          "context",
                                                                                          processorInfo);
         EventProcessorStatusUpdate event = new EventProcessorStatusUpdate(clientEventProcessorInfo);
         EventProcessorEvents.EventProcessorStatusUpdated updatedEvent = testSubject
                 .onEventProcessorStatusChange(event);
-        assertEquals("client", updatedEvent.eventProcessorStatus().getClientName());
+        assertEquals("client", updatedEvent.eventProcessorStatus().getClientId());
         assertEquals("context", updatedEvent.eventProcessorStatus().getContext());
-        ClientProcessor clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0), false).
-                filter(cp -> cp.clientId().equals("client")).findFirst().orElse(null);
+        ClientProcessor clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0),
+                                                               false).
+                                                               filter(cp -> cp.clientId().equals("client"))
+                                                       .findFirst().orElse(null);
         assertNotNull(clientProcessor);
     }
 

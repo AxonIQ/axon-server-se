@@ -3,6 +3,7 @@ package io.axoniq.axonserver.component.processor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.util.ArrayList;
@@ -27,16 +28,16 @@ public class ProcessorNamesTest {
         EventProcessorInfo yellow = EventProcessorInfo.newBuilder().setProcessorName("Yellow").build();
         EventProcessorInfo black = EventProcessorInfo.newBuilder().setProcessorName("Black").build();
 
-        delegate.add(new FakeClientProcessor("clientA", true, true, blue));
-        delegate.add(new FakeClientProcessor("clientA", true, true, green));
-        delegate.add(new FakeClientProcessor("clientA", true, true, red));
-        delegate.add(new FakeClientProcessor("clientB", true, true, blue));
-        delegate.add(new FakeClientProcessor("clientB", true, true, yellow));
-        delegate.add(new FakeClientProcessor("clientC", false, true, green));
-        delegate.add(new FakeClientProcessor("clientC", false, true, yellow));
-        delegate.add(new FakeClientProcessor("clientC", false, true, black));
-        delegate.add(new FakeClientProcessor("clientD", false, false, green));
-        delegate.add(new FakeClientProcessor("clientD", false, false, blue));
+        delegate.add(new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT, blue));
+        delegate.add(new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT, green));
+        delegate.add(new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT, red));
+        delegate.add(new FakeClientProcessor("clientB", true, Topology.DEFAULT_CONTEXT, blue));
+        delegate.add(new FakeClientProcessor("clientB", true, Topology.DEFAULT_CONTEXT, yellow));
+        delegate.add(new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT, green));
+        delegate.add(new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT, yellow));
+        delegate.add(new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT, black));
+        delegate.add(new FakeClientProcessor("clientD", false, Topology.DEFAULT_CONTEXT, green));
+        delegate.add(new FakeClientProcessor("clientD", false, Topology.DEFAULT_CONTEXT, blue));
 
         ProcessorNames testSubject = new ProcessorNames(delegate);
 

@@ -1,8 +1,5 @@
 package io.axoniq.axonserver.component.processor;
 
-import io.axoniq.axonserver.component.instance.Client;
-import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.component.instance.FakeClient;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
@@ -70,46 +67,46 @@ public class ClientsByEventProcessorTest {
 
 
     private final ClientProcessor blueA =
-            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, blue1Info);
+            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, "context", blue1Info);
     private final ClientProcessor greenA =
-            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, green1Info);
+            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, "context", green1Info);
     private final ClientProcessor redA =
-            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, red1Info);
+            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, "context", red1Info);
 
     private final ClientProcessor blueB =
-            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, blue1Info);
+            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, "context", blue1Info);
     private final ClientProcessor greenB =
-            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, green1Info);
+            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, "context", green1Info);
     private final ClientProcessor redB =
-            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, red1Info);
+            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, "context", red1Info);
 
     private final ClientProcessor blueC =
-            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, blue1Info);
+            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", blue1Info);
     private final ClientProcessor greenC =
-            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, green1Info);
+            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", green1Info);
     private final ClientProcessor redC =
-            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, red1Info);
+            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", red1Info);
 
     private final ClientProcessor blueD =
-            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, blue2Info);
+            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, "context", blue2Info);
     private final ClientProcessor greenD =
-            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, green2Info);
+            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, "context", green2Info);
     private final ClientProcessor redD =
-            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, red2Info);
+            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, "context", red2Info);
 
     private final ClientProcessor blueE =
-            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, blue2Info);
+            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, "context", blue2Info);
     private final ClientProcessor greenE =
-            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, green2Info);
+            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, "context", green2Info);
     private final ClientProcessor redE =
-            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, red2Info);
+            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, "context", red2Info);
 
     private final ClientProcessor blueF =
-            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, blue2Info);
+            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", blue2Info);
     private final ClientProcessor greenF =
-            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, green2Info);
+            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", green2Info);
     private final ClientProcessor redF =
-            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, red2Info);
+            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", red2Info);
 
 
     private final ClientProcessors clientProcessors = () -> asList(blueA, redA, greenA,
@@ -120,40 +117,29 @@ public class ClientsByEventProcessorTest {
                                                                    blueF, redF, greenF
     ).iterator();
 
-    private final Client clientA = new FakeClient(CLIENT_A, "context", true);
-    private final Client clientB = new FakeClient(CLIENT_B, "context", false);
-    private final Client clientC = new FakeClient(CLIENT_C, "anotherContext", false);
-    private final Client clientD = new FakeClient(CLIENT_D, "context", true);
-    private final Client clientE = new FakeClient(CLIENT_E, "context", false);
-    private final Client clientF = new FakeClient(CLIENT_F, "anotherContext", false);
-
-    private final Clients clients = () -> asList(clientA, clientB, clientC, clientD, clientE, clientF).iterator();
 
     @Test
     public void testIterator() {
         ClientsByEventProcessor testSubject = new ClientsByEventProcessor(blue1,
                                                                           "context",
-                                                                          clients,
                                                                           clientProcessors);
-        Iterator<Client> iterator = testSubject.iterator();
-        assertEquals(clientA, iterator.next());
-        assertEquals(clientB, iterator.next());
+        Iterator<String> iterator = testSubject.iterator();
+        assertEquals(CLIENT_A, iterator.next());
+        assertEquals(CLIENT_B, iterator.next());
         assertFalse(iterator.hasNext());
 
         ClientsByEventProcessor testSubject2 = new ClientsByEventProcessor(red2,
-                                                                           "anotherContext",
-                                                                           clients,
+                                                                           "anotherContext2",
                                                                            clientProcessors);
-        Iterator<Client> iterator2 = testSubject2.iterator();
+        Iterator<String> iterator2 = testSubject2.iterator();
         assertFalse(iterator2.hasNext());
 
         ClientsByEventProcessor testSubject3 = new ClientsByEventProcessor(green2,
                                                                            "context",
-                                                                           clients,
                                                                            clientProcessors);
-        Iterator<Client> iterator3 = testSubject3.iterator();
-        assertEquals(clientD, iterator3.next());
-        assertEquals(clientE, iterator3.next());
+        Iterator<String> iterator3 = testSubject3.iterator();
+        assertEquals(CLIENT_D, iterator3.next());
+        assertEquals(CLIENT_E, iterator3.next());
         assertFalse(iterator3.hasNext());
     }
 }

@@ -9,14 +9,13 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.component.instance.Client;
-import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
 import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
 import io.axoniq.axonserver.component.processor.EventProcessor;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,9 +26,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
@@ -45,7 +43,7 @@ public class EventProcessorRestController {
 
     private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
-    private final Clients clients;
+    private final ClientIdRegistry clientIdRegistry;
 
     /**
      * Instantiate a REST endpoint to open up several Event Processor operations, like start, stop and segment release,
@@ -55,23 +53,22 @@ public class EventProcessorRestController {
      *                              events for the provided endpoints
      * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
      *                              instances containing the known status of all the Event Processors
-     * @param clients               an {@link Iterable} of {@link Client} instances, used to publish an application
-     *                              event to each Client which should receive it
+     * @param clientIdRegistry
      */
     public EventProcessorRestController(ProcessorEventPublisher processorEventsSource,
                                         ClientProcessors eventProcessors,
-                                        Clients clients) {
+                                        ClientIdRegistry clientIdRegistry) {
         this.processorEventsSource = processorEventsSource;
         this.eventProcessors = eventProcessors;
-        this.clients = clients;
+        this.clientIdRegistry = clientIdRegistry;
     }
 
     @GetMapping("components/{component}/processors")
     public Iterable<EventProcessor> componentProcessors(@PathVariable("component") String component,
                                                         @RequestParam("context") String context,
                                                         final Principal principal) {
-        auditLog.info("[{}@{}] Request to list Event processors in component \"{}\".",
-                      AuditLog.username(principal), context, component);
+        auditLog.debug("[{}@{}] Request to list Event processors in component \"{}\".",
+                       AuditLog.username(principal), context, component);
 
         return new ComponentEventProcessors(component, context, eventProcessors);
     }
@@ -85,7 +82,8 @@ public class EventProcessorRestController {
         auditLog.info("[{}@{}] Request to pause Event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processor, component);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier)
-                .forEach(client -> processorEventsSource.pauseProcessorRequest(context, client.name(), processor));
+                .forEach(clientId -> processorEventsSource
+                        .pauseProcessorRequest(context, clientId, processor));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/start")
@@ -97,7 +95,8 @@ public class EventProcessorRestController {
         auditLog.info("[{}@{}] Request to start Event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processor, component);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier)
-                .forEach(client -> processorEventsSource.startProcessorRequest(context, client.name(), processor));
+                .forEach(clientId -> processorEventsSource
+                        .startProcessorRequest(context, clientId, processor));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/segments/{segment}/move")
@@ -110,9 +109,9 @@ public class EventProcessorRestController {
                             final Principal principal) {
         auditLog.info("[{}@{}] Request to move segment {} of event processor \"{}\" in component \"{}\" to \"{}\".",
                       AuditLog.username(principal), context, segment, processor, component, target);
-        clientsByEventProcessor(context, processor, tokenStoreIdentifier).forEach(client -> {
-            if (!target.equals(client.name())) {
-                processorEventsSource.releaseSegment(context, client.name(), processor, segment);
+        clientsByEventProcessor(context, processor, tokenStoreIdentifier).forEach(clientId -> {
+            if (!target.equals(clientId)) {
+                processorEventsSource.releaseSegment(context, clientId, processor, segment);
             }
         });
     }
@@ -134,11 +133,8 @@ public class EventProcessorRestController {
                              final Principal principal) {
         auditLog.info("[{}@{}] Request to split segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
-        Clients clientList = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        List<String> clientNames = StreamSupport.stream(clientList.spliterator(), false)
-                                                .map(Client::name)
-                                                .collect(Collectors.toList());
-        processorEventsSource.splitSegment(context, clientNames, processorName);
+        Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
+        processorEventsSource.splitSegment(context, list(clientIds), processorName);
     }
 
     /**
@@ -158,11 +154,14 @@ public class EventProcessorRestController {
                              final Principal principal) {
         auditLog.info("[{}@{}] Request to merge segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
-        Clients clientList = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        List<String> clientNames = StreamSupport.stream(clientList.spliterator(), false)
-                                                .map(Client::name)
-                                                .collect(Collectors.toList());
-        processorEventsSource.mergeSegment(context, clientNames, processorName);
+        Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
+        processorEventsSource.mergeSegment(context, list(clientIds), processorName);
+    }
+
+    private List<String> list(Iterable<String> clientNames) {
+        List<String> result = new ArrayList<>();
+        clientNames.forEach(result::add);
+        return result;
     }
 
     /**
@@ -174,7 +173,7 @@ public class EventProcessorRestController {
      * @return the list of clients in the specified context that run specified tracking event processor
      */
     @GetMapping("/processors/{processor}/clients")
-    public Iterable<Client> getClientInstancesFor(@PathVariable("processor") String processorName,
+    public Iterable<String> getClientInstancesFor(@PathVariable("processor") String processorName,
                                                   @RequestParam("context") String context,
                                                   @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                                   Principal principal) {
@@ -184,6 +183,7 @@ public class EventProcessorRestController {
                 context,
                 processorName,
                 tokenStoreIdentifier);
+
         return clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
     }
 
@@ -192,7 +192,6 @@ public class EventProcessorRestController {
                                                             String tokenStoreIdentifier) {
         return new ClientsByEventProcessor(new EventProcessorIdentifier(processorName, tokenStoreIdentifier),
                                            context,
-                                           clients,
                                            eventProcessors);
     }
 }
