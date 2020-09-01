@@ -80,9 +80,6 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
                                                .filter(e -> e.getValue().equals(clientId))
                                                .map(Map.Entry::getKey)
                                                .collect(Collectors.toSet());
-        if (current.isEmpty()) {
-            throw new IllegalStateException("No platform stream found for client " + clientId);
-        }
         return Collections.unmodifiableSet(current);
     }
 

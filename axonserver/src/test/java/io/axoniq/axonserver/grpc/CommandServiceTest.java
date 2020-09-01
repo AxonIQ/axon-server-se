@@ -11,6 +11,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
+import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -28,6 +29,7 @@ import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
+import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.function.Consumer;
@@ -39,6 +41,8 @@ import static org.mockito.Mockito.*;
  * @author Marc Gathier
  */
 public class CommandServiceTest {
+
+    private final String clientId = "name";
     private CommandService testSubject;
     private FlowControlQueues<WrappedCommand> commandQueue;
     private ApplicationEventPublisher eventPublisher;
@@ -91,9 +95,11 @@ public class CommandServiceTest {
     public void subscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
-                .build());
-        verify(eventPublisher).publishEvent(isA(SubscriptionEvents.SubscribeCommand.class));
+                                                    .setSubscribe(CommandSubscription.newBuilder().setClientId("name")
+                                                                                     .setComponentName("component")
+                                                                                     .setCommand("command"))
+                                                    .build());
+        verify(eventPublisher).publishEvent(isA(SubscribeCommand.class));
     }
 
     @Test
@@ -178,13 +184,35 @@ public class CommandServiceTest {
     }
 
     @Test
-    public void commandHandlerDisconnected(){
+    public void commandHandlerDisconnected() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                                                    .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
+                                                    .setSubscribe(CommandSubscription.newBuilder().setClientId("name")
+                                                                                     .setComponentName("component")
+                                                                                     .setCommand("command"))
                                                     .build());
         requestStream.onError(new RuntimeException("failed"));
         verify(eventPublisher).publishEvent(isA(TopologyEvents.CommandHandlerDisconnected.class));
     }
 
+    @Test
+    public void disconnectClientStream() {
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        requestStream.onNext(CommandProviderOutbound.newBuilder()
+                                                    .setSubscribe(CommandSubscription.newBuilder()
+                                                                                     .setClientId(clientId)
+                                                                                     .setComponentName("component")
+                                                                                     .setCommand("command"))
+                                                    .build());
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder()
+                                                                                            .setPermits(100)
+                                                                                            .setClientId(clientId)
+                                                                                            .build()).build());
+        ArgumentCaptor<SubscribeCommand> subscribe = ArgumentCaptor.forClass(SubscribeCommand.class);
+        verify(eventPublisher).publishEvent(subscribe.capture());
+        SubscribeCommand subscribeCommand = subscribe.getValue();
+        ClientStreamIdentification streamIdentification = subscribeCommand.getHandler().getClientStreamIdentification();
+        testSubject.completeStream(clientId, streamIdentification);
+        verify(eventPublisher).publishEvent(isA(TopologyEvents.CommandHandlerDisconnected.class));
+    }
 }

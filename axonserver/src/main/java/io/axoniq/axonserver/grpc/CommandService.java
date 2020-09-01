@@ -282,4 +282,19 @@ public class CommandService implements AxonServerClientService {
         }
     }
 
+    /**
+     * Completes the command stream to the specified client.
+     *
+     * @param clientId                   the unique identifier of the client instance
+     * @param clientStreamIdentification the unique identifier of the command stream
+     */
+    public void completeStream(String clientId, ClientStreamIdentification clientStreamIdentification) {
+        if (dispatcherListeners.containsKey(clientStreamIdentification)) {
+            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStream();
+            logger.debug("Command Stream closed for client: {}", clientStreamIdentification);
+            eventPublisher.publishEvent(new CommandHandlerDisconnected(clientStreamIdentification.getContext(),
+                                                                       clientId,
+                                                                       clientStreamIdentification.getClientStreamId()));
+        }
+    }
 }
