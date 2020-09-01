@@ -102,7 +102,7 @@ public class TopologyEvents {
             return isForwarded();
         }
 
-        public ClientStreamIdentification clientIdentification() {
+        public ClientStreamIdentification clientStreamIdentification() {
             return new ClientStreamIdentification(context, clientStreamId);
         }
     }

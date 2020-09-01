@@ -54,7 +54,7 @@ public class GenericClients implements Clients {
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
-        this.clientRegistrations.put(event.clientIdentification(),
+        this.clientRegistrations.put(event.clientStreamIdentification(),
                                      new GenericClient(event.getClientId(),
                                                        event.getClientStreamId(),
                                                        event.getComponentName(),
@@ -62,6 +62,6 @@ public class GenericClients implements Clients {
                                                        event.isProxied() ? event
                                                                .getProxy() : messagingPlatformConfiguration
                                                                .getName(),
-                                                       clientTagsCache.apply(event.clientIdentification())));
+                                                       clientTagsCache.apply(event.clientStreamIdentification())));
     }
 }

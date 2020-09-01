@@ -30,7 +30,7 @@ public class PlatformConnectedClients implements ClientIdentifications {
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
-        clientIdentifications.add(event.clientIdentification());
+        clientIdentifications.add(event.clientStreamIdentification());
     }
 
     @EventListener
