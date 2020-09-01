@@ -13,11 +13,13 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
+import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
@@ -174,8 +176,19 @@ public class QueryDispatcher {
                                                                              .collect(Collectors.toSet()),
                                                                      expectedResults, callback,
                                                                      onCompleted);
-            queryCache.put(query.getMessageIdentifier(), queryInformation);
-            handlers.forEach(h -> dispatchOne(h, serializedQuery, timeout));
+            try {
+                queryCache.put(query.getMessageIdentifier(), queryInformation);
+                handlers.forEach(h -> dispatchOne(h, serializedQuery, timeout));
+            } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+                callback.accept(QueryResponse.newBuilder()
+                                             .setErrorCode(ErrorCode.QUERY_DISPATCH_ERROR.getCode())
+                                             .setMessageIdentifier(query.getMessageIdentifier())
+                                             .setErrorMessage(ErrorMessageFactory
+                                                                      .build(insufficientCacheCapacityException
+                                                                                     .getMessage()))
+                                             .build());
+                onCompleted.accept("NoCapacity");
+            }
         }
     }
 
@@ -218,12 +231,25 @@ public class QueryDispatcher {
                                                                      expectedResults,
                                                                      callback,
                                                                      onCompleted);
-            queryCache.put(key, queryInformation);
-            dispatchOne(queryHandler, serializedQuery, timeout);
+            try {
+                queryCache.put(key, queryInformation);
+                dispatchOne(queryHandler, serializedQuery, timeout);
+            } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+                queryInformation.completeWithError(queryHandler.getClientId(),
+                                                   ErrorCode.QUERY_DISPATCH_ERROR,
+                                                   insufficientCacheCapacityException.getMessage());
+            }
         }
     }
 
     private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
-        queryHandler.enqueue(query, queryQueue, timeout);
+        try {
+            queryHandler.enqueue(query, queryQueue, timeout);
+        } catch (MessagingPlatformException mpe) {
+            QueryInformation information = queryCache.remove(query.getMessageIdentifier());
+            if (information != null) {
+                information.completeWithError(queryHandler.getClientId(), mpe.getErrorCode(), mpe.getMessage());
+            }
+        }
     }
 }

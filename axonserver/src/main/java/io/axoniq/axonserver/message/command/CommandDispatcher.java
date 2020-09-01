@@ -12,6 +12,7 @@ package io.axoniq.axonserver.message.command;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
@@ -123,18 +124,40 @@ public class CommandDispatcher {
             return;
         }
 
-        logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
-        CommandInformation commandInformation = new CommandInformation(command.getName(),
-                                                                       command.wrapped().getClientId(),
+        try {
+            logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
+            CommandInformation commandInformation = new CommandInformation(command.getName(),
+                                                                                    command.wrapped().getClientId(),
                                                                        commandHandler.getClientId(),
-                                                                       responseObserver,
+                                                                                    responseObserver,
                                                                        commandHandler.getClientStreamIdentification(),
                                                                        commandHandler.getComponentName());
         commandCache.put(command.getMessageIdentifier(), commandInformation);
         WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
                                                            commandHandler.getClientId(),
                                                            command);
-        commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+        } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
+                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
+                                                                                 .setErrorCode(ErrorCode.COMMAND_DISPATCH_ERROR
+                                                                                                       .getCode())
+                                                                                 .setErrorMessage(ErrorMessageFactory
+                                                                                                          .build(insufficientCacheCapacityException
+                                                                                                                         .getMessage()))
+                                                                                 .build()));
+        } catch (MessagingPlatformException mpe) {
+            commandCache.remove(command.getMessageIdentifier());
+            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
+                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
+                                                                                 .setErrorCode(mpe.getErrorCode()
+                                                                                                  .getCode())
+                                                                                 .setErrorMessage(ErrorMessageFactory
+                                                                                                          .build(mpe.getMessage()))
+                                                                                 .build()));
+        }
     }
 
 
