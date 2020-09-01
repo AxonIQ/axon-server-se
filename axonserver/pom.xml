@@ -287,7 +287,6 @@
                         </goals>
                         <configuration>
                             <wait>45000</wait>
-                            <jvmArguments>-Dserver.port=0</jvmArguments>
                             <workingDirectory>${project.basedir}</workingDirectory>
                         </configuration>
                     </execution>
