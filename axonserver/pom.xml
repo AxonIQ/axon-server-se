@@ -287,6 +287,7 @@
                         </goals>
                         <configuration>
                             <wait>45000</wait>
+                            <workingDirectory>${project.basedir}</workingDirectory>
                         </configuration>
                     </execution>
                     <execution>
@@ -303,6 +304,31 @@
                             <executable>true</executable>
                             <classifier>exec</classifier>
                             <layout>ZIP</layout>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>clean-post-integration-tests</id>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <phase>post-integration-test</phase>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>data</directory>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </fileset>
+                            </filesets>
                         </configuration>
                     </execution>
                 </executions>
