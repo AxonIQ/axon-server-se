@@ -207,7 +207,7 @@ public class QueryServiceTest {
 
     @Test
     public void disconnectClientStream() {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(QueryProviderOutbound.newBuilder()
                                                   .setSubscribe(QuerySubscription.newBuilder()
                                                                                  .setClientId(clientId)

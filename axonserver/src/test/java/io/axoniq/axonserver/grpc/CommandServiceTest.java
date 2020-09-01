@@ -196,7 +196,7 @@ public class CommandServiceTest {
 
     @Test
     public void disconnectClientStream() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                                                     .setSubscribe(CommandSubscription.newBuilder()
                                                                                      .setClientId(clientId)
