@@ -115,8 +115,8 @@ public class QueryDispatcherTest {
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
-                                            new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
-                                            "componentName"));
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "client"));
         when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           responseObserver::onNext,

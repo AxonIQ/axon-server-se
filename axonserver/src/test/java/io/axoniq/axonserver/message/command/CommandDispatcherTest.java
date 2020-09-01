@@ -120,9 +120,9 @@ public class CommandDispatcherTest {
                                  .setMessageIdentifier("12")
                                  .build();
         FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
-        ClientIdentification client = new ClientIdentification(Topology.DEFAULT_CONTEXT, "client");
+        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
-                                                               client, "component");
+                                                               client, "client", "component");
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(result);
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
             responseObserver.onNext(response);
