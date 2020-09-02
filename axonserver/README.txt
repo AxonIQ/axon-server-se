@@ -5,8 +5,9 @@ visit https://docs.axoniq.io.
 
 Release Notes for version 4.4.1
 -------------------------------
-
-Fix the refresh of the event processor status
+* Reduced latency when Tracking live Events from a follower
+* Improved handling of full queue to client
+* Fix the refresh of the event processor status
 
 Release Notes for version 4.4
 -----------------------------
