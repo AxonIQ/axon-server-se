@@ -20,7 +20,7 @@ import io.axoniq.axonserver.grpc.command.Command;
  */
 public class SerializedCommand  {
 
-    private final String client;
+    private final String clientStreamId;
     private final String messageId;
     private final byte[] serializedData;
     private volatile Command command;
@@ -32,13 +32,13 @@ public class SerializedCommand  {
 
     public SerializedCommand(byte[] serializedCommand) {
         this.serializedData = serializedCommand;
-        this.client = null;
+        this.clientStreamId = null;
         this.messageId = null;
     }
 
-    public SerializedCommand(byte[] serializedCommand, String client, String messageId) {
+    public SerializedCommand(byte[] serializedCommand, String clientStreamId, String messageId) {
         this.serializedData = serializedCommand;
-        this.client = client;
+        this.clientStreamId = clientStreamId;
         this.messageId = messageId;
     }
 
@@ -72,7 +72,9 @@ public class SerializedCommand  {
     }
 
     public String getMessageIdentifier() {
-        if( messageId != null) return messageId;
+        if (messageId != null) {
+            return messageId;
+        }
         return wrapped().getMessageIdentifier();
     }
 
@@ -80,8 +82,8 @@ public class SerializedCommand  {
         return wrapped().getName();
     }
 
-    public String getClient() {
-        return client;
+    public String getClientStreamId() {
+        return clientStreamId;
     }
 
     public String getCommand() {

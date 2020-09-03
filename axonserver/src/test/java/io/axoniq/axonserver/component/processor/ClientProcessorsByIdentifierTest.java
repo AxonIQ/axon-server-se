@@ -70,46 +70,46 @@ public class ClientProcessorsByIdentifierTest {
 
 
     private final ClientProcessor blueA =
-            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, blue1Info);
+            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, "context", blue1Info);
     private final ClientProcessor greenA =
-            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, green1Info);
+            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, "context", green1Info);
     private final ClientProcessor redA =
-            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, red1Info);
+            new FakeClientProcessor(CLIENT_A, BELONGS_TO_COMPONENT, "context", red1Info);
 
     private final ClientProcessor blueB =
-            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, blue1Info);
+            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, "context", blue1Info);
     private final ClientProcessor greenB =
-            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, green1Info);
+            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, "context", green1Info);
     private final ClientProcessor redB =
-            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, red1Info);
+            new FakeClientProcessor(CLIENT_B, DOES_NOT_BELONG_TO_COMPONENT, "context", red1Info);
 
     private final ClientProcessor blueC =
-            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, blue1Info);
+            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", blue1Info);
     private final ClientProcessor greenC =
-            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, green1Info);
+            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", green1Info);
     private final ClientProcessor redC =
-            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, red1Info);
+            new FakeClientProcessor(CLIENT_C, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", red1Info);
 
     private final ClientProcessor blueD =
-            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, blue2Info);
+            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, "context", blue2Info);
     private final ClientProcessor greenD =
-            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, green2Info);
+            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, "context", green2Info);
     private final ClientProcessor redD =
-            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, BELONGS_TO_CONTEXT, red2Info);
+            new FakeClientProcessor(CLIENT_D, BELONGS_TO_COMPONENT, "context", red2Info);
 
     private final ClientProcessor blueE =
-            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, blue2Info);
+            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, "context", blue2Info);
     private final ClientProcessor greenE =
-            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, green2Info);
+            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, "context", green2Info);
     private final ClientProcessor redE =
-            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, BELONGS_TO_CONTEXT, red2Info);
+            new FakeClientProcessor(CLIENT_E, DOES_NOT_BELONG_TO_COMPONENT, "context", red2Info);
 
     private final ClientProcessor blueF =
-            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, blue2Info);
+            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", blue2Info);
     private final ClientProcessor greenF =
-            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, green2Info);
+            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", green2Info);
     private final ClientProcessor redF =
-            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, DOES_NOT_BELONG_TO_CONTEXT, red2Info);
+            new FakeClientProcessor(CLIENT_F, DOES_NOT_BELONG_TO_COMPONENT, "anotherContext", red2Info);
 
 
     private final ClientProcessors clientProcessors = () -> asList(blueA, redA, greenA,

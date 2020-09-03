@@ -35,7 +35,7 @@ public class WebsocketProcessorEventsSource {
     private final Runnable updatesConsumer;
     private final Logger logger = LoggerFactory.getLogger(WebsocketProcessorEventsSource.class);
 
-    private AtomicBoolean updates = new AtomicBoolean();
+    private final AtomicBoolean updates = new AtomicBoolean();
 
     /**
      * Autowired constructor for the service

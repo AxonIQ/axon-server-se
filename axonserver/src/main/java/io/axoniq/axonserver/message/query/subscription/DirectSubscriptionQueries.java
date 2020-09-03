@@ -11,7 +11,6 @@ package io.axoniq.axonserver.message.query.subscription;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import org.springframework.context.event.EventListener;
@@ -24,12 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nonnull;
 
 /**
- * Created by Sara Pellegrini on 14/05/2018.
- * sara.pellegrini@gmail.com
+ * {@link Iterable} of active {@link ContextSubscriptionQuery}s from clients that are directly connected to the AS node.
+ *
+ * @author Sara Pellegrini
  */
 @Component
 public class DirectSubscriptionQueries implements Iterable<DirectSubscriptionQueries.ContextSubscriptionQuery> {
 
+    //Map<clientId, Map<subscriptionId, ContextSubscriptionQuery>>
     private final Map<String, Map<String, ContextSubscriptionQuery>> map = new ConcurrentHashMap<>();
 
     @EventListener
@@ -38,11 +39,6 @@ public class DirectSubscriptionQueries implements Iterable<DirectSubscriptionQue
         QueryRequest query = request.getQueryRequest();
         ContextSubscriptionQuery contextSubscriptionQuery = new ContextSubscriptionQuery(event.context(), request);
         clientRequests(query.getClientId()).put(request.getSubscriptionIdentifier(), contextSubscriptionQuery);
-    }
-
-    @EventListener
-    public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected){
-        map.remove(applicationDisconnected.getClient());
     }
 
     @EventListener
@@ -58,7 +54,7 @@ public class DirectSubscriptionQueries implements Iterable<DirectSubscriptionQue
     }
 
     private Map<String, ContextSubscriptionQuery> clientRequests(String clientId) {
-        return map.computeIfAbsent(clientId,id -> new ConcurrentHashMap<>());
+        return map.computeIfAbsent(clientId, id -> new ConcurrentHashMap<>());
     }
 
     public static class ContextSubscriptionQuery {

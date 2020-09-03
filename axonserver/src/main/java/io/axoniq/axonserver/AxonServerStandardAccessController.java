@@ -9,12 +9,16 @@
 
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
 import java.util.Set;
+
+import static io.axoniq.axonserver.rest.json.UserInfo.ROLE_ADMIN;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 
 /**
  * Created by marc on 7/17/2017.
@@ -44,10 +48,16 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
         if (!isTokenFromConfigFile(token)) {
             throw new InvalidTokenException();
         }
-        return Collections.emptySet();
+        return isAdminToken(token) ? singleton(ROLE_ADMIN) : emptySet();
+    }
+
+    private boolean isAdminToken(String token) {
+        return (token != null) && token.equals(messagingPlatformConfiguration.getAccesscontrol().getAdminToken());
     }
 
     private boolean isTokenFromConfigFile(String token) {
-        return messagingPlatformConfiguration.getAccesscontrol().getToken().equals(token);
+        AccessControlConfiguration config = messagingPlatformConfiguration.getAccesscontrol();
+
+        return (token != null) && (token.equals(config.getToken()) || token.equals(config.getAdminToken()));
     }
 }

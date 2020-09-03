@@ -30,12 +30,14 @@ import java.util.function.BiFunction;
  */
 @Component
 public class MetaDataBasedTargetSelector
-        implements BiFunction<Map<String, MetaDataValue>, Set<ClientIdentification>, Set<ClientIdentification>> {
+        implements
+        BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> {
 
     private final ClientTagsCache clientTagsCache;
 
     /**
      * Constructor
+     *
      * @param clientTagsCache component containing the connected clients and their tags
      */
     public MetaDataBasedTargetSelector(ClientTagsCache clientTagsCache) {
@@ -44,24 +46,25 @@ public class MetaDataBasedTargetSelector
 
     /**
      * Finds the candidates that best match the meta data from the list of provided candidates.
+     *
      * @param metaDataMap meta data from the request
-     * @param candidates set of clients capable of handling the request
+     * @param candidates  set of clients capable of handling the request
      * @return subset of candidates with best matching tags
      */
     @Override
-    public Set<ClientIdentification> apply(Map<String, MetaDataValue> metaDataMap,
-                                           Set<ClientIdentification> candidates) {
+    public Set<ClientStreamIdentification> apply(Map<String, MetaDataValue> metaDataMap,
+                                                 Set<ClientStreamIdentification> candidates) {
         if (candidates.size() < 2 || metaDataMap.isEmpty()) {
             return candidates;
         }
-        Map<ClientIdentification, Integer> scorePerClient = new HashMap<>();
+        Map<ClientStreamIdentification, Integer> scorePerClient = new HashMap<>();
         candidates.forEach(candidate -> scorePerClient.computeIfAbsent(candidate,
                                                                        m -> score(metaDataMap, m)));
 
         return getHighestScore(scorePerClient);
     }
 
-    private int score(Map<String, MetaDataValue> metaDataMap, ClientIdentification client) {
+    private int score(Map<String, MetaDataValue> metaDataMap, ClientStreamIdentification client) {
         if (metaDataMap.isEmpty()) {
             return 0;
         }
@@ -101,10 +104,10 @@ public class MetaDataBasedTargetSelector
         return match ? 1 : -1;
     }
 
-    private Set<ClientIdentification> getHighestScore(Map<ClientIdentification, Integer> scorePerClient) {
-        Set<ClientIdentification> bestClients = new HashSet<>();
+    private Set<ClientStreamIdentification> getHighestScore(Map<ClientStreamIdentification, Integer> scorePerClient) {
+        Set<ClientStreamIdentification> bestClients = new HashSet<>();
         int highest = Integer.MIN_VALUE;
-        for (Map.Entry<ClientIdentification, Integer> score : scorePerClient.entrySet()) {
+        for (Map.Entry<ClientStreamIdentification, Integer> score : scorePerClient.entrySet()) {
             if (score.getValue() > highest) {
                 bestClients.clear();
                 highest = score.getValue();

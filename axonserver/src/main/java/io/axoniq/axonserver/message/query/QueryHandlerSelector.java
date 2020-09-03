@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 import java.util.NavigableSet;
 
@@ -17,6 +17,7 @@ import java.util.NavigableSet;
  * @author Marc Gathier
  */
 public interface QueryHandlerSelector {
-    ClientIdentification select(QueryDefinition queryDefinition, String componentName,
-                                NavigableSet<ClientIdentification> queryHandlers);
+
+    ClientStreamIdentification select(QueryDefinition queryDefinition, String componentName,
+                                      NavigableSet<ClientStreamIdentification> queryHandlers);
 }

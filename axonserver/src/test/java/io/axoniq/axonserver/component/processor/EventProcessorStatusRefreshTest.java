@@ -4,6 +4,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcesso
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.time.Duration;
@@ -50,8 +51,21 @@ public class EventProcessorStatusRefreshTest {
 
     @Test
     public void runSuccessfully() throws InterruptedException {
-        CompletableFuture<Void> completableFuture = testSubject.run("context", processorB);
+        CompletableFuture<Void> completableFuture = testSubject.run(Topology.DEFAULT_CONTEXT, processorB);
         assertWithin(1000, MILLISECONDS, () -> assertFalse(publishedInternalEvents.isEmpty()));
+        testSubject.on(updateEvent("redClient", "processorB"));
+        testSubject.on(updateEvent("greenClient", "processorB"));
+        testSubject.on(updateEvent("blueClient", "processorB"));
+        assertWithin((int) timeout.toMillis(), MILLISECONDS, () -> assertTrue(completableFuture.isDone()));
+    }
+
+    @Test
+    public void runSuccessfullyWithAnotherProcessorFromSameClient() throws InterruptedException {
+        CompletableFuture<Void> completableFuture = testSubject.run(Topology.DEFAULT_CONTEXT, processorB);
+        assertWithin(1000, MILLISECONDS, () -> assertFalse(publishedInternalEvents.isEmpty()));
+        testSubject.on(updateEvent("redClient", "processorA"));
+        testSubject.on(updateEvent("greenClient", "processorA"));
+        testSubject.on(updateEvent("blueClient", "processorA"));
         testSubject.on(updateEvent("redClient", "processorB"));
         testSubject.on(updateEvent("greenClient", "processorB"));
         testSubject.on(updateEvent("blueClient", "processorB"));
@@ -60,7 +74,7 @@ public class EventProcessorStatusRefreshTest {
 
     @Test()
     public void testFailureForMissingUpdate() throws InterruptedException {
-        CompletableFuture<Void> completableFuture = testSubject.run("context", processorB);
+        CompletableFuture<Void> completableFuture = testSubject.run(Topology.DEFAULT_CONTEXT, processorB);
         assertWithin(100, MILLISECONDS, () -> assertFalse(publishedInternalEvents.isEmpty()));
         testSubject.on(updateEvent("redClient", "processorB"));
         testSubject.on(updateEvent("greenClient", "processorB"));
@@ -72,7 +86,7 @@ public class EventProcessorStatusRefreshTest {
 
     @Test()
     public void testFailureForMissingUpdate2() throws InterruptedException {
-        CompletableFuture<Void> completableFuture = testSubject.run("context", processorA);
+        CompletableFuture<Void> completableFuture = testSubject.run(Topology.DEFAULT_CONTEXT, processorA);
         assertWithin(100, MILLISECONDS, () -> assertFalse(publishedInternalEvents.isEmpty()));
         testSubject.on(updateEvent("redClient", "processorB"));
         testSubject.on(updateEvent("greenClient", "processorB"));
@@ -91,6 +105,7 @@ public class EventProcessorStatusRefreshTest {
     private EventProcessorStatusUpdated updateEvent(String client, String processorName) {
         return new EventProcessorStatusUpdated(
                 new ClientEventProcessorInfo(
+                        client,
                         client,
                         "context",
                         EventProcessorInfo.newBuilder().setProcessorName(processorName).build()),

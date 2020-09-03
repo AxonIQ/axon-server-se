@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
@@ -41,7 +41,7 @@ public class CommandMetricsRegistryTest {
 
     @Test
     public void add() {
-        ClientIdentification client1 = new ClientIdentification(Topology.DEFAULT_CONTEXT, "Client1");
+        ClientStreamIdentification client1 = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "Client1");
 //        testSubject.add("Command", client1, 1);
 //
 //        assertEquals(1L, testSubject.commandMetric("Command", client1, null).getCount());

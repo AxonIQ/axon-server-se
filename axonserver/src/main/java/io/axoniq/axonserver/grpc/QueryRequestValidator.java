@@ -34,7 +34,7 @@ public interface QueryRequestValidator {
         long remainingTime =  messageTimeout - System.currentTimeMillis();
         if(remainingTime < 0) {
             logger.debug("Timeout for message: {} - {}ms", request.getMessageIdentifier(), remainingTime);
-            queryDispatcher.removeFromCache(serializedQuery.client(), request.getMessageIdentifier());
+            queryDispatcher.removeFromCache(serializedQuery.clientStreamId(), request.getMessageIdentifier());
             return null;
         } else {
             logger.debug("Remaining time for message: {} - {}ms", request.getMessageIdentifier(), remainingTime);

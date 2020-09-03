@@ -20,18 +20,26 @@ public class AccessControlConfiguration {
      * Indicates that access control is enabled for the server.
      */
     private boolean enabled;
+
     /**
      * Timeout for authenticated tokens.
      */
     private long cacheTtl = 30000;
+
     /**
      * Token used to authenticate Axon Server instances in a cluster (only used by Enterprise Edition)
      */
     private String internalToken;
+
     /**
      * Token to be used by client applications connecting to Axon Server (only used by Standard Edition)
      */
     private String token;
+
+    /**
+     * Alternative token to be used by the CLI, receiving ADMIN rights.
+     */
+    private String adminToken;
 
     public boolean isEnabled() {
         return enabled;
@@ -63,5 +71,13 @@ public class AccessControlConfiguration {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public String getAdminToken() {
+        return adminToken;
+    }
+
+    public void setAdminToken(String adminToken) {
+        this.adminToken = adminToken;
     }
 }

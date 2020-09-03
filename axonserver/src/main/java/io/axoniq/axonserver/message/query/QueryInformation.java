@@ -29,19 +29,35 @@ public class QueryInformation {
     private final long timestamp = System.currentTimeMillis();
     private final AtomicInteger remainingReplies;
     private final Consumer<String> onAllReceived;
-    private final Set<String> handlerNames;
+    private final Set<String> clientStreamIds;
     private final String sourceClientId;
 
-    public QueryInformation(String key, String sourceClientId, QueryDefinition query, Set<String> handlerNames,
+    /**
+     * Creates an instance with the specified parameters.
+     *
+     * @param key              the unique identifier of the query request
+     * @param sourceClientId   the unique identifier of the client that sent the query
+     * @param query            the {@link QueryDefinition}
+     * @param clientStreamIds  the unique identifiers of the query stream opened by the clients that subscribed an
+     *                         handler for the query
+     * @param expectedResults  the number of the result that are expected
+     * @param responseConsumer a {@link Consumer} for the received {@link QueryResponse}
+     * @param onAllReceived    a {@link Consumer} for the clientStreamId that sent the last expected response
+     */
+    public QueryInformation(String key,
+                            String sourceClientId,
+                            QueryDefinition query,
+                            Set<String> clientStreamIds,
                             int expectedResults,
-                            Consumer<QueryResponse> responseConsumer, Consumer<String> onAllReceived) {
+                            Consumer<QueryResponse> responseConsumer,
+                            Consumer<String> onAllReceived) {
         this.key = key;
         this.sourceClientId = sourceClientId;
         this.query = query;
         this.responseConsumer = responseConsumer;
         this.remainingReplies = new AtomicInteger(expectedResults);
         this.onAllReceived = onAllReceived;
-        this.handlerNames = new CopyOnWriteArraySet<>(handlerNames);
+        this.clientStreamIds = new CopyOnWriteArraySet<>(clientStreamIds);
     }
 
     public QueryDefinition getQuery() {
@@ -52,25 +68,44 @@ public class QueryInformation {
         return timestamp;
     }
 
-    public int forward(String client, QueryResponse queryResponse) {
-        int remaining =0;
+    /**
+     * Handles the {@link QueryResponse} received by the specified {@code clientStreamId}
+     *
+     * @param clientStreamId the unique identifier of the query stream that the client used to send the response
+     * @param queryResponse  the {@link QueryResponse}
+     * @return the number of remaining expected response
+     */
+    public int forward(String clientStreamId, QueryResponse queryResponse) {
+        int remaining = 0;
         try {
             responseConsumer.accept(queryResponse);
             remaining = remainingReplies.decrementAndGet();
-            if( queryResponse.hasErrorMessage()) completed(client);
-            if (remaining <= 0) {
-                onAllReceived.accept(client);
+            if (queryResponse.hasErrorMessage()) {
+                completed(clientStreamId);
             }
-        } catch( RuntimeException ignored) {
+            if (remaining <= 0) {
+                onAllReceived.accept(clientStreamId);
+            }
+        } catch (RuntimeException ignored) {
             // ignore exception on sending response, caused by other party already gone
         }
         return remaining;
     }
 
-    public boolean completed(String client) {
-        handlerNames.remove(client);
-        if( handlerNames.isEmpty()) onAllReceived.accept(client);
-        return handlerNames.isEmpty();
+    /**
+     * Removes the specified {@code clientStreamId} from the list of the expected ones. If this is the last expected,
+     * it invokes the {@code onAllReceived} consumer with the specified {@code clientStreamId}. Returns {@code true} if
+     * this was the last expected response, {@code false} if at least another response is expected.
+     *
+     * @param clientStreamId the unique identifier of the query client stream from which it has been receive a response
+     * @return {@code true} if this was the last expected response, {@code false} if at least another response is expected
+     */
+    public boolean completed(String clientStreamId) {
+        clientStreamIds.remove(clientStreamId);
+        if (clientStreamIds.isEmpty()) {
+            onAllReceived.accept(clientStreamId);
+        }
+        return clientStreamIds.isEmpty();
     }
 
     public String getKey() {
@@ -79,7 +114,7 @@ public class QueryInformation {
 
     public void cancel() {
         try {
-            handlerNames.clear();
+            clientStreamIds.clear();
             onAllReceived.accept("Cancelled");
         } catch (RuntimeException ignore) {
             // ignore exception on cancel
@@ -90,25 +125,42 @@ public class QueryInformation {
         return query.getContext();
     }
 
-    public boolean waitingFor(String client) {
-        return handlerNames.contains(client);
+    /**
+     * Returns {@code true}  if the query is waiting for the handler identified by the specified client stream id.
+     *
+     * @param clientStreamId the unique identifier of the query long living stream for the client that provides the
+     *                       handler.
+     * @return {@code true} if the query is waiting for the specified handler, {@code false} otherwise.
+     */
+    public boolean waitingFor(String clientStreamId) {
+        return clientStreamIds.contains(clientStreamId);
     }
 
-    public boolean completeWithError(String client, ErrorCode errorCode, String message) {
+    public boolean completeWithError(String clientStreamId, ErrorCode errorCode, String message) {
         responseConsumer.accept(QueryResponse.newBuilder()
                                              .setErrorCode(errorCode.getCode())
                                              .setErrorMessage(ErrorMessage.newBuilder().setMessage(message))
                                              .setRequestIdentifier(key)
                                              .build());
 
-        return completed(client);
+        return completed(clientStreamId);
     }
 
+    /**
+     * Returns the unique client identifier that sent the query request.
+     *
+     * @return the unique client identifier that sent the query request.
+     */
     public String getSourceClientId() {
         return sourceClientId;
     }
 
+    /**
+     * Returns the unique identifiers of the client query stream from which this query is still waiting for a response.
+     *
+     * @return the unique identifiers of the client query stream from which this query is still waiting for a response.
+     */
     public Set<String> waitingFor() {
-        return handlerNames;
+        return clientStreamIds;
     }
 }

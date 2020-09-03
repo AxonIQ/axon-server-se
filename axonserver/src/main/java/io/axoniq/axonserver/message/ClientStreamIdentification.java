@@ -11,27 +11,31 @@ package io.axoniq.axonserver.message;
 
 import java.util.Comparator;
 import java.util.Objects;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
  */
-public class ClientIdentification implements Comparable<ClientIdentification> {
-    private static final Comparator<ClientIdentification> COMPARATOR = Comparator.comparing(ClientIdentification::getContext).thenComparing(ClientIdentification::getClient);
+public class ClientStreamIdentification implements Comparable<ClientStreamIdentification> {
+
+    private static final Comparator<ClientStreamIdentification> COMPARATOR = Comparator
+            .comparing(ClientStreamIdentification::getContext)
+            .thenComparing(ClientStreamIdentification::getClientStreamId);
     private final String context;
-    private final String client;
+    private final String clientStreamId;
 
 
-    public ClientIdentification(String context, String client) {
+    public ClientStreamIdentification(String context, String clientStreamId) {
         this.context = context;
-        this.client = client;
+        this.clientStreamId = clientStreamId;
     }
 
     public String getContext() {
         return context;
     }
 
-    public String getClient() {
-        return client;
+    public String getClientStreamId() {
+        return clientStreamId;
     }
 
     @Override
@@ -42,26 +46,26 @@ public class ClientIdentification implements Comparable<ClientIdentification> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ClientIdentification that = (ClientIdentification) o;
+        ClientStreamIdentification that = (ClientStreamIdentification) o;
         return Objects.equals(context, that.context) &&
-                Objects.equals(client, that.client);
+                Objects.equals(clientStreamId, that.clientStreamId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(context, client);
+        return Objects.hash(context, clientStreamId);
     }
 
-    public int compareTo(ClientIdentification client) {
+    public int compareTo(@Nonnull ClientStreamIdentification client) {
         return COMPARATOR.compare(this, client);
     }
 
     @Override
     public String toString() {
-        return client + "." + context;
+        return clientStreamId + "." + context;
     }
 
     public String metricName() {
-        return client + "." + context;
+        return clientStreamId + "." + context;
     }
 }

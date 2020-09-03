@@ -85,15 +85,16 @@ public class EventProcessorStatusRefresh {
         return CompletableFuture.runAsync(() -> {
 
             ClientProcessorsByIdentifier matchingClients = new ClientProcessorsByIdentifier(all, context, processorId);
-            Set<String> clientNames = StreamSupport.stream(matchingClients.spliterator(), false)
-                                                   .map(ClientProcessor::clientId)
-                                                   .collect(Collectors.toSet());
-            CountDownLatch clientProcessorStatusUpdateLatch = new CountDownLatch(clientNames.size());
+            Set<String> clientIds = StreamSupport.stream(matchingClients.spliterator(), false)
+                                                 .map(ClientProcessor::clientId)
+                                                 .collect(Collectors.toSet());
+            CountDownLatch clientProcessorStatusUpdateLatch = new CountDownLatch(clientIds.size());
 
             Consumer<EventProcessorStatusUpdated> statusUpdateListener = statusEvent -> {
-                String clientName = statusEvent.eventProcessorStatus().getClientName();
+                String clientId = statusEvent.eventProcessorStatus().getClientId();
                 String processorName = statusEvent.eventProcessorStatus().getEventProcessorInfo().getProcessorName();
-                if (clientNames.remove(clientName) && processorName.equals(processorId.name())) {
+                if (clientIds.contains(clientId) && processorName.equals(processorId.name())) {
+                    clientIds.remove(clientId);
                     clientProcessorStatusUpdateLatch.countDown();
                 }
             };

@@ -14,22 +14,38 @@ import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Represents an instance of a client connected to AxonServer.
  */
 public interface Client extends Printable, ComponentItem {
 
-    String name();
+    /**
+     * Returns the id of the client
+     *
+     * @return the id of the client
+     */
+    String id();
 
+    /**
+     * Returns the platform stream id of the client
+     *
+     * @return the platform stream id of the client
+     */
+    String streamId();
+
+    /**
+     * Returns the principal context of the client
+     *
+     * @return the principal context of the client
+     */
     String context();
 
     @Override
-    default boolean belongsToContext(String context){
+    default boolean belongsToContext(String context) {
         return context.equals(context());
     }
 
     @Override
     default void printOn(Media media) {
-        media.with("name", name());
+        media.with("name", id());
     }
 }

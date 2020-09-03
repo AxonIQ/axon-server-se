@@ -563,8 +563,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public long syncEvents(String context, SerializedTransactionWithToken value) {
         try {
-            SyncStorage writeStorage = workers(context).eventSyncStorage;
-            writeStorage.sync(value.getToken(), value.getEvents());
+            Workers worker = workers(context);
+            worker.eventSyncStorage.sync(value.getToken(), value.getEvents());
+            worker.triggerTrackerEventProcessors();
             return value.getToken() + value.getEvents().size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
@@ -669,11 +670,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.gauge = meterFactory.gauge(BaseMetricName.AXON_EVENT_LAST_TOKEN,
                                             Tags.of(MeterFactory.CONTEXT, context),
                                             context,
-                                            c -> (double) getLastEvent(c));
+                                            c -> (double) eventStorageEngine.getLastToken());
             this.snapshotGauge = meterFactory.gauge(BaseMetricName.AXON_SNAPSHOT_LAST_TOKEN,
                                                     Tags.of(MeterFactory.CONTEXT, context),
                                                     context,
-                                                    c -> (double) getLastSnapshot(c));
+                                                    c -> (double) snapshotStorageEngine.getLastToken());
         }
 
         public synchronized void init(boolean validate, long defaultFirstEventIndex, long defaultFirstSnapshotIndex) {
@@ -704,6 +705,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                            clientId,
                                                            forceReadingFromLeader,
                                                            eventStream);
+        }
+
+        private void triggerTrackerEventProcessors() {
+            trackingEventManager.reschedule();
         }
 
 

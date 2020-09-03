@@ -1,7 +1,8 @@
 package io.axoniq.axonserver.component.tags;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.grpc.ClientIdRegistry;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -11,15 +12,20 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Provides the tags of all clients connected directly to the local Axon Server instance.
+ * Provides the tags of all clients connected to the local Axon Server instance.
  *
  * @author Sara Pellegrini
  * @since 4.2
  */
 @Component
-public class ClientTagsCache implements Function<ClientIdentification, Map<String, String>> {
+public class ClientTagsCache implements Function<ClientStreamIdentification, Map<String, String>> {
 
-    private final Map<ClientIdentification, Map<String, String>> tags = new HashMap<>();
+    private final Map<ClientStreamIdentification, Map<String, String>> tags = new HashMap<>();
+    private final ClientIdRegistry clientIdRegistry;
+
+    public ClientTagsCache(ClientIdRegistry clientIdRegistry) {
+        this.clientIdRegistry = clientIdRegistry;
+    }
 
     /**
      * Returns a map of all tags defined from the specified client.
@@ -28,8 +34,19 @@ public class ClientTagsCache implements Function<ClientIdentification, Map<Strin
      * @return the tags map
      */
     @Override
-    public Map<String, String> apply(ClientIdentification client) {
-        return Collections.unmodifiableMap(tags.getOrDefault(client, Collections.emptyMap()));
+    public Map<String, String> apply(ClientStreamIdentification client) {
+        try {
+            String clientId = clientIdRegistry.clientId(client.getClientStreamId());
+            if (clientId != null) {
+                client = new ClientStreamIdentification(client.getContext(),
+                                                        clientIdRegistry.streamIdFor(clientId,
+                                                                                     ClientIdRegistry.ConnectionType.PLATFORM));
+            }
+        } catch (IllegalStateException illegalStateException) {
+
+        }
+        return Collections.unmodifiableMap(
+                tags.getOrDefault(client, Collections.emptyMap()));
     }
 
     /**
@@ -49,7 +66,7 @@ public class ClientTagsCache implements Function<ClientIdentification, Map<Strin
      */
     @EventListener
     public void on(ApplicationDisconnected evt) {
-        ClientIdentification client = new ClientIdentification(evt.getContext(), evt.getClient());
+        ClientStreamIdentification client = new ClientStreamIdentification(evt.getContext(), evt.getClientStreamId());
         tags.remove(client);
     }
 }

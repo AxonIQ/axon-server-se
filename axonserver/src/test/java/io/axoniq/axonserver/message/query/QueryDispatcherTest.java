@@ -14,18 +14,17 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.FakeStreamObserver;
+import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.FailingStreamObserver;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
-import org.mockito.runners.*;
+import org.mockito.junit.*;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -41,46 +40,48 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class QueryDispatcherTest {
-    private QueryDispatcher queryDispatcher;
+
+    private final MeterFactory meterFactory = new MeterFactory(Metrics.globalRegistry, new DefaultMetricCollector());
+    private final QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(meterFactory);
+    private final QueryCache queryCache = new QueryCache(1000, 100);
+    private QueryDispatcher testSubject;
 
     @Mock
     private QueryRegistrationCache registrationCache;
 
-    @Mock
-    private QueryCache queryCache;
-
-
     @Before
     public void setup() {
-        MeterFactory meterFactory = new MeterFactory(Metrics.globalRegistry, new DefaultMetricCollector());
-        QueryMetricsRegistry queryMetricsRegistry = new QueryMetricsRegistry(meterFactory);
-        queryDispatcher = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry, meterFactory, 10_000);
+        testSubject = new QueryDispatcher(registrationCache,
+                                          queryCache,
+                                          queryMetricsRegistry,
+                                          meterFactory,
+                                          10_000);
     }
 
     @Test
-    public void queryResponse()  {
+    public void queryResponse() {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
-        when(queryCache.get("1234")).thenReturn(new QueryInformation("1234", "Source",
-                                                                     new QueryDefinition("c",
-                                                                                         QuerySubscription.newBuilder()
-                .setQuery("q")
-                .setResultName("r")
-                .build()), Collections.singleton("client"), 2, r -> dispatchCalled.incrementAndGet(),
-                                                                     (client) -> doneCalled.set(true)));
-        queryDispatcher.handleResponse(QueryResponse.newBuilder()
-                                                                             .setMessageIdentifier("12345")
-                                                                                  .setRequestIdentifier("1234")
-                                                                             .build(), "client", false);
-        verify(queryCache, times(1)).get("1234");
+        queryCache.put("1234", new QueryInformation("1234",
+                                                    "Source",
+                                                    new QueryDefinition("c",
+                                                                        "q"),
+
+                                                    Collections.singleton("client"),
+                                                    2,
+                                                    r -> dispatchCalled.incrementAndGet(),
+                                                    (client) -> doneCalled.set(true)));
+        testSubject.handleResponse(QueryResponse.newBuilder()
+                                                .setMessageIdentifier("12345")
+                                                .setRequestIdentifier("1234")
+                                                .build(), "client", "clientId",false);
         assertEquals(1, dispatchCalled.get());
         assertFalse(doneCalled.get());
 
-        queryDispatcher.handleResponse(QueryResponse.newBuilder()
-                                                                                 .setMessageIdentifier("1234")
-                .setRequestIdentifier("1234")
-                .build(), "client", false);
-        verify(queryCache, times(2)).get("1234");
+        testSubject.handleResponse(QueryResponse.newBuilder()
+                                                .setMessageIdentifier("1234")
+                                                .setRequestIdentifier("1234")
+                                                .build(), "client", "clientId",false);
         assertEquals(2, dispatchCalled.get());
         assertTrue(doneCalled.get());
     }
@@ -93,17 +94,41 @@ public class QueryDispatcherTest {
                                            .setMessageIdentifier("1234")
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
-        TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
-        queryDispatcher.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                              testResponseObserver::onNext,
-                              client -> testResponseObserver.onCompleted());
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          responseObserver::onNext,
+                          client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.completedCount());
+        assertEquals(1, responseObserver.completedCount());
+        assertNotEquals("", responseObserver.values().get(0).getErrorCode());
+    }
+
+    @Test
+    public void queryQueueFull() {
+        testSubject = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry, meterFactory, 0);
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setQuery("test")
+                                           .setMessageIdentifier("1234")
+                                           .setClientId("sampleClient")
+                                           .build();
+        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
+        Set<QueryHandler> handlers = new HashSet<>();
+
+        FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
+        handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "client"));
+        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          responseObserver::onNext,
+                          client -> responseObserver.onCompleted());
+        assertEquals(1, responseObserver.completedCount());
+        assertTrue(queryCache.isEmpty());
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
     }
 
     @Test
-    public void queryFound()  {
+    public void queryFound() {
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")
                                            .setMessageIdentifier("1234")
@@ -113,15 +138,15 @@ public class QueryDispatcherTest {
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
 
-        handlers.add(new DirectQueryHandler(dispatchStreamObserver, new ClientIdentification(Topology.DEFAULT_CONTEXT,"client"), "componentName"));
-        when(registrationCache.find(any(), anyObject())).thenReturn(handlers);
-        TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
-        queryDispatcher.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                              testResponseObserver::onNext,
-                              client -> testResponseObserver.onCompleted());
+        handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "client"));
+        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          responseObserver::onNext,
+                          client -> responseObserver.onCompleted());
         assertEquals(0, responseObserver.values().size());
-        //assertEquals(1, dispatchStreamObserver.count);
-        verify(queryCache, times(1)).put(any(), any());
+//        verify(queryCache, times(1)).put(any(), any());
     }
 
     //@Test
@@ -133,14 +158,16 @@ public class QueryDispatcherTest {
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
         Set<QueryHandler> handlers = new HashSet<>();
 
-        handlers.add(new DirectQueryHandler(new FailingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,"client"), "componentName"));
-        when(registrationCache.find(any(), anyObject())).thenReturn(handlers);
-        TestResponseObserver testResponseObserver = new TestResponseObserver(responseObserver);
-        queryDispatcher.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request), testResponseObserver::onNext,
-                              client -> testResponseObserver.onCompleted());
+        handlers.add(new DirectQueryHandler(new FailingStreamObserver<>(),
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "client"));
+        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request), responseObserver::onNext,
+                          client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.values().size());
-        verify(queryCache, times(1)).put(any(), any());
+//        verify(queryCache, times(1)).put(any(), any());
     }
+
     @Test
     public void dispatchProxied() {
         QueryRequest request = QueryRequest.newBuilder()
@@ -151,60 +178,49 @@ public class QueryDispatcherTest {
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
 
         QueryHandler handler = new DirectQueryHandler(FakeStreamObserver,
-                                                      new ClientIdentification(Topology.DEFAULT_CONTEXT, "client"),
-                                                      "componentName");
+                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                                      "componentName", "client");
         when(registrationCache.find(any(), anyObject(), anyObject())).thenReturn(handler);
-        queryDispatcher.dispatchProxied(forwardedQuery, r -> {}, s->{});
+        testSubject.dispatchProxied(forwardedQuery, r -> {
+        }, s -> {
+        });
         //assertEquals(1, FakeStreamObserver.count);
-        verify(queryCache, times(1)).put(any(), any());
+//        verify(queryCache, times(1)).put(any(), any());
     }
+
     @Test
     public void dispatchProxiedNotFound() {
         QueryRequest request = QueryRequest.newBuilder()
-                .setQuery("test")
-                .setMessageIdentifier("1234")
-                .build();
+                                           .setQuery("test")
+                                           .setMessageIdentifier("1234")
+                                           .build();
 
         AtomicInteger callbackCount = new AtomicInteger(0);
 
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
-        queryDispatcher.dispatchProxied(forwardedQuery, r -> callbackCount.incrementAndGet(), s->{});
+        testSubject.dispatchProxied(forwardedQuery, r -> callbackCount.incrementAndGet(), s -> {
+        });
         assertEquals(1, callbackCount.get());
-        verify(queryCache, times(0)).put(any(), any());
+//        verify(queryCache, times(0)).put(any(), any());
     }
+
     //@Test
     public void dispatchProxiedWithError() throws Exception {
         QueryRequest request = QueryRequest.newBuilder()
-                .setQuery("test")
-                .setMessageIdentifier("1234")
-                .build();
+                                           .setQuery("test")
+                                           .setMessageIdentifier("1234")
+                                           .build();
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
         AtomicInteger dispatchCount = new AtomicInteger(0);
-        QueryHandler handler = new DirectQueryHandler(new FailingStreamObserver<>(), new ClientIdentification(Topology.DEFAULT_CONTEXT,"client"), "componentName");
+        QueryHandler<?> handler = new DirectQueryHandler(new FailingStreamObserver<>(),
+                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                                      "componentName", "client");
         when(registrationCache.find(any(), anyObject(), anyObject())).thenReturn(handler);
-        queryDispatcher.dispatchProxied( forwardedQuery, r -> dispatchCount.incrementAndGet(), s->{});
-        queryDispatcher.getQueryQueue().take("client");
-        verify(queryCache, times(0)).put(any(), any());
+        testSubject.dispatchProxied(forwardedQuery, r -> dispatchCount.incrementAndGet(), s -> {
+        });
+        testSubject.getQueryQueue().take("client");
+//        verify(queryCache, times(0)).put(any(), any());
     }
 
 
-    class TestResponseObserver implements QueryResponseConsumer {
-
-        private final FakeStreamObserver<QueryResponse> responseObserver;
-
-        TestResponseObserver(FakeStreamObserver<QueryResponse> responseObserver) {
-            this.responseObserver = responseObserver;
-        }
-
-        @Override
-        public void onNext(QueryResponse queryResponse) {
-            responseObserver.onNext(queryResponse);
-        }
-
-        @Override
-        public void onCompleted() {
-            responseObserver.onCompleted();
-
-        }
-    }
 }

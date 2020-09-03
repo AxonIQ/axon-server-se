@@ -14,11 +14,15 @@ import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 
 /**
- * Created by Sara Pellegrini on 21/03/2018.
- * sara.pellegrini@gmail.com
+ * Representation of a segment of a Tracking Event Processor.
+ *
+ * @author Sara Pellegrini
  */
 public class TrackingProcessorSegment implements Printable {
 
+    /**
+     * The identifier of the client that claimed the segment.
+     */
     private final String clientId;
 
     private final SegmentStatus eventTrackerInfo;

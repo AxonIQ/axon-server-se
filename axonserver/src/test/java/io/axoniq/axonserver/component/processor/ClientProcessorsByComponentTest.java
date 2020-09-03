@@ -3,6 +3,7 @@ package io.axoniq.axonserver.component.processor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.util.ArrayList;
@@ -23,42 +24,42 @@ public class ClientProcessorsByComponentTest {
     @Test
     public void test() {
         Collection<ClientProcessor> delegate = new ArrayList<>();
-        ClientProcessor blueA = new FakeClientProcessor("clientA", true, true,
+        ClientProcessor blueA = new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT,
                                                         EventProcessorInfo.newBuilder().setProcessorName("Blue")
                                                                           .build());
 
-        ClientProcessor greenA = new FakeClientProcessor("clientA", true, true,
+        ClientProcessor greenA = new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT,
                                                          EventProcessorInfo.newBuilder().setProcessorName("Green")
                                                                            .build());
 
-        ClientProcessor redA = new FakeClientProcessor("clientA", true, true,
+        ClientProcessor redA = new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT,
                                                        EventProcessorInfo.newBuilder().setProcessorName("Red").build());
 
-        ClientProcessor blueB = new FakeClientProcessor("clientB", true, true,
+        ClientProcessor blueB = new FakeClientProcessor("clientB", true, Topology.DEFAULT_CONTEXT,
                                                         EventProcessorInfo.newBuilder().setProcessorName("Blue")
                                                                           .build());
 
-        ClientProcessor yellowB = new FakeClientProcessor("clientB", true, true,
+        ClientProcessor yellowB = new FakeClientProcessor("clientB", true, Topology.DEFAULT_CONTEXT,
                                                           EventProcessorInfo.newBuilder().setProcessorName("Yellow")
                                                                             .build());
 
-        ClientProcessor greenC = new FakeClientProcessor("clientC", false, true,
+        ClientProcessor greenC = new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT,
                                                          EventProcessorInfo.newBuilder().setProcessorName("Green")
                                                                            .build());
 
-        ClientProcessor yellowC = new FakeClientProcessor("clientC", false, true,
+        ClientProcessor yellowC = new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT,
                                                           EventProcessorInfo.newBuilder().setProcessorName("Yellow")
                                                                             .build());
 
-        ClientProcessor blackC = new FakeClientProcessor("clientC", false, true,
+        ClientProcessor blackC = new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT,
                                                          EventProcessorInfo.newBuilder().setProcessorName("Black")
                                                                            .build());
 
-        ClientProcessor greenD = new FakeClientProcessor("clientD", false, false,
+        ClientProcessor greenD = new FakeClientProcessor("clientD", true, "OtherContext",
                                                          EventProcessorInfo.newBuilder().setProcessorName("Green")
                                                                            .build());
 
-        ClientProcessor blueD = new FakeClientProcessor("clientD", false, false,
+        ClientProcessor blueD = new FakeClientProcessor("clientD", false, "OtherContext",
                                                         EventProcessorInfo.newBuilder().setProcessorName("Blue")
                                                                           .build());
 
@@ -75,7 +76,7 @@ public class ClientProcessorsByComponentTest {
 
         ClientProcessorsByComponent testSubject = new ClientProcessorsByComponent(delegate::iterator,
                                                                                   "component",
-                                                                                  "context");
+                                                                                  Topology.DEFAULT_CONTEXT);
 
         Iterator<ClientProcessor> iterator = testSubject.iterator();
         assertEquals(blueA, iterator.next());

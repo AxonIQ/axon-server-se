@@ -12,7 +12,7 @@ package io.axoniq.axonserver.component.instance;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nonnull;
 
 /**
  * Cache for connected client applications.
@@ -32,7 +33,7 @@ public class GenericClients implements Clients {
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
     private final ClientTagsCache clientTagsCache;
-    private final Map<ClientIdentification, Client> clientRegistrations = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, Client> clientRegistrations = new ConcurrentHashMap<>();
 
     public GenericClients(MessagingPlatformConfiguration messagingPlatformConfiguration,
                           ClientTagsCache clientTagsCache) {
@@ -40,6 +41,7 @@ public class GenericClients implements Clients {
         this.clientTagsCache = clientTagsCache;
     }
 
+    @Nonnull
     @Override
     public Iterator<Client> iterator() {
         return clientRegistrations.values().iterator();
@@ -52,13 +54,14 @@ public class GenericClients implements Clients {
 
     @EventListener
     public void on(TopologyEvents.ApplicationConnected event) {
-        this.clientRegistrations.put(event.clientIdentification(),
-                                     new GenericClient(event.getClient(),
+        this.clientRegistrations.put(event.clientStreamIdentification(),
+                                     new GenericClient(event.getClientId(),
+                                                       event.getClientStreamId(),
                                                        event.getComponentName(),
                                                        event.getContext(),
                                                        event.isProxied() ? event
                                                                .getProxy() : messagingPlatformConfiguration
                                                                .getName(),
-                                                       clientTagsCache.apply(event.clientIdentification())));
+                                                       clientTagsCache.apply(event.clientStreamIdentification())));
     }
 }

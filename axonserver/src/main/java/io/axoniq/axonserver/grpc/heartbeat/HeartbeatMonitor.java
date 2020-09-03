@@ -8,7 +8,7 @@ import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -38,6 +38,8 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
 @ConditionalOnProperty(value = "axoniq.axonserver.heartbeat.enabled")
 public class HeartbeatMonitor {
 
+    private final Map<ClientStreamIdentification, ClientInformation> clientInfos = new ConcurrentHashMap<>();
+
     private final Clock clock;
 
     private final long heartbeatTimeout;
@@ -46,9 +48,19 @@ public class HeartbeatMonitor {
 
     private final Publisher<PlatformOutboundInstruction> heartbeatPublisher;
 
-    private final Map<ClientIdentification, Instant> lastReceivedHeartBeats = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, Instant> lastReceivedHeartBeats = new ConcurrentHashMap<>();
 
-    private final Map<ClientIdentification, String> clientComponents = new ConcurrentHashMap<>();
+    /**
+     * Collects components when application connect to AxonServer.
+     *
+     * @param evt the connection event
+     */
+    @EventListener
+    public void on(ApplicationConnected evt) {
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
+                                                                                         evt.getClientStreamId());
+        clientInfos.put(clientIdentification, new ClientInformation(evt.getComponentName(), evt.getClientId()));
+    }
 
     /**
      * Constructs a {@link HeartbeatMonitor} that uses {@link PlatformService} to send and receive heartbeats messages.
@@ -65,8 +77,10 @@ public class HeartbeatMonitor {
                             ApplicationEventPublisher eventPublisher,
                             @Value("${axoniq.axonserver.client-heartbeat-timeout:5000}") long heartbeatTimeout) {
         this(listener ->
-                     platformService.onInboundInstruction(HEARTBEAT, (client, context, instruction) ->
-                             listener.accept(new ClientIdentification(context, client), instruction)),
+                     platformService.onInboundInstruction(HEARTBEAT, (clientComponent, instruction) ->
+                             listener.accept(new ClientStreamIdentification(clientComponent.getContext(),
+                                                                            clientComponent.getClientStreamId()),
+                                             instruction)),
              eventPublisher,
              heartbeatPublisher,
              heartbeatTimeout, Clock.systemUTC());
@@ -84,7 +98,7 @@ public class HeartbeatMonitor {
      * @param clock                         the clock
      */
     public HeartbeatMonitor(
-            Consumer<BiConsumer<ClientIdentification, PlatformInboundInstruction>> heartbeatListenerRegistration,
+            Consumer<BiConsumer<ClientStreamIdentification, PlatformInboundInstruction>> heartbeatListenerRegistration,
             ApplicationEventPublisher eventPublisher,
             Publisher<PlatformOutboundInstruction> heartbeatPublisher,
             long heartbeatTimeout, Clock clock) {
@@ -95,19 +109,8 @@ public class HeartbeatMonitor {
         this.heartbeatPublisher = heartbeatPublisher;
     }
 
-    private void onHeartBeat(ClientIdentification clientIdentification, PlatformInboundInstruction heartbeat) {
+    private void onHeartBeat(ClientStreamIdentification clientIdentification, PlatformInboundInstruction heartbeat) {
         lastReceivedHeartBeats.put(clientIdentification, Instant.now(clock));
-    }
-
-    /**
-     * Collects components when application connect to AxonServer.
-     *
-     * @param evt the connection event
-     */
-    @EventListener
-    public void on(ApplicationConnected evt) {
-        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClient());
-        clientComponents.put(clientIdentification, evt.getComponentName());
     }
 
     /**
@@ -117,12 +120,27 @@ public class HeartbeatMonitor {
             fixedRateString = "${axoniq.axonserver.client-heartbeat-check-rate:1000}")
     public void checkClientsStillAlive() {
         Instant timeout = Instant.now(clock).minus(heartbeatTimeout, ChronoUnit.MILLIS);
-        lastReceivedHeartBeats.forEach((client, instant) -> {
-            if (instant.isBefore(timeout) && clientComponents.containsKey(client)) {
-                String component = clientComponents.get(client);
-                eventPublisher.publishEvent(new ApplicationInactivityTimeout(client, component));
+        lastReceivedHeartBeats.forEach((clientStreamIdentification, instant) -> {
+            if (instant.isBefore(timeout) && clientInfos.containsKey(clientStreamIdentification)) {
+                String component = clientInfos.get(clientStreamIdentification).component;
+                String clientId = clientInfos.get(clientStreamIdentification).clientId;
+                eventPublisher.publishEvent(new ApplicationInactivityTimeout(clientStreamIdentification, component,
+                                                                             clientId));
             }
         });
+    }
+
+    /**
+     * Clears last heartbeat received from a client that disconnects from AxonServer.
+     *
+     * @param evt the disconnection event
+     */
+    @EventListener
+    public void on(ApplicationDisconnected evt) {
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
+                                                                                         evt.getClientStreamId());
+        lastReceivedHeartBeats.remove(clientIdentification);
+        clientInfos.remove(clientIdentification);
     }
 
 
@@ -138,16 +156,14 @@ public class HeartbeatMonitor {
                                            .build());
     }
 
+    private static final class ClientInformation {
 
-    /**
-     * Clears last heartbeat received from a client that disconnects from AxonServer.
-     *
-     * @param evt the disconnection event
-     */
-    @EventListener
-    public void on(ApplicationDisconnected evt) {
-        ClientIdentification clientIdentification = new ClientIdentification(evt.getContext(), evt.getClient());
-        lastReceivedHeartBeats.remove(clientIdentification);
-        clientComponents.remove(clientIdentification);
+        private final String component;
+        private final String clientId;
+
+        private ClientInformation(String component, String clientId) {
+            this.component = component;
+            this.clientId = clientId;
+        }
     }
 }
