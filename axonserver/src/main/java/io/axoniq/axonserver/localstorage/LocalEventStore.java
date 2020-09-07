@@ -282,7 +282,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (!running) {
                     onError.accept(new RejectedExecutionException("Cannot load events. AxonServer is shutting down"));
                 } else {
-                    task.run();
+                    try {
+                        task.run();
+                    } catch (Exception ex) {
+                        logger.warn("Cannot loads events: ", ex);
+                        onError.accept(ex);
+                    }
                 }
             });
         } catch (Exception e) {
