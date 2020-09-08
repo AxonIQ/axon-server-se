@@ -102,6 +102,10 @@ public class HttpStreamingQuery {
                                 break;
                             case FILES_COMPLETED:
                                 emitCompleted();
+                                if (!liveUpdates) {
+                                    sseEmitter.complete();
+                                    stop();
+                                }
                                 break;
                             case DATA_NOT_SET:
                                 break;
