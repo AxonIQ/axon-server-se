@@ -439,6 +439,29 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return null;
     }
 
+    /**
+     * Deletes all event data in the specified context's EventStore and reinitialize it starting form the specified
+     * token.
+     *
+     * @param context    the context of the store to reinitialize
+     * @param firstToken the first token to start from
+     */
+    public void reInitializeSnapshotStore(String context, long firstToken) {
+        workersMap.computeIfAbsent(context, this::openIfExist);
+        workers(context).snapshotStorageEngine.reInitializeStore(firstToken);
+    }
+
+    /**
+     * Returns the first snapshot for the specified context.
+     *
+     * @param context the context of the snapshot event store.
+     * @return the first snapshot for the specified context.
+     */
+    public long getFirstSnapshot(String context) {
+        workersMap.computeIfAbsent(context, this::openIfExist);
+        return workers(context).snapshotStorageEngine.getFirstToken();
+    }
+
     public long getLastSnapshot(String context) {
         workersMap.computeIfAbsent(context, this::openIfExist);
         return workers(context).snapshotStorageEngine.getLastToken();

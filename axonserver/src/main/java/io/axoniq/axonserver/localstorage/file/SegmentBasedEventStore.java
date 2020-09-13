@@ -241,8 +241,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public long getFirstToken() {
-        if( next != null) return next.getFirstToken();
-        if( getSegments().isEmpty() ) return -1;
+        if (next != null && !next.getSegments().isEmpty()) {
+            return next.getFirstToken();
+        }
+        if (getSegments().isEmpty()) {
+            return -1;
+        }
         return getSegments().last();
     }
 

@@ -203,10 +203,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         synchronizer.shutdown(true);
         readBuffers.forEach((s, source) -> {
             source.clean(0);
-            if( deleteData) removeSegment(s);
+            if (deleteData) {
+                removeSegment(s);
+            }
         });
 
-        if( next != null) next.close(deleteData);
+        if (next != null) {
+            next.close(deleteData);
+        }
 
         if (deleteData) {
             File storageDir = new File(storageProperties.getStorage(context));
@@ -241,6 +245,20 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
         return next != null ? next.getBackupFilenames(lastSegmentBackedUp) : Stream.empty();
+    }
+
+    @Override
+    public void reInitializeStore(long initialToken) {
+        logger.info("{}: Reinitializing the {} store from index {} ", context, getType().getEventType(), initialToken);
+        if (next != null) {
+            next.reInitializeStore(initialToken);
+        }
+        getSegments().forEach(this::removeSegment);
+        readBuffers.forEach((s, source) -> source.clean(0));
+        lastToken.set(initialToken - 1);
+        positionsPerSegmentMap.clear();
+        getOrOpenDatafile(initialToken);
+        initLatestSegment(Long.MAX_VALUE, Long.MAX_VALUE, new File(storageProperties.getStorage(context)));
     }
 
     @Override
@@ -359,7 +377,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             writeBuffer.put(event.toByteArray());
             if (event.isDomainEvent()) {
                 indexEntries.computeIfAbsent(event.getAggregateIdentifier(),
-                                                                                  k -> new ConcurrentSkipListSet<>())
+                                             k -> new ConcurrentSkipListSet<>())
                             .add(new PositionInfo(position, event.getAggregateSequenceNumber()));
             }
         }

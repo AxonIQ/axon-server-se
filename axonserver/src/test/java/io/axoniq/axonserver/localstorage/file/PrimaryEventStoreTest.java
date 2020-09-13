@@ -162,6 +162,22 @@ public class PrimaryEventStoreTest {
         assertEquals(-1, testSubject.getLastToken());
 
         storeEvent();
-        assertEquals(0,testSubject.getLastToken());
+        assertEquals(0, testSubject.getLastToken());
+    }
+
+    @Test
+    public void reinitializeStoreFromAToken() throws InterruptedException {
+        setupEvents(5, 20);
+        assertEquals(1, testSubject.getSegments().size());
+        assertEquals(0, testSubject.getFirstToken());
+        assertEquals(99, testSubject.getLastToken());
+        testSubject.reInitializeStore(10);
+        assertEquals(1, testSubject.getSegments().size());
+        assertEquals(10, testSubject.getFirstToken());
+        assertEquals(9, testSubject.getLastToken());
+        setupEvents(5, 20);
+        assertEquals(1, testSubject.getSegments().size());
+        assertEquals(10, testSubject.getFirstToken());
+        assertEquals(109, testSubject.getLastToken());
     }
 }

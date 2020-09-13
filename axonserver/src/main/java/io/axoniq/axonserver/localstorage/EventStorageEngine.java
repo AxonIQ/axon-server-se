@@ -193,6 +193,7 @@ public interface EventStorageEngine {
 
     /**
      * Returns the next token that will be used by the event store. Does not change the token.
+     *
      * @return the next token
      */
     long nextToken();
@@ -201,4 +202,12 @@ public interface EventStorageEngine {
      * Deletes all event data in the Event Store (Only intended for development environments).
      */
     void deleteAllEventData();
+
+    /**
+     * Deletes all event data in the Event Store and reinitialize it starting form the specified token.
+     *
+     * @param initialToken the first token to start from
+     */
+    default void reInitializeStore(long initialToken) {
+    }
 }
