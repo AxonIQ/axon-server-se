@@ -210,6 +210,7 @@ public interface EventStorageEngine {
 
     /**
      * Returns the next token that will be used by the event store. Does not change the token.
+     *
      * @return the next token
      */
     long nextToken();
@@ -218,4 +219,15 @@ public interface EventStorageEngine {
      * Deletes all event data in the Event Store (Only intended for development environments).
      */
     void deleteAllEventData();
+
+
+    /**
+     * Validates that the transaction that is stored at the given {@code token} is the same as the
+     * provided events. Throws an InvalidTransaction exception when there is a difference.
+     *
+     * @param token     the token of the first event in the transaction
+     * @param eventList the list of events
+     */
+    default void validateTransaction(long token, List<SerializedEvent> eventList) {
+    }
 }

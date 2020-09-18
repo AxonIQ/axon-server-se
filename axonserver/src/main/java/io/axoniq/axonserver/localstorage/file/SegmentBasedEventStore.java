@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -539,6 +540,30 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public long nextToken() {
         return 0;
+    }
+
+    @Override
+    public void validateTransaction(long token, List<SerializedEvent> eventList) {
+        try (CloseableIterator<SerializedTransactionWithToken> transactionIterator = transactionIterator(token,
+                                                                                                         token
+                                                                                                                 + eventList
+                                                                                                                 .size())) {
+            if (transactionIterator.hasNext()) {
+                SerializedTransactionWithToken transaction = transactionIterator.next();
+                if (!transaction.getEvents().equals(eventList)) {
+                    throw new EventStoreValidationException(String.format(
+                            "%s: Replicated %s transaction %d does not match stored transaction",
+                            context,
+                            type.getEventType(),
+                            token));
+                }
+            } else {
+                throw new EventStoreValidationException(String.format("%s: Replicated %s transaction %d not found",
+                                                                      context,
+                                                                      type.getEventType(),
+                                                                      token));
+            }
+        }
     }
 
     private class TransactionWithTokenIterator implements CloseableIterator<SerializedTransactionWithToken> {
