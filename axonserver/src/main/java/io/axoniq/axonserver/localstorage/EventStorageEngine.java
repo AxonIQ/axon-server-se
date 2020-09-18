@@ -223,7 +223,8 @@ public interface EventStorageEngine {
 
     /**
      * Validates that the transaction that is stored at the given {@code token} is the same as the
-     * provided events. Throws an InvalidTransaction exception when there is a difference.
+     * provided events. Throws an {@link io.axoniq.axonserver.exception.EventStoreValidationException} exception when
+     * there is a difference.
      *
      * @param token     the token of the first event in the transaction
      * @param eventList the list of events
