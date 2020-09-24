@@ -79,6 +79,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
     private final ExecutorService dataFetcher;
+    private final ExecutorService dataWriter;
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final int maxEventCount;
@@ -107,7 +108,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
              new DefaultEventDecorator(),
              Short.MAX_VALUE,
              1000,
-             24);
+             24,
+             8);
     }
 
     @Autowired
@@ -117,13 +119,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                            EventDecorator eventDecorator,
                            @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
-                           @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads) {
+                           @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads,
+                           @Value("${axoniq.axonserver.data-writer-threads:8}") int writerThreads) {
         this.eventStoreFactory = eventStoreFactory;
         this.meterFactory = meterFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
+        this.dataWriter = Executors.newFixedThreadPool(writerThreads, new CustomizableThreadFactory("data-writer-"));
         this.eventDecorator = eventDecorator;
     }
 
@@ -198,8 +202,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        runInDataFetcherPool(() -> doAppendSnapshot(context, eventMessage, completableFuture),
-                             completableFuture::completeExceptionally);
+        runInDataWriterPool(() -> doAppendSnapshot(context, eventMessage, completableFuture),
+                            completableFuture::completeExceptionally);
         return completableFuture;
     }
 
@@ -262,12 +266,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (closed.get()) {
                     return;
                 }
-
-                workers(context)
+                runInDataWriterPool(() -> workers(context)
                         .eventWriteStorage
                         .store(eventList)
                         .thenRun(this::confirm)
-                        .exceptionally(this::error);
+                        .exceptionally(this::error), this::error);
             }
 
             private Void error(Throwable exception) {
@@ -311,8 +314,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {
+        runInPool(dataFetcher, task, onError);
+    }
+
+    private void runInDataWriterPool(Runnable task, Consumer<Exception> onError) {
+        runInPool(dataWriter, task, onError);
+    }
+
+    private void runInPool(ExecutorService threadPool, Runnable task, Consumer<Exception> onError) {
         try {
-            dataFetcher.submit(() -> {
+            threadPool.submit(() -> {
                 // we will not start new reader tasks when a shutdown was initialized. Behavior is similar to submitting tasks after shutdown
                 if (!running) {
                     onError.accept(new RejectedExecutionException("Cannot load events. AxonServer is shutting down"));
