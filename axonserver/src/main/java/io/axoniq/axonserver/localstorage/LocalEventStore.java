@@ -647,7 +647,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final String context;
         private final SyncStorage eventSyncStorage;
         private final SyncStorage snapshotSyncStorage;
-        private final AtomicBoolean initialized = new AtomicBoolean();
+        private volatile boolean initialized;
         private final TrackingEventProcessorManager trackingEventManager;
         private final Gauge gauge;
         private final Gauge snapshotGauge;
@@ -680,19 +680,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
 
         public void ensureInitialized(boolean validate, long defaultFirstEventIndex, long defaultFirstSnapshotIndex) {
-            if (initialized.get()) {
+            if (initialized) {
                 return;
             }
 
             synchronized (initLock) {
-                if (initialized.get()) {
+                if (initialized) {
                     return;
                 }
                 logger.debug("{}: initializing", context);
                 try {
                     eventStorageEngine.init(validate, defaultFirstEventIndex);
                     snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
-                    initialized.set(true);
+                    initialized = true;
                 } catch (RuntimeException runtimeException) {
                     eventStorageEngine.close(false);
                     snapshotStorageEngine.close(false);
