@@ -137,11 +137,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public void initContext(String context, boolean validating, long defaultFirstEventIndex,
                             long defaultFirstSnapshotIndex) {
-        if (workersMap.containsKey(context)) {
-            return;
+        try {
+            workersMap.computeIfAbsent(context, Workers::new)
+                      .ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
+        } catch (RuntimeException ex) {
+            workersMap.remove(context);
         }
-        workersMap.putIfAbsent(context, new Workers(context));
-        workersMap.get(context).init(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
     }
 
     /**
@@ -657,10 +658,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final String context;
         private final SyncStorage eventSyncStorage;
         private final SyncStorage snapshotSyncStorage;
-        private final AtomicBoolean initialized = new AtomicBoolean();
+        private volatile boolean initialized;
         private final TrackingEventProcessorManager trackingEventManager;
         private final Gauge gauge;
         private final Gauge snapshotGauge;
+        private final Object initLock = new Object();
 
 
         public Workers(String context) {
@@ -688,12 +690,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                     c -> (double) snapshotStorageEngine.getLastToken());
         }
 
-        public synchronized void init(boolean validate, long defaultFirstEventIndex, long defaultFirstSnapshotIndex) {
-            logger.debug("{}: init called", context);
-            if (initialized.compareAndSet(false, true)) {
+        public void ensureInitialized(boolean validate, long defaultFirstEventIndex, long defaultFirstSnapshotIndex) {
+            if (initialized) {
+                return;
+            }
+
+            synchronized (initLock) {
+                if (initialized) {
+                    return;
+                }
                 logger.debug("{}: initializing", context);
-                eventStorageEngine.init(validate, defaultFirstEventIndex);
-                snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
+                try {
+                    eventStorageEngine.init(validate, defaultFirstEventIndex);
+                    snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
+                    initialized = true;
+                } catch (RuntimeException runtimeException) {
+                    eventStorageEngine.close(false);
+                    snapshotStorageEngine.close(false);
+                    throw runtimeException;
+                }
             }
         }
 
