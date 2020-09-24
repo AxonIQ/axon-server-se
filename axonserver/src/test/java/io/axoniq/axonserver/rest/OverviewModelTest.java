@@ -34,11 +34,11 @@ public class OverviewModelTest {
     public void setUp() {
         Topology clusterController = mock(Topology.class);
         Iterable<AxonServer> hubs = asList(new FakeAxonServer(true,
-                                                              new SimpleAxonServerNode("hub1","localhost",1,2),
+                                                              new SimpleAxonServerNode("hub1","localhost",1, 0,2),
                                                               asSet("contex", "default"),
                                                               asSet( "default")),
                                            new FakeAxonServer(false,
-                                                              new SimpleAxonServerNode("hub2", "localhost",  4, 5),
+                                                              new SimpleAxonServerNode("hub2", "localhost",  4, 0, 5),
                                                               asSet("contex"),
                                                               asSet() ));
 

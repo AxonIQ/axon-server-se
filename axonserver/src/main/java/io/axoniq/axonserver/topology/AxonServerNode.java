@@ -33,6 +33,12 @@ public interface AxonServerNode {
     Integer getGrpcPort();
 
     /**
+     * The port number to be used by clients to connect to this node using SSL.
+     * @return gRPC port number
+     */
+    Integer getSgrpcPort();
+
+    /**
      * The hostname used by other nodes in the cluster to connect to this node. This is only used in Enterprise Edition.
      * @return the internal hostname
      */
@@ -43,6 +49,12 @@ public interface AxonServerNode {
      * @return gRPC port number
      */
     Integer getGrpcInternalPort();
+
+    /**
+     * The port number to be used by other nodes in the cluster to connect to this node using SSL. This is only used in Enterprise Edition.
+     * @return gRPC port number
+     */
+    Integer getSgrpcInternalPort();
 
     /**
      * The HTTP port number for rest services and dashboard.

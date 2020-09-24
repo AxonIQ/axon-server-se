@@ -19,7 +19,10 @@ public class DefaultTopology implements Topology {
     private final AxonServerNode me;
 
     public DefaultTopology(MessagingPlatformConfiguration configuration) {
-        this(new SimpleAxonServerNode(configuration.getName(), configuration.getFullyQualifiedHostname(), configuration.getPort(),configuration.getHttpPort()));
+        this(new SimpleAxonServerNode(configuration.getName(), configuration.getFullyQualifiedHostname(),
+                configuration.getPort(),
+                ((configuration.getSsl() != null) && configuration.getSsl().isPortSet()) ? configuration.getSsl().getPort() : 0,
+                configuration.getHttpPort()));
     }
 
     public DefaultTopology(AxonServerNode me) {

@@ -20,12 +20,14 @@ public class SimpleAxonServerNode implements AxonServerNode {
     private final String name;
     private final String hostName;
     private final int port;
+    private final int sgrpcPort;
     private final int httpPort;
 
-    public SimpleAxonServerNode(String name, String hostName, int port, int httpPort) {
+    public SimpleAxonServerNode(String name, String hostName, int port, int sgrpcPort, int httpPort) {
         this.name = name;
         this.hostName = hostName;
         this.port = port;
+        this.sgrpcPort = getSgrpcPort();
         this.httpPort = httpPort;
     }
 
@@ -40,12 +42,22 @@ public class SimpleAxonServerNode implements AxonServerNode {
     }
 
     @Override
+    public Integer getSgrpcPort() {
+        return sgrpcPort;
+    }
+
+    @Override
     public String getInternalHostName() {
         return null;
     }
 
     @Override
     public Integer getGrpcInternalPort() {
+        return 0;
+    }
+
+    @Override
+    public Integer getSgrpcInternalPort() {
         return 0;
     }
 
