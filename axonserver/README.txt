@@ -3,6 +3,11 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.2
+-------------------------------
+* Offload expensive data-writing operations to separate thread pool
+* Fix for reading aggregates with older snapshots
+
 Release Notes for version 4.4.1
 -------------------------------
 * Reduced latency when Tracking live Events from a follower
