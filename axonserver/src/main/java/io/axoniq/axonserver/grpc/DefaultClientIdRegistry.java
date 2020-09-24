@@ -126,7 +126,7 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
         String clientId = event.getQueryHandler().getClientId();
         String clientStreamId = event.clientIdentification().getClientStreamId();
         if (!clientIdMapPerType.getOrDefault(QUERY, Collections.emptyMap()).containsKey(clientStreamId)) {
-            logger.info("Command stream connected: {} [stream id -> {}]", clientId, clientStreamId);
+            logger.info("Query stream connected: {} [stream id -> {}]", clientId, clientStreamId);
         }
         register(clientStreamId, clientId, QUERY);
     }
