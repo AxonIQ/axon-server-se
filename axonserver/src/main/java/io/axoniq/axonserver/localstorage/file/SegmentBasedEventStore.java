@@ -238,7 +238,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
 
         if (next != null) {
-            next.readSerializedEvent(minSequenceNumber, lastEventPosition);
+            return next.readSerializedEvent(minSequenceNumber, lastEventPosition);
         }
 
         return Optional.empty();
