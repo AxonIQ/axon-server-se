@@ -11,13 +11,17 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.PayloadDescription;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -159,5 +163,77 @@ public class TrackingEventProcessorManagerTest {
                                                    }
                                                });
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(10, messagesReceived.get()));
+    }
+
+    @Test
+    public void expectHeartbeatWithEmptyMessage() throws InterruptedException, IOException {
+        eventsLeft.set(0);
+        GetEventsRequest request = GetEventsRequest.newBuilder()
+                                                   .setTrackingToken(100)
+                                                   .setNumberOfPermits(50)
+                                                   .setHeartbeatInterval(200)
+                                                   .setClientId("test-client")
+                                                   .build();
+        List<InputStream> messagesReceived = new ArrayList<>();
+        AtomicBoolean completed = new AtomicBoolean();
+        AtomicBoolean failed = new AtomicBoolean();
+        TrackingEventProcessorManager.EventTracker tracker =
+                testSubject.createEventTracker(request,
+                                               new StreamObserver<InputStream>() {
+                                                   @Override
+                                                   public void onNext(
+                                                           InputStream value) {
+                                                       messagesReceived.add(value);
+                                                   }
+
+                                                   @Override
+                                                   public void onError(Throwable t) {
+                                                       failed.set(true);
+                                                   }
+
+                                                   @Override
+                                                   public void onCompleted() {
+                                                       completed.set(true);
+                                                   }
+                                               });
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, messagesReceived.size()));
+        EventWithToken serializedEvent = EventWithToken.parseFrom(messagesReceived.get(0));
+        assertEquals(99, serializedEvent.getToken());
+        assertTrue(serializedEvent.hasEvent());
+        assertFalse(serializedEvent.getEvent().hasPayload());
+    }
+
+    @Test
+    public void expectNoHeartbeatIfClientDoesNotSupport() throws InterruptedException, IOException {
+        eventsLeft.set(0);
+        GetEventsRequest request = GetEventsRequest.newBuilder()
+                                                   .setTrackingToken(100)
+                                                   .setNumberOfPermits(50)
+                                                   .setClientId("test-client")
+                                                   .build();
+        List<InputStream> messagesReceived = new ArrayList<>();
+        AtomicBoolean completed = new AtomicBoolean();
+        AtomicBoolean failed = new AtomicBoolean();
+        TrackingEventProcessorManager.EventTracker tracker =
+                testSubject.createEventTracker(request,
+                                               new StreamObserver<InputStream>() {
+                                                   @Override
+                                                   public void onNext(
+                                                           InputStream value) {
+                                                       messagesReceived.add(value);
+                                                   }
+
+                                                   @Override
+                                                   public void onError(Throwable t) {
+                                                       failed.set(true);
+                                                   }
+
+                                                   @Override
+                                                   public void onCompleted() {
+                                                       completed.set(true);
+                                                   }
+                                               });
+        Thread.sleep(400);
+        assertEquals(0, messagesReceived.size());
     }
 }

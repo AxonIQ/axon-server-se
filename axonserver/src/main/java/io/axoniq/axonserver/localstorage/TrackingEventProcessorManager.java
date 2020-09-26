@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.PayloadDescription;
 import io.axoniq.axonserver.util.StreamObserverUtils;
@@ -77,9 +78,14 @@ public class TrackingEventProcessorManager {
     }
 
     /**
-     * Send events to all tracking event processors until there are no new events or no tracking event processors ready to
-     * receive events. If there are tracking event processors left after processing one run, it reschedules to try again
+     * Send events to all tracking event processors until there are no new events or no tracking event processors ready
+     * to
+     * receive events. If there are tracking event processors left after processing one run, it reschedules to try
+     * again
      * after 100ms.
+     * Sends heartbeat messages to tracking event processors that support heartbeat messages when no events were
+     * created
+     * during the last heartbeat interval.
      * Only one instance of this operation will run.
      */
     private void sendEvents() {
@@ -195,6 +201,9 @@ public class TrackingEventProcessorManager {
         private volatile boolean running = true;
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
         private volatile int force = blacklistedSendAfter;
+        private final AtomicLong nextHeartbeat = new AtomicLong();
+        private final boolean clientSupportsHeartbeat;
+        private final int heartbeatInterval;
 
         private EventTracker(GetEventsRequest request, StreamObserver<InputStream> eventStream) {
             permits = new AtomicInteger((int) request.getNumberOfPermits());
@@ -205,6 +214,9 @@ public class TrackingEventProcessorManager {
                 addBlacklist(request.getBlacklistList());
             }
             this.eventStream = eventStream;
+            heartbeatInterval = request.getHeartbeatInterval();
+            clientSupportsHeartbeat = heartbeatInterval > 0;
+            nextHeartbeat.set(System.currentTimeMillis() + heartbeatInterval);
         }
 
         private int sendNext() {
@@ -217,6 +229,7 @@ public class TrackingEventProcessorManager {
             }
 
             int count = 0;
+            boolean eventSent = false;
             try {
                 while (running
                         && permits.get() > 0
@@ -225,14 +238,13 @@ public class TrackingEventProcessorManager {
                 ) {
                     SerializedEventWithToken next = eventIterator.next();
                     if( !blacklisted(next)) {
-                        eventStream.onNext(next.asInputStream());
-                        if (permits.decrementAndGet() == 0) {
-                            lastPermitTimestamp.set(System.currentTimeMillis());
-                        }
+                        sendEvent(next);
                         force = blacklistedSendAfter;
+                        eventSent = true;
                     } else {
                         force--;
                     }
+                    nextToken.incrementAndGet();
                     count++;
                 }
             } catch (Exception ex) {
@@ -240,7 +252,37 @@ public class TrackingEventProcessorManager {
                 sendError(ex);
             }
 
+            checkSendHeartbeat(eventSent);
             return count;
+        }
+
+        private void checkSendHeartbeat(boolean eventSent) {
+            if (clientSupportsHeartbeat && !eventSent && permits.get() > 0 && nextHeartbeat.get() <= System
+                    .currentTimeMillis()) {
+                // send empty message
+                logger.trace("{}: sending empty message with token {}", context, nextToken.get() - 1);
+                sendEvent(emptyMessage());
+            }
+        }
+
+        private void sendEvent(SerializedEventWithToken inputStream) {
+            eventStream.onNext(inputStream.asInputStream());
+            decrementPermits();
+            setNextHeartbeat();
+        }
+
+        private void setNextHeartbeat() {
+            nextHeartbeat.set(System.currentTimeMillis() + heartbeatInterval);
+        }
+
+        private void decrementPermits() {
+            if (permits.decrementAndGet() == 0) {
+                lastPermitTimestamp.set(System.currentTimeMillis());
+            }
+        }
+
+        private SerializedEventWithToken emptyMessage() {
+            return new SerializedEventWithToken(nextToken.get() - 1, Event.getDefaultInstance());
         }
 
         private boolean blacklisted(SerializedEventWithToken next) {
@@ -249,8 +291,9 @@ public class TrackingEventProcessorManager {
 
         private PayloadDescription payloadType(SerializedEventWithToken next) {
             return PayloadDescription.newBuilder().
-                    setRevision(next.asEvent().getPayload().getRevision()).setType(next.asEvent().getPayload().getType()).
-                    build();
+                    setRevision(next.asEvent().getPayload().getRevision()).setType(next.asEvent().getPayload()
+                                                                                       .getType()).
+                                             build();
         }
 
         private void sendError(Exception ex) {

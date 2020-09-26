@@ -9,6 +9,8 @@ import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -38,6 +40,7 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
 @ConditionalOnProperty(value = "axoniq.axonserver.heartbeat.enabled")
 public class HeartbeatMonitor {
 
+    private final Logger logger = LoggerFactory.getLogger(HeartbeatMonitor.class);
     private final Map<ClientStreamIdentification, ClientInformation> clientInfos = new ConcurrentHashMap<>();
 
     private final Clock clock;
@@ -109,6 +112,9 @@ public class HeartbeatMonitor {
     }
 
     private void onHeartBeat(ClientStreamIdentification clientIdentification, PlatformInboundInstruction heartbeat) {
+        logger.trace("{}: received heartbeat from {}",
+                     clientIdentification.getContext(),
+                     clientIdentification.getClientStreamId());
         lastReceivedHeartBeats.put(clientIdentification, Instant.now(clock));
     }
 
@@ -123,6 +129,8 @@ public class HeartbeatMonitor {
             if (instant.isBefore(timeout) && clientInfos.containsKey(clientStreamIdentification)) {
                 String component = clientInfos.get(clientStreamIdentification).component;
                 String clientId = clientInfos.get(clientStreamIdentification).clientId;
+                logger.trace("{send heartbeat to {}", clientStreamIdentification);
+
                 eventPublisher.publishEvent(new ApplicationInactivityTimeout(clientStreamIdentification, component,
                                                                              clientId));
             }

@@ -67,7 +67,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
 
     @Override
     public void printOn(Media media) {
-        EventProcessor.super.printOn(media);
+        super.printOn(media);
 
         Set<String> freeThreadInstances =
                 processors().stream()
