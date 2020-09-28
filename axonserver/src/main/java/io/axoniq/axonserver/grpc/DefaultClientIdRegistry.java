@@ -71,7 +71,7 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
 
     @Override
     public Set<String> streamIdsFor(String clientId, ConnectionType type) {
-        Map<String, String> connectionTypeMap = clientIdMapPerType.computeIfAbsent(type, t -> Collections.emptyMap());
+        Map<String, String> connectionTypeMap = clientIdMapPerType.getOrDefault(type, Collections.emptyMap());
         Set<String> current = connectionTypeMap.entrySet()
                                                .stream()
                                                .filter(e -> e.getValue().equals(clientId))
