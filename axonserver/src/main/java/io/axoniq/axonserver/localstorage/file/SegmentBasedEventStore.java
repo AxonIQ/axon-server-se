@@ -374,7 +374,19 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected TransactionIterator getTransactions(long segment, long token, boolean validating) {
         Optional<EventSource> reader = getEventSource(segment);
         return reader.map(r -> createTransactionIterator(r, segment, token, validating))
-                     .orElseGet(() -> next.getTransactions(segment, token, validating));
+                     .orElseGet(() -> getTransactionsFromNext(segment, token, validating));
+    }
+
+    private TransactionIterator getTransactionsFromNext(long segment, long token, boolean validating) {
+        if (next == null) {
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 String.format(
+                                                         "%s: unable to read transactions for segment %d, requested token %d",
+                                                         context,
+                                                         segment,
+                                                         token));
+        }
+        return next.getTransactions(segment, token, validating);
     }
 
     protected TransactionIterator createTransactionIterator(EventSource eventSource, long segment, long token,

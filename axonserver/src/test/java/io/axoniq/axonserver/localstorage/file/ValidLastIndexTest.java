@@ -62,7 +62,7 @@ public class ValidLastIndexTest {
     @Test
     public void startWithNewSegment() {
         testSubject.init(true);
-        assertTrue(new File(sampleEventStoreFolder.getAbsolutePath() + "/default/00000000000000000462.snapshots")
+        assertTrue(new File(sampleEventStoreFolder.getAbsolutePath() + "/default/00000000000000000462.events")
                            .exists());
     }
 }
