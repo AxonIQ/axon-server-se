@@ -56,18 +56,17 @@ public class StandardEventStoreFactory implements EventStoreFactory {
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
                                                                      EventType.EVENT,
                                                                      meterFactory);
-        PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
-                                                        indexManager,
-                                                        eventTransformerFactory,
-                                                        embeddedDBProperties.getEvent(),
-                                                        meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties.getEvent(),
                                                                  meterFactory);
-        first.next(second);
-        return first;
+        return new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
+                                     indexManager,
+                                     eventTransformerFactory,
+                                     embeddedDBProperties.getEvent(),
+                                     second,
+                                     meterFactory);
     }
 
     /**
@@ -80,15 +79,13 @@ public class StandardEventStoreFactory implements EventStoreFactory {
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getSnapshot(),
                                                                      EventType.SNAPSHOT,
                                                                      meterFactory);
-        PrimaryEventStore first = new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
-                                                        indexManager,
-                                                        eventTransformerFactory,
-                                                        embeddedDBProperties.getSnapshot(), meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties.getSnapshot(), meterFactory);
-        first.next(second);
-        return first;
+        return new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
+                                     indexManager,
+                                     eventTransformerFactory,
+                                     embeddedDBProperties.getSnapshot(), second, meterFactory);
     }
 }
