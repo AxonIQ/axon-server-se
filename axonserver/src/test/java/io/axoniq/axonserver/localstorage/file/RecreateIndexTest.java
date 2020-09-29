@@ -59,7 +59,7 @@ public class RecreateIndexTest {
                                             indexManager,
                                             new DefaultEventTransformerFactory(),
                                             storageProperties,
-                                            testSubject,
+                                            secondaryEventStore,
                                             meterFactory);
     }
 
