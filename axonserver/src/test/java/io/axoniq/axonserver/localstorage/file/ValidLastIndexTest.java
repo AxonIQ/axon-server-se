@@ -44,19 +44,18 @@ public class ValidLastIndexTest {
                                                              storageProperties,
                                                              EventType.EVENT,
                                                              meterFactory);
-        testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
-                                            indexManager,
-                                            new DefaultEventTransformerFactory(),
-                                            storageProperties,
-                                            meterFactory);
-
         InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
                                                                                                    EventType.EVENT),
                                                                               indexManager,
                                                                               new DefaultEventTransformerFactory(),
                                                                               storageProperties,
                                                                               meterFactory);
-        testSubject.next(secondaryEventStore);
+        testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
+                                            indexManager,
+                                            new DefaultEventTransformerFactory(),
+                                            storageProperties,
+                                            secondaryEventStore,
+                                            meterFactory);
     }
 
     @Test

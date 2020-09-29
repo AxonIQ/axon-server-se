@@ -61,17 +61,17 @@ public class PrimaryEventStoreTest {
                                                                      EventType.EVENT,
                                                                      meterFactory);
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
-        testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
-                                            indexManager,
-                                            eventTransformerFactory,
-                                            embeddedDBProperties.getEvent(),
-                                            meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties.getEvent(),
                                                                  meterFactory);
-        testSubject.next(second);
+        testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
+                                            indexManager,
+                                            eventTransformerFactory,
+                                            embeddedDBProperties.getEvent(),
+                                            second,
+                                            meterFactory);
         testSubject.init(false);
     }
 

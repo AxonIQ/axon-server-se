@@ -79,14 +79,22 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
     private final Timer aggregateReadTimer;
     private final Timer lastSequenceReadTimer;
-    protected volatile SegmentBasedEventStore next;
+    protected final SegmentBasedEventStore next;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
                                   StorageProperties storageProperties, MeterFactory meterFactory) {
+        this(eventTypeContext, indexManager, storageProperties, null, meterFactory);
+    }
+
+    public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
+                                  StorageProperties storageProperties,
+                                  SegmentBasedEventStore nextSegmentsHandler,
+                                  MeterFactory meterFactory) {
         this.type = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
+        this.next = nextSegmentsHandler;
         this.aggregateReadTimer = meterFactory.timer(BaseMetricName.AXON_AGGREGATE_READTIME,
                                                      Tags.of(MeterFactory.CONTEXT,
                                                              eventTypeContext.getContext(),
@@ -100,14 +108,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public abstract void handover(Long segment, Runnable callback);
-
-    public void next(SegmentBasedEventStore datafileManager) {
-        SegmentBasedEventStore last = this;
-        while (last.next != null) {
-            last = last.next;
-        }
-        last.next = datafileManager;
-    }
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,

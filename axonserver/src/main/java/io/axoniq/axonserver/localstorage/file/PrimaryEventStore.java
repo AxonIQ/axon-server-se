@@ -75,8 +75,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
      */
     public PrimaryEventStore(EventTypeContext context, IndexManager indexManager,
                              EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties,
+                             SegmentBasedEventStore completedSegmentsHandler,
                              MeterFactory meterFactory) {
-        super(context, indexManager, storageProperties, meterFactory);
+        super(context, indexManager, storageProperties, completedSegmentsHandler, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }
@@ -93,7 +94,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, long defaultFirstIndex) {
         long first = getFirstFile(lastInitialized, storageDir, defaultFirstIndex);
         renameFileIfNecessary(first);
-        first = createNewSegmentIfLatestCompleted(first);
+        first = firstSegmentIfLatestCompleted(first);
         if (next != null) {
             next.initSegments(first);
         }
@@ -140,7 +141,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         synchronizer.init(writePosition);
     }
 
-    private long createNewSegmentIfLatestCompleted(long latestSegment) {
+    private long firstSegmentIfLatestCompleted(long latestSegment) {
         if (!indexManager.validIndex(latestSegment)) {
             return latestSegment;
         }
