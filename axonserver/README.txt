@@ -6,6 +6,7 @@ visit https://docs.axoniq.io.
 Release Notes for version 4.3.8
 -------------------------------
 * Complete the stream in case of exception during the load of events.
+* Fix for connections not correctly registered
 
 Release Notes for version 4.3.7
 -------------------------------
