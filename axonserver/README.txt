@@ -5,6 +5,11 @@ visit https://docs.axoniq.io.
 
 Release Notes for version 4.4.2
 -------------------------------
+* Fix for connections not correctly registered
+* Changed initialization sequence for event store to initialize completed segments first
+
+Release Notes for version 4.4.2
+-------------------------------
 * Offload expensive data-writing operations to separate thread pool
 * Fix for reading aggregates with older snapshots
 
