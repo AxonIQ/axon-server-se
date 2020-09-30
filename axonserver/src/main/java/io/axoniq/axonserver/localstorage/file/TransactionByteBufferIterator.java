@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -55,7 +56,7 @@ public class TransactionByteBufferIterator implements TransactionIterator {
                 reader.position(reader.position() + size + 4);
                 currentSequenceNumber += nrOfMessages;
             } else {
-                throw new MessagingPlatformException(ErrorCode.INVALID_TRANSACTION_TOKEN,
+                throw new EventStoreValidationException(
                         "FirstSequence in middle of transaction, firstSequence=" + firstSequence + ", current="
                                 + currentSequenceNumber + ", nrOfMessages=" + nrOfMessages);
             }

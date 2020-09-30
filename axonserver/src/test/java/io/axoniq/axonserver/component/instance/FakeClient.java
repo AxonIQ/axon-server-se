@@ -32,7 +32,12 @@ public class FakeClient implements Client {
     }
 
     @Override
-    public String name() {
+    public String id() {
+        return name;
+    }
+
+    @Override
+    public String streamId() {
         return name;
     }
 

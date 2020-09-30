@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,10 +34,7 @@ public class SyncStorage {
     public void sync(long token, List<SerializedEvent> eventList) {
         if( eventList.isEmpty()) return;
         if (token < eventStore.nextToken()) {
-            logger.debug("{}: {} with token {} already stored",
-                        eventStore.getType().getContext(),
-                        eventStore.getType().getEventType(),
-                        token);
+            eventStore.validateTransaction(token, eventList);
             return;
         }
 
@@ -45,7 +43,7 @@ public class SyncStorage {
                         eventStore.getType().getContext(), eventStore.getType().getEventType(),
                         eventStore.nextToken(),
                         token);
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Received invalid token");
+            throw new EventStoreValidationException("Received invalid token");
         }
         try {
             eventStore.store(eventList).get();

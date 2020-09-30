@@ -75,8 +75,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
      */
     public PrimaryEventStore(EventTypeContext context, IndexManager indexManager,
                              EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties,
+                             SegmentBasedEventStore completedSegmentsHandler,
                              MeterFactory meterFactory) {
-        super(context, indexManager, storageProperties, meterFactory);
+        super(context, indexManager, storageProperties, completedSegmentsHandler, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }
@@ -93,6 +94,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, long defaultFirstIndex) {
         long first = getFirstFile(lastInitialized, storageDir, defaultFirstIndex);
         renameFileIfNecessary(first);
+        first = firstSegmentIfLatestCompleted(first);
+        if (next != null) {
+            next.initSegments(first);
+        }
         WritableEventSource buffer = getOrOpenDatafile(first);
         indexManager.remove(first);
         long sequence = first;
@@ -134,10 +139,24 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
         writePositionRef.set(writePosition);
         synchronizer.init(writePosition);
+    }
 
-        if (next != null) {
-            next.initSegments(first);
+    private long firstSegmentIfLatestCompleted(long latestSegment) {
+        if (!indexManager.validIndex(latestSegment)) {
+            return latestSegment;
         }
+        WritableEventSource buffer = getOrOpenDatafile(latestSegment);
+        long token = latestSegment;
+        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, latestSegment, latestSegment)) {
+            while (iterator.hasNext()) {
+                iterator.next();
+                token++;
+            }
+        } finally {
+            readBuffers.remove(latestSegment);
+            buffer.close();
+        }
+        return token;
     }
 
     private long getFirstFile(long lastInitialized, File events, long defaultFirstIndex) {

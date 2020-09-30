@@ -54,7 +54,8 @@ public class DefaultOperationFactory implements OperationFactory {
             stream(processors.spliterator(), false)
                     .filter(new SameProcessor(processor))
                     .filter(p -> !target.equals(p.clientId()))
-                    .forEach(p -> processorEventsSource.releaseSegment(processor.context(), p.clientId(), processor.name(), segment));
+                    .forEach(p -> processorEventsSource
+                            .releaseSegment(processor.context(), p.clientId(), processor.name(), segment));
         }
 
         @Override

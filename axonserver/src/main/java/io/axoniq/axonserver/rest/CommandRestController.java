@@ -144,7 +144,7 @@ public class CommandRestController {
         static JsonClientMapping from(Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
             JsonClientMapping jsonCommandMapping = new JsonClientMapping();
             CommandHandler commandHandler = entry.getKey();
-            jsonCommandMapping.client = commandHandler.getClient().toString();
+            jsonCommandMapping.client = commandHandler.getClientStreamIdentification().toString();
             jsonCommandMapping.component = commandHandler.getComponentName();
             jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
 

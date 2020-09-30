@@ -11,7 +11,7 @@ package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
@@ -40,68 +40,97 @@ public class CommandRegistrationCacheTest {
 
         registrationCache.add("command1",
                               new DirectCommandHandler(streamObserver1,
-                                                       new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                 "client1"),
-                                                       "component"));
+                                                      "client1", "component"));
         registrationCache.add("command1",
                               new DirectCommandHandler(streamObserver2,
-                                                       new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                 "client2"),
-                                                       "component"));
+                                                      "client2", "component"));
         registrationCache.add("command2",
                               new DirectCommandHandler(streamObserver2,
-                                                       new ClientIdentification(Topology.DEFAULT_CONTEXT,
+                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                 "client2"),
+                                                      "client2",
                                                        "component"));
     }
 
     @Test
     public void removeCommandSubscription() {
-        registrationCache.remove(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client2"),"command1");
+        registrationCache.remove(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client2"), "command1");
         Map<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> registrations = registrationCache
                 .getAll();
-        assertTrue(registrations.containsKey(new DirectCommandHandler(streamObserver2, new ClientIdentification(Topology.DEFAULT_CONTEXT,"client2"), "component")));
-        assertEquals(1, registrations.get(new DirectCommandHandler(streamObserver2, new ClientIdentification(Topology.DEFAULT_CONTEXT,"client2"), "component")).size());
+        assertTrue(registrations.containsKey(new DirectCommandHandler(streamObserver2,
+                                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                                     "client2"),
+                                                                      "client2",
+                                                                      "component")));
+        assertEquals(1,
+                     registrations.get(new DirectCommandHandler(streamObserver2,
+                                                                new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                               "client2"), "client2",
+                                                                "component")).size());
     }
 
     @Test
     public void removeLastCommandSubscription() {
-        registrationCache.remove(new ClientIdentification(Topology.DEFAULT_CONTEXT, "client1"),"command1");
-        assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(streamObserver1, new ClientIdentification(Topology.DEFAULT_CONTEXT,"client1"), "component")));
+        registrationCache.remove(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client1"), "command1");
+        assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(streamObserver1,
+                                                                                    new ClientStreamIdentification(
+                                                                                            Topology.DEFAULT_CONTEXT,
+                                                                                            "client1"), "client1",
+                                                                                    "component")));
     }
 
     @Test
     public void removeConnection() {
-        registrationCache.remove(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client2"));
-        assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(streamObserver1, new ClientIdentification(Topology.DEFAULT_CONTEXT,"client2"), "component")));
+        registrationCache.remove(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client2"));
+        assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(streamObserver1,
+                                                                                    new ClientStreamIdentification(
+                                                                                            Topology.DEFAULT_CONTEXT,
+                                                                                            "client2"), "client2",
+                                                                                    "component")));
     }
 
     @Test
     public void add() {
-        registrationCache.add("command2", new DirectCommandHandler(streamObserver1, new ClientIdentification(Topology.DEFAULT_CONTEXT,"client1"), "component"));
-        assertEquals(2, registrationCache.getAll().get(new DirectCommandHandler(streamObserver1, new ClientIdentification(Topology.DEFAULT_CONTEXT,"client1"), "component")).size());
+        registrationCache.add("command2",
+                              new DirectCommandHandler(streamObserver1,
+                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                      "client1"), "client1",
+                                                       "component"));
+        assertEquals(2,
+                     registrationCache.getAll().get(new DirectCommandHandler(streamObserver1,
+                                                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                                            "client1"),
+                                                                             "client1",
+                                                                             "component")).size());
     }
 
     @Test
     public void get() {
-        assertNotNull(registrationCache.getHandlerForCommand(Topology.DEFAULT_CONTEXT, Command.newBuilder().setName("command1").build(),
+        assertNotNull(registrationCache.getHandlerForCommand(Topology.DEFAULT_CONTEXT,
+                                                             Command.newBuilder().setName("command1").build(),
                                                              "command1"));
     }
 
     @Test
     public void getNotFound() {
-        assertNull(registrationCache.getHandlerForCommand(Topology.DEFAULT_CONTEXT, Command.newBuilder().setName("command3").build(),
+        assertNull(registrationCache.getHandlerForCommand(Topology.DEFAULT_CONTEXT,
+                                                          Command.newBuilder().setName("command3").build(),
                                                           "command1"));
     }
 
     @Test
     public void findByExistingClient() {
-        assertNotNull(registrationCache.findByClientAndCommand(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client2"), "command1"));
+        assertNotNull(registrationCache.findByClientAndCommand(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                              "client2"), "command1"));
     }
 
     @Test
     public void findByNonExistingClient() {
-        assertNull(registrationCache.findByClientAndCommand(new ClientIdentification(Topology.DEFAULT_CONTEXT,"client9"), "command1"));
+        assertNull(registrationCache.findByClientAndCommand(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                           "client9"), "command1"));
     }
-
 }

@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.component.command;
 
 import com.google.common.collect.ImmutableSet;
-import io.axoniq.axonserver.message.ClientIdentification;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
@@ -31,7 +31,11 @@ public class DefaultCommandTest {
     @Before
     public void setUp() throws Exception {
         ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new DirectCommandHandler(null,
-                                                                                                new ClientIdentification(Topology.DEFAULT_CONTEXT,"client"), "componentA"));
+                                                                                                new ClientStreamIdentification(
+                                                                                                        Topology.DEFAULT_CONTEXT,
+                                                                                                        "client"),
+                                                                                                "client",
+                                                                                                "componentA"));
         defaultCommand = new DefaultCommand(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT,
                                                                                            "commandName"), commandHandlers);
     }

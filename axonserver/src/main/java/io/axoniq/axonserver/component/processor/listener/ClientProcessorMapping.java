@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 public interface ClientProcessorMapping {
 
     default ClientProcessor map(String clientId, String component, String context,
-                                EventProcessorInfo eventProcessorInfo){
+                                EventProcessorInfo eventProcessorInfo) {
         return new ClientProcessor() {
 
             @Override

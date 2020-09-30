@@ -57,7 +57,7 @@ public class EventProcessorResultListener {
      */
     @EventListener
     public void on(EventProcessorEvents.MergeSegmentsSucceeded event) {
-        refresh(event.context(), event.clientName(), event.processorName());
+        refresh(event.context(), event.clientId(), event.processorName());
     }
 
     /**
@@ -67,7 +67,7 @@ public class EventProcessorResultListener {
      */
     @EventListener
     public void on(EventProcessorEvents.SplitSegmentsSucceeded event) {
-        refresh(event.context(), event.clientName(), event.processorName());
+        refresh(event.context(), event.clientId(), event.processorName());
     }
 
     private void refresh(String context, String clientName, String processorName) {

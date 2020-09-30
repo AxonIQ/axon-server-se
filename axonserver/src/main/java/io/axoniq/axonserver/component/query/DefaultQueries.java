@@ -32,9 +32,11 @@ public class DefaultQueries implements Iterable<Query> {
 
     @Override
     public Iterator<Query> iterator() {
-        Map<QueryDefinition, Map<String, Set<QueryHandler>>> all = registrationCache.getAll();
+        Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> all = registrationCache.getAll();
         return all.entrySet().stream()
-                  .map(entry -> (Query) new DefaultQuery(entry.getKey(), entry.getValue(), registrationCache.getResponseTypes(entry.getKey())))
+                  .map(entry -> (Query) new DefaultQuery(entry.getKey(),
+                                                         entry.getValue(),
+                                                         registrationCache.getResponseTypes(entry.getKey())))
                   .iterator();
     }
 }
