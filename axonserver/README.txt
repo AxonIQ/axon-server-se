@@ -3,7 +3,7 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
-Release Notes for version 4.4.2
+Release Notes for version 4.4.3
 -------------------------------
 * Fix for connections not correctly registered
 * Changed initialization sequence for event store to initialize completed segments first
