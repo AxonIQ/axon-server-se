@@ -41,6 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 /**
@@ -68,6 +69,7 @@ public class StandardIndexManager implements IndexManager {
     private final MeterFactory.RateMeter indexCloseMeter;
     private final RemoteAggregateSequenceNumberResolver remoteIndexManager;
     private ScheduledFuture<?> cleanupTask;
+    private final AtomicLong maxMmapIndex = new AtomicLong();
 
     /**
      * @param context           the context of the storage engine
@@ -111,6 +113,12 @@ public class StandardIndexManager implements IndexManager {
             long index = Long.parseLong(indexFile.substring(0, indexFile.indexOf('.')));
             indexes.add(index);
         }
+
+        updateMaxMmapIndex();
+    }
+
+    private void updateMaxMmapIndex() {
+        maxMmapIndex.set(indexes.stream().skip(storageProperties.getMaxIndexesInMemory()).findFirst().orElse(-1L));
     }
 
     private void createIndex(Long segment, Map<String, IndexEntries> positionsPerAggregate) {
@@ -260,8 +268,9 @@ public class StandardIndexManager implements IndexManager {
     @Override
     public void complete(long segment) {
         createIndex(segment, activeIndexes.get(segment));
-        activeIndexes.remove(segment);
         indexes.add(segment);
+        activeIndexes.remove(segment);
+        updateMaxMmapIndex();
     }
 
     /**
@@ -477,7 +486,7 @@ public class StandardIndexManager implements IndexManager {
         private final long segment;
         private final Object initLock = new Object();
         private volatile boolean initialized;
-        private Map<String, IndexEntries> positions;
+        private HTreeMap<String, IndexEntries> positions;
         private DB db;
 
 
@@ -494,6 +503,7 @@ public class StandardIndexManager implements IndexManager {
             logger.debug("{}: close {}", segment, storageProperties.index(context, segment));
             if (db != null && !db.isClosed()) {
                 indexCloseMeter.mark();
+                positions.close();
                 db.close();
             }
         }
@@ -516,7 +526,7 @@ public class StandardIndexManager implements IndexManager {
                 DBMaker.Maker maker = DBMaker.fileDB(storageProperties.index(context, segment))
                                              .readOnly()
                                              .fileLockDisable();
-                if (storageProperties.isUseMmapIndex()) {
+                if (storageProperties.isUseMmapIndex() && segment > maxMmapIndex.get()) {
                     maker.fileMmapEnable();
                     if (storageProperties.isForceCleanMmapIndex()) {
                         maker.cleanerHackEnable();
