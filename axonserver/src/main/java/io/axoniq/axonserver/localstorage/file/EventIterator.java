@@ -52,7 +52,6 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
                     }
                 }
             }
-            return event.getToken()-1;
         }
         return null;
     }

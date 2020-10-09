@@ -279,9 +279,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             Long found = eventSource.map(es -> {
                 EventIterator iterator = createEventIterator(es, segment, segment);
                 Long token = iterator.getTokenAfter(instant);
-                if (token != null) {
-                    iterator.close();
-                }
+                iterator.close();
                 return token;
             }).orElse(null);
             if (found != null) {
