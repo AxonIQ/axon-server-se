@@ -10,10 +10,12 @@
 package io.axoniq.axonserver.message.query;
 
 
+import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.interceptor.NoOpQueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -54,6 +56,7 @@ public class QueryDispatcherTest {
         testSubject = new QueryDispatcher(registrationCache,
                                           queryCache,
                                           queryMetricsRegistry,
+                                          new NoOpQueryInterceptors(),
                                           meterFactory,
                                           10_000);
     }
@@ -95,7 +98,7 @@ public class QueryDispatcherTest {
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                          responseObserver::onNext,
+                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.completedCount());
         assertEquals(1, responseObserver.completedCount());
@@ -104,7 +107,12 @@ public class QueryDispatcherTest {
 
     @Test
     public void queryQueueFull() {
-        testSubject = new QueryDispatcher(registrationCache, queryCache, queryMetricsRegistry, meterFactory, 0);
+        testSubject = new QueryDispatcher(registrationCache,
+                                          queryCache,
+                                          queryMetricsRegistry,
+                                          new NoOpQueryInterceptors(),
+                                          meterFactory,
+                                          0);
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")
                                            .setMessageIdentifier("1234")
@@ -119,7 +127,7 @@ public class QueryDispatcherTest {
                                             "componentName", "client"));
         when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                          responseObserver::onNext,
+                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.completedCount());
         assertTrue(queryCache.isEmpty());
@@ -143,7 +151,7 @@ public class QueryDispatcherTest {
                                             "componentName", "client"));
         when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                          responseObserver::onNext,
+                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(0, responseObserver.values().size());
 //        verify(queryCache, times(1)).put(any(), any());
@@ -162,7 +170,9 @@ public class QueryDispatcherTest {
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
         when(registrationCache.find(any(), any())).thenReturn(handlers);
-        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request), responseObserver::onNext,
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                          responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.values().size());
 //        verify(queryCache, times(1)).put(any(), any());

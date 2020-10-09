@@ -13,6 +13,7 @@ import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.command.Command;
@@ -62,6 +63,7 @@ public class CommandServiceTest {
         testSubject = new CommandService(topology,
                                          commandDispatcher,
                                          () -> Topology.DEFAULT_CONTEXT,
+                                         () -> DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
                                          new DefaultClientIdRegistry(),
                                          eventPublisher,
                                          new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
@@ -173,10 +175,11 @@ public class CommandServiceTest {
     @Test
     public void dispatch() {
         doAnswer(invocationOnMock -> {
-            Consumer<SerializedCommandResponse> responseConsumer= (Consumer<SerializedCommandResponse>) invocationOnMock.getArguments()[2];
+            Consumer<SerializedCommandResponse> responseConsumer = (Consumer<SerializedCommandResponse>) invocationOnMock
+                    .getArguments()[2];
             responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
-        }).when(commandDispatcher).dispatch(any(), any(), any(), anyBoolean());
+        }).when(commandDispatcher).dispatch(any(), any(), any(), any(), anyBoolean());
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build().toByteArray(), responseObserver);
         assertEquals(1, responseObserver.values().size());

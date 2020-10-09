@@ -17,6 +17,8 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.interceptor.InterceptorContext;
+import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
@@ -26,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -46,17 +49,20 @@ public class QueryDispatcher {
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
     private final QueryCache queryCache;
+    private final QueryInterceptors queryInterceptors;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
+                           QueryInterceptors queryInterceptors,
                            MeterFactory meterFactory,
                            @Value("${axoniq.axonserver.query-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrationCache = registrationCache;
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
+        this.queryInterceptors = queryInterceptors;
         queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed(),
                                              queueCapacity,
                                              BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
@@ -148,7 +154,8 @@ public class QueryDispatcher {
     }
 
 
-    public void query(SerializedQuery serializedQuery, Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
+    public void query(SerializedQuery serializedQuery, Authentication principal,
+                      Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
         QueryRequest query = serializedQuery.query();
         long timeout =
@@ -169,16 +176,21 @@ public class QueryDispatcher {
             if (nrOfResults > 0) {
                 expectedResults = nrOfResults;
             }
-            QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(),
-                                                                     query.getClientId(), queryDefinition,
-                                                                     handlers.stream()
-                                                                             .map(QueryHandler::getClientStreamId)
-                                                                             .collect(Collectors.toSet()),
-                                                                     expectedResults, callback,
-                                                                     onCompleted);
+            InterceptorContext interceptorContext = new InterceptorContext(serializedQuery.context(), principal);
             try {
+                SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(interceptorContext, serializedQuery);
+                QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(),
+                                                                         query.getClientId(), queryDefinition,
+                                                                         handlers.stream()
+                                                                                 .map(QueryHandler::getClientStreamId)
+                                                                                 .collect(Collectors.toSet()),
+                                                                         expectedResults,
+                                                                         response -> intercept(interceptorContext,
+                                                                                               response,
+                                                                                               callback),
+                                                                         onCompleted);
                 queryCache.put(query.getMessageIdentifier(), queryInformation);
-                handlers.forEach(h -> dispatchOne(h, serializedQuery, timeout));
+                handlers.forEach(h -> dispatchOne(h, serializedQuery2, timeout));
             } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
                 callback.accept(QueryResponse.newBuilder()
                                              .setErrorCode(ErrorCode.QUERY_DISPATCH_ERROR.getCode())
@@ -190,6 +202,11 @@ public class QueryDispatcher {
                 onCompleted.accept("NoCapacity");
             }
         }
+    }
+
+    private void intercept(InterceptorContext interceptorContext, QueryResponse response,
+                           Consumer<QueryResponse> callback) {
+        callback.accept(queryInterceptors.queryResponse(interceptorContext, response));
     }
 
     public MeterFactory.RateMeter queryRate(String context) {

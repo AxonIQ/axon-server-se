@@ -16,6 +16,8 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.interceptor.CommandInterceptors;
+import io.axoniq.axonserver.interceptor.InterceptorContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -24,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -49,14 +52,17 @@ public class CommandDispatcher {
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
+    private final CommandInterceptors commandInterceptors;
 
     public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache,
                              CommandMetricsRegistry metricRegistry,
                              MeterFactory meterFactory,
+                             CommandInterceptors commandInterceptors,
                              @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
+        this.commandInterceptors = commandInterceptors;
         commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
                                                 queueCapacity,
                                                 BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
@@ -66,7 +72,7 @@ public class CommandDispatcher {
     }
 
 
-    public void dispatch(String context, SerializedCommand request,
+    public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
         if (proxied) {
             String clientStreamId = request.getClientStreamId();
@@ -78,16 +84,30 @@ public class CommandDispatcher {
                                      String.format("Client %s not found while processing: %s"
                                              , clientStreamId, request.getCommand()));
         } else {
+            InterceptorContext interceptorContext = new InterceptorContext(context, authentication);
+            request = commandInterceptors.commandRequest(interceptorContext, request);
             commandRate(context).mark();
             CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
                                                                                   request.wrapped(),
                                                                                   request.getRoutingKey());
-            dispatchToCommandHandler(request, commandHandler, responseObserver,
+            dispatchToCommandHandler(request,
+                                     commandHandler,
+                                     serializedCommandResponse -> intercept(interceptorContext,
+                                                                            serializedCommandResponse,
+                                                                            responseObserver),
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
                                      "No Handler for command: " + request.getCommand()
             );
         }
     }
+
+    private void intercept(InterceptorContext interceptorContext,
+                           SerializedCommandResponse response,
+                           Consumer<SerializedCommandResponse> responseObserver) {
+        response = commandInterceptors.commandResponse(interceptorContext, response);
+        responseObserver.accept(response);
+    }
+
 
     public MeterFactory.RateMeter commandRate(String context) {
         return commandRatePerContext.computeIfAbsent(context,

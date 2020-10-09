@@ -13,6 +13,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeQuery;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryResponseReceived;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
+import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
@@ -63,6 +64,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Topology topology;
     private final QueryDispatcher queryDispatcher;
     private final ContextProvider contextProvider;
+    private final AuthenticationProvider authenticationProvider;
     private final ClientIdRegistry clientIdRegistry;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
@@ -73,7 +75,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private int processingThreads = 1;
 
 
-    public QueryService(Topology topology, QueryDispatcher queryDispatcher, ContextProvider contextProvider,
+    public QueryService(Topology topology,
+                        QueryDispatcher queryDispatcher,
+                        ContextProvider contextProvider,
+                        AuthenticationProvider authenticationProvider,
                         ClientIdRegistry clientIdRegistry,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
@@ -81,6 +86,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
+        this.authenticationProvider = authenticationProvider;
         this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
@@ -275,7 +281,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         }
         GrpcQueryResponseConsumer responseConsumer = new GrpcQueryResponseConsumer(responseObserver);
         queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
-                              responseConsumer::onNext,
+                              authenticationProvider.get(), responseConsumer::onNext,
                               result -> responseConsumer.onCompleted());
     }
 

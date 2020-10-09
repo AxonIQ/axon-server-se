@@ -12,11 +12,13 @@ package io.axoniq.axonserver.message.command;
 import com.google.common.collect.Sets;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
+import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.interceptor.NoOpCommandInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -53,13 +55,15 @@ public class CommandDispatcherTest {
     @Before
     public void setup() {
         metricsRegistry = new CommandMetricsRegistry(meterFactory);
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory, 10_000);
+        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,
+                                                  new NoOpCommandInterceptors(), 10_000);
         ConcurrentMap<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> dummyRegistrations = new ConcurrentHashMap<>();
         Set<CommandRegistrationCache.RegistrationEntry> commands =
                 Sets.newHashSet(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT, "Command"));
         dummyRegistrations.put(new DirectCommandHandler(new FakeStreamObserver<>(),
-                                                        new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
-                                                        "client","component"),
+                                                        new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                       "client"),
+                                                        "client", "component"),
                                commands);
     }
 
@@ -82,10 +86,14 @@ public class CommandDispatcherTest {
                                                                client, "client", "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), anyObject(), anyObject())).thenReturn(result);
 
-        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        }, false);
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
+                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   new SerializedCommand(request),
+                                   response -> {
+                                       responseObserver.onNext(response);
+                                       responseObserver.onCompleted();
+                                   },
+                                   false);
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).put(eq("12"), anyObject());
@@ -101,10 +109,14 @@ public class CommandDispatcherTest {
                                  .build();
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(null);
 
-        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        }, false);
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
+                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   new SerializedCommand(request),
+                                   response -> {
+                                       responseObserver.onNext(response);
+                                       responseObserver.onCompleted();
+                                   },
+                                   false);
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
         Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
@@ -112,7 +124,12 @@ public class CommandDispatcherTest {
 
     @Test
     public void dispatchQueueFull() {
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory, 0);
+        commandDispatcher = new CommandDispatcher(registrations,
+                                                  commandCache,
+                                                  metricsRegistry,
+                                                  meterFactory,
+                                                  new NoOpCommandInterceptors(),
+                                                  0);
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
@@ -124,10 +141,14 @@ public class CommandDispatcherTest {
         DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
                                                                client, "client", "component");
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(result);
-        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, new SerializedCommand(request), response -> {
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        }, false);
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
+                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   new SerializedCommand(request),
+                                   response -> {
+                                       responseObserver.onNext(response);
+                                       responseObserver.onCompleted();
+                                   },
+                                   false);
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
     }
@@ -142,10 +163,14 @@ public class CommandDispatcherTest {
                                  .build();
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(null);
 
-        commandDispatcher.dispatch("UnknownContext", new SerializedCommand(request), response -> {
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        }, false);
+        commandDispatcher.dispatch("UnknownContext",
+                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   new SerializedCommand(request),
+                                   response -> {
+                                       responseObserver.onNext(response);
+                                       responseObserver.onCompleted();
+                                   },
+                                   false);
         assertEquals(1, responseObserver.values().size());
         assertEquals("AXONIQ-4000", responseObserver.values().get(0).getErrorCode());
         Mockito.verify(commandCache, times(0)).put(eq("12"), anyObject());
@@ -167,6 +192,7 @@ public class CommandDispatcherTest {
         when(registrations.findByClientAndCommand(eq(clientIdentification), anyObject())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
+                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request.toByteArray(),
                                                          "client",
                                                          request.getMessageIdentifier()),
@@ -189,6 +215,7 @@ public class CommandDispatcherTest {
                                  .build();
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
+                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request),
                                    responseObserver::onNext,
                                    true);

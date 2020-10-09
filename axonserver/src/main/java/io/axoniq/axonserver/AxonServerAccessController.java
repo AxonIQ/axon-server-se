@@ -11,6 +11,7 @@ package io.axoniq.axonserver;
 
 
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
 import java.util.Set;
@@ -25,6 +26,7 @@ public interface AxonServerAccessController {
     String TOKEN_PARAM = "AxonIQ-Access-Token";
     String AXONDB_TOKEN_PARAM = "Access-Token";
     String CONTEXT_PARAM = "AxonIQ-Context";
+    String PRINCIPAL_PARAM = "AxonIQ-Principal";
 
     /**
      * Checks if a specific method is allowed in given {@code context} for application {@code token}.
@@ -80,9 +82,12 @@ public interface AxonServerAccessController {
 
     /**
      * Returns (native SQL) query to retrieve the roles per user.
+     *
      * @return the query
      */
     default String authoritiesByUsernameQuery() {
         return "select username, role from user_roles where username=?";
     }
+
+    Authentication authentication(String token);
 }

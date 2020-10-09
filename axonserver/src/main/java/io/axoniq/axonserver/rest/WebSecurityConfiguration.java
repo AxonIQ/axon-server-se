@@ -12,6 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.config.TokenAuthentication;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -28,8 +29,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
@@ -38,10 +37,8 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -139,56 +136,6 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
     }
 
-    public static class AuthenticationToken implements Authentication {
-
-        private final boolean authenticated;
-        private final String name;
-        private final Set<GrantedAuthority> roles;
-
-        AuthenticationToken(boolean authenticated, String name, Set<String> roles) {
-            this.authenticated = authenticated;
-            this.name = name;
-            this.roles = roles.stream()
-                              .map(s -> (GrantedAuthority) () -> s)
-                              .collect(Collectors.toSet());
-        }
-
-        @Override
-        public Collection<? extends GrantedAuthority> getAuthorities() {
-            return roles;
-        }
-
-        @Override
-        public Object getCredentials() {
-            return null;
-        }
-
-        @Override
-        public Object getDetails() {
-            return null;
-        }
-
-        @Override
-        public Object getPrincipal() {
-            return "Connected Application";
-        }
-
-        @Override
-        public boolean isAuthenticated() {
-            return authenticated;
-        }
-
-        @Override
-        public void setAuthenticated(boolean b) {
-            // authenticated is only set in constructor
-        }
-
-        @Override
-        public String getName() {
-            return name;
-        }
-    }
-
     public static class TokenAuthenticationFilter extends GenericFilterBean {
 
         private static final Logger auditLog = AuditLog.getLogger();
@@ -214,7 +161,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                         Set<String> roles = accessController.getRoles(token);
                         auditLog.trace("Access using configured token.");
                         SecurityContextHolder.getContext().setAuthentication(
-                                new AuthenticationToken(true,
+                                new TokenAuthentication(true,
                                                         "AuthenticatedApp",
                                                         roles));
                     } catch (InvalidTokenException invalidTokenException) {
@@ -231,7 +178,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
             try {
                 filterChain.doFilter(servletRequest, servletResponse);
             } finally {
-                if (SecurityContextHolder.getContext().getAuthentication() instanceof AuthenticationToken) {
+                if (SecurityContextHolder.getContext().getAuthentication() instanceof TokenAuthentication) {
                     SecurityContextHolder.getContext().setAuthentication(null);
                 }
             }

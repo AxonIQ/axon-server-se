@@ -52,7 +52,8 @@ public class AuthenticationInterceptor implements ServerInterceptor {
             return new ServerCall.Listener<T>() {};
         }
 
-        Context updatedGrpcContext = Context.current().withValue(GrpcMetadataKeys.TOKEN_CONTEXT_KEY, token);
+        Context updatedGrpcContext = Context.current().withValue(GrpcMetadataKeys.PRINCIPAL_CONTEXT_KEY,
+                                                                 axonServerAccessController.authentication(token));
         return Contexts.interceptCall(updatedGrpcContext, serverCall, metadata, serverCallHandler);
     }
 }

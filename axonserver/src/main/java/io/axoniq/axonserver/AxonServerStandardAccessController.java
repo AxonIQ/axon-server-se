@@ -12,6 +12,8 @@ package io.axoniq.axonserver;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.InvalidTokenException;
+import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -49,6 +51,13 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
             throw new InvalidTokenException();
         }
         return isAdminToken(token) ? singleton(ROLE_ADMIN) : emptySet();
+    }
+
+    @Override
+    public Authentication authentication(String token) {
+        return isAdminToken(token) ?
+                DefaultAuthenticationProvider.ADMIN_PRINCIPAL :
+                DefaultAuthenticationProvider.USER_PRINCIPAL;
     }
 
     private boolean isAdminToken(String token) {
