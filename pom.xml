@@ -50,7 +50,7 @@
         -->
         <grpc.version>1.27.2</grpc.version>
         <netty.tcnative.version>2.0.26.Final</netty.tcnative.version>
-        <netty.version>4.1.42.Final</netty.version>
+        <netty.version>4.1.52.Final</netty.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <axonserver.api.version>4.4</axonserver.api.version>
         <axon.version>4.4</axon.version>
