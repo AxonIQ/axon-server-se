@@ -1,0 +1,50 @@
+{
+  "scripts": {
+    "start": "snowpack dev",
+    "build": "snowpack build",
+    "test": "jest",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
+    "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",
+    "storybook": "start-storybook -p 6006",
+    "build-storybook": "build-storybook"
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.11.0",
+    "@material-ui/icons": "^4.9.1",
+    "classnames": "^2.2.6",
+    "fontsource-lato": "^3.0.9",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.11.6",
+    "@babel/preset-react": "^7.10.4",
+    "@babel/preset-typescript": "^7.10.4",
+    "@snowpack/app-scripts-react": "^1.12.2",
+    "@snowpack/plugin-dotenv": "^2.0.3",
+    "@snowpack/plugin-react-refresh": "^2.3.1",
+    "@snowpack/plugin-typescript": "^1.0.1",
+    "@storybook/addon-actions": "^6.0.26",
+    "@storybook/addon-essentials": "^6.0.26",
+    "@storybook/addon-links": "^6.0.26",
+    "@storybook/preset-scss": "^1.0.2",
+    "@storybook/react": "^6.0.26",
+    "@testing-library/jest-dom": "^5.5.0",
+    "@testing-library/react": "^10.0.3",
+    "@types/classnames": "^2.2.10",
+    "@types/react": "^16.9.49",
+    "@types/react-dom": "^16.9.8",
+    "@types/snowpack-env": "^2.3.0",
+    "babel-loader": "^8.1.0",
+    "css-loader": "^4.3.0",
+    "jest": "^26.2.2",
+    "prettier": "^2.0.5",
+    "react-is": "^16.13.1",
+    "sass-loader": "^10.0.2",
+    "snowpack": "^2.13.3",
+    "snowpack-plugin-sass": "^1.0.0",
+    "storybook-dark-mode": "^1.0.3",
+    "style-loader": "^1.3.0",
+    "typescript": "^4.0.0"
+  }
+}

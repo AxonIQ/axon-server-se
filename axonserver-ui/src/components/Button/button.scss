@@ -1,0 +1,21 @@
+@import "../Colors/colors.scss";
+
+.button.button {
+  border-radius: 13px;
+  padding: 10px 20px;
+  text-transform: inherit;
+  &.button-primary {
+    color: $color-white;
+    background-color: $color-persimmon;
+    &:hover {
+      background-color: $color-persimmon;
+    }
+  }
+  &.button-secondary {
+    color: $color-white;
+    background-color: $color-persian-green;
+    &:hover {
+      background-color: $color-persian-green;
+    }
+  }
+}

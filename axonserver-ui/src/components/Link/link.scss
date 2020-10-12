@@ -1,0 +1,42 @@
+@import "../Colors/colors.scss";
+
+.link {
+  text-decoration: none;
+  color: inherit;
+
+  &.link--primary {
+    color: $color-cinder;
+    transition: color 0.3s ease;
+    &.link--active,
+    &:hover {
+      color: $color-persimmon;
+    }
+  }
+  &.link--secondary {
+    color: $color-cinder;
+    transition: color 0.3s ease;
+    &.link--active,
+    &:hover {
+      color: $color-persian-green;
+    }
+  }
+  &.link--button {
+    background-color: $color-persimmon;
+    color: $color-white;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+  &.link--underline {
+    text-decoration: underline;
+  }
+  &.link--inline-block {
+    display: inline-block;
+  }
+  &.link--full-width {
+    width: 100%;
+  }
+  &.link--full-height {
+    height: 100%;
+  }
+}
