@@ -29,6 +29,7 @@ import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
 import io.axoniq.axonserver.grpc.control.RequestReconnect;
+import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
@@ -344,12 +345,20 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
     private void deregisterClient(ClientComponent clientComponent) {
+        deregisterClient(clientComponent, null);
+    }
+
+    private void deregisterClient(ClientComponent clientComponent, Throwable cause) {
         logger.debug("De-registered client : {}", clientComponent);
 
         if (clientComponent != null) {
             SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
             if (stream != null) {
-                StreamObserverUtils.complete(stream);
+                if (cause == null) {
+                    StreamObserverUtils.complete(stream);
+                } else {
+                    StreamObserverUtils.error(stream, cause);
+                }
             }
 
             clientIdRegistry.unregister(clientComponent.clientStreamId, ClientIdRegistry.ConnectionType.PLATFORM);
@@ -376,7 +385,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                                               evt.clientId(),
                                                               evt.componentName(),
                                                               clientStreamIdentification.getContext());
-        deregisterClient(clientComponent);
+        String message = "Platform stream inactivity for " + clientStreamIdentification.getClientStreamId();
+        ApplicationInactivityException exception = new ApplicationInactivityException(message);
+        deregisterClient(clientComponent, exception);
     }
 
     /**
