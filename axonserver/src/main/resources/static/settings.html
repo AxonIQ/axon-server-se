@@ -161,11 +161,11 @@
                     </li>
                 </ul>
             </section>
-            <section>
+            <section v-if="license.featureList.length > 0">
                 <h3>Upload license</h3>
                 <form id="licenseForm" enctype="multipart/form-data">
                     <input type="file" id="license" name="licenseFile"/>
-                    <input type="submit" value="Upload"  id="license_upload_button" />
+                    <input type="submit" value="Upload" id="license_upload_button"/>
                 </form>
             </section>
         </div>
