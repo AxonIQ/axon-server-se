@@ -1,0 +1,6 @@
+# Ignore artifacts:
+build
+node_modules
+
+# Ignore all yaml files:
+*.yaml
