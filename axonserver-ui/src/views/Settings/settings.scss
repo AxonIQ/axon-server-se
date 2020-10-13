@@ -1,0 +1,24 @@
+@import '../../components/Colors/colors.scss';
+
+.settings__status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: $color-white;
+  border-radius: 5px;
+  border: 1px solid $color-porcelain;
+}
+.settings__status-card-icon {
+  display: flex;
+  align-items: center;
+  font-size: 42px;
+}
+.settings__status-card--enabled {
+  color: $color-white;
+  background-color: $color-islamic-green;
+}
+.settings__status-card--disabled {
+  color: $color-white;
+  background-color: $color-amaranth;
+}
