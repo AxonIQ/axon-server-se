@@ -1,26 +1,25 @@
-@import "../Colors/colors.scss";
+@import '../Colors/colors.scss';
 
 .navigation {
-    display: flex;
-    flex-direction: column;
-    width: 100px;
-    height: 100%;
-    background-color: $color-rhino;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: $color-rhino;
 }
 .navigation__link {
-    color: $color-gray-chateau;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 10px 10px;
-    transition: all 0.3s ease;
-    &.navigation__link--active,
-    &:hover {
-        background-color: $color-persimmon;
-        color: $color-white;
-    }
+  color: $color-gray-chateau;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 10px;
+  transition: all 0.3s ease;
+  &.navigation__link--active,
+  &:hover {
+    background-color: $color-persimmon;
+    color: $color-white;
+  }
 }
 .navigation__link-icon {
-    font-size: 36px;
-    line-height: 0;
+  font-size: 36px;
+  line-height: 0;
 }

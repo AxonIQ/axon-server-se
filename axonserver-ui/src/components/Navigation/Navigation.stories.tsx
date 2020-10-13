@@ -1,10 +1,23 @@
+import { Grid } from '@material-ui/core';
 import React from 'react';
 import { Navigation } from './Navigation';
 
 export default {
-    title: 'Components/Navigation',
-    component: Navigation,
+  title: 'Components/Navigation',
+  component: Navigation,
 };
 
-export const Primary = () => <Navigation />;
-export const SearchActive = () => <Navigation active="search"/>
+export const Primary = () => (
+  <Grid container>
+    <Grid md={1}>
+      <Navigation />
+    </Grid>
+  </Grid>
+);
+export const SearchActive = () => (
+  <Grid container>
+    <Grid md={1}>
+      <Navigation active="search" />
+    </Grid>
+  </Grid>
+);
