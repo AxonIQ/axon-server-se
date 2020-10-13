@@ -38,8 +38,8 @@ public class NoOpEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event readSnapshot(InterceptorContext interceptorContext, Event event) {
-        return event;
+    public Event readSnapshot(InterceptorContext interceptorContext, Event snapshot) {
+        return snapshot;
     }
 
     @Override

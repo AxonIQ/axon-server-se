@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.util.ObjectUtils;
 import org.springframework.stereotype.Component;
@@ -46,15 +48,19 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public InputStream eventPreCommit(
-            InterceptorContext interceptorContext, InputStream eventInputStream) throws IOException {
+            InterceptorContext interceptorContext, InputStream eventInputStream) {
         if (eventPreCommitInterceptors.isEmpty()) {
             return eventInputStream;
         }
-        Event event = Event.parseFrom(eventInputStream);
-        for (EventPreCommitInterceptor preCommitInterceptor : eventPreCommitInterceptors) {
-            event = preCommitInterceptor.eventPreCommit(interceptorContext, event);
+        try {
+            Event event = Event.parseFrom(eventInputStream);
+            for (EventPreCommitInterceptor preCommitInterceptor : eventPreCommitInterceptors) {
+                event = preCommitInterceptor.eventPreCommit(interceptorContext, event);
+            }
+            return new ByteArrayInputStream(event.toByteArray());
+        } catch (IOException ioException) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Could not parse event from client", ioException);
         }
-        return new ByteArrayInputStream(event.toByteArray());
     }
 
     @Override
@@ -71,11 +77,11 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event readSnapshot(InterceptorContext interceptorContext, Event event) {
+    public Event readSnapshot(InterceptorContext interceptorContext, Event snapshot) {
         for (SnapshotReadInterceptor snapshotReadInterceptor : snapshotReadInterceptors) {
-            event = snapshotReadInterceptor.readSnapshot(interceptorContext, event);
+            snapshot = snapshotReadInterceptor.readSnapshot(interceptorContext, snapshot);
         }
-        return event;
+        return snapshot;
     }
 
     @Override

@@ -12,9 +12,20 @@ package io.axoniq.axonserver.interceptor;
 import io.axoniq.axonserver.grpc.event.Event;
 
 /**
+ * Interceptor that is called when an event is sent to Axon Server. The interceptor is called immediately when
+ * the event arrives in Axon Server, before the transaction is committed.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public interface EventPreCommitInterceptor {
 
+    /**
+     * Intercepts an event before it is committed. The interceptor may change the event.
+     *
+     * @param interceptorContext the context for the request
+     * @param event              the new event
+     * @return the new event
+     */
     Event eventPreCommit(InterceptorContext interceptorContext, Event event);
 }
