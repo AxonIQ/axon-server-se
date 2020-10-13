@@ -15,11 +15,7 @@ export const Primary = () => (
         <Navigation active="settings" />
       </Grid>
       <Grid item md={11}>
-        <Grid container>
-          <Grid item md={12}>
-            <Settings />
-          </Grid>
-        </Grid>
+        <Settings />
       </Grid>
     </Grid>
   </Container>
