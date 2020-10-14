@@ -1,4 +1,4 @@
-@import "../Colors/colors.scss";
+@import '../Colors/colors.scss';
 
 .typography {
   &.typography--break {
@@ -103,5 +103,8 @@
   }
   &.typography--inline {
     display: inline;
+  }
+  &.typography--uppercase {
+    text-transform: uppercase;
   }
 }
