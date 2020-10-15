@@ -9,16 +9,13 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
 
 /**
  * @author Marc Gathier
  */
-@Component
-@ConditionalOnMissingBean(QueryInterceptors.class)
 public class NoOpQueryInterceptors implements QueryInterceptors {
 
     @Override

@@ -10,8 +10,11 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.grpc.*;
+import org.springframework.security.core.Authentication;
 
 /**
  * Interceptor around gRPC request to perform authentication/authorization on gRPC requests.
@@ -27,16 +30,9 @@ public class AuthenticationInterceptor implements ServerInterceptor {
 
     @Override
     public <T, R> ServerCall.Listener<T> interceptCall(ServerCall<T, R> serverCall, Metadata metadata, ServerCallHandler<T, R> serverCallHandler) {
-        String token = metadata.get(GrpcMetadataKeys.TOKEN_KEY);
+        String token = token(metadata);
+        String context = context(metadata);
         StatusRuntimeException sre = null;
-        String context = GrpcMetadataKeys.CONTEXT_KEY.get();
-
-        if( token == null) {
-            token = metadata.get(GrpcMetadataKeys.AXONDB_TOKEN_KEY);
-        }
-        if( context == null) {
-            context = metadata.get(GrpcMetadataKeys.AXONDB_CONTEXT_MD_KEY);
-        }
 
         if (token == null) {
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING,
@@ -44,16 +40,45 @@ public class AuthenticationInterceptor implements ServerInterceptor {
         } else if (!axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(),
                                                        context,
                                                        token)) {
-            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token for " + serverCall.getMethodDescriptor().getFullMethodName());
+            sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
+                                             "Invalid token for " + serverCall.getMethodDescriptor()
+                                                                              .getFullMethodName());
         }
 
-        if( sre != null) {
+        if (sre != null) {
             serverCall.close(sre.getStatus(), sre.getTrailers());
-            return new ServerCall.Listener<T>() {};
+            return new ServerCall.Listener<T>() {
+            };
         }
-
-        Context updatedGrpcContext = Context.current().withValue(GrpcMetadataKeys.PRINCIPAL_CONTEXT_KEY,
-                                                                 axonServerAccessController.authentication(token));
+        Context updatedGrpcContext = Context.current()
+                                            .withValue(GrpcMetadataKeys.PRINCIPAL_CONTEXT_KEY, authentication(token));
         return Contexts.interceptCall(updatedGrpcContext, serverCall, metadata, serverCallHandler);
+    }
+
+    private String context(Metadata metadata) {
+        String context = GrpcMetadataKeys.CONTEXT_KEY.get();
+        if (context == null) {
+            context = metadata.get(GrpcMetadataKeys.AXONDB_CONTEXT_MD_KEY);
+        }
+        return context;
+    }
+
+    private String token(Metadata metadata) {
+        String token = metadata.get(GrpcMetadataKeys.TOKEN_KEY);
+        if (token == null) {
+            token = metadata.get(GrpcMetadataKeys.AXONDB_TOKEN_KEY);
+        }
+        return token;
+    }
+
+    private Authentication authentication(String token) {
+        Authentication authentication;
+        try {
+            authentication = axonServerAccessController.authentication(
+                    token);
+        } catch (InvalidTokenException invalidTokenException) {
+            authentication = DefaultAuthenticationProvider.DEFAULT_PRINCIPAL;
+        }
+        return authentication;
     }
 }

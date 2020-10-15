@@ -7,14 +7,14 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.extensions.interceptor;
 
-import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.grpc.event.Event;
 
 /**
  * @author Marc Gathier
  */
-public interface CommandRequestInterceptor {
+public interface SnapshotReadInterceptor {
 
-    Command commandRequest(InterceptorContext interceptorContext, Command command);
+    Event readSnapshot(InterceptorContext interceptorContext, Event snapshot);
 }

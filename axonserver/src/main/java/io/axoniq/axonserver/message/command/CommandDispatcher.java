@@ -13,11 +13,12 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.interceptor.CommandInterceptors;
-import io.axoniq.axonserver.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -84,7 +85,7 @@ public class CommandDispatcher {
                                      String.format("Client %s not found while processing: %s"
                                              , clientStreamId, request.getCommand()));
         } else {
-            InterceptorContext interceptorContext = new InterceptorContext(context, authentication);
+            InterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
             request = commandInterceptors.commandRequest(interceptorContext, request);
             commandRate(context).mark();
             CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,

@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.extensions.transform.EventTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

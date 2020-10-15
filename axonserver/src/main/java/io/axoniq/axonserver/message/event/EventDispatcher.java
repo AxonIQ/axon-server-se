@@ -14,6 +14,7 @@ import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
@@ -33,7 +34,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
-import io.axoniq.axonserver.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
@@ -131,7 +132,7 @@ public class EventDispatcher implements AxonServerClientService {
                                                                     NO_EVENT_STORE_CONFIGURED + context));
             return new NoOpStreamObserver<>();
         }
-        InterceptorContext interceptorContext = new InterceptorContext(context, authentication);
+        DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
         StreamObserver<InputStream> appendEventConnection =
                 eventStore.createAppendEventConnection(context,
                                                        new StreamObserver<Confirmation>() {
@@ -157,7 +158,7 @@ public class EventDispatcher implements AxonServerClientService {
             @Override
             public void onNext(InputStream event) {
                 try {
-                    appendEventConnection.onNext(interceptors.eventPreCommit(interceptorContext, event));
+                    appendEventConnection.onNext(interceptors.appendEvent(interceptorContext, event));
                     eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
                 } catch (Exception exception) {
                     interceptorContext.compensate();
@@ -176,7 +177,14 @@ public class EventDispatcher implements AxonServerClientService {
             @Override
             public void onCompleted() {
                 if (!failed) {
-                    appendEventConnection.onCompleted();
+                    try {
+                        interceptors.eventsPreCommit(interceptorContext);
+                        appendEventConnection.onCompleted();
+                    } catch (Exception ex) {
+                        interceptorContext.compensate();
+                        StreamObserverUtils.error(appendEventConnection, ex);
+                        responseObserver.onError(MessagingPlatformException.create(ex));
+                    }
                 }
             }
         };
@@ -200,7 +208,7 @@ public class EventDispatcher implements AxonServerClientService {
     public void appendSnapshot(String context, Authentication authentication, Event request,
                                StreamObserver<Confirmation> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            InterceptorContext interceptorContext = new InterceptorContext(context, authentication);
+            DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
 
             try {
                 Event event = interceptors.snapshotPreRequest(interceptorContext, request);
@@ -233,7 +241,7 @@ public class EventDispatcher implements AxonServerClientService {
                                     StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                InterceptorContext interceptorContext = new InterceptorContext(context, principal);
+                InterceptorContext interceptorContext = new DefaultInterceptorContext(context, principal);
                 eventStore.listAggregateEvents(context,
                                                request,
                                                wrappedStreamObserver(responseObserver, interceptorContext));
@@ -614,7 +622,8 @@ public class EventDispatcher implements AxonServerClientService {
                                        Authentication principal) {
             this.context = context;
             this.responseObserver = wrappedStreamObserverForInputStream(responseObserver,
-                                                                        new InterceptorContext(context, principal));
+                                                                        new DefaultInterceptorContext(context,
+                                                                                                      principal));
         }
 
         @Override

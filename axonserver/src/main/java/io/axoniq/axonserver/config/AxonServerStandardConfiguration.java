@@ -24,6 +24,12 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.interceptor.CommandInterceptors;
+import io.axoniq.axonserver.interceptor.EventInterceptors;
+import io.axoniq.axonserver.interceptor.NoOpCommandInterceptors;
+import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
+import io.axoniq.axonserver.interceptor.NoOpQueryInterceptors;
+import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
 import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
@@ -33,7 +39,7 @@ import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
 import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -275,5 +281,23 @@ public class AxonServerStandardConfiguration {
                 }
             }
         };
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(QueryInterceptors.class)
+    public QueryInterceptors queryInterceptors() {
+        return new NoOpQueryInterceptors();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EventInterceptors.class)
+    public EventInterceptors eventInterceptors() {
+        return new NoOpEventInterceptors();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CommandInterceptors.class)
+    public CommandInterceptors commandInterceptors() {
+        return new NoOpCommandInterceptors();
     }
 }

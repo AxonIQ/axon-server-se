@@ -9,10 +9,14 @@
 
 package io.axoniq.axonserver.localstorage.transformation;
 
+import io.axoniq.axonserver.extensions.transform.EventTransformer;
+import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
+
 /**
  * @author Marc Gathier
  */
 public class DefaultEventTransformerFactory implements EventTransformerFactory {
+
     @Override
     public EventTransformer get(byte version, int flags) {
         return NoOpEventTransformer.INSTANCE;

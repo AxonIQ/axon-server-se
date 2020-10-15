@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
@@ -18,18 +19,20 @@ import java.io.InputStream;
 /**
  * @author Marc Gathier
  */
-@Component
-@ConditionalOnMissingBean(EventInterceptors.class)
 public class NoOpEventInterceptors implements EventInterceptors {
 
     @Override
-    public InputStream eventPreCommit(InterceptorContext interceptorContext, InputStream eventInputStream) {
+    public InputStream appendEvent(InterceptorContext interceptorContext, InputStream eventInputStream) {
         return eventInputStream;
     }
 
     @Override
     public Event snapshotPreRequest(InterceptorContext interceptorContext, Event event) {
         return event;
+    }
+
+    @Override
+    public void eventsPreCommit(InterceptorContext interceptorContext) {
     }
 
     @Override

@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.localstorage.transformation;
+package io.axoniq.axonserver.extensions.transform;
 
 /**
  * Defines the interface for an EventTransformer factory.

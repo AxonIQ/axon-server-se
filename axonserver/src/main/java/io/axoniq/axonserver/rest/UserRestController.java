@@ -62,14 +62,27 @@ public class UserRestController {
 
     @PostMapping("users")
     public void createUser(@RequestBody @Valid UserJson userJson, Principal principal) {
-        auditLog.info("[{}] Request to create user \"{}\" with roles {}.", AuditLog.username(principal), userJson.getUserName(), userJson.getRoles());
+        auditLog.info("[{}] Request to create user \"{}\" with roles {}.",
+                      AuditLog.username(principal),
+                      userJson.getUserName(),
+                      userJson.getRoles());
+
+        if (userJson.userName != null && userJson.userName.equals(principal.getName())) {
+            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
+                                                 "Not allowed to change your own credentials");
+        }
+
         Set<String> validRoles = roleController.listRoles().stream().map(Role::getRole).collect(Collectors.toSet());
         Set<UserRole> roles = new HashSet<>();
-        if( userJson.roles != null) {
+        if (userJson.roles != null) {
             roles = Arrays.stream(userJson.roles).map(UserRole::parse).collect(Collectors.toSet());
             for (UserRole role : roles) {
                 if (!validRoles.contains(role.getRole())) {
-                    auditLog.error("[{}] Request to create user \"{}\" with roles {} FAILED: Unknown role \"{}\".", AuditLog.username(principal), userJson.getUserName(), roles, role);
+                    auditLog.error("[{}] Request to create user \"{}\" with roles {} FAILED: Unknown role \"{}\".",
+                                   AuditLog.username(principal),
+                                   userJson.getUserName(),
+                                   roles,
+                                   role);
                     throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE,
                                                          role + ": Role unknown");
                 }

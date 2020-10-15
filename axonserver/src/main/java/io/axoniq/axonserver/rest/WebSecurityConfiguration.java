@@ -29,6 +29,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
@@ -38,7 +39,6 @@ import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Set;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -158,12 +158,10 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
                 if (token != null) {
                     try {
-                        Set<String> roles = accessController.getRoles(token);
+                        Authentication authentication = accessController
+                                .authentication(token);
                         auditLog.trace("Access using configured token.");
-                        SecurityContextHolder.getContext().setAuthentication(
-                                new TokenAuthentication(true,
-                                                        "AuthenticatedApp",
-                                                        roles));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
                     } catch (InvalidTokenException invalidTokenException) {
                         auditLog.error("Access attempted with invalid token.");
                         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;

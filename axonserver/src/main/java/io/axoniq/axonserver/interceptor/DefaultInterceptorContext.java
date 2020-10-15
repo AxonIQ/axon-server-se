@@ -9,10 +9,17 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Provides the context for intercepted requests. It contains information on the caller and the Axon Server context
@@ -21,17 +28,18 @@ import java.util.List;
  * @author Marc Gathier
  * @since 4.5
  */
-public class InterceptorContext {
+public class DefaultInterceptorContext implements InterceptorContext {
 
     private final String context;
     private final Authentication principal;
     private final List<Runnable> compensatingActions = new LinkedList<>();
+    private final Map<String, Object> details = new HashMap<>();
 
     /**
      * @param context   the Axon Server context for the request
      * @param principal the caller's information
      */
-    public InterceptorContext(String context, Authentication principal) {
+    public DefaultInterceptorContext(String context, Authentication principal) {
         this.context = context;
         this.principal = principal;
     }
@@ -41,6 +49,7 @@ public class InterceptorContext {
      *
      * @return the Axon Server context
      */
+    @Override
     public String context() {
         return context;
     }
@@ -50,8 +59,22 @@ public class InterceptorContext {
      *
      * @return the caller's information
      */
-    public Authentication principal() {
-        return principal;
+    @Override
+    public String principal() {
+        return principal.getName();
+    }
+
+    @Override
+    public Set<String> principalRoles() {
+        return principal.getAuthorities()
+                        .stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .collect(Collectors.toSet());
+    }
+
+    @Override
+    public Map<String, String> principalMetaData() {
+        return Collections.emptyMap();
     }
 
     /**
@@ -59,6 +82,7 @@ public class InterceptorContext {
      *
      * @param compensatingAction runnable compensation action
      */
+    @Override
     public void registerCompensatingAction(Runnable compensatingAction) {
         compensatingActions.add(0, compensatingAction);
     }
@@ -68,5 +92,27 @@ public class InterceptorContext {
      */
     public void compensate() {
         compensatingActions.forEach(Runnable::run);
+    }
+
+    /**
+     * Add data to the interceptor context to be used at a later point in the interceptor chain.
+     *
+     * @param key   a key for the data
+     * @param value the value
+     */
+    @Override
+    public void addDetails(String key, Object value) {
+        details.put(key, value);
+    }
+
+    /**
+     * Retrieves custom data from the interceptor context.
+     *
+     * @param key the key of the data
+     * @return the value
+     */
+    @Override
+    public Object getDetails(String key) {
+        return details.get(key);
     }
 }

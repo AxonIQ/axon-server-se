@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.extensions.interceptor;
 
 import io.axoniq.axonserver.grpc.event.Event;
 

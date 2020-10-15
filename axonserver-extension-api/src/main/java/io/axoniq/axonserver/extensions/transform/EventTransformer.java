@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.localstorage.transformation;
+package io.axoniq.axonserver.extensions.transform;
 
 /**
  * Transformer to transform events between protobuf event bytes and stored event bytes.

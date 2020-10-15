@@ -7,14 +7,14 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.extensions.interceptor;
 
-import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
 
 /**
  * @author Marc Gathier
  */
-public interface SnapshotPreCommitInterceptor {
+public interface QueryRequestInterceptor {
 
-    Event snapshotPreCommit(InterceptorContext interceptorContext, Event event);
+    QueryRequest queryRequest(InterceptorContext interceptorContext, QueryRequest query);
 }

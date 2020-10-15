@@ -18,7 +18,7 @@ import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;

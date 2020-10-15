@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.extensions.interceptor;
 
 import io.axoniq.axonserver.grpc.event.Event;
 
@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.event.Event;
  * @author Marc Gathier
  * @since 4.5
  */
-public interface EventPreCommitInterceptor {
+public interface AppendEventInterceptor {
 
     /**
      * Intercepts an event before it is committed. The interceptor may change the event.
@@ -27,5 +27,5 @@ public interface EventPreCommitInterceptor {
      * @param event              the new event
      * @return the new event
      */
-    Event eventPreCommit(InterceptorContext interceptorContext, Event event);
+    Event appendEvent(InterceptorContext interceptorContext, Event event);
 }

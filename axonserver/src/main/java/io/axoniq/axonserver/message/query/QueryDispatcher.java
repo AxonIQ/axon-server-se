@@ -14,10 +14,11 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
@@ -176,7 +177,7 @@ public class QueryDispatcher {
             if (nrOfResults > 0) {
                 expectedResults = nrOfResults;
             }
-            InterceptorContext interceptorContext = new InterceptorContext(serializedQuery.context(), principal);
+            InterceptorContext interceptorContext = new DefaultInterceptorContext(serializedQuery.context(), principal);
             try {
                 SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(interceptorContext, serializedQuery);
                 QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(),

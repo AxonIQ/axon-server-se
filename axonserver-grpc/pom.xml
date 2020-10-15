@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>axonserver-se</artifactId>
         <groupId>io.axoniq.axonserver</groupId>
@@ -9,6 +10,7 @@
 
     <artifactId>axonserver-grpc</artifactId>
     <name>AxonServer - GRPC proto generated code</name>
+    <packaging>bundle</packaging>
 
     <dependencies>
 
@@ -41,6 +43,12 @@
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.osgi.core</artifactId>
+            <version>1.0.0</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -53,19 +61,17 @@
             </extension>
         </extensions>
         <plugins>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
+            <plugin>    <!-- (2) START -->
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
                 <configuration>
-                    <archive>
-                        <manifestEntries>
-                            <Loader-Path>exts</Loader-Path>
-                        </manifestEntries>
-                    </archive>
+                    <instructions>
+                        <Import-Package>org.osgi.framework</Import-Package>
+                        <Export-Package>io.axoniq.axonserver.grpc.*</Export-Package>
+                    </instructions>
                 </configuration>
-            </plugin>
-
+            </plugin>    <!-- (2) END -->
             <!-- Copy public .proto from the axoniq-eventstore-queryDefinition-proto artifact to target/proto -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -116,6 +122,5 @@
             </plugin>
         </plugins>
     </build>
-
 
 </project>

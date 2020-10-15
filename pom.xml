@@ -30,6 +30,7 @@
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
+        <module>axonserver-extension-api</module>
     </modules>
 
     <properties>

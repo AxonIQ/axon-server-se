@@ -7,14 +7,14 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.extensions.interceptor;
 
-import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.grpc.command.Command;
 
 /**
  * @author Marc Gathier
  */
-public interface CommandResponseInterceptor {
+public interface CommandRequestInterceptor {
 
-    CommandResponse commandResponse(InterceptorContext interceptorContext, CommandResponse command);
+    Command commandRequest(InterceptorContext interceptorContext, Command command);
 }

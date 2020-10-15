@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.grpc.event.Event;
 
 import java.io.InputStream;
@@ -28,7 +29,7 @@ public interface EventInterceptors {
      * @param eventInputStream   the new event
      * @return the new event
      */
-    InputStream eventPreCommit(InterceptorContext interceptorContext, InputStream eventInputStream);
+    InputStream appendEvent(InterceptorContext interceptorContext, InputStream eventInputStream);
 
     /**
      * Intercepts an append snapshot action. The implementation of the interceptor can update the snapshot.
@@ -38,6 +39,8 @@ public interface EventInterceptors {
      * @return the new event
      */
     Event snapshotPreRequest(InterceptorContext interceptorContext, Event snapshot);
+
+    void eventsPreCommit(InterceptorContext interceptorContext);
 
     /**
      * Intercepts a snapshot read from the event store. The implementation of the interceptor can update the snapshot.

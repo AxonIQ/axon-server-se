@@ -9,16 +9,14 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 
 /**
  * @author Marc Gathier
  */
-@Component
-@ConditionalOnMissingBean(CommandInterceptors.class)
 public class NoOpCommandInterceptors implements CommandInterceptors {
 
     @Override
