@@ -3,17 +3,15 @@ import CancelIcon from '@material-ui/icons/Cancel';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import classnames from 'classnames';
 import React from 'react';
+import { SettingsConfigurationTable } from '../../components/SettingsConfigurationTable/SettingsConfigurationTable';
+import { SettingsActivityTable } from '../../components/SettingsActivityTable/SettingsActivityTable';
+import { SettingsNodeTable } from '../../components/SettingsNodeTable/SettingsNodeTable';
 
 import { Card } from '../../components/Card/Card';
 import { FormControl } from '../../components/FormControl/FormControl';
 import { InputLabel } from '../../components/InputLabel/InputLabel';
 import { MenuItem } from '../../components/MenuItem/MenuItem';
 import { Select } from '../../components/Select/Select';
-import { Table } from '../../components/Table/Table';
-import { TableBody } from '../../components/TableBody/TableBody';
-import { TableCell } from '../../components/TableCell/TableCell';
-import { TableHead } from '../../components/TableHead/TableHead';
-import { TableRow } from '../../components/TableRow/TableRow';
 import { Typography } from '../../components/Typography/Typography';
 import './settings.scss';
 
@@ -27,7 +25,7 @@ export const Settings = () => (
     </Grid>
 
     <Grid item md={6}>
-      <ConfigurationTable />
+      <SettingsConfigurationTable />
     </Grid>
     <Grid item md={6}>
       <Card>
@@ -58,11 +56,12 @@ export const Settings = () => (
           </div>
         </Typography>
 
-        <ActivityTable />
+        <SettingsActivityTable />
       </Card>
     </Grid>
+
     <Grid item md={12}>
-      <NodeTable />
+      <SettingsNodeTable />
     </Grid>
   </Grid>
 );
@@ -111,227 +110,4 @@ const AuthStatus = (props: AuthStatusProps) => (
       )}
     </div>
   </div>
-);
-
-const ConfigurationTable = () => (
-  <Table flat>
-    <TableHead>
-      <TableCell colSpan={2}>
-        <Typography size="m" color="white" weight="bold" uppercase>
-          Configuration
-        </Typography>
-      </TableCell>
-    </TableHead>
-
-    <TableBody>
-      <TableRow>
-        <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
-            Node name
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-1
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
-            Host name
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-1
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
-            HTTP port
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8024
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
-            GRPC port
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8124
-          </Typography>
-        </TableCell>
-      </TableRow>
-    </TableBody>
-  </Table>
-);
-
-const ActivityTable = () => (
-  <Table flat>
-    <TableHead>
-      <TableCell>
-        <Typography size="m" color="white" weight="bold" uppercase>
-          Activity In The Last Minute
-        </Typography>
-      </TableCell>
-      <TableCell align="right"></TableCell>
-    </TableHead>
-
-    <TableBody>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
-            Commands received / second
-          </Typography>
-        </TableCell>
-        <TableCell align="right">
-          <Typography size="m" color="gray">
-            0
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
-            Queries received / second
-          </Typography>
-        </TableCell>
-        <TableCell align="right">
-          <Typography size="m" color="gray">
-            0
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
-            Events stored / second
-          </Typography>
-        </TableCell>
-        <TableCell align="right">
-          <Typography size="m" color="gray">
-            0
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
-            Snapshots stored / second
-          </Typography>
-        </TableCell>
-        <TableCell align="right">
-          <Typography size="m" color="gray">
-            0
-          </Typography>
-        </TableCell>
-      </TableRow>
-    </TableBody>
-  </Table>
-);
-
-const NodeTable = () => (
-  <Table flat>
-    <TableHead>
-      <TableCell>
-        <Typography size="m" color="white" weight="bold" uppercase>
-          Node Name
-        </Typography>
-      </TableCell>
-      <TableCell>
-        <Typography size="m" color="white" weight="bold" uppercase>
-          Host Name
-        </Typography>
-      </TableCell>
-      <TableCell>
-        <Typography size="m" color="white" weight="bold" uppercase>
-          HTTP Port
-        </Typography>
-      </TableCell>
-      <TableCell>
-        <Typography size="m" color="white" weight="bold" uppercase>
-          GRPC Port
-        </Typography>
-      </TableCell>
-    </TableHead>
-
-    <TableBody>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-1
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-1
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8024
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8124
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-2
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-2
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8025
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8125
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-3
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-3
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8026
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8126
-          </Typography>
-        </TableCell>
-      </TableRow>
-    </TableBody>
-  </Table>
 );
