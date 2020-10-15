@@ -80,8 +80,14 @@
   &.typography-weight--lighter {
     font-weight: lighter;
   }
+  &.typography-color--white {
+    color: $color-white;
+  }
   &.typography-color--dark {
     color: $color-cinder;
+  }
+  &.typography-color--gray {
+    color: $color-rhino;
   }
   &.typography-color--lighter {
     color: $color-gray-chateau;
