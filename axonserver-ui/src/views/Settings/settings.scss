@@ -22,3 +22,16 @@
   color: $color-white;
   background-color: $color-amaranth;
 }
+.settings__status-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.settings__select-context-wrapper {
+  min-width: 100px;
+}
+.settings__last-event-token-wrapper {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
