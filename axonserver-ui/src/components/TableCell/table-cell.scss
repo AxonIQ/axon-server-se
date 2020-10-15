@@ -1,0 +1,7 @@
+@import '../Colors/colors.scss';
+
+.table-cell.table-cell {
+  &.table-cell--small-width {
+    width: 160px;
+  }
+}
