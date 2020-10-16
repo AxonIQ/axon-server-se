@@ -12,17 +12,21 @@ import { SettingsActivityTable } from '../../components/SettingsActivityTable/Se
 import { SettingsConfigurationTable } from '../../components/SettingsConfigurationTable/SettingsConfigurationTable';
 import { SettingsNodeTable } from '../../components/SettingsNodeTable/SettingsNodeTable';
 import { Typography } from '../../components/Typography/Typography';
+import { getMe, GetMeResponse } from '../../services/me/me';
 import { getVersion, GetVersionResponse } from '../../services/version/version';
 import './settings.scss';
 
 export const Settings = () => {
   const [version, setVersion] = useState<GetVersionResponse>();
+  const [me, setMe] = useState<GetMeResponse>();
 
   useEffect(() => {
     getVersion().then((response) => setVersion(response));
+    getMe().then((response) => setMe(response));
   }, []);
 
   console.log(version);
+  console.log(me);
 
   return (
     <Grid container spacing={2}>

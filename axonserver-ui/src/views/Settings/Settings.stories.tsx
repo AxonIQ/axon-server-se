@@ -1,6 +1,7 @@
 import { Container, Grid } from '@material-ui/core';
 import React from 'react';
 import { mockGetVersion } from '../../services/version/version.mock';
+import { mockGetMe } from '../../services/me/me.mock';
 import { Navigation } from '../../components/Navigation/Navigation';
 import { Settings } from './Settings';
 
@@ -11,6 +12,7 @@ export default {
 
 export const Primary = () => {
   mockGetVersion();
+  mockGetMe();
 
   return (
     <Container maxWidth={false} disableGutters={true}>
