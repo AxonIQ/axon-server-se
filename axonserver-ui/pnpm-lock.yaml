@@ -21,11 +21,13 @@ devDependencies:
   '@testing-library/jest-dom': 5.11.4
   '@testing-library/react': 10.4.9_react-dom@16.13.1+react@16.13.1
   '@types/classnames': 2.2.10
+  '@types/fetch-mock': 7.3.3
   '@types/react': 16.9.51
   '@types/react-dom': 16.9.8
   '@types/snowpack-env': 2.3.0
   babel-loader: 8.1.0_@babel+core@7.11.6
   css-loader: 4.3.0
+  fetch-mock: 9.10.7
   husky: 4.3.0
   jest: 26.5.2
   prettier: 2.1.2
@@ -498,8 +500,8 @@ packages:
       '@babel/core': ^7.0.0-0
     resolution:
       integrity: sha512-fCL7QF0Jo83uy1K0P2YXrfX11tj3lkpN7l4dMv9Y9VkowkhkQDwFHFd8IiwyK5MZjE8UpbgokkgtcReH88Abaw==
-  ? /@babel/plugin-proposal-logical-assignment-operators/7.11.0_@babel+core@7.11.6
-  : dependencies:
+  /@babel/plugin-proposal-logical-assignment-operators/7.11.0_@babel+core@7.11.6:
+    dependencies:
       '@babel/core': 7.11.6
       '@babel/helper-plugin-utils': 7.10.4
       '@babel/plugin-syntax-logical-assignment-operators': 7.10.4_@babel+core@7.11.6
@@ -1319,8 +1321,8 @@ packages:
       '@babel/core': ^7.0.0-0
     resolution:
       integrity: sha512-mohW5q3uAEt8T45YT7Qc5ws6mWgJAaL/8BfWD9Dodo1A3RKWli8wTS+WiQ/knF+tXlPirW/1/MqzzGfCExKECA==
-  ? /@babel/plugin-transform-named-capturing-groups-regex/7.10.4_@babel+core@7.11.6
-  : dependencies:
+  /@babel/plugin-transform-named-capturing-groups-regex/7.10.4_@babel+core@7.11.6:
+    dependencies:
       '@babel/core': 7.11.6
       '@babel/helper-create-regexp-features-plugin': 7.10.4_@babel+core@7.11.6
     dev: true
@@ -1328,8 +1330,8 @@ packages:
       '@babel/core': ^7.0.0
     resolution:
       integrity: sha512-V6LuOnD31kTkxQPhKiVYzYC/Jgdq53irJC/xBSmqcNcqFGV+PER4l6rU5SH2Vl7bH9mLDHcc0+l9HUOe4RNGKA==
-  ? /@babel/plugin-transform-named-capturing-groups-regex/7.10.4_@babel+core@7.9.0
-  : dependencies:
+  /@babel/plugin-transform-named-capturing-groups-regex/7.10.4_@babel+core@7.9.0:
+    dependencies:
       '@babel/core': 7.9.0
       '@babel/helper-create-regexp-features-plugin': 7.10.4_@babel+core@7.9.0
     dev: true
@@ -3600,6 +3602,10 @@ packages:
     dev: true
     resolution:
       integrity: sha512-jnqIUKDUqJbDIUxm0Uj7bnlMnRm1T/eZ9N+AVMqhPgzrba2GhGG5o/jCTwmdPK709nEZsGoMzXEDUjcXHa3W0g==
+  /@types/fetch-mock/7.3.3:
+    dev: true
+    resolution:
+      integrity: sha512-NLMbBVQh3yx6dMd5CnVxp9ZBhQYuFzWIlRk0kQbgBfyL75u3wtZyUTuFsK9Wb9G3eIw77yja858j1fQAWqM9Og==
   /@types/glob-base/0.3.0:
     dev: true
     resolution:
@@ -4839,6 +4845,13 @@ packages:
     dev: true
     resolution:
       integrity: sha512-k58RtQOKH21NyKtzptoAvtAODuAJJs3ZhqBMl456/GnXEQ/0La92pNmwgWoMn5pBTrsvk3YYXdY7zpY4e3UIxA==
+  /babel-runtime/6.26.0:
+    dependencies:
+      core-js: 2.6.11
+      regenerator-runtime: 0.11.1
+    dev: true
+    resolution:
+      integrity: sha1-llxwWGaOgrVde/4E/yM3vItWR/4=
   /bail/1.0.5:
     dev: true
     resolution:
@@ -5736,6 +5749,12 @@ packages:
     requiresBuild: true
     resolution:
       integrity: sha512-lacdXOimsiD0QyNf9BC/mxivNJ/ybBGJXQFKzRekp1WTHoVUWsUHEn+2T8GJAzzIhyOuXA+gOxCVN3l+5PLPUA==
+  /core-js/2.6.11:
+    deprecated: 'core-js@<3 is no longer maintained and not recommended for usage due to the number of issues. Please, upgrade your dependencies to the actual version of core-js@3.'
+    dev: true
+    requiresBuild: true
+    resolution:
+      integrity: sha512-5wjnpaT/3dV+XB4borEsnAYQchn00XSgTAWKDkEqv+K8KevjbzmofK6hfJ9TZIlpj2N0xQpazy7PiRQiWHqzWg==
   /core-js/3.6.5:
     dev: true
     requiresBuild: true
@@ -6988,6 +7007,27 @@ packages:
     dev: true
     resolution:
       integrity: sha512-DkPJKQeY6kKwmuMretBhr7G6Vodr7bFwDYTXIkfG1gjvNpaxBTQV3PbXg6bR1c1UP4jPOX0jHUbbHANL9vRjVg==
+  /fetch-mock/9.10.7:
+    dependencies:
+      babel-runtime: 6.26.0
+      core-js: 3.6.5
+      debug: 4.2.0
+      glob-to-regexp: 0.4.1
+      is-subset: 0.1.1
+      lodash.isequal: 4.5.0
+      path-to-regexp: 2.4.0
+      querystring: 0.2.0
+      whatwg-url: 6.5.0
+    dev: true
+    engines:
+      node: '>=4.0.0'
+    peerDependencies:
+      node-fetch: '*'
+    peerDependenciesMeta:
+      node-fetch:
+        optional: true
+    resolution:
+      integrity: sha512-YkiMHSL8CQ0vlWYpqGvlaZjViFk0Kar9jonPjSvaWoztkeHH6DENqUzBIsffzjVKhwchPI74SZRLRpIsEyNcZQ==
   /figgy-pudding/3.5.2:
     dev: true
     resolution:
@@ -7477,6 +7517,10 @@ packages:
     dev: true
     resolution:
       integrity: sha1-jFoUlNIGbFcMw7/kSWF1rMTVAqs=
+  /glob-to-regexp/0.4.1:
+    dev: true
+    resolution:
+      integrity: sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==
   /glob/7.1.6:
     dependencies:
       fs.realpath: 1.0.0
@@ -8515,6 +8559,10 @@ packages:
       node: '>= 0.4'
     resolution:
       integrity: sha512-buY6VNRjhQMiF1qWDouloZlQbRhDPCebwxSjxMjxgemYT46YMd2NR0/H+fBhEfWX4A/w9TBJ+ol+okqJKFE6vQ==
+  /is-subset/0.1.1:
+    dev: true
+    resolution:
+      integrity: sha1-ilkRfZMt4d4A8kX83TnOQ/HpOaY=
   /is-symbol/1.0.3:
     dependencies:
       has-symbols: 1.0.1
@@ -9484,6 +9532,10 @@ packages:
       node: '>=8'
     resolution:
       integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==
+  /lodash.isequal/4.5.0:
+    dev: true
+    resolution:
+      integrity: sha1-QVxEePK8wwEgwizhDtMib30+GOA=
   /lodash.sortby/4.7.0:
     dev: true
     resolution:
@@ -10686,6 +10738,10 @@ packages:
     dev: true
     resolution:
       integrity: sha1-32BBeABfUi8V60SQ5yR6G/qmf4w=
+  /path-to-regexp/2.4.0:
+    dev: true
+    resolution:
+      integrity: sha512-G6zHoVqC6GGTQkZwF4lkuEyMbVOjoBKAEybQUypI1WTkqinCOrq2x6U2+phkJ1XsEMTy4LjtwPI7HW+NVrRR2w==
   /path-type/1.1.0:
     dependencies:
       graceful-fs: 4.2.4
@@ -11704,6 +11760,10 @@ packages:
     dev: true
     resolution:
       integrity: sha512-j2+C8+NtXQgEKWk49MMP5P/u2GhnahTtVkRIHr5R5lVRlbKvmQ+oS+A5aLKWp2ma5VkT8sh6v+v4hbH0YHR66A==
+  /regenerator-runtime/0.11.1:
+    dev: true
+    resolution:
+      integrity: sha512-MguG95oij0fC3QV3URf4V2SDYGJhJnJGqvIIgdECeODCT98wSWDAJ94SSuVpYQUoTcGUIL6L4yNB7j1DFFHSBg==
   /regenerator-runtime/0.13.7:
     resolution:
       integrity: sha512-a54FxoJDIr27pgf7IgeQGxmqUNYrcV338lf/6gH456HZ/PhX+5BcwHXG9ajESmwe6WRO0tAzRUrRmNONWgkrew==
@@ -13222,6 +13282,12 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-yQyJ0u4pZsv9D4clxO69OEjLWYw+jbgspjTue4lTQZLfV0c5l1VmK2y1JK8E9ahdpltPOaAThPcp5nKPUgSnsg==
+  /tr46/1.0.1:
+    dependencies:
+      punycode: 2.1.1
+    dev: true
+    resolution:
+      integrity: sha1-qLE/1r/SSJUZZ0zN5VujaTtwbQk=
   /tr46/2.0.2:
     dependencies:
       punycode: 2.1.1
@@ -13769,6 +13835,10 @@ packages:
     dev: true
     resolution:
       integrity: sha512-wYxSGajtmoP4WxfejAPIr4l0fVh+jeMXZb08wNc0tMg6xsfZXj3cECqIK0G7ZAqUq0PP8WlMDtaOGVBTAWztNw==
+  /webidl-conversions/4.0.2:
+    dev: true
+    resolution:
+      integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==
   /webidl-conversions/5.0.0:
     dev: true
     engines:
@@ -13892,6 +13962,14 @@ packages:
     dev: true
     resolution:
       integrity: sha512-M4yMwr6mAnQz76TbJm914+gPpB/nCwvZbJU28cUD6dR004SAxDLOOSUaB1JDRqLtaOV/vi0IC5lEAGFgrjGv/g==
+  /whatwg-url/6.5.0:
+    dependencies:
+      lodash.sortby: 4.7.0
+      tr46: 1.0.1
+      webidl-conversions: 4.0.2
+    dev: true
+    resolution:
+      integrity: sha512-rhRZRqx/TLJQWUpQ6bmrt2UV4f0HCQ463yQuONJqC6fO2VoEb1pTYddbe59SkYq87aoM5A3bdhMZiUiVws+fzQ==
   /whatwg-url/8.3.0:
     dependencies:
       lodash.sortby: 4.7.0
@@ -14116,12 +14194,14 @@ specifiers:
   '@testing-library/jest-dom': ^5.5.0
   '@testing-library/react': ^10.0.3
   '@types/classnames': ^2.2.10
+  '@types/fetch-mock': ^7.3.3
   '@types/react': ^16.9.49
   '@types/react-dom': ^16.9.8
   '@types/snowpack-env': ^2.3.0
   babel-loader: ^8.1.0
   classnames: ^2.2.6
   css-loader: ^4.3.0
+  fetch-mock: ^9.10.7
   fontsource-lato: ^3.0.9
   husky: ^4.3.0
   jest: ^26.2.2
