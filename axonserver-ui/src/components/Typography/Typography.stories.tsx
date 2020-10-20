@@ -6,7 +6,7 @@ export default {
   component: Typography,
 };
 
-export const Primary = () => (
+export const Default = () => (
   <div>
     <div>
       <Typography addMargin size="xxxl" tag="h1">

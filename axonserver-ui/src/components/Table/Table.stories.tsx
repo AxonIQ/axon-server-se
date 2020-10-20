@@ -1,17 +1,17 @@
 import React from 'react';
-import { TableHead } from '../TableHead/TableHead';
 import { TableBody } from '../TableBody/TableBody';
 import { TableCell } from '../TableCell/TableCell';
+import { TableHead } from '../TableHead/TableHead';
 import { TableRow } from '../TableRow/TableRow';
-import { Table } from './Table';
 import { Typography } from '../Typography/Typography';
+import { Table } from './Table';
 
 export default {
   title: 'Components/Table',
   component: Table,
 };
 
-export const Primary = () => (
+export const Default = () => (
   <Table>
     <TableHead>
       <TableCell smallWidth>

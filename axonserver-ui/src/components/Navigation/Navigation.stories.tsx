@@ -7,7 +7,7 @@ export default {
   component: Navigation,
 };
 
-export const Primary = () => (
+export const Default = () => (
   <Grid container>
     <Grid md={1}>
       <Navigation />
