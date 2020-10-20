@@ -1,12 +1,10 @@
-import fetchMock from 'fetch-mock';
+import { rest } from 'msw';
 import { versionUrl, GetVersionResponse } from './version';
 
-export function mockGetVersion() {
-  const getVersionResponseMock: GetVersionResponse = {
-    productName: 'Axon Server',
-    version: '4.4.3',
-  };
-
-  fetchMock.config.overwriteRoutes = true;
-  fetchMock.get(versionUrl, getVersionResponseMock);
-}
+const getVersionResponseMock: GetVersionResponse = {
+  productName: 'Axon Server',
+  version: '4.4.3',
+};
+export const mockGetVersion = rest.get(versionUrl, (req, res, ctx) =>
+  res(ctx.json(getVersionResponseMock)),
+);

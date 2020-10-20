@@ -5,7 +5,7 @@
     "test": "jest",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",
-    "storybook": "start-storybook -p 6006",
+    "storybook": "start-storybook -p 6006 -s public",
     "build-storybook": "build-storybook"
   },
   "dependencies": {
@@ -38,9 +38,9 @@
     "@types/snowpack-env": "^2.3.0",
     "babel-loader": "^8.1.0",
     "css-loader": "^4.3.0",
-    "fetch-mock": "^9.10.7",
     "husky": "^4.3.0",
     "jest": "^26.2.2",
+    "msw": "^0.21.3",
     "prettier": "^2.0.5",
     "pretty-quick": "^3.0.2",
     "react-is": "^16.13.1",
