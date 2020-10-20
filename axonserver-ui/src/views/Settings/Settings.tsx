@@ -2,6 +2,7 @@ import { Grid } from '@material-ui/core';
 import CancelIcon from '@material-ui/icons/Cancel';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import classnames from 'classnames';
+
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../components/Card/Card';
 import { FormControl } from '../../components/FormControl/FormControl';
@@ -13,32 +14,60 @@ import { SettingsConfigurationTable } from '../../components/SettingsConfigurati
 import { SettingsNodeTable } from '../../components/SettingsNodeTable/SettingsNodeTable';
 import { Typography } from '../../components/Typography/Typography';
 import { getMe, GetMeResponse } from '../../services/me/me';
+import { getPublic, GetPublicResponse } from '../../services/public/public';
 import { getVersion, GetVersionResponse } from '../../services/version/version';
+import {
+  getVisibleContexts,
+  GetVisibleContextsResponse,
+} from '../../services/visibleContexts/visibleContexts';
 import './settings.scss';
 
 export const Settings = () => {
-  const [version, setVersion] = useState<GetVersionResponse>();
-  const [me, setMe] = useState<GetMeResponse>();
+  const [versionData, setVersionData] = useState<GetVersionResponse>();
+  const [meData, setMeData] = useState<GetMeResponse>();
+  const [publicResponseData, setPublicData] = useState<GetPublicResponse>();
+  const [visibleContexts, setVisibleContexts] = useState<
+    GetVisibleContextsResponse
+  >();
+
+  const [selectedContext, setSelectedContext] = useState<string>();
 
   useEffect(() => {
-    getVersion().then((response) => setVersion(response));
-    getMe().then((response) => setMe(response));
+    getVersion().then((response) => setVersionData(response));
+    getMe().then((response) => setMeData(response));
+    getPublic().then((response) => setPublicData(response));
+    getVisibleContexts().then((response) => {
+      setVisibleContexts(response);
+      const contextToSelect = response?.find(
+        (context) => !context.startsWith('_'),
+      );
+      setSelectedContext(contextToSelect);
+    });
   }, []);
 
-  console.log(version);
-  console.log(me);
+  // Consider adding a "Loading..." component here.
+  if (!versionData || !meData || !publicResponseData || !visibleContexts) {
+    return null;
+  }
 
   return (
     <Grid container spacing={2}>
       <Grid item md={6}>
-        <SSLStatus enabled={false} />
+        <SSLStatus enabled={meData.ssl} />
       </Grid>
       <Grid item md={6}>
-        <AuthStatus enabled={false} />
+        <AuthStatus enabled={meData.authentication} />
       </Grid>
 
       <Grid item md={6}>
-        <SettingsConfigurationTable />
+        <SettingsConfigurationTable
+          data={{
+            name: meData.name,
+            hostName: meData.hostName,
+            httpPort: meData.httpPort,
+            grpcPort: meData.grpcPort,
+          }}
+        />
       </Grid>
       <Grid item md={6}>
         <Card>
@@ -47,19 +76,25 @@ export const Settings = () => {
               Status
             </Typography>
             <div className="settings__select-context-wrapper">
-              <FormControl fullWidth>
-                <InputLabel id="demo-simple-select-label">Context</InputLabel>
-                <Select
-                  labelId="demo-simple-select-label"
-                  id="demo-simple-select"
-                  // value={age}
-                  // onChange={handleChange}
-                >
-                  <MenuItem value={10}>billing</MenuItem>
-                  <MenuItem value={20}>default</MenuItem>
-                  <MenuItem value={30}>testcontext@demo</MenuItem>
-                </Select>
-              </FormControl>
+              {selectedContext && (
+                <FormControl fullWidth>
+                  <InputLabel id="demo-simple-select-label">Context</InputLabel>
+                  <Select
+                    labelId="demo-simple-select-label"
+                    id="demo-simple-select"
+                    value={selectedContext}
+                    onChange={(event) =>
+                      setSelectedContext(event.target.value as string)
+                    }
+                  >
+                    {visibleContexts.map((context, index) => (
+                      <MenuItem key={`context${index}`} value={context}>
+                        {context}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
             </div>
           </div>
           <Typography size="l" color="light" addMargin>

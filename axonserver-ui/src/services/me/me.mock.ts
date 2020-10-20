@@ -8,14 +8,14 @@ export function mockGetMe() {
     ssl: false,
     adminNode: true,
     developmentMode: false,
-    storageContextNames: ['default'],
-    contextNames: ['default'],
-    name: 'pop-os',
-    hostName: 'pop-os',
+    storageContextNames: ['default', 'billing'],
+    contextNames: ['default', 'billing'],
+    internalHostName: 'axonserver-enterprise-1',
     httpPort: 8024,
-    internalHostName: null,
     grpcInternalPort: 0,
     grpcPort: 8124,
+    name: 'axonserver-enterprise-1',
+    hostName: 'axonserver-enterprise-1',
   };
 
   fetchMock.config.overwriteRoutes = true;
