@@ -5,8 +5,9 @@ import { TableBody } from '../TableBody/TableBody';
 import { TableCell } from '../TableCell/TableCell';
 import { TableHead } from '../TableHead/TableHead';
 import { TableRow } from '../TableRow/TableRow';
+import type { GetPublicResponse } from 'src/services/public/public';
 
-export const SettingsNodeTable = () => (
+export const SettingsNodeTable = (props: { nodeArray: GetPublicResponse }) => (
   <Table flat>
     <TableHead>
       <TableCell>
@@ -32,72 +33,30 @@ export const SettingsNodeTable = () => (
     </TableHead>
 
     <TableBody>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-1
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-1
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8024
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8124
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-2
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-2
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8025
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8125
-          </Typography>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-3
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            axonserver-enterprise-3
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8026
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <Typography size="m" color="gray">
-            8126
-          </Typography>
-        </TableCell>
-      </TableRow>
+      {props.nodeArray.map((nodeItem, index) => (
+        <TableRow key={`nodeItem-${index}`}>
+          <TableCell>
+            <Typography size="m" color="gray">
+              {nodeItem.name}
+            </Typography>
+          </TableCell>
+          <TableCell>
+            <Typography size="m" color="gray">
+              {nodeItem.hostName}
+            </Typography>
+          </TableCell>
+          <TableCell>
+            <Typography size="m" color="gray">
+              {nodeItem.httpPort}
+            </Typography>
+          </TableCell>
+          <TableCell>
+            <Typography size="m" color="gray">
+              {nodeItem.grpcPort}
+            </Typography>
+          </TableCell>
+        </TableRow>
+      ))}
     </TableBody>
   </Table>
 );

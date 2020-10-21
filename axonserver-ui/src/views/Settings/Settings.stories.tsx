@@ -1,8 +1,13 @@
 import { Container, Grid } from '@material-ui/core';
 import React from 'react';
-import { mockGetVersion } from '../../services/version/version.mock';
-import { mockGetMe } from '../../services/me/me.mock';
+import { setupWorker } from 'msw';
+
+import { mockGetStatus } from '../../services/public/status/status.mock';
 import { Navigation } from '../../components/Navigation/Navigation';
+import { mockGetMe } from '../../services/me/me.mock';
+import { mockGetPublic } from '../../services/public/public.mock';
+import { mockGetVersion } from '../../services/version/version.mock';
+import { mockGetVisibleContexts } from '../../services/visibleContexts/visibleContexts.mock';
 import { Settings } from './Settings';
 
 export default {
@@ -10,9 +15,14 @@ export default {
   component: Settings,
 };
 
-export const Primary = () => {
-  mockGetVersion();
-  mockGetMe();
+export const Default = () => {
+  setupWorker(
+    mockGetVersion,
+    mockGetMe,
+    mockGetPublic,
+    mockGetStatus,
+    mockGetVisibleContexts,
+  ).start();
 
   return (
     <Container maxWidth={false} disableGutters={true}>

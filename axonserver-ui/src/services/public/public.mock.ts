@@ -31,6 +31,6 @@ const getPublicResponseMock: GetPublicResponse = [
   },
 ];
 
-export const mockGetPublic = rest.get(publicUrl, (req, res, ctx) =>
+export const mockGetPublic = rest.get(publicUrl, (_, res, ctx) =>
   res(ctx.json(getPublicResponseMock)),
 );

@@ -5,6 +5,6 @@ const getVersionResponseMock: GetVersionResponse = {
   productName: 'Axon Server',
   version: '4.4.3',
 };
-export const mockGetVersion = rest.get(versionUrl, (req, res, ctx) =>
+export const mockGetVersion = rest.get(versionUrl, (_, res, ctx) =>
   res(ctx.json(getVersionResponseMock)),
 );

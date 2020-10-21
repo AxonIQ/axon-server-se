@@ -2,8 +2,8 @@ import { Grid } from '@material-ui/core';
 import CancelIcon from '@material-ui/icons/Cancel';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import classnames from 'classnames';
-
 import React, { useEffect, useState } from 'react';
+
 import { Card } from '../../components/Card/Card';
 import { FormControl } from '../../components/FormControl/FormControl';
 import { InputLabel } from '../../components/InputLabel/InputLabel';
@@ -13,8 +13,13 @@ import { SettingsActivityTable } from '../../components/SettingsActivityTable/Se
 import { SettingsConfigurationTable } from '../../components/SettingsConfigurationTable/SettingsConfigurationTable';
 import { SettingsNodeTable } from '../../components/SettingsNodeTable/SettingsNodeTable';
 import { Typography } from '../../components/Typography/Typography';
+
 import { getMe, GetMeResponse } from '../../services/me/me';
 import { getPublic, GetPublicResponse } from '../../services/public/public';
+import {
+  getStatusForContext,
+  GetStatusResponse,
+} from '../../services/public/status/status';
 import { getVersion, GetVersionResponse } from '../../services/version/version';
 import {
   getVisibleContexts,
@@ -25,17 +30,20 @@ import './settings.scss';
 export const Settings = () => {
   const [versionData, setVersionData] = useState<GetVersionResponse>();
   const [meData, setMeData] = useState<GetMeResponse>();
-  const [publicResponseData, setPublicData] = useState<GetPublicResponse>();
+  const [nodeArray, setNodeArray] = useState<GetPublicResponse>();
   const [visibleContexts, setVisibleContexts] = useState<
     GetVisibleContextsResponse
   >();
+  const [statusData, setStatusData] = useState<GetStatusResponse>();
 
   const [selectedContext, setSelectedContext] = useState<string>();
 
   useEffect(() => {
     getVersion().then((response) => setVersionData(response));
     getMe().then((response) => setMeData(response));
-    getPublic().then((response) => setPublicData(response));
+    getPublic().then((response) => setNodeArray(response));
+    // TODO: Check if we always have the default status
+    getStatusForContext('default').then((response) => setStatusData(response));
     getVisibleContexts().then((response) => {
       setVisibleContexts(response);
       const contextToSelect = response?.find(
@@ -46,7 +54,13 @@ export const Settings = () => {
   }, []);
 
   // Consider adding a "Loading..." component here.
-  if (!versionData || !meData || !publicResponseData || !visibleContexts) {
+  if (
+    !versionData ||
+    !meData ||
+    !nodeArray ||
+    !visibleContexts ||
+    !statusData
+  ) {
     return null;
   }
 
@@ -83,9 +97,13 @@ export const Settings = () => {
                     labelId="demo-simple-select-label"
                     id="demo-simple-select"
                     value={selectedContext}
-                    onChange={(event) =>
-                      setSelectedContext(event.target.value as string)
-                    }
+                    onChange={(event) => {
+                      const newSelectedContext = event.target.value as string;
+                      setSelectedContext(newSelectedContext);
+                      getStatusForContext(newSelectedContext).then((result) =>
+                        setStatusData(result),
+                      );
+                    }}
                   >
                     {visibleContexts.map((context, index) => (
                       <MenuItem key={`context${index}`} value={context}>
@@ -100,16 +118,23 @@ export const Settings = () => {
           <Typography size="l" color="light" addMargin>
             <div className="settings__last-event-token-wrapper">
               <div>Last Event Token:</div>
-              <div>-1</div>
+              <div>{statusData.nrOfEvents}</div>
             </div>
           </Typography>
 
-          <SettingsActivityTable />
+          <SettingsActivityTable
+            data={{
+              commandRate: statusData.commandRate.oneMinuteRate,
+              queryRate: statusData.queryRate.oneMinuteRate,
+              eventRate: statusData.eventRate.oneMinuteRate,
+              snapshotRate: statusData.snapshotRate.oneMinuteRate,
+            }}
+          />
         </Card>
       </Grid>
 
       <Grid item md={12}>
-        <SettingsNodeTable />
+        <SettingsNodeTable nodeArray={nodeArray} />
       </Grid>
     </Grid>
   );

@@ -6,7 +6,17 @@ import { TableCell } from '../TableCell/TableCell';
 import { TableHead } from '../TableHead/TableHead';
 import { TableRow } from '../TableRow/TableRow';
 
-export const SettingsConfigurationTable = () => (
+type SettingsConfigurationTableProps = {
+  data: {
+    name: string;
+    hostName: string;
+    httpPort: number;
+    grpcPort: number;
+  };
+};
+export const SettingsConfigurationTable = (
+  props: SettingsConfigurationTableProps,
+) => (
   <Table flat>
     <TableHead>
       <TableCell colSpan={2}>
@@ -25,7 +35,7 @@ export const SettingsConfigurationTable = () => (
         </TableCell>
         <TableCell>
           <Typography size="m" color="gray">
-            axonserver-enterprise-1
+            {props.data.name}
           </Typography>
         </TableCell>
       </TableRow>
@@ -37,7 +47,7 @@ export const SettingsConfigurationTable = () => (
         </TableCell>
         <TableCell>
           <Typography size="m" color="gray">
-            axonserver-enterprise-1
+            {props.data.hostName}
           </Typography>
         </TableCell>
       </TableRow>
@@ -49,7 +59,7 @@ export const SettingsConfigurationTable = () => (
         </TableCell>
         <TableCell>
           <Typography size="m" color="gray">
-            8024
+            {props.data.httpPort}
           </Typography>
         </TableCell>
       </TableRow>
@@ -61,7 +71,7 @@ export const SettingsConfigurationTable = () => (
         </TableCell>
         <TableCell>
           <Typography size="m" color="gray">
-            8124
+            {props.data.grpcPort}
           </Typography>
         </TableCell>
       </TableRow>

@@ -6,7 +6,15 @@ import { TableCell } from '../TableCell/TableCell';
 import { TableHead } from '../TableHead/TableHead';
 import { TableRow } from '../TableRow/TableRow';
 
-export const SettingsActivityTable = () => (
+type SettingsActivityTableProps = {
+  data: {
+    commandRate: number;
+    queryRate: number;
+    eventRate: number;
+    snapshotRate: number;
+  };
+};
+export const SettingsActivityTable = (props: SettingsActivityTableProps) => (
   <Table flat>
     <TableHead>
       <TableCell colSpan={2}>
@@ -25,7 +33,7 @@ export const SettingsActivityTable = () => (
         </TableCell>
         <TableCell align="right">
           <Typography size="m" color="gray">
-            0
+            {props.data.commandRate.toFixed(0)}
           </Typography>
         </TableCell>
       </TableRow>
@@ -37,7 +45,7 @@ export const SettingsActivityTable = () => (
         </TableCell>
         <TableCell align="right">
           <Typography size="m" color="gray">
-            0
+            {props.data.queryRate.toFixed(0)}
           </Typography>
         </TableCell>
       </TableRow>
@@ -49,7 +57,7 @@ export const SettingsActivityTable = () => (
         </TableCell>
         <TableCell align="right">
           <Typography size="m" color="gray">
-            0
+            {props.data.eventRate.toFixed(0)}
           </Typography>
         </TableCell>
       </TableRow>
@@ -61,7 +69,7 @@ export const SettingsActivityTable = () => (
         </TableCell>
         <TableCell align="right">
           <Typography size="m" color="gray">
-            0
+            {props.data.snapshotRate.toFixed(0)}
           </Typography>
         </TableCell>
       </TableRow>

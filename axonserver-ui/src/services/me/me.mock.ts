@@ -17,6 +17,6 @@ const getMeResponseMock: GetMeResponse = {
   hostName: 'axonserver-enterprise-1',
 };
 
-export const mockGetMe = rest.get(meUrl, (req, res, ctx) =>
+export const mockGetMe = rest.get(meUrl, (_, res, ctx) =>
   res(ctx.json(getMeResponseMock)),
 );

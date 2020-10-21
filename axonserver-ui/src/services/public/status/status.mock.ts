@@ -35,6 +35,30 @@ const getStatusDefaultMock: GetStatusResponse = {
 };
 const getStatusBillingMock: GetStatusResponse = {
   ...getStatusDefaultMock,
+  commandRate: {
+    count: 0,
+    oneMinuteRate: 1,
+    fiveMinuteRate: 0,
+    fifteenMinuteRate: 0,
+  },
+  queryRate: {
+    count: 0,
+    oneMinuteRate: 1,
+    fiveMinuteRate: 0,
+    fifteenMinuteRate: 0,
+  },
+  eventRate: {
+    count: 0,
+    oneMinuteRate: 1,
+    fiveMinuteRate: 0,
+    fifteenMinuteRate: 0,
+  },
+  snapshotRate: {
+    count: 0,
+    oneMinuteRate: 1,
+    fiveMinuteRate: 0,
+    fifteenMinuteRate: 0,
+  },
   nrOfEvents: 7,
 };
 export const mockGetStatus = rest.get(statusUrl, (req, res, ctx) => {
