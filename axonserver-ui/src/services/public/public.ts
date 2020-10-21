@@ -1,3 +1,5 @@
+import { fetchWrapper } from '../fetchWrapper';
+
 export const publicUrl = '/v1/public';
 
 export type GetPublicResponse = Array<{
@@ -10,6 +12,6 @@ export type GetPublicResponse = Array<{
   name: string;
 }>;
 export async function getPublic(): Promise<GetPublicResponse> {
-  const response = await fetch(publicUrl);
+  const response = await fetchWrapper.get(publicUrl);
   return response.json();
 }

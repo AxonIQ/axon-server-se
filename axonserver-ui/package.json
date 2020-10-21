@@ -14,16 +14,19 @@
     "classnames": "^2.2.6",
     "fontsource-lato": "^3.0.9",
     "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react-dom": "^16.13.1",
+    "react-router-dom": "^5.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.11.6",
     "@babel/preset-react": "^7.10.4",
     "@babel/preset-typescript": "^7.10.4",
+    "@open-wc/webpack-import-meta-loader": "^0.4.7",
     "@snowpack/app-scripts-react": "^1.12.2",
     "@snowpack/plugin-dotenv": "^2.0.3",
     "@snowpack/plugin-react-refresh": "^2.3.1",
     "@snowpack/plugin-typescript": "^1.0.1",
+    "@snowpack/plugin-webpack": "^2.0.17",
     "@storybook/addon-actions": "^6.0.26",
     "@storybook/addon-essentials": "^6.0.26",
     "@storybook/addon-links": "^6.0.26",
@@ -35,6 +38,7 @@
     "@types/fetch-mock": "^7.3.3",
     "@types/react": "^16.9.49",
     "@types/react-dom": "^16.9.8",
+    "@types/react-router-dom": "^5.1.6",
     "@types/snowpack-env": "^2.3.0",
     "babel-loader": "^8.1.0",
     "css-loader": "^4.3.0",

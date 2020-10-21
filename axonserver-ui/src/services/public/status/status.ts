@@ -1,3 +1,5 @@
+import { fetchWrapper } from '../../fetchWrapper';
+
 export const statusUrl = '/v1/public/status';
 
 export type GetStatusResponse = {
@@ -44,6 +46,8 @@ export async function getStatusForContext(
   const searchParams = new URLSearchParams();
   searchParams.set('context', contextQuery);
 
-  const response = await fetch(`${statusUrl}?${searchParams.toString()}`);
+  const response = await fetchWrapper.get(
+    `${statusUrl}?${searchParams.toString()}`,
+  );
   return response.json();
 }

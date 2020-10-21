@@ -1,3 +1,5 @@
+import { fetchWrapper } from '../fetchWrapper';
+
 export const meUrl = '/v1/public/me';
 
 export type GetMeResponse = {
@@ -16,6 +18,6 @@ export type GetMeResponse = {
   storageContextNames: string[];
 };
 export async function getMe(): Promise<GetMeResponse> {
-  const response = await fetch(meUrl);
+  const response = await fetchWrapper.get(meUrl);
   return response.json();
 }
