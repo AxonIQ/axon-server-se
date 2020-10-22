@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "prebuild": "[[ $CI = true ]] && npx pnpm@3 install -r --store=node_modules/.pnpm-store || echo skiping pnpm install",
+    "prebuild": "[ $CI = true ] && npx pnpm install --store=node_modules/.pnpm-store || echo skiping pnpm install",
+    "preinstall": "npx only-allow pnpm",
     "start": "snowpack dev",
     "build": "snowpack build",
     "test": "jest",
