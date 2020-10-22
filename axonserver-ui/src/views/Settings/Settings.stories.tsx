@@ -1,3 +1,4 @@
+import { BrowserRouter as Router } from 'react-router-dom';
 import { Container, Grid } from '@material-ui/core';
 import React from 'react';
 import { setupWorker } from 'msw';
@@ -25,15 +26,17 @@ export const Default = () => {
   ).start();
 
   return (
-    <Container maxWidth={false} disableGutters={true}>
-      <Grid container spacing={2}>
-        <Grid item md={1}>
-          {/* <Navigation active="settings" /> */}
+    <Router>
+      <Container maxWidth={false} disableGutters={true}>
+        <Grid container spacing={2}>
+          <Grid item md={1}>
+            <Navigation active="settings" />
+          </Grid>
+          <Grid item md={11}>
+            <Settings />
+          </Grid>
         </Grid>
-        <Grid item md={11}>
-          <Settings />
-        </Grid>
-      </Grid>
-    </Container>
+      </Container>
+    </Router>
   );
 };
