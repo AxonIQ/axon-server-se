@@ -207,7 +207,8 @@ public class QueryServiceTest {
 
     @Test
     public void disconnectClientStream() {
-        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
+        FakeStreamObserver<QueryProviderInbound> responseObserver = new FakeStreamObserver<>();
+        StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(responseObserver);
         requestStream.onNext(QueryProviderOutbound.newBuilder()
                                                   .setSubscribe(QuerySubscription.newBuilder()
                                                                                  .setClientId(clientId)
@@ -222,7 +223,9 @@ public class QueryServiceTest {
         verify(eventPublisher).publishEvent(subscribe.capture());
         SubscribeQuery subscribeQuery = subscribe.getValue();
         ClientStreamIdentification streamIdentification = subscribeQuery.clientIdentification();
-        testSubject.completeStream(clientId, streamIdentification);
+        testSubject.completeStreamForInactivity(clientId, streamIdentification);
         verify(eventPublisher).publishEvent(isA(TopologyEvents.QueryHandlerDisconnected.class));
+        assertEquals(1, responseObserver.errors().size());
+        assertTrue(responseObserver.errors().get(0).getMessage().contains("Query stream inactivity"));
     }
 }
