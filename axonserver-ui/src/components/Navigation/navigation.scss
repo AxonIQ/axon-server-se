@@ -6,6 +6,10 @@
   height: 100%;
   background-color: $color-rhino;
 }
+.navigation__link-wrapper {
+  text-decoration: none;
+  color: inherit;
+}
 .navigation__link {
   color: $color-gray-chateau;
   display: flex;

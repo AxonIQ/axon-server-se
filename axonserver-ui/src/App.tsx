@@ -1,35 +1,29 @@
-import React, { useState } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import Container from '@material-ui/core/Container';
+import Grid from '@material-ui/core/Grid';
+import React from 'react';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
+import { Navigation } from './components/Navigation/Navigation';
+import { Settings } from './views/Settings/Settings';
 
-interface AppProps {}
-
-function App({}: AppProps) {
-  const [count, setCount] = useState(0);
-  setTimeout(() => setCount(count + 1), 1000);
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <p>
-          Page has been open for <code>{count}</code> seconds.
-        </p>
-        <p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-        </p>
-      </header>
-    </div>
-  );
-}
+const App = () => (
+  <Router>
+    <Container maxWidth={false} disableGutters={true}>
+      <Grid container>
+        <Grid item md={1}>
+          <Navigation />
+        </Grid>
+        <Grid item md={11}>
+          {/* A <Switch> looks through its children <Route>s and
+                renders the first one that matches the current URL. */}
+          <Switch>
+            <Route path="/settings">
+              <Settings />
+            </Route>
+          </Switch>
+        </Grid>
+      </Grid>
+    </Container>
+  </Router>
+);
 
 export default App;
