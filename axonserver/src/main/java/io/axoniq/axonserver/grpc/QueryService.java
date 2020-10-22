@@ -15,6 +15,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.Subscripti
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
+import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -314,9 +315,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
      * @param clientId                   the unique identifier of the client instance
      * @param clientStreamIdentification the unique identifier of the query stream
      */
-    public void completeStream(String clientId, ClientStreamIdentification clientStreamIdentification) {
+    public void completeStreamForInactivity(String clientId, ClientStreamIdentification clientStreamIdentification) {
         if (dispatcherListeners.containsKey(clientStreamIdentification)) {
-            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStream();
+            String message = "Query stream inactivity for " + clientStreamIdentification.getClientStreamId();
+            ApplicationInactivityException exception = new ApplicationInactivityException(message);
+            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStreamExceptionally(exception);
             logger.debug("Query Stream closed for client: {}", clientStreamIdentification);
             eventPublisher.publishEvent(new QueryHandlerDisconnected(clientStreamIdentification.getContext(),
                                                                      clientId,

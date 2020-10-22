@@ -197,7 +197,8 @@ public class CommandServiceTest {
 
     @Test
     public void disconnectClientStream() {
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new CountingStreamObserver<>());
+        CountingStreamObserver<SerializedCommandProviderInbound> responseObserver = new CountingStreamObserver<>();
+        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseObserver);
         requestStream.onNext(CommandProviderOutbound.newBuilder()
                                                     .setSubscribe(CommandSubscription.newBuilder()
                                                                                      .setClientId(clientId)
@@ -212,7 +213,9 @@ public class CommandServiceTest {
         verify(eventPublisher).publishEvent(subscribe.capture());
         SubscribeCommand subscribeCommand = subscribe.getValue();
         ClientStreamIdentification streamIdentification = subscribeCommand.getHandler().getClientStreamIdentification();
-        testSubject.completeStream(clientId, streamIdentification);
+        testSubject.completeStreamForInactivity(clientId, streamIdentification);
         verify(eventPublisher).publishEvent(isA(TopologyEvents.CommandHandlerDisconnected.class));
+        assertNotNull(responseObserver.error);
+        assertTrue(responseObserver.error.getMessage().contains("Command stream inactivity"));
     }
 }

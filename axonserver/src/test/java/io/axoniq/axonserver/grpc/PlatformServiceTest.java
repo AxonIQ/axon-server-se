@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.CountingStreamObserver;
@@ -257,5 +258,26 @@ public class PlatformServiceTest {
                                                                       component, clientStreamId));
         assertEquals(0, platformService.getConnectedClients().size());
         assertTrue(responseObserver.completed);
+    }
+
+    @Test
+    public void disconnectClientStream() {
+        CountingStreamObserver<PlatformOutboundInstruction> responseObserver = new CountingStreamObserver<>();
+        StreamObserver<PlatformInboundInstruction> clientStreamObserver = platformService.openStream(responseObserver);
+        String component = "component";
+        String clientId = "MyClient";
+        PlatformInboundInstruction registercommand = PlatformInboundInstruction
+                .newBuilder()
+                .setRegister(ClientIdentification.newBuilder()
+                                                 .setClientId(clientId)
+                                                 .setComponentName(component))
+                .build();
+        clientStreamObserver.onNext(registercommand);
+        assertEquals(1, platformService.getConnectedClients().size());
+        String clientStreamId = platformService.getConnectedClients().iterator().next().getClientStreamId();
+        ClientStreamIdentification client = new ClientStreamIdentification("default", clientStreamId);
+        platformService.on(new TopologyEvents.ApplicationInactivityTimeout(client, component, clientId));
+        assertNotNull(responseObserver.error);
+        assertTrue(responseObserver.error.getMessage().contains("Platform stream inactivity"));
     }
 }
