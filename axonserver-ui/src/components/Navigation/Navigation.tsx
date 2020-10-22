@@ -9,6 +9,8 @@ import SearchIcon from '@material-ui/icons/Search';
 import ErrorIcon from '@material-ui/icons/Error';
 import HelpIcon from '@material-ui/icons/Help';
 import GroupIcon from '@material-ui/icons/Group';
+import AppsIcon from '@material-ui/icons/Apps';
+import GroupWorkIcon from '@material-ui/icons/GroupWork';
 import { Link as RouterLink } from 'react-router-dom';
 
 import './navigation.scss';
@@ -99,6 +101,20 @@ export const Navigation = (props: NavigationProps) => (
     <RouterLink to="" className="navigation__link-wrapper">
       <div
         className={classnames('navigation__link', {
+          'navigation__link--active': props.active === 'queries',
+        })}
+      >
+        <div className="navigation__link-icon">
+          <AppsIcon fontSize="inherit" />
+        </div>
+        <Typography weight="bold" size="s">
+          Apps
+        </Typography>
+      </div>
+    </RouterLink>
+    <RouterLink to="" className="navigation__link-wrapper">
+      <div
+        className={classnames('navigation__link', {
           'navigation__link--active': props.active === 'users',
         })}
       >
@@ -107,6 +123,20 @@ export const Navigation = (props: NavigationProps) => (
         </div>
         <Typography weight="bold" size="s">
           Users
+        </Typography>
+      </div>
+    </RouterLink>
+    <RouterLink to="" className="navigation__link-wrapper">
+      <div
+        className={classnames('navigation__link', {
+          'navigation__link--active': props.active === 'queries',
+        })}
+      >
+        <div className="navigation__link-icon">
+          <GroupWorkIcon fontSize="inherit" />
+        </div>
+        <Typography weight="bold" size="s">
+          Contexts
         </Typography>
       </div>
     </RouterLink>
