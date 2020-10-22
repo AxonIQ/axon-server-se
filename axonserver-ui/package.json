@@ -8,7 +8,7 @@
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",
     "storybook": "start-storybook -p 6006 -s public",
-    "build-storybook": "build-storybook",
+    "build-storybook": "build-storybook -s public",
     "run:css": "postcss src/**/[^_]*.scss --dir public/_dist_ --ext css",
     "run:css::watch": "$1 --watch"
   },
