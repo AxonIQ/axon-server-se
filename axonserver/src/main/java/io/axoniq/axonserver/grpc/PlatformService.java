@@ -388,22 +388,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
     private void deregisterClient(ClientComponent clientComponent) {
-        deregisterClient(clientComponent, null);
-    }
-
-    private void deregisterClient(ClientComponent clientComponent, Throwable cause) {
         logger.debug("De-registered client : {}", clientComponent);
 
         if (clientComponent != null) {
             SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
             if (stream != null) {
-                if (cause == null) {
-                    StreamObserverUtils.complete(stream);
-                } else {
-                    StreamObserverUtils.error(stream, cause);
-                }
+                StreamObserverUtils.complete(stream);
             }
-
             eventPublisher.publishEvent(new ApplicationDisconnected(
                     clientComponent.context,
                     clientComponent.component,
@@ -412,6 +403,15 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     null
             ));
         }
+    }
+
+    private void deregisterClient(ClientComponent clientComponent, Throwable cause) {
+        SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
+        if (stream != null) {
+            StreamObserverUtils.error(stream, cause);
+        }
+
+        deregisterClient(clientComponent);
     }
 
     /**
