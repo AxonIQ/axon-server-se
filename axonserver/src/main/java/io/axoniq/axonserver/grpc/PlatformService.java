@@ -261,7 +261,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
      * @param context     the context of the connected client
-     * @param clientId  the unique identifier of the client
+     * @param clientId    the unique identifier of the client
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
     public void sendToClient(String context, String clientId, PlatformOutboundInstruction instruction) {
@@ -345,22 +345,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     }
 
     private void deregisterClient(ClientComponent clientComponent) {
-        deregisterClient(clientComponent, null);
-    }
-
-    private void deregisterClient(ClientComponent clientComponent, Throwable cause) {
         logger.debug("De-registered client : {}", clientComponent);
 
         if (clientComponent != null) {
             SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
             if (stream != null) {
-                if (cause == null) {
-                    StreamObserverUtils.complete(stream);
-                } else {
-                    StreamObserverUtils.error(stream, cause);
-                }
+                StreamObserverUtils.complete(stream);
             }
-
             clientIdRegistry.unregister(clientComponent.clientStreamId, ClientIdRegistry.ConnectionType.PLATFORM);
 
             eventPublisher.publishEvent(new ApplicationDisconnected(
@@ -371,6 +362,15 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     null
             ));
         }
+    }
+
+    private void deregisterClient(ClientComponent clientComponent, Throwable cause) {
+        SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
+        if (stream != null) {
+            StreamObserverUtils.error(stream, cause);
+        }
+
+        deregisterClient(clientComponent);
     }
 
     /**
