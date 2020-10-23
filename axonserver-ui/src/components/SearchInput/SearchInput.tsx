@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import InputBase from '@material-ui/core/InputBase';
 import SearchIcon from '@material-ui/icons/Search';
-import './search.scss';
+import './search-input.scss';
 
-type SearchProps = {
+type SearchInputProps = {
   onSubmit?: (value: string) => void;
 };
-export const Search = (props: SearchProps) => {
+export const SearchInput = (props: SearchInputProps) => {
   const [inputValue, setInputValue] = useState('');
 
   return (
