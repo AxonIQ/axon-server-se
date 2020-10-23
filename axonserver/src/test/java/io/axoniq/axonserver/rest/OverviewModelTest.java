@@ -16,9 +16,11 @@ import io.axoniq.axonserver.rest.svg.mapping.FakeAxonServer;
 import io.axoniq.axonserver.topology.SimpleAxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
+import org.mockito.Mock;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.hibernate.validator.internal.util.CollectionHelper.asSet;
 import static org.mockito.Mockito.*;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.*;
 public class OverviewModelTest {
 
     private OverviewModel testSubject;
+
 
     @Before
     public void setUp() {
@@ -48,7 +51,9 @@ public class OverviewModelTest {
                                                                                2,
                                                                                asList("hub1", "hub2")));
 
-        testSubject = new OverviewModel(clusterController, applications, hubs);
+        AxonServersOverviewProvider axonServersOverviewProvider = new AxonServersOverviewProvider(applications, hubs);
+
+        testSubject = new OverviewModel(clusterController, applications, hubs, axonServersOverviewProvider);
     }
 
     @Test
@@ -59,4 +64,19 @@ public class OverviewModelTest {
         assertTrue(overview.getSvgObjects().length() > 0);
         System.out.println(overview.getSvgObjects());
     }
+
+    @Test
+    public void overviewV2() {
+        AxonServersOverviewProvider.ApplicationsAndNodes applicationsAndNodes = testSubject.overview2(null);
+        assertEquals("app", applicationsAndNodes.getApplications().get(0).getName());
+        assertEquals("context", applicationsAndNodes.getApplications().get(0).getContext());
+        assertEquals(2, applicationsAndNodes.getApplications().get(0).getInstances());
+
+        assertEquals("hub1", applicationsAndNodes.getNodes().get(0).getName());
+        assertEquals("hub2", applicationsAndNodes.getNodes().get(1).getName());
+        assertEquals("localhost", applicationsAndNodes.getNodes().get(0).getHostName());
+        assertEquals(Integer.valueOf(2), applicationsAndNodes.getNodes().get(0).getHttpPort());
+        assertEquals(Integer.valueOf(5), applicationsAndNodes.getNodes().get(1).getHttpPort());
+    }
+
 }
