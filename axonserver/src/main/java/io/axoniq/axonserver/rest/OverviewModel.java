@@ -45,14 +45,16 @@ public class OverviewModel {
     private final Topology clusterController;
     private final Iterable<Application> applicationProvider;
     private final Iterable<AxonServer> axonServerProvider;
+    private final AxonServersOverviewProvider axonServersOverviewProvider;
     private final Fonts fonts;
 
     public OverviewModel(Topology clusterController,
                          Iterable<Application> applicationProvider,
-                         Iterable<AxonServer> axonServerProvider) {
+                         Iterable<AxonServer> axonServerProvider, AxonServersOverviewProvider axonServersOverviewProvider) {
         this.clusterController = clusterController;
         this.applicationProvider = applicationProvider;
         this.axonServerProvider = axonServerProvider;
+        this.axonServersOverviewProvider = axonServersOverviewProvider;
         this.fonts = new Fonts();
     }
 
@@ -94,4 +96,12 @@ public class OverviewModel {
             return element.dimension().height();
         }
     }
+
+    @GetMapping("/v2/public/overview")
+    public AxonServersOverviewProvider.ApplicationsAndNodes overview2(final Principal principal) {
+        auditLog.debug("[{}] Requested cluster overview.", AuditLog.username(principal));
+        return axonServersOverviewProvider.applicationsAndNodes();
+    }
+
+
 }
