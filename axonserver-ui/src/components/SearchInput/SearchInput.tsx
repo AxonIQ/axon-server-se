@@ -4,6 +4,7 @@ import SearchIcon from '@material-ui/icons/Search';
 import './search-input.scss';
 
 type SearchInputProps = {
+  placeholder?: string;
   onSubmit?: (value: string) => void;
 };
 export const SearchInput = (props: SearchInputProps) => {
@@ -15,7 +16,7 @@ export const SearchInput = (props: SearchInputProps) => {
         <SearchIcon fontSize="large" />
       </div>
       <InputBase
-        placeholder="Search"
+        placeholder={props.placeholder ? props.placeholder : 'Search'}
         classes={{
           root: 'search',
           input: 'search__input',
