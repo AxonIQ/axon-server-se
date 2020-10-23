@@ -6,4 +6,6 @@ export default {
   component: Search,
 };
 
-export const Default = () => <Search />;
+export const Default = () => (
+  <Search onSubmit={(value) => console.log('hi from value -> ', value)} />
+);
