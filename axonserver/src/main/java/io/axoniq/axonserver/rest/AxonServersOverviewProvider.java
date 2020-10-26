@@ -12,7 +12,7 @@ import java.util.stream.StreamSupport;
 
 /**
  * @author Stefan Dragisic
- * @since 4.4.6
+ * @since 4.4.4
  */
 
 @Component
