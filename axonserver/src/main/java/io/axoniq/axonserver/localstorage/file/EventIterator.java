@@ -44,7 +44,10 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
     public Long getTokenAt(long instant) {
         if (hasNext()) {
             EventInformation event = next();
-            if (event.getEvent().getTimestamp() <= instant) {
+            if (event.getEvent().getTimestamp() == instant) {
+                return event.getToken();
+            }
+            if (event.getEvent().getTimestamp() < instant) {
                 while (hasNext()) {
                     event = next();
                     if (event.getEvent().getTimestamp() >= instant) {
