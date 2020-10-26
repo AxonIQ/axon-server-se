@@ -64,12 +64,12 @@ public class StandardIndexManager implements IndexManager {
     private final ConcurrentNavigableMap<Long, Map<String, IndexEntries>> activeIndexes = new ConcurrentSkipListMap<>();
     private final ConcurrentNavigableMap<Long, PersistedBloomFilter> bloomFilterPerSegment = new ConcurrentSkipListMap<>();
     private final ConcurrentSkipListMap<Long, Index> indexMap = new ConcurrentSkipListMap<>();
-    private final SortedSet<Long> indexes = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
+    private final SortedSet<Long> indexesDescending = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final MeterFactory.RateMeter indexOpenMeter;
     private final MeterFactory.RateMeter indexCloseMeter;
     private final RemoteAggregateSequenceNumberResolver remoteIndexManager;
     private ScheduledFuture<?> cleanupTask;
-    private final AtomicLong maxMmapIndex = new AtomicLong();
+    private final AtomicLong useMmapAfterIndex = new AtomicLong();
 
     /**
      * @param context           the context of the storage engine
@@ -111,14 +111,15 @@ public class StandardIndexManager implements IndexManager {
                                                            storageProperties.getIndexSuffix());
         for (String indexFile : indexFiles) {
             long index = Long.parseLong(indexFile.substring(0, indexFile.indexOf('.')));
-            indexes.add(index);
+            indexesDescending.add(index);
         }
 
-        updateMaxMmapIndex();
+        updateUseMmapAfterIndex();
     }
 
-    private void updateMaxMmapIndex() {
-        maxMmapIndex.set(indexes.stream().skip(storageProperties.getMaxIndexesInMemory()).findFirst().orElse(-1L));
+    private void updateUseMmapAfterIndex() {
+        useMmapAfterIndex.set(indexesDescending.stream().skip(storageProperties.getMaxIndexesInMemory()).findFirst()
+                                               .orElse(-1L));
     }
 
     private void createIndex(Long segment, Map<String, IndexEntries> positionsPerAggregate) {
@@ -232,7 +233,7 @@ public class StandardIndexManager implements IndexManager {
      */
     @Override
     public void addToActiveSegment(long segment, String aggregateId, IndexEntry indexEntry) {
-        if (indexes.contains(segment)) {
+        if (indexesDescending.contains(segment)) {
             throw new IndexNotFoundException(segment + ": already completed");
         }
         activeIndexes.computeIfAbsent(segment, s -> new ConcurrentHashMap<>())
@@ -248,7 +249,7 @@ public class StandardIndexManager implements IndexManager {
      */
     @Override
     public void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries) {
-        if (indexes.contains(segment)) {
+        if (indexesDescending.contains(segment)) {
             throw new IndexNotFoundException(segment + ": already completed");
         }
 
@@ -268,9 +269,9 @@ public class StandardIndexManager implements IndexManager {
     @Override
     public void complete(long segment) {
         createIndex(segment, activeIndexes.get(segment));
-        indexes.add(segment);
+        indexesDescending.add(segment);
         activeIndexes.remove(segment);
-        updateMaxMmapIndex();
+        updateUseMmapAfterIndex();
     }
 
     /**
@@ -299,7 +300,7 @@ public class StandardIndexManager implements IndexManager {
                 checked++;
             }
         }
-        for (Long segment : indexes) {
+        for (Long segment : indexesDescending) {
             if (checked >= maxSegments) {
                 return Optional.empty();
             }
@@ -315,8 +316,9 @@ public class StandardIndexManager implements IndexManager {
             return remoteIndexManager.getLastSequenceNumber(context,
                                                             aggregateId,
                                                             maxSegments - checked,
-                                                            indexes.isEmpty() ?
-                                                                    activeIndexes.firstKey() - 1 : indexes.last() - 1);
+                                                            indexesDescending.isEmpty() ?
+                                                                    activeIndexes.firstKey() - 1 :
+                                                                    indexesDescending.last() - 1);
         }
         return Optional.empty();
     }
@@ -340,7 +342,7 @@ public class StandardIndexManager implements IndexManager {
                 }
             }
         }
-        for (Long segment : indexes) {
+        for (Long segment : indexesDescending) {
             IndexEntries indexEntries = getPositions(segment, aggregateId);
             if (indexEntries != null) {
                 if (minSequenceNumber < indexEntries.lastSequenceNumber()) {
@@ -382,7 +384,7 @@ public class StandardIndexManager implements IndexManager {
                 index.close();
             }
             bloomFilterPerSegment.remove(segment);
-            indexes.remove(segment);
+            indexesDescending.remove(segment);
         }
         return FileUtils.delete(storageProperties.index(context, segment)) &&
                 FileUtils.delete(storageProperties.bloomFilter(context, segment));
@@ -423,7 +425,7 @@ public class StandardIndexManager implements IndexManager {
             minTokenInPreviousSegment = segment;
         }
 
-        for (Long index : indexes) {
+        for (Long index : indexesDescending) {
             if (minTokenInPreviousSegment < minToken) {
                 return results;
             }
@@ -465,7 +467,7 @@ public class StandardIndexManager implements IndexManager {
         bloomFilterPerSegment.clear();
         indexMap.forEach((segment, index) -> index.close());
         indexMap.clear();
-        indexes.clear();
+        indexesDescending.clear();
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
@@ -473,12 +475,12 @@ public class StandardIndexManager implements IndexManager {
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        return indexes.stream()
-                      .filter(s -> s > lastSegmentBackedUp)
-                      .flatMap(s -> Stream.of(
-                              storageProperties.index(context, s).getAbsolutePath(),
-                              storageProperties.bloomFilter(context, s).getAbsolutePath()
-                      ));
+        return indexesDescending.stream()
+                                .filter(s -> s > lastSegmentBackedUp)
+                                .flatMap(s -> Stream.of(
+                                        storageProperties.index(context, s).getAbsolutePath(),
+                                        storageProperties.bloomFilter(context, s).getAbsolutePath()
+                                ));
     }
 
     private class Index implements Closeable {
@@ -526,7 +528,7 @@ public class StandardIndexManager implements IndexManager {
                 DBMaker.Maker maker = DBMaker.fileDB(storageProperties.index(context, segment))
                                              .readOnly()
                                              .fileLockDisable();
-                if (storageProperties.isUseMmapIndex() && segment > maxMmapIndex.get()) {
+                if (storageProperties.isUseMmapIndex() && segment > useMmapAfterIndex.get()) {
                     maker.fileMmapEnable();
                     if (storageProperties.isForceCleanMmapIndex()) {
                         maker.cleanerHackEnable();
