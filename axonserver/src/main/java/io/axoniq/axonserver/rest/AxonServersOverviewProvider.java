@@ -11,6 +11,9 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
+ * Provides current cluster state, applications and connected nodes
+ * as serializable POJO's
+ *
  * @author Stefan Dragisic
  * @since 4.4.4
  */
