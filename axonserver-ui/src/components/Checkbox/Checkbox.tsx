@@ -1,6 +1,7 @@
 import { FormControlLabel } from '@material-ui/core';
 import { default as MUiCheckbox } from '@material-ui/core/Checkbox';
 import React from 'react';
+import { Typography } from '../Typography/Typography';
 
 type CheckboxProps = {
   label?: string;
@@ -23,7 +24,11 @@ export const Checkbox = (props: CheckboxProps) => {
           onChange={props.onChange}
         />
       }
-      label={props.label}
+      label={
+        <Typography size="m" color="light">
+          {props.label}
+        </Typography>
+      }
     />
   );
 };

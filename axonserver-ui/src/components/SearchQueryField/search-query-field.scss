@@ -1,0 +1,35 @@
+@import '../Colors/colors.scss';
+
+.search-query-field__wrapper {
+  border-radius: 20px;
+  background-color: white;
+  padding: 15px;
+
+  .search-query-field__options-divider {
+    margin: 20px 0;
+    background-color: $color-zumthor;
+    height: 1px;
+    border: 0;
+  }
+  .search-query-field__options-wrapper {
+    margin-left: 50px;
+    display: flex;
+    align-items: center;
+  }
+  .search-query-field__options-item {
+    margin-right: 30px;
+  }
+  .search-query-field__options-select-wrapper {
+    display: flex;
+    align-items: center;
+  }
+  .search-query-field__options-select-icon {
+    display: flex;
+    align-content: center;
+    color: $color-rhino;
+  }
+  .search-query-field__options-select {
+    margin-left: 10px;
+    width: 200px;
+  }
+}

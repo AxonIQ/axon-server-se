@@ -1,27 +1,23 @@
 @import '../Colors/colors.scss';
 
-.search__wrapper {
-  border-radius: 20px;
-  background-color: white;
+.search-input__wrapper {
   display: flex;
   align-items: center;
-  padding: 15px;
-
-  .search__icon {
-    margin-right: 15px;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: $color-rhino;
-    font-size: 28px;
-  }
-  .search {
-    color: inherit;
-    width: 100%;
-    font-size: 18px;
-  }
-  .search__input {
-    width: 100%;
-  }
+}
+.search-input__icon {
+  margin-right: 15px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-rhino;
+  font-size: 28px;
+}
+.search-input {
+  color: inherit;
+  width: 100%;
+  font-size: 18px;
+}
+.search-input__input {
+  width: 100%;
 }
