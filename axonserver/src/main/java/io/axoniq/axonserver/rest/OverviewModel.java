@@ -97,11 +97,4 @@ public class OverviewModel {
         }
     }
 
-    @GetMapping("/v2/public/overview")
-    public AxonServersOverviewProvider.ApplicationsAndNodes overview2(final Principal principal) {
-        auditLog.debug("[{}] Requested cluster overview.", AuditLog.username(principal));
-        return axonServersOverviewProvider.applicationsAndNodes();
-    }
-
-
 }
