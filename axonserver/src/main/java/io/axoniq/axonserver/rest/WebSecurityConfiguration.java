@@ -86,13 +86,13 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     .authorizeRequests();
 
             if (accessController.isRoleBasedAuthentication()) {
-                auth.antMatchers("/", "/**/*.html", "/v1/**")
+                auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
                     .authenticated()
                     .accessDecisionManager(new AffirmativeBased(
                             Collections.singletonList(
                                     new RestRequestAccessDecisionVoter(accessController))));
             } else {
-                auth.antMatchers("/", "/**/*.html", "/v1/**")
+                auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
                     .authenticated()
                     .accessDecisionManager(new AffirmativeBased(
                             Collections.singletonList(
