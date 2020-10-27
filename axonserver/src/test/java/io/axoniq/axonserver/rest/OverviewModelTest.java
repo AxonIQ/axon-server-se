@@ -16,7 +16,6 @@ import io.axoniq.axonserver.rest.svg.mapping.FakeAxonServer;
 import io.axoniq.axonserver.topology.SimpleAxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
-import org.mockito.Mock;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -31,6 +30,7 @@ import static org.mockito.Mockito.*;
 public class OverviewModelTest {
 
     private OverviewModel testSubject;
+    private AxonServersOverviewProvider axonServersOverviewProvider;
 
 
     @Before
@@ -51,9 +51,9 @@ public class OverviewModelTest {
                                                                                2,
                                                                                asList("hub1", "hub2")));
 
-        AxonServersOverviewProvider axonServersOverviewProvider = new AxonServersOverviewProvider(applications, hubs);
+        axonServersOverviewProvider = new AxonServersOverviewProvider(applications, hubs);
 
-        testSubject = new OverviewModel(clusterController, applications, hubs, axonServersOverviewProvider);
+        testSubject = new OverviewModel(clusterController, applications, hubs);
     }
 
     @Test
@@ -67,7 +67,8 @@ public class OverviewModelTest {
 
     @Test
     public void overviewV2() {
-        AxonServersOverviewProvider.ApplicationsAndNodes applicationsAndNodes = testSubject.overview2(null);
+        AxonServersOverviewProvider.ApplicationsAndNodes applicationsAndNodes = axonServersOverviewProvider
+                .applicationsAndNodes();
         assertEquals("app", applicationsAndNodes.getApplications().get(0).getName());
         assertEquals("context", applicationsAndNodes.getApplications().get(0).getContext());
         assertEquals(2, applicationsAndNodes.getApplications().get(0).getInstances());
