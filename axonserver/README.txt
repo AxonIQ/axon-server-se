@@ -8,7 +8,9 @@ Release Notes for version 4.4.4
 * Improved QueryService logging
 * Added preserve event store option to delete context CLI command
 * Fixed stream completed by the server in case of inactivity
-* Hidden upload license panel in SE
+* Hide upload license panel in SE
+* Reduced number of open index files
+* Fix for GetTokenAt operation
 
 Release Notes for version 4.4.3
 -------------------------------
