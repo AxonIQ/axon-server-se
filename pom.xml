@@ -172,7 +172,6 @@
     </build>
 
     <profiles>
-
         <profile>
             <id>coverage</id>
             <build>
@@ -212,12 +211,12 @@
 
     <distributionManagement>
         <snapshotRepository>
-            <id>axoniq-new-nexus</id>
+            <id>axoniq-nexus</id>
             <url>https://nexus.dev.axoniq.net/repository/products-snapshots</url>
             <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
         <repository>
-            <id>axoniq-new-nexus</id>
+            <id>axoniq-nexus</id>
             <url>https://nexus.dev.axoniq.net/repository/products-releases</url>
             <uniqueVersion>true</uniqueVersion>
         </repository>
