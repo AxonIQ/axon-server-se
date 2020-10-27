@@ -1,35 +1,40 @@
-@import '../Colors/colors.scss';
+@import '../../components/Colors/colors.scss';
 
-.search-query-field__wrapper {
+.search__query-wrapper {
   border-radius: 20px;
   background-color: white;
   padding: 15px;
 
-  .search-query-field__options-divider {
+  .search__query-options-divider {
     margin: 20px 0;
     background-color: $color-zumthor;
     height: 1px;
     border: 0;
   }
-  .search-query-field__options-wrapper {
+  .search__query-options-wrapper {
     margin-left: 50px;
     display: flex;
     align-items: center;
   }
-  .search-query-field__options-item {
+  .search__query-options-item {
     margin-right: 30px;
   }
-  .search-query-field__options-select-wrapper {
+  .search__query-options-select-wrapper {
     display: flex;
     align-items: center;
   }
-  .search-query-field__options-select-icon {
+  .search__query-options-select-icon {
     display: flex;
     align-content: center;
     color: $color-rhino;
   }
-  .search-query-field__options-select {
+  .search__query-options-select {
     margin-left: 10px;
     width: 200px;
+  }
+  .search__query-options-help {
+    margin-left: auto;
+    align-content: center;
+    color: $color-rhino;
   }
 }
