@@ -170,6 +170,7 @@ footer{
 		line-height: 20px;
 		font-weight: 300;
 	}
+
 	footer span{
 		font-size: 0;
 		display: inline-block;
@@ -178,6 +179,29 @@ footer{
 		background: url('../img/logo-axoniq.png') no-repeat left center;
 		background-size: contain;
 	}
+
+	footer .info {
+		margin: 9px 3px;
+		line-height: 20px;
+		font-weight: 300;
+		color: darkgray;
+	}
+
+	footer .info:hover {
+		color: lightgray;
+	}
+
+	#info section span {
+		font-weight: 400;
+		color: #999;
+		font-size: 14px;
+	}
+
+	#info section a {
+		color: brown;
+	}
+
+
 
 .developer-license, .basic-license, .standard-license, .enterprise-license {
 	display: none;
