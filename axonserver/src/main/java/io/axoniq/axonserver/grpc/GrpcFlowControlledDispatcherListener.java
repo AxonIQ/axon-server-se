@@ -91,11 +91,11 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     }
 
     /**
-     * Cancels the listener and completes the stream to the client.
+     * Cancels the listener and completes exceptionally the stream to the client.
      */
-    public void cancelAndCompleteStream() {
+    public void cancelAndCompleteStreamExceptionally(Throwable throwable) {
         this.cancel();
-        StreamObserverUtils.complete(inboundStream);
+        StreamObserverUtils.error(inboundStream, throwable);
     }
 
 

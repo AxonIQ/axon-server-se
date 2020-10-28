@@ -17,6 +17,7 @@ import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -293,9 +294,11 @@ public class CommandService implements AxonServerClientService {
      * @param clientId                   the unique identifier of the client instance
      * @param clientStreamIdentification the unique identifier of the command stream
      */
-    public void completeStream(String clientId, ClientStreamIdentification clientStreamIdentification) {
+    public void completeStreamForInactivity(String clientId, ClientStreamIdentification clientStreamIdentification) {
         if (dispatcherListeners.containsKey(clientStreamIdentification)) {
-            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStream();
+            String message = "Command stream inactivity for " + clientStreamIdentification.getClientStreamId();
+            ApplicationInactivityException exception = new ApplicationInactivityException(message);
+            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStreamExceptionally(exception);
             logger.debug("Command Stream closed for client: {}", clientStreamIdentification);
             eventPublisher.publishEvent(new CommandHandlerDisconnected(clientStreamIdentification.getContext(),
                                                                        clientId,

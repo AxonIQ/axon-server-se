@@ -15,6 +15,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.Subscripti
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
+import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -113,12 +114,13 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         QuerySubscription subscription = queryProviderOutbound.getSubscribe();
-                        checkInitClient(subscription.getClientId(), subscription.getComponentName());
-                        String clientStreamId = clientRef.get().getClientStreamId();
-                        logger.debug("{}: Subscribe Query {} for {}",
+                        logger.debug("{}-[{}]: Subscribe Query {} received for {}.",
                                      context,
+                                     subscription.getMessageId(),
                                      subscription.getQuery(),
                                      subscription.getClientId());
+                        checkInitClient(subscription.getClientId(), subscription.getComponentName());
+                        String clientStreamId = clientRef.get().getClientStreamId();
                         SubscribeQuery subscribeQuery = new SubscribeQuery(context,
                                                                            clientStreamId,
                                                                            subscription,
@@ -127,6 +129,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                 subscribeQuery);
                         break;
                     case UNSUBSCRIBE:
+                        logger.debug("{}-[{}]: Unsubscribe Query {} received for {}.",
+                                     context,
+                                     queryProviderOutbound.getUnsubscribe().getMessageId(),
+                                     queryProviderOutbound.getUnsubscribe().getQuery(),
+                                     queryProviderOutbound.getUnsubscribe().getClientId());
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         if (clientRef.get() != null) {
@@ -140,11 +147,18 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         }
                         break;
                     case FLOW_CONTROL:
+                        logger.debug("{}: Flow Control received, number of permits {} for {}.",
+                                     context,
+                                     queryProviderOutbound.getFlowControl().getPermits(),
+                                     queryProviderOutbound.getFlowControl().getClientId());
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         flowControl(queryProviderOutbound.getFlowControl());
                         break;
                     case QUERY_RESPONSE:
+                        logger.debug("{}-[{}]: Query Response received.",
+                                     context,
+                                     queryProviderOutbound.getQueryResponse().getMessageIdentifier());
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
@@ -153,6 +167,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                        false);
                         break;
                     case QUERY_COMPLETE:
+                        logger.debug("{}-[{}]: Query Complete received.",
+                                     context,
+                                     queryProviderOutbound.getQueryComplete().getMessageId());
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleComplete(queryProviderOutbound.getQueryComplete().getRequestId(),
@@ -161,6 +178,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                        false);
                         break;
                     case SUBSCRIPTION_QUERY_RESPONSE:
+                        logger.debug("{}-[{}]: Subscription Query Response received of type {}.",
+                                     context,
+                                     queryProviderOutbound.getSubscriptionQueryResponse().getMessageIdentifier(),
+                                     queryProviderOutbound.getSubscriptionQueryResponse().getResponseCase());
                         instructionAckSource.sendSuccessfulAck(queryProviderOutbound.getInstructionId(),
                                                                wrappedQueryProviderInboundObserver);
                         SubscriptionQueryResponse response = queryProviderOutbound.getSubscriptionQueryResponse();
@@ -171,11 +192,13 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     case ACK:
                         InstructionAck ack = queryProviderOutbound.getAck();
                         if (isUnsupportedInstructionErrorResult(ack)) {
-                            logger.warn("Unsupported instruction sent to the client {} of context {}.",
+                            logger.warn("{}: Unsupported instruction sent to the client {} of context {}.",
+                                        context,
                                         clientRef.get().getClientStreamId(),
                                         context);
                         } else {
-                            logger.trace("Received instruction ack from the client {} of context {}. Result {}.",
+                            logger.trace("{}: Received instruction ack from the client {} of context {}. Result {}.",
+                                         context,
                                          clientRef.get().getClientStreamId(),
                                          context,
                                          ack);
@@ -319,9 +342,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
      * @param clientId                   the unique identifier of the client instance
      * @param clientStreamIdentification the unique identifier of the query stream
      */
-    public void completeStream(String clientId, ClientStreamIdentification clientStreamIdentification) {
+    public void completeStreamForInactivity(String clientId, ClientStreamIdentification clientStreamIdentification) {
         if (dispatcherListeners.containsKey(clientStreamIdentification)) {
-            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStream();
+            String message = "Query stream inactivity for " + clientStreamIdentification.getClientStreamId();
+            ApplicationInactivityException exception = new ApplicationInactivityException(message);
+            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStreamExceptionally(exception);
             logger.debug("Query Stream closed for client: {}", clientStreamIdentification);
             eventPublisher.publishEvent(new QueryHandlerDisconnected(clientStreamIdentification.getContext(),
                                                                      clientId,
