@@ -29,48 +29,48 @@ export const SettingsConfigurationTable = (
     <TableBody>
       <TableRow>
         <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
+          <Typography size="m" weight="bold" color="light" uppercase>
             Node name
           </Typography>
         </TableCell>
         <TableCell>
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.name}
           </Typography>
         </TableCell>
       </TableRow>
       <TableRow>
         <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
+          <Typography size="m" weight="bold" color="light" uppercase>
             Host name
           </Typography>
         </TableCell>
         <TableCell>
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.hostName}
           </Typography>
         </TableCell>
       </TableRow>
       <TableRow>
         <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
+          <Typography size="m" weight="bold" color="light" uppercase>
             HTTP port
           </Typography>
         </TableCell>
         <TableCell>
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.httpPort}
           </Typography>
         </TableCell>
       </TableRow>
       <TableRow>
         <TableCell smallWidth>
-          <Typography size="m" weight="bold" color="gray" uppercase>
+          <Typography size="m" weight="bold" color="light" uppercase>
             GRPC port
           </Typography>
         </TableCell>
         <TableCell>
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.grpcPort}
           </Typography>
         </TableCell>

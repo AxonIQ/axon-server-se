@@ -10,14 +10,7 @@ type TypographyProps = {
   size: 's' | 'm' | 'l' | 'xl' | 'xxl' | 'xxxl';
   weight?: 'lighter' | 'light' | 'bold';
   tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'div' | 'span' | 'p';
-  color?:
-    | 'dark'
-    | 'gray'
-    | 'white'
-    | 'lighter'
-    | 'light'
-    | 'primary'
-    | 'secondary';
+  color?: 'dark' | 'white' | 'lighter' | 'light' | 'primary' | 'secondary';
   noBreak?: boolean;
   uppercase?: boolean;
   italic?: boolean;

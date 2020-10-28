@@ -27,48 +27,48 @@ export const SettingsActivityTable = (props: SettingsActivityTableProps) => (
     <TableBody>
       <TableRow>
         <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
+          <Typography size="m" color="light" weight="bold" uppercase>
             Commands received / second
           </Typography>
         </TableCell>
         <TableCell align="right">
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.commandRate.toFixed(0)}
           </Typography>
         </TableCell>
       </TableRow>
       <TableRow>
         <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
+          <Typography size="m" color="light" weight="bold" uppercase>
             Queries received / second
           </Typography>
         </TableCell>
         <TableCell align="right">
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.queryRate.toFixed(0)}
           </Typography>
         </TableCell>
       </TableRow>
       <TableRow>
         <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
+          <Typography size="m" color="light" weight="bold" uppercase>
             Events stored / second
           </Typography>
         </TableCell>
         <TableCell align="right">
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.eventRate.toFixed(0)}
           </Typography>
         </TableCell>
       </TableRow>
       <TableRow>
         <TableCell>
-          <Typography size="m" color="gray" weight="bold" uppercase>
+          <Typography size="m" color="light" weight="bold" uppercase>
             Snapshots stored / second
           </Typography>
         </TableCell>
         <TableCell align="right">
-          <Typography size="m" color="gray">
+          <Typography size="m" color="light">
             {props.data.snapshotRate.toFixed(0)}
           </Typography>
         </TableCell>

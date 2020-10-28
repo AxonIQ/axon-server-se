@@ -86,7 +86,7 @@ export const Settings = () => {
       <Grid item md={6}>
         <Card>
           <div className="settings__status-card-header">
-            <Typography size="xxl" color="gray" weight="bold">
+            <Typography size="xxl" color="light" weight="bold">
               Status
             </Typography>
             <div className="settings__select-context-wrapper">

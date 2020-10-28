@@ -36,22 +36,22 @@ export const SettingsNodeTable = (props: { nodeArray: GetPublicResponse }) => (
       {props.nodeArray.map((nodeItem, index) => (
         <TableRow key={`nodeItem-${index}`}>
           <TableCell>
-            <Typography size="m" color="gray">
+            <Typography size="m" color="light">
               {nodeItem.name}
             </Typography>
           </TableCell>
           <TableCell>
-            <Typography size="m" color="gray">
+            <Typography size="m" color="light">
               {nodeItem.hostName}
             </Typography>
           </TableCell>
           <TableCell>
-            <Typography size="m" color="gray">
+            <Typography size="m" color="light">
               {nodeItem.httpPort}
             </Typography>
           </TableCell>
           <TableCell>
-            <Typography size="m" color="gray">
+            <Typography size="m" color="light">
               {nodeItem.grpcPort}
             </Typography>
           </TableCell>
