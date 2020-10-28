@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.3
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.3.9
+-------------------------------
+* Fixed stream completed by the server in case of inactivity
+
 Release Notes for version 4.3.8
 -------------------------------
 * Complete the stream in case of exception during the load of events.
