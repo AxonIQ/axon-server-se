@@ -99,7 +99,11 @@
                 <artifactId>jsr305</artifactId>
                 <version>1.3.9</version>
             </dependency>
-
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.8.6</version>
+            </dependency>
             <dependency>
                 <groupId>io.axoniq</groupId>
                 <artifactId>axon-server-api</artifactId>
@@ -173,7 +177,6 @@
     </build>
 
     <profiles>
-
         <profile>
             <id>coverage</id>
             <build>
@@ -214,12 +217,12 @@
     <distributionManagement>
         <snapshotRepository>
             <id>axoniq-nexus</id>
-            <url>https://dev-nexus.axoniq.io/repository/products-snapshots</url>
+            <url>https://nexus.dev.axoniq.net/repository/products-snapshots</url>
             <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
         <repository>
             <id>axoniq-nexus</id>
-            <url>https://dev-nexus.axoniq.io/repository/products-releases</url>
+            <url>https://nexus.dev.axoniq.net/repository/products-releases</url>
             <uniqueVersion>true</uniqueVersion>
         </repository>
     </distributionManagement>

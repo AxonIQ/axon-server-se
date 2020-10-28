@@ -19,6 +19,7 @@ import org.junit.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.hibernate.validator.internal.util.CollectionHelper.asSet;
 import static org.mockito.Mockito.*;
@@ -29,6 +30,8 @@ import static org.mockito.Mockito.*;
 public class OverviewModelTest {
 
     private OverviewModel testSubject;
+    private AxonServersOverviewProvider axonServersOverviewProvider;
+
 
     @Before
     public void setUp() {
@@ -48,6 +51,8 @@ public class OverviewModelTest {
                                                                                2,
                                                                                asList("hub1", "hub2")));
 
+        axonServersOverviewProvider = new AxonServersOverviewProvider(applications, hubs);
+
         testSubject = new OverviewModel(clusterController, applications, hubs);
     }
 
@@ -59,4 +64,20 @@ public class OverviewModelTest {
         assertTrue(overview.getSvgObjects().length() > 0);
         System.out.println(overview.getSvgObjects());
     }
+
+    @Test
+    public void overviewV2() {
+        AxonServersOverviewProvider.ApplicationsAndNodes applicationsAndNodes = axonServersOverviewProvider
+                .applicationsAndNodes();
+        assertEquals("app", applicationsAndNodes.getApplications().get(0).getName());
+        assertEquals("context", applicationsAndNodes.getApplications().get(0).getContext());
+        assertEquals(2, applicationsAndNodes.getApplications().get(0).getInstances());
+
+        assertEquals("hub1", applicationsAndNodes.getNodes().get(0).getName());
+        assertEquals("hub2", applicationsAndNodes.getNodes().get(1).getName());
+        assertEquals("localhost", applicationsAndNodes.getNodes().get(0).getHostName());
+        assertEquals(Integer.valueOf(2), applicationsAndNodes.getNodes().get(0).getHttpPort());
+        assertEquals(Integer.valueOf(5), applicationsAndNodes.getNodes().get(1).getHttpPort());
+    }
+
 }

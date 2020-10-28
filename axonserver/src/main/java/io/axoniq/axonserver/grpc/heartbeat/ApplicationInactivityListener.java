@@ -32,8 +32,8 @@ public class ApplicationInactivityListener {
                                          CommandService commandService,
                                          QueryService queryService) {
         this(Collections.EMPTY_MAP, clientIdRegistry);
-        streamClosers.put(ConnectionType.COMMAND, commandService::completeStream);
-        streamClosers.put(ConnectionType.QUERY, queryService::completeStream);
+        streamClosers.put(ConnectionType.COMMAND, commandService::completeStreamForInactivity);
+        streamClosers.put(ConnectionType.QUERY, queryService::completeStreamForInactivity);
     }
 
     public ApplicationInactivityListener(Map<ConnectionType, StreamCloser> streamClosers,
