@@ -10,17 +10,27 @@ export default {
   component: Search,
 };
 
-export const Default = () => (
-  <Router>
-    <Container maxWidth={false} disableGutters={true}>
-      <Grid container spacing={2}>
-        <Grid item md={1}>
-          <Navigation active="search" />
+export const Default = () => {
+  MockEvent({
+    url: '/tweets',
+    responses: [
+      { name: 'tweet', data: 'a tweet' },
+      { name: 'tweet', data: 'another tweet' },
+    ],
+  });
+
+  return (
+    <Router>
+      <Container maxWidth={false} disableGutters={true}>
+        <Grid container spacing={2}>
+          <Grid item md={1}>
+            <Navigation active="search" />
+          </Grid>
+          <Grid item md={11}>
+            <Search />
+          </Grid>
         </Grid>
-        <Grid item md={11}>
-          <Search />
-        </Grid>
-      </Grid>
-    </Container>
-  </Router>
-);
+      </Container>
+    </Router>
+  );
+};
