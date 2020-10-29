@@ -42,6 +42,8 @@ public interface EventInterceptors {
 
     void eventsPreCommit(InterceptorContext interceptorContext);
 
+    void eventsPostCommit(InterceptorContext interceptorContext);
+
     /**
      * Intercepts a snapshot read from the event store. The implementation of the interceptor can update the snapshot.
      *

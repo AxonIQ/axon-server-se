@@ -30,7 +30,6 @@
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
-        <module>axonserver-extension-api</module>
     </modules>
 
     <properties>
@@ -57,10 +56,16 @@
         <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
         <jackson.version>2.9.10.5</jackson.version>
+        <axonserver-extension-api.version>4.5-SNAPSHOT</axonserver-extension-api.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.axoniq</groupId>
+                <artifactId>axonserver-extension-api</artifactId>
+                <version>${axonserver-extension-api.version}</version>
+            </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
@@ -155,6 +160,12 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
                 <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>org.apache.felix.framework</artifactId>
+                <version>6.0.3</version>
             </dependency>
 
         </dependencies>

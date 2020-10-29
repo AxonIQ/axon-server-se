@@ -7,11 +7,12 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.interceptor.QueryInterceptors;
 
 /**
  * @author Marc Gathier

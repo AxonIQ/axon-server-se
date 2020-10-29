@@ -7,11 +7,12 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
+import io.axoniq.axonserver.interceptor.CommandInterceptors;
 import org.springframework.stereotype.Component;
 
 /**

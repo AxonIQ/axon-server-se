@@ -139,6 +139,9 @@ public class EventDispatcher implements AxonServerClientService {
                                                            @Override
                                                            public void onNext(Confirmation confirmation) {
                                                                responseObserver.onNext(confirmation);
+                                                               if (confirmation.getSuccess()) {
+                                                                   interceptors.eventsPostCommit(interceptorContext);
+                                                               }
                                                            }
 
                                                            @Override

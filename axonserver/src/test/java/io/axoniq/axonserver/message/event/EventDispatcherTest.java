@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
+import io.axoniq.axonserver.config.NoOpEventInterceptors;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;

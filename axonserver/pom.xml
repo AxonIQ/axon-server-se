@@ -40,9 +40,8 @@
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.axoniq.axonserver</groupId>
+            <groupId>io.axoniq</groupId>
             <artifactId>axonserver-extension-api</artifactId>
-            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
@@ -238,6 +237,12 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.framework</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -7,12 +7,11 @@
  *
  */
 
-package io.axoniq.axonserver.interceptor;
+package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
 import io.axoniq.axonserver.grpc.event.Event;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
+import io.axoniq.axonserver.interceptor.EventInterceptors;
 
 import java.io.InputStream;
 
@@ -24,6 +23,10 @@ public class NoOpEventInterceptors implements EventInterceptors {
     @Override
     public InputStream appendEvent(InterceptorContext interceptorContext, InputStream eventInputStream) {
         return eventInputStream;
+    }
+
+    @Override
+    public void eventsPostCommit(InterceptorContext interceptorContext) {
     }
 
     @Override
