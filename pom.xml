@@ -178,6 +178,7 @@
                     <excludedGroups>
                         io.axoniq.axonserver|io.axoniq
                     </excludedGroups>
+                    <acceptPomPackaging>true</acceptPomPackaging>
                     <excludedScopes>test,provided</excludedScopes>
                     <licenseMerges>
                         <licenseMerge>Apache Software License, Version 2.0|The Apache Software License, Version 2.0|Apache
