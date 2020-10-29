@@ -1,9 +1,9 @@
-import { Grid } from '@material-ui/core';
+import Grid from '@material-ui/core/Grid';
 import CancelIcon from '@material-ui/icons/Cancel';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import classnames from 'classnames';
 import React, { useEffect, useState } from 'react';
-
+import { Loading } from '../../components/Loading/Loading';
 import { Card } from '../../components/Card/Card';
 import { FormControl } from '../../components/FormControl/FormControl';
 import { InputLabel } from '../../components/InputLabel/InputLabel';
@@ -13,7 +13,6 @@ import { SettingsActivityTable } from '../../components/SettingsActivityTable/Se
 import { SettingsConfigurationTable } from '../../components/SettingsConfigurationTable/SettingsConfigurationTable';
 import { SettingsNodeTable } from '../../components/SettingsNodeTable/SettingsNodeTable';
 import { Typography } from '../../components/Typography/Typography';
-
 import { getMe, GetMeResponse } from '../../services/me/me';
 import { getPublic, GetPublicResponse } from '../../services/public/public';
 import {
@@ -53,7 +52,6 @@ export const Settings = () => {
     });
   }, []);
 
-  // Consider adding a "Loading..." component here.
   if (
     !versionData ||
     !meData ||
@@ -61,7 +59,7 @@ export const Settings = () => {
     !visibleContexts ||
     !statusData
   ) {
-    return null;
+    return <Loading />;
   }
 
   return (
