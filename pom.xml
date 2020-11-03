@@ -55,6 +55,7 @@
         <axonserver.api.version>4.4</axonserver.api.version>
         <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
+        <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <jackson.version>2.9.10.5</jackson.version>
     </properties>
 
@@ -144,6 +145,23 @@
                 <version>1.1.11</version>
             </dependency>
 
+            <!-- specific eclipse collections version used for mapdb -->
+            <dependency>
+                <groupId>org.eclipse.collections</groupId>
+                <artifactId>eclipse-collections-api</artifactId>
+                <version>${eclipse-collections.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.collections</groupId>
+                <artifactId>eclipse-collections</artifactId>
+                <version>${eclipse-collections.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.collections</groupId>
+                <artifactId>eclipse-collections-forkjoin</artifactId>
+                <version>${eclipse-collections.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>com.h2database</groupId>
                 <artifactId>h2</artifactId>
@@ -155,7 +173,6 @@
                 <artifactId>jackson-databind</artifactId>
                 <version>${jackson.version}</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
