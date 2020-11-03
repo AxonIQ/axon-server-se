@@ -182,6 +182,10 @@ import _ from './underscore-min';
       return window.addEventListener(name, fn, false);
     };
 
+    self.removeEventListener = function (name, fn) {
+      return window.removeEventListener(name, fn, false);
+    };
+
     self.listenForErrors = function (mockHandler) {
       self.addEventListener(mockHandler.errorEventName(), function (event) {
         self.error(event.error);
