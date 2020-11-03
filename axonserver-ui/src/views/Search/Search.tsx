@@ -4,6 +4,10 @@ import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import GroupWorkIcon from '@material-ui/icons/GroupWork';
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline';
 import React, { useState } from 'react';
+import {
+  getSearchEventSource,
+  SearchRowDataItem,
+} from '../../services/search/search';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { Dialog } from '../../components/Dialog/Dialog';
 import { DialogContent } from '../../components/DialogContent/DialogContent';
@@ -19,6 +23,18 @@ import { Select } from '../../components/Select/Select';
 import { Typography } from '../../components/Typography/Typography';
 import './search.scss';
 
+export type SearchMetadataEvent = {
+  type: 'metadata';
+  data: string;
+};
+export type SearchRowDataEvent = {
+  type: 'row';
+  data: string;
+};
+export type SearchDoneEvent = {
+  type: 'done';
+  data: 'Done';
+};
 export const Search = () => {
   const queryTimes = [
     'Last hour',
@@ -28,33 +44,93 @@ export const Search = () => {
     'Custom',
   ];
   const contexts = ['default', 'billing'];
+  const clientToken =
+    Math.random().toString(36).substring(2) + new Date().getTime().toString(36);
 
+  const [queryInput, setQueryInput] = useState('');
   const [queryTimeWindow, setQueryTimeWindow] = useState(queryTimes[0]);
   const [activeContext, setActiveContext] = useState(contexts[0]);
   const [liveUpdates, setLiveUpdates] = useState(true);
   const [readFromLeader, setReadFromLeader] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
-  // Instantiating an `EventSource`
-  const evtSource = new EventSource('/tweets');
-
-  // Listening to specific event names and handling them
-  evtSource.addEventListener(
-    'tweet',
-    function (e) {
-      console.log(e);
-    },
-    false,
-  );
+  const [
+    searchEventStream,
+    setSearchEventStream,
+  ] = useState<EventSource | null>(null);
+  const [metadata, setMetadata] = useState<string[]>([]);
+  const [rowData, setRowData] = useState<SearchRowDataItem[]>([]);
 
   return (
     <Grid container spacing={2}>
       <Grid item md={12}>
         <div className="search__query-wrapper">
           <SearchInput
+            value={queryInput}
             multiline
             placeholder={'Please enter your query'}
-            onSubmit={(value) => alert(value)}
+            onSubmit={(query) => {
+              setQueryInput(query);
+
+              // Ready states can be:
+              // 0 - CONNECTING
+              // 1 - OPEN
+              // 2 - CLOSED
+              if (
+                searchEventStream &&
+                searchEventStream.readyState !== EventSource.CLOSED
+              ) {
+                searchEventStream.close();
+              }
+
+              const evtSource = getSearchEventSource({
+                query,
+                activeContext,
+                liveUpdates,
+                clientToken,
+                timeConstraint: queryTimeWindow,
+                forceReadFromLeader: readFromLeader,
+              });
+              const onSearchStreamMetadata = (event: unknown) => {
+                setMetadata(JSON.parse((event as SearchMetadataEvent).data));
+              };
+
+              const onSearchStreamRow = (event: unknown) => {
+                const newRowItem = JSON.parse(
+                  (event as SearchRowDataEvent).data,
+                );
+                setRowData((prevState) => [...prevState, newRowItem]);
+              };
+
+              const onSearchStreamError = (e: any) => {
+                console.error(e);
+
+                if (e && e.data) {
+                  alert(e.data);
+                }
+                if (evtSource.readyState === EventSource.CLOSED) {
+                  return;
+                }
+                onSearchStreamDone();
+              };
+
+              const onSearchStreamDone = () => {
+                evtSource.removeEventListener(
+                  'metadata',
+                  onSearchStreamMetadata,
+                );
+                evtSource.removeEventListener('row', onSearchStreamRow);
+                evtSource.removeEventListener('done', onSearchStreamDone);
+                evtSource.removeEventListener('error', onSearchStreamError);
+                evtSource.close();
+              };
+              evtSource.addEventListener('metadata', onSearchStreamMetadata);
+              evtSource.addEventListener('row', onSearchStreamRow);
+              evtSource.addEventListener('error', onSearchStreamError);
+              evtSource.addEventListener('done', onSearchStreamDone);
+
+              setSearchEventStream(evtSource);
+            }}
           />
 
           <Divider />
@@ -136,78 +212,11 @@ export const Search = () => {
           </div>
         </div>
       </Grid>
-      <Grid item xs={12}>
-        <SearchResultTable
-          headers={[
-            'token',
-            'eventIdentifier',
-            'aggregateIdentifier',
-            'aggregateSequenceNumber',
-            'aggregateType',
-            'payloadType',
-            'payloadRevision',
-            'payloadData',
-            'timestamp',
-            'metaData',
-          ]}
-          data={[
-            {
-              idValues: [88],
-              sortValues: [88],
-              value: {
-                aggregateSequenceNumber: 0,
-                metaData:
-                  '{traceId=ee57c132-1b38-4b51-a232-88a2b1b347a1, correlationId=ee57c132-1b38-4b51-a232-88a2b1b347a1}',
-                payloadType: 'io.axoniq.demo.giftcard.api.IssuedEvt',
-                payloadRevision: '',
-                aggregateIdentifier: '2793B9E1-EB',
-                payloadData:
-                  '<io.axoniq.demo.giftcard.api.IssuedEvt><id>2793B9E1-EB</id><amount>100</amount></io.axoniq.demo.giftcard.api.IssuedEvt>',
-                eventIdentifier: 'd074d0e2-2718-4f5a-a638-2c02649038ea',
-                token: 88,
-                aggregateType: 'GiftCard',
-                timestamp: '2020-10-28T14:45:26.749Z',
-              },
-            },
-            {
-              idValues: [89],
-              sortValues: [89],
-              value: {
-                aggregateSequenceNumber: 0,
-                metaData:
-                  '{traceId=ee57c132-1b38-4b51-a232-88a2b1b347a1, correlationId=ee57c132-1b38-4b51-a232-88a2b1b347a1}',
-                payloadType: 'io.axoniq.demo.giftcard.api.IssuedEvt',
-                payloadRevision: '',
-                aggregateIdentifier: '2793B9E1-EB',
-                payloadData:
-                  '<io.axoniq.demo.giftcard.api.IssuedEvt><id>2793B9E1-EB</id><amount>100</amount></io.axoniq.demo.giftcard.api.IssuedEvt>',
-                eventIdentifier: 'd074d0e2-2718-4f5a-a638-2c02649038ea',
-                token: 89,
-                aggregateType: 'GiftCard',
-                timestamp: '2020-10-28T14:45:26.749Z',
-              },
-            },
-            {
-              idValues: [90],
-              sortValues: [90],
-              value: {
-                aggregateSequenceNumber: 0,
-                metaData:
-                  '{traceId=ee57c132-1b38-4b51-a232-88a2b1b347a1, correlationId=ee57c132-1b38-4b51-a232-88a2b1b347a1}',
-                payloadType: 'io.axoniq.demo.giftcard.api.IssuedEvt',
-                payloadRevision: '',
-                aggregateIdentifier: '2793B9E1-EB',
-                payloadData:
-                  '<io.axoniq.demo.giftcard.api.IssuedEvt><id>2793B9E1-EB</id><amount>100</amount></io.axoniq.demo.giftcard.api.IssuedEvt>',
-                eventIdentifier: 'd074d0e2-2718-4f5a-a638-2c02649038ea',
-                token: 90,
-                aggregateType: 'GiftCard',
-                timestamp: '2020-10-28T14:45:26.749Z',
-              },
-            },
-          ]}
-        />
-      </Grid>
+      {metadata && rowData && (
+        <Grid item xs={12}>
+          <SearchResultTable headers={metadata} data={rowData} />
+        </Grid>
+      )}
     </Grid>
   );
 };

@@ -4,6 +4,7 @@ import React from 'react';
 
 import { Navigation } from '../../components/Navigation/Navigation';
 import { Search } from './Search';
+import { mockSearch } from '../../services/search/search.mock';
 
 export default {
   title: 'views/Search',
@@ -11,13 +12,7 @@ export default {
 };
 
 export const Default = () => {
-  MockEvent({
-    url: '/tweets',
-    responses: [
-      { name: 'tweet', data: 'a tweet' },
-      { name: 'tweet', data: 'another tweet' },
-    ],
-  });
+  mockSearch();
 
   return (
     <Router>
