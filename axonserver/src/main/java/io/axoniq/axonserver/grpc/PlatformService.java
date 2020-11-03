@@ -29,6 +29,7 @@ import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
 import io.axoniq.axonserver.grpc.control.RequestReconnect;
+import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
@@ -260,7 +261,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
      * @param context     the context of the connected client
-     * @param clientId  the unique identifier of the client
+     * @param clientId    the unique identifier of the client
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
     public void sendToClient(String context, String clientId, PlatformOutboundInstruction instruction) {
@@ -351,7 +352,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             if (stream != null) {
                 StreamObserverUtils.complete(stream);
             }
-
             clientIdRegistry.unregister(clientComponent.clientStreamId, ClientIdRegistry.ConnectionType.PLATFORM);
 
             eventPublisher.publishEvent(new ApplicationDisconnected(
@@ -362,6 +362,15 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     null
             ));
         }
+    }
+
+    private void deregisterClient(ClientComponent clientComponent, Throwable cause) {
+        SendingStreamObserver<PlatformOutboundInstruction> stream = connectionMap.remove(clientComponent);
+        if (stream != null) {
+            StreamObserverUtils.error(stream, cause);
+        }
+
+        deregisterClient(clientComponent);
     }
 
     /**
@@ -376,7 +385,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                                               evt.clientId(),
                                                               evt.componentName(),
                                                               clientStreamIdentification.getContext());
-        deregisterClient(clientComponent);
+        String message = "Platform stream inactivity for " + clientStreamIdentification.getClientStreamId();
+        ApplicationInactivityException exception = new ApplicationInactivityException(message);
+        deregisterClient(clientComponent, exception);
     }
 
     /**

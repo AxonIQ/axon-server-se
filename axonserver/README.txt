@@ -3,6 +3,15 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.4
+-------------------------------
+* Improved QueryService logging
+* Added preserve event store option to delete context CLI command
+* Fixed stream completed by the server in case of inactivity
+* Hide upload license panel in SE
+* Reduced number of open index files
+* Fix for GetTokenAt operation
+
 Release Notes for version 4.4.3
 -------------------------------
 * Fix for connections not correctly registered

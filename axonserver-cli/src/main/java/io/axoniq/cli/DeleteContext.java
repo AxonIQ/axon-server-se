@@ -14,14 +14,19 @@ import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
 
+import static io.axoniq.cli.CommandOptions.*;
+
 /**
  * @author Marc Gathier
  */
 public class DeleteContext extends AxonIQCliCommand {
 
     public static void run(String[] args) throws IOException {
-        CommandLine commandLine = processCommandLine(args[0], args, CommandOptions.CONTEXT, CommandOptions.TOKEN);
-        String url = createUrl(commandLine, "/v1/context", CommandOptions.CONTEXT);
+        CommandLine commandLine = processCommandLine(args[0], args, CONTEXT, TOKEN, PRESERVE_EVENT_STORE);
+        String url = createUrl(commandLine, "/v1/context", CONTEXT);
+        if (commandLine.hasOption(PRESERVE_EVENT_STORE.getLongOpt())) {
+            url += "?preserveEventStore=true";
+        }
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
