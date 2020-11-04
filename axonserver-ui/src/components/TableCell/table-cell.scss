@@ -4,4 +4,9 @@
   &.table-cell--small-width {
     width: 160px;
   }
+  &.table-cell--overflow-elipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
