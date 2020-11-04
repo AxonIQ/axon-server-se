@@ -1,5 +1,6 @@
 @import '../Colors/colors.scss';
 
 .table-row--clickable:hover {
+  cursor: pointer;
   background-color: $color-porcelain;
 }

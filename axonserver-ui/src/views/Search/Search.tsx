@@ -207,7 +207,7 @@ export const Search = () => {
           </div>
         </div>
       </Grid>
-      {metadata && rowData && (
+      {metadata.length > 0 && rowData.length > 0 && (
         <Grid item xs={12}>
           <SearchResultTable headers={metadata} data={rowData} />
         </Grid>
