@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Table } from '../Table/Table';
 import { TableBody } from '../TableBody/TableBody';
 import { TableCell } from '../TableCell/TableCell';
-import { TableHead } from '../TableHead/TableHead';
-import { TableRow } from '../TableRow/TableRow';
-import { TablePagination } from '../TablePagination/TablePagination';
 import { TableFooter } from '../TableFooter/TableFooter';
-import { Typography } from '../Typography/Typography';
+import { TableHead } from '../TableHead/TableHead';
+import { TablePagination } from '../TablePagination/TablePagination';
 import { TablePaginationActions } from '../TablePaginationActions/TablePaginationActions';
+import { TableRow } from '../TableRow/TableRow';
+import { Typography } from '../Typography/Typography';
 
-type RowItem = {
+export type SearchRowItem = {
   idValues: number[];
   sortValues: number[];
   value: {
@@ -18,13 +18,14 @@ type RowItem = {
 };
 type SearchResultTableProps = {
   headers: string[];
-  data: RowItem[];
+  data: SearchRowItem[];
+  onRowClick?: (rowItem: SearchRowItem) => void;
 };
 export const SearchResultTable = (props: SearchResultTableProps) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
   const [headersToShow, setHeadersToShow] = useState<string[]>(props.headers);
-  const [rowsToShow, setRowsToShow] = useState<RowItem[]>([]);
+  const [rowsToShow, setRowsToShow] = useState<SearchRowItem[]>([]);
 
   useEffect(() => {
     const firstElemOfPage = rowsPerPage * currentPage;
@@ -33,7 +34,7 @@ export const SearchResultTable = (props: SearchResultTableProps) => {
   }, [props.data, rowsPerPage, currentPage]);
 
   return (
-    <Table fixed flat>
+    <Table fixedLayout flat>
       <TableHead>
         {headersToShow.map((header, index) => (
           <TableCell key={`search-result-header-${index}`}>
@@ -47,7 +48,7 @@ export const SearchResultTable = (props: SearchResultTableProps) => {
       <TableBody>
         {rowsToShow.map((item, index) => (
           <TableRow
-            onClick={() => console.log('hi!')}
+            onClick={() => props.onRowClick && props.onRowClick(item)}
             key={`search-result-data-row-${index}`}
           >
             {headersToShow.map((header, itemIndex) => (

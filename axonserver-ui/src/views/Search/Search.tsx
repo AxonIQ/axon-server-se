@@ -11,7 +11,11 @@ import { IconButton } from '../../components/IconButton/IconButton';
 import { MenuItem } from '../../components/MenuItem/MenuItem';
 import { SearchHelpDialog } from '../../components/SearchHelpDialog/SearchHelpDialog';
 import { SearchInput } from '../../components/SearchInput/SearchInput';
-import { SearchResultTable } from '../../components/SearchResultTable/SearchResultTable';
+import {
+  SearchResultTable,
+  SearchRowItem,
+} from '../../components/SearchResultTable/SearchResultTable';
+import { SearchRowDetails } from '../../components/SearchRowDetails/SearchRowDetails';
 import { Select } from '../../components/Select/Select';
 import {
   getSearchEventSource,
@@ -45,6 +49,10 @@ export const Search = () => {
   const [liveUpdates, setLiveUpdates] = useState(true);
   const [readFromLeader, setReadFromLeader] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [
+    selectedRowItem,
+    setSelectedRowItem,
+  ] = useState<SearchRowItem | null>();
 
   const [
     searchEventStream,
@@ -210,7 +218,17 @@ export const Search = () => {
       </Grid>
       {metadata.length > 0 && rowData.length > 0 && (
         <Grid item xs={12}>
-          <SearchResultTable headers={metadata} data={rowData} />
+          <SearchResultTable
+            headers={metadata}
+            data={rowData}
+            onRowClick={(rowItem: SearchRowItem) => setSelectedRowItem(rowItem)}
+          />
+          {selectedRowItem && (
+            <SearchRowDetails
+              onClose={() => setSelectedRowItem(null)}
+              dataItem={selectedRowItem.value}
+            />
+          )}
         </Grid>
       )}
     </Grid>

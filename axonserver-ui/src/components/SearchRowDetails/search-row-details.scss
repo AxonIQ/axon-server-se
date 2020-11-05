@@ -1,5 +1,22 @@
 @import '../Colors/colors.scss';
 
-.search-row-details__copy-button {
-  color: $color-rhino;
+.search-row-details__wrapper.search-row-details__wrapper {
+  border: 1px solid $color-black;
+  position: sticky;
+  bottom: 40px;
+  max-height: 40vh;
+  overflow-y: auto;
+  border-radius: 4px;
+  .search-row-details__close-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    background-color: $color-rhino;
+    height: 40px;
+  }
+  .search-row-details__close-button {
+    color: $color-white;
+  }
+  .search-row-details__copy-button {
+    color: $color-rhino;
+  }
 }

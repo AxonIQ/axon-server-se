@@ -8,11 +8,20 @@ import './table.scss';
 type TableProps = {
   children: React.ReactNode;
   flat?: boolean;
-  fixed?: boolean;
+  fixedLayout?: boolean;
+  square?: boolean;
+  stickyHeader?: boolean;
 };
 export const Table = (props: TableProps) => (
-  <MUiTableContainer component={Paper} elevation={props.flat ? 0 : undefined}>
-    <MUiTable className={classnames(props.fixed && 'table--fixed')}>
+  <MUiTableContainer
+    component={Paper}
+    elevation={props.flat ? 0 : undefined}
+    square={props.square}
+  >
+    <MUiTable
+      stickyHeader={props.stickyHeader}
+      className={classnames(props.fixedLayout && 'table--fixed')}
+    >
       {props.children}
     </MUiTable>
   </MUiTableContainer>
