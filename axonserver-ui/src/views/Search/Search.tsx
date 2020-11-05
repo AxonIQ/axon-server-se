@@ -62,6 +62,7 @@ export const Search = () => {
             multiline
             placeholder={'Please enter your query'}
             onSubmit={(query) => {
+              setRowData([]);
               setQueryInput(query);
 
               // Ready states can be:
