@@ -142,6 +142,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                       .ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
         } catch (RuntimeException ex) {
             workersMap.remove(context);
+            throw ex;
         }
     }
 
