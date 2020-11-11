@@ -15,11 +15,13 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nonnull;
 
 /**
@@ -30,10 +32,10 @@ import javax.annotation.Nonnull;
 public class ProcessorsInfoTarget implements ClientProcessors {
 
     // Map<ClientStreamId,Component>
-    private final Map<String, String> clients = new HashMap<>();
+    private final Map<String, String> clients = new ConcurrentHashMap<>();
 
     // Map<ClientStreamId, Map<ProcessorName, ClientProcessor>>
-    private final Map<String, Map<String, ClientProcessor>> cache = new HashMap<>();
+    private final Map<String, Map<String, ClientProcessor>> cache = new ConcurrentHashMap<>();
 
     private final ClientProcessorMapping mapping;
 
@@ -43,6 +45,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     }
 
     @EventListener
+    @Order(0)
     public EventProcessorStatusUpdated onEventProcessorStatusChange(EventProcessorStatusUpdate event) {
         ClientEventProcessorInfo processorStatus = event.eventProcessorStatus();
         String clientId = processorStatus.getClientId();
@@ -58,11 +61,13 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     }
 
     @EventListener
+    @Order(0)
     public void onClientConnected(TopologyEvents.ApplicationConnected event) {
         clients.put(event.getClientStreamId(), event.getComponentName());
     }
 
     @EventListener
+    @Order(0)
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
         clients.remove(event.getClientStreamId());
         cache.remove(event.getClientStreamId());
