@@ -180,13 +180,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                                                                     topology.getMe().getName(),
                                                                     sendingStreamObserver);
                 } else {
-                    handlers.getOrDefault(requestCase, new ArrayDeque<>())
-                            .forEach(consumer -> {
-                                instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
-                                                                       sendingStreamObserver);
-                                consumer.accept(this.clientComponent.get(),
-                                                instruction);
-                            });
+                    instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(),
+                                                           sendingStreamObserver);
+                    if (clientComponent.get() != null) {
+                        handlers.getOrDefault(requestCase, new ArrayDeque<>())
+                                .forEach(consumer -> consumer.accept(this.clientComponent.get(),
+                                                                     instruction));
+                    }
                 }
             }
 
