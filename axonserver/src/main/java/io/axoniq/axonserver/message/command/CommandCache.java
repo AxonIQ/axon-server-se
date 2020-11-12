@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.grpc.ContextProvider;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,7 @@ import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -36,7 +39,8 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     private final long defaultCommandTimeout;
     private final Clock clock;
     private final long cacheCapacity;
-    private final int COMMANDS_PER_GB = 2500;
+    private final int COMMANDS_PER_GB = 25000;
+
     @Autowired
     public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
                         Clock clock, @Value("${axoniq.axonserver.command-cache-capacity:0}") long cacheCapacity) {
