@@ -74,6 +74,16 @@ public class CommandRegistrationCacheTest {
     }
 
     @Test
+    public void singleDestinationShortcutTakesContextIntoAccount() {
+        registrationCache.add("contextBCommand", new DirectCommandHandler(streamObserver1,new ClientStreamIdentification("otherContext",
+                                                                                                                         "client1" ),
+                                                                          "client1", "component"));
+
+        assertNotNull(registrationCache.getHandlerForCommand("otherContext", Command.newBuilder().setName("contextBCommand").build(), "irrelevant"));
+        assertNull(registrationCache.getHandlerForCommand(Topology.DEFAULT_CONTEXT, Command.newBuilder().setName("contextBCommand").build(), "irrelevant"));
+    }
+
+    @Test
     public void removeLastCommandSubscription() {
         registrationCache.remove(new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client1"), "command1");
         assertFalse(registrationCache.getAll().containsKey(new DirectCommandHandler(streamObserver1,
