@@ -26,6 +26,11 @@ import java.util.Set;
  */
 @Controller
 public class UserController {
+    /**
+     * An account without a password gets this value  instead.
+     */
+    private static final String PWD_NOLOGON = "nologon";
+
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
 
@@ -79,7 +84,8 @@ public class UserController {
     public void syncUser(User jpaUser) {
         synchronized (userRepository) {
             if (StringUtils.isEmpty(jpaUser.getPassword())) {
-                jpaUser.setPassword(getPassword(jpaUser.getUserName()));
+                final String password = getPassword(jpaUser.getUserName());
+                jpaUser.setPassword((password == null) ? PWD_NOLOGON : password);
             }
             userRepository.save(jpaUser);
         }

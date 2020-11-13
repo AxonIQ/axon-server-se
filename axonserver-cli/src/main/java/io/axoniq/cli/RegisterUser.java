@@ -23,12 +23,13 @@ public class RegisterUser extends AxonIQCliCommand {
         // check args
         CommandLine commandLine = processCommandLine(args[0], args, CommandOptions.USERNAME,
                 CommandOptions.PASSWORD,
+                CommandOptions.NO_PASSWORD,
                 CommandOptions.USER_ROLES,
                 CommandOptions.TOKEN);
         String url = createUrl(commandLine, "/v1/users");
 
         String password = commandLine.getOptionValue(CommandOptions.PASSWORD.getOpt());
-        if( password == null) {
+        if((password == null) && ! commandLine.hasOption(CommandOptions.NO_PASSWORD.getLongOpt())) {
             password = PasswordReader.INSTANCE.readPassword();
         }
 
