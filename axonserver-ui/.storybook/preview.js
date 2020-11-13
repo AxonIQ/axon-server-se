@@ -5,9 +5,11 @@ import { ThemeProvider } from '@material-ui/core/styles';
 import './mockevent';
 
 import { theme } from '../src/theme';
+import './preview.scss';
 
 export const parameters = {
   actions: { argTypesRegex: '^on[A-Z].*' },
+  layout: 'fullscreen',
   backgrounds: {
     values: [
       { name: 'dash-background', value: '#e3e4e6' },

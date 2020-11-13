@@ -7,7 +7,6 @@ $color-black: #000000;
 $color-dodger-blue: #0099ff;
 $color-persimmon: #f35c00;
 $color-yellow: #ffff00;
-
 // Black and gray variations
 $color-rhino: #434a56;
 $color-cinder: #21252b;
@@ -21,6 +20,7 @@ $color-black-haze: #f5f6f6;
 // Gradient colors
 $color-cerulean: #006bae;
 $color-persian-green: #0da7a5;
+$blue-gradient: linear-gradient(245deg, $color-cerulean, $color-persian-green);
 
 $color-safety-orange: #fb6801;
 $color-amaranth: #f12548;

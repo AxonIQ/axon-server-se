@@ -10,6 +10,7 @@ import { mockGetPublic } from '../../services/public/public.mock';
 import { mockGetVersion } from '../../services/version/version.mock';
 import { mockGetVisibleContexts } from '../../services/visibleContexts/visibleContexts.mock';
 import { Settings } from './Settings';
+import '../../app.scss';
 
 export default {
   title: 'Views/Settings',
@@ -27,16 +28,14 @@ export const Default = () => {
 
   return (
     <Router>
-      <Container maxWidth={false} disableGutters={true}>
-        <Grid container spacing={2}>
-          <Grid item md={1}>
-            <Navigation active="settings" />
-          </Grid>
-          <Grid item md={11}>
+      <div className="app-root">
+        <Navigation active="settings" />
+        <Container maxWidth={false}>
+          <Grid item md={12}>
             <Settings />
           </Grid>
-        </Grid>
-      </Container>
+        </Container>
+      </div>
     </Router>
   );
 };
