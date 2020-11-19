@@ -115,7 +115,7 @@ public class StorageProperties implements Cloneable {
             Duration.ofDays(7)
     };
     private String indexFormat;
-    private long commandsBufferLimit = -1L;
+    private long messagesBufferLimit = -1L;
 
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -377,17 +377,17 @@ public class StorageProperties implements Cloneable {
     }
 
 
-    public void setCommandsBufferLimit(long commandsBufferLimit) {
-        this.commandsBufferLimit = commandsBufferLimit;
+    public void setMessagesBufferLimit(long messagesBufferLimit) {
+        this.messagesBufferLimit = messagesBufferLimit;
     }
 
-    public long getCommandsBufferLimit() {
-        return commandsBufferLimit;
+    public long getMessagesBufferLimit() {
+        return messagesBufferLimit;
     }
 
-    public StorageProperties withCommandsBufferLimit(Long commandsBufferLimit) {
+    public StorageProperties withMessagesBufferLimit(Long messagesBufferLimit) {
         StorageProperties clone = cloneProperties();
-        clone.commandsBufferLimit = commandsBufferLimit;
+        clone.messagesBufferLimit = messagesBufferLimit;
         return clone;
     }
 

@@ -57,7 +57,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     }
 
     public CommandCache(Clock clock) {
-        this(300000, clock, 2500);
+        this(300000, clock, 25000);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")

@@ -44,13 +44,14 @@ import java.util.stream.Collectors;
 public class CommandDispatcher {
 
     private final CommandRegistrationCache registrations;
-    private final CommandCache commandCache;
+    private final ConcurrentHashMap<String,CommandInformation> commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
 
-    public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache,
+    public CommandDispatcher(CommandRegistrationCache registrations,
+                             ConcurrentHashMap<String,CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
                              MeterFactory meterFactory,
                              @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity) {
