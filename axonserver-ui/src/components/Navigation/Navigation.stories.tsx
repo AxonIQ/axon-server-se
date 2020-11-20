@@ -1,6 +1,6 @@
-import { Grid } from '@material-ui/core';
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
+import '../../app.scss';
 import { Navigation } from './Navigation';
 
 export default {
@@ -10,19 +10,15 @@ export default {
 
 export const Default = () => (
   <Router>
-    <Grid container>
-      <Grid md={1}>
-        <Navigation />
-      </Grid>
-    </Grid>
+    <div className="app-root">
+      <Navigation />
+    </div>
   </Router>
 );
 export const SearchActive = () => (
   <Router>
-    <Grid container>
-      <Grid md={1}>
-        <Navigation active="search" />
-      </Grid>
-    </Grid>
+    <div className="app-root">
+      <Navigation active="search" />
+    </div>
   </Router>
 );

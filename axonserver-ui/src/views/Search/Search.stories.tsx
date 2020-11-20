@@ -5,6 +5,7 @@ import React from 'react';
 import { Navigation } from '../../components/Navigation/Navigation';
 import { Search } from './Search';
 import { mockSearch } from '../../services/search/search.mock';
+import '../../app.scss';
 
 export default {
   title: 'views/Search',
@@ -16,16 +17,14 @@ export const Default = () => {
 
   return (
     <Router>
-      <Container maxWidth={false} disableGutters={true}>
-        <Grid container spacing={2}>
-          <Grid item md={1}>
-            <Navigation active="search" />
-          </Grid>
-          <Grid item md={11}>
+      <div className="app-root">
+        <Navigation active="search" />
+        <Container maxWidth={false}>
+          <Grid item md={12}>
             <Search />
           </Grid>
-        </Grid>
-      </Container>
+        </Container>
+      </div>
     </Router>
   );
 };
