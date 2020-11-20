@@ -65,13 +65,6 @@ export const Settings = () => {
   return (
     <Grid container spacing={2}>
       <Grid item md={6}>
-        <SSLStatus enabled={meData.ssl} />
-      </Grid>
-      <Grid item md={6}>
-        <AuthStatus enabled={meData.authentication} />
-      </Grid>
-
-      <Grid item md={6}>
         <SettingsConfigurationTable
           data={{
             name: meData.name,

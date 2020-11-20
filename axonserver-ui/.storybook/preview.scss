@@ -1,0 +1,29 @@
+@import '../src/components/Colors/colors.scss';
+
+.sb-show-main.sb-show-main {
+  background-image: $blue-gradient;
+  &:before {
+    z-index: -1;
+    content: '';
+    display: block;
+    transform: rotate(90deg);
+    position: absolute;
+    top: -2px;
+    left: -151px;
+    width: 503px;
+    height: 507px;
+    background: url('../public/img/grid-pattern-light-background.svg') -113px 0 no-repeat;
+  }
+  &:after {
+    z-index: -1;
+    content: '';
+    display: block;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 501px;
+    height: 695px;
+    transform: rotate(-180deg);
+    background: url('../public/img/grid-pattern-light-background.svg') -150px 0 no-repeat;
+  }
+}

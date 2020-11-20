@@ -1,0 +1,32 @@
+@import './components/Colors/colors.scss';
+
+body {
+  margin: 0;
+  background-image: $blue-gradient;
+}
+.main {
+  &:before {
+    z-index: -1;
+    content: '';
+    display: block;
+    transform: rotate(90deg);
+    position: absolute;
+    top: -2px;
+    left: -151px;
+    width: 503px;
+    height: 507px;
+    background: url('./img/grid-pattern-light-background.svg') -113px 0 no-repeat;
+  }
+  &:after {
+    z-index: -1;
+    content: '';
+    display: block;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 501px;
+    height: 695px;
+    transform: rotate(-180deg);
+    background: url('./img/grid-pattern-light-background.svg') -150px 0 no-repeat;
+  }
+}

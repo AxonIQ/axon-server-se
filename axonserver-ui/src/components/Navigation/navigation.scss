@@ -4,14 +4,14 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: $color-rhino;
+  background-color: $color-white;
 }
 .navigation__link-wrapper {
   text-decoration: none;
   color: inherit;
 }
 .navigation__link {
-  color: $color-gray-chateau;
+  color: $color-rhino;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -19,8 +19,7 @@
   transition: all 0.3s ease;
   &.navigation__link--active,
   &:hover {
-    background-color: $color-persimmon;
-    color: $color-white;
+    color: $color-persimmon;
   }
 }
 .navigation__link-icon {

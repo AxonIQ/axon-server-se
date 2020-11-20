@@ -4,25 +4,26 @@ import React from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation/Navigation';
 import { Settings } from './views/Settings/Settings';
+import './app.scss';
 
 const App = () => (
   <Router>
-    <Container maxWidth={false} disableGutters={true}>
-      <Grid container>
-        <Grid item md={1}>
-          <Navigation />
+    <div className="app-root">
+      <Navigation />
+      <Container maxWidth={false}>
+        <Grid container>
+          <Grid item md={12}>
+            {/* A <Switch> looks through its children <Route>s and
+                  renders the first one that matches the current URL. */}
+            <Switch>
+              <Route path="/settings">
+                <Settings />
+              </Route>
+            </Switch>
+          </Grid>
         </Grid>
-        <Grid item md={11}>
-          {/* A <Switch> looks through its children <Route>s and
-                renders the first one that matches the current URL. */}
-          <Switch>
-            <Route path="/settings">
-              <Settings />
-            </Route>
-          </Switch>
-        </Grid>
-      </Grid>
-    </Container>
+      </Container>
+    </div>
   </Router>
 );
 
