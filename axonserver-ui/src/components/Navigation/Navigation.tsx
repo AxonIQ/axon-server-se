@@ -1,8 +1,7 @@
 import AppsIcon from '@material-ui/icons/Apps';
-import ErrorIcon from '@material-ui/icons/Error';
+import BarChartIcon from '@material-ui/icons/BarChart';
 import GroupIcon from '@material-ui/icons/Group';
 import GroupWorkIcon from '@material-ui/icons/GroupWork';
-import HelpIcon from '@material-ui/icons/Help';
 import SearchIcon from '@material-ui/icons/Search';
 import SettingsIcon from '@material-ui/icons/Settings';
 import VisibilityIcon from '@material-ui/icons/Visibility';
@@ -16,9 +15,10 @@ export type NavigationItem =
   | 'settings'
   | 'overview'
   | 'search'
-  | 'commands'
-  | 'queries'
-  | 'users';
+  | 'statistics'
+  | 'users'
+  | 'apps'
+  | 'contexts';
 type NavigationProps = {
   active?: NavigationItem;
 };
@@ -64,31 +64,19 @@ export const Navigation = (props: NavigationProps) => (
     <RouterLink to="" className="navigation__link-wrapper">
       <div
         className={classnames('navigation__link', {
-          'navigation__link--active': props.active === 'commands',
+          'navigation__link--active': props.active === 'statistics',
         })}
       >
         <div className="navigation__link-icon">
-          <ErrorIcon fontSize="inherit" />
+          <BarChartIcon fontSize="inherit" />
         </div>
-        <Typography size="m">Commands</Typography>
+        <Typography size="m">Statistics</Typography>
       </div>
     </RouterLink>
     <RouterLink to="" className="navigation__link-wrapper">
       <div
         className={classnames('navigation__link', {
-          'navigation__link--active': props.active === 'queries',
-        })}
-      >
-        <div className="navigation__link-icon">
-          <HelpIcon fontSize="inherit" />
-        </div>
-        <Typography size="m">Queries</Typography>
-      </div>
-    </RouterLink>
-    <RouterLink to="" className="navigation__link-wrapper">
-      <div
-        className={classnames('navigation__link', {
-          'navigation__link--active': props.active === 'queries',
+          'navigation__link--active': props.active === 'apps',
         })}
       >
         <div className="navigation__link-icon">
@@ -112,7 +100,7 @@ export const Navigation = (props: NavigationProps) => (
     <RouterLink to="" className="navigation__link-wrapper">
       <div
         className={classnames('navigation__link', {
-          'navigation__link--active': props.active === 'queries',
+          'navigation__link--active': props.active === 'contexts',
         })}
       >
         <div className="navigation__link-icon">
