@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.ContextProvider;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +22,6 @@ import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -100,7 +97,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
 
     private void checkCapacity() {
         if (mappingCount() >= cacheCapacity) {
-            throw new InsufficientCacheCapacityException("Command cache is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
+            throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
             + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
         }
     }

@@ -19,7 +19,7 @@ import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
+import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
@@ -179,12 +179,12 @@ public class QueryDispatcher {
             try {
                 queryCache.put(query.getMessageIdentifier(), queryInformation);
                 handlers.forEach(h -> dispatchOne(h, serializedQuery, timeout));
-            } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+            } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 callback.accept(QueryResponse.newBuilder()
-                                             .setErrorCode(ErrorCode.QUERY_DISPATCH_ERROR.getCode())
+                                             .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
                                              .setMessageIdentifier(query.getMessageIdentifier())
                                              .setErrorMessage(ErrorMessageFactory
-                                                                      .build(insufficientCacheCapacityException
+                                                                      .build(insufficientBufferCapacityException
                                                                                      .getMessage()))
                                              .build());
                 onCompleted.accept("NoCapacity");
@@ -234,10 +234,10 @@ public class QueryDispatcher {
             try {
                 queryCache.put(key, queryInformation);
                 dispatchOne(queryHandler, serializedQuery, timeout);
-            } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+            } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 queryInformation.completeWithError(queryHandler.getClientId(),
                                                    ErrorCode.QUERY_DISPATCH_ERROR,
-                                                   insufficientCacheCapacityException.getMessage());
+                                                   insufficientBufferCapacityException.getMessage());
             }
         }
     }

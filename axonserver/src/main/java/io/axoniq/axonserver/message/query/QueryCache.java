@@ -11,7 +11,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
+import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -111,7 +111,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
 
     private void checkCapacity() {
         if (mappingCount() >= cacheCapacity) {
-            throw new InsufficientCacheCapacityException("Query cache is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
+            throw new InsufficientBufferCapacityException("Query buffer is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
                     + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
         }
     }

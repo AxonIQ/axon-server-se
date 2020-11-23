@@ -138,14 +138,14 @@ public class CommandDispatcher {
                                                            commandHandler.getClientId(),
                                                            command);
             commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
-        } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+        } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                  .setMessageIdentifier(command.getMessageIdentifier())
                                                                                  .setRequestIdentifier(command.getMessageIdentifier())
-                                                                                 .setErrorCode(ErrorCode.COMMAND_DISPATCH_ERROR
+                                                                                 .setErrorCode(ErrorCode.TOO_MANY_REQUESTS
                                                                                                        .getCode())
                                                                                  .setErrorMessage(ErrorMessageFactory
-                                                                                                          .build(insufficientCacheCapacityException
+                                                                                                          .build(insufficientBufferCapacityException
                                                                                                                          .getMessage()))
                                                                                  .build()));
         } catch (MessagingPlatformException mpe) {
