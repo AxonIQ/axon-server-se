@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.localstorage.query.QueryExecutionException;
-import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
+import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,7 +19,7 @@ public class QueryCacheTest extends TestCase {
         testSubject = new QueryCache(50000, 1);
     }
 
-    @Test(expected = InsufficientCacheCapacityException.class)
+    @Test(expected = InsufficientBufferCapacityException.class)
     public void onFullCapacityThrowError() {
 
         testSubject.put("1234", mock(QueryInformation.class));

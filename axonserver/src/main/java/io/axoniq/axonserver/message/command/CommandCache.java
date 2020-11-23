@@ -36,7 +36,8 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     private final long defaultCommandTimeout;
     private final Clock clock;
     private final long cacheCapacity;
-    private final int COMMANDS_PER_GB = 2500;
+    private final int COMMANDS_PER_GB = 25000;
+
     @Autowired
     public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
                         Clock clock, @Value("${axoniq.axonserver.command-cache-capacity:0}") long cacheCapacity) {
@@ -53,7 +54,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
     }
 
     public CommandCache(Clock clock) {
-        this(300000, clock, 2500);
+        this(300000, clock, 25000);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
@@ -96,7 +97,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation> 
 
     private void checkCapacity() {
         if (mappingCount() >= cacheCapacity) {
-            throw new InsufficientCacheCapacityException("Command cache is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
+            throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
             + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
         }
     }
