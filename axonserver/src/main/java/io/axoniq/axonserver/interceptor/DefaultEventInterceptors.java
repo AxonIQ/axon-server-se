@@ -10,8 +10,6 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.config.OsgiController;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
@@ -26,9 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -53,9 +48,13 @@ public class DefaultEventInterceptors implements EventInterceptors {
     public DefaultEventInterceptors(
             OsgiController osgiController) {
         this.osgiController = osgiController;
+        osgiController.registerServiceListener(serviceEvent -> {
+            logger.debug("service event {}", serviceEvent.getLocation());
+            initialized = false;
+        });
     }
 
-    private void initialize() {
+    private void ensureInitialized() {
         if (!initialized) {
             synchronized (osgiController) {
                 if (initialized) {
@@ -68,6 +67,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 eventReadInterceptors.clear();
                 snapshotReadInterceptors.clear();
                 snapshotPreCommitInterceptors.clear();
+                snapshotPostCommitInterceptors.clear();
 
                 osgiController.getServices(AppendEventInterceptor.class).forEach(appendEventInterceptors::add);
                 osgiController.getServices(PreCommitEventsHook.class).forEach(eventsPreCommitInterceptors::add);
@@ -83,23 +83,19 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 appendEventInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 eventsPreCommitInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 eventsPostCommitInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                snapshotPostCommitInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 eventReadInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 snapshotReadInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 snapshotPreCommitInterceptors.sort(Comparator.comparingInt(Ordered::order));
 
                 initialized = true;
 
-                logger.warn("{} appendEventInterceptors", appendEventInterceptors.size());
-                logger.warn("{} eventsPreCommitInterceptors", eventsPreCommitInterceptors.size());
-                logger.warn("{} eventsPostCommitInterceptors", eventsPostCommitInterceptors.size());
-                logger.warn("{} eventReadInterceptors", eventReadInterceptors.size());
-                logger.warn("{} snapshotReadInterceptors", snapshotReadInterceptors.size());
-                logger.warn("{} snapshotPreCommitInterceptors", snapshotPreCommitInterceptors.size());
-
-                osgiController.registerServiceListener(serviceEvent -> {
-                    logger.warn("service event {}", serviceEvent.getLocation());
-                    initialized = false;
-                });
+                logger.debug("{} appendEventInterceptors", appendEventInterceptors.size());
+                logger.debug("{} eventsPreCommitInterceptors", eventsPreCommitInterceptors.size());
+                logger.debug("{} eventsPostCommitInterceptors", eventsPostCommitInterceptors.size());
+                logger.debug("{} eventReadInterceptors", eventReadInterceptors.size());
+                logger.debug("{} snapshotReadInterceptors", snapshotReadInterceptors.size());
+                logger.debug("{} snapshotPreCommitInterceptors", snapshotPreCommitInterceptors.size());
             }
         }
     }
@@ -107,7 +103,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     @Override
     public Event appendEvent(
             Event event, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         if (appendEventInterceptors.isEmpty()) {
             return event;
         }
@@ -120,7 +116,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     @Override
     public void eventsPreCommit(List<Event> events,
                                 ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         for (PreCommitEventsHook preCommitInterceptor : eventsPreCommitInterceptors) {
             preCommitInterceptor.onPreCommitEvents(events, interceptorContext);
         }
@@ -128,7 +124,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public void eventsPostCommit(List<Event> events, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         for (PostCommitEventsHook postCommitInterceptor : eventsPostCommitInterceptors) {
             postCommitInterceptor.onPostCommitEvent(events, interceptorContext);
         }
@@ -136,7 +132,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public void snapshotPostCommit(Event snapshot, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         for (PostCommitSnapshotHook postCommitInterceptor : snapshotPostCommitInterceptors) {
             postCommitInterceptor.onPostCommitSnapshot(snapshot, interceptorContext);
         }
@@ -144,7 +140,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public Event appendSnapshot(Event event, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         for (AppendSnapshotInterceptor snapshotPreCommitInterceptor : snapshotPreCommitInterceptors) {
             event = snapshotPreCommitInterceptor.appendSnapshot(event, interceptorContext);
         }
@@ -153,13 +149,13 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public boolean noReadInterceptors() {
-        initialize();
+        ensureInitialized();
         return eventReadInterceptors.isEmpty() && snapshotReadInterceptors.isEmpty();
     }
 
     @Override
     public Event readSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         for (ReadSnapshotInterceptor snapshotReadInterceptor : snapshotReadInterceptors) {
             snapshot = snapshotReadInterceptor.readSnapshot(snapshot, interceptorContext);
         }
@@ -168,7 +164,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public Event readEvent(Event event, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         for (ReadEventInterceptor eventReadInterceptor : eventReadInterceptors) {
             event = eventReadInterceptor.readEvent(event, interceptorContext);
         }
@@ -177,7 +173,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public boolean noEventReadInterceptors() {
-        initialize();
+        ensureInitialized();
         return eventReadInterceptors.isEmpty();
     }
 }

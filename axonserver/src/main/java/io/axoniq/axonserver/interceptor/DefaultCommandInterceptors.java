@@ -42,23 +42,31 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     public DefaultCommandInterceptors(OsgiController osgiController) {
         this.osgiController = osgiController;
+        osgiController.registerServiceListener(serviceEvent -> {
+            logger.debug("service event {}", serviceEvent.getLocation());
+            initialized = false;
+        });
     }
 
-    private void initialize() {
+    private void ensureInitialized() {
         if (!initialized) {
             synchronized (osgiController) {
                 if (initialized) {
                     return;
                 }
+                commandRequestInterceptors.clear();
+                commandResponseInterceptors.clear();
 
                 osgiController.getServices(CommandRequestInterceptor.class).forEach(commandRequestInterceptors::add);
                 osgiController.getServices(CommandResponseInterceptor.class).forEach(commandResponseInterceptors::add);
+
                 commandRequestInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 commandResponseInterceptors.sort(Comparator.comparingInt(Ordered::order));
+
                 initialized = true;
 
-                logger.warn("{} commandRequestInterceptors", commandRequestInterceptors.size());
-                logger.warn("{} commandResponseInterceptors", commandResponseInterceptors.size());
+                logger.debug("{} commandRequestInterceptors", commandRequestInterceptors.size());
+                logger.debug("{} commandResponseInterceptors", commandResponseInterceptors.size());
             }
         }
     }
@@ -66,7 +74,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
     @Override
     public SerializedCommand commandRequest(SerializedCommand serializedCommand,
                                             ExtensionUnitOfWork extensionUnitOfWork) {
-        initialize();
+        ensureInitialized();
         if (commandRequestInterceptors.isEmpty()) {
             return serializedCommand;
         }
@@ -80,7 +88,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
     @Override
     public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
                                                      ExtensionUnitOfWork extensionUnitOfWork) {
-        initialize();
+        ensureInitialized();
         if (commandResponseInterceptors.isEmpty()) {
             return serializedResponse;
         }

@@ -40,14 +40,20 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     public DefaultQueryInterceptors(OsgiController osgiController) {
         this.osgiController = osgiController;
+        osgiController.registerServiceListener(serviceEvent -> {
+            logger.debug("service event {}", serviceEvent.getLocation());
+            initialized = false;
+        });
     }
 
-    private void initialize() {
+    private void ensureInitialized() {
         if (!initialized) {
             synchronized (osgiController) {
                 if (initialized) {
                     return;
                 }
+                queryRequestInterceptors.clear();
+                queryResponseInterceptors.clear();
 
                 osgiController.getServices(QueryRequestInterceptor.class).forEach(queryRequestInterceptors::add);
                 osgiController.getServices(QueryResponseInterceptor.class).forEach(queryResponseInterceptors::add);
@@ -55,15 +61,15 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
                 queryResponseInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 initialized = true;
 
-                logger.info("{} queryRequestInterceptors", queryRequestInterceptors.size());
-                logger.info("{} queryResponseInterceptors", queryResponseInterceptors.size());
+                logger.debug("{} queryRequestInterceptors", queryRequestInterceptors.size());
+                logger.debug("{} queryResponseInterceptors", queryResponseInterceptors.size());
             }
         }
     }
 
     @Override
     public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         if (queryRequestInterceptors.isEmpty()) {
             return serializedQuery;
         }
@@ -76,7 +82,7 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     @Override
     public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork interceptorContext) {
-        initialize();
+        ensureInitialized();
         for (QueryResponseInterceptor queryResponseInterceptor : queryResponseInterceptors) {
             response = queryResponseInterceptor.queryResponse(response, interceptorContext);
         }

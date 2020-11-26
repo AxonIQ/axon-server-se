@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.localstorage.Registration;
+import io.axoniq.axonserver.localstorage.file.FileUtils;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -24,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -45,6 +45,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
+import java.util.jar.Attributes;
+import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
 
 /**
@@ -57,6 +59,7 @@ public class OsgiController implements SmartLifecycle {
             "io.axoniq.axonserver.extensions",
             "io.axoniq.axonserver.extensions.interceptor",
             "io.axoniq.axonserver.extensions.transform",
+            "io.axoniq.axonserver.extensions.hook",
             "io.axoniq.axonserver.grpc",
             "io.axoniq.axonserver.grpc.command",
             "io.axoniq.axonserver.grpc.control",
@@ -88,7 +91,7 @@ public class OsgiController implements SmartLifecycle {
         osgiConfig.put(Constants.FRAMEWORK_STORAGE, "cache");
         osgiConfig.put(Constants.FRAMEWORK_STORAGE_CLEAN, "onFirstInit");
         osgiConfig.put(Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, systemPackages);
-        logger.warn("System packages {}", systemPackages);
+        logger.debug("System packages {}", systemPackages);
         try {
             FrameworkFactory frameworkFactory = ServiceLoader.load(FrameworkFactory.class)
                                                              .iterator().next();
@@ -117,8 +120,6 @@ public class OsgiController implements SmartLifecycle {
             Collection<ServiceReference<T>> serviceReferences = bundleContext.getServiceReferences(clazz, null);
             return serviceReferences.stream()
                                     .filter(s -> latestVersion(s.getBundle()))
-                                    .peek(s -> System.out.println(
-                                            s.getBundle().getSymbolicName() + ":" + s.getBundle().getVersion()))
                                     .map(s -> bundleContext.getService(s))
                                     .collect(Collectors.toSet());
         } catch (InvalidSyntaxException e) {
@@ -135,11 +136,10 @@ public class OsgiController implements SmartLifecycle {
         return s.getVersion().equals(latestVersions.get(s.getSymbolicName()));
     }
 
-    public Iterable<String> listBundles() {
+    public Iterable<BundleInfo> listBundles() {
         return Arrays.stream(bundleContext.getBundles())
                      .filter(b -> !b.getSymbolicName().contains("org.apache.felix"))
-                     .filter(this::latestVersion)
-                     .map(b -> String.format("%s:%s", b.getSymbolicName(), b.getVersion()))
+                     .map(b -> new BundleInfo(b, latestVersion(b)))
                      .collect(Collectors.toList());
     }
 
@@ -148,7 +148,7 @@ public class OsgiController implements SmartLifecycle {
         for (Bundle bundle : bundleContext.getBundles()) {
             try {
                 if (!bundle.getSymbolicName().contains("org.apache.felix")) {
-                    logger.warn("{}: stopping bundle", bundle.getSymbolicName());
+                    logger.info("{}: stopping bundle", bundle.getSymbolicName());
                     bundle.uninstall();
                 }
             } catch (BundleException e) {
@@ -166,29 +166,80 @@ public class OsgiController implements SmartLifecycle {
         return 0;
     }
 
-    public void addBundle(MultipartFile extensionBundle) throws IOException, BundleException {
+    public void addBundle(String fileName, InputStream bundleInputStream) throws IOException, BundleException {
         File bundleDir = new File(bundleDirectory);
         Files.createDirectories(bundleDir.toPath());
         File target = new File(
-                bundleDir.getAbsolutePath() + File.separatorChar + extensionBundle.getOriginalFilename());
-        if (!target.exists()) {
-            try (FileOutputStream fileOutputStream = new FileOutputStream(target);
-                 InputStream inputStream = extensionBundle.getInputStream()) {
-                byte[] buffer = new byte[5000];
-                int read = inputStream.read(buffer);
-                while (read > 0) {
-                    fileOutputStream.write(buffer, 0, read);
-                    read = inputStream.read(buffer);
-                }
+                bundleDir.getAbsolutePath() + File.separatorChar + fileName);
+        try (FileOutputStream fileOutputStream = new FileOutputStream(target)) {
+            byte[] buffer = new byte[5000];
+            int read = bundleInputStream.read(buffer);
+            while (read > 0) {
+                fileOutputStream.write(buffer, 0, read);
+                read = bundleInputStream.read(buffer);
             }
+        }
+
+        Bundle current = null;
+        try (JarInputStream jarInputStream = new JarInputStream(new FileInputStream(target))) {
+            Attributes mainAttributes = jarInputStream.getManifest().getMainAttributes();
+            String symbolicName = mainAttributes.getValue("Bundle-SymbolicName");
+            String version = mainAttributes.getValue("Bundle-Version");
+            Version version1 = Version.parseVersion(version);
+            current = findBundle(symbolicName, version1);
 
             try (InputStream is = new FileInputStream(target)) {
-                Bundle bundle = bundleContext.installBundle(target.getName(), is);
-                bundle.start();
-                updateLatestVersion(bundle);
+                if (current == null) {
+                    Bundle bundle = bundleContext.installBundle(target.getAbsolutePath(), is);
+                    logger.info("adding bundle {}/{}", symbolicName, version1);
+                    bundle.start();
+                    updateLatestVersion(bundle);
+                    serviceInstalledListeners.forEach(s -> s.accept(bundle));
+                } else {
+                    logger.info("updating bundle {}/{}", symbolicName, version1);
+                    current.update(is);
+                }
+            }
+        }
+    }
 
+    private Bundle findBundle(String symbolicName, Version version) {
+        Bundle[] bundles = bundleContext.getBundles();
+        if (bundles != null) {
+            for (Bundle bundle : bundles) {
+                if (symbolicName.equals(bundle.getSymbolicName()) &&
+                        version.equals(bundle.getVersion())) {
+                    return bundle;
+                }
+            }
+        }
+        return null;
+    }
 
-                serviceInstalledListeners.forEach(s -> s.accept(bundle));
+    public void uninstallExtension(long id) throws BundleException {
+        Bundle bundle = bundleContext.getBundle(id);
+        if (bundle != null) {
+            bundle.stop();
+            bundle.uninstall();
+            FileUtils.delete(new File(bundle.getLocation()));
+            latestVersions.remove(bundle.getSymbolicName());
+            setLatestVersion(bundle.getSymbolicName());
+            serviceInstalledListeners.forEach(s -> s.accept(bundle));
+        }
+    }
+
+    private void setLatestVersion(String symbolicName) {
+        Bundle[] bundles = bundleContext.getBundles();
+        if (bundles != null) {
+            Version latest = null;
+            for (Bundle bundle : bundles) {
+                if (symbolicName.equals(bundle.getSymbolicName()) &&
+                        (latest == null || bundle.getVersion().compareTo(latest) > 0)) {
+                    latest = bundle.getVersion();
+                }
+            }
+            if (latest != null) {
+                latestVersions.put(symbolicName, latest);
             }
         }
     }
@@ -206,7 +257,7 @@ public class OsgiController implements SmartLifecycle {
             ArrayList<Bundle> availableBundles = new ArrayList<Bundle>();
             //get and open available bundles
             for (URL url : getBundles()) {
-                logger.warn("Loading bundle: {}", url);
+                logger.info("Loading bundle: {}", url);
                 Bundle bundle = bundleContext.installBundle(url.getFile(), url.openStream());
                 availableBundles.add(bundle);
             }

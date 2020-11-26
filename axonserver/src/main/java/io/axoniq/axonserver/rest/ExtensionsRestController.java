@@ -9,8 +9,10 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.BundleInfo;
 import io.axoniq.axonserver.config.OsgiController;
 import org.osgi.framework.BundleException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.Principal;
 
 /**
@@ -36,16 +39,20 @@ public class ExtensionsRestController {
     }
 
     @GetMapping
-    public Iterable<String> currentExtensions(@ApiIgnore Principal principal) {
+    public Iterable<BundleInfo> currentExtensions(@ApiIgnore Principal principal) {
         return osgiController.listBundles();
+    }
+
+    @DeleteMapping
+    public void uninstallExtension(@RequestParam long id, @ApiIgnore Principal principal) throws BundleException {
+        osgiController.uninstallExtension(id);
     }
 
     @PostMapping
     public void installExtension(@RequestParam("bundle") MultipartFile extensionBundle, @ApiIgnore Principal principal)
             throws IOException, BundleException {
-        System.out.println(extensionBundle.getName());
-        System.out.println(extensionBundle.getOriginalFilename());
-        System.out.println(extensionBundle.getSize());
-        osgiController.addBundle(extensionBundle);
+        try (InputStream inputStream = extensionBundle.getInputStream()) {
+            osgiController.addBundle(extensionBundle.getOriginalFilename(), inputStream);
+        }
     }
 }
