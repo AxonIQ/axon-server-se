@@ -18,7 +18,7 @@ import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
 public class DefaultEventTransformerFactory implements EventTransformerFactory {
 
     @Override
-    public EventTransformer get(byte version, int flags) {
+    public EventTransformer get(int flags) {
         return NoOpEventTransformer.INSTANCE;
     }
 

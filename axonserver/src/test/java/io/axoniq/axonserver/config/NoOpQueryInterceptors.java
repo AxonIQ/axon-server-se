@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
@@ -20,12 +20,12 @@ import io.axoniq.axonserver.interceptor.QueryInterceptors;
 public class NoOpQueryInterceptors implements QueryInterceptors {
 
     @Override
-    public SerializedQuery queryRequest(InterceptorContext interceptorContext, SerializedQuery serializedQuery) {
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork interceptorContext) {
         return serializedQuery;
     }
 
     @Override
-    public QueryResponse queryResponse(InterceptorContext interceptorContext, QueryResponse response) {
+    public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork interceptorContext) {
         return response;
     }
 }

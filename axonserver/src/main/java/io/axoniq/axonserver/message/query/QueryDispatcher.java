@@ -14,11 +14,11 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
+import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
@@ -177,9 +177,10 @@ public class QueryDispatcher {
             if (nrOfResults > 0) {
                 expectedResults = nrOfResults;
             }
-            InterceptorContext interceptorContext = new DefaultInterceptorContext(serializedQuery.context(), principal);
+            ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(serializedQuery.context(),
+                                                                                   principal);
             try {
-                SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(interceptorContext, serializedQuery);
+                SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(serializedQuery, interceptorContext);
                 QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(),
                                                                          query.getClientId(), queryDefinition,
                                                                          handlers.stream()
@@ -205,9 +206,9 @@ public class QueryDispatcher {
         }
     }
 
-    private void intercept(InterceptorContext interceptorContext, QueryResponse response,
+    private void intercept(ExtensionUnitOfWork interceptorContext, QueryResponse response,
                            Consumer<QueryResponse> callback) {
-        callback.accept(queryInterceptors.queryResponse(interceptorContext, response));
+        callback.accept(queryInterceptors.queryResponse(response, interceptorContext));
     }
 
     public MeterFactory.RateMeter queryRate(String context) {

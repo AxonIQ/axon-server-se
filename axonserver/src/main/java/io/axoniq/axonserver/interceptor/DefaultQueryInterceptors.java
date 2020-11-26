@@ -10,8 +10,8 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.config.OsgiController;
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
-import io.axoniq.axonserver.extensions.interceptor.OrderedInterceptor;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedQuery;
@@ -51,8 +51,8 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
                 osgiController.getServices(QueryRequestInterceptor.class).forEach(queryRequestInterceptors::add);
                 osgiController.getServices(QueryResponseInterceptor.class).forEach(queryResponseInterceptors::add);
-                queryRequestInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
-                queryResponseInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
+                queryRequestInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                queryResponseInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 initialized = true;
 
                 logger.info("{} queryRequestInterceptors", queryRequestInterceptors.size());
@@ -62,23 +62,23 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
     }
 
     @Override
-    public SerializedQuery queryRequest(InterceptorContext interceptorContext, SerializedQuery serializedQuery) {
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork interceptorContext) {
         initialize();
         if (queryRequestInterceptors.isEmpty()) {
             return serializedQuery;
         }
         QueryRequest query = serializedQuery.query();
         for (QueryRequestInterceptor queryRequestInterceptor : queryRequestInterceptors) {
-            query = queryRequestInterceptor.queryRequest(interceptorContext, query);
+            query = queryRequestInterceptor.queryRequest(query, interceptorContext);
         }
         return new SerializedQuery(serializedQuery.context(), serializedQuery.clientStreamId(), query);
     }
 
     @Override
-    public QueryResponse queryResponse(InterceptorContext interceptorContext, QueryResponse response) {
+    public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork interceptorContext) {
         initialize();
         for (QueryResponseInterceptor queryResponseInterceptor : queryResponseInterceptors) {
-            response = queryResponseInterceptor.queryResponse(interceptorContext, response);
+            response = queryResponseInterceptor.queryResponse(response, interceptorContext);
         }
         return response;
     }

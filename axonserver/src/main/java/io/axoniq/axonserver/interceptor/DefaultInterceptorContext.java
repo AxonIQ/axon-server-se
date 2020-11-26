@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -19,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -28,11 +29,11 @@ import java.util.stream.Collectors;
  * @author Marc Gathier
  * @since 4.5
  */
-public class DefaultInterceptorContext implements InterceptorContext {
+public class DefaultInterceptorContext implements ExtensionUnitOfWork {
 
     private final String context;
     private final Authentication principal;
-    private final List<Runnable> compensatingActions = new LinkedList<>();
+    private final List<Consumer<ExtensionUnitOfWork>> compensatingActions = new LinkedList<>();
     private final Map<String, Object> details = new HashMap<>();
 
     /**
@@ -83,7 +84,7 @@ public class DefaultInterceptorContext implements InterceptorContext {
      * @param compensatingAction runnable compensation action
      */
     @Override
-    public void registerCompensatingAction(Runnable compensatingAction) {
+    public void onFailure(Consumer<ExtensionUnitOfWork> compensatingAction) {
         compensatingActions.add(0, compensatingAction);
     }
 
@@ -91,7 +92,7 @@ public class DefaultInterceptorContext implements InterceptorContext {
      * Execute all compensating actions. The last registered compensating action is executed first.
      */
     public void compensate() {
-        compensatingActions.forEach(Runnable::run);
+        compensatingActions.forEach(a -> a.accept(this));
     }
 
     /**

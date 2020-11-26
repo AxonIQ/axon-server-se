@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 
@@ -18,8 +18,9 @@ import io.axoniq.axonserver.grpc.SerializedCommandResponse;
  */
 public interface CommandInterceptors {
 
-    SerializedCommand commandRequest(InterceptorContext interceptorContext, SerializedCommand serializedCommand);
+    SerializedCommand commandRequest(SerializedCommand serializedCommand,
+                                     ExtensionUnitOfWork extensionUnitOfWork);
 
-    SerializedCommandResponse commandResponse(InterceptorContext interceptorContext,
-                                              SerializedCommandResponse serializedResponse);
+    SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
+                                              ExtensionUnitOfWork extensionUnitOfWork);
 }

@@ -10,10 +10,10 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.config.OsgiController;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
-import io.axoniq.axonserver.extensions.interceptor.OrderedInterceptor;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
@@ -53,8 +53,8 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
                 osgiController.getServices(CommandRequestInterceptor.class).forEach(commandRequestInterceptors::add);
                 osgiController.getServices(CommandResponseInterceptor.class).forEach(commandResponseInterceptors::add);
-                commandRequestInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
-                commandResponseInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
+                commandRequestInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                commandResponseInterceptors.sort(Comparator.comparingInt(Ordered::order));
                 initialized = true;
 
                 logger.warn("{} commandRequestInterceptors", commandRequestInterceptors.size());
@@ -64,29 +64,29 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
     }
 
     @Override
-    public SerializedCommand commandRequest(InterceptorContext interceptorContext,
-                                            SerializedCommand serializedCommand) {
+    public SerializedCommand commandRequest(SerializedCommand serializedCommand,
+                                            ExtensionUnitOfWork extensionUnitOfWork) {
         initialize();
         if (commandRequestInterceptors.isEmpty()) {
             return serializedCommand;
         }
         Command command = serializedCommand.wrapped();
         for (CommandRequestInterceptor commandRequestInterceptor : commandRequestInterceptors) {
-            command = commandRequestInterceptor.commandRequest(interceptorContext, command);
+            command = commandRequestInterceptor.commandRequest(command, extensionUnitOfWork);
         }
         return new SerializedCommand(command);
     }
 
     @Override
-    public SerializedCommandResponse commandResponse(InterceptorContext interceptorContext,
-                                                     SerializedCommandResponse serializedResponse) {
+    public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
+                                                     ExtensionUnitOfWork extensionUnitOfWork) {
         initialize();
         if (commandResponseInterceptors.isEmpty()) {
             return serializedResponse;
         }
         CommandResponse response = serializedResponse.wrapped();
         for (CommandResponseInterceptor commandResponseInterceptor : commandResponseInterceptors) {
-            response = commandResponseInterceptor.commandResponse(interceptorContext, response);
+            response = commandResponseInterceptor.commandResponse(response, extensionUnitOfWork);
         }
         return new SerializedCommandResponse(response);
     }

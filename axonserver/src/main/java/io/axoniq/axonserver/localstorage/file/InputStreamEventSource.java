@@ -38,10 +38,11 @@ public class InputStreamEventSource implements EventSource {
         try {
             logger.debug("Open file {}", dataFile);
             dataInputStream = new PositionKeepingDataInputStream(new BufferedInputStream(new FileInputStream(dataFile),
-                                                                                         storageProperties.getReadBufferSize()));
-            byte version = dataInputStream.readByte();
+                                                                                         storageProperties
+                                                                                                 .getReadBufferSize()));
+            dataInputStream.readByte();
             int modifiers = dataInputStream.readInt();
-            eventTransformer = eventTransformerFactory.get(version, modifiers);
+            eventTransformer = eventTransformerFactory.get(modifiers);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }

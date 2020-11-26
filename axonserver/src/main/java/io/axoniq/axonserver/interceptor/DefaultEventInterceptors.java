@@ -12,14 +12,15 @@ package io.axoniq.axonserver.interceptor;
 import io.axoniq.axonserver.config.OsgiController;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
+import io.axoniq.axonserver.extensions.hook.PostCommitSnapshotHook;
+import io.axoniq.axonserver.extensions.hook.PreCommitEventsHook;
 import io.axoniq.axonserver.extensions.interceptor.AppendEventInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.EventReadInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.EventsPostCommitInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.EventsPreCommitInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
-import io.axoniq.axonserver.extensions.interceptor.OrderedInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.SnapshotPreCommitInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.SnapshotReadInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.AppendSnapshotInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.ReadEventInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.ReadSnapshotInterceptor;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,11 +41,12 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultEventInterceptors.class);
     private final List<AppendEventInterceptor> appendEventInterceptors = new CopyOnWriteArrayList<>();
-    private final List<EventsPreCommitInterceptor> eventsPreCommitInterceptors = new CopyOnWriteArrayList<>();
-    private final List<EventsPostCommitInterceptor> eventsPostCommitInterceptors = new CopyOnWriteArrayList<>();
-    private final List<SnapshotPreCommitInterceptor> snapshotPreCommitInterceptors = new CopyOnWriteArrayList<>();
-    private final List<EventReadInterceptor> eventReadInterceptors = new CopyOnWriteArrayList<>();
-    private final List<SnapshotReadInterceptor> snapshotReadInterceptors = new CopyOnWriteArrayList<>();
+    private final List<PreCommitEventsHook> eventsPreCommitInterceptors = new CopyOnWriteArrayList<>();
+    private final List<PostCommitEventsHook> eventsPostCommitInterceptors = new CopyOnWriteArrayList<>();
+    private final List<AppendSnapshotInterceptor> snapshotPreCommitInterceptors = new CopyOnWriteArrayList<>();
+    private final List<PostCommitSnapshotHook> snapshotPostCommitInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ReadEventInterceptor> eventReadInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ReadSnapshotInterceptor> snapshotReadInterceptors = new CopyOnWriteArrayList<>();
     private final OsgiController osgiController;
     private volatile boolean initialized;
 
@@ -68,20 +70,22 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 snapshotPreCommitInterceptors.clear();
 
                 osgiController.getServices(AppendEventInterceptor.class).forEach(appendEventInterceptors::add);
-                osgiController.getServices(EventsPreCommitInterceptor.class).forEach(eventsPreCommitInterceptors::add);
-                osgiController.getServices(EventReadInterceptor.class).forEach(eventReadInterceptors::add);
-                osgiController.getServices(EventsPostCommitInterceptor.class)
+                osgiController.getServices(PreCommitEventsHook.class).forEach(eventsPreCommitInterceptors::add);
+                osgiController.getServices(ReadEventInterceptor.class).forEach(eventReadInterceptors::add);
+                osgiController.getServices(PostCommitEventsHook.class)
                               .forEach(eventsPostCommitInterceptors::add);
-                osgiController.getServices(SnapshotReadInterceptor.class).forEach(snapshotReadInterceptors::add);
-                osgiController.getServices(SnapshotPreCommitInterceptor.class)
+                osgiController.getServices(ReadSnapshotInterceptor.class).forEach(snapshotReadInterceptors::add);
+                osgiController.getServices(AppendSnapshotInterceptor.class)
                               .forEach(snapshotPreCommitInterceptors::add);
+                osgiController.getServices(PostCommitSnapshotHook.class)
+                              .forEach(snapshotPostCommitInterceptors::add);
 
-                appendEventInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
-                eventsPreCommitInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
-                eventsPostCommitInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
-                eventReadInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
-                snapshotReadInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
-                snapshotPreCommitInterceptors.sort(Comparator.comparingInt(OrderedInterceptor::order));
+                appendEventInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                eventsPreCommitInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                eventsPostCommitInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                eventReadInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                snapshotReadInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                snapshotPreCommitInterceptors.sort(Comparator.comparingInt(Ordered::order));
 
                 initialized = true;
 
@@ -101,44 +105,48 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public InputStream appendEvent(
-            InterceptorContext interceptorContext, InputStream eventInputStream) {
+    public Event appendEvent(
+            Event event, ExtensionUnitOfWork interceptorContext) {
         initialize();
         if (appendEventInterceptors.isEmpty()) {
-            return eventInputStream;
+            return event;
         }
-        try {
-            Event event = Event.parseFrom(eventInputStream);
-            for (AppendEventInterceptor preCommitInterceptor : appendEventInterceptors) {
-                event = preCommitInterceptor.appendEvent(interceptorContext, event);
-            }
-            return new ByteArrayInputStream(event.toByteArray());
-        } catch (IOException ioException) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Could not parse event from client", ioException);
+        for (AppendEventInterceptor preCommitInterceptor : appendEventInterceptors) {
+            event = preCommitInterceptor.appendEvent(event, interceptorContext);
+        }
+        return event;
+    }
+
+    @Override
+    public void eventsPreCommit(List<Event> events,
+                                ExtensionUnitOfWork interceptorContext) {
+        initialize();
+        for (PreCommitEventsHook preCommitInterceptor : eventsPreCommitInterceptors) {
+            preCommitInterceptor.onPreCommitEvents(events, interceptorContext);
         }
     }
 
     @Override
-    public void eventsPreCommit(InterceptorContext interceptorContext) {
+    public void eventsPostCommit(List<Event> events, ExtensionUnitOfWork interceptorContext) {
         initialize();
-        for (EventsPreCommitInterceptor preCommitInterceptor : eventsPreCommitInterceptors) {
-            preCommitInterceptor.eventsPreCommit(interceptorContext);
+        for (PostCommitEventsHook postCommitInterceptor : eventsPostCommitInterceptors) {
+            postCommitInterceptor.onPostCommitEvent(events, interceptorContext);
         }
     }
 
     @Override
-    public void eventsPostCommit(InterceptorContext interceptorContext) {
+    public void snapshotPostCommit(Event snapshot, ExtensionUnitOfWork interceptorContext) {
         initialize();
-        for (EventsPostCommitInterceptor postCommitInterceptor : eventsPostCommitInterceptors) {
-            postCommitInterceptor.eventsPreCommit(interceptorContext);
+        for (PostCommitSnapshotHook postCommitInterceptor : snapshotPostCommitInterceptors) {
+            postCommitInterceptor.onPostCommitSnapshot(snapshot, interceptorContext);
         }
     }
 
     @Override
-    public Event snapshotPreRequest(InterceptorContext interceptorContext, Event event) {
+    public Event appendSnapshot(Event event, ExtensionUnitOfWork interceptorContext) {
         initialize();
-        for (SnapshotPreCommitInterceptor snapshotPreCommitInterceptor : snapshotPreCommitInterceptors) {
-            event = snapshotPreCommitInterceptor.snapshotPreCommit(interceptorContext, event);
+        for (AppendSnapshotInterceptor snapshotPreCommitInterceptor : snapshotPreCommitInterceptors) {
+            event = snapshotPreCommitInterceptor.appendSnapshot(event, interceptorContext);
         }
         return event;
     }
@@ -150,19 +158,19 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event readSnapshot(InterceptorContext interceptorContext, Event snapshot) {
+    public Event readSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext) {
         initialize();
-        for (SnapshotReadInterceptor snapshotReadInterceptor : snapshotReadInterceptors) {
-            snapshot = snapshotReadInterceptor.readSnapshot(interceptorContext, snapshot);
+        for (ReadSnapshotInterceptor snapshotReadInterceptor : snapshotReadInterceptors) {
+            snapshot = snapshotReadInterceptor.readSnapshot(snapshot, interceptorContext);
         }
         return snapshot;
     }
 
     @Override
-    public Event readEvent(InterceptorContext interceptorContext, Event event) {
+    public Event readEvent(Event event, ExtensionUnitOfWork interceptorContext) {
         initialize();
-        for (EventReadInterceptor eventReadInterceptor : eventReadInterceptors) {
-            event = eventReadInterceptor.readEvent(interceptorContext, event);
+        for (ReadEventInterceptor eventReadInterceptor : eventReadInterceptors) {
+            event = eventReadInterceptor.readEvent(event, interceptorContext);
         }
         return event;
     }

@@ -9,11 +9,10 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.interceptor.CommandInterceptors;
-import org.springframework.stereotype.Component;
 
 /**
  * @author Marc Gathier
@@ -21,14 +20,14 @@ import org.springframework.stereotype.Component;
 public class NoOpCommandInterceptors implements CommandInterceptors {
 
     @Override
-    public SerializedCommand commandRequest(InterceptorContext interceptorContext,
-                                            SerializedCommand serializedCommand) {
+    public SerializedCommand commandRequest(SerializedCommand serializedCommand,
+                                            ExtensionUnitOfWork extensionUnitOfWork) {
         return serializedCommand;
     }
 
     @Override
-    public SerializedCommandResponse commandResponse(InterceptorContext interceptorContext,
-                                                     SerializedCommandResponse serializedResponse) {
+    public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
+                                                     ExtensionUnitOfWork extensionUnitOfWork) {
         return serializedResponse;
     }
 }

@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 
@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
  */
 public interface QueryInterceptors {
 
-    SerializedQuery queryRequest(InterceptorContext interceptorContext, SerializedQuery serializedQuery);
+    SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork interceptorContext);
 
-    QueryResponse queryResponse(InterceptorContext interceptorContext, QueryResponse response);
+    QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork interceptorContext);
 }

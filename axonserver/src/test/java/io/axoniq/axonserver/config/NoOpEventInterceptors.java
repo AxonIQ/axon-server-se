@@ -9,11 +9,11 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.extensions.interceptor.InterceptorContext;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 
-import java.io.InputStream;
+import java.util.List;
 
 /**
  * @author Marc Gathier
@@ -21,40 +21,47 @@ import java.io.InputStream;
 public class NoOpEventInterceptors implements EventInterceptors {
 
     @Override
-    public InputStream appendEvent(InterceptorContext interceptorContext, InputStream eventInputStream) {
-        return eventInputStream;
-    }
-
-    @Override
-    public void eventsPostCommit(InterceptorContext interceptorContext) {
-    }
-
-    @Override
-    public Event snapshotPreRequest(InterceptorContext interceptorContext, Event event) {
+    public Event appendEvent(Event event, ExtensionUnitOfWork interceptorContext) {
         return event;
     }
 
     @Override
-    public void eventsPreCommit(InterceptorContext interceptorContext) {
-    }
-
-    @Override
-    public boolean noReadInterceptors() {
-        return false;
-    }
-
-    @Override
-    public Event readSnapshot(InterceptorContext interceptorContext, Event snapshot) {
+    public Event appendSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext) {
         return snapshot;
     }
 
     @Override
-    public Event readEvent(InterceptorContext interceptorContext, Event event) {
+    public void eventsPreCommit(List<Event> events, ExtensionUnitOfWork interceptorContext) {
+
+    }
+
+    @Override
+    public void eventsPostCommit(List<Event> events, ExtensionUnitOfWork interceptorContext) {
+
+    }
+
+    @Override
+    public void snapshotPostCommit(Event snapshot, ExtensionUnitOfWork interceptorContext) {
+
+    }
+
+    @Override
+    public Event readSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext) {
+        return snapshot;
+    }
+
+    @Override
+    public Event readEvent(Event event, ExtensionUnitOfWork interceptorContext) {
         return event;
     }
 
     @Override
+    public boolean noReadInterceptors() {
+        return true;
+    }
+
+    @Override
     public boolean noEventReadInterceptors() {
-        return false;
+        return true;
     }
 }
