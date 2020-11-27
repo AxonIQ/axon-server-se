@@ -25,10 +25,10 @@ import static org.junit.Assert.*;
  */
 public class ProcessorsInfoTargetTest {
 
-    private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget();
+    private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget(100);
 
     @Test
-    public void onEventProcessorStatusChange() {
+    public void onEventProcessorStatusChange() throws InterruptedException {
         EventProcessorInfo processorInfo = EventProcessorInfo.newBuilder()
                                                              .setActiveThreads(10)
                                                              .setAvailableThreads(20)
@@ -47,6 +47,12 @@ public class ProcessorsInfoTargetTest {
                                                                filter(cp -> cp.clientId().equals("client"))
                                                        .findFirst().orElse(null);
         assertNotNull(clientProcessor);
+        Thread.sleep(120);
+        clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0),
+                                               false).
+                                               filter(cp -> cp.clientId().equals("client"))
+                                       .findFirst().orElse(null);
+        assertNull(clientProcessor);
     }
 
     @Test

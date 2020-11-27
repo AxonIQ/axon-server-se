@@ -21,6 +21,7 @@ public class ClientEventProcessorInfo {
     private final String clientStreamId;
     private final String context;
     private final EventProcessorInfo eventProcessorInfo;
+    private final long timestamp;
 
     public ClientEventProcessorInfo(String clientId, String clientStreamId, String context,
                                     EventProcessorInfo eventProcessorInfo) {
@@ -29,6 +30,7 @@ public class ClientEventProcessorInfo {
         this.clientStreamId = clientStreamId;
         this.context = context;
         this.eventProcessorInfo = eventProcessorInfo;
+        this.timestamp = System.currentTimeMillis();
     }
 
     public String getClientId() {
@@ -45,5 +47,9 @@ public class ClientEventProcessorInfo {
 
     public EventProcessorInfo getEventProcessorInfo() {
         return eventProcessorInfo;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 }

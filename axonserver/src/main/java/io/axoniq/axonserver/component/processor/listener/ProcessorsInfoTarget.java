@@ -14,6 +14,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcesso
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -38,10 +39,12 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     private final Map<String, Map<String, ClientProcessor>> cache = new ConcurrentHashMap<>();
 
     private final ClientProcessorMapping mapping;
+    private final long expireTime;
 
-    public ProcessorsInfoTarget() {
+    public ProcessorsInfoTarget(@Value("${axoniq.axonserver.processor-info-timeout:30000}") long expireTime) {
         this.mapping = new ClientProcessorMapping() {
         };
+        this.expireTime = expireTime;
     }
 
     @EventListener
@@ -55,7 +58,8 @@ public class ProcessorsInfoTarget implements ClientProcessors {
         ClientProcessor clientProcessor = mapping.map(clientId,
                                                       clients.get(clientStreamId),
                                                       processorStatus.getContext(),
-                                                      eventProcessorInfo);
+                                                      eventProcessorInfo,
+                                                      processorStatus.getTimestamp());
         clientData.put(eventProcessorInfo.getProcessorName(), clientProcessor);
         return new EventProcessorStatusUpdated(processorStatus, false);
     }
@@ -64,6 +68,7 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     @Order(0)
     public void onClientConnected(TopologyEvents.ApplicationConnected event) {
         clients.put(event.getClientStreamId(), event.getComponentName());
+        cleanupCache();
     }
 
     @EventListener
@@ -71,13 +76,21 @@ public class ProcessorsInfoTarget implements ClientProcessors {
     public void onClientDisconnected(TopologyEvents.ApplicationDisconnected event) {
         clients.remove(event.getClientStreamId());
         cache.remove(event.getClientStreamId());
+        cleanupCache();
+    }
+
+    private void cleanupCache() {
+        long expired = System.currentTimeMillis() - expireTime;
+        cache.values().forEach(map -> map.entrySet().removeIf(e -> e.getValue().timestamp() < expired));
     }
 
     @Nonnull
     @Override
     public Iterator<ClientProcessor> iterator() {
+        long expired = System.currentTimeMillis() - expireTime;
         return cache.entrySet().stream()
                     .flatMap(client -> client.getValue().values().stream())
+                    .filter(processor -> processor.timestamp() >= expired)
                     .iterator();
     }
 }

@@ -27,6 +27,7 @@ public class FakeClientProcessor implements ClientProcessor {
     private final String belongsToContext;
 
     private final EventProcessorInfo eventProcessorInfo;
+    private final long timestamp;
 
     public FakeClientProcessor(String clientId, boolean belongsToComponent, String processorName) {
         this(clientId, belongsToComponent, EventProcessorInfo.newBuilder()
@@ -36,15 +37,21 @@ public class FakeClientProcessor implements ClientProcessor {
 
     public FakeClientProcessor(String clientId, boolean belongsToComponent,
                                EventProcessorInfo eventProcessorInfo) {
-        this(clientId, belongsToComponent, Topology.DEFAULT_CONTEXT, eventProcessorInfo);
+        this(clientId, belongsToComponent, Topology.DEFAULT_CONTEXT, eventProcessorInfo, System.currentTimeMillis());
     }
 
     public FakeClientProcessor(String clientId, boolean belongsToComponent, String belongsToContext,
                                EventProcessorInfo eventProcessorInfo) {
+        this(clientId, belongsToComponent, belongsToContext, eventProcessorInfo, System.currentTimeMillis());
+    }
+
+    public FakeClientProcessor(String clientId, boolean belongsToComponent, String belongsToContext,
+                               EventProcessorInfo eventProcessorInfo, long timestamp) {
         this.clientId = clientId;
         this.belongsToComponent = belongsToComponent;
         this.belongsToContext = belongsToContext;
         this.eventProcessorInfo = eventProcessorInfo;
+        this.timestamp = timestamp;
     }
 
     @Override
@@ -65,5 +72,10 @@ public class FakeClientProcessor implements ClientProcessor {
     @Override
     public boolean belongsToContext(String context) {
         return belongsToContext.equals(context);
+    }
+
+    @Override
+    public long timestamp() {
+        return timestamp;
     }
 }
