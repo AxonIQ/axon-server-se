@@ -27,7 +27,10 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
+ * Bundles the interceptors for commands in a single component.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @Component
 public class DefaultCommandInterceptors implements CommandInterceptors {
@@ -93,9 +96,15 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
             return serializedResponse;
         }
         CommandResponse response = serializedResponse.wrapped();
-        for (CommandResponseInterceptor commandResponseInterceptor : commandResponseInterceptors) {
-            response = commandResponseInterceptor.commandResponse(response, extensionUnitOfWork);
+        try {
+            for (CommandResponseInterceptor commandResponseInterceptor : commandResponseInterceptors) {
+                response = commandResponseInterceptor.commandResponse(response, extensionUnitOfWork);
+            }
+        } catch (Exception ex) {
+            logger.warn("{}@{} an exception occurred in a CommandResponseInterceptor", extensionUnitOfWork.principal(),
+                        extensionUnitOfWork.context(), ex);
         }
+
         return new SerializedCommandResponse(response);
     }
 }

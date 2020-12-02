@@ -15,10 +15,27 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 
 /**
  * @author Marc Gathier
+ * @since 4.5
  */
 public interface QueryInterceptors {
 
-    SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork interceptorContext);
+    /**
+     * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor} instances. Interceptors
+     * may change the content of the query request.
+     *
+     * @param serializedQuery     the query to execute
+     * @param extensionUnitOfWork the unit of work for the query
+     * @return the query after the interceptors are executed
+     */
+    SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork);
 
-    QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork interceptorContext);
+    /**
+     * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor} instances. Interceptors
+     * may change the content of the query response. Exceptions in the interceptors are logged, processing continues.
+     *
+     * @param response            the response of the query
+     * @param extensionUnitOfWork the unit of work for the query
+     * @return the response after the interceptors are executed
+     */
+    QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork extensionUnitOfWork);
 }

@@ -37,9 +37,11 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +49,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import java.util.jar.Attributes;
 import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
 /**
@@ -76,7 +79,7 @@ public class OsgiController implements SmartLifecycle {
     private final Map<String, Version> latestVersions = new ConcurrentHashMap<>();
 
     public OsgiController(@Value("${axoniq.axonserver.bundle.path:bundles}") String bundleDirectory,
-                          @Value("${axoniq.axonserver.bundle.version:4.5.0}") String version) {
+                          @Value("${axoniq.axonserver.bundle.version:1.0.0}") String version) {
         this.bundleDirectory = bundleDirectory;
 
         this.systemPackages = Arrays.stream(systemPackageNames)
@@ -90,8 +93,8 @@ public class OsgiController implements SmartLifecycle {
         Map<String, String> osgiConfig = new HashMap<>();
         osgiConfig.put(Constants.FRAMEWORK_STORAGE, "cache");
         osgiConfig.put(Constants.FRAMEWORK_STORAGE_CLEAN, "onFirstInit");
-        osgiConfig.put(Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, systemPackages);
-        logger.debug("System packages {}", systemPackages);
+        osgiConfig.put(Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, extraSystemPackages().orElse(systemPackages));
+        logger.debug("System packages {}", extraSystemPackages());
         try {
             FrameworkFactory frameworkFactory = ServiceLoader.load(FrameworkFactory.class)
                                                              .iterator().next();
@@ -295,6 +298,29 @@ public class OsgiController implements SmartLifecycle {
             }
             return oldversion;
         });
+    }
+
+    public Optional<String> extraSystemPackages() {
+        Enumeration<URL> manifests = null;
+        try {
+            manifests = Thread.currentThread().getContextClassLoader().getResources(
+                    "META-INF/MANIFEST.MF");
+            while (manifests.hasMoreElements()) {
+                URL url = manifests.nextElement();
+                if (url.toString().contains("axonserver-extension-api")) {
+                    Manifest manifest = null;
+                    try (InputStream manifestStream = url.openStream()) {
+                        manifest = new Manifest(manifestStream);
+                        return Optional.ofNullable(manifest.getMainAttributes().getValue("Export-Package"));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return Optional.empty();
     }
 
     @FunctionalInterface
