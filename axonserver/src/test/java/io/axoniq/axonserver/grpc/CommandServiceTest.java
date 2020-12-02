@@ -179,7 +179,7 @@ public class CommandServiceTest {
                     .getArguments()[2];
             responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
-        }).when(commandDispatcher).dispatch(any(), any(), any(), any(), anyBoolean());
+        }).when(commandDispatcher).dispatch(any(), any(), any(), any());
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build().toByteArray(), responseObserver);
         assertEquals(1, responseObserver.values().size());

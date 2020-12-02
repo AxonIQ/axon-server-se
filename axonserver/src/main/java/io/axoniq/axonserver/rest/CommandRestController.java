@@ -107,7 +107,7 @@ public class CommandRestController {
         commandDispatcher.dispatch(context,
                                    getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                    new SerializedCommand(command.asCommand()),
-                                   r -> result.complete(new CommandResponseJson(r.wrapped())), false);
+                                   r -> result.complete(new CommandResponseJson(r.wrapped())));
         return result;
     }
 

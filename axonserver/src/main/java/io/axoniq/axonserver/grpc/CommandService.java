@@ -277,8 +277,7 @@ public class CommandService implements AxonServerClientService {
                                        request,
                                        commandResponse -> safeReply(clientId,
                                                                     commandResponse,
-                                                                    responseObserver),
-                                       false);
+                                                                    responseObserver));
         } catch (Exception ex) {
             logger.warn("Dispatching failed with unexpected error", ex);
             responseObserver.onError(GrpcExceptionBuilder.build(ex));
