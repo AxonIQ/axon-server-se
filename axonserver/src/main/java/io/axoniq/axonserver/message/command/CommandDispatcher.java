@@ -73,33 +73,34 @@ public class CommandDispatcher {
     }
 
 
+    public void dispatchProxied(String context, SerializedCommand request,
+                                Consumer<SerializedCommandResponse> responseObserver) {
+        String clientStreamId = request.getClientStreamId();
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
+        CommandHandler<?> handler = registrations.findByClientAndCommand(clientIdentification,
+                                                                         request.getCommand());
+        dispatchToCommandHandler(request, handler, responseObserver,
+                                 ErrorCode.CLIENT_DISCONNECTED,
+                                 String.format("Client %s not found while processing: %s"
+                                         , clientStreamId, request.getCommand()));
+    }
+
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
-                         Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
-        if (proxied) {
-            String clientStreamId = request.getClientStreamId();
-            ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
-            CommandHandler<?> handler = registrations.findByClientAndCommand(clientIdentification,
-                                                                             request.getCommand());
-            dispatchToCommandHandler(request, handler, responseObserver,
-                                     ErrorCode.CLIENT_DISCONNECTED,
-                                     String.format("Client %s not found while processing: %s"
-                                             , clientStreamId, request.getCommand()));
-        } else {
-            ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(context, authentication);
-            request = commandInterceptors.commandRequest(request, interceptorContext);
-            commandRate(context).mark();
-            CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
-                                                                                  request.wrapped(),
-                                                                                  request.getRoutingKey());
-            dispatchToCommandHandler(request,
-                                     commandHandler,
-                                     serializedCommandResponse -> intercept(interceptorContext,
-                                                                            serializedCommandResponse,
-                                                                            responseObserver),
-                                     ErrorCode.NO_HANDLER_FOR_COMMAND,
-                                     "No Handler for command: " + request.getCommand()
-            );
-        }
+                         Consumer<SerializedCommandResponse> responseObserver) {
+        ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(context, authentication);
+        request = commandInterceptors.commandRequest(request, interceptorContext);
+        commandRate(context).mark();
+        CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
+                                                                              request.wrapped(),
+                                                                              request.getRoutingKey());
+        dispatchToCommandHandler(request,
+                                 commandHandler,
+                                 serializedCommandResponse -> intercept(interceptorContext,
+                                                                        serializedCommandResponse,
+                                                                        responseObserver),
+                                 ErrorCode.NO_HANDLER_FOR_COMMAND,
+                                 "No Handler for command: " + request.getCommand()
+        );
     }
 
     private void intercept(ExtensionUnitOfWork interceptorContext,
@@ -148,15 +149,16 @@ public class CommandDispatcher {
         try {
             logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
             CommandInformation commandInformation = new CommandInformation(command.getName(),
-                                                                                    command.wrapped().getClientId(),
-                                                                       commandHandler.getClientId(),
-                                                                                    responseObserver,
-                                                                       commandHandler.getClientStreamIdentification(),
-                                                                       commandHandler.getComponentName());
-        commandCache.put(command.getMessageIdentifier(), commandInformation);
-        WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
-                                                           commandHandler.getClientId(),
-                                                           command);
+                                                                           command.wrapped().getClientId(),
+                                                                           commandHandler.getClientId(),
+                                                                           responseObserver,
+                                                                           commandHandler
+                                                                                   .getClientStreamIdentification(),
+                                                                           commandHandler.getComponentName());
+            commandCache.put(command.getMessageIdentifier(), commandInformation);
+            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
+                                                               commandHandler.getClientId(),
+                                                               command);
             commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
         } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
