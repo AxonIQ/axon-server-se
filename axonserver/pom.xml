@@ -35,9 +35,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.axoniq.axonserver</groupId>
+            <groupId>io.axoniq</groupId>
             <artifactId>axonserver-grpc</artifactId>
-            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
