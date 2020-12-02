@@ -16,10 +16,14 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 
 /**
+ * Provides the authentication information for a gRPC request. Note that this information is retrieved from
+ * the gRPC context, which is only available in the thread where the request was received.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @Component
-public class DefaultAuthenticationProvider implements AuthenticationProvider {
+public class GrpcContextAuthenticationProvider implements AuthenticationProvider {
 
     public static final String UNAUTHORIZED = "Unauthorized";
     public static final Authentication DEFAULT_PRINCIPAL = new TokenAuthentication(false,

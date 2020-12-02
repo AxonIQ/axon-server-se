@@ -158,8 +158,18 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
                 if (token != null) {
                     try {
+                        String context = request.getHeader(AxonServerAccessController.CONTEXT_PARAM);
+                        if (context == null) {
+                            context = request.getParameter(AxonServerAccessController.CONTEXT_PARAM);
+                        }
+                        if (context == null) {
+                            context = request.getParameter("context");
+                        }
+                        if (context == null) {
+                            context = accessController.defaultContextForRest();
+                        }
                         Authentication authentication = accessController
-                                .authentication(token);
+                                .authentication(context, token);
                         auditLog.trace("Access using configured token.");
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                     } catch (InvalidTokenException invalidTokenException) {

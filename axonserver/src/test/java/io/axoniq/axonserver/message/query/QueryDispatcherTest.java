@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.message.query;
 
 
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -98,7 +98,7 @@ public class QueryDispatcherTest {
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.completedCount());
         assertEquals(1, responseObserver.completedCount());
@@ -127,7 +127,7 @@ public class QueryDispatcherTest {
                                             "componentName", "client"));
         when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.completedCount());
         assertTrue(queryCache.isEmpty());
@@ -151,7 +151,7 @@ public class QueryDispatcherTest {
                                             "componentName", "client"));
         when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(0, responseObserver.values().size());
 //        verify(queryCache, times(1)).put(any(), any());
@@ -171,7 +171,7 @@ public class QueryDispatcherTest {
                                             "componentName", "client"));
         when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
-                          DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                           responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(1, responseObserver.values().size());

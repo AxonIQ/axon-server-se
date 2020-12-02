@@ -12,7 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -105,7 +105,7 @@ public class CommandRestController {
 
         CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
         commandDispatcher.dispatch(context,
-                                   getOrDefault(principal, DefaultAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                   getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                    new SerializedCommand(command.asCommand()),
                                    r -> result.complete(new CommandResponseJson(r.wrapped())), false);
         return result;

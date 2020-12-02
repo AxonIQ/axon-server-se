@@ -19,7 +19,7 @@ import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.rest.json.MetaDataJson;
 import io.axoniq.axonserver.rest.json.SerializedObjectJson;
@@ -163,7 +163,7 @@ public class EventsRestController {
             ObjectMapper objectMapper = new ObjectMapper();
             eventStoreClient.listAggregateEvents(context,
                                                  getOrDefault(principal,
-                                                              DefaultAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                                              GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                                  request,
                                                  new StreamObserver<SerializedEvent>() {
                                                      @Override
@@ -198,7 +198,7 @@ public class EventsRestController {
         } else {
             StreamObserver<GetEventsRequest> requestStream = eventStoreClient
                     .listEvents(context,
-                                getOrDefault(principal, DefaultAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                 new StreamObserver<InputStream>() {
                                     @Override
                                     public void onNext(InputStream inputStream) {
@@ -255,7 +255,7 @@ public class EventsRestController {
         CompletableFuture<Void> result = new CompletableFuture<>();
         StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context,
                                                                                     getOrDefault(principal,
-                                                                                                 DefaultAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                                                                     new StreamObserver<Confirmation>() {
                                                                                         @Override
                                                                                         public void onNext(
@@ -329,7 +329,7 @@ public class EventsRestController {
         CompletableFuture<Void> result = new CompletableFuture<>();
         eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
                                         ObjectUtils.getOrDefault(principal,
-                                                                 DefaultAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                         event,
                                         new StreamObserver<Confirmation>() {
                                             @Override

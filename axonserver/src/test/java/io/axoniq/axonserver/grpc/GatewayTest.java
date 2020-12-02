@@ -13,6 +13,7 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -20,7 +21,6 @@ import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -37,7 +37,6 @@ import org.junit.*;
 import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -134,13 +133,8 @@ public class GatewayTest {
             }
 
             @Override
-            public Set<String> getRoles(String token) {
-                return Collections.emptySet();
-            }
-
-            @Override
-            public Authentication authentication(String token) {
-                return DefaultAuthenticationProvider.DEFAULT_PRINCIPAL;
+            public Authentication authentication(String context, String token) {
+                return GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
             }
         };
 

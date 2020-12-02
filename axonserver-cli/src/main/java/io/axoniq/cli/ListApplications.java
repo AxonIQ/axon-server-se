@@ -35,10 +35,10 @@ public class ListApplications extends AxonIQCliCommand {
                                                      Application[].class,
                                                      200,
                                                      getToken(commandLine));
-                System.out.printf("%-20s %-60s %-20s\n", "Name", "Description", "Roles");
+                System.out.printf("%-20s %-60s %-20s%n", "Name", "Description", "Roles");
 
                 for (Application app : applications) {
-                    System.out.printf("%-20s %-60s %-20s\n",
+                    System.out.printf("%-20s %-60s %-20s%n",
                                       app.getName(),
                                       app.getDescription() != null ? app.getDescription() : "",
                                       app.getRoles().stream().map(Object::toString).collect(Collectors.joining(",")));

@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -62,7 +62,7 @@ public class EventDispatcherTest {
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
-                                          () -> DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                          () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                           new NoOpEventInterceptors(),
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()));
@@ -106,7 +106,7 @@ public class EventDispatcherTest {
 
     @Test
     public void listAggregateEventsNoEventStore() {
-        testSubject.listAggregateEvents("OtherContext", DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+        testSubject.listAggregateEvents("OtherContext", GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                         GetAggregateEventsRequest.newBuilder().build(),
                                         new FakeStreamObserver<>());
     }

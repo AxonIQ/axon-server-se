@@ -190,14 +190,14 @@ public class CommandOptions {
             .desc("[Optional] secondary member nodes for replication group")
             .build();
     /**
-     * Properties that can be set on a context. Values are in the form name=value
+     * Properties that can be set on a context or application. Values are in the form name=value
      */
     public static final Option PROPERTIES = Option
             .builder("prop")
             .hasArgs()
             .valueSeparator(',')
             .longOpt("property")
-            .desc("[Optional] properties for a context (specify as name=value)")
+            .desc("[Optional] properties for a context/application (specify as name=value)")
             .build();
     /**
      * The name of the context, where the nodes should be added to.

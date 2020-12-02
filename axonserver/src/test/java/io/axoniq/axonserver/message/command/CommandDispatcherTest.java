@@ -12,7 +12,7 @@ package io.axoniq.axonserver.message.command;
 import com.google.common.collect.Sets;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -87,7 +87,7 @@ public class CommandDispatcherTest {
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), anyObject(), anyObject())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
-                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request),
                                    response -> {
                                        responseObserver.onNext(response);
@@ -110,7 +110,7 @@ public class CommandDispatcherTest {
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(null);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
-                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request),
                                    response -> {
                                        responseObserver.onNext(response);
@@ -142,7 +142,7 @@ public class CommandDispatcherTest {
                                                                client, "client", "component");
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(result);
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
-                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request),
                                    response -> {
                                        responseObserver.onNext(response);
@@ -164,7 +164,7 @@ public class CommandDispatcherTest {
         when(registrations.getHandlerForCommand(any(), anyObject(), anyObject())).thenReturn(null);
 
         commandDispatcher.dispatch("UnknownContext",
-                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request),
                                    response -> {
                                        responseObserver.onNext(response);
@@ -192,7 +192,7 @@ public class CommandDispatcherTest {
         when(registrations.findByClientAndCommand(eq(clientIdentification), anyObject())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
-                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request.toByteArray(),
                                                          "client",
                                                          request.getMessageIdentifier()),
@@ -215,7 +215,7 @@ public class CommandDispatcherTest {
                                  .build();
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
-                                   DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                   GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                    new SerializedCommand(request),
                                    responseObserver::onNext,
                                    true);

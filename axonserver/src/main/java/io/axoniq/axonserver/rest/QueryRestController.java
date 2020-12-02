@@ -12,7 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.query.DefaultQueries;
 import io.axoniq.axonserver.component.query.Query;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -93,7 +93,7 @@ public class QueryRestController {
             @ApiIgnore Authentication principal) {
         SseEmitter sseEmitter = new SseEmitter();
         queryDispatcher.query(new SerializedQuery(context, query.asQueryRequest()),
-                              ObjectUtils.getOrDefault(principal, DefaultAuthenticationProvider.DEFAULT_PRINCIPAL),
+                              ObjectUtils.getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                               r -> {
                                   try {
                                       sseEmitter.send(SseEmitter.event().data(new QueryResponseJson(r)));
