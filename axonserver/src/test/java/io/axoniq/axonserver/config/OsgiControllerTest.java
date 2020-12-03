@@ -11,6 +11,7 @@ package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
@@ -99,7 +100,7 @@ public class OsgiControllerTest {
         if (files != null) {
             for (File file : files) {
                 try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
-                    osgiController.addBundle(file.getName(), inputStream);
+                    osgiController.addExtension(file.getName(), inputStream);
                 }
             }
         }

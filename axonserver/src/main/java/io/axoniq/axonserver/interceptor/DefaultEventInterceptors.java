@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.config.OsgiController;
+import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;

@@ -7,14 +7,17 @@
  *
  */
 
-package io.axoniq.axonserver.config;
+package io.axoniq.axonserver.extensions;
 
 import org.osgi.framework.Bundle;
 
 /**
+ * Describes an installed extension.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
-public class BundleInfo {
+public class ExtensionInfo {
 
     private final boolean latestVersion;
     private final String version;
@@ -22,7 +25,7 @@ public class BundleInfo {
     private final String name;
     private final String location;
 
-    public BundleInfo(Bundle bundle, boolean latestVersion) {
+    public ExtensionInfo(Bundle bundle, boolean latestVersion) {
         this.version = String.valueOf(bundle.getVersion());
         this.id = bundle.getBundleId();
         this.name = bundle.getSymbolicName();
