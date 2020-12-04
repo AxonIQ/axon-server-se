@@ -39,6 +39,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -119,6 +120,7 @@ public class OsgiController implements SmartLifecycle {
 
     public Iterable<ExtensionInfo> listBundles() {
         return Arrays.stream(bundleContext.getBundles())
+                     .filter(b -> !Objects.isNull(b.getSymbolicName()))
                      .filter(b -> !b.getSymbolicName().contains("org.apache.felix"))
                      .map(b -> new ExtensionInfo(b, latestVersion(b)))
                      .collect(Collectors.toList());
@@ -181,8 +183,7 @@ public class OsgiController implements SmartLifecycle {
             Attributes mainAttributes = jarInputStream.getManifest().getMainAttributes();
             String symbolicName = mainAttributes.getValue("Bundle-SymbolicName");
             String version = mainAttributes.getValue("Bundle-Version");
-            Version version1 = Version.parseVersion(version);
-            return new BundleInfo(symbolicName, version1);
+            return new BundleInfo(symbolicName, version);
         }
     }
 
@@ -197,12 +198,13 @@ public class OsgiController implements SmartLifecycle {
         }
     }
 
-    private Bundle findBundle(String symbolicName, Version version) {
+    private Bundle findBundle(String symbolicName, String version) {
+        Version version1 = Version.parseVersion(version);
         Bundle[] bundles = bundleContext.getBundles();
         if (bundles != null) {
             for (Bundle bundle : bundles) {
                 if (symbolicName.equals(bundle.getSymbolicName()) &&
-                        version.equals(bundle.getVersion())) {
+                        version1.equals(bundle.getVersion())) {
                     return bundle;
                 }
             }
@@ -212,6 +214,10 @@ public class OsgiController implements SmartLifecycle {
 
     public void uninstallExtension(long id) {
         Bundle bundle = bundleContext.getBundle(id);
+        uninstallBundle(bundle);
+    }
+
+    private void uninstallBundle(Bundle bundle) {
         if (bundle != null) {
             try {
                 bundle.stop();
@@ -254,12 +260,14 @@ public class OsgiController implements SmartLifecycle {
     }
 
     private void updateLatestVersion(Bundle bundle) {
-        latestVersions.compute(bundle.getSymbolicName(), (name, oldversion) -> {
-            if (oldversion == null || oldversion.compareTo(bundle.getVersion()) < 0) {
-                return bundle.getVersion();
-            }
-            return oldversion;
-        });
+        if (bundle.getSymbolicName() != null) {
+            latestVersions.compute(bundle.getSymbolicName(), (name, oldversion) -> {
+                if (oldversion == null || oldversion.compareTo(bundle.getVersion()) < 0) {
+                    return bundle.getVersion();
+                }
+                return oldversion;
+            });
+        }
     }
 
     public <T> T getService(Class<T> clazz) {
@@ -267,22 +275,24 @@ public class OsgiController implements SmartLifecycle {
         return candidates.hasNext() ? candidates.next() : null;
     }
 
-    private class BundleInfo {
+    public Bundle getBundle(long id) {
+        System.out.println(bundleContext.getDataFile("config"));
+        return bundleContext.getBundle(id);
+    }
 
-        private final String symbolicName;
-        private final Version version;
-
-        public BundleInfo(String symbolicName, Version version) {
-            this.symbolicName = symbolicName;
-            this.version = version;
+    public BundleInfo getBundleById(long id) {
+        Bundle bundle = bundleContext.getBundle(id);
+        if (bundle == null) {
+            return null;
         }
+        return new BundleInfo(bundle.getSymbolicName(), bundle.getVersion().toString());
+    }
 
-        public String getSymbolicName() {
-            return symbolicName;
-        }
-
-        public Version getVersion() {
-            return version;
-        }
+    public void uninstallExtension(String symbolicName, String version) {
+        Arrays.stream(bundleContext.getBundles()).filter(b -> b.getSymbolicName()
+                                                               .equals(symbolicName))
+              .filter(b -> b.getVersion().equals(Version.parseVersion(version)))
+              .findFirst()
+              .ifPresent(b -> uninstallBundle(b));
     }
 }

@@ -33,7 +33,14 @@ public class SystemPackagesProvider {
         this.systemPackages = Arrays.stream(systemPackageNames)
                                     .map(s -> String.format("%s;version=\"%s\"", s, version))
                                     .collect(
-                                            Collectors.joining(","));
+                                            Collectors.joining(","))
+                + ",org.apache.felix.metatype;version=\"1.2.0\";uses:=\"org.osgi.framework,org.osgi.service.metatype\""
+                + ",org.osgi.service.metatype;version=\"1.4.0\";uses:=\"org.osgi.framework\""
+                + ",org.osgi.service.log;version=\"1.3.0\""
+                + ",org.apache.felix.cm;version=\"1.2.0\""
+                + ",org.apache.felix.cm.file;version=\"1.1.0\";uses:=\"org.apache.felix.cm,org.osgi.framework\""
+                + ",org.osgi.service.cm;version=\"1.6.0\";uses:=\"org.osgi.framework\""
+                + ",com.google.protobuf;version=\"3.12.0\"";
     }
 
     public String getSystemPackages() {

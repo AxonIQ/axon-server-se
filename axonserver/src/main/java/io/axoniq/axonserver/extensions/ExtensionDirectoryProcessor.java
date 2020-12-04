@@ -58,6 +58,7 @@ public class ExtensionDirectoryProcessor {
         //start the bundles
         for (Bundle bundle : availableBundles) {
             try {
+                logger.info("Start bundle: {}", bundle.getSymbolicName());
                 bundle.start();
             } catch (Exception ex) {
                 logger.warn("{}: Failed to start bundle", bundle.getSymbolicName(), ex);
