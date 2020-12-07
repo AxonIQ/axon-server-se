@@ -69,7 +69,7 @@ public class OsgiControllerTest {
                 for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(-1)) {
                     System.out.printf("\t%s=%s%n",
                                       attributeDefinition.getName(),
-                                      attributeDefinition.getDefaultValue());
+                                      String.join("/", attributeDefinition.getDefaultValue()));
                 }
             }
             idx++;

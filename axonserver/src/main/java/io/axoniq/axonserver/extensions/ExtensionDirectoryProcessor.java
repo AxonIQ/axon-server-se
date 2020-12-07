@@ -11,12 +11,15 @@ package io.axoniq.axonserver.extensions;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +31,9 @@ import java.util.List;
  * @since 4.5
  */
 public class ExtensionDirectoryProcessor {
+
+    private static final String[] SYSTEM_BUNDLES = {"org.apache.felix.metatype.jar",
+            "org.apache.felix.configadmin.jar"};
 
     private final Logger logger = LoggerFactory.getLogger(ExtensionDirectoryProcessor.class);
     private final BundleContext bundleContext;
@@ -42,9 +48,16 @@ public class ExtensionDirectoryProcessor {
      * Attempts to load and start all bundles (jar files) in the given directory. If loading or starting a bundle fails,
      * it logs a warning and continues with the next one.
      */
-    public void initBundles() {
+    public void initBundles() throws BundleException, IOException {
         ArrayList<Bundle> availableBundles = new ArrayList<>();
-        //get and open available bundles
+        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+        for (String systemBundle : SYSTEM_BUNDLES) {
+            URL url = classloader.getResource("bundles/" + systemBundle);
+            try (InputStream inputStream = url.openStream()) {
+                availableBundles.add(bundleContext.installBundle(url.toString(), inputStream));
+            }
+        }
+
         for (File file : getBundles()) {
             logger.info("Loading bundle: {}", file);
             try (InputStream inputStream = new FileInputStream(file)) {
@@ -54,6 +67,7 @@ public class ExtensionDirectoryProcessor {
                 logger.warn("{}: Failed to install bundle", file.getAbsolutePath(), ex);
             }
         }
+
 
         //start the bundles
         for (Bundle bundle : availableBundles) {

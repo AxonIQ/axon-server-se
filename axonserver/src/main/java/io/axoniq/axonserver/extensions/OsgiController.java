@@ -110,10 +110,10 @@ public class OsgiController implements SmartLifecycle {
     }
 
     private boolean latestVersion(Bundle s) {
-        logger.warn("Comparing {} version {} with {} - result {}", s.getSymbolicName(),
-                    s.getVersion(),
-                    latestVersions.get(s.getSymbolicName()),
-                    s.getVersion().equals(latestVersions.get(s.getSymbolicName()))
+        logger.trace("Comparing {} version {} with {} - result {}", s.getSymbolicName(),
+                     s.getVersion(),
+                     latestVersions.get(s.getSymbolicName()),
+                     s.getVersion().equals(latestVersions.get(s.getSymbolicName()))
         );
         return s.getVersion().equals(latestVersions.get(s.getSymbolicName()));
     }
@@ -212,6 +212,11 @@ public class OsgiController implements SmartLifecycle {
         return null;
     }
 
+    /**
+     * Stops and uninstalls an extension based on its id.
+     *
+     * @param id the id of the extension
+     */
     public void uninstallExtension(long id) {
         Bundle bundle = bundleContext.getBundle(id);
         uninstallBundle(bundle);
@@ -276,10 +281,15 @@ public class OsgiController implements SmartLifecycle {
     }
 
     public Bundle getBundle(long id) {
-        System.out.println(bundleContext.getDataFile("config"));
         return bundleContext.getBundle(id);
     }
 
+    /**
+     * Retrieve information about a bundle based on its id.
+     *
+     * @param id the identifier of the extension
+     * @return information about the bundle
+     */
     public BundleInfo getBundleById(long id) {
         Bundle bundle = bundleContext.getBundle(id);
         if (bundle == null) {
@@ -288,11 +298,18 @@ public class OsgiController implements SmartLifecycle {
         return new BundleInfo(bundle.getSymbolicName(), bundle.getVersion().toString());
     }
 
+    /**
+     * Stops and uninstalls a version of an extension if this exists. If an earlier version
+     * of the extension exists, this will become active.
+     *
+     * @param symbolicName the name of the extension
+     * @param version      the version of the extension
+     */
     public void uninstallExtension(String symbolicName, String version) {
-        Arrays.stream(bundleContext.getBundles()).filter(b -> b.getSymbolicName()
-                                                               .equals(symbolicName))
+        Arrays.stream(bundleContext.getBundles())
+              .filter(b -> b.getSymbolicName().equals(symbolicName))
               .filter(b -> b.getVersion().equals(Version.parseVersion(version)))
               .findFirst()
-              .ifPresent(b -> uninstallBundle(b));
+              .ifPresent(this::uninstallBundle);
     }
 }
