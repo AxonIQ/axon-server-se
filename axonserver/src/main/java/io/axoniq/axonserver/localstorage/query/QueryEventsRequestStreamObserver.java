@@ -454,8 +454,8 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         private QueryValue wrap(ExpressionResult expressionResult) {
-            if (expressionResult == null) {
-                return QueryValue.newBuilder().build();
+            if (expressionResult == null || expressionResult.isNull()) {
+                return QueryValue.getDefaultInstance();
             }
             if (expressionResult instanceof TimestampExpressionResult) {
                 return QueryValue.newBuilder().setTextValue(expressionResult.toString()).build();

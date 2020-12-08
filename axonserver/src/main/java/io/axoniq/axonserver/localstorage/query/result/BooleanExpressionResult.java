@@ -47,6 +47,11 @@ public class BooleanExpressionResult implements ExpressionResult {
     }
 
     @Override
+    public boolean isNull() {
+        return false;
+    }
+
+    @Override
     public boolean isNonNull() {
         return true;
     }
