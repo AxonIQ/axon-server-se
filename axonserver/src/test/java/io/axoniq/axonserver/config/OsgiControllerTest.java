@@ -17,14 +17,9 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
-import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleException;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
-import org.osgi.service.metatype.AttributeDefinition;
-import org.osgi.service.metatype.MetaTypeInformation;
-import org.osgi.service.metatype.MetaTypeService;
-import org.osgi.service.metatype.ObjectClassDefinition;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -52,38 +47,20 @@ public class OsgiControllerTest {
                                                                                               .class.getResource(
                 "/sample-bundles")
                                                                                                     .getFile()),
+                                                           "cache",
+                                                           "onFirstInit",
                                                            "4.5.0");
         osgiController.start();
-        MetaTypeService metaTypeService = osgiController.getService(MetaTypeService.class);
-        int idx = 1;
-        Bundle bundle = osgiController.getBundle(idx);
-        while (bundle != null) {
-            MetaTypeInformation information = metaTypeService.getMetaTypeInformation(bundle);
-            System.out.printf("%s/%s - %s%n", bundle.getSymbolicName(),
-                              bundle.getVersion(),
-                              String.join(",", information.getPids()));
 
-            for (String pid : information.getPids()) {
-                ObjectClassDefinition objectClassDefinition = information
-                        .getObjectClassDefinition(pid, null);
-                for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(-1)) {
-                    System.out.printf("\t%s=%s%n",
-                                      attributeDefinition.getName(),
-                                      String.join("/", attributeDefinition.getDefaultValue()));
-                }
-            }
-            idx++;
-            bundle = osgiController.getBundle(idx);
-        }
-
-        ConfigurationAdmin configurationAdmin = osgiController.getService(ConfigurationAdmin.class);
+        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class);
+        System.out.println(configurationAdmin);
         Configuration config = configurationAdmin
-                .getConfiguration("org.sample.custom-interceptors2", "?");
+                .getConfiguration("org.sample.sample-extensions2");
         System.out.println(config.getProperties());
         Dictionary<String, Object> map = config.getProperties() == null ? new Hashtable<>() : config.getProperties();
         map.put("me.fileinstall.dir", "demoValueXXXXX");
         config.update(map);
-        System.out.println(configurationAdmin.getConfiguration("org.sample.custom-interceptors2").getProperties());
+        System.out.println(configurationAdmin.getConfiguration("org.sample.sample-extensions2").getProperties());
 
         Command command = Command.newBuilder().setClientId("sample").build();
         List<CommandRequestInterceptor> interceptors = StreamSupport.stream(osgiController.getServices(

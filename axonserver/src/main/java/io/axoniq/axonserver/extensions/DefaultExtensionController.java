@@ -12,6 +12,7 @@ package io.axoniq.axonserver.extensions;
 import org.springframework.stereotype.Controller;
 
 import java.io.InputStream;
+import java.util.Map;
 
 /**
  * Implements the {@link ExtensionController} for Axon Server Standard Edition. Forwards all requests to the
@@ -24,9 +25,12 @@ import java.io.InputStream;
 public class DefaultExtensionController implements ExtensionController {
 
     private final OsgiController osgiController;
+    private final ExtensionConfigurationManager configurationManager;
 
-    public DefaultExtensionController(OsgiController osgiController) {
+    public DefaultExtensionController(OsgiController osgiController,
+                                      ExtensionConfigurationManager configurationManager) {
         this.osgiController = osgiController;
+        this.configurationManager = configurationManager;
     }
 
     @Override
@@ -35,12 +39,22 @@ public class DefaultExtensionController implements ExtensionController {
     }
 
     @Override
-    public void uninstallExtension(long id) {
-        osgiController.uninstallExtension(id);
+    public void uninstallExtension(BundleInfo bundleInfo) {
+        osgiController.uninstallExtension(bundleInfo);
     }
 
     @Override
     public void addExtension(String fileName, InputStream inputStream) {
         osgiController.addExtension(fileName, inputStream);
+    }
+
+    @Override
+    public Iterable<ExtensionProperty> listProperties(BundleInfo bundleInfo) {
+        return configurationManager.configuration(bundleInfo);
+    }
+
+    @Override
+    public void updateConfiguration(BundleInfo bundleInfo, Map<String, String> properties) {
+        configurationManager.updateConfiguration(bundleInfo, properties);
     }
 }

@@ -9,14 +9,17 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.extensions.BundleInfo;
 import io.axoniq.axonserver.extensions.ExtensionInfo;
 import io.axoniq.axonserver.extensions.ExtensionController;
+import io.axoniq.axonserver.extensions.ExtensionProperty;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.osgi.framework.BundleException;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -52,9 +55,16 @@ public class ExtensionsRestController {
     }
 
     @DeleteMapping
-    public void uninstallExtension(@RequestParam long id, @ApiIgnore Principal principal) {
-        auditLog.info("[{}] Request to uninstall extension. ", AuditLog.username(principal));
-        extensionController.uninstallExtension(id);
+    public void uninstallExtension(@RequestParam String extension, String version, @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal), extension, version);
+        extensionController.uninstallExtension(new BundleInfo(extension, version));
+    }
+
+    @GetMapping("configuration")
+    public Iterable<ExtensionProperty> configuration(@RequestParam String extension, String version,
+                                                     @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal), extension, version);
+        return extensionController.listProperties(new BundleInfo(extension, version));
     }
 
     @PostMapping
@@ -66,5 +76,16 @@ public class ExtensionsRestController {
         try (InputStream inputStream = extensionBundle.getInputStream()) {
             extensionController.addExtension(extensionBundle.getOriginalFilename(), inputStream);
         }
+    }
+
+    @PostMapping("configuration")
+    public void updateConfiguration(@RequestBody ExtensionConfigurationJSON configurationJSON,
+                                    @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to update configuration of {}/{}. ", AuditLog.username(principal),
+                      configurationJSON.getExtension(),
+                      configurationJSON.getVersion());
+        extensionController.updateConfiguration(new BundleInfo(configurationJSON.getExtension(),
+                                                               configurationJSON.getVersion()),
+                                                configurationJSON.getProperties());
     }
 }

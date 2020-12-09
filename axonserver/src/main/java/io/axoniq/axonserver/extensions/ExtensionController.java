@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.extensions;
 
 import java.io.InputStream;
+import java.util.Map;
 
 /**
  * Manages the extensions.
@@ -29,7 +30,7 @@ public interface ExtensionController {
      *
      * @param id the identifier of the extension
      */
-    void uninstallExtension(long id);
+    void uninstallExtension(BundleInfo bundleInfo);
 
     /**
      * Adds or updates an extension. If there is already an extension with the same name and the same version it is
@@ -42,4 +43,8 @@ public interface ExtensionController {
      * @param inputStream input stream for the jar file for the extension
      */
     void addExtension(String fileName, InputStream inputStream);
+
+    Iterable<ExtensionProperty> listProperties(BundleInfo bundleInfo);
+
+    void updateConfiguration(BundleInfo bundleInfo, Map<String, String> properties);
 }
