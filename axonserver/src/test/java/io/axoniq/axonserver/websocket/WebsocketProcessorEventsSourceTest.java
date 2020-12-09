@@ -42,10 +42,10 @@ public class WebsocketProcessorEventsSourceTest {
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
-        Thread.sleep(20);
+        Thread.sleep(50);
         assertEquals(1, triggers.get());
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
-        Thread.sleep(15);
+        Thread.sleep(50);
         assertEquals(2, triggers.get());
 
         scheduler.cancel(false);
