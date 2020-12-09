@@ -9,13 +9,17 @@
 
 package io.axoniq.axonserver.localstorage.query;
 
+import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.localstorage.AggregateReader;
 import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
 import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
+import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -27,6 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -90,6 +95,30 @@ public class QueryEventsRequestStreamObserverTest {
                                              .build());
 
         List<QueryEventsResponse> responses = completableResult.get(2, TimeUnit.SECONDS);
+        assertEquals(12, responses.size());
+    }
+
+    @Test
+    public void onNextWithNullExpression() throws InterruptedException, ExecutionException, TimeoutException {
+        doAnswer(invocation -> {
+            Predicate<EventWithToken> consumer = invocation.getArgument(1);
+            for (int i = 0; i < 10; i++) {
+                Event.Builder event = Event.newBuilder().setAggregateSequenceNumber(i)
+                                           .setAggregateIdentifier("aggregateId")
+                                           .setPayload(SerializedObject.newBuilder().setData(ByteString.copyFromUtf8("<xml>value" + i + "</xml>")));
+                consumer.test(EventWithToken.newBuilder().setEvent(event).setToken(i).build());
+            }
+            return null;
+        }).when(eventStreamReader).query(any(QueryOptions.class), any());
+        when(eventStreamReader.getFirstToken()).thenReturn(0L);
+        when(eventStreamReader.getLastToken()).thenReturn(9L);
+        testSubject.onNext(QueryEventsRequest.newBuilder()
+                                             .setQuery("select(avg(xpath(payloadData, \"//xml\")) as avgValue)")
+                                             .setNumberOfPermits(1000)
+                                             .build());
+
+        List<QueryEventsResponse> responses = completableResult.get(2, TimeUnit.SECONDS);
+        // first a columns, then 10 results, then a complete
         assertEquals(12, responses.size());
     }
 }

@@ -50,6 +50,11 @@ public class ListExpressionResult implements ExpressionResult {
     }
 
     @Override
+    public boolean isNull() {
+        return results == null;
+    }
+
+    @Override
     public boolean isNonNull() {
         return results != null;
     }
