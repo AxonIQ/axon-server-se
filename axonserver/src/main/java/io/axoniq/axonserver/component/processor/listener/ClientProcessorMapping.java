@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 public interface ClientProcessorMapping {
 
     default ClientProcessor map(String clientId, String component, String context,
-                                EventProcessorInfo eventProcessorInfo, long timestamp) {
+                                EventProcessorInfo eventProcessorInfo) {
         return new ClientProcessor() {
 
             @Override
@@ -39,11 +39,6 @@ public interface ClientProcessorMapping {
             @Override
             public boolean belongsToContext(String c) {
                 return c.equals(context);
-            }
-
-            @Override
-            public long timestamp() {
-                return timestamp;
             }
         };
     }
