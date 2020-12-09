@@ -6,9 +6,11 @@ import org.junit.*;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 
 /**
@@ -85,7 +87,7 @@ public class InstructionResultSourceFactoryTest {
         Thread.sleep(50);
         assertFalse(successReceived.get());
         assertFalse(failureReceived.get());
-        assertTrue(timeoutReceived.get());
+        assertWithin(100, TimeUnit.MILLISECONDS, () -> assertTrue(timeoutReceived.get()));
 
         notifyInstructionResultReceived(InstructionResult.newBuilder()
                                                          .setInstructionId("MyInstructionId")

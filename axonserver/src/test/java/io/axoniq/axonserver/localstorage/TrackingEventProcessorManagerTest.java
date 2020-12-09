@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 
 /**
@@ -34,23 +35,6 @@ public class TrackingEventProcessorManagerTest {
     private TrackingEventProcessorManager testSubject;
     private AtomicInteger eventsLeft = new AtomicInteger(10);
     private AtomicBoolean iteratorClosed = new AtomicBoolean();
-
-    public static void assertWithin(int time, TimeUnit unit, Runnable assertion) throws InterruptedException {
-        long now = System.currentTimeMillis();
-        long deadline = now + unit.toMillis(time);
-        do {
-            try {
-                assertion.run();
-                break;
-            } catch (AssertionError e) {
-                if (now >= deadline) {
-                    throw e;
-                }
-            }
-            Thread.sleep(10);
-            now = System.currentTimeMillis();
-        } while (true);
-    }
 
     @Before
     public void setup() {
