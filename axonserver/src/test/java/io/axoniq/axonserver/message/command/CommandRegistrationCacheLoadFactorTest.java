@@ -35,7 +35,7 @@ public class CommandRegistrationCacheLoadFactorTest {
         testSubject.on(createSubscribeCommand("client2", "anotherCommand", 8));
         testSubject.on(createSubscribeCommand("client3", "anotherCommand", 16));
 
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 1000; i++) {
             testSubject.on(createSubscribeCommand(randomUUID().toString(), randomUUID().toString(), 44));
         }
 
@@ -43,7 +43,7 @@ public class CommandRegistrationCacheLoadFactorTest {
         Map<String, AtomicInteger> counter = new HashMap<>();
 
         Command command = Command.newBuilder().setName("command").build();
-        for (int i = 0; i < 100000; i++) {
+        for (int i = 0; i < 10000; i++) {
             String routingKey = randomUUID().toString();
             CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
             counter.computeIfAbsent(handler.getClientStreamIdentification().getClientStreamId(),
@@ -66,7 +66,7 @@ public class CommandRegistrationCacheLoadFactorTest {
         Map<String, AtomicInteger> counter = new HashMap<>();
 
         Command command = Command.newBuilder().setName("command").build();
-        for (int i = 0; i < 100000; i++) {
+        for (int i = 0; i < 10000; i++) {
             String routingKey = randomUUID().toString();
             CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
             counter.computeIfAbsent(handler.getClientStreamIdentification().getClientStreamId(),

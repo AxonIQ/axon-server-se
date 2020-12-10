@@ -48,7 +48,7 @@
             gRPC is quite specific about the version of Netty TcNative, so check the dependencies on
             https://github.com/grpc/grpc-java/blob/master/SECURITY.md
         -->
-        <grpc.version>1.32.2</grpc.version>
+        <grpc.version>1.34.0</grpc.version>
         <netty.tcnative.version>2.0.31.Final</netty.tcnative.version>
         <netty.version>4.1.51.Final</netty.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
@@ -57,6 +57,7 @@
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <jackson.version>2.9.10.5</jackson.version>
+        <gson.version>2.8.6</gson.version>
     </properties>
 
     <dependencyManagement>
@@ -172,6 +173,11 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
                 <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${gson.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

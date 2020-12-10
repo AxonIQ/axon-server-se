@@ -30,6 +30,11 @@ public class NullExpressionResult implements ExpressionResult {
     }
 
     @Override
+    public boolean isNull() {
+        return true;
+    }
+
+    @Override
     public boolean isNonNull() {
         return false;
     }

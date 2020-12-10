@@ -44,6 +44,10 @@ public interface ExpressionResult extends Comparable<ExpressionResult> {
         return null;
     }
 
+    default boolean isNull() {
+        return getValue() == null;
+    }
+
     default boolean isNonNull() {
         return getValue() != null;
     }

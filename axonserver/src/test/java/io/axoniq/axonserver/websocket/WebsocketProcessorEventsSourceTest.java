@@ -42,17 +42,17 @@ public class WebsocketProcessorEventsSourceTest {
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
-        Thread.sleep(20);
+        Thread.sleep(50);
         assertEquals(1, triggers.get());
         testSubject.on(new EventProcessorEvents.EventProcessorStatusUpdate(null));
-        Thread.sleep(15);
+        Thread.sleep(50);
         assertEquals(2, triggers.get());
 
         scheduler.cancel(false);
     }
 
     @Test
-    public void onExecption() throws InterruptedException {
+    public void onException() throws InterruptedException {
         AtomicInteger triggers = new AtomicInteger();
         WebsocketProcessorEventsSource testSubject = new WebsocketProcessorEventsSource(() -> {
             if (triggers.getAndIncrement() == 5) {
@@ -65,13 +65,11 @@ public class WebsocketProcessorEventsSourceTest {
                                                                      50,
                                                                      TimeUnit.MILLISECONDS);
 
-        for (int run = 0; run < 10; run++) {
-            IntStream.range(0, 1000).parallel().forEach(i -> testSubject
-                    .on(new EventProcessorEvents.EventProcessorStatusUpdate(null)));
-            Thread.sleep(100);
-        }
+        IntStream.range(0, 50).parallel().forEach(i -> testSubject
+                .on(new EventProcessorEvents.EventProcessorStatusUpdate(null)));
+        Thread.sleep(100);
 
-        assertEquals(10, triggers.get());
+        assertEquals(1, triggers.get());
         scheduler.cancel(false);
     }
 }

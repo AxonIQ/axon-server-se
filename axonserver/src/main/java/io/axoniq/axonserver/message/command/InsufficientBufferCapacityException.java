@@ -12,9 +12,9 @@ package io.axoniq.axonserver.message.command;
 /**
  * @author Stefan Dragisic
  */
-public class InsufficientCacheCapacityException extends RuntimeException {
+public class InsufficientBufferCapacityException extends RuntimeException {
 
-    public InsufficientCacheCapacityException(String errorMessage) {
+    public InsufficientBufferCapacityException(String errorMessage) {
         super(errorMessage);
     }
 
