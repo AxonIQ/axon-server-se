@@ -80,10 +80,9 @@ public class UserController {
     public User updateUser(String username, String password, Set<UserRole> roles) {
         synchronized (userRepository) {
             if (StringUtils.isEmpty(password)) {
-                password = getPassword(username);
-                if (password == null) {
-                    password = PWD_NOLOGON;
-                }
+                final User currentUser = findUser(username);
+
+                password = (currentUser != null) ? currentUser.getPassword() : PWD_NOLOGON;
             } else {
                 password = passwordEncoder.encode(password);
             }
@@ -106,8 +105,8 @@ public class UserController {
     public void syncUser(User jpaUser) {
         synchronized (userRepository) {
             if (StringUtils.isEmpty(jpaUser.getPassword())) {
-                final String password = getPassword(jpaUser.getUserName());
-                jpaUser.setPassword((password == null) ? PWD_NOLOGON : password);
+                final User currentUser = findUser(jpaUser.getUserName());
+                jpaUser.setPassword((currentUser == null) ? PWD_NOLOGON : currentUser.getPassword());
             }
             userRepository.save(jpaUser);
         }
