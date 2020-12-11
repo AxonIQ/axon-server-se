@@ -116,7 +116,7 @@ public class OsgiControllerTest {
         if (files != null) {
             for (File file : files) {
                 try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
-                    osgiController.addExtension(file.getName(), inputStream);
+                    osgiController.addExtension(file.getName(), null, inputStream);
                 }
             }
         }

@@ -9,19 +9,21 @@
 
 package io.axoniq.axonserver.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.extensions.BundleInfo;
-import io.axoniq.axonserver.extensions.ExtensionInfo;
 import io.axoniq.axonserver.extensions.ExtensionController;
+import io.axoniq.axonserver.extensions.ExtensionInfo;
 import io.axoniq.axonserver.extensions.ExtensionProperty;
 import io.axoniq.axonserver.logging.AuditLog;
-import org.osgi.framework.BundleException;
 import org.slf4j.Logger;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import springfox.documentation.annotations.ApiIgnore;
@@ -29,6 +31,8 @@ import springfox.documentation.annotations.ApiIgnore;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * REST interface to manage extensions.
@@ -67,14 +71,25 @@ public class ExtensionsRestController {
         return extensionController.listProperties(new BundleInfo(extension, version));
     }
 
-    @PostMapping
-    public void installExtension(@RequestParam("bundle") MultipartFile extensionBundle, @ApiIgnore Principal principal)
-            throws IOException, BundleException {
+    @PostMapping(consumes = {
+//            MediaType.APPLICATION_JSON_VALUE,
+            MediaType.MULTIPART_FORM_DATA_VALUE
+    })
+    public void installExtension(@RequestPart(value = "configuration", required = false) String configuration,
+                                 @RequestPart("bundle") MultipartFile extensionBundle,
+                                 @ApiIgnore Principal principal)
+            throws IOException {
         auditLog.info("[{}] Request to install extension {}. ",
                       AuditLog.username(principal),
                       extensionBundle.getOriginalFilename());
+        Map<String, Object> configurationMap = new HashMap<>();
+        if (configuration != null) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            configurationMap = objectMapper.readValue(configuration, HashMap.class);
+        }
+
         try (InputStream inputStream = extensionBundle.getInputStream()) {
-            extensionController.addExtension(extensionBundle.getOriginalFilename(), inputStream);
+            extensionController.addExtension(extensionBundle.getOriginalFilename(), configuration, inputStream);
         }
     }
 

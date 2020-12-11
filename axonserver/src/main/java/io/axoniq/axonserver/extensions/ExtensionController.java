@@ -39,12 +39,13 @@ public interface ExtensionController {
      * version
      * from now on.
      *
-     * @param fileName    the name of the extension file
-     * @param inputStream input stream for the jar file for the extension
+     * @param fileName      the name of the extension file
+     * @param configuration
+     * @param inputStream   input stream for the jar file for the extension
      */
-    void addExtension(String fileName, InputStream inputStream);
+    void addExtension(String fileName, String configuration, InputStream inputStream);
 
     Iterable<ExtensionProperty> listProperties(BundleInfo bundleInfo);
 
-    void updateConfiguration(BundleInfo bundleInfo, Map<String, String> properties);
+    void updateConfiguration(BundleInfo bundleInfo, Map<String, Object> properties);
 }

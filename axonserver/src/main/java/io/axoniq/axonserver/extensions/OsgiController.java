@@ -46,6 +46,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.jar.Attributes;
 import java.util.jar.JarInputStream;
@@ -64,7 +65,7 @@ public class OsgiController implements SmartLifecycle {
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
     private final SystemPackagesProvider systemPackagesProvider;
-    private final Set<Consumer<Bundle>> bundleInstalledListeners = new CopyOnWriteArraySet<>();
+    private final Set<BiConsumer<Bundle, String>> bundleInstalledListeners = new CopyOnWriteArraySet<>();
     private boolean running;
     private BundleContext bundleContext;
 
@@ -106,7 +107,7 @@ public class OsgiController implements SmartLifecycle {
                 try (InputStream inputStream = new FileInputStream(extension)) {
                     Bundle bundle = bundleContext.installBundle(extension.getAbsolutePath(), inputStream);
                     logger.info("adding bundle {}/{}", bundle.getSymbolicName(), bundle.getVersion());
-                    updateConfiguration(bundle);
+                    updateConfiguration(bundle, null);
                     bundle.start();
                 }
             }
@@ -174,7 +175,7 @@ public class OsgiController implements SmartLifecycle {
         return 0;
     }
 
-    public void addExtension(String fileName, InputStream bundleInputStream) {
+    public void addExtension(String fileName, String configuration, InputStream bundleInputStream) {
         File target = new File(bundleDir.getAbsolutePath() + File.separatorChar + fileName);
         try {
             writeToFile(bundleInputStream, target);
@@ -185,14 +186,14 @@ public class OsgiController implements SmartLifecycle {
                 if (current == null) {
                     Bundle bundle = bundleContext.installBundle(target.getAbsolutePath(), is);
                     logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
-                    updateConfiguration(bundle);
+                    updateConfiguration(bundle, configuration);
                     bundle.start();
                     updateLatestVersion(bundle);
                     serviceInstalledListeners.forEach(s -> s.accept(bundle));
                 } else {
                     logger.info("updating bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
                     current.update(is);
-                    updateConfiguration(current);
+                    updateConfiguration(current, configuration);
                     serviceInstalledListeners.forEach(s -> s.accept(current));
                 }
             }
@@ -205,8 +206,8 @@ public class OsgiController implements SmartLifecycle {
         }
     }
 
-    private void updateConfiguration(Bundle bundle) {
-        bundleInstalledListeners.forEach(listener -> listener.accept(bundle));
+    private void updateConfiguration(Bundle bundle, String configuration) {
+        bundleInstalledListeners.forEach(listener -> listener.accept(bundle, configuration));
     }
 
     private BundleInfo getBundleInfo(File target) throws IOException {
@@ -306,37 +307,18 @@ public class OsgiController implements SmartLifecycle {
         return ref == null ? null : bundleContext.getService(ref);
     }
 
-    public Bundle getBundle(long id) {
-        return bundleContext.getBundle(id);
-    }
-
-    /**
-     * Retrieve information about a bundle based on its id.
-     *
-     * @param id the identifier of the extension
-     * @return information about the bundle
-     */
-    public BundleInfo getBundleById(long id) {
-        Bundle bundle = bundleContext.getBundle(id);
-        if (bundle == null) {
-            return null;
-        }
-        return new BundleInfo(bundle.getSymbolicName(), bundle.getVersion().toString());
-    }
-
     /**
      * Stops and uninstalls a version of an extension if this exists. If an earlier version
      * of the extension exists, this will become active.
      *
-     * @param symbolicName the name of the extension
-     * @param version      the version of the extension
+     * @param bundleInfo the name and version of the extension
      */
     public void uninstallExtension(BundleInfo bundleInfo) {
         Optional.ofNullable(findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion()))
                 .ifPresent(this::uninstallBundle);
     }
 
-    public void registerBundleListener(Consumer<Bundle> listener) {
+    public void registerBundleListener(BiConsumer<Bundle, String> listener) {
         bundleInstalledListeners.add(listener);
     }
 

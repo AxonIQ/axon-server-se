@@ -44,8 +44,8 @@ public class DefaultExtensionController implements ExtensionController {
     }
 
     @Override
-    public void addExtension(String fileName, InputStream inputStream) {
-        osgiController.addExtension(fileName, inputStream);
+    public void addExtension(String fileName, String configuration, InputStream inputStream) {
+        osgiController.addExtension(fileName, configuration, inputStream);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class DefaultExtensionController implements ExtensionController {
     }
 
     @Override
-    public void updateConfiguration(BundleInfo bundleInfo, Map<String, String> properties) {
+    public void updateConfiguration(BundleInfo bundleInfo, Map<String, Object> properties) {
         configurationManager.updateConfiguration(bundleInfo, properties);
     }
 }
