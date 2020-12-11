@@ -133,7 +133,7 @@ public class ExtensionConfigurationManager {
         MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
         for (String pid : info.getPids()) {
             try {
-                Configuration configuration = configurationAdmin.getConfiguration(pid);
+                Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
                 ObjectClassDefinition objectClassDefinition = info
                         .getObjectClassDefinition(pid, null);
                 for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(
