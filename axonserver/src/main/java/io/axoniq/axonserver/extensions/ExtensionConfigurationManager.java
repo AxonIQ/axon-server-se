@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
@@ -69,48 +70,71 @@ public class ExtensionConfigurationManager {
         for (String pid : info.getPids()) {
             try {
                 Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
-                logger.warn("{}/{}}: {} old properties {}",
-                            bundle.getSymbolicName(),
-                            bundle.getVersion(),
-                            pid,
-                            configuration.getProperties());
+                logger.debug("{}/{}}: {} old properties {}",
+                             bundle.getSymbolicName(),
+                             bundle.getVersion(),
+                             pid,
+                             configuration.getProperties());
 
                 Dictionary<String, Object> updatedConfiguration = new Hashtable<>();
-                ObjectClassDefinition objectClassDefinition = info
-                        .getObjectClassDefinition(pid, null);
-                Set<String> validIds = new HashSet<>();
-                for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(
-                        ObjectClassDefinition.ALL)) {
-                    validIds.add(attributeDefinition.getID());
-                    if (attributeDefinition.getDefaultValue() != null &&
-                            attributeDefinition.getDefaultValue().length > 0) {
-                        updatedConfiguration.put(attributeDefinition.getID(),
-                                                 attributeDefinition.getDefaultValue());
-                    }
-                }
+                Set<String> validIds = processMetaTypeInformation(info, pid, updatedConfiguration);
 
-                if (configuration.getProperties() != null) {
-                    for (Enumeration<String> keys = configuration.getProperties().keys(); keys.hasMoreElements(); ) {
-                        String key = keys.nextElement();
-                        updatedConfiguration.put(key, configuration.getProperties().get(key));
-                    }
-                }
+                updateWithCurrentConfiguration(configuration, updatedConfiguration);
 
-                properties.forEach((key, value) -> {
-                    if (validIds.contains(key)) {
-                        updatedConfiguration.put(key, value);
-                    } else {
-                        logger.warn("invalid property {}. valid ids are {}", key, validIds);
-                    }
-                });
+                updateWithProvidedProperties(properties, updatedConfiguration, validIds);
                 configuration.update(updatedConfiguration);
 
-                logger.warn("{}/{}}: new properties {}", bundle.getSymbolicName(), bundle.getVersion(),
+                logger.info("{}/{}: new properties {}", bundle.getSymbolicName(), bundle.getVersion(),
                             configurationAdmin.getConfiguration(pid).getProperties());
             } catch (IOException ioException) {
-                ioException.printStackTrace();
+                logger.warn("Configuration update failed", ioException);
             }
         }
+    }
+
+    private void updateWithProvidedProperties(Map<String, Object> properties,
+                                              Dictionary<String, Object> updatedConfiguration,
+                                              Set<String> validIds) {
+        properties.forEach((key, value) -> {
+            if (validIds.contains(key)) {
+                updatedConfiguration.put(key, value);
+            } else {
+                logger.warn("invalid property {}. valid ids are {}", key, validIds);
+            }
+        });
+    }
+
+    private void updateWithCurrentConfiguration(Configuration configuration,
+                                                Dictionary<String, Object> updatedConfiguration) {
+        if (configuration.getProperties() != null) {
+            for (Enumeration<String> keys = configuration.getProperties().keys(); keys.hasMoreElements(); ) {
+                String key = keys.nextElement();
+                updatedConfiguration.put(key, configuration.getProperties().get(key));
+            }
+        }
+    }
+
+    @Nonnull
+    private Set<String> processMetaTypeInformation(MetaTypeInformation info, String pid,
+                                                   Dictionary<String, Object> updatedConfiguration) {
+        ObjectClassDefinition objectClassDefinition = info
+                .getObjectClassDefinition(pid, null);
+        Set<String> validIds = new HashSet<>();
+        for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(
+                ObjectClassDefinition.ALL)) {
+            validIds.add(attributeDefinition.getID());
+            if (attributeDefinition.getDefaultValue() != null &&
+                    attributeDefinition.getDefaultValue().length > 0) {
+                if (attributeDefinition.getCardinality() == 0) {
+                    updatedConfiguration.put(attributeDefinition.getID(),
+                                             attributeDefinition.getDefaultValue()[0]);
+                } else {
+                    updatedConfiguration.put(attributeDefinition.getID(),
+                                             attributeDefinition.getDefaultValue());
+                }
+            }
+        }
+        return validIds;
     }
 
     public List<ExtensionProperty> configuration(BundleInfo bundleInfo) {
@@ -143,7 +167,7 @@ public class ExtensionConfigurationManager {
                     result.add(new ExtensionProperty(attributeDefinition, value));
                 }
             } catch (IOException ioException) {
-                ioException.printStackTrace();
+                logger.warn("Failed to read configuration for {}", pid, ioException);
             }
         }
         return result;
@@ -155,7 +179,7 @@ public class ExtensionConfigurationManager {
             try {
                 passedConfigurationMap = new ObjectMapper().readValue(passedConfiguration, HashMap.class);
             } catch (IOException ioException) {
-                logger.warn("Failed to parse configuration {}", passedConfiguration, ioException);
+                logger.warn("Parsing configuration {} failed", passedConfiguration, ioException);
             }
         }
         mergeConfiguration(bundle, passedConfigurationMap);
