@@ -10,15 +10,15 @@
 package io.axoniq.axonserver.rest.svg.mapping;
 
 import io.axoniq.axonserver.topology.AxonServerNode;
-import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
 /**
@@ -26,20 +26,21 @@ import javax.annotation.Nonnull;
  * @since 4.0
  */
 @Component
-public class AxonServers implements Iterable<AxonServer> {
+public class AxonServers implements Function<String, Stream<AxonServer>> {
+
     private static final String ADMIN = "_admin";
 
     private final Topology topology;
 
-    public AxonServers(Topology topology,
-                       EventStoreLocator eventStoreLocator) {
+    public AxonServers(Topology topology) {
         this.topology = topology;
     }
 
     @Override
     @Nonnull
-    public Iterator<AxonServer> iterator() {
+    public Stream<AxonServer> apply(String context) {
         return topology.nodes()
+                       .filter(n -> context == null || n.getContextNames().contains(context))
                        .sorted(Comparator.comparing(AxonServerNode::getName))
                        .map(node -> (AxonServer) new AxonServer() {
 
@@ -55,35 +56,41 @@ public class AxonServers implements Iterable<AxonServer> {
 
                                      @Override
                                      public List<String> contexts() {
-                                         return node.getContextNames().stream().sorted().collect(
-                                                 Collectors.toList());
+                                         return node.getContextNames().stream()
+                                                    .filter(n -> context == null || n.equals(context))
+                                                    .sorted().collect(
+                                                         Collectors.toList());
                                      }
 
                                      @Override
                                      public List<Storage> storage() {
-                                         return node.getStorageContextNames().stream().map(contextName -> new Storage() {
-                                             @Override
-                                             public String context() {
-                                                 return contextName;
-                                             }
+                                         return node.getStorageContextNames()
+                                                    .stream()
+                                                    .filter(n -> context == null || n.equals(context))
+                                                    .map(contextName -> new Storage() {
+                                                        @Override
+                                                        public String context() {
+                                                            return contextName;
+                                                        }
 
-                                             @Override
-                                             public boolean master() {
-                                                 return topology.isLeader(node.getName(), contextName);
-                                             }
-                                         }).sorted(Comparator.comparing(Storage::context)).collect(Collectors.toList());
+                                                        @Override
+                                                        public boolean master() {
+                                                            return topology.isLeader(node.getName(), contextName);
+                                                        }
+                                                    }).sorted(Comparator.comparing(Storage::context)).collect(Collectors
+                                                                                                                      .toList());
                                      }
 
-                                     @Override
-                                     public Map<String, String> tags() {
-                                         return node.getTags();
-                                     }
+                           @Override
+                           public Map<String, String> tags() {
+                               return node.getTags();
+                           }
 
-                                     @Override
-                                     public boolean isAdminLeader() {
-                                         return topology.isLeader(node.getName(),
-                                                                  ADMIN);
-                                     }
-                                 }).iterator();
+                           @Override
+                           public boolean isAdminLeader() {
+                               return topology.isLeader(node.getName(),
+                                                        ADMIN);
+                           }
+                       });
     }
 }
