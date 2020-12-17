@@ -15,6 +15,7 @@ import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.file.FileUtils;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleEvent;
 import org.osgi.framework.BundleException;
 import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
@@ -93,6 +94,17 @@ public class OsgiController implements SmartLifecycle {
             framework.start();
 
             bundleContext = framework.getBundleContext();
+            bundleContext.addBundleListener(event -> {
+                logger.warn("{}/{}: Bundle changed, type = {}, bundle state = {}",
+                            event.getBundle().getSymbolicName(),
+                            event.getBundle().getVersion(),
+                            event.getType(),
+                            event.getBundle().getState());
+                if (activeStateChanged(event.getType())) {
+                    setLatestVersions();
+                    serviceInstalledListeners.forEach(s -> s.accept(event.getBundle()));
+                }
+            });
             Files.createDirectories(bundleDir.toPath());
             ExtensionDirectoryProcessor bundleManager = new ExtensionDirectoryProcessor(bundleDir);
             for (URL url : bundleManager.getSystemBundles()) {
@@ -116,6 +128,13 @@ public class OsgiController implements SmartLifecycle {
         } catch (Exception ex) {
             logger.warn("OSGi Failed to Start", ex);
         }
+    }
+
+    private boolean activeStateChanged(int eventType) {
+        if (eventType == BundleEvent.STARTED || eventType == BundleEvent.STOPPED) {
+            return true;
+        }
+        return false;
     }
 
     public Registration registerServiceListener(Consumer<Bundle> listener) {
@@ -148,8 +167,26 @@ public class OsgiController implements SmartLifecycle {
         return Arrays.stream(bundleContext.getBundles())
                      .filter(b -> !Objects.isNull(b.getSymbolicName()))
                      .filter(b -> !b.getSymbolicName().contains("org.apache.felix"))
-                     .map(b -> new ExtensionInfo(b, latestVersion(b)))
+                     .map(b -> new ExtensionInfo(b, latestVersion(b), status(b)))
                      .collect(Collectors.toList());
+    }
+
+    private String status(Bundle b) {
+        switch (b.getState()) {
+            case Bundle.ACTIVE:
+                return "Active";
+            case Bundle.INSTALLED:
+                return "Installed";
+            case Bundle.RESOLVED:
+                return "Resolved";
+            case Bundle.STARTING:
+                return "Starting";
+            case Bundle.STOPPING:
+                return "Stopping";
+            case Bundle.UNINSTALLED:
+                return "Uninstalled";
+        }
+        return "Unknown (" + b.getState() + ")";
     }
 
     public void stop() {
@@ -175,26 +212,28 @@ public class OsgiController implements SmartLifecycle {
         return 0;
     }
 
-    public void addExtension(String fileName, String configuration, InputStream bundleInputStream) {
+    public void addExtension(String fileName, String configuration, boolean start, InputStream bundleInputStream) {
         File target = new File(bundleDir.getAbsolutePath() + File.separatorChar + fileName);
         try {
             writeToFile(bundleInputStream, target);
             BundleInfo bundleInfo = getBundleInfo(target);
 
-            Bundle current = findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion());
+            Optional<Bundle> current = findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion());
             try (InputStream is = new FileInputStream(target)) {
-                if (current == null) {
+                if (!current.isPresent()) {
                     Bundle bundle = bundleContext.installBundle(target.getAbsolutePath(), is);
                     logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
                     updateConfiguration(bundle, configuration);
-                    bundle.start();
-                    updateLatestVersion(bundle);
-                    serviceInstalledListeners.forEach(s -> s.accept(bundle));
+                    if (start) {
+                        bundle.start();
+                        updateLatestVersion(bundle);
+                        serviceInstalledListeners.forEach(s -> s.accept(bundle));
+                    }
                 } else {
                     logger.info("updating bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
-                    current.update(is);
-                    updateConfiguration(current, configuration);
-                    serviceInstalledListeners.forEach(s -> s.accept(current));
+                    current.get().update(is);
+                    updateConfiguration(current.get(), configuration);
+                    serviceInstalledListeners.forEach(s -> s.accept(current.get()));
                 }
             }
         } catch (BundleException bundleException) {
@@ -230,18 +269,18 @@ public class OsgiController implements SmartLifecycle {
         }
     }
 
-    private Bundle findBundle(String symbolicName, String version) {
+    private Optional<Bundle> findBundle(String symbolicName, String version) {
         Version version1 = Version.parseVersion(version);
         Bundle[] bundles = bundleContext.getBundles();
         if (bundles != null) {
             for (Bundle bundle : bundles) {
                 if (symbolicName.equals(bundle.getSymbolicName()) &&
                         version1.equals(bundle.getVersion())) {
-                    return bundle;
+                    return Optional.of(bundle);
                 }
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     private void uninstallBundle(Bundle bundle) {
@@ -278,10 +317,13 @@ public class OsgiController implements SmartLifecycle {
     }
 
     private void setLatestVersions() {
+        latestVersions.clear();
         Bundle[] bundles = bundleContext.getBundles();
         if (bundles != null) {
             for (Bundle bundle : bundles) {
-                updateLatestVersion(bundle);
+                if (isActive(bundle)) {
+                    updateLatestVersion(bundle);
+                }
             }
         }
     }
@@ -314,7 +356,7 @@ public class OsgiController implements SmartLifecycle {
      * @param bundleInfo the name and version of the extension
      */
     public void uninstallExtension(BundleInfo bundleInfo) {
-        Optional.ofNullable(findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion()))
+        findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion())
                 .ifPresent(this::uninstallBundle);
     }
 
@@ -323,6 +365,50 @@ public class OsgiController implements SmartLifecycle {
     }
 
     public Bundle getBundle(BundleInfo bundleInfo) {
-        return findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion());
+        return findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion()).orElse(null);
+    }
+
+    public void updateStatus(BundleInfo bundleInfo, boolean active) {
+        findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion())
+                .ifPresent(bundle -> {
+                    if (active) {
+                        start(bundle);
+                    } else {
+                        stop(bundle);
+                    }
+                });
+    }
+
+    private void stop(Bundle bundle) {
+        if (isActive(bundle)) {
+            try {
+                bundle.stop();
+            } catch (BundleException bundleException) {
+                throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                     String.format("Could not stop %s/%s", bundle.getSymbolicName(),
+                                                                   bundle.getVersion()),
+                                                     bundleException);
+            }
+        }
+    }
+
+    private void start(Bundle bundle) {
+        if (!isActive(bundle)) {
+            try {
+                bundle.start();
+            } catch (BundleException bundleException) {
+                throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                     String.format("Could not stop %s/%s", bundle.getSymbolicName(),
+                                                                   bundle.getVersion()),
+                                                     bundleException);
+            }
+        }
+    }
+
+    public boolean isActive(Bundle bundle) {
+        if (bundle.getState() == Bundle.ACTIVE) {
+            return true;
+        }
+        return false;
     }
 }

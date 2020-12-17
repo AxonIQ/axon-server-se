@@ -59,9 +59,23 @@ public class ExtensionsRestController {
     }
 
     @DeleteMapping
-    public void uninstallExtension(@RequestParam String extension, String version, @ApiIgnore Principal principal) {
+    public void uninstallExtension(@RequestParam String extension, @RequestParam String version,
+                                   @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal), extension, version);
         extensionController.uninstallExtension(new BundleInfo(extension, version));
+    }
+
+    @PostMapping("status")
+    public void updateStatus(@RequestParam String extension,
+                             @RequestParam String version,
+                             @RequestParam boolean active,
+                             @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to {}} extension {}/{}. ",
+                      AuditLog.username(principal),
+                      active ? "start" : "stop",
+                      extension,
+                      version);
+        extensionController.updateExtensionState(new BundleInfo(extension, version), active);
     }
 
     @GetMapping("configuration")
@@ -71,12 +85,10 @@ public class ExtensionsRestController {
         return extensionController.listProperties(new BundleInfo(extension, version));
     }
 
-    @PostMapping(consumes = {
-//            MediaType.APPLICATION_JSON_VALUE,
-            MediaType.MULTIPART_FORM_DATA_VALUE
-    })
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void installExtension(@RequestPart(value = "configuration", required = false) String configuration,
                                  @RequestPart("bundle") MultipartFile extensionBundle,
+                                 @RequestParam boolean start,
                                  @ApiIgnore Principal principal)
             throws IOException {
         auditLog.info("[{}] Request to install extension {}. ",
@@ -89,7 +101,7 @@ public class ExtensionsRestController {
         }
 
         try (InputStream inputStream = extensionBundle.getInputStream()) {
-            extensionController.addExtension(extensionBundle.getOriginalFilename(), configuration, inputStream);
+            extensionController.addExtension(extensionBundle.getOriginalFilename(), configuration, start, inputStream);
         }
     }
 

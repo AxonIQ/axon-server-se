@@ -24,13 +24,15 @@ public class ExtensionInfo {
     private final long id;
     private final String name;
     private final String location;
+    private final String status;
 
-    public ExtensionInfo(Bundle bundle, boolean latestVersion) {
+    public ExtensionInfo(Bundle bundle, boolean latestVersion, String status) {
         this.version = String.valueOf(bundle.getVersion());
         this.id = bundle.getBundleId();
         this.name = bundle.getSymbolicName();
         this.location = bundle.getLocation();
         this.latestVersion = latestVersion;
+        this.status = status;
     }
 
     public boolean isLatestVersion() {
@@ -51,5 +53,9 @@ public class ExtensionInfo {
 
     public String getLocation() {
         return location;
+    }
+
+    public String getStatus() {
+        return status;
     }
 }

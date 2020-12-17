@@ -28,7 +28,7 @@ public interface ExtensionController {
     /**
      * Uninstalls an extension from Axon Server.
      *
-     * @param id the identifier of the extension
+     * @param bundleInfo the name and version of the extension
      */
     void uninstallExtension(BundleInfo bundleInfo);
 
@@ -43,9 +43,11 @@ public interface ExtensionController {
      * @param configuration
      * @param inputStream   input stream for the jar file for the extension
      */
-    void addExtension(String fileName, String configuration, InputStream inputStream);
+    void addExtension(String fileName, String configuration, boolean start, InputStream inputStream);
 
     Iterable<ExtensionProperty> listProperties(BundleInfo bundleInfo);
 
     void updateConfiguration(BundleInfo bundleInfo, Map<String, Object> properties);
+
+    void updateExtensionState(BundleInfo bundleInfo, boolean active);
 }
