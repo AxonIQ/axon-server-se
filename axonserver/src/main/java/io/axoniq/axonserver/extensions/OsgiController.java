@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
 @Controller
 public class OsgiController implements SmartLifecycle {
 
-    private final Logger logger = LoggerFactory.getLogger(OsgiController.class);
+    private final Logger logger = LoggerFactory.getLogger(ExtensionController.class);
     private final File bundleDir;
     private final Set<Consumer<Bundle>> serviceInstalledListeners = new CopyOnWriteArraySet<>();
     private final Map<String, Version> latestVersions = new ConcurrentHashMap<>();
@@ -72,12 +72,11 @@ public class OsgiController implements SmartLifecycle {
 
     public OsgiController(@Value("${axoniq.axonserver.extension.bundle.path:bundles}") String bundleDirectory,
                           @Value("${axoniq.axonserver.extension.cache.path:cache}") String cacheDirectory,
-                          @Value("${axoniq.axonserver.extension.cache.clean:none}") String cacheCleanPolicy,
-                          @Value("${axoniq.axonserver.extension.bundle.version:4.5.0}") String version) {
+                          @Value("${axoniq.axonserver.extension.cache.clean:none}") String cacheCleanPolicy) {
         this.bundleDir = new File(bundleDirectory);
         this.cacheDirectory = cacheDirectory;
         this.cacheCleanPolicy = cacheCleanPolicy;
-        this.systemPackagesProvider = new SystemPackagesProvider(version);
+        this.systemPackagesProvider = new SystemPackagesProvider();
     }
 
     public void start() {

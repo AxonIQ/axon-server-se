@@ -11,6 +11,7 @@ package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.ExtensionController;
 import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.grpc.command.Command;
@@ -43,13 +44,12 @@ public class OsgiControllerTest {
 
     @Test
     public void start() throws IOException, BundleException {
-        OsgiController osgiController = new OsgiController(TestUtils.fixPathOnWindows(OsgiController
+        OsgiController osgiController = new OsgiController(TestUtils.fixPathOnWindows(ExtensionController
                                                                                               .class.getResource(
                 "/sample-bundles")
                                                                                                     .getFile()),
                                                            "cache",
-                                                           "onFirstInit",
-                                                           "4.5.0");
+                                                           "onFirstInit");
         osgiController.start();
 
         ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class);
@@ -109,7 +109,7 @@ public class OsgiControllerTest {
         System.out.println(command);
 
         osgiController.listBundles().forEach(s -> System.out.println(" Bundle: " + s));
-        File extraBundlesDir = new File(TestUtils.fixPathOnWindows(OsgiController
+        File extraBundlesDir = new File(TestUtils.fixPathOnWindows(ExtensionController
                                                                            .class.getResource(
                 "/sample-bundles2").getFile()));
         File[] files = extraBundlesDir.listFiles((dir, name) -> name.endsWith(".jar"));

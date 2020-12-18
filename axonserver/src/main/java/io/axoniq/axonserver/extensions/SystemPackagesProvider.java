@@ -9,41 +9,56 @@
 
 package io.axoniq.axonserver.extensions;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.jar.Manifest;
 
 /**
  * @author Marc Gathier
  */
 public class SystemPackagesProvider {
 
-    private final String systemPackages;
-    private static final String[] systemPackageNames = {
-            "io.axoniq.axonserver.extensions",
-            "io.axoniq.axonserver.extensions.interceptor",
-            "io.axoniq.axonserver.extensions.transform",
-            "io.axoniq.axonserver.extensions.hook",
-            "io.axoniq.axonserver.grpc",
-            "io.axoniq.axonserver.grpc.command",
-            "io.axoniq.axonserver.grpc.control",
-            "io.axoniq.axonserver.grpc.event",
-            "io.axoniq.axonserver.grpc.query"};
-
-    public SystemPackagesProvider(String version) {
-        this.systemPackages = Arrays.stream(systemPackageNames)
-                                    .map(s -> String.format("%s;version=\"%s\"", s, version))
-                                    .collect(
-                                            Collectors.joining(","))
-                + ",org.apache.felix.metatype;version=\"1.2.0\";uses:=\"org.osgi.framework,org.osgi.service.metatype\""
-                + ",org.osgi.service.metatype;version=\"1.4.0\";uses:=\"org.osgi.framework\""
-                + ",org.osgi.service.log;version=\"1.3.0\""
-                + ",org.apache.felix.cm;version=\"1.2.0\""
-                + ",org.apache.felix.cm.file;version=\"1.1.0\";uses:=\"org.apache.felix.cm,org.osgi.framework\""
-                + ",org.osgi.service.cm;version=\"1.6.0\";uses:=\"org.osgi.framework\""
-                + ",com.google.protobuf;version=\"3.12.0\"";
-    }
+    private static final Logger logger = LoggerFactory.getLogger(SystemPackagesProvider.class);
 
     public String getSystemPackages() {
-        return systemPackages;
+        try {
+            List<String> exports = new LinkedList<>();
+            Enumeration<URL> manifestEnumeration = Thread.currentThread().getContextClassLoader().getResources(
+                    "META-INF/MANIFEST.MF");
+            while (manifestEnumeration.hasMoreElements()) {
+                URL manifestUrl = manifestEnumeration.nextElement();
+                if (export(manifestUrl.toString())) {
+                    try (InputStream manifestInputStream = manifestUrl.openStream()) {
+                        Manifest manifest = new Manifest(manifestInputStream);
+                        String name = manifest.getMainAttributes().getValue("Export-Package");
+                        if (name != null) {
+                            logger.warn("Adding exports from {} to system packages path",
+                                        manifest.getMainAttributes()
+                                                .getValue("Bundle-SymbolicName"));
+                            exports.add(manifest.getMainAttributes()
+                                                .getValue("Export-Package"));
+                        }
+                    }
+                }
+            }
+            return String.join(",", exports.toArray(new String[0]));
+        } catch (IOException ioException) {
+            throw new RuntimeException(ioException);
+        }
+    }
+
+    private boolean export(String manifestUrl) {
+        return manifestUrl.contains("org.osgi") ||
+                manifestUrl.contains("org.apache.felix.metatype") ||
+                manifestUrl.contains("org.apache.felix.configadmin") ||
+                manifestUrl.contains("axon-server-extension-api") ||
+                manifestUrl.contains("axonserver-extension-api");
     }
 }

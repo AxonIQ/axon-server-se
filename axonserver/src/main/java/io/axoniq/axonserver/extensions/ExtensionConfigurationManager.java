@@ -67,27 +67,29 @@ public class ExtensionConfigurationManager {
         }
 
         MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
-        for (String pid : info.getPids()) {
-            try {
-                Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
-                logger.debug("{}/{}}: {} old properties {}",
-                             bundle.getSymbolicName(),
-                             bundle.getVersion(),
-                             pid,
-                             configuration.getProperties());
+        if (info != null) {
+            for (String pid : info.getPids()) {
+                try {
+                    Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
+                    logger.debug("{}/{}}: {} old properties {}",
+                                 bundle.getSymbolicName(),
+                                 bundle.getVersion(),
+                                 pid,
+                                 configuration.getProperties());
 
-                Dictionary<String, Object> updatedConfiguration = new Hashtable<>();
-                Set<String> validIds = processMetaTypeInformation(info, pid, updatedConfiguration);
+                    Dictionary<String, Object> updatedConfiguration = new Hashtable<>();
+                    Set<String> validIds = processMetaTypeInformation(info, pid, updatedConfiguration);
 
-                updateWithCurrentConfiguration(configuration, updatedConfiguration);
+                    updateWithCurrentConfiguration(configuration, updatedConfiguration);
 
-                updateWithProvidedProperties(properties, updatedConfiguration, validIds);
-                configuration.update(updatedConfiguration);
+                    updateWithProvidedProperties(properties, updatedConfiguration, validIds);
+                    configuration.update(updatedConfiguration);
 
-                logger.info("{}/{}: new properties {}", bundle.getSymbolicName(), bundle.getVersion(),
-                            configurationAdmin.getConfiguration(pid).getProperties());
-            } catch (IOException ioException) {
-                logger.warn("Configuration update failed", ioException);
+                    logger.info("{}/{}: new properties {}", bundle.getSymbolicName(), bundle.getVersion(),
+                                configurationAdmin.getConfiguration(pid).getProperties());
+                } catch (IOException ioException) {
+                    logger.warn("Configuration update failed", ioException);
+                }
             }
         }
     }
