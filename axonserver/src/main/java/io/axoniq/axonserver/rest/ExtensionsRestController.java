@@ -10,10 +10,9 @@
 package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.extensions.BundleInfo;
 import io.axoniq.axonserver.extensions.ExtensionController;
 import io.axoniq.axonserver.extensions.ExtensionInfo;
-import io.axoniq.axonserver.extensions.ExtensionProperty;
+import io.axoniq.axonserver.extensions.ExtensionKey;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.http.MediaType;
@@ -62,7 +61,7 @@ public class ExtensionsRestController {
     public void uninstallExtension(@RequestParam String extension, @RequestParam String version,
                                    @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal), extension, version);
-        extensionController.uninstallExtension(new BundleInfo(extension, version));
+        extensionController.uninstallExtension(new ExtensionKey(extension, version));
     }
 
     @PostMapping("status")
@@ -75,14 +74,15 @@ public class ExtensionsRestController {
                       active ? "start" : "stop",
                       extension,
                       version);
-        extensionController.updateExtensionState(new BundleInfo(extension, version), active);
+        extensionController.updateExtensionState(new ExtensionKey(extension, version), active);
     }
 
     @GetMapping("configuration")
-    public Iterable<ExtensionProperty> configuration(@RequestParam String extension, String version,
-                                                     @ApiIgnore Principal principal) {
+    public Iterable<ExtensionPropertyGroup> configuration(@RequestParam String extension,
+                                                          @RequestParam String version,
+                                                          @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal), extension, version);
-        return extensionController.listProperties(new BundleInfo(extension, version));
+        return extensionController.listProperties(new ExtensionKey(extension, version));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -111,8 +111,8 @@ public class ExtensionsRestController {
         auditLog.info("[{}] Request to update configuration of {}/{}. ", AuditLog.username(principal),
                       configurationJSON.getExtension(),
                       configurationJSON.getVersion());
-        extensionController.updateConfiguration(new BundleInfo(configurationJSON.getExtension(),
-                                                               configurationJSON.getVersion()),
+        extensionController.updateConfiguration(new ExtensionKey(configurationJSON.getExtension(),
+                                                                 configurationJSON.getVersion()),
                                                 configurationJSON.getProperties());
     }
 }

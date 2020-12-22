@@ -48,7 +48,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     public DefaultEventInterceptors(
             OsgiController osgiController) {
         this.osgiController = osgiController;
-        osgiController.registerServiceListener(serviceEvent -> {
+        osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
         });

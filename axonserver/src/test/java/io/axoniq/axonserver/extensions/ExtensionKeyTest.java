@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
 /**
  * @author Marc Gathier
  */
-public class BundleInfoTest {
+public class ExtensionKeyTest {
 
     @Before
     public void setUp() throws Exception {
@@ -28,9 +28,9 @@ public class BundleInfoTest {
     @Test
     public void version() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        String serialized = objectMapper.writeValueAsString(new BundleInfo("name", "version"));
+        String serialized = objectMapper.writeValueAsString(new ExtensionKey("name", "version"));
         System.out.println(serialized);
-        BundleInfo deserialized = objectMapper.readValue(serialized, BundleInfo.class);
+        ExtensionKey deserialized = objectMapper.readValue(serialized, ExtensionKey.class);
         assertEquals("name", deserialized.getSymbolicName());
         assertEquals("version", deserialized.getVersion());
     }

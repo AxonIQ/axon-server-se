@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Loads all extension bundles that are available in a given directory.
+ * Lists all system bundles and the extension bundles that are available in a given directory.
  *
  * @author Marc Gathier
  * @since 4.5
@@ -34,12 +34,18 @@ public class ExtensionDirectoryProcessor {
         this.bundleDir = bundleDir;
     }
 
+    /**
+     * @return a collection of URLs for the bundles always installed in Axon Server.
+     */
     public Collection<URL> getSystemBundles() {
         ClassLoader classloader = Thread.currentThread().getContextClassLoader();
         return Arrays.stream(SYSTEM_BUNDLES).map(name -> classloader.getResource("bundles/" + name)).collect(Collectors
                                                                                                                      .toList());
     }
 
+    /**
+     * @return a collection of files containing the user added extensions.
+     */
     public List<File> getBundles() {
         List<File> bundleURLs = new ArrayList<>();
         if (bundleDir.exists() && bundleDir.isDirectory()) {

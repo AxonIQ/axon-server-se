@@ -52,7 +52,9 @@ public class OsgiControllerTest {
                                                            "onFirstInit");
         osgiController.start();
 
-        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class);
+        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
+                                                              .orElseThrow(() -> new RuntimeException(
+                                                                      "ConfigurationAdmin not found"));
         System.out.println(configurationAdmin);
         Configuration config = configurationAdmin
                 .getConfiguration("org.sample.sample-extensions2");
@@ -108,7 +110,7 @@ public class OsgiControllerTest {
         }
         System.out.println(command);
 
-        osgiController.listBundles().forEach(s -> System.out.println(" Bundle: " + s));
+        osgiController.listExtensions().forEach(s -> System.out.println(" Bundle: " + s));
         File extraBundlesDir = new File(TestUtils.fixPathOnWindows(ExtensionController
                                                                            .class.getResource(
                 "/sample-bundles2").getFile()));

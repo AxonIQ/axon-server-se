@@ -18,7 +18,7 @@ public class ExtensionConfigurationJSON {
 
     private String extension;
     private String version;
-    private Map<String, Object> properties;
+    private Map<String, Map<String, Object>> properties;
 
     public String getExtension() {
         return extension;
@@ -36,11 +36,11 @@ public class ExtensionConfigurationJSON {
         this.version = version;
     }
 
-    public Map<String, Object> getProperties() {
+    public Map<String, Map<String, Object>> getProperties() {
         return properties;
     }
 
-    public void setProperties(Map<String, Object> properties) {
+    public void setProperties(Map<String, Map<String, Object>> properties) {
         this.properties = properties;
     }
 }

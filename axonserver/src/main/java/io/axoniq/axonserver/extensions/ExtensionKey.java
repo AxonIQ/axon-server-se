@@ -15,13 +15,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * @author Marc Gathier
  */
-public class BundleInfo {
+public class ExtensionKey {
 
     private final String symbolicName;
     private final String version;
 
     @JsonCreator
-    public BundleInfo(@JsonProperty("symbolicName") String symbolicName, @JsonProperty("version") String version) {
+    public ExtensionKey(@JsonProperty("symbolicName") String symbolicName, @JsonProperty("version") String version) {
         this.symbolicName = symbolicName;
         this.version = version;
     }

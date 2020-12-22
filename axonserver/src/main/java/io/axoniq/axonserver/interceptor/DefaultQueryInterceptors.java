@@ -40,7 +40,7 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     public DefaultQueryInterceptors(OsgiController osgiController) {
         this.osgiController = osgiController;
-        osgiController.registerServiceListener(serviceEvent -> {
+        osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
         });

@@ -12,6 +12,7 @@ package io.axoniq.axonserver.extensions;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
 import org.osgi.framework.Bundle;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
@@ -24,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -36,7 +39,10 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 
 /**
+ * Manages the configuration of extensions.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @Component
 public class ExtensionConfigurationManager {
@@ -50,21 +56,26 @@ public class ExtensionConfigurationManager {
         osgiController.registerBundleListener(this::setConfiguration);
     }
 
-    public void updateConfiguration(BundleInfo bundleInfo, Map<String, Object> properties) {
+    /**
+     * Updates the configuration of an extension.
+     *
+     * @param bundleInfo the name and version of the extension
+     * @param properties the new properties
+     */
+    public void updateConfiguration(ExtensionKey bundleInfo, Map<String, Map<String, Object>> properties) {
         Bundle bundle = osgiController.getBundle(bundleInfo);
         mergeConfiguration(bundle, properties);
     }
 
-    private void mergeConfiguration(Bundle bundle, Map<String, Object> properties) {
-        MetaTypeService metaTypeService = osgiController.getService(MetaTypeService.class);
-        if (metaTypeService == null) {
-            return;
-        }
+    private void mergeConfiguration(Bundle bundle, Map<String, Map<String, Object>> properties) {
+        MetaTypeService metaTypeService = osgiController.get(MetaTypeService.class)
+                                                        .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
+                                                                                                          "MetaTypeService not found"));
 
-        ConfigurationAdmin configurationAdmin = osgiController.getService(ConfigurationAdmin.class);
-        if (configurationAdmin == null) {
-            return;
-        }
+        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
+                                                              .orElseThrow(() -> new MessagingPlatformException(
+                                                                      ErrorCode.OTHER,
+                                                                      "ConfigurationAdmin not found"));
 
         MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
         if (info != null) {
@@ -80,9 +91,15 @@ public class ExtensionConfigurationManager {
                     Dictionary<String, Object> updatedConfiguration = new Hashtable<>();
                     Set<String> validIds = processMetaTypeInformation(info, pid, updatedConfiguration);
 
+                    ObjectClassDefinition objectClassDefinition = info
+                            .getObjectClassDefinition(pid, null);
                     updateWithCurrentConfiguration(configuration, updatedConfiguration);
-
-                    updateWithProvidedProperties(properties, updatedConfiguration, validIds);
+                    updateWithProvidedProperties(properties.getOrDefault(objectClassDefinition.getID(),
+                                                                         properties.getOrDefault("*",
+                                                                                                 Collections
+                                                                                                         .emptyMap())),
+                                                 updatedConfiguration,
+                                                 validIds);
                     configuration.update(updatedConfiguration);
 
                     logger.info("{}/{}: new properties {}", bundle.getSymbolicName(), bundle.getVersion(),
@@ -139,51 +156,60 @@ public class ExtensionConfigurationManager {
         return validIds;
     }
 
-    public List<ExtensionProperty> configuration(BundleInfo bundleInfo) {
+    /**
+     * @param bundleInfo name and version of the bundle
+     * @return list of properties that can be set/are set for the extension
+     */
+    public List<ExtensionPropertyGroup> configuration(ExtensionKey bundleInfo) {
         Bundle bundle = osgiController.getBundle(bundleInfo);
         if (bundle == null) {
             throw new MessagingPlatformException(ErrorCode.OTHER, "Bundle not found");
         }
 
-        MetaTypeService metaTypeService = osgiController.getService(MetaTypeService.class);
-        if (metaTypeService == null) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "MetaTypeService not found");
-        }
+        MetaTypeService metaTypeService = osgiController.get(MetaTypeService.class)
+                                                        .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
+                                                                                                          "MetaTypeService not found"));
 
-        ConfigurationAdmin configurationAdmin = osgiController.getService(ConfigurationAdmin.class);
-        if (configurationAdmin == null) {
-            throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                 "ConfigurationAdmin not found");
-        }
-        List<ExtensionProperty> result = new LinkedList<>();
+        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
+                                                              .orElseThrow(() -> new MessagingPlatformException(
+                                                                      ErrorCode.OTHER,
+                                                                      "ConfigurationAdmin not found"));
+
         MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
+        List<ExtensionPropertyGroup> extensionPropertyGroups = new ArrayList<>();
         for (String pid : info.getPids()) {
             try {
                 Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
                 ObjectClassDefinition objectClassDefinition = info
                         .getObjectClassDefinition(pid, null);
+                List<ExtensionProperty> result = new LinkedList<>();
                 for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(
                         ObjectClassDefinition.ALL)) {
                     Object value = configuration.getProperties() != null ? configuration.getProperties().get(
                             attributeDefinition.getID()) : null;
                     result.add(new ExtensionProperty(attributeDefinition, value));
                 }
+                extensionPropertyGroups.add(new ExtensionPropertyGroup(objectClassDefinition.getID(),
+                                                                       objectClassDefinition.getName(),
+                                                                       result));
             } catch (IOException ioException) {
                 logger.warn("Failed to read configuration for {}", pid, ioException);
             }
         }
-        return result;
+        return extensionPropertyGroups;
     }
 
-    public void setConfiguration(Bundle bundle, String passedConfiguration) {
-        Map<String, Object> passedConfigurationMap = new HashMap<>();
+    private void setConfiguration(Bundle bundle, String passedConfiguration) {
+        Map<String, Map<String, Object>> initialConfiguration = new HashMap<>();
         if (passedConfiguration != null) {
             try {
-                passedConfigurationMap = new ObjectMapper().readValue(passedConfiguration, HashMap.class);
+                Map<String, Object> passedConfigurationMap = new ObjectMapper().readValue(passedConfiguration,
+                                                                                          HashMap.class);
+                initialConfiguration.put("*", passedConfigurationMap);
             } catch (IOException ioException) {
                 logger.warn("Parsing configuration {} failed", passedConfiguration, ioException);
             }
         }
-        mergeConfiguration(bundle, passedConfigurationMap);
+        mergeConfiguration(bundle, initialConfiguration);
     }
 }

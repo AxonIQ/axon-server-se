@@ -21,7 +21,7 @@ public class ExtensionProperty {
     private final int cardinality;
     private final String[] defaultValue;
     private final Object value;
-    private final int type;
+    private final String type;
     private final String[] optionLabels;
     private final String[] optionValues;
     private final String description;
@@ -32,7 +32,7 @@ public class ExtensionProperty {
         this.cardinality = attributeDefinition.getCardinality();
         this.defaultValue = attributeDefinition.getDefaultValue();
         this.value = value;
-        this.type = attributeDefinition.getType();
+        this.type = AttibuteTypeConverter.convert(attributeDefinition.getType());
         this.optionLabels = attributeDefinition.getOptionLabels();
         this.optionValues = attributeDefinition.getOptionValues();
         this.description = attributeDefinition.getDescription();
@@ -58,7 +58,7 @@ public class ExtensionProperty {
         return value;
     }
 
-    public int getType() {
+    public String getType() {
         return type;
     }
 

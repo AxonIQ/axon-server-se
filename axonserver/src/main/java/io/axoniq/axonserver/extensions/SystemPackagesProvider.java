@@ -21,12 +21,19 @@ import java.util.List;
 import java.util.jar.Manifest;
 
 /**
+ * Finds all OSGi packages that are exported for the extensions to use. This includes the packages exported by the
+ * OSGi bundles that are installed in Axon Server for configuration of the extensions and the extension api packages.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class SystemPackagesProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(SystemPackagesProvider.class);
 
+    /**
+     * @return a string containing all packages to be exposed to extensions
+     */
     public String getSystemPackages() {
         try {
             List<String> exports = new LinkedList<>();
@@ -39,9 +46,9 @@ public class SystemPackagesProvider {
                         Manifest manifest = new Manifest(manifestInputStream);
                         String name = manifest.getMainAttributes().getValue("Export-Package");
                         if (name != null) {
-                            logger.warn("Adding exports from {} to system packages path",
-                                        manifest.getMainAttributes()
-                                                .getValue("Bundle-SymbolicName"));
+                            logger.debug("Adding exports from {} to system packages path",
+                                         manifest.getMainAttributes()
+                                                 .getValue("Bundle-SymbolicName"));
                             exports.add(manifest.getMainAttributes()
                                                 .getValue("Export-Package"));
                         }

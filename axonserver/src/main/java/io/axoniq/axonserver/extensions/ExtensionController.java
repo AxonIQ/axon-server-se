@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.extensions;
 
+import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
+
 import java.io.InputStream;
 import java.util.Map;
 
@@ -28,9 +30,9 @@ public interface ExtensionController {
     /**
      * Uninstalls an extension from Axon Server.
      *
-     * @param bundleInfo the name and version of the extension
+     * @param extensionKey the name and version of the extension
      */
-    void uninstallExtension(BundleInfo bundleInfo);
+    void uninstallExtension(ExtensionKey extensionKey);
 
     /**
      * Adds or updates an extension. If there is already an extension with the same name and the same version it is
@@ -40,14 +42,15 @@ public interface ExtensionController {
      * from now on.
      *
      * @param fileName      the name of the extension file
-     * @param configuration
+     * @param configuration JSON string containing configuration properties to set before starting the extension
+     * @param start         start the extension on install
      * @param inputStream   input stream for the jar file for the extension
      */
     void addExtension(String fileName, String configuration, boolean start, InputStream inputStream);
 
-    Iterable<ExtensionProperty> listProperties(BundleInfo bundleInfo);
+    Iterable<ExtensionPropertyGroup> listProperties(ExtensionKey extensionKey);
 
-    void updateConfiguration(BundleInfo bundleInfo, Map<String, Object> properties);
+    void updateConfiguration(ExtensionKey extensionKey, Map<String, Map<String, Object>> properties);
 
-    void updateExtensionState(BundleInfo bundleInfo, boolean active);
+    void updateExtensionState(ExtensionKey extensionKey, boolean active);
 }

@@ -57,8 +57,14 @@
                         let updatedExt = {extension: ext.name, version: ext.version, properties: {}};
                         for (let i = 0; i < ext.configuration.length; i++) {
                             let item = ext.configuration[i];
-                            updatedExt.properties[item.id] = item.value;
+                            let properties = {};
+                            for (let j = 0; j < item.properties.length; j++) {
+                                let prop = item.properties[j];
+                                properties[prop.id] = prop.value;
+                            }
+                            updatedExt.properties[item.id] = properties;
                         }
+                        alert(JSON.stringify(updatedExt));
                         axios.post("v1/extensions/configuration", updatedExt).then(response => {
                             this.currentExtension = null;
                             this.loadExtensions();
@@ -109,7 +115,9 @@
                                       }
                                 );
                     },
-
+                    hasOptions(attr) {
+                        return attr.optionLabels && attr.optionLabels.length > 0;
+                    },
                     add() {
                         let fd = new FormData();
                         let files = this.$refs.extensionFileRef.files[0];
@@ -188,9 +196,27 @@
                         <span class="narrow">Version</span>
                         <span class="narrow">{{ currentExtension.version }}</span>
                     </li>
-                    <li v-for="(attr,idx) in currentExtension.configuration">
-                        <span class="narrow">{{ attr.id }}</span>
-                        <input type="text" v-model="attr.value"/>
+                    <li v-for="group in currentExtension.configuration">
+                        <span class="narrow">{{ group.name }}</span>
+                        <span>
+                                <table class="nestedTable">
+                                    <tbody>
+                                        <tr v-for="attr in group.properties">
+                                            <td>{{ attr.id }}</td>
+                                            <td>
+                                                <input v-if="!hasOptions(attr) && attr.type != 'password'" type="text"
+                                                       v-model="attr.value"/>
+                                                <input v-if="!hasOptions(attr) && attr.type == 'password'"
+                                                       type="password" v-model="attr.value"/>
+                                                <select v-if="hasOptions(attr)" v-model="attr.value">
+                                                    <option v-for="(value,idx) in attr.optionValues"
+                                                            :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                        </span>
                     </li>
                     <li>
                         <span class="narrow">&nbsp;</span>

@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.extensions;
 
+import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
 import org.springframework.stereotype.Controller;
 
 import java.io.InputStream;
@@ -35,12 +36,12 @@ public class DefaultExtensionController implements ExtensionController {
 
     @Override
     public Iterable<ExtensionInfo> listExtensions() {
-        return osgiController.listBundles();
+        return osgiController.listExtensions();
     }
 
     @Override
-    public void uninstallExtension(BundleInfo bundleInfo) {
-        osgiController.uninstallExtension(bundleInfo);
+    public void uninstallExtension(ExtensionKey extensionKey) {
+        osgiController.uninstallExtension(extensionKey);
     }
 
     @Override
@@ -49,17 +50,17 @@ public class DefaultExtensionController implements ExtensionController {
     }
 
     @Override
-    public Iterable<ExtensionProperty> listProperties(BundleInfo bundleInfo) {
-        return configurationManager.configuration(bundleInfo);
+    public Iterable<ExtensionPropertyGroup> listProperties(ExtensionKey extensionKey) {
+        return configurationManager.configuration(extensionKey);
     }
 
     @Override
-    public void updateConfiguration(BundleInfo bundleInfo, Map<String, Object> properties) {
-        configurationManager.updateConfiguration(bundleInfo, properties);
+    public void updateConfiguration(ExtensionKey extensionKey, Map<String, Map<String, Object>> properties) {
+        configurationManager.updateConfiguration(extensionKey, properties);
     }
 
     @Override
-    public void updateExtensionState(BundleInfo bundleInfo, boolean active) {
-        osgiController.updateStatus(bundleInfo, active);
+    public void updateExtensionState(ExtensionKey extensionKey, boolean active) {
+        osgiController.updateStatus(extensionKey, active);
     }
 }

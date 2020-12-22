@@ -42,7 +42,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     public DefaultCommandInterceptors(OsgiController osgiController) {
         this.osgiController = osgiController;
-        osgiController.registerServiceListener(serviceEvent -> {
+        osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
         });
