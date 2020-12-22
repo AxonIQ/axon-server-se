@@ -45,15 +45,6 @@ public interface AxonServerAccessController {
     boolean isRoleBasedAuthentication();
 
     /**
-     * Returns the roles granted to the application identified by this token.
-     * If token is unknown it throws an {@link io.axoniq.axonserver.exception.InvalidTokenException}.
-     *
-     * @param token the app's token
-     * @return the roles granted to the application identified by this token
-     */
-    Set<String> getRoles(String token);
-
-    /**
      * Retrieves all roles that include the specified operation.
      *
      * @param operation the operation to check
@@ -89,5 +80,12 @@ public interface AxonServerAccessController {
         return "select username, role from user_roles where username=?";
     }
 
-    Authentication authentication(String token);
+    /**
+     * @param context the name of the context
+     * @param token   the token passed with the request
+     * @return authentication information for the application
+     *
+     * @throws io.axoniq.axonserver.exception.InvalidTokenException when the token is unknown
+     */
+    Authentication authentication(String context, String token);
 }

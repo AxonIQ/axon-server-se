@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.grpc.*;
@@ -51,7 +51,8 @@ public class AuthenticationInterceptor implements ServerInterceptor {
             };
         }
         Context updatedGrpcContext = Context.current()
-                                            .withValue(GrpcMetadataKeys.PRINCIPAL_CONTEXT_KEY, authentication(token));
+                                            .withValue(GrpcMetadataKeys.PRINCIPAL_CONTEXT_KEY,
+                                                       authentication(context, token));
         return Contexts.interceptCall(updatedGrpcContext, serverCall, metadata, serverCallHandler);
     }
 
@@ -71,13 +72,12 @@ public class AuthenticationInterceptor implements ServerInterceptor {
         return token;
     }
 
-    private Authentication authentication(String token) {
+    private Authentication authentication(String context, String token) {
         Authentication authentication;
         try {
-            authentication = axonServerAccessController.authentication(
-                    token);
+            authentication = axonServerAccessController.authentication(context, token);
         } catch (InvalidTokenException invalidTokenException) {
-            authentication = DefaultAuthenticationProvider.DEFAULT_PRINCIPAL;
+            authentication = GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
         }
         return authentication;
     }

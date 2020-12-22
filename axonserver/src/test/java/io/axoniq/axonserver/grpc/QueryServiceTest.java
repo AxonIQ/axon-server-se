@@ -14,7 +14,7 @@ import io.axoniq.axonserver.TestSystemInfoProvider;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.config.DefaultAuthenticationProvider;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
@@ -62,7 +62,7 @@ public class QueryServiceTest {
         testSubject = new QueryService(topology,
                                        queryDispatcher,
                                        () -> Topology.DEFAULT_CONTEXT,
-                                       () -> DefaultAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                       () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                        new DefaultClientIdRegistry(),
                                        eventPublisher,
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
@@ -185,7 +185,7 @@ public class QueryServiceTest {
     @Test
     public void dispatch()  {
         doAnswer(invocationOnMock -> {
-            Consumer<QueryResponse> callback = (Consumer<QueryResponse>) invocationOnMock.getArguments()[1];
+            Consumer<QueryResponse> callback = (Consumer<QueryResponse>) invocationOnMock.getArguments()[2];
             callback.accept(QueryResponse.newBuilder().build());
             return null;
         }).when(queryDispatcher).query(isA(SerializedQuery.class), any(), isA(Consumer.class), any());
