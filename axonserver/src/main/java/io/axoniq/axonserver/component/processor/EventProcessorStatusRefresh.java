@@ -107,7 +107,9 @@ public class EventProcessorStatusRefresh {
             try {
                 boolean updated = clientProcessorStatusUpdateLatch.await(timeout.toMillis(), MILLISECONDS);
                 if (!updated) {
-                    throw new RuntimeException("Event processor status update has not be completed in 10 seconds.");
+                    throw new RuntimeException(
+                            "Event processor status update has not be completed in 10 seconds. No response from "
+                                    + clientIds);
                 }
             } catch (InterruptedException e) {
                 LOGGER.warn("The refresh of the event processors status was interrupted. ", e);

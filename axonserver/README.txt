@@ -3,6 +3,20 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.6
+-------------------------------
+* Fix for processor information showing information on disconnected applications
+* Fix for issue with null expressions in ad-hoc queries
+* Updated GRPC version to 1.34.0
+* Added option to limit the number of commands/queries in progress
+
+Release Notes for version 4.4.5
+-------------------------------
+* Improved reporting of errors while initializing the event store
+* Fix for NullPointerException when event processor status was sent to Axon Server before registration request
+  was processed
+* Improved handling of request processor status after an application disconnect
+
 Release Notes for version 4.4.4
 -------------------------------
 * Improved QueryService logging

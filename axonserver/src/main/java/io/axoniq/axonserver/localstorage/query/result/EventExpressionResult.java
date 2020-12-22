@@ -99,6 +99,11 @@ public class EventExpressionResult implements AbstractMapExpressionResult {
     }
 
     @Override
+    public boolean isNull() {
+        return event == null;
+    }
+
+    @Override
     public boolean isNonNull() {
         return event != null;
     }

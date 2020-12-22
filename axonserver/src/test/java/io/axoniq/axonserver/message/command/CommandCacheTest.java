@@ -47,7 +47,7 @@ public class CommandCacheTest {
 
     }
 
-    @Test(expected = InsufficientCacheCapacityException.class)
+    @Test(expected = InsufficientBufferCapacityException.class)
     public void onFullCapacityThrowError() {
         AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
 

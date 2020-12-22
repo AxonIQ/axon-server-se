@@ -22,7 +22,7 @@ import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
+import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
@@ -49,13 +49,13 @@ public class QueryDispatcher {
 
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
-    private final QueryCache queryCache;
+    private final ConcurrentHashMap<String,QueryInformation> queryCache;
     private final QueryInterceptors queryInterceptors;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
-    public QueryDispatcher(QueryRegistrationCache registrationCache, QueryCache queryCache,
+    public QueryDispatcher(QueryRegistrationCache registrationCache, ConcurrentHashMap<String,QueryInformation> queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
                            QueryInterceptors queryInterceptors,
                            MeterFactory meterFactory,
@@ -69,7 +69,7 @@ public class QueryDispatcher {
                                              BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
                                              meterFactory,
                                              ErrorCode.QUERY_DISPATCH_ERROR);
-        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, QueryCache::size);
+        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConcurrentHashMap::size);
     }
 
 
@@ -193,12 +193,12 @@ public class QueryDispatcher {
                                                                          onCompleted);
                 queryCache.put(query.getMessageIdentifier(), queryInformation);
                 handlers.forEach(h -> dispatchOne(h, serializedQuery2, timeout));
-            } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+            } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 callback.accept(QueryResponse.newBuilder()
-                                             .setErrorCode(ErrorCode.QUERY_DISPATCH_ERROR.getCode())
+                                             .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
                                              .setMessageIdentifier(query.getMessageIdentifier())
                                              .setErrorMessage(ErrorMessageFactory
-                                                                      .build(insufficientCacheCapacityException
+                                                                      .build(insufficientBufferCapacityException
                                                                                      .getMessage()))
                                              .build());
                 onCompleted.accept("NoCapacity");
@@ -253,10 +253,10 @@ public class QueryDispatcher {
             try {
                 queryCache.put(key, queryInformation);
                 dispatchOne(queryHandler, serializedQuery, timeout);
-            } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+            } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 queryInformation.completeWithError(queryHandler.getClientId(),
                                                    ErrorCode.QUERY_DISPATCH_ERROR,
-                                                   insufficientCacheCapacityException.getMessage());
+                                                   insufficientBufferCapacityException.getMessage());
             }
         }
     }

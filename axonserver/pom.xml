@@ -192,6 +192,11 @@
         </dependency>
 
         <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
             <version>2.3.0.1</version>
@@ -562,7 +567,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>copy-and-rename-LICENSE</id>
@@ -582,7 +587,7 @@
                     <plugin>
                         <groupId>com.google.cloud.tools</groupId>
                         <artifactId>jib-maven-plugin</artifactId>
-                        <version>1.8.0</version>
+                        <version>2.7.0</version>
                         <executions>
                             <execution>
                                 <id>build-docker-tar</id>

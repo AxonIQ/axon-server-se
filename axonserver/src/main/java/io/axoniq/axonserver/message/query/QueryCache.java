@@ -11,13 +11,14 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.message.command.InsufficientCacheCapacityException;
+import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.util.unit.DataSize;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
@@ -38,11 +39,18 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
     private final long cacheCapacity;
+    private final int QUERIES_PER_GB = 25000;
 
     public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout,
-                      @Value("${axoniq.axonserver.query-cache-capacity:10000}") long cacheCapacity) {
+                      @Value("${axoniq.axonserver.query-cache-capacity:0}") long cacheCapacity) {
         this.defaultQueryTimeout = defaultQueryTimeout;
-        this.cacheCapacity = cacheCapacity;
+
+        if (cacheCapacity > 0) {
+            this.cacheCapacity = cacheCapacity;
+        } else {
+            long totalMemory = DataSize.ofBytes(Runtime.getRuntime().maxMemory()).toGigabytes();
+            this.cacheCapacity = (totalMemory > 0) ? (QUERIES_PER_GB * totalMemory) : QUERIES_PER_GB;
+        }
     }
 
     public QueryInformation remove(String messagId) {
@@ -103,7 +111,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
 
     private void checkCapacity() {
         if (mappingCount() >= cacheCapacity) {
-            throw new InsufficientCacheCapacityException("Query cache is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
+            throw new InsufficientBufferCapacityException("Query buffer is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
                     + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
         }
     }

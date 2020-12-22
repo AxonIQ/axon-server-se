@@ -48,14 +48,15 @@ import java.util.stream.Collectors;
 public class CommandDispatcher {
 
     private final CommandRegistrationCache registrations;
-    private final CommandCache commandCache;
+    private final ConcurrentHashMap<String,CommandInformation> commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
     private final CommandInterceptors commandInterceptors;
 
-    public CommandDispatcher(CommandRegistrationCache registrations, CommandCache commandCache,
+    public CommandDispatcher(CommandRegistrationCache registrations,
+                             ConcurrentHashMap<String,CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
                              MeterFactory meterFactory,
                              CommandInterceptors commandInterceptors,
@@ -160,14 +161,14 @@ public class CommandDispatcher {
                                                                commandHandler.getClientId(),
                                                                command);
             commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
-        } catch (InsufficientCacheCapacityException insufficientCacheCapacityException) {
+        } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                  .setMessageIdentifier(command.getMessageIdentifier())
                                                                                  .setRequestIdentifier(command.getMessageIdentifier())
-                                                                                 .setErrorCode(ErrorCode.COMMAND_DISPATCH_ERROR
+                                                                                 .setErrorCode(ErrorCode.TOO_MANY_REQUESTS
                                                                                                        .getCode())
                                                                                  .setErrorMessage(ErrorMessageFactory
-                                                                                                          .build(insufficientCacheCapacityException
+                                                                                                          .build(insufficientBufferCapacityException
                                                                                                                          .getMessage()))
                                                                                  .build()));
         } catch (MessagingPlatformException mpe) {
