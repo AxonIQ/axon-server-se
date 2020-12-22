@@ -176,7 +176,7 @@ public class CommandServiceTest {
     public void dispatch() {
         doAnswer(invocationOnMock -> {
             Consumer<SerializedCommandResponse> responseConsumer = (Consumer<SerializedCommandResponse>) invocationOnMock
-                    .getArguments()[2];
+                    .getArguments()[3];
             responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
         }).when(commandDispatcher).dispatch(any(), any(), any(), any());
