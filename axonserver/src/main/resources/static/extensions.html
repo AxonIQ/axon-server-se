@@ -199,10 +199,10 @@
                     <li v-for="group in currentExtension.configuration">
                         <span class="narrow">{{ group.name }}</span>
                         <span>
-                                <table class="nestedTable">
+                                <table class="nestedTable extensionProperties">
                                     <tbody>
                                         <tr v-for="attr in group.properties">
-                                            <td>{{ attr.id }}</td>
+                                            <td width="20%">{{ attr.id }}</td>
                                             <td>
                                                 <input v-if="!hasOptions(attr) && attr.type != 'password'" type="text"
                                                        v-model="attr.value"/>
