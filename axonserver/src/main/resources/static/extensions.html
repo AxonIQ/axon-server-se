@@ -64,7 +64,6 @@
                             }
                             updatedExt.properties[item.id] = properties;
                         }
-                        alert(JSON.stringify(updatedExt));
                         axios.post("v1/extensions/configuration", updatedExt).then(response => {
                             this.currentExtension = null;
                             this.loadExtensions();
