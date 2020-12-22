@@ -697,26 +697,34 @@ select {
     border-top: none;
     padding-top: 0;
     padding-bottom: 2px;
-    padding-left: 0;
+	padding-left: 0;
 }
 
 .nestedTable th {
-    border-top: none;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    padding-left: 0;
+	border-top: none;
+	padding-top: 2px;
+	padding-bottom: 2px;
+	padding-left: 0;
+}
+
+.extensionProperties input {
+	padding: 2px;
+}
+
+.extensionProperties select {
+	padding: 2px;
 }
 
 @media only screen and (max-width: 1024px) {
-    .column-wrapper {
-        display: block;
-        margin: 20px 0;
-    }
+	.column-wrapper {
+		display: block;
+		margin: 20px 0;
+	}
 
-    .column {
-        display: block;
-        border: none;
-    }
+	.column {
+		display: block;
+		border: none;
+	}
 		.configuration,
 		.status,
 		.license{

@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.config.OsgiController;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedCommand;
@@ -45,7 +45,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     public DefaultCommandInterceptors(OsgiController osgiController) {
         this.osgiController = osgiController;
-        osgiController.registerServiceListener(serviceEvent -> {
+        osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
         });

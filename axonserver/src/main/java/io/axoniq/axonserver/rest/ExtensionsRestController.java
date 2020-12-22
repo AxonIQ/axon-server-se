@@ -9,14 +9,20 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.config.BundleInfo;
-import io.axoniq.axonserver.config.OsgiController;
-import org.osgi.framework.BundleException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.axoniq.axonserver.extensions.ExtensionController;
+import io.axoniq.axonserver.extensions.ExtensionInfo;
+import io.axoniq.axonserver.extensions.ExtensionKey;
+import io.axoniq.axonserver.logging.AuditLog;
+import org.slf4j.Logger;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import springfox.documentation.annotations.ApiIgnore;
@@ -24,35 +30,89 @@ import springfox.documentation.annotations.ApiIgnore;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
+ * REST interface to manage extensions.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @RestController
 @RequestMapping("v1/extensions")
 public class ExtensionsRestController {
 
-    private final OsgiController osgiController;
+    private static final Logger auditLog = AuditLog.getLogger();
+    private final ExtensionController extensionController;
 
-    public ExtensionsRestController(OsgiController osgiController) {
-        this.osgiController = osgiController;
+    public ExtensionsRestController(ExtensionController extensionController) {
+        this.extensionController = extensionController;
     }
 
     @GetMapping
-    public Iterable<BundleInfo> currentExtensions(@ApiIgnore Principal principal) {
-        return osgiController.listBundles();
+    public Iterable<ExtensionInfo> currentExtensions(@ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to list current extensions. ",
+                      AuditLog.username(principal));
+        return extensionController.listExtensions();
     }
 
     @DeleteMapping
-    public void uninstallExtension(@RequestParam long id, @ApiIgnore Principal principal) throws BundleException {
-        osgiController.uninstallExtension(id);
+    public void uninstallExtension(@RequestParam String extension, @RequestParam String version,
+                                   @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal), extension, version);
+        extensionController.uninstallExtension(new ExtensionKey(extension, version));
     }
 
-    @PostMapping
-    public void installExtension(@RequestParam("bundle") MultipartFile extensionBundle, @ApiIgnore Principal principal)
-            throws IOException, BundleException {
-        try (InputStream inputStream = extensionBundle.getInputStream()) {
-            osgiController.addBundle(extensionBundle.getOriginalFilename(), inputStream);
+    @PostMapping("status")
+    public void updateStatus(@RequestParam String extension,
+                             @RequestParam String version,
+                             @RequestParam boolean active,
+                             @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to {}} extension {}/{}. ",
+                      AuditLog.username(principal),
+                      active ? "start" : "stop",
+                      extension,
+                      version);
+        extensionController.updateExtensionState(new ExtensionKey(extension, version), active);
+    }
+
+    @GetMapping("configuration")
+    public Iterable<ExtensionPropertyGroup> configuration(@RequestParam String extension,
+                                                          @RequestParam String version,
+                                                          @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal), extension, version);
+        return extensionController.listProperties(new ExtensionKey(extension, version));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public void installExtension(@RequestPart(value = "configuration", required = false) String configuration,
+                                 @RequestPart("bundle") MultipartFile extensionBundle,
+                                 @RequestParam boolean start,
+                                 @ApiIgnore Principal principal)
+            throws IOException {
+        auditLog.info("[{}] Request to install extension {}. ",
+                      AuditLog.username(principal),
+                      extensionBundle.getOriginalFilename());
+        Map<String, Object> configurationMap = new HashMap<>();
+        if (configuration != null) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            configurationMap = objectMapper.readValue(configuration, HashMap.class);
         }
+
+        try (InputStream inputStream = extensionBundle.getInputStream()) {
+            extensionController.addExtension(extensionBundle.getOriginalFilename(), configuration, start, inputStream);
+        }
+    }
+
+    @PostMapping("configuration")
+    public void updateConfiguration(@RequestBody ExtensionConfigurationJSON configurationJSON,
+                                    @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to update configuration of {}/{}. ", AuditLog.username(principal),
+                      configurationJSON.getExtension(),
+                      configurationJSON.getVersion());
+        extensionController.updateConfiguration(new ExtensionKey(configurationJSON.getExtension(),
+                                                                 configurationJSON.getVersion()),
+                                                configurationJSON.getProperties());
     }
 }

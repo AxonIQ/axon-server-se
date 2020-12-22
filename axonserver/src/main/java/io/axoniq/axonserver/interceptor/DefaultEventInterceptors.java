@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.config.OsgiController;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
 import io.axoniq.axonserver.extensions.hook.PostCommitSnapshotHook;
 import io.axoniq.axonserver.extensions.hook.PreCommitEventsHook;
@@ -51,7 +51,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     public DefaultEventInterceptors(
             OsgiController osgiController) {
         this.osgiController = osgiController;
-        osgiController.registerServiceListener(serviceEvent -> {
+        osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
         });

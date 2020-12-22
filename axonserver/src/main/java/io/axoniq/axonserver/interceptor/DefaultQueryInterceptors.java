@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.config.OsgiController;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedQuery;
@@ -43,7 +43,7 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     public DefaultQueryInterceptors(OsgiController osgiController) {
         this.osgiController = osgiController;
-        osgiController.registerServiceListener(serviceEvent -> {
+        osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
         });
