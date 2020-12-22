@@ -20,12 +20,12 @@ import io.axoniq.axonserver.interceptor.QueryInterceptors;
 public class NoOpQueryInterceptors implements QueryInterceptors {
 
     @Override
-    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork interceptorContext) {
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork) {
         return serializedQuery;
     }
 
     @Override
-    public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork interceptorContext) {
+    public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork extensionUnitOfWork) {
         return response;
     }
 }

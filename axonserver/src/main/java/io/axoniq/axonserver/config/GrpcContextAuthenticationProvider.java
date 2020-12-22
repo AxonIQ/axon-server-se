@@ -25,9 +25,8 @@ import java.util.Collections;
 @Component
 public class GrpcContextAuthenticationProvider implements AuthenticationProvider {
 
-    public static final String UNAUTHORIZED = "Unauthorized";
     public static final Authentication DEFAULT_PRINCIPAL = new TokenAuthentication(false,
-                                                                                   UNAUTHORIZED,
+                                                                                   "<anonymous>",
                                                                                    Collections.emptySet());
     public static final Authentication ADMIN_PRINCIPAL = new TokenAuthentication(true,
                                                                                  "Admin",

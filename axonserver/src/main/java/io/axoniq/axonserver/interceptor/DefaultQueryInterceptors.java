@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.config.OsgiController;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedQuery;
@@ -26,7 +26,10 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
+ * Bundles all interceptors for query handling in a single class.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @Component
 public class DefaultQueryInterceptors implements QueryInterceptors {
@@ -40,7 +43,7 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     public DefaultQueryInterceptors(OsgiController osgiController) {
         this.osgiController = osgiController;
-        osgiController.registerServiceListener(serviceEvent -> {
+        osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
         });
@@ -68,23 +71,28 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
     }
 
     @Override
-    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork interceptorContext) {
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
         if (queryRequestInterceptors.isEmpty()) {
             return serializedQuery;
         }
         QueryRequest query = serializedQuery.query();
         for (QueryRequestInterceptor queryRequestInterceptor : queryRequestInterceptors) {
-            query = queryRequestInterceptor.queryRequest(query, interceptorContext);
+            query = queryRequestInterceptor.queryRequest(query, extensionUnitOfWork);
         }
         return new SerializedQuery(serializedQuery.context(), serializedQuery.clientStreamId(), query);
     }
 
     @Override
-    public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork interceptorContext) {
+    public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
-        for (QueryResponseInterceptor queryResponseInterceptor : queryResponseInterceptors) {
-            response = queryResponseInterceptor.queryResponse(response, interceptorContext);
+        try {
+            for (QueryResponseInterceptor queryResponseInterceptor : queryResponseInterceptors) {
+                response = queryResponseInterceptor.queryResponse(response, extensionUnitOfWork);
+            }
+        } catch (Exception ex) {
+            logger.warn("{}@{} an exception occurred in a QueryResponseInterceptor", extensionUnitOfWork.principal(),
+                        extensionUnitOfWork.context(), ex);
         }
         return response;
     }

@@ -14,13 +14,33 @@ import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 
 /**
+ * Bundles the interceptors for commands.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public interface CommandInterceptors {
 
+    /**
+     * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor} instances. Interceptors
+     * may change the content of the command.
+     *
+     * @param serializedCommand   the command to intercept
+     * @param extensionUnitOfWork the unit of work for the command
+     * @return the command after executing the interceptors
+     */
     SerializedCommand commandRequest(SerializedCommand serializedCommand,
                                      ExtensionUnitOfWork extensionUnitOfWork);
 
+    /**
+     * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor} instances.
+     * Interceptors
+     * may change the content of the response.
+     *
+     * @param serializedResponse  the response to intercept
+     * @param extensionUnitOfWork the unit of work for the command
+     * @return the response after executing the interceptors
+     */
     SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
                                               ExtensionUnitOfWork extensionUnitOfWork);
 }

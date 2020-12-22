@@ -11,12 +11,16 @@ package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.ExtensionController;
+import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 import org.osgi.framework.BundleException;
+import org.osgi.service.cm.Configuration;
+import org.osgi.service.cm.ConfigurationAdmin;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -27,6 +31,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -38,12 +44,25 @@ public class OsgiControllerTest {
 
     @Test
     public void start() throws IOException, BundleException {
-        OsgiController osgiController = new OsgiController(TestUtils.fixPathOnWindows(OsgiController
+        OsgiController osgiController = new OsgiController(TestUtils.fixPathOnWindows(ExtensionController
                                                                                               .class.getResource(
                 "/sample-bundles")
                                                                                                     .getFile()),
-                                                           "4.5.0");
+                                                           "cache",
+                                                           "onFirstInit");
         osgiController.start();
+
+        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
+                                                              .orElseThrow(() -> new RuntimeException(
+                                                                      "ConfigurationAdmin not found"));
+        System.out.println(configurationAdmin);
+        Configuration config = configurationAdmin
+                .getConfiguration("org.sample.sample-extensions2");
+        System.out.println(config.getProperties());
+        Dictionary<String, Object> map = config.getProperties() == null ? new Hashtable<>() : config.getProperties();
+        map.put("me.fileinstall.dir", "demoValueXXXXX");
+        config.update(map);
+        System.out.println(configurationAdmin.getConfiguration("org.sample.sample-extensions2").getProperties());
 
         Command command = Command.newBuilder().setClientId("sample").build();
         List<CommandRequestInterceptor> interceptors = StreamSupport.stream(osgiController.getServices(
@@ -91,15 +110,15 @@ public class OsgiControllerTest {
         }
         System.out.println(command);
 
-        osgiController.listBundles().forEach(s -> System.out.println(" Bundle: " + s));
-        File extraBundlesDir = new File(TestUtils.fixPathOnWindows(OsgiController
+        osgiController.listExtensions().forEach(s -> System.out.println(" Bundle: " + s));
+        File extraBundlesDir = new File(TestUtils.fixPathOnWindows(ExtensionController
                                                                            .class.getResource(
                 "/sample-bundles2").getFile()));
         File[] files = extraBundlesDir.listFiles((dir, name) -> name.endsWith(".jar"));
         if (files != null) {
             for (File file : files) {
                 try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
-                    osgiController.addBundle(file.getName(), inputStream);
+                    osgiController.addExtension(file.getName(), null, true, inputStream);
                 }
             }
         }
