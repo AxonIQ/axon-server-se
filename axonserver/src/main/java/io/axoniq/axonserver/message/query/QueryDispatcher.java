@@ -22,6 +22,7 @@ import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,12 +46,13 @@ public class QueryDispatcher {
 
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
-    private final ConcurrentHashMap<String,QueryInformation> queryCache;
+    private final ConstraintCache<String, QueryInformation> queryCache;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
-    public QueryDispatcher(QueryRegistrationCache registrationCache, ConcurrentHashMap<String,QueryInformation> queryCache,
+    public QueryDispatcher(QueryRegistrationCache registrationCache,
+                           ConstraintCache<String, QueryInformation> queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
                            MeterFactory meterFactory,
                            @Value("${axoniq.axonserver.query-queue-capacity-per-client:10000}") int queueCapacity) {
@@ -62,7 +64,7 @@ public class QueryDispatcher {
                                              BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
                                              meterFactory,
                                              ErrorCode.QUERY_DISPATCH_ERROR);
-        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConcurrentHashMap::size);
+        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConstraintCache::size);
     }
 
 

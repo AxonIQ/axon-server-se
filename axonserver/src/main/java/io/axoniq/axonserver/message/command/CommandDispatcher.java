@@ -20,6 +20,7 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,14 +45,14 @@ import java.util.stream.Collectors;
 public class CommandDispatcher {
 
     private final CommandRegistrationCache registrations;
-    private final ConcurrentHashMap<String,CommandInformation> commandCache;
+    private final ConstraintCache<String, CommandInformation> commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
 
     public CommandDispatcher(CommandRegistrationCache registrations,
-                             ConcurrentHashMap<String,CommandInformation> commandCache,
+                             ConstraintCache<String, CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
                              MeterFactory meterFactory,
                              @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity) {
@@ -63,7 +64,7 @@ public class CommandDispatcher {
                                                 BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
                                                 meterFactory,
                                                 ErrorCode.COMMAND_DISPATCH_ERROR);
-        metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConcurrentHashMap::size);
+        metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
     }
 
 
