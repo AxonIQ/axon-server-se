@@ -488,7 +488,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                     defaultLimit,
                                                     timeout,
                                                     eventDecorator,
-                                                    responseObserver);
+                                                    responseObserver,
+                                                    workers.snapshotWriteStorage,
+                                                    workers.snapshotStreamReader
+                );
     }
 
     @Override
@@ -654,6 +657,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final SnapshotWriteStorage snapshotWriteStorage;
         private final AggregateReader aggregateReader;
         private final EventStreamReader eventStreamReader;
+        private final EventStreamReader snapshotStreamReader;
         private final EventStorageEngine eventStorageEngine;
         private final EventStorageEngine snapshotStorageEngine;
         private final String context;
@@ -678,6 +682,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             this.trackingEventManager = new TrackingEventProcessorManager(eventStorageEngine, blacklistedSendAfter);
 
             this.eventStreamReader = new EventStreamReader(eventStorageEngine);
+            this.snapshotStreamReader = new EventStreamReader(snapshotStorageEngine);
+
             this.snapshotSyncStorage = new SyncStorage(snapshotStorageEngine);
             this.eventSyncStorage = new SyncStorage(eventStorageEngine);
             this.eventWriteStorage.registerEventListener((token, events) -> this.trackingEventManager.reschedule());

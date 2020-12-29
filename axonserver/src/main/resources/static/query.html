@@ -157,6 +157,7 @@
                         timeConstraint: "last hour",
                         liveUpdates: false,
                         forceReadFromLeader: false,
+                        querySnapshots: false,
                         activeRow: {value: []},
                         help: false
                     }, mounted() {
@@ -199,6 +200,7 @@
                                                              + "&context=" + encodeURIComponent(this.activeContext)
                                                              + "&timewindow=" + encodeURIComponent(this.timeConstraint)
                                                              + "&liveupdates=" + this.liveUpdates
+                                                             + "&querySnapshots=" + this.querySnapshots
                                                              + "&forceleader=" + this.forceReadFromLeader
                                                              + "&clientToken="
                                     + encodeURIComponent(clientToken));
@@ -284,6 +286,17 @@
     }
 </script>
 <div id="queryWrapper">
+
+    <div class="typeSelector">
+        <span>Search:</span>
+
+        <input type="radio" id="events" value="false" v-model="querySnapshots" checked>
+        <label for="events">Events</label>
+
+        <input type="radio" id="snapshots" value="true" v-model="querySnapshots">
+        <label for="snapshots">Snapshots</label>
+    </div>
+
     <div class="contextSelector">
         Query time window:
         <select v-model="timeConstraint">
@@ -297,6 +310,8 @@
         <input type="checkbox" v-model="liveUpdates">Live Updates</input>
 
         <span v-if="isEnterprise()" style="margin-left: 15px;">
+
+
         <input type="checkbox" v-model="forceReadFromLeader">Read from leader</input>
             Active context:
         <select v-model="activeContext">

@@ -50,7 +50,7 @@ public class HttpStreamingQuery {
 
     @Async
     public void query(String context, String queryString, String timeWindow, boolean liveUpdates,
-                      boolean forceReadFromLeader, String clientToken, SseEmitter sseEmitter) {
+                      boolean forceReadFromLeader, String clientToken, SseEmitter sseEmitter, boolean querySnapshots) {
         Sender oldSender = senderPerClient.remove(clientToken);
         if (oldSender != null) {
             logger.debug("Stopping sender for {}", clientToken);
@@ -63,7 +63,7 @@ public class HttpStreamingQuery {
                 sseEmitter.complete();
                 return;
             }
-            Sender sender = new Sender(sseEmitter, eventStore, context, queryString, timeWindow, liveUpdates);
+            Sender sender = new Sender(sseEmitter, eventStore, context, queryString, timeWindow, liveUpdates, querySnapshots);
             senderPerClient.put(clientToken, sender);
             sseEmitter.onTimeout(sender::stop);
         } catch (Exception e) {
@@ -84,7 +84,7 @@ public class HttpStreamingQuery {
         private volatile boolean closed;
 
         public Sender(SseEmitter sseEmitter, EventStore eventStore, String context, String query, String timeWindow,
-                      boolean liveUpdates) {
+                      boolean liveUpdates, boolean querySnapshots) {
             this.sseEmitter = sseEmitter;
             this.querySender = eventStore.queryEvents(context, new StreamObserver<QueryEventsResponse>() {
                 @Override
@@ -139,6 +139,7 @@ public class HttpStreamingQuery {
                                                  .setNumberOfPermits(Long.MAX_VALUE)
                                                  .setForceReadFromLeader(liveUpdates)
                                                  .setQuery(query)
+                                                 .setQuerySnapshots(querySnapshots)
                                                  .setUnknownFields(UnknownFieldSet.newBuilder()
                                                                                   .addField(TIME_WINDOW_FIELD,
                                                                                             UnknownFieldSet.Field
