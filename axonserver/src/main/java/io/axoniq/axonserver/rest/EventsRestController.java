@@ -100,6 +100,8 @@ public class EventsRestController {
                                                                                                    >= 0 ? maxSequence : Long.MAX_VALUE)
                                                                            .build();
         eventStoreClient.listAggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+                                                getOrDefault(principal,
+                                                             GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                                 request,
                                                 new StreamObserver<SerializedEvent>() {
                                                     @Override

@@ -52,7 +52,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -63,6 +62,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -136,6 +136,7 @@ public class EventDispatcher implements AxonServerClientService {
         }
         DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
         List<Event> events = new ArrayList<>();
+        AtomicBoolean failed = new AtomicBoolean();
         StreamObserver<InputStream> appendEventConnection =
                 eventStore.createAppendEventConnection(context,
                                                        new StreamObserver<Confirmation>() {
@@ -150,32 +151,35 @@ public class EventDispatcher implements AxonServerClientService {
 
                                                            @Override
                                                            public void onError(Throwable throwable) {
-                                                               interceptorContext.compensate();
-                                                               responseObserver.onError(throwable);
+                                                               if (!failed.get()) {
+                                                                   interceptorContext.compensate();
+                                                                   StreamObserverUtils.error(responseObserver,
+                                                                                             MessagingPlatformException
+                                                                                                     .create(throwable));
+                                                               }
                                                            }
 
                                                            @Override
                                                            public void onCompleted() {
-                                                               responseObserver.onCompleted();
+
+                                                               if (!failed.get()) {
+                                                                   responseObserver.onCompleted();
+                                                               }
                                                            }
                                                        });
         return new StreamObserver<InputStream>() {
-            private volatile boolean failed = false;
-
             @Override
             public void onNext(InputStream inputStream) {
                 try {
-                    Event event = Event.parseFrom(inputStream);
-                    appendEventConnection.onNext(new ByteArrayInputStream(interceptors.appendEvent(event,
-                                                                                                   interceptorContext)
-                                                                                      .toByteArray()));
+                    Event event = interceptors.appendEvent(Event.parseFrom(inputStream), interceptorContext);
+                    appendEventConnection.onNext(event.toByteString().newInput());
                     events.add(event);
                     eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
                 } catch (Exception exception) {
                     interceptorContext.compensate();
+                    failed.set(true);
                     StreamObserverUtils.error(appendEventConnection, exception);
-                    responseObserver.onError(MessagingPlatformException.create(exception));
-                    failed = true;
+                    StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
                 }
             }
 
@@ -187,7 +191,7 @@ public class EventDispatcher implements AxonServerClientService {
 
             @Override
             public void onCompleted() {
-                if (!failed) {
+                if (!failed.get()) {
                     try {
                         interceptors.eventsPreCommit(events, interceptorContext);
                         appendEventConnection.onCompleted();
@@ -256,7 +260,7 @@ public class EventDispatcher implements AxonServerClientService {
                 ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(context, principal);
                 eventStore.listAggregateEvents(context,
                                                request,
-                                               wrappedStreamObserver(responseObserver, interceptorContext));
+                                               wrappedEventStreamObserver(responseObserver, interceptorContext));
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);
                 responseObserver.onError(GrpcExceptionBuilder.build(t));
@@ -264,8 +268,8 @@ public class EventDispatcher implements AxonServerClientService {
         });
     }
 
-    private StreamObserver<SerializedEvent> wrappedStreamObserver(StreamObserver<SerializedEvent> responseObserver,
-                                                                  ExtensionUnitOfWork interceptorContext) {
+    private StreamObserver<SerializedEvent> wrappedEventStreamObserver(StreamObserver<SerializedEvent> responseObserver,
+                                                                       ExtensionUnitOfWork interceptorContext) {
         if (interceptors.noReadInterceptors()) {
             return responseObserver;
         }
@@ -279,6 +283,36 @@ public class EventDispatcher implements AxonServerClientService {
                     } else {
                         event = interceptors.readEvent(event, interceptorContext);
                     }
+                } catch (Exception ex) {
+                    logger.warn("{}: Error applying interceptor on event", interceptorContext.context(), ex);
+                }
+                responseObserver.onNext(new SerializedEvent(event));
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                responseObserver.onError(throwable);
+            }
+
+            @Override
+            public void onCompleted() {
+                responseObserver.onCompleted();
+            }
+        };
+    }
+
+    private StreamObserver<SerializedEvent> wrappedSnapshotStreamObserver(
+            StreamObserver<SerializedEvent> responseObserver,
+            ExtensionUnitOfWork interceptorContext) {
+        if (interceptors.noReadInterceptors()) {
+            return responseObserver;
+        }
+        return new StreamObserver<SerializedEvent>() {
+            @Override
+            public void onNext(SerializedEvent serializedEvent) {
+                Event event = serializedEvent.asEvent();
+                try {
+                    event = interceptors.readSnapshot(event, interceptorContext);
                 } catch (Exception ex) {
                     logger.warn("{}: Error applying interceptor on event", interceptorContext.context(), ex);
                 }
@@ -551,11 +585,15 @@ public class EventDispatcher implements AxonServerClientService {
         };
     }
 
-    public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
+    public void listAggregateSnapshots(String context, Authentication authentication,
+                                       GetAggregateSnapshotsRequest request,
                                        StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                eventStore.listAggregateSnapshots(context, request, responseObserver);
+                ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(context, authentication);
+                eventStore.listAggregateSnapshots(context,
+                                                  request,
+                                                  wrappedSnapshotStreamObserver(responseObserver, interceptorContext));
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateSnapshots", t.getMessage(), t);
                 responseObserver.onError(GrpcExceptionBuilder.build(t));
@@ -563,9 +601,9 @@ public class EventDispatcher implements AxonServerClientService {
         });
     }
 
-    private void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
-                                        StreamObserver<SerializedEvent> responseObserver) {
-        listAggregateSnapshots(contextProvider.getContext(), request, responseObserver);
+    public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
+                                       StreamObserver<SerializedEvent> responseObserver) {
+        listAggregateSnapshots(contextProvider.getContext(), authenticationProvider.get(), request, responseObserver);
     }
 
 
