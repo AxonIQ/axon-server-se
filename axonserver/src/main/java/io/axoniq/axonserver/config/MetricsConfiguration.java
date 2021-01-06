@@ -29,17 +29,25 @@ import javax.validation.constraints.NotNull;
 @Configuration
 public class MetricsConfiguration {
 
+    public final static double PERCENTILE_MEDIAN = 0.5;
+    public final static double PERCENTILE_NINETYFIVE = 0.95;
+    public final static double PERCENTILE_NINETYNINE = 0.99;
+
     @Bean
-    MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(MessagingPlatformConfiguration messagingPlatformConfiguration) {
+    MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(
+            MessagingPlatformConfiguration messagingPlatformConfiguration) {
         MeterFilter defaultFilter = new MeterFilter() {
             @Override
             public DistributionStatisticConfig configure(Meter.Id id, @NotNull DistributionStatisticConfig config) {
-                if (id.getName().startsWith("axon")) {
+                if (id.getName().startsWith("axon") || id.getName().startsWith("local")) {
                     return DistributionStatisticConfig.builder()
-                                                      .percentiles(0.5, 0.95, 0.99)
+                                                      .percentiles(PERCENTILE_MEDIAN,
+                                                                   PERCENTILE_NINETYFIVE,
+                                                                   PERCENTILE_NINETYNINE)
                                                       .minimumExpectedValue(TimeUnit.MILLISECONDS.toMillis(1))
                                                       .maximumExpectedValue(TimeUnit.SECONDS.toMillis(10))
-                                                      .expiry(Duration.ofMinutes(messagingPlatformConfiguration.getMetricsInterval()))
+                                                      .expiry(Duration.ofMinutes(messagingPlatformConfiguration
+                                                                                         .getMetricsInterval()))
                                                       .build()
                                                       .merge(config);
                 }
