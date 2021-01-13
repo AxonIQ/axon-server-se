@@ -49,7 +49,7 @@
             https://github.com/grpc/grpc-java/blob/master/SECURITY.md
         -->
         <grpc.version>1.34.0</grpc.version>
-        <netty.tcnative.version>2.0.31.Final</netty.tcnative.version>
+        <netty.tcnative.version>2.0.36.Final</netty.tcnative.version>
         <netty.version>4.1.51.Final</netty.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
         <axonserver.api.version>4.4</axonserver.api.version>
