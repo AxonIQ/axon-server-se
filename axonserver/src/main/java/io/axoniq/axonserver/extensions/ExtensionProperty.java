@@ -20,7 +20,7 @@ public class ExtensionProperty {
     private final String name;
     private final int cardinality;
     private final String[] defaultValue;
-    private final Object value;
+    private Object value;
     private final String type;
     private final String[] optionLabels;
     private final String[] optionValues;
@@ -72,5 +72,16 @@ public class ExtensionProperty {
 
     public String getDescription() {
         return description;
+    }
+
+    public void setValue(Object value) {
+        this.value = value;
+    }
+
+    public Object defaultValue() {
+        if (defaultValue == null || defaultValue.length == 0) {
+            return null;
+        }
+        return defaultValue[0];
     }
 }

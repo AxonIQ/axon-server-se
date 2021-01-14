@@ -27,7 +27,6 @@ import io.axoniq.axonserver.localstorage.EventStreamReader;
 import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.query.result.AbstractMapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.BooleanExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.DefaultQueryResult;
@@ -228,10 +227,10 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         return timeWindowList.get(0).toStringUtf8();
     }
 
-    private void pushEventFromStream(long firstToken, List<SerializedEvent> events, Pipeline pipeLine) {
+    private void pushEventFromStream(long firstToken, List<Event> events, Pipeline pipeLine) {
         logger.debug("Push event from stream");
-        for (SerializedEvent event : events) {
-            EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event.asEvent()).setToken(firstToken++)
+        for (Event event : events) {
+            EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event).setToken(firstToken++)
                                                           .build();
             try {
                 if (!pushEvent(eventWithToken, pipeLine)) {

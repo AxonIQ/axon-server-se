@@ -19,9 +19,16 @@
                     currentExtension: null,
                     roles: [],
                     newExtension: null,
-                    componentKey: 0
+                    componentKey: 0,
+                    contexts: ["default"]
+
                 }, mounted() {
                     this.loadExtensions();
+                    if (this.isEnterprise()) {
+                        axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
+                            this.contexts = response.data;
+                        });
+                    }
                 }, beforeDestroy() {
                 }, methods: {
                     loadExtensions() {
@@ -30,13 +37,15 @@
                             this.componentKey++;
                         });
                     },
-                    selectExtension(ext) {
-                        axios.get("v1/extensions/configuration?extension=" + ext.name + "&version=" + ext.version).then(
+                    selectExtension(ext, context) {
+                        axios.get("v1/extensions/configuration?extension=" + ext.name + "&version=" + ext.version
+                                          + "&context=" + context).then(
                                 response => {
                                     this.currentExtension = {
                                         name: ext.name,
                                         version: ext.version,
-                                        configuration: response.data
+                                        configuration: response.data,
+                                        context: context
                                     };
                                     this.newExtension = null;
                                 });
@@ -53,6 +62,20 @@
                                     );
                         }
                     },
+                    isActiveSE(ext) {
+                        return ext.contextInfoList && ext.contextInfoList.length > 0 && ext.contextInfoList[0].active;
+                    },
+                    unregisterExtensionForContext(ext, context) {
+                        let me = this;
+                        axios.delete("v1/extensions/context?extension=" + ext.name + "&version=" + ext.version
+                                             + "&context=" + context)
+                                .then(response => {
+                                          this.currentExtension = null;
+                                          this.newExtension = null;
+                                          setTimeout(me.loadExtensions, 1000);
+                                      }
+                                );
+                    },
                     save(ext) {
                         let updatedExt = {extension: ext.name, version: ext.version, properties: {}};
                         for (let i = 0; i < ext.configuration.length; i++) {
@@ -63,6 +86,7 @@
                                 properties[prop.id] = prop.value;
                             }
                             updatedExt.properties[item.id] = properties;
+                            updatedExt.context = ext.context;
                         }
                         axios.post("v1/extensions/configuration", updatedExt).then(response => {
                             this.currentExtension = null;
@@ -73,28 +97,29 @@
                         this.currentExtension = null;
                         this.newExtension = {configuration: {}, start: true};
                     },
-                    deleteConfigurationItem(key) {
-                        delete this.newExtension.configuration[key];
-                        this.$forceUpdate();
-                    },
-                    addConfigurationItem() {
-                        if (!this.newExtension.configurationValue || !this.newExtension.configurationField) {
-                            alert("Enter name and value");
-                            return;
-                        }
-                        this.newExtension.configuration[this.newExtension.configurationField] = this.newExtension.configurationValue;
-                        this.newExtension.configurationField = '';
-                        this.newExtension.configurationValue = '';
-                    },
-                    canStop(extension) {
-                        return extension.status === "Active";
-                    },
-                    canStart(extension) {
-                        return extension.status === "Installed" || extension.status === "Resolved";
-                    },
-                    start(ext) {
+                    // deleteConfigurationItem(key) {
+                    //     delete this.newExtension.configuration[key];
+                    //     this.$forceUpdate();
+                    // },
+                    // addConfigurationItem() {
+                    //     if (!this.newExtension.configurationValue || !this.newExtension.configurationField) {
+                    //         alert("Enter name and value");
+                    //         return;
+                    //     }
+                    //     this.newExtension.configuration[this.newExtension.configurationField] = this.newExtension.configurationValue;
+                    //     this.newExtension.configurationField = '';
+                    //     this.newExtension.configurationValue = '';
+                    // },
+                    // canStop(extension) {
+                    //     return extension.status === "Active";
+                    // },
+                    // canStart(extension) {
+                    //     return extension.status === "Installed" || extension.status === "Resolved";
+                    // },
+                    start(ext, context) {
                         let me = this;
                         axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
+                                           + "&context=" + context
                                            + "&active=true")
                                 .then(response => {
                                           this.currentExtension = null;
@@ -103,9 +128,22 @@
                                       }
                                 );
                     },
-                    stop(ext) {
+                    registerExtensionForContext(ext) {
                         let me = this;
                         axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
+                                           + "&context=" + ext.newContext
+                                           + "&active=false")
+                                .then(response => {
+                                          this.currentExtension = null;
+                                          this.newExtension = null;
+                                          setTimeout(me.loadExtensions, 1000);
+                                      }
+                                );
+                    },
+                    stop(ext, context) {
+                        let me = this;
+                        axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
+                                           + "&context=" + context
                                            + "&active=false")
                                 .then(response => {
                                           this.currentExtension = null;
@@ -126,12 +164,8 @@
                         }
 
                         let me = this;
-                        if (me.newExtension.configurationField && me.newExtension.configurationValue) {
-                            me.addConfigurationItem();
-                        }
                         fd.append('bundle', files);
-                        fd.append('configuration', JSON.stringify(me.newExtension.configuration));
-                        axios.post("/v1/extensions?start=" + me.newExtension.start, fd,
+                        axios.post("/v1/extensions", fd,
                                    {
                                        headers: {
                                            'Content-Type': 'multipart/form-data'
@@ -151,27 +185,58 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Version</th>
-                        <th>Location</th>
-                        <th>Used</th>
-                        <th>Status</th>
+                        <th class="nodesColumn">Name</th>
+                        <th class="contextColumn">Version</th>
+                        <th class="nodesColumn" v-if="isEnterprise()">Context</th>
+                        <th class="nodesColumn" v-if="!isEnterprise()">SE column</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-for="extension in extensions" :key="componentKey">
                         <td>{{ extension.name }}</td>
-                        <td>{{ extension.version }}</td>
-                        <td>{{ extension.location }}</td>
-                        <td>{{ extension.latestVersion }}</td>
-                        <td>{{ extension.status }}</td>
-                        <td v-if="admin">
-                            <span @click="deleteExtension(extension)" title="Delete"><i
-                                    class="far fa-trash-alt"/></span>
-                            <span @click="selectExtension(extension)" title="Edit"><i class="fas fa-pencil-alt"/></span>
-                            <span v-if="extension.status == 'Installed' || extension.status == 'Resolved'"
-                                  @click="start(extension)" title="Start"><i class="far fa-play-circle"/></span>
-                            <span v-if="extension.status == 'Active'" @click="stop(extension)" title="Stop"><i
+                        <td>{{ extension.version }}
+                            <span @click="deleteExtension(extension)" title="Delete">
+                                <i class="far fa-trash-alt"/>
+                            </span>
+                        </td>
+
+                        <td v-if="isEnterprise()">
+                             <ul>
+                                <li v-for="contextInfo in extension.contextInfoList">
+                                    <span class="nodeName">{{ contextInfo.context }}</span>
+                                    <span class="nodeRoleName">{{ contextInfo.active ? "Active" : "Registered" }}</span>
+                                    <span v-if="admin"
+                                          @click="unregisterExtensionForContext(extension, contextInfo.context)"
+                                          title="Delete"><i
+                                            class="far fa-trash-alt"></i></span>
+                                    <span @click="selectExtension(extension, contextInfo.context)" title="Edit">
+                                        <i class="fas fa-pencil-alt"/></span>
+                                    <span v-if="admin && !contextInfo.active"
+                                          @click="start(extension, contextInfo.context)" title="Start">
+                                        <i class="far fa-play-circle"/></span>
+                                    <span v-if="admin && contextInfo.active"
+                                          @click="stop(extension, contextInfo.context)" title="Stop">
+                                        <i class="far fa-pause-circle"/></span>
+                                </li>
+                             </ul>
+
+                            <span v-if="admin">
+                                <select class="nodeName" v-model="extension.newContext">
+                                    <option v-for="n in contexts">{{ n }}</option>
+                                </select>
+                                <span @click="registerExtensionForContext(extension)" title="Add"><i
+                                        class="fas fa-plus"></i></span>
+                            </span>
+
+                        </td>
+                        <td v-if="!isEnterprise()">
+                            <span @click="selectExtension(extension, 'default')" title="Edit"><i
+                                    class="fas fa-pencil-alt"/></span>
+                            <span v-if="admin && !isActiveSE(extension)"
+                                  @click="start(extension, 'default')" title="Start"><i
+                                    class="far fa-play-circle"/></span>
+                            <span v-if="admin && isActiveSE(extension)" @click="stop(extension, 'default')"
+                                  title="Stop"><i
                                     class="far fa-pause-circle"/></span>
                         </td>
                     </tr>
@@ -187,6 +252,10 @@
         <div class="column wide">
             <form>
                 <ul>
+                    <li>
+                        <span class="narrow">Context</span>
+                        <span class="narrow">{{ currentExtension.context }}</span>
+                    </li>
                     <li>
                         <span class="narrow">Name</span>
                         <span class="narrow">{{ currentExtension.name }}</span>
@@ -235,45 +304,6 @@
                         <span class="narrow"><input type="file" ref="extensionFileRef" id="extensionFile"
                                                     name="extensionFile"/></span>
                     </li>
-                    <li>
-                        <span class="narrow">Start</span>
-                        <span class="narrow"><input type="checkbox" v-model="newExtension.start"/></span>
-                    </li>
-                        <li>
-                            <span class="narrow">Extension Properties</span>
-                            <span>
-                                <table class="nestedTable">
-                                    <tbody>
-                                        <tr v-for="key in Object.keys(newExtension.configuration)">
-                                            <td style="width: 60%">{{ key }}</td>
-                                            <td><input class="propertyValue" data-lpignore="true"
-                                                       v-model="newExtension.configuration[key]"></td>
-                                            <td style="width: 20px">
-                                                <span @click="deleteConfigurationItem(key)"
-                                                      title="Delete Configuration Property">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="width: 60%">
-                                                <input class="propertyValue" data-lpignore="true"
-                                                       v-model="newExtension.configurationField">
-                                            </td>
-                                            <td>
-                                                <input class="propertyValue" data-lpignore="true"
-                                                       v-model="newExtension.configurationValue">
-                                            </td>
-                                            <td style="width: 20px">
-                                    <span @click="addConfigurationItem()" title="Add Configuration Property">
-                                        <i class="fas fa-plus"></i>
-                                    </span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </span>
-                        </li>
 
                     <li>
                         <span class="narrow">&nbsp;</span>

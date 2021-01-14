@@ -54,7 +54,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +61,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -134,50 +132,34 @@ public class EventDispatcher implements AxonServerClientService {
                                                                     NO_EVENT_STORE_CONFIGURED + context));
             return new NoOpStreamObserver<>();
         }
-        DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
-        List<Event> events = new ArrayList<>();
-        AtomicBoolean failed = new AtomicBoolean();
         StreamObserver<InputStream> appendEventConnection =
-                eventStore.createAppendEventConnection(context,
+                eventStore.createAppendEventConnection(context, authentication,
                                                        new StreamObserver<Confirmation>() {
                                                            @Override
                                                            public void onNext(Confirmation confirmation) {
                                                                responseObserver.onNext(confirmation);
-                                                               if (confirmation.getSuccess()) {
-                                                                   interceptors.eventsPostCommit(events,
-                                                                                                 interceptorContext);
-                                                               }
                                                            }
 
                                                            @Override
                                                            public void onError(Throwable throwable) {
-                                                               if (!failed.get()) {
-                                                                   interceptorContext.compensate();
-                                                                   StreamObserverUtils.error(responseObserver,
-                                                                                             MessagingPlatformException
+                                                               StreamObserverUtils.error(responseObserver,
+                                                                                         MessagingPlatformException
                                                                                                      .create(throwable));
-                                                               }
                                                            }
 
                                                            @Override
                                                            public void onCompleted() {
 
-                                                               if (!failed.get()) {
                                                                    responseObserver.onCompleted();
-                                                               }
                                                            }
                                                        });
         return new StreamObserver<InputStream>() {
             @Override
             public void onNext(InputStream inputStream) {
                 try {
-                    Event event = interceptors.appendEvent(Event.parseFrom(inputStream), interceptorContext);
-                    appendEventConnection.onNext(event.toByteString().newInput());
-                    events.add(event);
+                    appendEventConnection.onNext(inputStream);
                     eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
                 } catch (Exception exception) {
-                    interceptorContext.compensate();
-                    failed.set(true);
                     StreamObserverUtils.error(appendEventConnection, exception);
                     StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
                 }
@@ -191,16 +173,7 @@ public class EventDispatcher implements AxonServerClientService {
 
             @Override
             public void onCompleted() {
-                if (!failed.get()) {
-                    try {
-                        interceptors.eventsPreCommit(events, interceptorContext);
-                        appendEventConnection.onCompleted();
-                    } catch (Exception ex) {
-                        interceptorContext.compensate();
-                        StreamObserverUtils.error(appendEventConnection, ex);
-                        responseObserver.onError(MessagingPlatformException.create(ex));
-                    }
-                }
+                appendEventConnection.onCompleted();
             }
         };
     }
@@ -220,27 +193,21 @@ public class EventDispatcher implements AxonServerClientService {
                        new ForwardingStreamObserver<>(logger, "appendSnapshot", confirmationStreamObserver));
     }
 
-    public void appendSnapshot(String context, Authentication authentication, Event request,
+    public void appendSnapshot(String context, Authentication authentication, Event snapshot,
                                StreamObserver<Confirmation> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
-
             try {
-                Event snapshot = interceptors.appendSnapshot(request, interceptorContext);
                 eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-                eventStore.appendSnapshot(context, snapshot).whenComplete((c, t) -> {
+                eventStore.appendSnapshot(context, authentication, snapshot).whenComplete((c, t) -> {
                     if (t != null) {
                         logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                        interceptorContext.compensate();
                         responseObserver.onError(t);
                     } else {
-                        interceptors.snapshotPostCommit(snapshot, interceptorContext);
                         responseObserver.onNext(c);
                         responseObserver.onCompleted();
                     }
                 });
             } catch (Exception ex) {
-                interceptorContext.compensate();
                 responseObserver.onError(ex);
             }
         });

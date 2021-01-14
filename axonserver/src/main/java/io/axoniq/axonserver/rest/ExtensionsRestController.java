@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.rest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.extensions.ExtensionController;
 import io.axoniq.axonserver.extensions.ExtensionInfo;
 import io.axoniq.axonserver.extensions.ExtensionKey;
@@ -30,8 +29,6 @@ import springfox.documentation.annotations.ApiIgnore;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.Principal;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * REST interface to manage extensions.
@@ -67,41 +64,50 @@ public class ExtensionsRestController {
     @PostMapping("status")
     public void updateStatus(@RequestParam String extension,
                              @RequestParam String version,
+                             @RequestParam(required = false) String context,
                              @RequestParam boolean active,
                              @ApiIgnore Principal principal) {
-        auditLog.info("[{}] Request to {}} extension {}/{}. ",
+        auditLog.info("[{}] Request to {} extension {}/{}. ",
                       AuditLog.username(principal),
                       active ? "start" : "stop",
                       extension,
                       version);
-        extensionController.updateExtensionState(new ExtensionKey(extension, version), active);
+        extensionController.updateExtensionStatus(new ExtensionKey(extension, version), context, active);
     }
+
+    @DeleteMapping("context")
+    public void unregisterExtensionForContext(@RequestParam String extension,
+                                              @RequestParam String version,
+                                              @RequestParam(required = false) String context,
+                                              @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to unregister extension {}/{} for context {}.",
+                      AuditLog.username(principal),
+                      extension,
+                      version,
+                      context);
+        extensionController.unregisterExtensionForContext(new ExtensionKey(extension, version), context);
+    }
+
 
     @GetMapping("configuration")
     public Iterable<ExtensionPropertyGroup> configuration(@RequestParam String extension,
                                                           @RequestParam String version,
+                                                          @RequestParam(required = false) String context,
                                                           @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal), extension, version);
-        return extensionController.listProperties(new ExtensionKey(extension, version));
+        return extensionController.listProperties(new ExtensionKey(extension, version), context);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public void installExtension(@RequestPart(value = "configuration", required = false) String configuration,
-                                 @RequestPart("bundle") MultipartFile extensionBundle,
-                                 @RequestParam boolean start,
+    public void installExtension(@RequestPart("bundle") MultipartFile extensionBundle,
                                  @ApiIgnore Principal principal)
             throws IOException {
         auditLog.info("[{}] Request to install extension {}. ",
                       AuditLog.username(principal),
                       extensionBundle.getOriginalFilename());
-        Map<String, Object> configurationMap = new HashMap<>();
-        if (configuration != null) {
-            ObjectMapper objectMapper = new ObjectMapper();
-            configurationMap = objectMapper.readValue(configuration, HashMap.class);
-        }
 
         try (InputStream inputStream = extensionBundle.getInputStream()) {
-            extensionController.addExtension(extensionBundle.getOriginalFilename(), configuration, start, inputStream);
+            extensionController.addExtension(extensionBundle.getOriginalFilename(), inputStream);
         }
     }
 
@@ -113,6 +119,7 @@ public class ExtensionsRestController {
                       configurationJSON.getVersion());
         extensionController.updateConfiguration(new ExtensionKey(configurationJSON.getExtension(),
                                                                  configurationJSON.getVersion()),
+                                                configurationJSON.getContext(),
                                                 configurationJSON.getProperties());
     }
 }

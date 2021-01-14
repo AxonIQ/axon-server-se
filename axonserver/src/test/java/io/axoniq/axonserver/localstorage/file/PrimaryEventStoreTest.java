@@ -10,15 +10,14 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -120,12 +119,12 @@ public class PrimaryEventStoreTest {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<SerializedEvent> newEvents = new ArrayList<>();
+            List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, numOfEvents).forEach(i -> {
-                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId)
-                                                       .setAggregateSequenceNumber(i)
-                                                       .setAggregateType("Demo")
-                                                       .setPayload(SerializedObject.newBuilder().build()).build()));
+                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId)
+                                   .setAggregateSequenceNumber(i)
+                                   .setAggregateType("Demo")
+                                   .setPayload(SerializedObject.newBuilder().build()).build());
             });
             testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });
@@ -135,8 +134,8 @@ public class PrimaryEventStoreTest {
 
     private void storeEvent() {
         CountDownLatch latch = new CountDownLatch(1);
-        SerializedEvent newEvent = new SerializedEvent(Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
-                                                            .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
+        Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
+                              .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build();
         testSubject.store(Collections.singletonList(newEvent)).thenAccept(t -> latch.countDown());
     }
 
@@ -146,10 +145,10 @@ public class PrimaryEventStoreTest {
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<SerializedEvent> newEvents = new ArrayList<>();
+            List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, 100).forEach(i -> {
-                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                                       .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
+                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
+                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
             });
             testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });

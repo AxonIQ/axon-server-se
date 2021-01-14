@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.extensions;
 
-import org.osgi.framework.Bundle;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Describes an installed extension.
@@ -19,43 +20,28 @@ import org.osgi.framework.Bundle;
  */
 public class ExtensionInfo {
 
-    private final boolean latestVersion;
     private final String version;
-    private final long id;
     private final String name;
-    private final String location;
-    private final String status;
+    private final List<ExtensionContextInfo> contextInfoList = new LinkedList<>();
 
-    public ExtensionInfo(Bundle bundle, boolean latestVersion, String status) {
-        this.version = String.valueOf(bundle.getVersion());
-        this.id = bundle.getBundleId();
-        this.name = bundle.getSymbolicName();
-        this.location = bundle.getLocation();
-        this.latestVersion = latestVersion;
-        this.status = status;
-    }
-
-    public boolean isLatestVersion() {
-        return latestVersion;
+    public ExtensionInfo(String name, String version) {
+        this.version = version;
+        this.name = name;
     }
 
     public String getVersion() {
         return version;
     }
 
-    public long getId() {
-        return id;
-    }
-
     public String getName() {
         return name;
     }
 
-    public String getLocation() {
-        return location;
+    public List<ExtensionContextInfo> getContextInfoList() {
+        return contextInfoList;
     }
 
-    public String getStatus() {
-        return status;
+    public void addContextInfo(String context, String configuration, boolean active) {
+        contextInfoList.add(new ExtensionContextInfo(context, configuration, active));
     }
 }

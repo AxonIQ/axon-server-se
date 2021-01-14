@@ -16,6 +16,7 @@ import java.util.Map;
  */
 public class ExtensionConfigurationJSON {
 
+    private String context;
     private String extension;
     private String version;
     private Map<String, Map<String, Object>> properties;
@@ -42,5 +43,13 @@ public class ExtensionConfigurationJSON {
 
     public void setProperties(Map<String, Map<String, Object>> properties) {
         this.properties = properties;
+    }
+
+    public String getContext() {
+        return context;
+    }
+
+    public void setContext(String context) {
+        this.context = context;
     }
 }

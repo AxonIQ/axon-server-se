@@ -12,6 +12,7 @@ package io.axoniq.axonserver.interceptor;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.OsgiController;
+import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedCommand;
@@ -37,14 +38,17 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultCommandInterceptors.class);
 
-    private final List<CommandRequestInterceptor> commandRequestInterceptors = new CopyOnWriteArrayList<>();
-    private final List<CommandResponseInterceptor> commandResponseInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<CommandRequestInterceptor>> commandRequestInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<CommandResponseInterceptor>> commandResponseInterceptors = new CopyOnWriteArrayList<>();
     private final OsgiController osgiController;
+    private final ExtensionContextFilter extensionContextFilter;
     private volatile boolean initialized;
 
 
-    public DefaultCommandInterceptors(OsgiController osgiController) {
+    public DefaultCommandInterceptors(OsgiController osgiController,
+                                      ExtensionContextFilter extensionContextFilter) {
         this.osgiController = osgiController;
+        this.extensionContextFilter = extensionContextFilter;
         osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent.getLocation());
             initialized = false;
@@ -57,21 +61,19 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
                 if (initialized) {
                     return;
                 }
-                commandRequestInterceptors.clear();
-                commandResponseInterceptors.clear();
-
-                osgiController.getServices(CommandRequestInterceptor.class).forEach(commandRequestInterceptors::add);
-                osgiController.getServices(CommandResponseInterceptor.class).forEach(commandResponseInterceptors::add);
-
-                commandRequestInterceptors.sort(Comparator.comparingInt(Ordered::order));
-                commandResponseInterceptors.sort(Comparator.comparingInt(Ordered::order));
+                initHooks(CommandRequestInterceptor.class, commandRequestInterceptors);
+                initHooks(CommandResponseInterceptor.class, commandResponseInterceptors);
 
                 initialized = true;
-
-                logger.debug("{} commandRequestInterceptors", commandRequestInterceptors.size());
-                logger.debug("{} commandResponseInterceptors", commandResponseInterceptors.size());
             }
         }
+    }
+
+    private <T extends Ordered> void initHooks(Class<T> clazz, List<ServiceWithInfo<T>> hooks) {
+        hooks.clear();
+        hooks.addAll(osgiController.getServicesWithInfo(clazz));
+        hooks.sort(Comparator.comparingInt(ServiceWithInfo::order));
+        logger.debug("{} {}}", hooks.size(), clazz.getSimpleName());
     }
 
     @Override
@@ -82,8 +84,10 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
             return serializedCommand;
         }
         Command command = serializedCommand.wrapped();
-        for (CommandRequestInterceptor commandRequestInterceptor : commandRequestInterceptors) {
-            command = commandRequestInterceptor.commandRequest(command, extensionUnitOfWork);
+        for (ServiceWithInfo<CommandRequestInterceptor> commandRequestInterceptor : commandRequestInterceptors) {
+            if (extensionContextFilter.test(extensionUnitOfWork.context(), commandRequestInterceptor.extensionKey())) {
+                command = commandRequestInterceptor.service().commandRequest(command, extensionUnitOfWork);
+            }
         }
         return new SerializedCommand(command);
     }
@@ -97,8 +101,11 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
         }
         CommandResponse response = serializedResponse.wrapped();
         try {
-            for (CommandResponseInterceptor commandResponseInterceptor : commandResponseInterceptors) {
-                response = commandResponseInterceptor.commandResponse(response, extensionUnitOfWork);
+            for (ServiceWithInfo<CommandResponseInterceptor> commandResponseInterceptor : commandResponseInterceptors) {
+                if (extensionContextFilter.test(extensionUnitOfWork.context(),
+                                                commandResponseInterceptor.extensionKey())) {
+                    response = commandResponseInterceptor.service().commandResponse(response, extensionUnitOfWork);
+                }
             }
         } catch (Exception ex) {
             logger.warn("{}@{} an exception occurred in a CommandResponseInterceptor", extensionUnitOfWork.principal(),

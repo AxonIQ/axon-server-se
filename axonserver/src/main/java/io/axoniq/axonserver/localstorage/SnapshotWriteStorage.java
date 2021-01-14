@@ -29,16 +29,16 @@ public class SnapshotWriteStorage {
         this.storageTransactionManager = storageTransactionManager;
     }
 
-    public CompletableFuture<Confirmation> store( Event eventMessage) {
+    public CompletableFuture<Confirmation> store(Event snapshot) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        storageTransactionManager.store(Collections.singletonList(new SerializedEvent(eventMessage)))
-                                 .whenComplete((firstToken, cause) ->  {
-            if( cause == null ) {
-                completableFuture.complete(Confirmation.newBuilder().setSuccess(true).build());
-            } else {
-                completableFuture.completeExceptionally(cause);
-            }
-        });
+        storageTransactionManager.store(Collections.singletonList(snapshot))
+                                 .whenComplete((firstToken, cause) -> {
+                                     if (cause == null) {
+                                         completableFuture.complete(Confirmation.newBuilder().setSuccess(true).build());
+                                     } else {
+                                         completableFuture.completeExceptionally(cause);
+                                     }
+                                 });
         return completableFuture;
     }
 

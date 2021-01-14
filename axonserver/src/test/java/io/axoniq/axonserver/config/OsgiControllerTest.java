@@ -9,18 +9,17 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.ExtensionController;
+import io.axoniq.axonserver.extensions.ExtensionKey;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.OsgiController;
+import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 import org.osgi.framework.BundleException;
-import org.osgi.service.cm.Configuration;
-import org.osgi.service.cm.ConfigurationAdmin;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -31,8 +30,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Dictionary;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -52,22 +49,12 @@ public class OsgiControllerTest {
                                                            "onFirstInit");
         osgiController.start();
 
-        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
-                                                              .orElseThrow(() -> new RuntimeException(
-                                                                      "ConfigurationAdmin not found"));
-        System.out.println(configurationAdmin);
-        Configuration config = configurationAdmin
-                .getConfiguration("org.sample.sample-extensions2");
-        System.out.println(config.getProperties());
-        Dictionary<String, Object> map = config.getProperties() == null ? new Hashtable<>() : config.getProperties();
-        map.put("me.fileinstall.dir", "demoValueXXXXX");
-        config.update(map);
-        System.out.println(configurationAdmin.getConfiguration("org.sample.sample-extensions2").getProperties());
-
         Command command = Command.newBuilder().setClientId("sample").build();
-        List<CommandRequestInterceptor> interceptors = StreamSupport.stream(osgiController.getServices(
-                CommandRequestInterceptor.class).spliterator(), false).sorted(
-                Comparator.comparing(Ordered::order)).collect(Collectors.toList());
+        List<ServiceWithInfo<CommandRequestInterceptor>> interceptors =
+                StreamSupport.stream(osgiController.getServicesWithInfo(CommandRequestInterceptor.class).spliterator(),
+                                     false)
+                             .sorted(Comparator.comparing(ServiceWithInfo::order))
+                             .collect(Collectors.toList());
 
         ExtensionUnitOfWork unitOfWork = new DefaultInterceptorContext("context", new Authentication() {
             @Override
@@ -105,8 +92,8 @@ public class OsgiControllerTest {
                 return "name";
             }
         });
-        for (CommandRequestInterceptor interceptor : interceptors) {
-            command = interceptor.commandRequest(command, unitOfWork);
+        for (ServiceWithInfo<CommandRequestInterceptor> interceptor : interceptors) {
+            command = interceptor.service().commandRequest(command, unitOfWork);
         }
         System.out.println(command);
 
@@ -118,16 +105,19 @@ public class OsgiControllerTest {
         if (files != null) {
             for (File file : files) {
                 try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
-                    osgiController.addExtension(file.getName(), null, true, inputStream);
+                    ExtensionKey extension = osgiController.addExtension(file.getName(),
+                                                                         inputStream);
+                    osgiController.updateStatus(extension, true);
                 }
             }
         }
 
-        interceptors = StreamSupport.stream(osgiController.getServices(
+        interceptors = StreamSupport.stream(osgiController.getServicesWithInfo(
                 CommandRequestInterceptor.class).spliterator(), false).sorted(
-                Comparator.comparing(Ordered::order)).collect(Collectors.toList());
-        for (CommandRequestInterceptor interceptor : interceptors) {
-            command = interceptor.commandRequest(command, unitOfWork);
+                Comparator.comparing(ServiceWithInfo::order)).collect(Collectors.toList());
+        for (ServiceWithInfo<CommandRequestInterceptor> interceptor : interceptors) {
+            System.out.println(interceptor.symbolicName());
+            command = interceptor.service().commandRequest(command, unitOfWork);
         }
         System.out.println(command);
     }

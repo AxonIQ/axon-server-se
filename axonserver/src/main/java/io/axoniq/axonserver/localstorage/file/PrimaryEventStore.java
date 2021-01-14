@@ -11,12 +11,12 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.extensions.transform.EventTransformer;
 import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -169,7 +169,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                      .orElse(defaultFirstIndex);
     }
 
-    private FilePreparedTransaction prepareTransaction(List<SerializedEvent> origEventList) {
+    private FilePreparedTransaction prepareTransaction(List<Event> origEventList) {
         List<ProcessedEvent> eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
                 Collectors.toList());
         int eventSize = eventBlockSize(eventList);
@@ -184,7 +184,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
      * @return completable future with the token of the first event
      */
     @Override
-    public CompletableFuture<Long> store(List<SerializedEvent> events) {
+    public CompletableFuture<Long> store(List<Event> events) {
 
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {

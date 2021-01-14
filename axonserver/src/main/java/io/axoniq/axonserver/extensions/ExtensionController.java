@@ -12,6 +12,7 @@ package io.axoniq.axonserver.extensions;
 import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
 
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,16 +42,16 @@ public interface ExtensionController {
      * version
      * from now on.
      *
-     * @param fileName      the name of the extension file
-     * @param configuration JSON string containing configuration properties to set before starting the extension
-     * @param start         start the extension on install
-     * @param inputStream   input stream for the jar file for the extension
+     * @param fileName    the name of the extension file
+     * @param inputStream input stream for the jar file for the extension
      */
-    void addExtension(String fileName, String configuration, boolean start, InputStream inputStream);
+    void addExtension(String fileName, InputStream inputStream);
 
-    Iterable<ExtensionPropertyGroup> listProperties(ExtensionKey extensionKey);
+    List<ExtensionPropertyGroup> listProperties(ExtensionKey extensionKey, String context);
 
-    void updateConfiguration(ExtensionKey extensionKey, Map<String, Map<String, Object>> properties);
+    void updateConfiguration(ExtensionKey extensionKey, String context, Map<String, Map<String, Object>> properties);
 
-    void updateExtensionState(ExtensionKey extensionKey, boolean active);
+    void updateExtensionStatus(ExtensionKey extensionKey, String context, boolean active);
+
+    void unregisterExtensionForContext(ExtensionKey extensionKey, String context);
 }

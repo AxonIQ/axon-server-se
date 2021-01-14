@@ -25,8 +25,7 @@ import java.util.stream.Collectors;
  */
 public class ExtensionDirectoryProcessor {
 
-    private static final String[] SYSTEM_BUNDLES = {"org.apache.felix.metatype.jar",
-            "org.apache.felix.configadmin.jar"};
+    private static final String[] SYSTEM_BUNDLES = {"org.apache.felix.metatype.jar"};
 
     private final File bundleDir;
 

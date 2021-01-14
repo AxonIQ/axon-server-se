@@ -39,7 +39,7 @@ public class ScheduledEventExecutorTest {
 
     @Before
     public void setUp() {
-        when(localEventStore.createAppendEventConnection(anyString(), any()))
+        when(localEventStore.createAppendEventConnection(anyString(), any(), any()))
                 .then((Answer<StreamObserver<InputStream>>) invocation -> {
                     StreamObserver<Confirmation> responseStream = invocation.getArgument(1);
                     return new StreamObserver<InputStream>() {

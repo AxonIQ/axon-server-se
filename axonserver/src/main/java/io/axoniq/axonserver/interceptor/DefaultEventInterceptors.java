@@ -12,6 +12,7 @@ package io.axoniq.axonserver.interceptor;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.OsgiController;
+import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
 import io.axoniq.axonserver.extensions.hook.PostCommitSnapshotHook;
 import io.axoniq.axonserver.extensions.hook.PreCommitEventsHook;
@@ -38,24 +39,28 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class DefaultEventInterceptors implements EventInterceptors {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultEventInterceptors.class);
-    private final List<AppendEventInterceptor> appendEventInterceptors = new CopyOnWriteArrayList<>();
-    private final List<PreCommitEventsHook> preCommitEventsHooks = new CopyOnWriteArrayList<>();
-    private final List<PostCommitEventsHook> postCommitEventsHooks = new CopyOnWriteArrayList<>();
-    private final List<AppendSnapshotInterceptor> appendSnapshotInterceptors = new CopyOnWriteArrayList<>();
-    private final List<PostCommitSnapshotHook> postCommitSnapshotHooks = new CopyOnWriteArrayList<>();
-    private final List<ReadEventInterceptor> readEventInterceptors = new CopyOnWriteArrayList<>();
-    private final List<ReadSnapshotInterceptor> readSnapshotInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<AppendEventInterceptor>> appendEventInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<PreCommitEventsHook>> preCommitEventsHooks = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<PostCommitEventsHook>> postCommitEventsHooks = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<AppendSnapshotInterceptor>> appendSnapshotInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<PostCommitSnapshotHook>> postCommitSnapshotHooks = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<ReadEventInterceptor>> readEventInterceptors = new CopyOnWriteArrayList<>();
+    private final List<ServiceWithInfo<ReadSnapshotInterceptor>> readSnapshotInterceptors = new CopyOnWriteArrayList<>();
     private final OsgiController osgiController;
+    private final ExtensionContextFilter extensionContextFilter;
     private volatile boolean initialized;
 
     public DefaultEventInterceptors(
-            OsgiController osgiController) {
+            OsgiController osgiController,
+            ExtensionContextFilter extensionContextFilter) {
         this.osgiController = osgiController;
+        this.extensionContextFilter = extensionContextFilter;
         osgiController.registerExtensionListener(serviceEvent -> {
             logger.debug("extension event {}", serviceEvent.getLocation());
             initialized = false;
         });
     }
+
 
     private void ensureInitialized() {
         if (!initialized) {
@@ -77,20 +82,22 @@ public class DefaultEventInterceptors implements EventInterceptors {
         }
     }
 
-    private <T extends Ordered> void initHooks(Class<T> clazz, List<T> hooks) {
+    private <T extends Ordered> void initHooks(Class<T> clazz, List<ServiceWithInfo<T>> hooks) {
         hooks.clear();
-        hooks.addAll(osgiController.getServices(clazz));
-        hooks.sort(Comparator.comparingInt(Ordered::order));
+        hooks.addAll(osgiController.getServicesWithInfo(clazz));
+        hooks.sort(Comparator.comparingInt(ServiceWithInfo::order));
         logger.debug("{} {}}", hooks.size(), clazz.getSimpleName());
     }
 
     @Override
     public Event appendEvent(
-            Event event, ExtensionUnitOfWork interceptorContext) {
+            Event event, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
 
-        for (AppendEventInterceptor preCommitInterceptor : appendEventInterceptors) {
-            event = preCommitInterceptor.appendEvent(event, interceptorContext);
+        for (ServiceWithInfo<AppendEventInterceptor> preCommitInterceptor : appendEventInterceptors) {
+            if (extensionContextFilter.test(extensionUnitOfWork.context(), preCommitInterceptor.extensionKey())) {
+                event = preCommitInterceptor.service().appendEvent(event, extensionUnitOfWork);
+            }
         }
         return event;
     }
@@ -99,8 +106,11 @@ public class DefaultEventInterceptors implements EventInterceptors {
     public void eventsPreCommit(List<Event> events,
                                 ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
-        for (PreCommitEventsHook preCommitEventsHook : preCommitEventsHooks) {
-            preCommitEventsHook.onPreCommitEvents(events, extensionUnitOfWork);
+
+        for (ServiceWithInfo<PreCommitEventsHook> preCommitEventsHook : preCommitEventsHooks) {
+            if (extensionContextFilter.test(extensionUnitOfWork.context(), preCommitEventsHook.extensionKey())) {
+                preCommitEventsHook.service().onPreCommitEvents(events, extensionUnitOfWork);
+            }
         }
     }
 
@@ -108,8 +118,10 @@ public class DefaultEventInterceptors implements EventInterceptors {
     public void eventsPostCommit(List<Event> events, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
         try {
-            for (PostCommitEventsHook postCommitEventsHook : postCommitEventsHooks) {
-                postCommitEventsHook.onPostCommitEvent(events, extensionUnitOfWork);
+            for (ServiceWithInfo<PostCommitEventsHook> postCommitEventsHook : postCommitEventsHooks) {
+                if (extensionContextFilter.test(extensionUnitOfWork.context(), postCommitEventsHook.extensionKey())) {
+                    postCommitEventsHook.service().onPostCommitEvent(events, extensionUnitOfWork);
+                }
             }
         } catch (Exception ex) {
             logger.warn("{}@{} an exception occurred in a PostCommitEventsHook", extensionUnitOfWork.principal(),
@@ -121,8 +133,10 @@ public class DefaultEventInterceptors implements EventInterceptors {
     public void snapshotPostCommit(Event snapshot, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
         try {
-            for (PostCommitSnapshotHook postCommitSnapshotHook : postCommitSnapshotHooks) {
-                postCommitSnapshotHook.onPostCommitSnapshot(snapshot, extensionUnitOfWork);
+            for (ServiceWithInfo<PostCommitSnapshotHook> postCommitSnapshotHook : postCommitSnapshotHooks) {
+                if (extensionContextFilter.test(extensionUnitOfWork.context(), postCommitSnapshotHook.extensionKey())) {
+                    postCommitSnapshotHook.service().onPostCommitSnapshot(snapshot, extensionUnitOfWork);
+                }
             }
         } catch (Exception ex) {
             logger.warn("{}@{} an exception occurred in a PostCommitSnapshotHook", extensionUnitOfWork.principal(),
@@ -133,8 +147,10 @@ public class DefaultEventInterceptors implements EventInterceptors {
     @Override
     public Event appendSnapshot(Event event, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
-        for (AppendSnapshotInterceptor appendSnapshotInterceptor : appendSnapshotInterceptors) {
-            event = appendSnapshotInterceptor.appendSnapshot(event, extensionUnitOfWork);
+        for (ServiceWithInfo<AppendSnapshotInterceptor> appendSnapshotInterceptor : appendSnapshotInterceptors) {
+            if (extensionContextFilter.test(extensionUnitOfWork.context(), appendSnapshotInterceptor.extensionKey())) {
+                event = appendSnapshotInterceptor.service().appendSnapshot(event, extensionUnitOfWork);
+            }
         }
         return event;
     }
@@ -148,8 +164,10 @@ public class DefaultEventInterceptors implements EventInterceptors {
     @Override
     public Event readSnapshot(Event snapshot, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
-        for (ReadSnapshotInterceptor snapshotReadInterceptor : readSnapshotInterceptors) {
-            snapshot = snapshotReadInterceptor.readSnapshot(snapshot, extensionUnitOfWork);
+        for (ServiceWithInfo<ReadSnapshotInterceptor> snapshotReadInterceptor : readSnapshotInterceptors) {
+            if (extensionContextFilter.test(extensionUnitOfWork.context(), snapshotReadInterceptor.extensionKey())) {
+                snapshot = snapshotReadInterceptor.service().readSnapshot(snapshot, extensionUnitOfWork);
+            }
         }
         return snapshot;
     }
@@ -157,8 +175,10 @@ public class DefaultEventInterceptors implements EventInterceptors {
     @Override
     public Event readEvent(Event event, ExtensionUnitOfWork extensionUnitOfWork) {
         ensureInitialized();
-        for (ReadEventInterceptor eventReadInterceptor : readEventInterceptors) {
-            event = eventReadInterceptor.readEvent(event, extensionUnitOfWork);
+        for (ServiceWithInfo<ReadEventInterceptor> eventReadInterceptor : readEventInterceptors) {
+            if (extensionContextFilter.test(extensionUnitOfWork.context(), eventReadInterceptor.extensionKey())) {
+                event = eventReadInterceptor.service().readEvent(event, extensionUnitOfWork);
+            }
         }
         return event;
     }

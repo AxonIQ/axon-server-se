@@ -62,11 +62,17 @@ public class DefaultInterceptorContext implements ExtensionUnitOfWork {
      */
     @Override
     public String principal() {
+        if (principal == null) {
+            return "";
+        }
         return principal.getName();
     }
 
     @Override
     public Set<String> principalRoles() {
+        if (principal == null) {
+            return Collections.emptySet();
+        }
         return principal.getAuthorities()
                         .stream()
                         .map(GrantedAuthority::getAuthority)
@@ -75,7 +81,11 @@ public class DefaultInterceptorContext implements ExtensionUnitOfWork {
 
     @Override
     public Map<String, String> principalMetaData() {
-        return Collections.emptyMap();
+        if (principal == null || !(principal.getDetails() instanceof Map)) {
+            return Collections.emptyMap();
+        }
+
+        return (Map<String, String>) principal.getDetails();
     }
 
     /**

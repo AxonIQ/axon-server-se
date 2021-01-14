@@ -26,6 +26,8 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
+import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -45,6 +47,7 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -82,6 +85,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final ExecutorService dataWriter;
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
+    private final EventInterceptors eventInterceptors;
     private final int maxEventCount;
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
@@ -100,11 +104,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
     private boolean checkSequenceNrForSnapshots = true;
 
-    public LocalEventStore(EventStoreFactory eventStoreFactory, MeterRegistry meterFactory,
-                           StorageTransactionManagerFactory storageTransactionManagerFactory) {
+    public LocalEventStore(EventStoreFactory eventStoreFactory,
+                           MeterRegistry meterFactory,
+                           StorageTransactionManagerFactory storageTransactionManagerFactory,
+                           EventInterceptors eventInterceptors
+    ) {
         this(eventStoreFactory,
              new MeterFactory(meterFactory, new DefaultMetricCollector()),
              storageTransactionManagerFactory,
+             eventInterceptors,
              new DefaultEventDecorator(),
              Short.MAX_VALUE,
              1000,
@@ -116,6 +124,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public LocalEventStore(EventStoreFactory eventStoreFactory,
                            MeterFactory meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
+                           EventInterceptors eventInterceptors,
                            EventDecorator eventDecorator,
                            @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
@@ -124,6 +133,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this.eventStoreFactory = eventStoreFactory;
         this.meterFactory = meterFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
+        this.eventInterceptors = eventInterceptors;
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
@@ -202,45 +212,56 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public CompletableFuture<Confirmation> appendSnapshot(String context, Event eventMessage) {
+    public CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication,
+                                                          Event snapshot) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        runInDataWriterPool(() -> doAppendSnapshot(context, eventMessage, completableFuture),
+        runInDataWriterPool(() -> doAppendSnapshot(context, authentication, snapshot, completableFuture),
                             completableFuture::completeExceptionally);
         return completableFuture;
     }
 
-    private void doAppendSnapshot(String context, Event eventMessage,
+    private void doAppendSnapshot(String context, Authentication authentication, Event snapshot,
                                   CompletableFuture<Confirmation> completableFuture) {
         if (checkSequenceNrForSnapshots) {
-            long seqNr = workers(context).aggregateReader.readHighestSequenceNr(eventMessage.getAggregateIdentifier());
-            if (seqNr < eventMessage.getAggregateSequenceNumber()) {
+            long seqNr = workers(context).aggregateReader.readHighestSequenceNr(snapshot.getAggregateIdentifier());
+            if (seqNr < snapshot.getAggregateSequenceNumber()) {
                 completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
                                                                                        "Invalid sequence number while storing snapshot"));
                 return;
             }
         }
-        workers(context).snapshotWriteStorage.store(eventMessage).whenComplete(((confirmation, throwable) -> {
-            if (throwable != null) {
-                completableFuture.completeExceptionally(throwable);
-            } else {
-                completableFuture.complete(confirmation);
-            }
-        }));
+        DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
+        Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, interceptorContext);
+        workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
+                                             .whenComplete(((confirmation, throwable) -> {
+                                                 if (throwable != null) {
+                                                     interceptorContext.compensate();
+                                                     completableFuture.completeExceptionally(throwable);
+                                                 } else {
+                                                     eventInterceptors.snapshotPostCommit(snapshotAfterInterceptors,
+                                                                                          interceptorContext);
+                                                     completableFuture.complete(confirmation);
+                                                 }
+                                             }));
     }
 
     @Override
     public StreamObserver<InputStream> createAppendEventConnection(String context,
+                                                                   Authentication authentication,
                                                                    StreamObserver<Confirmation> responseObserver) {
+        DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
         return new StreamObserver<InputStream>() {
-            private final List<SerializedEvent> eventList = new ArrayList<>();
+            private final List<Event> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
 
             @Override
-            public void onNext(InputStream event) {
+            public void onNext(InputStream inputStream) {
                 if (checkMaxEventCount()) {
                     try {
-                        eventList.add(new SerializedEvent(event));
+                        Event event = Event.parseFrom(inputStream);
+                        eventList.add(eventInterceptors.appendEvent(event, interceptorContext));
                     } catch (Exception e) {
+                        interceptorContext.compensate();
                         responseObserver.onError(GrpcExceptionBuilder.build(e));
                     }
                 }
@@ -268,11 +289,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (closed.get()) {
                     return;
                 }
-                runInDataWriterPool(() -> workers(context)
-                        .eventWriteStorage
-                        .store(eventList)
-                        .thenRun(this::confirm)
-                        .exceptionally(this::error), this::error);
+                runInDataWriterPool(() -> {
+                    eventInterceptors.eventsPreCommit(eventList, interceptorContext);
+                    workers(context)
+                            .eventWriteStorage
+                            .store(eventList)
+                            .thenRun(this::confirm)
+                            .exceptionally(this::error);
+                }, this::error);
             }
 
             private Void error(Throwable exception) {

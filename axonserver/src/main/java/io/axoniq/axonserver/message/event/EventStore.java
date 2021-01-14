@@ -24,6 +24,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
+import org.springframework.security.core.Authentication;
 
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
@@ -38,11 +39,12 @@ public interface EventStore {
 
     /**
      * Stores a snapshot in the event store.
-     * @param context the context where the snapshot are stored
+     *
+     * @param context  the context where the snapshot are stored
      * @param snapshot the snapshot
      * @return completable future that completes when snapshot is stored
      */
-    CompletableFuture<Confirmation> appendSnapshot(String context, Event snapshot);
+    CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication, Event snapshot);
 
     /**
      * Creates a connection that receives events to be stored in a single transaction.
@@ -51,6 +53,7 @@ public interface EventStore {
      * @return stream to send events to
      */
     StreamObserver<InputStream> createAppendEventConnection(String context,
+                                                            Authentication authentication,
                                                             StreamObserver<Confirmation> responseObserver);
 
     /**

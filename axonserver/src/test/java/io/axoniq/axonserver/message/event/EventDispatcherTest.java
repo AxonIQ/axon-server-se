@@ -57,7 +57,7 @@ public class EventDispatcherTest {
 
     @Before
     public void setUp() {
-        when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
+        when(eventStoreClient.createAppendEventConnection(any(), any(), any())).thenReturn(appendEventConnection);
         when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
@@ -97,10 +97,10 @@ public class EventDispatcherTest {
     public void appendSnapshot() {
         FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
         CompletableFuture<Confirmation> appendFuture = new CompletableFuture<>();
-        when(eventStoreClient.appendSnapshot(any(), any(Event.class))).thenReturn(appendFuture);
+        when(eventStoreClient.appendSnapshot(any(), any(), any(Event.class))).thenReturn(appendFuture);
         testSubject.appendSnapshot(Event.newBuilder().build(), responseObserver);
         appendFuture.complete(Confirmation.newBuilder().build());
-        verify(eventStoreClient).appendSnapshot(any(), any(Event.class));
+        verify(eventStoreClient).appendSnapshot(any(), any(), any(Event.class));
         assertEquals(1, responseObserver.values().size());
     }
 
