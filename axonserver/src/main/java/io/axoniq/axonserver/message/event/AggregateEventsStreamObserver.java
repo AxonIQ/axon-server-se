@@ -29,6 +29,7 @@ public class AggregateEventsStreamObserver implements StreamObserver<SerializedE
         SerializedEvent prevEvent = lastSentEvent.get();
         if (prevEvent == null || prevEvent.getAggregateSequenceNumber() + 1 == event.getAggregateSequenceNumber()) {
             delegate.onNext(event);
+            lastSentEvent.set(event);
         } else {
             String message = String.format("Invalid sequence number for aggregate %s. Received: %d, expected: %d",
                                            event.getAggregateIdentifier(),
