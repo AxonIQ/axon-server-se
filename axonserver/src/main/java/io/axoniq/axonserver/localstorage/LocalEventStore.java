@@ -92,13 +92,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final EventDecorator eventDecorator;
     private volatile boolean running;
     @Value("${axoniq.axonserver.query.limit:200}")
-    private long defaultLimit = 200;
+    private final long defaultLimit = 200;
     @Value("${axoniq.axonserver.query.timeout:300000}")
-    private long timeout = 300000;
+    private final long timeout = 300000;
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
-    private long newPermitsTimeout = 120000;
+    private final long newPermitsTimeout = 120000;
     @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
-    private boolean checkSequenceNrForSnapshots = true;
+    private final boolean checkSequenceNrForSnapshots = true;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory, MeterRegistry meterFactory,
                            StorageTransactionManagerFactory storageTransactionManagerFactory) {
@@ -364,7 +364,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                        .onNext(eventDecorator.decorateEvent(snapshot)));
             }
             responseStreamObserver.onCompleted();
-        }, responseStreamObserver::onError);
+        }, error -> {
+            logger.warn("Problem encountered while reading snapshot for aggregate " + request.getAggregateId(), error);
+            responseStreamObserver.onError(error);
+        });
     }
 
     @Override
