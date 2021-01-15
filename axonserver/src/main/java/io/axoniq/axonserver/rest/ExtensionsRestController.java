@@ -99,15 +99,15 @@ public class ExtensionsRestController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public void installExtension(@RequestPart("bundle") MultipartFile extensionBundle,
-                                 @ApiIgnore Principal principal)
+    public ExtensionKey installExtension(@RequestPart("bundle") MultipartFile extensionBundle,
+                                         @ApiIgnore Principal principal)
             throws IOException {
         auditLog.info("[{}] Request to install extension {}. ",
                       AuditLog.username(principal),
                       extensionBundle.getOriginalFilename());
 
         try (InputStream inputStream = extensionBundle.getInputStream()) {
-            extensionController.addExtension(extensionBundle.getOriginalFilename(), inputStream);
+            return extensionController.addExtension(extensionBundle.getOriginalFilename(), inputStream);
         }
     }
 

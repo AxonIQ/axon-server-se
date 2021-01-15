@@ -116,7 +116,7 @@ public class OsgiControllerTest {
                 CommandRequestInterceptor.class).spliterator(), false).sorted(
                 Comparator.comparing(ServiceWithInfo::order)).collect(Collectors.toList());
         for (ServiceWithInfo<CommandRequestInterceptor> interceptor : interceptors) {
-            System.out.println(interceptor.symbolicName());
+            System.out.println(interceptor.extensionKey());
             command = interceptor.service().commandRequest(command, unitOfWork);
         }
         System.out.println(command);

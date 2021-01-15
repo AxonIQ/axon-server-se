@@ -152,18 +152,34 @@
                                                 response => {
                                                     globals.admin = globals.adminNode && response.data.adminUser;
                                                     this.admin = globals.admin;
+                                                    this.setHeight();
                                                     loadFragment();
                                                 });
 
                                     } else {
                                         this.admin = response.data.adminNode;
                                         globals.admin = response.data.adminNode;
+                                        setHeight();
                                         loadFragment();
                                     }
                                 });
                             });
                 }, methods: {
+                    setHeight() {
+                        if (globals.admin) {
+                            if (globals.features.length > 0) {
+                                $("nav").css("min-height", "847px");
+                                $("article").css("min-height", "847px");
+                            } else {
+                                $("nav").css("min-height", "634px");
+                                $("article").css("min-height", "634px");
+                            }
+                        } else {
+                            $("nav").css("min-height", "414px");
+                            $("article").css("min-height", "414px");
                         }
+                    }
+                }
                     });
 
             $.ajaxPrefilter(function (options, original_Options, jqXHR) {

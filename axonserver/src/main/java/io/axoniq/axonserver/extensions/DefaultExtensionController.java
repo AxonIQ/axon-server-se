@@ -61,9 +61,10 @@ public class DefaultExtensionController implements ExtensionController {
     }
 
     @Override
-    public void addExtension(String fileName, InputStream inputStream) {
+    public ExtensionKey addExtension(String fileName, InputStream inputStream) {
         ExtensionKey extensionKey = osgiController.addExtension(fileName, inputStream);
         extensionStatusManager.publishConfiguration(extensionKey);
+        return extensionKey;
     }
 
     @Override

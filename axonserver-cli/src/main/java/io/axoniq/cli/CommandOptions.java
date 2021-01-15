@@ -58,6 +58,35 @@ public class CommandOptions {
             .desc("Name of the application")
             .build();
     /**
+     * The name of the extension to manage.
+     */
+    public static final Option EXTENSION_NAME = Option
+            .builder("e")
+            .longOpt("extension")
+            .hasArg()
+            .required()
+            .desc("Name of the extension")
+            .build();
+    /**
+     * The version of the extension to manage.
+     */
+    public static final Option EXTENSION_VERSION = Option
+            .builder("v")
+            .longOpt("version")
+            .hasArg()
+            .required()
+            .desc("Version of the extension")
+            .build();
+    /**
+     * The context for the extension
+     */
+    public static final Option EXTENSION_CONTEXT = Option
+            .builder("c")
+            .longOpt("context")
+            .hasArg()
+            .desc("Context")
+            .build();
+    /**
      * The roles granted to the application.
      */
     public static final Option APPLICATION_ROLES = Option
@@ -301,5 +330,25 @@ public class CommandOptions {
             .longOpt("file")
             .hasArg()
             .desc("license file to upload")
+            .build();
+
+    /**
+     * Extension file
+     */
+    public static final Option EXTENSION_FILE = Option
+            .builder("f")
+            .required()
+            .longOpt("file")
+            .hasArg()
+            .desc("Jar file containing the extension bundle")
+            .build();
+    /**
+     * YAML file containing properties
+     */
+    public static final Option PROPERTIES_FILE = Option
+            .builder("f")
+            .longOpt("file")
+            .hasArg()
+            .desc("YAML file with properties")
             .build();
 }

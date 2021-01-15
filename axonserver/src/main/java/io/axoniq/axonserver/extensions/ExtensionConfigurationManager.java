@@ -26,6 +26,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -72,7 +73,8 @@ public class ExtensionConfigurationManager {
 //        Bundle bundle = osgiController.getBundle(bundleInfo);
         Set<ConfigurationListener> configurationListeners = osgiController.getConfigurationListeners(bundleInfo);
 
-        configurationListeners.forEach(listener -> listener.updated(context, properties.get(listener.id())));
+        Map<String, Map<String, Object>> nonNullProperties = properties == null ? Collections.emptyMap() : properties;
+        configurationListeners.forEach(listener -> listener.updated(context, nonNullProperties.get(listener.id())));
 //        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
 //                                                              .orElseThrow(() -> new MessagingPlatformException(
 //                                                                      ErrorCode.OTHER,

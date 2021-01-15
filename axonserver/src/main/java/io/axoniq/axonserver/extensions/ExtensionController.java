@@ -44,8 +44,9 @@ public interface ExtensionController {
      *
      * @param fileName    the name of the extension file
      * @param inputStream input stream for the jar file for the extension
+     * @return
      */
-    void addExtension(String fileName, InputStream inputStream);
+    ExtensionKey addExtension(String fileName, InputStream inputStream);
 
     List<ExtensionPropertyGroup> listProperties(ExtensionKey extensionKey, String context);
 
