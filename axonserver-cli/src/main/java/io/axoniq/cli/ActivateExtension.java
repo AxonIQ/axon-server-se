@@ -32,7 +32,7 @@ public class ActivateExtension extends AxonIQCliCommand {
                                                                                                        CommandOptions.EXTENSION_VERSION));
 
         if (commandLine.hasOption(CommandOptions.EXTENSION_CONTEXT.getOpt())) {
-            queryString.append("&context=").append(option(commandLine, CommandOptions.EXTENSION_CONTEXT));
+            queryString.append("&targetContext=").append(option(commandLine, CommandOptions.EXTENSION_CONTEXT));
         }
         queryString.append("&active=").append(active);
         String url = createUrl(commandLine, "/v1/extensions/status" + queryString.toString());

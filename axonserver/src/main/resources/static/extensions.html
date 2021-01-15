@@ -39,7 +39,7 @@
                     },
                     selectExtension(ext, context) {
                         axios.get("v1/extensions/configuration?extension=" + ext.name + "&version=" + ext.version
-                                          + "&context=" + context).then(
+                                          + "&targetContext=" + context).then(
                                 response => {
                                     this.currentExtension = {
                                         name: ext.name,
@@ -68,7 +68,7 @@
                     unregisterExtensionForContext(ext, context) {
                         let me = this;
                         axios.delete("v1/extensions/context?extension=" + ext.name + "&version=" + ext.version
-                                             + "&context=" + context)
+                                             + "&targetContext=" + context)
                                 .then(response => {
                                           this.currentExtension = null;
                                           this.newExtension = null;
@@ -119,7 +119,7 @@
                     start(ext, context) {
                         let me = this;
                         axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
-                                           + "&context=" + context
+                                           + "&targetContext=" + context
                                            + "&active=true")
                                 .then(response => {
                                           this.currentExtension = null;
@@ -131,7 +131,7 @@
                     registerExtensionForContext(ext) {
                         let me = this;
                         axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
-                                           + "&context=" + ext.newContext
+                                           + "&targetContext=" + ext.newContext
                                            + "&active=false")
                                 .then(response => {
                                           this.currentExtension = null;
@@ -143,7 +143,7 @@
                     stop(ext, context) {
                         let me = this;
                         axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
-                                           + "&context=" + context
+                                           + "&targetContext=" + context
                                            + "&active=false")
                                 .then(response => {
                                           this.currentExtension = null;

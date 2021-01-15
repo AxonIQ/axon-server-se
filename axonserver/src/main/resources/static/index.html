@@ -159,7 +159,7 @@
                                     } else {
                                         this.admin = response.data.adminNode;
                                         globals.admin = response.data.adminNode;
-                                        setHeight();
+                                        this.setHeight();
                                         loadFragment();
                                     }
                                 });
@@ -171,8 +171,8 @@
                                 $("nav").css("min-height", "847px");
                                 $("article").css("min-height", "847px");
                             } else {
-                                $("nav").css("min-height", "634px");
-                                $("article").css("min-height", "634px");
+                                $("nav").css("min-height", "580px");
+                                $("article").css("min-height", "580px");
                             }
                         } else {
                             $("nav").css("min-height", "414px");

@@ -64,7 +64,7 @@ public class ExtensionsRestController {
     @PostMapping("status")
     public void updateStatus(@RequestParam String extension,
                              @RequestParam String version,
-                             @RequestParam(required = false) String context,
+                             @RequestParam(required = false, name = "targetContext") String context,
                              @RequestParam boolean active,
                              @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to {} extension {}/{}. ",
@@ -78,7 +78,7 @@ public class ExtensionsRestController {
     @DeleteMapping("context")
     public void unregisterExtensionForContext(@RequestParam String extension,
                                               @RequestParam String version,
-                                              @RequestParam(required = false) String context,
+                                              @RequestParam(required = false, name = "targetContext") String context,
                                               @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to unregister extension {}/{} for context {}.",
                       AuditLog.username(principal),
@@ -92,7 +92,7 @@ public class ExtensionsRestController {
     @GetMapping("configuration")
     public Iterable<ExtensionPropertyGroup> configuration(@RequestParam String extension,
                                                           @RequestParam String version,
-                                                          @RequestParam(required = false) String context,
+                                                          @RequestParam(required = false, name = "targetContext") String context,
                                                           @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal), extension, version);
         return extensionController.listProperties(new ExtensionKey(extension, version), context);
