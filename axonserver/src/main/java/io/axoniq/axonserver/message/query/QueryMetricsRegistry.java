@@ -17,6 +17,7 @@ import io.axoniq.axonserver.metric.Metrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -56,11 +57,11 @@ public class QueryMetricsRegistry {
      * @param context        the principal context application handling the query
      * @param duration       the duration
      */
-    public void add(QueryDefinition query,
-                    String sourceClientId,
-                    String targetClientId,
-                    String context,
-                    long duration) {
+    public void addHandlerResponseTime(QueryDefinition query,
+                                       String sourceClientId,
+                                       String targetClientId,
+                                       String context,
+                                       long duration) {
         try {
             timer(query, sourceClientId, targetClientId, context).record(duration, TimeUnit.MILLISECONDS);
         } catch (Exception ex) {
@@ -142,8 +143,39 @@ public class QueryMetricsRegistry {
         return meterFactory.rateMeter(meterName, Tags.of(MeterFactory.CONTEXT, context));
     }
 
+    /**
+     * Records the duration of the execution of a query on a specific handler.
+     *
+     * @param query            the identification of the query
+     * @param clientId         the id of the client handling the query
+     * @param context          the context of the query
+     * @param durationInMillis duration of the query in milliseconds
+     */
+    public void addEndToEndResponseTime(QueryDefinition query, String clientId, String context, long durationInMillis) {
+        meterFactory.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
+                MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                MeterFactory.CONTEXT, context,
+                MeterFactory.TARGET, clientId)).record(durationInMillis, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Retrieves a snapshot of the response time metric, including percentile values over the last time window
+     *
+     * @param query    the identification of the query
+     * @param clientId the id of the client handling the query
+     * @param context  the context of the query
+     * @return a snapshot for the response time metric
+     */
+    public HistogramSnapshot endToEndResponseTime(QueryDefinition query, String clientId, String context) {
+        return meterFactory.timer(BaseMetricName.LOCAL_QUERY_RESPONSE_TIME, Tags.of(
+                MeterFactory.REQUEST, query.getQueryName().replaceAll("\\.", "/"),
+                MeterFactory.CONTEXT, context,
+                MeterFactory.TARGET, clientId)).takeSnapshot();
+    }
+
 
     public static class QueryMetric {
+
         private final QueryDefinition queryDefinition;
         private final String clientId;
         private final String componentName;
