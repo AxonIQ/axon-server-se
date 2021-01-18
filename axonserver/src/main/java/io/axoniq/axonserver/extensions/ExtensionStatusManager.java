@@ -53,6 +53,14 @@ public class ExtensionStatusManager implements SmartLifecycle {
                                                                    .orElse(new ExtensionStatus(context,
                                                                                                extension,
                                                                                                version));
+        if (active && !extensionStatus.isActive()) {
+            extensionStatusRepository.findByContextAndExtensionAndActive(context, extension, true)
+                                     .ifPresent(currentActive -> {
+                                         currentActive.setActive(false);
+                                         extensionStatusRepository.save(currentActive);
+                                     });
+        }
+
         extensionStatus.setActive(active);
         extensionStatus.setFilename(filename);
         extensionStatusRepository.save(extensionStatus);
@@ -220,7 +228,7 @@ public class ExtensionStatusManager implements SmartLifecycle {
         extensionStatusRepository.findAll().forEach(extension -> {
             extensions.computeIfAbsent(new ExtensionKey(extension.getExtension(), extension.getVersion()), k ->
                     new ExtensionInfo(extension.getExtension(), extension.getVersion())
-            ).addContextInfo(extension.getContext(), extension.getConfiguration(), extension.isActive());
+            ).addContextInfo(extension.getContext(), extension.isActive());
         });
         return extensions.values();
     }

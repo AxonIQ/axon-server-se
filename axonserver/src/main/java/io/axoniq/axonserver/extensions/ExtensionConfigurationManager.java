@@ -15,10 +15,6 @@ import io.axoniq.axonserver.interceptor.ExtensionEnabledEvent;
 import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
 import org.osgi.framework.Bundle;
 import org.osgi.service.cm.Configuration;
-import org.osgi.service.metatype.AttributeDefinition;
-import org.osgi.service.metatype.MetaTypeInformation;
-import org.osgi.service.metatype.MetaTypeService;
-import org.osgi.service.metatype.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -30,10 +26,10 @@ import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.Hashtable;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Manages the configuration of extensions.
@@ -147,37 +143,48 @@ public class ExtensionConfigurationManager {
             throw new MessagingPlatformException(ErrorCode.OTHER, "Bundle not found");
         }
 
-
-        MetaTypeService metaTypeService = osgiController.get(MetaTypeService.class)
-                                                        .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
-                                                                                                          "MetaTypeService not found"));
-
-//        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
-//                                                              .orElseThrow(() -> new MessagingPlatformException(
-//                                                                      ErrorCode.OTHER,
-//                                                                      "ConfigurationAdmin not found"));
-
-        MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
         List<ExtensionPropertyGroup> extensionProperties = new ArrayList<>();
-        for (String pid : info.getPids()) {
-            try {
-//                Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
-                ObjectClassDefinition objectClassDefinition = info
-                        .getObjectClassDefinition(pid, null);
-                List<ExtensionProperty> properties = new LinkedList<>();
-                for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(
-                        ObjectClassDefinition.ALL)) {
-//                    Object value = configuration.getProperties() != null ? configuration.getProperties().get(
-//                            keyForContext(context,attributeDefinition.getID())) : null;
-                    properties.add(new ExtensionProperty(attributeDefinition, null));
-                }
-                extensionProperties.add(new ExtensionPropertyGroup(objectClassDefinition.getID(),
-                                                                   objectClassDefinition.getName(),
-                                                                   properties));
-            } catch (Exception ioException) {
-                logger.warn("Failed to read configuration for {}", pid, ioException);
-            }
-        }
+        osgiController.getConfigurationListeners(bundleInfo)
+                      .forEach(configurationListener ->
+                                       extensionProperties.add(new ExtensionPropertyGroup(configurationListener.id(),
+                                                                                          configurationListener.id(),
+                                                                                          configurationListener
+                                                                                                  .attributes()
+                                                                                                  .stream()
+                                                                                                  .map(ExtensionProperty::new)
+                                                                                                  .collect(Collectors
+                                                                                                                   .toList()))));
+
         return extensionProperties;
+//        MetaTypeService metaTypeService = osgiController.get(MetaTypeService.class)
+//                                                        .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
+//                                                                                                          "MetaTypeService not found"));
+//
+////        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
+////                                                              .orElseThrow(() -> new MessagingPlatformException(
+////                                                                      ErrorCode.OTHER,
+////                                                                      "ConfigurationAdmin not found"));
+//
+//        MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
+//        for (String pid : info.getPids()) {
+//            try {
+////                Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
+//                ObjectClassDefinition objectClassDefinition = info
+//                        .getObjectClassDefinition(pid, null);
+//                List<ExtensionProperty> properties = new LinkedList<>();
+//                for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(
+//                        ObjectClassDefinition.ALL)) {
+////                    Object value = configuration.getProperties() != null ? configuration.getProperties().get(
+////                            keyForContext(context,attributeDefinition.getID())) : null;
+//                    properties.add(new ExtensionProperty(attributeDefinition, null));
+//                }
+//                extensionProperties.add(new ExtensionPropertyGroup(objectClassDefinition.getID(),
+//                                                                   objectClassDefinition.getName(),
+//                                                                   properties));
+//            } catch (Exception ioException) {
+//                logger.warn("Failed to read configuration for {}", pid, ioException);
+//            }
+//        }
+//        return extensionProperties;
     }
 }

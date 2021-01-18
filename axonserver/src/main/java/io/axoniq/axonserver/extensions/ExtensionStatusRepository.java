@@ -21,6 +21,8 @@ public interface ExtensionStatusRepository extends JpaRepository<ExtensionStatus
 
     Optional<ExtensionStatus> findByContextAndExtensionAndVersion(String context, String extension, String version);
 
+    Optional<ExtensionStatus> findByContextAndExtensionAndActive(String context, String extension, boolean active);
+
     List<ExtensionStatus> findAllByContextIn(List<String> context);
 
     List<ExtensionStatus> findAllByExtensionAndVersion(String extension, String version);

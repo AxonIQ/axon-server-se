@@ -46,7 +46,8 @@ public class OsgiControllerTest {
                 "/sample-bundles")
                                                                                                     .getFile()),
                                                            "cache",
-                                                           "onFirstInit");
+                                                           "onFirstInit", event -> {
+        });
         osgiController.start();
 
         Command command = Command.newBuilder().setClientId("sample").build();

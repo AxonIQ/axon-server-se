@@ -41,7 +41,7 @@ public class ExtensionInfo {
         return contextInfoList;
     }
 
-    public void addContextInfo(String context, String configuration, boolean active) {
-        contextInfoList.add(new ExtensionContextInfo(context, configuration, active));
+    public void addContextInfo(String context, boolean active) {
+        contextInfoList.add(new ExtensionContextInfo(context, active));
     }
 }

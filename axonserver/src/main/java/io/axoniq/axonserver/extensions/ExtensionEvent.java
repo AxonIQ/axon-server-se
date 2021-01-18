@@ -12,21 +12,15 @@ package io.axoniq.axonserver.extensions;
 /**
  * @author Marc Gathier
  */
-public class ExtensionContextInfo {
+public class ExtensionEvent {
 
-    private final String context;
-    private final boolean active;
+    private final ExtensionKey bundleInfo;
 
-    public ExtensionContextInfo(String context, boolean active) {
-        this.context = context;
-        this.active = active;
+    public ExtensionEvent(ExtensionKey bundleInfo) {
+        this.bundleInfo = bundleInfo;
     }
 
-    public String getContext() {
-        return context;
-    }
-
-    public boolean isActive() {
-        return active;
+    public ExtensionKey getBundleInfo() {
+        return bundleInfo;
     }
 }

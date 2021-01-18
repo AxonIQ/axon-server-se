@@ -17,10 +17,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 
 /**
@@ -30,20 +28,26 @@ import java.util.function.BiPredicate;
 public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey> {
 
     private final Logger logger = LoggerFactory.getLogger(ExtensionContextFilter.class);
-    private final Map<String, Set<ExtensionKey>> enabledExtensionsPerContext = new HashMap<>();
+    private final Map<String, Map<String, String>> enabledExtensionsPerContext = new ConcurrentHashMap<>();
 
     @EventListener
     @Order(100)
     public void on(ExtensionEnabledEvent extensionEnabled) {
         if (extensionEnabled.enabled()) {
-            if (enabledExtensionsPerContext.computeIfAbsent(extensionEnabled.context(),
-                                                            c -> new CopyOnWriteArraySet<>())
-                                           .add(extensionEnabled.extension())) {
+            String oldVersion = enabledExtensionsPerContext.computeIfAbsent(extensionEnabled.context(),
+                                                                            c -> new ConcurrentHashMap<>())
+                                                           .put(extensionEnabled.extension().getSymbolicName(),
+                                                                extensionEnabled.extension().getVersion());
+            if (oldVersion == null || !extensionEnabled.extension().getVersion().equals(oldVersion)) {
                 logger.warn("{}: Extension {} activated", extensionEnabled.context(), extensionEnabled.extension());
             }
         } else {
-            if (enabledExtensionsPerContext.getOrDefault(extensionEnabled.context(), Collections.emptySet()).remove(
-                    extensionEnabled.extension())) {
+            String oldVersion = enabledExtensionsPerContext.getOrDefault(extensionEnabled.context(),
+                                                                         Collections.emptyMap())
+                                                           .get(extensionEnabled.extension().getSymbolicName());
+            if (oldVersion != null && extensionEnabled.extension().getVersion().equals(oldVersion)) {
+                enabledExtensionsPerContext.get(extensionEnabled.context())
+                                           .remove(extensionEnabled.extension().getSymbolicName());
                 logger.warn("{}: Extension {} deactivated", extensionEnabled.context(), extensionEnabled.extension());
             }
         }
@@ -51,7 +55,8 @@ public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey>
 
     @Override
     public boolean test(String context, ExtensionKey extensionKey) {
-        return enabledExtensionsPerContext.getOrDefault(context, Collections.emptySet())
-                                          .contains(extensionKey);
+        return extensionKey.getVersion().equals(
+                enabledExtensionsPerContext.getOrDefault(context, Collections.emptyMap())
+                                           .get(extensionKey.getSymbolicName()));
     }
 }

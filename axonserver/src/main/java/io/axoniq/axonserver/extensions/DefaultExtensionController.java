@@ -85,7 +85,7 @@ public class DefaultExtensionController implements ExtensionController {
             definedProperties.forEach(propertyGroup -> {
                 Map<String, Object> configurationForGroup = configuration.get(propertyGroup.getId());
                 propertyGroup.getProperties().forEach(prop -> prop
-                        .setValue(configurationForGroup.getOrDefault(prop.getId(), prop.defaultValue())));
+                        .setValue(configurationForGroup.getOrDefault(prop.getId(), prop.getDefaultValue())));
             });
         }
     }

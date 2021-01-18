@@ -20,8 +20,8 @@
                     roles: [],
                     newExtension: null,
                     componentKey: 0,
+                    webSocketInfo: globals.webSocketInfo,
                     contexts: ["default"]
-
                 }, mounted() {
                     this.loadExtensions();
                     if (this.isEnterprise()) {
@@ -29,7 +29,11 @@
                             this.contexts = response.data;
                         });
                     }
+                    this.connect();
                 }, beforeDestroy() {
+                    if (this.subscription) {
+                        this.subscription.unsubscribe();
+                    }
                 }, methods: {
                     loadExtensions() {
                         axios.get("v1/extensions").then(response => {
@@ -97,25 +101,6 @@
                         this.currentExtension = null;
                         this.newExtension = {configuration: {}, start: true};
                     },
-                    // deleteConfigurationItem(key) {
-                    //     delete this.newExtension.configuration[key];
-                    //     this.$forceUpdate();
-                    // },
-                    // addConfigurationItem() {
-                    //     if (!this.newExtension.configurationValue || !this.newExtension.configurationField) {
-                    //         alert("Enter name and value");
-                    //         return;
-                    //     }
-                    //     this.newExtension.configuration[this.newExtension.configurationField] = this.newExtension.configurationValue;
-                    //     this.newExtension.configurationField = '';
-                    //     this.newExtension.configurationValue = '';
-                    // },
-                    // canStop(extension) {
-                    //     return extension.status === "Active";
-                    // },
-                    // canStart(extension) {
-                    //     return extension.status === "Installed" || extension.status === "Resolved";
-                    // },
                     start(ext, context) {
                         let me = this;
                         axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
@@ -174,6 +159,14 @@
                             setTimeout(me.loadExtensions, 1000);
                             me.newExtension = null;
                         });
+                    },
+                    connect() {
+                        let me = this;
+                        me.webSocketInfo.subscribe('/topic/extensions', function () {
+                            me.loadExtensions();
+                        }, function (sub) {
+                            me.subscription = sub;
+                        });
                     }
                 }
             });
@@ -188,7 +181,7 @@
                         <th class="nodesColumn">Name</th>
                         <th class="contextColumn">Version</th>
                         <th class="nodesColumn" v-if="isEnterprise()">Context</th>
-                        <th class="nodesColumn" v-if="!isEnterprise()">SE column</th>
+                        <th class="nodesColumn" v-if="!isEnterprise()">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -242,7 +235,7 @@
                     </tr>
                 </tbody>
             </table>
-            <div class="buttons" v-if="admin">
+            <div class="buttons" style="padding-top: 10px" v-if="admin">
                 <button @click.prevent="install()" class="button">Add</button>
             </div>
         </div>
@@ -272,9 +265,9 @@
                                         <tr v-for="attr in group.properties">
                                             <td width="20%">{{ attr.id }}</td>
                                             <td>
-                                                <input v-if="!hasOptions(attr) && attr.type != 'password'" type="text"
+                                                <input v-if="!hasOptions(attr) && attr.type != 'PASSWORD'" type="text"
                                                        v-model="attr.value"/>
-                                                <input v-if="!hasOptions(attr) && attr.type == 'password'"
+                                                <input v-if="!hasOptions(attr) && attr.type == 'PASSWORD'"
                                                        type="password" v-model="attr.value"/>
                                                 <select v-if="hasOptions(attr)" v-model="attr.value">
                                                     <option v-for="(value,idx) in attr.optionValues"

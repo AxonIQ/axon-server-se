@@ -25,7 +25,9 @@ import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Controller;
 
@@ -64,6 +66,7 @@ public class OsgiController implements SmartLifecycle {
     private final Set<Consumer<Bundle>> extensionListeners = new CopyOnWriteArraySet<>();
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
+    private final ApplicationEventPublisher eventPublisher;
     private final SystemPackagesProvider systemPackagesProvider;
     private boolean running;
     private BundleContext bundleContext;
@@ -74,13 +77,16 @@ public class OsgiController implements SmartLifecycle {
      * @param bundleDirectory  directory where the installed bundles are stored
      * @param cacheDirectory   OSGi cache directory
      * @param cacheCleanPolicy clean policy of the OSGi cache (none or onFirstInit)
+     * @param eventPublisher
      */
     public OsgiController(@Value("${axoniq.axonserver.extension.bundle.path:bundles}") String bundleDirectory,
                           @Value("${axoniq.axonserver.extension.cache.path:cache}") String cacheDirectory,
-                          @Value("${axoniq.axonserver.extension.cache.clean:none}") String cacheCleanPolicy) {
+                          @Value("${axoniq.axonserver.extension.cache.clean:none}") String cacheCleanPolicy,
+                          @Qualifier("applicationEventPublisher") ApplicationEventPublisher eventPublisher) {
         this.bundleDir = new File(bundleDirectory);
         this.cacheDirectory = cacheDirectory;
         this.cacheCleanPolicy = cacheCleanPolicy;
+        this.eventPublisher = eventPublisher;
         this.systemPackagesProvider = new SystemPackagesProvider();
     }
 
@@ -283,6 +289,7 @@ public class OsgiController implements SmartLifecycle {
                     extensionListeners.forEach(s -> s.accept(current.get()));
                 }
             }
+            eventPublisher.publishEvent(new ExtensionEvent(bundleInfo));
             return bundleInfo;
         } catch (BundleException bundleException) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
@@ -348,6 +355,8 @@ public class OsgiController implements SmartLifecycle {
                 bundle.uninstall();
                 FileUtils.delete(new File(bundle.getLocation()));
                 extensionListeners.forEach(s -> s.accept(bundle));
+                eventPublisher.publishEvent(new ExtensionEvent(new ExtensionKey(bundle.getSymbolicName(),
+                                                                                bundle.getVersion().toString())));
             } catch (BundleException bundleException) {
                 throw new MessagingPlatformException(ErrorCode.OTHER,
                                                      "Could not uninstall extension " + bundle.getLocation(),

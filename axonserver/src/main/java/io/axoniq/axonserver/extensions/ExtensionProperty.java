@@ -19,9 +19,9 @@ public class ExtensionProperty {
     private final String id;
     private final String name;
     private final int cardinality;
-    private final String[] defaultValue;
+    private final String defaultValue;
     private Object value;
-    private final String type;
+    private final AttributeType type;
     private final String[] optionLabels;
     private final String[] optionValues;
     private final String description;
@@ -30,12 +30,30 @@ public class ExtensionProperty {
         this.id = attributeDefinition.getID();
         this.name = attributeDefinition.getName();
         this.cardinality = attributeDefinition.getCardinality();
-        this.defaultValue = attributeDefinition.getDefaultValue();
+        this.defaultValue =
+                attributeDefinition.getDefaultValue() != null && attributeDefinition.getDefaultValue().length > 0 ?
+                        attributeDefinition.getDefaultValue()[0] : null;
         this.value = value;
         this.type = AttibuteTypeConverter.convert(attributeDefinition.getType());
         this.optionLabels = attributeDefinition.getOptionLabels();
         this.optionValues = attributeDefinition.getOptionValues();
         this.description = attributeDefinition.getDescription();
+    }
+
+    public ExtensionProperty(ExtensionPropertyDefinition extensionPropertyDefinition) {
+        this.id = extensionPropertyDefinition.id();
+        this.name = extensionPropertyDefinition.name();
+        this.cardinality = extensionPropertyDefinition.cardinality();
+        this.defaultValue = extensionPropertyDefinition.defaultValue();
+        this.value = extensionPropertyDefinition.defaultValue();
+        this.type = extensionPropertyDefinition.type();
+        this.optionLabels = extensionPropertyDefinition.optionLabels() == null ?
+                new String[0] :
+                extensionPropertyDefinition.optionLabels().toArray(new String[0]);
+        this.optionValues = extensionPropertyDefinition.optionValues() == null ?
+                new String[0] :
+                extensionPropertyDefinition.optionValues().toArray(new String[0]);
+        this.description = extensionPropertyDefinition.description();
     }
 
     public String getId() {
@@ -50,15 +68,18 @@ public class ExtensionProperty {
         return cardinality;
     }
 
-    public String[] getDefaultValue() {
+    public String getDefaultValue() {
         return defaultValue;
     }
 
     public Object getValue() {
+        if (AttributeType.PASSWORD.equals(type)) {
+            return value == null ? null : "********";
+        }
         return value;
     }
 
-    public String getType() {
+    public AttributeType getType() {
         return type;
     }
 
@@ -76,12 +97,5 @@ public class ExtensionProperty {
 
     public void setValue(Object value) {
         this.value = value;
-    }
-
-    public Object defaultValue() {
-        if (defaultValue == null || defaultValue.length == 0) {
-            return null;
-        }
-        return defaultValue[0];
     }
 }

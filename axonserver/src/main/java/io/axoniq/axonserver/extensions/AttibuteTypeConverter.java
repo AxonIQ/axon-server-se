@@ -16,33 +16,33 @@ import org.osgi.service.metatype.AttributeDefinition;
  */
 public class AttibuteTypeConverter {
 
-    public static String convert(int type) {
+    public static AttributeType convert(int type) {
         switch (type) {
             case AttributeDefinition
                     .BOOLEAN:
-                return "boolean";
+                return AttributeType.BOOLEAN;
             case AttributeDefinition.STRING:
-                return "string";
+                return AttributeType.STRING;
 
             case AttributeDefinition.BIGINTEGER:
             case AttributeDefinition.LONG:
-                return "long";
+                return AttributeType.LONG;
             case AttributeDefinition.INTEGER:
-                return "integer";
+                return AttributeType.INTEGER;
             case AttributeDefinition.SHORT:
-                return "short";
+                return AttributeType.INTEGER;
             case AttributeDefinition.CHARACTER:
-                return "character";
+                return AttributeType.STRING;
             case AttributeDefinition.BYTE:
-                return "byte";
+                return AttributeType.INTEGER;
             case AttributeDefinition.BIGDECIMAL:
             case AttributeDefinition.DOUBLE:
-                return "double";
+                return AttributeType.DOUBLE;
             case AttributeDefinition.FLOAT:
-                return "float";
+                return AttributeType.FLOAT;
             case AttributeDefinition.PASSWORD:
-                return "password";
+                return AttributeType.PASSWORD;
         }
-        return "unknown";
+        return null;
     }
 }
