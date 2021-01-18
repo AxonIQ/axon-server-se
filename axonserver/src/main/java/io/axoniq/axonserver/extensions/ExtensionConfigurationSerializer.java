@@ -27,14 +27,14 @@ public class ExtensionConfigurationSerializer {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public Map<String, Map<String, Object>> deserialize(String configuration) {
-        if (configuration == null) {
+        if (configuration == null || configuration.isEmpty()) {
             return null;
         }
         try {
             return objectMapper.readValue(configuration, Map.class);
         } catch (IOException ioException) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                 "Parsing serialized configuration failed",
+                                                 "Deserializing configuration failed: " + configuration,
                                                  ioException);
         }
     }
