@@ -73,9 +73,9 @@ public class StandardIndexEntries implements IndexEntries {
             return this;
         }
         List<Integer> reducedEntries = new ArrayList<>();
-        int i = 0;
+        long i = firstSequenceNumber;
         for (Integer entry : entries) {
-            if (firstSequenceNumber + i >= minSequenceNumber && firstSequenceNumber + i < maxSequenceNumber) {
+            if (i >= minSequenceNumber && i < maxSequenceNumber) {
                 reducedEntries.add(entry);
             }
             i++;
@@ -120,7 +120,11 @@ public class StandardIndexEntries implements IndexEntries {
      */
     @Override
     public void add(IndexEntry indexEntry) {
-        entries.add(indexEntry.getPosition());
+        add(indexEntry.getPosition());
+    }
+
+    public void add(Integer position) {
+        entries.add(position);
     }
 
     @Override
