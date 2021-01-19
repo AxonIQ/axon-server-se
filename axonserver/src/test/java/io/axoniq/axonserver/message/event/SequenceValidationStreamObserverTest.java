@@ -9,19 +9,19 @@ import org.junit.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for {@link AggregateEventsStreamObserver}.
+ * Tests for {@link SequenceValidationStreamObserver}.
  *
  * @author Milan Savic
  */
-public class AggregateEventsStreamObserverTest {
+public class SequenceValidationStreamObserverTest {
 
-    private AggregateEventsStreamObserver testSubject;
+    private SequenceValidationStreamObserver testSubject;
     private StreamObserver<SerializedEvent> delegateMock;
 
     @Before
     public void setup() {
         delegateMock = mock(StreamObserver.class);
-        testSubject = new AggregateEventsStreamObserver(delegateMock);
+        testSubject = new SequenceValidationStreamObserver(delegateMock);
     }
 
     @Test

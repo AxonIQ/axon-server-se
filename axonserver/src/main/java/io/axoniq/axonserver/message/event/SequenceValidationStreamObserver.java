@@ -13,13 +13,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Sara Pellegrini
  * @since 4.4.11
  */
-public class AggregateEventsStreamObserver implements StreamObserver<SerializedEvent> {
+public class SequenceValidationStreamObserver implements StreamObserver<SerializedEvent> {
 
     private final StreamObserver<SerializedEvent> delegate;
     private final AtomicReference<SerializedEvent> lastSentEvent = new AtomicReference<>();
-    private final Logger logger = LoggerFactory.getLogger(AggregateEventsStreamObserver.class);
+    private final Logger logger = LoggerFactory.getLogger(SequenceValidationStreamObserver.class);
 
-    public AggregateEventsStreamObserver(
+    public SequenceValidationStreamObserver(
             StreamObserver<SerializedEvent> delegate) {
         this.delegate = delegate;
     }

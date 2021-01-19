@@ -170,7 +170,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
-        StreamObserver<SerializedEvent> aggregateStreamObserver = new AggregateEventsStreamObserver(responseObserver);
+        StreamObserver<SerializedEvent> aggregateStreamObserver = new SequenceValidationStreamObserver(responseObserver);
         listAggregateEvents(contextProvider.getContext(),
                             request,
                             new ForwardingStreamObserver<>(logger, "listAggregateEvents", aggregateStreamObserver));
