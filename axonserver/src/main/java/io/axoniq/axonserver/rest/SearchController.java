@@ -46,9 +46,10 @@ public class SearchController {
                             @RequestParam(value = "timewindow", required = false, defaultValue = TIME_WINDOW_CUSTOM) String timewindow,
                             @RequestParam(value = "liveupdates", required = false, defaultValue = "false") Boolean liveupdates,
                             @RequestParam(value = "forceleader", required = false, defaultValue = "false") Boolean forceReadFromLeader,
+                            @RequestParam(value = "querySnapshots", required = false, defaultValue = "false") Boolean querySnapshots,
                             @RequestParam("clientToken") String clientToken) {
         SseEmitter sseEmitter = new SseEmitter(timeout);
-        httpStreamingQuery.query(context, query, timewindow, liveupdates, forceReadFromLeader, clientToken, sseEmitter);
+        httpStreamingQuery.query(context, query, timewindow, liveupdates, forceReadFromLeader, clientToken, sseEmitter, querySnapshots);
         return sseEmitter;
     }
 

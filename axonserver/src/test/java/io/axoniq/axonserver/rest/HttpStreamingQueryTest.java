@@ -176,7 +176,7 @@ public class HttpStreamingQueryTest {
         emitter.onTimeout(latch::countDown);
         testSubject.query(Topology.DEFAULT_CONTEXT, "aggregateIdentifier contains \"demo\" | limit( 10)",
                           QueryEventsRequestStreamObserver.TIME_WINDOW_CUSTOM, true, false,
-                          "token", emitter);
+                          "token", emitter, false);
 
         latch.await(1, TimeUnit.SECONDS);
         assertEquals(13, messages.size());

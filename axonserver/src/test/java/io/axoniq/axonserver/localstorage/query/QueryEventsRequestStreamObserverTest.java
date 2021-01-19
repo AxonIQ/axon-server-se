@@ -15,12 +15,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.localstorage.AggregateReader;
-import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
-import io.axoniq.axonserver.localstorage.EventStreamReader;
-import io.axoniq.axonserver.localstorage.EventWriteStorage;
-import io.axoniq.axonserver.localstorage.QueryOptions;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.*;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 
@@ -43,12 +38,15 @@ public class QueryEventsRequestStreamObserverTest {
 
     private QueryEventsRequestStreamObserver testSubject;
     private final EventStreamReader eventStreamReader = mock(EventStreamReader.class);
+    private final EventStreamReader snapshotStreamReader = mock(EventStreamReader.class);
     private final AggregateReader aggregateReader = mock(AggregateReader.class);
     private final CompletableFuture<List<QueryEventsResponse>> completableResult = new CompletableFuture<>();
 
     @Before
     public void setUp() throws Exception {
         EventWriteStorage eventWriteStorage = mock(EventWriteStorage.class);
+        SnapshotWriteStorage snapshotWriteStorage = mock(SnapshotWriteStorage.class);
+
         StreamObserver<QueryEventsResponse> responseObserver = new StreamObserver<QueryEventsResponse>() {
             private List<QueryEventsResponse> responses = new LinkedList<>();
 
@@ -74,11 +72,11 @@ public class QueryEventsRequestStreamObserverTest {
                                                            100,
                                                            1000,
                                                            new DefaultEventDecorator(),
-                                                           responseObserver);
+                                                           responseObserver,snapshotWriteStorage,snapshotStreamReader);
     }
 
     @Test
-    public void onNext() throws InterruptedException, ExecutionException, TimeoutException {
+    public void onNextEvent() throws InterruptedException, ExecutionException, TimeoutException {
         doAnswer(invocation -> {
             String aggregateId = invocation.getArgument(0);
             Consumer<SerializedEvent> consumer = invocation.getArgument(3);
@@ -96,6 +94,28 @@ public class QueryEventsRequestStreamObserverTest {
 
         List<QueryEventsResponse> responses = completableResult.get(2, TimeUnit.SECONDS);
         assertEquals(12, responses.size());
+    }
+
+    @Test
+    public void onNextSnapshot() throws InterruptedException, ExecutionException, TimeoutException {
+        doAnswer(invocation -> {
+            String aggregateId = invocation.getArgument(0);
+            Consumer<Event> consumer = invocation.getArgument(3);
+
+                Event event = Event.newBuilder().setAggregateSequenceNumber(0).setAggregateIdentifier(aggregateId)
+                        .build();
+                consumer.accept(event);
+
+            return null;
+        }).when(aggregateReader).readSnapshots(anyString(), anyInt(), anyLong(), anyInt(), any(Consumer.class));
+        testSubject.onNext(QueryEventsRequest.newBuilder()
+                .setQuery("aggregateIdentifier = \"12345\"")
+                .setNumberOfPermits(1000)
+                .setQuerySnapshots(true)
+                .build());
+
+        List<QueryEventsResponse> responses = completableResult.get(2, TimeUnit.SECONDS);
+        assertEquals(2, responses.size());
     }
 
     @Test
