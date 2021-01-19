@@ -29,7 +29,7 @@ public class StandardIndexEntries implements IndexEntries {
      * @param firstSequenceNumber first sequence number
      */
     public StandardIndexEntries(long firstSequenceNumber) {
-        this(firstSequenceNumber, new ArrayList<>());
+        this(firstSequenceNumber, new CopyOnWriteArrayList<>());
     }
 
     /**
