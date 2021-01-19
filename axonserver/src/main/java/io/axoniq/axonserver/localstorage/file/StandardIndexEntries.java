@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Implementation of the {@link IndexEntries} used by the {@link StandardIndexManager}.
@@ -37,8 +38,7 @@ public class StandardIndexEntries implements IndexEntries {
      * @param entries the positions of the aggregate
      */
     public StandardIndexEntries(long firstSequenceNumber, List<Integer> entries) {
-
-        this.entries = entries;
+        this.entries = new CopyOnWriteArrayList<>(entries);
         this.firstSequenceNumber = firstSequenceNumber;
     }
 
