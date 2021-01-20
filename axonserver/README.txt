@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.9
+-------------------------------
+* Fix for concurrency issue in listing aggregates events during appending events for the same aggregate
+
 Release Notes for version 4.4.8
 -------------------------------
 * New metric to monitor query response times per query handler
