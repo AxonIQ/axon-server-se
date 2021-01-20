@@ -10,12 +10,9 @@
 package io.axoniq.axonserver.extensions;
 
 import java.io.File;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Lists all system bundles and the extension bundles that are available in a given directory.
@@ -25,21 +22,10 @@ import java.util.stream.Collectors;
  */
 public class ExtensionDirectoryProcessor {
 
-    private static final String[] SYSTEM_BUNDLES = {"org.apache.felix.metatype.jar"};
-
     private final File bundleDir;
 
     public ExtensionDirectoryProcessor(File bundleDir) {
         this.bundleDir = bundleDir;
-    }
-
-    /**
-     * @return a collection of URLs for the bundles always installed in Axon Server.
-     */
-    public Collection<URL> getSystemBundles() {
-        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-        return Arrays.stream(SYSTEM_BUNDLES).map(name -> classloader.getResource("bundles/" + name)).collect(Collectors
-                                                                                                                     .toList());
     }
 
     /**

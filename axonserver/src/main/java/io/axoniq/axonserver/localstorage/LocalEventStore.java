@@ -12,9 +12,11 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.exception.ConcurrencyExceptions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
@@ -50,6 +52,7 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -294,6 +297,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     workers(context)
                             .eventWriteStorage
                             .store(eventList)
+                            .thenAccept(r -> eventInterceptors.eventsPostCommit(eventList, interceptorContext))
                             .thenRun(this::confirm)
                             .exceptionally(this::error);
                 }, this::error);
@@ -318,17 +322,20 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void listAggregateEvents(String context, GetAggregateEventsRequest request,
+    public void listAggregateEvents(String context, Authentication authentication, GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             AtomicInteger counter = new AtomicInteger();
+            EventDecorator activeEventDecorator = eventInterceptors.noReadInterceptors(context) ?
+                    eventDecorator :
+                    new InterceptorAwareEventDecorator(context, authentication);
             workers(context).aggregateReader.readEvents(request.getAggregateId(),
                                                         request.getAllowSnapshots(),
                                                         request.getInitialSequence(),
                                                         getMaxSequence(request),
                                                         request.getMinToken(),
                                                         event -> {
-                                                            responseStreamObserver.onNext(eventDecorator
+                                                            responseStreamObserver.onNext(activeEventDecorator
                                                                                                   .decorateEvent(event));
                                                             counter.incrementAndGet();
                                                         });
@@ -376,23 +383,30 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
 
     @Override
-    public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
+    public void listAggregateSnapshots(String context,
+                                       Authentication authentication,
+                                       GetAggregateSnapshotsRequest request,
                                        StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             if (request.getMaxSequence() >= 0) {
+                EventDecorator activeEventDecorator = eventInterceptors.noSnapshotReadInterceptors(context) ?
+                        eventDecorator :
+                        new InterceptorAwareEventDecorator(context, authentication);
+
                 workers(context).aggregateReader.readSnapshots(request.getAggregateId(),
                                                                request.getInitialSequence(),
                                                                request.getMaxSequence(),
                                                                request.getMaxResults(),
                                                                snapshot -> responseStreamObserver
-                                                                       .onNext(eventDecorator.decorateEvent(snapshot)));
+                                                                       .onNext(activeEventDecorator
+                                                                                       .decorateEvent(snapshot)));
             }
             responseStreamObserver.onCompleted();
         }, responseStreamObserver::onError);
     }
 
     @Override
-    public StreamObserver<GetEventsRequest> listEvents(String context,
+    public StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
             private final AtomicReference<TrackingEventProcessorManager.EventTracker> controllerRef = new AtomicReference<>();
@@ -401,15 +415,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             public void onNext(GetEventsRequest getEventsRequest) {
                 TrackingEventProcessorManager.EventTracker controller = controllerRef.updateAndGet(c -> {
                     if (c == null) {
+                        EventDecorator activeEventDecorator = eventInterceptors.noEventReadInterceptors(context) ?
+                                eventDecorator :
+                                new InterceptorAwareEventDecorator(context, authentication);
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
                                                                    getEventsRequest.getForceReadFromLeader(),
                                                                    new StreamObserver<InputStream>() {
                                                                        @Override
                                                                        public void onNext(InputStream inputStream) {
-                                                                           responseStreamObserver.onNext(eventDecorator
-                                                                                                                 .decorateEventWithToken(
-                                                                                                                         inputStream));
+                                                                           responseStreamObserver.onNext(
+                                                                                   activeEventDecorator
+                                                                                           .decorateEventWithToken(
+                                                                                                   inputStream));
                                                                        }
 
                                                                        @Override
@@ -503,15 +521,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public StreamObserver<QueryEventsRequest> queryEvents(String context,
+    public StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
+        EventDecorator activeEventDecorator = eventInterceptors
+                .noEventReadInterceptors(context) ? eventDecorator : new InterceptorAwareEventDecorator(context,
+                                                                                                        authentication);
+
         return new QueryEventsRequestStreamObserver(workers.eventWriteStorage,
                                                     workers.eventStreamReader,
                                                     workers.aggregateReader,
                                                     defaultLimit,
                                                     timeout,
-                                                    eventDecorator,
+                                                    activeEventDecorator,
                                                     responseObserver);
     }
 
@@ -683,11 +705,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final String context;
         private final SyncStorage eventSyncStorage;
         private final SyncStorage snapshotSyncStorage;
-        private volatile boolean initialized;
         private final TrackingEventProcessorManager trackingEventManager;
         private final Gauge gauge;
         private final Gauge snapshotGauge;
         private final Object initLock = new Object();
+        private volatile boolean initialized;
 
 
         public Workers(String context) {
@@ -783,6 +805,46 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void deleteAllEventData() {
             eventWriteStorage.deleteAllEventData();
             snapshotWriteStorage.deleteAllEventData();
+        }
+    }
+
+    private class InterceptorAwareEventDecorator implements EventDecorator {
+
+        final ExtensionUnitOfWork extensionUnitOfWork;
+
+        public InterceptorAwareEventDecorator(String context, Authentication authentication) {
+            extensionUnitOfWork = new DefaultInterceptorContext(context, authentication);
+        }
+
+        @Override
+        public SerializedEvent decorateEvent(SerializedEvent serializedEvent) {
+            Event event = serializedEvent.isSnapshot() ?
+                    eventInterceptors.readSnapshot(serializedEvent.asEvent(), extensionUnitOfWork) :
+                    eventInterceptors.readEvent(serializedEvent.asEvent(), extensionUnitOfWork);
+            return eventDecorator.decorateEvent(new SerializedEvent(event));
+        }
+
+        @Override
+        public InputStream decorateEventWithToken(InputStream inputStream) {
+
+            try {
+                EventWithToken eventWithToken = EventWithToken.parseFrom(inputStream);
+                Event event = eventInterceptors.readEvent(eventWithToken.getEvent(), extensionUnitOfWork);
+                return eventDecorator.decorateEventWithToken(new SerializedEventWithToken(eventWithToken.getToken(),
+                                                                                          event)
+                                                                     .asInputStream());
+            } catch (IOException ioException) {
+                throw new RuntimeException(ioException);
+            }
+        }
+
+        @Override
+        public EventWithToken decorateEventWithToken(EventWithToken event) {
+            EventWithToken intercepted = EventWithToken.newBuilder(event)
+                                                       .setEvent(eventInterceptors.readEvent(event.getEvent(),
+                                                                                             extensionUnitOfWork))
+                                                       .build();
+            return eventDecorator.decorateEventWithToken(intercepted);
         }
     }
 }

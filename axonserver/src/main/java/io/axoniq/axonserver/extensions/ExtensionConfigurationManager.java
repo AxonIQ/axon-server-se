@@ -14,7 +14,6 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.interceptor.ExtensionEnabledEvent;
 import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
 import org.osgi.framework.Bundle;
-import org.osgi.service.cm.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -23,9 +22,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,72 +62,12 @@ public class ExtensionConfigurationManager {
      */
     public void updateConfiguration(ExtensionKey bundleInfo, String context,
                                     Map<String, Map<String, Object>> properties) {
-//        Bundle bundle = osgiController.getBundle(bundleInfo);
         Set<ConfigurationListener> configurationListeners = osgiController.getConfigurationListeners(bundleInfo);
 
         Map<String, Map<String, Object>> nonNullProperties = properties == null ? Collections.emptyMap() : properties;
         configurationListeners.forEach(listener -> listener.updated(context, nonNullProperties.get(listener.id())));
-//        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
-//                                                              .orElseThrow(() -> new MessagingPlatformException(
-//                                                                      ErrorCode.OTHER,
-//                                                                      "ConfigurationAdmin not found"));
-//
-//        MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
-//        if (info != null) {
-//            for (String pid : info.getPids()) {
-//                try {
-//                    Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
-//                    logger.debug("{}/{}}: {} old properties {}",
-//                                 bundle.getSymbolicName(),
-//                                 bundle.getVersion(),
-//                                 pid,
-//                                 configuration.getProperties());
-//
-//                    ObjectClassDefinition objectClassDefinition = info
-//                            .getObjectClassDefinition(pid, null);
-//
-//
-//                    Dictionary<String, Object> updatedConfiguration = currentConfiguration(configuration);
-//                    updateWithProvidedProperties(properties.getOrDefault(objectClassDefinition.getID(),
-//                                                                         properties.getOrDefault("*",
-//                                                                                                 Collections
-//                                                                                                         .emptyMap())),
-//                                                 updatedConfiguration,
-//                                                 context
-//                                                 );
-//                    configuration.update(updatedConfiguration);
-//
-//                    logger.info("{}/{}: new properties {}", bundle.getSymbolicName(), bundle.getVersion(),
-//                                configurationAdmin.getConfiguration(pid).getProperties());
-//                } catch (IOException ioException) {
-//                    logger.warn("Configuration update failed", ioException);
-//                }
-//            }
-//        }
     }
 
-    private void updateWithProvidedProperties(Map<String, Object> properties,
-                                              Dictionary<String, Object> updatedConfiguration,
-                                              String context) {
-        properties.forEach((key, value) -> {
-            updatedConfiguration.put(keyForContext(context, key), value);
-        });
-    }
-
-    private String keyForContext(String context, String key) {
-        return context + "." + key;
-    }
-
-    private Dictionary<String, Object> currentConfiguration(Configuration configuration) {
-        Dictionary<String, Object> currentConfiguration = new Hashtable<>();
-        if (configuration.getProperties() != null) {
-            for (Enumeration<String> keys = configuration.getProperties().keys(); keys.hasMoreElements(); ) {
-                String key = keys.nextElement();
-                currentConfiguration.put(key, configuration.getProperties().get(key));
-            }
-        }
-        return currentConfiguration;
-    }
 
     /**
      * @param bundleInfo name and version of the bundle
@@ -156,35 +92,5 @@ public class ExtensionConfigurationManager {
                                                                                                                    .toList()))));
 
         return extensionProperties;
-//        MetaTypeService metaTypeService = osgiController.get(MetaTypeService.class)
-//                                                        .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
-//                                                                                                          "MetaTypeService not found"));
-//
-////        ConfigurationAdmin configurationAdmin = osgiController.get(ConfigurationAdmin.class)
-////                                                              .orElseThrow(() -> new MessagingPlatformException(
-////                                                                      ErrorCode.OTHER,
-////                                                                      "ConfigurationAdmin not found"));
-//
-//        MetaTypeInformation info = metaTypeService.getMetaTypeInformation(bundle);
-//        for (String pid : info.getPids()) {
-//            try {
-////                Configuration configuration = configurationAdmin.getConfiguration(pid, bundle.getLocation());
-//                ObjectClassDefinition objectClassDefinition = info
-//                        .getObjectClassDefinition(pid, null);
-//                List<ExtensionProperty> properties = new LinkedList<>();
-//                for (AttributeDefinition attributeDefinition : objectClassDefinition.getAttributeDefinitions(
-//                        ObjectClassDefinition.ALL)) {
-////                    Object value = configuration.getProperties() != null ? configuration.getProperties().get(
-////                            keyForContext(context,attributeDefinition.getID())) : null;
-//                    properties.add(new ExtensionProperty(attributeDefinition, null));
-//                }
-//                extensionProperties.add(new ExtensionPropertyGroup(objectClassDefinition.getID(),
-//                                                                   objectClassDefinition.getName(),
-//                                                                   properties));
-//            } catch (Exception ioException) {
-//                logger.warn("Failed to read configuration for {}", pid, ioException);
-//            }
-//        }
-//        return extensionProperties;
     }
 }

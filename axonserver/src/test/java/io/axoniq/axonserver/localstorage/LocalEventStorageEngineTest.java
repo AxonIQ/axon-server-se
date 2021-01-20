@@ -176,6 +176,7 @@ public class LocalEventStorageEngineTest {
         FakeStreamObserver<InputStream> fakeStreamObserver = new FakeStreamObserver<>();
         StreamObserver<GetEventsRequest> requestStreamObserver = testSubject.listEvents(
                 SAMPLE_CONTEXT,
+                null,
                 fakeStreamObserver);
         requestStreamObserver.onNext(GetEventsRequest.newBuilder()
                                                      .setTrackingToken(100)

@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.extensions;
 
-import org.osgi.service.metatype.AttributeDefinition;
-
 /**
  * @author Marc Gathier
  */
@@ -25,20 +23,6 @@ public class ExtensionProperty {
     private final String[] optionLabels;
     private final String[] optionValues;
     private final String description;
-
-    public ExtensionProperty(AttributeDefinition attributeDefinition, Object value) {
-        this.id = attributeDefinition.getID();
-        this.name = attributeDefinition.getName();
-        this.cardinality = attributeDefinition.getCardinality();
-        this.defaultValue =
-                attributeDefinition.getDefaultValue() != null && attributeDefinition.getDefaultValue().length > 0 ?
-                        attributeDefinition.getDefaultValue()[0] : null;
-        this.value = value;
-        this.type = AttibuteTypeConverter.convert(attributeDefinition.getType());
-        this.optionLabels = attributeDefinition.getOptionLabels();
-        this.optionValues = attributeDefinition.getOptionValues();
-        this.description = attributeDefinition.getDescription();
-    }
 
     public ExtensionProperty(ExtensionPropertyDefinition extensionPropertyDefinition) {
         this.id = extensionPropertyDefinition.id();
@@ -74,7 +58,7 @@ public class ExtensionProperty {
 
     public Object getValue() {
         if (AttributeType.PASSWORD.equals(type)) {
-            return value == null ? null : "********";
+            return null;
         }
         return value;
     }

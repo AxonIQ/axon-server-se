@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.grpc.event.Event;
-
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -27,7 +25,7 @@ public class SnapshotReader {
     public Optional<SerializedEvent> readSnapshot(String aggregateId, long minSequenceNumber) {
             return datafileManagerChain
                     .getLastEvent(aggregateId, minSequenceNumber)
-                    .map(s -> new SerializedEvent(Event.newBuilder(s.asEvent()).setSnapshot(true).build()));
+                    .map(SerializedEvent::asSnapshot);
     }
 
     public void streamByAggregateId(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
@@ -35,6 +33,6 @@ public class SnapshotReader {
                                                                    minSequenceNumber,
                                                                    maxSequenceNumber,
                                                                    maxResults,
-                                                                   eventConsumer);
+                                                                   e -> eventConsumer.accept(e.asSnapshot()));
     }
 }

@@ -37,7 +37,6 @@ public class StandardIndexEntries implements IndexEntries {
      * @param entries the positions of the aggregate
      */
     public StandardIndexEntries(long firstSequenceNumber, List<Integer> entries) {
-
         this.entries = entries;
         this.firstSequenceNumber = firstSequenceNumber;
     }

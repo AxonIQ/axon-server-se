@@ -39,7 +39,7 @@ public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey>
                                                            .put(extensionEnabled.extension().getSymbolicName(),
                                                                 extensionEnabled.extension().getVersion());
             if (oldVersion == null || !extensionEnabled.extension().getVersion().equals(oldVersion)) {
-                logger.warn("{}: Extension {} activated", extensionEnabled.context(), extensionEnabled.extension());
+                logger.info("{}: Extension {} activated", extensionEnabled.context(), extensionEnabled.extension());
             }
         } else {
             String oldVersion = enabledExtensionsPerContext.getOrDefault(extensionEnabled.context(),
@@ -48,7 +48,7 @@ public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey>
             if (oldVersion != null && extensionEnabled.extension().getVersion().equals(oldVersion)) {
                 enabledExtensionsPerContext.get(extensionEnabled.context())
                                            .remove(extensionEnabled.extension().getSymbolicName());
-                logger.warn("{}: Extension {} deactivated", extensionEnabled.context(), extensionEnabled.extension());
+                logger.info("{}: Extension {} deactivated", extensionEnabled.context(), extensionEnabled.extension());
             }
         }
     }

@@ -18,7 +18,6 @@ import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.config.NoOpEventInterceptors;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
@@ -63,7 +62,6 @@ public class EventDispatcherTest {
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
                                           () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                                          new NoOpEventInterceptors(),
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()));
     }
@@ -133,8 +131,8 @@ public class EventDispatcherTest {
 
             }
         };
-        when(eventStoreClient.listEvents(any(), any(StreamObserver.class))).then(a -> {
-            eventStoreOutputStreamRef.set((StreamObserver<InputStream>) a.getArguments()[1]);
+        when(eventStoreClient.listEvents(any(), any(), any(StreamObserver.class))).then(a -> {
+            eventStoreOutputStreamRef.set((StreamObserver<InputStream>) a.getArguments()[2]);
             return eventStoreResponseStream;
         });
         StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(responseObserver);
@@ -179,8 +177,8 @@ public class EventDispatcherTest {
 
             }
         };
-        when(eventStoreClient.queryEvents(any(), any(StreamObserver.class))).then(a -> {
-            eventStoreOutputStreamRef.set((StreamObserver<QueryEventsResponse>) a.getArguments()[1]);
+        when(eventStoreClient.queryEvents(any(), any(), any(StreamObserver.class))).then(a -> {
+            eventStoreOutputStreamRef.set((StreamObserver<QueryEventsResponse>) a.getArguments()[2]);
             return eventStoreResponseStream;
         });
         StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(responseObserver);

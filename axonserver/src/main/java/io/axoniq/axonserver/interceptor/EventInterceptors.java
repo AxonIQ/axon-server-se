@@ -69,12 +69,21 @@ public interface EventInterceptors {
      *
      * @return true if there are no interceptors for reading events or snapshots
      */
-    boolean noReadInterceptors();
+    boolean noReadInterceptors(String context);
 
     /**
      * Checks if there aren't any interceptors for reading events.
      *
      * @return true if there are no interceptors for reading events
      */
-    boolean noEventReadInterceptors();
+    boolean noEventReadInterceptors(String context);
+
+    /**
+     * Checks if there aren't any interceptors for reading snapshots.
+     *
+     * @return true if there are no interceptors for reading snapshots
+     */
+    default boolean noSnapshotReadInterceptors(String context) {
+        return false;
+    }
 }

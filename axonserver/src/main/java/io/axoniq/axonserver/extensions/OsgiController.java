@@ -36,7 +36,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collection;
@@ -59,11 +58,11 @@ import java.util.stream.Collectors;
  * @since 4.5
  */
 @Controller
-public class OsgiController implements SmartLifecycle {
+public class OsgiController implements SmartLifecycle, ExtensionServiceProvider {
 
     private final Logger logger = LoggerFactory.getLogger(ExtensionController.class);
     private final File bundleDir;
-    private final Set<Consumer<Bundle>> extensionListeners = new CopyOnWriteArraySet<>();
+    private final Set<Consumer<ExtensionKey>> extensionListeners = new CopyOnWriteArraySet<>();
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
     private final ApplicationEventPublisher eventPublisher;
@@ -115,19 +114,11 @@ public class OsgiController implements SmartLifecycle {
                              event.getType(),
                              event.getBundle().getState());
                 if (activeStateChanged(event.getType())) {
-                    extensionListeners.forEach(s -> s.accept(event.getBundle()));
+                    extensionListeners.forEach(s -> s.accept(extensionKey(event.getBundle())));
                 }
             });
             Files.createDirectories(bundleDir.toPath());
             ExtensionDirectoryProcessor bundleManager = new ExtensionDirectoryProcessor(bundleDir);
-            for (URL url : bundleManager.getSystemBundles()) {
-                try (InputStream inputStream = url.openStream()) {
-                    Bundle bundle = bundleContext.installBundle(url.toString(), inputStream);
-                    logger.info("adding bundle {}/{}", bundle.getSymbolicName(), bundle.getVersion());
-                    bundle.start();
-                }
-            }
-
             for (File extension : bundleManager.getBundles()) {
                 try (InputStream inputStream = new FileInputStream(extension)) {
                     Bundle bundle = bundleContext.installBundle(extension.getAbsolutePath(), inputStream);
@@ -151,7 +142,8 @@ public class OsgiController implements SmartLifecycle {
      * @param listener the listener
      * @return a registration
      */
-    public Registration registerExtensionListener(Consumer<Bundle> listener) {
+    @Override
+    public Registration registerExtensionListener(Consumer<ExtensionKey> listener) {
         extensionListeners.add(listener);
         return () -> extensionListeners.remove(listener);
     }
@@ -175,6 +167,7 @@ public class OsgiController implements SmartLifecycle {
         }
     }
 
+    @Override
     public <T extends Ordered> Set<ServiceWithInfo<T>> getServicesWithInfo(Class<T> clazz) {
         try {
             Collection<ServiceReference<T>> serviceReferences = bundleContext.getServiceReferences(clazz, null);
@@ -278,17 +271,26 @@ public class OsgiController implements SmartLifecycle {
             ExtensionKey bundleInfo = getBundleInfo(target);
 
             Optional<Bundle> current = findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion());
-            try (InputStream is = new FileInputStream(target)) {
+
                 if (!current.isPresent()) {
-                    Bundle bundle = bundleContext.installBundle(target.getAbsolutePath(), is);
-                    bundle.start();
+                    try (InputStream is = new FileInputStream(target)) {
+                        Bundle bundle = bundleContext.installBundle(target.getAbsolutePath(), is);
+                        bundle.start();
+                    }
                     logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
                 } else {
                     logger.info("updating bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
-                    current.get().update(is);
-                    extensionListeners.forEach(s -> s.accept(current.get()));
+                    File currentLocation = new File(current.get().getLocation());
+                    if (!currentLocation.equals(target)) {
+                        FileUtils.rename(target, currentLocation);
+                        logger.info("rename bundle file to {}", currentLocation);
+                        target = currentLocation;
+                    }
+                    try (InputStream is = new FileInputStream(target)) {
+                        current.get().update(is);
+                    }
+                    extensionListeners.forEach(s -> s.accept(bundleInfo));
                 }
-            }
             eventPublisher.publishEvent(new ExtensionEvent(bundleInfo));
             return bundleInfo;
         } catch (BundleException bundleException) {
@@ -354,9 +356,10 @@ public class OsgiController implements SmartLifecycle {
                 bundle.stop();
                 bundle.uninstall();
                 FileUtils.delete(new File(bundle.getLocation()));
-                extensionListeners.forEach(s -> s.accept(bundle));
-                eventPublisher.publishEvent(new ExtensionEvent(new ExtensionKey(bundle.getSymbolicName(),
-                                                                                bundle.getVersion().toString())));
+
+                ExtensionKey key = extensionKey(bundle);
+                extensionListeners.forEach(s -> s.accept(key));
+                eventPublisher.publishEvent(new ExtensionEvent(key));
             } catch (BundleException bundleException) {
                 throw new MessagingPlatformException(ErrorCode.OTHER,
                                                      "Could not uninstall extension " + bundle.getLocation(),

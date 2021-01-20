@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.extensions.ExtensionServiceProvider;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.Ordered;
-import io.axoniq.axonserver.extensions.OsgiController;
 import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
@@ -40,17 +40,17 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     private final List<ServiceWithInfo<CommandRequestInterceptor>> commandRequestInterceptors = new CopyOnWriteArrayList<>();
     private final List<ServiceWithInfo<CommandResponseInterceptor>> commandResponseInterceptors = new CopyOnWriteArrayList<>();
-    private final OsgiController osgiController;
+    private final ExtensionServiceProvider osgiController;
     private final ExtensionContextFilter extensionContextFilter;
     private volatile boolean initialized;
 
 
-    public DefaultCommandInterceptors(OsgiController osgiController,
+    public DefaultCommandInterceptors(ExtensionServiceProvider osgiController,
                                       ExtensionContextFilter extensionContextFilter) {
         this.osgiController = osgiController;
         this.extensionContextFilter = extensionContextFilter;
         osgiController.registerExtensionListener(serviceEvent -> {
-            logger.debug("service event {}", serviceEvent.getLocation());
+            logger.debug("service event {}", serviceEvent);
             initialized = false;
         });
     }

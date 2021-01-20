@@ -56,12 +56,12 @@ public class NoOpEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public boolean noReadInterceptors() {
+    public boolean noReadInterceptors(String context) {
         return true;
     }
 
     @Override
-    public boolean noEventReadInterceptors() {
+    public boolean noEventReadInterceptors(String context) {
         return true;
     }
 }

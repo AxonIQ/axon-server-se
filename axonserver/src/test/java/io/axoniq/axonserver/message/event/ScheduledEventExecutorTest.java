@@ -41,7 +41,7 @@ public class ScheduledEventExecutorTest {
     public void setUp() {
         when(localEventStore.createAppendEventConnection(anyString(), any(), any()))
                 .then((Answer<StreamObserver<InputStream>>) invocation -> {
-                    StreamObserver<Confirmation> responseStream = invocation.getArgument(1);
+                    StreamObserver<Confirmation> responseStream = invocation.getArgument(2);
                     return new StreamObserver<InputStream>() {
                         @Override
                         public void onNext(InputStream inputStream) {
@@ -74,6 +74,7 @@ public class ScheduledEventExecutorTest {
             Thread.currentThread().interrupt();
             fail("Interrupted");
         } catch (ExecutionException e) {
+            e.printStackTrace();
             fail(e.getCause().getMessage());
         } catch (TimeoutException e) {
             fail("Timeout waiting for result");
