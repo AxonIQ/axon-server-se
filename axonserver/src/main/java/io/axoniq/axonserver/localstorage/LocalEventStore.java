@@ -364,7 +364,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                        .onNext(eventDecorator.decorateEvent(snapshot)));
             }
             responseStreamObserver.onCompleted();
-        }, responseStreamObserver::onError);
+        }, error -> {
+            logger.warn("Problem encountered while reading snapshot for aggregate " + request.getAggregateId(), error);
+            responseStreamObserver.onError(error);
+        });
     }
 
     @Override
