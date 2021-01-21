@@ -101,7 +101,7 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
                 }
             }
         } catch (Exception ex) {
-            logger.warn("{}@{} an exception occurred in a QueryResponseInterceptor", extensionUnitOfWork.principal(),
+            logger.warn("{}: an exception occurred in a QueryResponseInterceptor",
                         extensionUnitOfWork.context(), ex);
         }
         return response;

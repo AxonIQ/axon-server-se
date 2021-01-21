@@ -89,10 +89,16 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
                                                                ExtensionUnitOfWork extensionContext) {
         ensureInitialized();
         SubscriptionQueryResponse query = subscriptionQueryResponse;
-        for (ServiceWithInfo<SubscriptionQueryResponseInterceptor> queryRequestInterceptor : queryResponseInterceptors) {
-            if (extensionContextFilter.test(extensionContext.context(), queryRequestInterceptor.extensionKey())) {
-                query = queryRequestInterceptor.service().subscriptionQueryResponse(query, extensionContext);
+        try {
+            for (ServiceWithInfo<SubscriptionQueryResponseInterceptor> queryRequestInterceptor : queryResponseInterceptors) {
+                if (extensionContextFilter.test(extensionContext.context(), queryRequestInterceptor.extensionKey())) {
+                    query = queryRequestInterceptor.service().subscriptionQueryResponse(query, extensionContext);
+                }
             }
+        } catch (Exception ex) {
+            logger.warn("{}: an exception occurred in a SubscriptionQueryResponseInterceptor",
+                        extensionContext.context(),
+                        ex);
         }
         return query;
     }

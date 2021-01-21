@@ -108,7 +108,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
                 }
             }
         } catch (Exception ex) {
-            logger.warn("{}@{} an exception occurred in a CommandResponseInterceptor", extensionUnitOfWork.principal(),
+            logger.warn("{}: an exception occurred in a CommandResponseInterceptor",
                         extensionUnitOfWork.context(), ex);
         }
 
