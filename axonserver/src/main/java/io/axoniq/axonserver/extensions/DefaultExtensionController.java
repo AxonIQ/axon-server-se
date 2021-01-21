@@ -15,10 +15,8 @@ import org.springframework.stereotype.Controller;
 
 import java.io.File;
 import java.io.InputStream;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Implements the {@link ExtensionController} for Axon Server Standard Edition. Forwards all requests to the
@@ -47,11 +45,7 @@ public class DefaultExtensionController implements ExtensionController {
 
     @Override
     public Iterable<ExtensionInfo> listExtensions() {
-        Set<ExtensionKey> extensions = new HashSet<>();
-        osgiController.listExtensions().forEach(b -> extensions
-                .add(new ExtensionKey(b.getSymbolicName(), b.getVersion().toString())));
-
-        return extensionStatusManager.listExtensions(extensions);
+        return extensionStatusManager.listExtensions(osgiController.listExtensions());
     }
 
     @Override

@@ -22,6 +22,7 @@ import io.axoniq.axonserver.grpc.query.QueryProviderOutbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
+import io.axoniq.axonserver.interceptor.NoOpSubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -64,6 +65,7 @@ public class QueryServiceTest {
                                        () -> Topology.DEFAULT_CONTEXT,
                                        () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                        new DefaultClientIdRegistry(),
+                                       new NoOpSubscriptionQueryInterceptors(),
                                        eventPublisher,
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                                                     .setAck(ack)

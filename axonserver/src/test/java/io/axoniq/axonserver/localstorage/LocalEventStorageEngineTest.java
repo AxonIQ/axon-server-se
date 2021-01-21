@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.config.NoOpEventInterceptors;
+import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Confirmation;

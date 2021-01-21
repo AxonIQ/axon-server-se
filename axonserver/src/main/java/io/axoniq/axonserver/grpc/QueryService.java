@@ -26,6 +26,7 @@ import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -67,6 +68,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final ContextProvider contextProvider;
     private final AuthenticationProvider authenticationProvider;
     private final ClientIdRegistry clientIdRegistry;
+    private final SubscriptionQueryInterceptors subscriptionQueryInterceptors;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
@@ -81,6 +83,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         ContextProvider contextProvider,
                         AuthenticationProvider authenticationProvider,
                         ClientIdRegistry clientIdRegistry,
+                        SubscriptionQueryInterceptors subscriptionQueryInterceptors,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
                                 InstructionAckSource<QueryProviderInbound> instructionAckSource) {
@@ -89,6 +92,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
         this.clientIdRegistry = clientIdRegistry;
+        this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
     }
@@ -312,7 +316,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     public StreamObserver<SubscriptionQueryRequest> subscription(
             StreamObserver<SubscriptionQueryResponse> responseObserver) {
         String context = contextProvider.getContext();
-        return new SubscriptionQueryRequestTarget(context, responseObserver, eventPublisher);
+        return new SubscriptionQueryRequestTarget(context,
+                                                  authenticationProvider.get(),
+                                                  responseObserver,
+                                                  subscriptionQueryInterceptors,
+                                                  eventPublisher);
     }
 
     public Set<GrpcQueryDispatcherListener> listeners() {

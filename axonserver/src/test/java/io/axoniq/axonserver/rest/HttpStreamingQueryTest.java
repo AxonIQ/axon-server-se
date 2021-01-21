@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.config.NoOpEventInterceptors;
+import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;

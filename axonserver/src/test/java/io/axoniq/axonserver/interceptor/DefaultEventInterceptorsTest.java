@@ -43,12 +43,9 @@ public class DefaultEventInterceptorsTest {
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
     private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter();
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private DefaultEventInterceptors testSubject;
+    private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(osgiController,
+                                                                                      extensionContextFilter);
 
-    @Before
-    public void setUp() throws Exception {
-        testSubject = new DefaultEventInterceptors(osgiController, extensionContextFilter);
-    }
 
     @Test
     public void appendEvent() {
@@ -63,12 +60,12 @@ public class DefaultEventInterceptorsTest {
 
         Event orgEvent = event("aggregate1", 0);
 
-        Event intercepted = testSubject.appendEvent(orgEvent, new TestExtensionUnitOfWork());
+        Event intercepted = testSubject.appendEvent(orgEvent, new TestExtensionUnitOfWork("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        intercepted = testSubject.appendEvent(orgEvent, new TestExtensionUnitOfWork());
+        intercepted = testSubject.appendEvent(orgEvent, new TestExtensionUnitOfWork("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());
@@ -85,7 +82,7 @@ public class DefaultEventInterceptorsTest {
             hookCalled.incrementAndGet();
         }, EXTENSION_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork();
+        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
         testSubject.eventsPreCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
         assertEquals(0, hookCalled.get());
 
@@ -102,7 +99,7 @@ public class DefaultEventInterceptorsTest {
             hookCalled.incrementAndGet();
         }, EXTENSION_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork();
+        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
         testSubject.eventsPostCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
         assertEquals(0, hookCalled.get());
 
@@ -117,7 +114,7 @@ public class DefaultEventInterceptorsTest {
             throw new RuntimeException("Error in post commit hook");
         }, EXTENSION_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork();
+        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
         testSubject.eventsPostCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
     }
@@ -128,7 +125,7 @@ public class DefaultEventInterceptorsTest {
             throw new RuntimeException("Error in post commit hook");
         }, EXTENSION_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork();
+        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
         testSubject.snapshotPostCommit(event("aggrId1", 0), testExtensionUnitOfWork);
     }
@@ -140,7 +137,7 @@ public class DefaultEventInterceptorsTest {
             hookCalled.incrementAndGet();
         }, EXTENSION_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork();
+        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
         testSubject.snapshotPostCommit(event("aggrId1", 0), testExtensionUnitOfWork);
         assertEquals(0, hookCalled.get());
 
@@ -162,12 +159,12 @@ public class DefaultEventInterceptorsTest {
 
         Event orgEvent = event("aggregate1", 0, true);
 
-        Event intercepted = testSubject.appendSnapshot(orgEvent, new TestExtensionUnitOfWork());
+        Event intercepted = testSubject.appendSnapshot(orgEvent, new TestExtensionUnitOfWork("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        intercepted = testSubject.appendSnapshot(orgEvent, new TestExtensionUnitOfWork());
+        intercepted = testSubject.appendSnapshot(orgEvent, new TestExtensionUnitOfWork("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());
@@ -201,7 +198,7 @@ public class DefaultEventInterceptorsTest {
         }, EXTENSION_KEY));
 
         Event event = event("sample", 0, true);
-        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork();
+        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
         Event result = testSubject.readSnapshot(event, unitOfWork);
         assertFalse(result.containsMetaData("intercepted"));
 
@@ -220,7 +217,7 @@ public class DefaultEventInterceptorsTest {
         }, EXTENSION_KEY));
 
         Event event = event("sample", 0);
-        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork();
+        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
         Event result = testSubject.readEvent(event, unitOfWork);
         assertFalse(result.containsMetaData("intercepted"));
 
@@ -264,7 +261,7 @@ public class DefaultEventInterceptorsTest {
 
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
 
-        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork();
+        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
         testSubject.readEvent(event("a", 1), unitOfWork);
         assertEquals(2, calledInOrder.size());
         assertEquals(5, (int) calledInOrder.get(0));

@@ -18,11 +18,17 @@ import java.util.function.Consumer;
 /**
  * @author Marc Gathier
  */
-class TestExtensionUnitOfWork implements ExtensionUnitOfWork {
+public class TestExtensionUnitOfWork implements ExtensionUnitOfWork {
+
+    private final String context;
+
+    public TestExtensionUnitOfWork(String context) {
+        this.context = context;
+    }
 
     @Override
     public String context() {
-        return "default";
+        return context;
     }
 
     @Override

@@ -150,22 +150,12 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
 
     /**
      * Finds all services implementing a specific class. If there are multiple versions of the same extension it
-     * only returns the latest version.
+     * only returns all of them.
      *
      * @param clazz the class of the service
      * @param <T>   the type of the service
      * @return set of services implementing the service
      */
-    public <T> Set<T> getServices(Class<T> clazz) {
-        try {
-            Collection<ServiceReference<T>> serviceReferences = bundleContext.getServiceReferences(clazz, null);
-            return serviceReferences.stream()
-                                    .map(s -> bundleContext.getService(s))
-                                    .collect(Collectors.toSet());
-        } catch (InvalidSyntaxException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     @Override
     public <T extends Ordered> Set<ServiceWithInfo<T>> getServicesWithInfo(Class<T> clazz) {
@@ -206,29 +196,12 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
      *
      * @return list of all installed extensions
      */
-    public Iterable<Bundle> listExtensions() {
+    public Set<ExtensionKey> listExtensions() {
         return Arrays.stream(bundleContext.getBundles())
                      .filter(b -> !Objects.isNull(b.getSymbolicName()))
                      .filter(b -> !b.getSymbolicName().contains("org.apache.felix"))
-                     .collect(Collectors.toList());
-    }
-
-    private String status(Bundle b) {
-        switch (b.getState()) {
-            case Bundle.ACTIVE:
-                return "Active";
-            case Bundle.INSTALLED:
-                return "Installed";
-            case Bundle.RESOLVED:
-                return "Resolved";
-            case Bundle.STARTING:
-                return "Starting";
-            case Bundle.STOPPING:
-                return "Stopping";
-            case Bundle.UNINSTALLED:
-                return "Uninstalled";
-        }
-        return "Unknown (" + b.getState() + ")";
+                     .map(b -> new ExtensionKey(b.getSymbolicName(), b.getVersion().toString()))
+                     .collect(Collectors.toSet());
     }
 
     /**
