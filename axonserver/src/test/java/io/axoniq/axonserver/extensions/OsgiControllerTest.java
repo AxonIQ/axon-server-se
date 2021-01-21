@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * @author Marc Gathier
@@ -44,10 +43,9 @@ public class OsgiControllerTest {
 
         Command command = Command.newBuilder().setClientId("sample").build();
         List<ServiceWithInfo<CommandRequestInterceptor>> interceptors =
-                StreamSupport.stream(osgiController.getServicesWithInfo(CommandRequestInterceptor.class).spliterator(),
-                                     false)
-                             .sorted(Comparator.comparing(ServiceWithInfo::order))
-                             .collect(Collectors.toList());
+                osgiController.getServicesWithInfo(CommandRequestInterceptor.class).stream()
+                              .sorted(Comparator.comparing(ServiceWithInfo::order))
+                              .collect(Collectors.toList());
 
         ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
         for (ServiceWithInfo<CommandRequestInterceptor> interceptor : interceptors) {
