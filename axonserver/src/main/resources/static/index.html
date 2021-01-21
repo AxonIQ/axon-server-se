@@ -126,18 +126,24 @@
                         data: {
                             version: "Version",
                             updates: {},
-                            showModal: false
+                            showModal: false,
+                            hasUpdates: false
                         }, mounted() {
                     axios.get("v1/public/version").then(response => {
                         this.version = response.data.productName + " " + response.data.version;
                         return response.data
                     }).then(data => {
-                        let product = data.productName.includes("Enterprise") ? "axonserver-se" : "axonserver-se" //todo change first axonserver-se -> axonserver  (axonserver currently does not work, needs to be fixed, thats why its hardcoded)
+                        let product = data.productName.includes("Enterprise") ? "axonserver-se" : "axonserver-se" //todo change first axonserver-se -> axonserver  (axonserver currently does not work, needs to be fixed, thats why its hardcodedces)
                        // let productVersion = data.version.replace("-SNAPSHOT","") //todo uncomment this after testing
                             let productVersion = "4.2"  //todo remove this hardcoded version after testing
                             return axios.get(`http://localhost:8080/v1/updates?module=${product}&version=${productVersion}`)} //todo change url to production url (tbd download.axoniq.io/v1/updates ?)
                         //todo error handling -> if this url is not available, fail silently , user should not see this
                     ).then(updatesData=> {
+
+                        if (updatesData.data !== undefined || updatesData.data!== 0) {
+                            this.hasUpdates = true
+                        }
+
                         this.updates = updatesData.data.reverse();
                     });
                 }
@@ -271,7 +277,7 @@
 </article>
 
 <footer id="footer">
-    <p>{{version}} <a id="show-modal" @click="showModal = true" title="Newer version available!" class="important">
+    <p>{{version}} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="Newer version available!" class="important">
         <i class="fas fa-exclamation-triangle"></i></a> by <span>AxonIQ</span> <a href="#info" class="info"><i class="fas fa-info-circle"></i></a></p>
 
     <modal v-if="showModal" @close="showModal = false">
