@@ -56,7 +56,7 @@
         <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
-        <jackson.version>2.9.10.5</jackson.version>
+        <jackson.version>2.9.10.7</jackson.version>
         <gson.version>2.8.6</gson.version>
     </properties>
 
