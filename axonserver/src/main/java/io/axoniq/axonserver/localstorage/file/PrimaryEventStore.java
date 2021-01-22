@@ -11,8 +11,8 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.transform.EventTransformer;
-import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;

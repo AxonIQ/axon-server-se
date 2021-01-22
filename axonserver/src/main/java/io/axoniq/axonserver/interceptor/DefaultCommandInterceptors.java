@@ -40,16 +40,16 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     private final List<ServiceWithInfo<CommandRequestInterceptor>> commandRequestInterceptors = new CopyOnWriteArrayList<>();
     private final List<ServiceWithInfo<CommandResponseInterceptor>> commandResponseInterceptors = new CopyOnWriteArrayList<>();
-    private final ExtensionServiceProvider osgiController;
+    private final ExtensionServiceProvider extensionServiceProvider;
     private final ExtensionContextFilter extensionContextFilter;
     private volatile boolean initialized;
 
 
-    public DefaultCommandInterceptors(ExtensionServiceProvider osgiController,
+    public DefaultCommandInterceptors(ExtensionServiceProvider extensionServiceProvider,
                                       ExtensionContextFilter extensionContextFilter) {
-        this.osgiController = osgiController;
+        this.extensionServiceProvider = extensionServiceProvider;
         this.extensionContextFilter = extensionContextFilter;
-        osgiController.registerExtensionListener(serviceEvent -> {
+        extensionServiceProvider.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent);
             initialized = false;
         });
@@ -57,7 +57,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     private void ensureInitialized() {
         if (!initialized) {
-            synchronized (osgiController) {
+            synchronized (extensionServiceProvider) {
                 if (initialized) {
                     return;
                 }
@@ -71,7 +71,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     private <T extends Ordered> void initHooks(Class<T> clazz, List<ServiceWithInfo<T>> hooks) {
         hooks.clear();
-        hooks.addAll(osgiController.getServicesWithInfo(clazz));
+        hooks.addAll(extensionServiceProvider.getServicesWithInfo(clazz));
         hooks.sort(Comparator.comparingInt(ServiceWithInfo::order));
         logger.debug("{} {}}", hooks.size(), clazz.getSimpleName());
     }

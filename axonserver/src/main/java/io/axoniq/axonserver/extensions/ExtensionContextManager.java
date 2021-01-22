@@ -14,47 +14,51 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import javax.transaction.Transactional;
 
 /**
+ * Manages the status and configuration of an extension per context.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @Component
-public class ExtensionStatusManager implements SmartLifecycle {
+public class ExtensionContextManager {
 
-    private final Logger logger = LoggerFactory.getLogger(ExtensionStatusManager.class);
+    private final Logger logger = LoggerFactory.getLogger(ExtensionContextManager.class);
     private final ExtensionStatusRepository extensionStatusRepository;
+    private final ExtensionPackageRepository packageRepository;
     private final ExtensionConfigurationSerializer extensionConfigurationSerializer;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private boolean running;
 
-    public ExtensionStatusManager(ExtensionStatusRepository extensionStatusRepository,
-                                  ExtensionConfigurationSerializer extensionConfigurationSerializer,
-                                  @Qualifier("localEventPublisher") ApplicationEventPublisher applicationEventPublisher) {
+    public ExtensionContextManager(ExtensionStatusRepository extensionStatusRepository,
+                                   ExtensionPackageRepository packageRepository,
+                                   ExtensionConfigurationSerializer extensionConfigurationSerializer,
+                                   @Qualifier("localEventPublisher") ApplicationEventPublisher applicationEventPublisher) {
         this.extensionStatusRepository = extensionStatusRepository;
+        this.packageRepository = packageRepository;
         this.extensionConfigurationSerializer = extensionConfigurationSerializer;
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Transactional
-    public ExtensionStatus updateStatus(String context, String extension, String version, String filename,
+    public ExtensionStatus updateStatus(String context, String extension, String version,
                                         boolean active) {
-        ExtensionStatus extensionStatus = extensionStatusRepository.findByContextAndExtensionAndVersion(context,
-                                                                                                        extension,
-                                                                                                        version)
+        ExtensionPackage pack = packageRepository.findByExtensionAndVersion(extension, version)
+                                                 .orElseThrow(() -> new RuntimeException(
+                                                         "Extension not found " + extension + "/" + version));
+
+        ExtensionStatus extensionStatus = extensionStatusRepository.findByContextAndExtension(context, pack)
                                                                    .orElse(new ExtensionStatus(context,
-                                                                                               extension,
-                                                                                               version));
+                                                                                               pack));
         if (active && !extensionStatus.isActive()) {
-            extensionStatusRepository.findByContextAndExtensionAndActive(context, extension, true)
+            extensionStatusRepository.findByContextAndExtension_ExtensionAndActive(context, extension, true)
                                      .ifPresent(currentActive -> {
                                          currentActive.setActive(false);
                                          extensionStatusRepository.save(currentActive);
@@ -62,7 +66,6 @@ public class ExtensionStatusManager implements SmartLifecycle {
         }
 
         extensionStatus.setActive(active);
-        extensionStatus.setFilename(filename);
         extensionStatusRepository.save(extensionStatus);
         applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(context,
                                                                          new ExtensionKey(extension, version),
@@ -73,58 +76,43 @@ public class ExtensionStatusManager implements SmartLifecycle {
         return extensionStatus;
     }
 
-    @Override
     public void start() {
+        packageRepository.findAll().forEach(extensionPackage -> {
+
+        });
         extensionStatusRepository.findAll().forEach(extensionStatus -> {
             if (extensionStatus.isActive()) {
-                logger.warn("{}: Activate {}/{}",
+                logger.info("{}: Activate {}/{}",
                             extensionStatus.getContext(),
-                            extensionStatus.getExtension(),
-                            extensionStatus.getVersion());
+                            extensionStatus.getExtension().getExtension(),
+                            extensionStatus.getExtension().getVersion());
                 applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
-                                                                                 new ExtensionKey(extensionStatus
-                                                                                                          .getExtension(),
-                                                                                                  extensionStatus
-                                                                                                          .getVersion()),
+                                                                                 extensionStatus.getExtensionKey(),
                                                                                  extensionConfigurationSerializer
                                                                                          .deserialize(extensionStatus
                                                                                                               .getConfiguration()),
                                                                                  true));
             } else {
-                logger.warn("{}: Extension {}/{} not active",
+                logger.info("{}: Extension {} not active",
                             extensionStatus.getContext(),
-                            extensionStatus.getExtension(),
-                            extensionStatus.getVersion());
+                            extensionStatus.getExtensionKey());
             }
         });
-        running = true;
     }
 
-    @Override
-    public void stop() {
-        running = false;
-    }
-
-    @Override
-    public int getPhase() {
-        return 50;
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running;
-    }
 
     public Optional<ExtensionStatus> getStatus(String context, String extension, String version) {
-        return extensionStatusRepository.findByContextAndExtensionAndVersion(context, extension, version);
+        ExtensionPackage pack = packageRepository.findByExtensionAndVersion(extension, version)
+                                                 .orElseThrow(() -> new RuntimeException(
+                                                         "Extension not found " + extension + "/" + version));
+        return extensionStatusRepository.findByContextAndExtension(context, pack);
     }
 
     @Transactional
     public void update(ExtensionStatus updatedStatus) {
         extensionStatusRepository.save(updatedStatus);
         applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(updatedStatus.getContext(),
-                                                                         new ExtensionKey(updatedStatus.getExtension(),
-                                                                                          updatedStatus.getVersion()),
+                                                                         updatedStatus.getExtensionKey(),
                                                                          extensionConfigurationSerializer
                                                                                  .deserialize(updatedStatus
                                                                                                       .getConfiguration()),
@@ -135,8 +123,7 @@ public class ExtensionStatusManager implements SmartLifecycle {
     public void remove(ExtensionStatus updatedStatus) {
         extensionStatusRepository.deleteById(updatedStatus.getId());
         applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(updatedStatus.getContext(),
-                                                                         new ExtensionKey(updatedStatus.getExtension(),
-                                                                                          updatedStatus.getVersion()),
+                                                                         updatedStatus.getExtensionKey(),
                                                                          null,
                                                                          false));
     }
@@ -146,15 +133,15 @@ public class ExtensionStatusManager implements SmartLifecycle {
     }
 
     @Transactional
-    public void updateConfiguration(String context, String extension, String version, String filename,
+    public void updateConfiguration(String context, String extension, String version,
                                     Map<String, Map<String, Object>> properties) {
-        ExtensionStatus extensionStatus = extensionStatusRepository.findByContextAndExtensionAndVersion(context,
-                                                                                                        extension,
-                                                                                                        version)
+        ExtensionPackage pack = packageRepository.findByExtensionAndVersion(extension, version)
+                                                 .orElseThrow(() -> new RuntimeException(
+                                                         "Extension not found " + extension + "/" + version));
+        ExtensionStatus extensionStatus = extensionStatusRepository.findByContextAndExtension(context,
+                                                                                              pack)
                                                                    .orElse(new ExtensionStatus(context,
-                                                                                               extension,
-                                                                                               version));
-        extensionStatus.setFilename(filename);
+                                                                                               pack));
         extensionStatus.setConfiguration(extensionConfigurationSerializer.serialize(properties));
         extensionStatusRepository.save(extensionStatus);
         applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(context,
@@ -163,14 +150,11 @@ public class ExtensionStatusManager implements SmartLifecycle {
                                                                          extensionStatus.isActive()));
     }
 
-    public void publishConfiguration(ExtensionKey extensionKey) {
-        List<ExtensionStatus> contexts = extensionStatusRepository.findAllByExtensionAndVersion(extensionKey
-                                                                                                        .getSymbolicName(),
-                                                                                                extensionKey
-                                                                                                        .getVersion());
+    public void publishConfiguration(ExtensionPackage pack) {
+        List<ExtensionStatus> contexts = extensionStatusRepository.findAllByExtension(pack);
         contexts.forEach(extensionStatus -> applicationEventPublisher
                 .publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
-                                                        extensionKey,
+                                                        pack.getKey(),
                                                         extensionConfigurationSerializer
                                                                 .deserialize(extensionStatus.getConfiguration()),
                                                         extensionStatus.isActive())));
@@ -178,25 +162,30 @@ public class ExtensionStatusManager implements SmartLifecycle {
 
     @Transactional
     public void uninstall(ExtensionKey extensionKey) {
-        List<ExtensionStatus> contexts = extensionStatusRepository.findAllByExtensionAndVersion(extensionKey
-                                                                                                        .getSymbolicName(),
-                                                                                                extensionKey
-                                                                                                        .getVersion());
-        contexts.forEach(extensionStatus -> {
-            applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
-                                                                             extensionKey,
-                                                                             null,
-                                                                             false));
-        });
-        contexts.forEach(extensionStatus -> extensionStatusRepository.deleteById(extensionStatus.getId()));
+        Optional<ExtensionPackage> pack = packageRepository.findByExtensionAndVersion(extensionKey.getSymbolicName(),
+                                                                                      extensionKey.getVersion());
+        if (pack.isPresent()) {
+            List<ExtensionStatus> contexts = extensionStatusRepository.findAllByExtension(pack.get());
+            contexts.forEach(extensionStatus -> {
+                applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
+                                                                                 extensionKey,
+                                                                                 null,
+                                                                                 false));
+            });
+            contexts.forEach(extensionStatus -> extensionStatusRepository.deleteById(extensionStatus.getId()));
+        }
     }
 
     @Transactional
     public void removeForContext(ExtensionKey extensionKey, String context) {
+        Optional<ExtensionPackage> pack = packageRepository.findByExtensionAndVersion(extensionKey.getSymbolicName(),
+                                                                                      extensionKey.getVersion());
+        if (!pack.isPresent()) {
+            return;
+        }
+
         Optional<ExtensionStatus> contexts =
-                extensionStatusRepository.findByContextAndExtensionAndVersion(context,
-                                                                              extensionKey.getSymbolicName(),
-                                                                              extensionKey.getVersion());
+                extensionStatusRepository.findByContextAndExtension(context, pack.get());
         contexts.ifPresent(extensionStatus -> {
             applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
                                                                              extensionKey,
@@ -210,25 +199,23 @@ public class ExtensionStatusManager implements SmartLifecycle {
     public void uninstallForContexts(List<String> contextNames) {
         List<ExtensionStatus> contexts = extensionStatusRepository.findAllByContextIn(contextNames);
         contexts.forEach(extensionStatus -> {
+            extensionStatusRepository.deleteById(extensionStatus.getId());
             applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
-                                                                             new ExtensionKey(
-                                                                                     extensionStatus.getExtension(),
-                                                                                     extensionStatus.getVersion()
-                                                                             ),
+                                                                             extensionStatus.getExtensionKey(),
                                                                              null,
                                                                              false));
         });
-        contexts.forEach(extensionStatus -> extensionStatusRepository.deleteById(extensionStatus.getId()));
     }
 
-    public Iterable<ExtensionInfo> listExtensions(
-            Set<ExtensionKey> installedExtensions) {
+    public Iterable<ExtensionInfo> listExtensions() {
         Map<ExtensionKey, ExtensionInfo> extensions = new HashMap<>();
-        installedExtensions.forEach(e -> extensions.put(e, new ExtensionInfo(e.getSymbolicName(), e.getVersion())));
+        packageRepository.findAll().forEach(pack -> {
+            extensions.put(pack.getKey(),
+                           new ExtensionInfo(pack.getExtension(), pack.getVersion(), pack.getFilename()));
+        });
         extensionStatusRepository.findAll().forEach(extension -> {
-            extensions.computeIfAbsent(new ExtensionKey(extension.getExtension(), extension.getVersion()), k ->
-                    new ExtensionInfo(extension.getExtension(), extension.getVersion())
-            ).addContextInfo(extension.getContext(), extension.isActive());
+            extensions.get(extension.getExtensionKey())
+                      .addContextInfo(extension.getContext(), extension.isActive());
         });
         return extensions.values();
     }

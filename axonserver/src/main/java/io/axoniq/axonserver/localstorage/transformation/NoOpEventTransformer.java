@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.transformation;
 
-import io.axoniq.axonserver.extensions.transform.EventTransformer;
-
 /**
  * @author Marc Gathier
  */

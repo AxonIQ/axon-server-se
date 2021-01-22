@@ -163,7 +163,7 @@
                     connect() {
                         let me = this;
                         me.webSocketInfo.subscribe('/topic/extensions', function () {
-                            me.loadExtensions();
+                            setTimeout(me.loadExtensions, 1000)
                         }, function (sub) {
                             me.subscription = sub;
                         });
@@ -175,29 +175,32 @@
 <span id="extensions">
     <section id="extensionOverview">
         <div class="results singleHeader">
-            <table>
+            <table :key="componentKey">
                 <thead>
                     <tr>
-                        <th class="nodesColumn">Name</th>
-                        <th class="contextColumn">Version</th>
-                        <th class="nodesColumn" v-if="isEnterprise()">Context</th>
-                        <th class="nodesColumn" v-if="!isEnterprise()">Actions</th>
+                        <th style="width: 25%">Name</th>
+                        <th style="width: 10%">Version</th>
+                        <th style="width: 25%">Filename</th>
+                        <th style="width: 35%" v-if="isEnterprise()">Context</th>
+                        <th style="width: 25%" v-if="!isEnterprise()">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="extension in extensions" :key="componentKey">
+                    <tr v-for="extension in extensions">
                         <td>{{ extension.name }}</td>
                         <td>{{ extension.version }}
                             <span @click="deleteExtension(extension)" title="Delete">
                                 <i class="far fa-trash-alt"/>
                             </span>
                         </td>
+                        <td>{{ extension.filename }}</td>
 
                         <td v-if="isEnterprise()">
-                             <ul>
-                                <li v-for="contextInfo in extension.contextInfoList">
-                                    <span class="nodeName">{{ contextInfo.context }}</span>
-                                    <span class="nodeRoleName">{{ contextInfo.active ? "Active" : "Registered" }}</span>
+                             <table>
+                                 <tr v-for="contextInfo in extension.contextInfoList">
+                                     <td style="padding: 0">{{ contextInfo.context }}</td>
+                                     <td style="padding: 0">{{ contextInfo.active ? "Active" : "Registered" }}</td>
+                                     <td style="padding: 0">
                                     <span v-if="admin"
                                           @click="unregisterExtensionForContext(extension, contextInfo.context)"
                                           title="Delete"><i
@@ -210,8 +213,9 @@
                                     <span v-if="admin && contextInfo.active"
                                           @click="stop(extension, contextInfo.context)" title="Stop">
                                         <i class="far fa-pause-circle"/></span>
-                                </li>
-                             </ul>
+                                     </td>
+                                 </tr>
+                             </table>
 
                             <span v-if="admin">
                                 <select class="nodeName" v-model="extension.newContext">

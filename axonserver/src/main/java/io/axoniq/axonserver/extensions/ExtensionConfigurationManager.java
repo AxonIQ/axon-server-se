@@ -28,7 +28,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Manages the configuration of extensions.
+ * Facade to update configuration on installed extensions and to
+ * retrieve the defined configuration items for an extension.
  *
  * @author Marc Gathier
  * @since 4.5
@@ -44,6 +45,12 @@ public class ExtensionConfigurationManager {
         this.osgiController = osgiController;
     }
 
+    /**
+     * Handles an {@link ExtensionEnabledEvent}. If the event indicates that an extension is now available,
+     * it forwards the configuration properties to the extension.
+     *
+     * @param extensionEnabledEvent the event
+     */
     @EventListener
     @Order(0)
     public void on(ExtensionEnabledEvent extensionEnabledEvent) {
@@ -55,9 +62,10 @@ public class ExtensionConfigurationManager {
     }
 
     /**
-     * Updates the configuration of an extension.
+     * Updates the configuration for a context in an extension.
      *
      * @param bundleInfo the name and version of the extension
+     * @param context the context for the configuration
      * @param properties the new properties
      */
     public void updateConfiguration(ExtensionKey bundleInfo, String context,
@@ -70,6 +78,8 @@ public class ExtensionConfigurationManager {
 
 
     /**
+     * Retrieves the defined configuration items for an extension. An extension can define multiple
+     * configuration groups, each containing their own properties.
      * @param bundleInfo name and version of the bundle
      * @return list of properties that can be set for the extension
      */

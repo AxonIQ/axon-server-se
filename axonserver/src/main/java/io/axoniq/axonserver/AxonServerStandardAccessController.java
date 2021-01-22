@@ -17,7 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 /**
- * Created by marc on 7/17/2017.
+ * @author Marc Gathier
+ * @since 4.0
  */
 @Component
 public class AxonServerStandardAccessController implements AxonServerAccessController {

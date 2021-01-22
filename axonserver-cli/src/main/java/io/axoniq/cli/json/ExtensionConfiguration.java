@@ -13,7 +13,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * Object to pass configuration for an extension in a context to Axon Server.
+ * The configuration is a map of maps per configuration listener.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class ExtensionConfiguration {
 

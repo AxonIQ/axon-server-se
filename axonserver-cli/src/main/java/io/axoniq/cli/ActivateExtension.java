@@ -15,7 +15,10 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 
 /**
+ * CLI handler for the activate-extension command. Activates an extension for a given context.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class ActivateExtension extends AxonIQCliCommand {
 

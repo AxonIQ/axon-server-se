@@ -10,12 +10,15 @@
 package io.axoniq.cli.json;
 
 /**
+ * Contains information about an installed extension.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class ExtensionInfo {
 
-    private String version;
     private String name;
+    private String version;
     private ExtensionContextInfo[] contextInfoList;
 
     public String getVersion() {

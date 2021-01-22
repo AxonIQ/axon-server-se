@@ -15,7 +15,10 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 
 /**
+ * CLI handler for the unregister-extension command. Unregisters an extension for a specific context.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class UnregisterExtension extends AxonIQCliCommand {
 

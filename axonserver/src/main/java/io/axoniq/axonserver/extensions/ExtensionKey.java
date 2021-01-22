@@ -9,22 +9,20 @@
 
 package io.axoniq.axonserver.extensions;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Objects;
 
 /**
+ * Identification of an extension.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class ExtensionKey {
 
     private final String symbolicName;
     private final String version;
 
-    @JsonCreator
-    public ExtensionKey(@JsonProperty("symbolicName") String symbolicName,
-                        @JsonProperty("version") String version) {
+    public ExtensionKey(String symbolicName, String version) {
         this.symbolicName = symbolicName;
         this.version = version;
     }

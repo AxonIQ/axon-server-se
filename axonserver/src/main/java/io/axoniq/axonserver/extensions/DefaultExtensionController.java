@@ -13,7 +13,6 @@ import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.stereotype.Controller;
 
-import java.io.File;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -28,47 +27,44 @@ import java.util.Map;
 @Controller
 public class DefaultExtensionController implements ExtensionController {
 
-    private final OsgiController osgiController;
+    private final ExtensionPackageManager extensionPackageManager;
     private final ExtensionConfigurationManager configurationManager;
-    private final ExtensionStatusManager extensionStatusManager;
+    private final ExtensionContextManager extensionContextManager;
     private final ExtensionConfigurationSerializer extensionConfigurationSerializer;
 
-    public DefaultExtensionController(OsgiController osgiController,
+    public DefaultExtensionController(ExtensionPackageManager extensionPackageManager,
                                       ExtensionConfigurationManager configurationManager,
-                                      ExtensionStatusManager extensionStatusManager,
+                                      ExtensionContextManager extensionContextManager,
                                       ExtensionConfigurationSerializer extensionConfigurationSerializer) {
-        this.osgiController = osgiController;
+        this.extensionPackageManager = extensionPackageManager;
         this.configurationManager = configurationManager;
-        this.extensionStatusManager = extensionStatusManager;
+        this.extensionContextManager = extensionContextManager;
         this.extensionConfigurationSerializer = extensionConfigurationSerializer;
     }
 
     @Override
     public Iterable<ExtensionInfo> listExtensions() {
-        return extensionStatusManager.listExtensions(osgiController.listExtensions());
+        return extensionPackageManager.listExtensions();
     }
 
     @Override
     public void uninstallExtension(ExtensionKey extensionKey) {
-        extensionStatusManager.uninstall(extensionKey);
-        osgiController.uninstallExtension(extensionKey);
+        extensionPackageManager.uninstallExtension(extensionKey);
     }
 
     @Override
     public ExtensionKey addExtension(String fileName, InputStream inputStream) {
-        ExtensionKey extensionKey = osgiController.addExtension(fileName, inputStream);
-        extensionStatusManager.publishConfiguration(extensionKey);
-        return extensionKey;
+        return extensionPackageManager.addExtension(fileName, inputStream).getKey();
     }
 
     @Override
     public List<ExtensionPropertyGroup> listProperties(ExtensionKey extensionKey, String context) {
         List<ExtensionPropertyGroup> definedProperties = configurationManager.configuration(extensionKey);
-        extensionStatusManager.getStatus(Topology.DEFAULT_CONTEXT,
-                                         extensionKey.getSymbolicName(),
-                                         extensionKey.getVersion())
-                              .ifPresent(extensionStatus -> setValues(definedProperties,
-                                                                      extensionStatus.getConfiguration()));
+        extensionContextManager.getStatus(Topology.DEFAULT_CONTEXT,
+                                          extensionKey.getSymbolicName(),
+                                          extensionKey.getVersion())
+                               .ifPresent(extensionStatus -> setValues(definedProperties,
+                                                                       extensionStatus.getConfiguration()));
         return definedProperties;
     }
 
@@ -87,29 +83,22 @@ public class DefaultExtensionController implements ExtensionController {
     @Override
     public void updateConfiguration(ExtensionKey extensionKey, String context,
                                     Map<String, Map<String, Object>> properties) {
-        File location = osgiController.getLocation(extensionKey);
-        extensionStatusManager.updateConfiguration(Topology.DEFAULT_CONTEXT,
-                                                   extensionKey.getSymbolicName(),
-                                                   extensionKey.getVersion(),
-                                                   location.getName(),
-                                                   properties);
+        extensionContextManager.updateConfiguration(Topology.DEFAULT_CONTEXT,
+                                                    extensionKey.getSymbolicName(),
+                                                    extensionKey.getVersion(),
+                                                    properties);
     }
 
     @Override
     public void updateExtensionStatus(ExtensionKey extensionKey, String context, boolean active) {
-        File location = osgiController.getLocation(extensionKey);
-        if (active) {
-            osgiController.updateStatus(extensionKey, true);
-        }
-        extensionStatusManager.updateStatus(Topology.DEFAULT_CONTEXT,
-                                            extensionKey.getSymbolicName(),
-                                            extensionKey.getVersion(),
-                                            location.getName(),
-                                            active);
+        extensionContextManager.updateStatus(Topology.DEFAULT_CONTEXT,
+                                             extensionKey.getSymbolicName(),
+                                             extensionKey.getVersion(),
+                                             active);
     }
 
     @Override
     public void unregisterExtensionForContext(ExtensionKey extensionKey, String context) {
-        extensionStatusManager.removeForContext(extensionKey, Topology.DEFAULT_CONTEXT);
+        extensionContextManager.removeForContext(extensionKey, Topology.DEFAULT_CONTEXT);
     }
 }

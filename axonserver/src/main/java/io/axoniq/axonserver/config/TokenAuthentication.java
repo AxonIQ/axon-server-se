@@ -17,7 +17,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * Authentication object containing the information about a connected application that was authenticated
+ * through a token.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class TokenAuthentication implements Authentication {
 

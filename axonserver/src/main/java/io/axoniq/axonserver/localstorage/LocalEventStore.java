@@ -415,8 +415,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             public void onNext(GetEventsRequest getEventsRequest) {
                 TrackingEventProcessorManager.EventTracker controller = controllerRef.updateAndGet(c -> {
                     if (c == null) {
-                        EventDecorator activeEventDecorator = eventInterceptors.noEventReadInterceptors(context) ?
-                                eventDecorator :
+                        EventDecorator activeEventDecorator =
                                 new InterceptorAwareEventDecorator(context, authentication);
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
@@ -826,6 +825,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         @Override
         public InputStream decorateEventWithToken(InputStream inputStream) {
+            if (eventInterceptors.noEventReadInterceptors(extensionUnitOfWork.context())) {
+                return eventDecorator.decorateEventWithToken(inputStream);
+            }
 
             try {
                 EventWithToken eventWithToken = EventWithToken.parseFrom(inputStream);

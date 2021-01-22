@@ -12,7 +12,9 @@ package io.axoniq.axonserver.extensions;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.Lob;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 /**
@@ -28,21 +30,21 @@ public class ExtensionStatus {
 
     private String context;
 
-    private String extension;
-    private String version;
-    private String filename;
+    @ManyToOne
+    @JoinColumn(name = "extension_package_id")
+    private ExtensionPackage extension;
 
     @Lob
     private String configuration;
+
     private boolean active;
 
     public ExtensionStatus() {
     }
 
-    public ExtensionStatus(String context, String extension, String version) {
+    public ExtensionStatus(String context, ExtensionPackage extension) {
         this.context = context;
         this.extension = extension;
-        this.version = version;
     }
 
     public long getId() {
@@ -61,11 +63,11 @@ public class ExtensionStatus {
         this.context = context;
     }
 
-    public String getExtension() {
+    public ExtensionPackage getExtension() {
         return extension;
     }
 
-    public void setExtension(String extension) {
+    public void setExtension(ExtensionPackage extension) {
         this.extension = extension;
     }
 
@@ -77,27 +79,15 @@ public class ExtensionStatus {
         this.active = active;
     }
 
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public String getFilename() {
-        return filename;
-    }
-
-    public void setFilename(String filename) {
-        this.filename = filename;
-    }
-
     public String getConfiguration() {
         return configuration;
     }
 
     public void setConfiguration(String configuration) {
         this.configuration = configuration;
+    }
+
+    public ExtensionKey getExtensionKey() {
+        return extension.getKey();
     }
 }

@@ -16,7 +16,12 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 
 /**
+ * CLI handler for the extensions command. Returns a list of all installed extensions and the contexts they are
+ * registered in.
+ * For each context where an extension is registered it shows the status (Active/Registered).
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class ListExtensions extends AxonIQCliCommand {
 

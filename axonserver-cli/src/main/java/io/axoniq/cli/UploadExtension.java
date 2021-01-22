@@ -21,7 +21,11 @@ import java.io.File;
 import java.io.IOException;
 
 /**
+ * CLI handler for the upload-extension command. Adds an extension to Axon Server. Returns the extension name and
+ * version as defined inside the extension file.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class UploadExtension extends AxonIQCliCommand {
 

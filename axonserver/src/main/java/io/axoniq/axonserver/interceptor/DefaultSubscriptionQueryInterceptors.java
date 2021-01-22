@@ -36,15 +36,15 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
     private final List<ServiceWithInfo<SubscriptionQueryRequestInterceptor>> queryRequestInterceptors = new CopyOnWriteArrayList<>();
     private final List<ServiceWithInfo<SubscriptionQueryResponseInterceptor>> queryResponseInterceptors = new CopyOnWriteArrayList<>();
 
-    private final ExtensionServiceProvider osgiController;
+    private final ExtensionServiceProvider extensionServiceProvider;
     private final ExtensionContextFilter extensionContextFilter;
     private volatile boolean initialized;
 
-    public DefaultSubscriptionQueryInterceptors(ExtensionServiceProvider osgiController,
+    public DefaultSubscriptionQueryInterceptors(ExtensionServiceProvider extensionServiceProvider,
                                                 ExtensionContextFilter extensionContextFilter) {
-        this.osgiController = osgiController;
+        this.extensionServiceProvider = extensionServiceProvider;
         this.extensionContextFilter = extensionContextFilter;
-        osgiController.registerExtensionListener(serviceEvent -> {
+        extensionServiceProvider.registerExtensionListener(serviceEvent -> {
             logger.debug("service event {}", serviceEvent);
             initialized = false;
         });
@@ -52,7 +52,7 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
 
     private void ensureInitialized() {
         if (!initialized) {
-            synchronized (osgiController) {
+            synchronized (extensionServiceProvider) {
                 if (initialized) {
                     return;
                 }
@@ -66,7 +66,7 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
 
     private <T extends Ordered> void initHooks(Class<T> clazz, List<ServiceWithInfo<T>> hooks) {
         hooks.clear();
-        hooks.addAll(osgiController.getServicesWithInfo(clazz));
+        hooks.addAll(extensionServiceProvider.getServicesWithInfo(clazz));
         hooks.sort(Comparator.comparingInt(ServiceWithInfo::order));
         logger.debug("{} {}}", hooks.size(), clazz.getSimpleName());
     }

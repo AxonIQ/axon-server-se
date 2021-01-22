@@ -196,7 +196,8 @@ public class DefaultEventInterceptors implements EventInterceptors {
     @Override
     public boolean noEventReadInterceptors(String context) {
         ensureInitialized();
-        return readEventInterceptors.stream().noneMatch(s -> extensionContextFilter.test(context, s.extensionKey()));
+        return readEventInterceptors.isEmpty() || readEventInterceptors.stream().noneMatch(s -> extensionContextFilter
+                .test(context, s.extensionKey()));
     }
 
     @Override

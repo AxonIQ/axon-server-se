@@ -107,8 +107,16 @@ public class ExtensionsRestController {
                       extensionBundle.getOriginalFilename());
 
         try (InputStream inputStream = extensionBundle.getInputStream()) {
-            return extensionController.addExtension(extensionBundle.getOriginalFilename(), inputStream);
+            String effectiveFilename = uniqueName(extensionBundle.getOriginalFilename());
+            return extensionController.addExtension(effectiveFilename, inputStream);
         }
+    }
+
+    private String uniqueName(String originalFilename) {
+        int lastDot = originalFilename.lastIndexOf('.');
+        return lastDot > 0 ? originalFilename.substring(0, lastDot) + "-" + System.currentTimeMillis()
+                + originalFilename.substring(lastDot)
+                : originalFilename + "-" + System.currentTimeMillis();
     }
 
     @PostMapping("configuration")

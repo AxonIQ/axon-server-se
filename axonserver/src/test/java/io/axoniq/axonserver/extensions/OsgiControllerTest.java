@@ -16,11 +16,8 @@ import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 import org.osgi.framework.BundleException;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,14 +29,19 @@ public class OsgiControllerTest {
 
     @Test
     public void start() throws IOException, BundleException {
-        OsgiController osgiController = new OsgiController(TestUtils.fixPathOnWindows(ExtensionController
-                                                                                              .class.getResource(
-                "/sample-bundles")
-                                                                                                    .getFile()),
-                                                           "cache",
-                                                           "onFirstInit", event -> {
-        });
+        OsgiController osgiController = new OsgiController("cache",
+                                                           "onFirstInit");
         osgiController.start();
+
+        File bundlesDir = new File(TestUtils.fixPathOnWindows(ExtensionController
+                                                                      .class.getResource(
+                "/sample-bundles").getFile()));
+        File[] files = bundlesDir.listFiles((dir, name) -> name.endsWith(".jar"));
+        if (files != null) {
+            for (File file : files) {
+                osgiController.addExtension(file);
+            }
+        }
 
         Command command = Command.newBuilder().setClientId("sample").build();
         List<ServiceWithInfo<CommandRequestInterceptor>> interceptors =
@@ -57,14 +59,10 @@ public class OsgiControllerTest {
         File extraBundlesDir = new File(TestUtils.fixPathOnWindows(ExtensionController
                                                                            .class.getResource(
                 "/sample-bundles2").getFile()));
-        File[] files = extraBundlesDir.listFiles((dir, name) -> name.endsWith(".jar"));
+        files = extraBundlesDir.listFiles((dir, name) -> name.endsWith(".jar"));
         if (files != null) {
             for (File file : files) {
-                try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
-                    ExtensionKey extension = osgiController.addExtension(file.getName(),
-                                                                         inputStream);
-                    osgiController.updateStatus(extension, true);
-                }
+                osgiController.addExtension(file);
             }
         }
 

@@ -15,7 +15,11 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 
 /**
+ * CLI handler for the delete-extension command. Deletes an extension from Axon Server, if the extension is still
+ * active for some contexts it will be deactivated.
+ *
  * @author Marc Gathier
+ * @version 4.5
  */
 public class DeleteExtension extends AxonIQCliCommand {
 

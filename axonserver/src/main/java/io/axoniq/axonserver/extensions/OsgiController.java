@@ -12,7 +12,6 @@ package io.axoniq.axonserver.extensions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.Registration;
-import io.axoniq.axonserver.localstorage.file.FileUtils;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleEvent;
@@ -25,18 +24,13 @@ import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Controller;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -58,34 +52,26 @@ import java.util.stream.Collectors;
  * @since 4.5
  */
 @Controller
-public class OsgiController implements SmartLifecycle, ExtensionServiceProvider {
+public class OsgiController implements ExtensionServiceProvider {
 
     private final Logger logger = LoggerFactory.getLogger(ExtensionController.class);
-    private final File bundleDir;
     private final Set<Consumer<ExtensionKey>> extensionListeners = new CopyOnWriteArraySet<>();
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
-    private final ApplicationEventPublisher eventPublisher;
     private final SystemPackagesProvider systemPackagesProvider;
-    private boolean running;
     private BundleContext bundleContext;
 
     /**
      * Constructs an instance
      *
-     * @param bundleDirectory  directory where the installed bundles are stored
      * @param cacheDirectory   OSGi cache directory
      * @param cacheCleanPolicy clean policy of the OSGi cache (none or onFirstInit)
-     * @param eventPublisher
      */
-    public OsgiController(@Value("${axoniq.axonserver.extension.bundle.path:bundles}") String bundleDirectory,
-                          @Value("${axoniq.axonserver.extension.cache.path:cache}") String cacheDirectory,
-                          @Value("${axoniq.axonserver.extension.cache.clean:none}") String cacheCleanPolicy,
-                          @Qualifier("applicationEventPublisher") ApplicationEventPublisher eventPublisher) {
-        this.bundleDir = new File(bundleDirectory);
+    public OsgiController(@Value("${axoniq.axonserver.extension.cache.path:cache}") String cacheDirectory,
+                          @Value("${axoniq.axonserver.extension.cache.clean:none}") String cacheCleanPolicy
+    ) {
         this.cacheDirectory = cacheDirectory;
         this.cacheCleanPolicy = cacheCleanPolicy;
-        this.eventPublisher = eventPublisher;
         this.systemPackagesProvider = new SystemPackagesProvider();
     }
 
@@ -94,7 +80,6 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
      * {@code bundleDirectory}.
      */
     public void start() {
-        running = true;
         Map<String, String> osgiConfig = new HashMap<>();
         osgiConfig.put(Constants.FRAMEWORK_STORAGE, cacheDirectory);
         osgiConfig.put(Constants.FRAMEWORK_STORAGE_CLEAN, cacheCleanPolicy);
@@ -117,16 +102,6 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
                     extensionListeners.forEach(s -> s.accept(extensionKey(event.getBundle())));
                 }
             });
-            Files.createDirectories(bundleDir.toPath());
-            ExtensionDirectoryProcessor bundleManager = new ExtensionDirectoryProcessor(bundleDir);
-            for (File extension : bundleManager.getBundles()) {
-                try (InputStream inputStream = new FileInputStream(extension)) {
-                    Bundle bundle = bundleContext.installBundle(extension.getAbsolutePath(), inputStream);
-                    logger.info("adding bundle {}/{}", bundle.getSymbolicName(), bundle.getVersion());
-                    bundle.start();
-                }
-            }
-
         } catch (Exception ex) {
             logger.error("OSGi Failed to Start", ex);
         }
@@ -208,7 +183,6 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
      * Stops the controller, uninstalls all the loaded extensions.
      */
     public void stop() {
-        running = false;
         for (Bundle bundle : bundleContext.getBundles()) {
             try {
                 if (!bundle.getSymbolicName().contains("org.apache.felix")) {
@@ -221,57 +195,42 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
         }
     }
 
-    public boolean isRunning() {
-        return running;
-    }
-
-    @Override
-    public int getPhase() {
-        return 0;
-    }
-
     /**
      * Adds an extension to Axon Server. If an extension with the same symbolic name and version already exists, it
      * will be replaced.
      *
-     * @param fileName          the name of the file to save the extensions
-     * @param bundleInputStream input stream to the extension classes
+     * @param extensionPackageFile the file containing the extension package
      */
-    public ExtensionKey addExtension(String fileName, InputStream bundleInputStream) {
-        File target = new File(bundleDir.getAbsolutePath() + File.separatorChar + fileName);
+    public ExtensionKey addExtension(File extensionPackageFile) {
         try {
-            writeToFile(bundleInputStream, target);
-            ExtensionKey bundleInfo = getBundleInfo(target);
+            ExtensionKey bundleInfo = getBundleInfo(extensionPackageFile);
 
             Optional<Bundle> current = findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion());
 
-                if (!current.isPresent()) {
-                    try (InputStream is = new FileInputStream(target)) {
-                        Bundle bundle = bundleContext.installBundle(target.getAbsolutePath(), is);
-                        bundle.start();
-                    }
-                    logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
-                } else {
+            if (!current.isPresent()) {
+                try (InputStream is = new FileInputStream(extensionPackageFile)) {
+                    Bundle bundle = bundleContext.installBundle(extensionPackageFile.getAbsolutePath(), is);
+                    bundle.start();
+                }
+                logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
+            } else {
                     logger.info("updating bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
-                    File currentLocation = new File(current.get().getLocation());
-                    if (!currentLocation.equals(target)) {
-                        FileUtils.rename(target, currentLocation);
-                        logger.info("rename bundle file to {}", currentLocation);
-                        target = currentLocation;
-                    }
-                    try (InputStream is = new FileInputStream(target)) {
+                    try (InputStream is = new FileInputStream(extensionPackageFile)) {
                         current.get().update(is);
                     }
-                    extensionListeners.forEach(s -> s.accept(bundleInfo));
+                extensionListeners.forEach(s -> s.accept(bundleInfo));
                 }
-            eventPublisher.publishEvent(new ExtensionEvent(bundleInfo));
+
             return bundleInfo;
         } catch (BundleException bundleException) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                 "Could not install extension " + fileName,
+                                                 "Could not install extension " + extensionPackageFile
+                                                         .getAbsolutePath(),
                                                  bundleException);
         } catch (IOException ioException) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Could not open extension " + fileName, ioException);
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "Could not open extension " + extensionPackageFile.getAbsolutePath(),
+                                                 ioException);
         }
     }
 
@@ -287,26 +246,9 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
         }
     }
 
-    private void writeToFile(InputStream bundleInputStream, File target) throws IOException {
-        try (FileOutputStream fileOutputStream = new FileOutputStream(target)) {
-            byte[] buffer = new byte[5000];
-            int read = bundleInputStream.read(buffer);
-            while (read > 0) {
-                fileOutputStream.write(buffer, 0, read);
-                read = bundleInputStream.read(buffer);
-            }
-        }
-    }
-
-    public boolean hasBundle(String symbolicName, String version, String filename) {
+    public boolean hasBundle(String symbolicName, String version) {
         return findBundle(symbolicName, version)
-                .map(b -> checkFilename(b, filename))
                 .isPresent();
-    }
-
-    private boolean checkFilename(Bundle bundle, String filename) {
-        File file = new File(bundle.getLocation());
-        return filename.equals(file.getName());
     }
 
     private Optional<Bundle> findBundle(String symbolicName, String version) {
@@ -328,11 +270,9 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
             try {
                 bundle.stop();
                 bundle.uninstall();
-                FileUtils.delete(new File(bundle.getLocation()));
 
                 ExtensionKey key = extensionKey(bundle);
                 extensionListeners.forEach(s -> s.accept(key));
-                eventPublisher.publishEvent(new ExtensionEvent(key));
             } catch (BundleException bundleException) {
                 throw new MessagingPlatformException(ErrorCode.OTHER,
                                                      "Could not uninstall extension " + bundle.getLocation(),
@@ -410,9 +350,16 @@ public class OsgiController implements SmartLifecycle, ExtensionServiceProvider 
         return false;
     }
 
-    public File getLocation(ExtensionKey key) {
-        return findBundle(key.getSymbolicName(), key.getVersion())
-                .map(bundle -> new File(bundle.getLocation())).
-                        orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER, "Bundle not found"));
+    public void startExtension(String fullPath) {
+        File extension = new File(fullPath);
+        try (InputStream inputStream = new FileInputStream(extension)) {
+            Bundle bundle = bundleContext.installBundle(extension.getAbsolutePath(), inputStream);
+            logger.info("adding bundle {}/{}", bundle.getSymbolicName(), bundle.getVersion());
+            bundle.start();
+        } catch (IOException e) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, fullPath + ": Cannot read extension package", e);
+        } catch (BundleException e) {
+            throw new MessagingPlatformException(ErrorCode.OTHER, fullPath + ": Cannot start extension package", e);
+        }
     }
 }

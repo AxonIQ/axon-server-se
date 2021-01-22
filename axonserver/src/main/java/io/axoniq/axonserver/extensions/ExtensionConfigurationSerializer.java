@@ -19,7 +19,10 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
+ * Utility to serialize and deserialize extension configuration to strings.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @Component
 public class ExtensionConfigurationSerializer {

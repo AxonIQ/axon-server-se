@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.transformation;
 
-import io.axoniq.axonserver.extensions.transform.EventTransformer;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.util.StringUtils;

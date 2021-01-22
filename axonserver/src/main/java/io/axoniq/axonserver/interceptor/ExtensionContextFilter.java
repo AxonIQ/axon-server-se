@@ -22,7 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 
 /**
+ * Checks if an extension is active for a specific context.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 @Component
 public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey> {
@@ -30,6 +33,11 @@ public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey>
     private final Logger logger = LoggerFactory.getLogger(ExtensionContextFilter.class);
     private final Map<String, Map<String, String>> enabledExtensionsPerContext = new ConcurrentHashMap<>();
 
+    /**
+     * Handles {@link ExtensionEnabledEvent} events, published when an extension becomes active or is
+     * de-activated for a specific context.
+     * @param extensionEnabled the event
+     */
     @EventListener
     @Order(100)
     public void on(ExtensionEnabledEvent extensionEnabled) {
@@ -53,6 +61,13 @@ public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey>
         }
     }
 
+    /**
+     * Checks if an extension is active for a specific context.
+     *
+     * @param context      the name of the context
+     * @param extensionKey the key of the extension
+     * @return true if the extension is active for the given context
+     */
     @Override
     public boolean test(String context, ExtensionKey extensionKey) {
         return extensionKey.getVersion().equals(

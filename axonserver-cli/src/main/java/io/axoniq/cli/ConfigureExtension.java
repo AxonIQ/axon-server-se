@@ -22,7 +22,12 @@ import java.util.Map;
 import static io.axoniq.cli.CommandOptions.PROPERTIES;
 
 /**
+ * CLI handler for the configure-extension command. Sets configuration properties for an extension within a specific
+ * context.
+ * The properties can be provided as command line options (-prop group:key=value) or in a Yaml file.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class ConfigureExtension extends AxonIQCliCommand {
 

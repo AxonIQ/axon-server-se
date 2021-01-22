@@ -14,7 +14,7 @@ import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.extensions.transform.EventTransformerFactory;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
 /**

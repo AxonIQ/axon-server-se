@@ -19,11 +19,12 @@ import java.util.Optional;
  */
 public interface ExtensionStatusRepository extends JpaRepository<ExtensionStatus, Long> {
 
-    Optional<ExtensionStatus> findByContextAndExtensionAndVersion(String context, String extension, String version);
+    Optional<ExtensionStatus> findByContextAndExtension(String context, ExtensionPackage extension);
 
-    Optional<ExtensionStatus> findByContextAndExtensionAndActive(String context, String extension, boolean active);
+    Optional<ExtensionStatus> findByContextAndExtension_ExtensionAndActive(String context, String extension,
+                                                                           boolean active);
 
     List<ExtensionStatus> findAllByContextIn(List<String> context);
 
-    List<ExtensionStatus> findAllByExtensionAndVersion(String extension, String version);
+    List<ExtensionStatus> findAllByExtension(ExtensionPackage extension);
 }

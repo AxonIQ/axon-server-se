@@ -14,7 +14,11 @@ import org.springframework.security.core.Authentication;
 import java.util.function.Supplier;
 
 /**
+ * Component that returns the current authentication context for requests. This provider is only
+ * guaranteed if it is used in the same thread as where the request is received.
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public interface AuthenticationProvider extends Supplier<Authentication> {
 

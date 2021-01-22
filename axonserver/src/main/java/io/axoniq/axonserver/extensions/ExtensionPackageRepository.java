@@ -9,21 +9,14 @@
 
 package io.axoniq.axonserver.extensions;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
 /**
- * Event published when an extension is installed/removed.
- *
  * @author Marc Gathier
- * @since 4.5
  */
-public class ExtensionEvent {
+public interface ExtensionPackageRepository extends JpaRepository<ExtensionPackage, Long> {
 
-    private final ExtensionKey extension;
-
-    public ExtensionEvent(ExtensionKey extension) {
-        this.extension = extension;
-    }
-
-    public ExtensionKey getExtension() {
-        return extension;
-    }
+    Optional<ExtensionPackage> findByExtensionAndVersion(String extension, String version);
 }
