@@ -32,10 +32,10 @@
             license: "free",
             features: [],
             hasFeature: function(featureName) {
-                    for( let idx = 0; idx < globals.features.length; idx++) {
-                        if( globals.features[idx] === featureName) return true;
-                    }
-                    return false;
+                for( let idx = 0; idx < globals.features.length; idx++) {
+                    if( globals.features[idx] === featureName) return true;
+                }
+                return false;
             },
             isEnterprise: function() {
                 return globals.license === 'enterprise edition'
@@ -104,31 +104,33 @@
 
         $(document).ready(function () {
             new Vue({
-                        el: "#logout",
-                        data: {
-                            user: null
-                        }, mounted() {
-                    axios.get("v1/public/user").then(
-                            response => {
-                                if (response.data && response.data.user) {
-                                    this.user = response.data.user;
-                                }
-                            });
-                }, methods: {
+                el: "#logout",
+                data: {
+                    user: null
+                },
+                mounted() {
+                    axios.get("v1/public/user").then(response => {
+                        if (response.data && response.data.user) {
+                            this.user = response.data.user;
+                        }
+                    });
+                },
+                methods: {
                     loggedIn: function () {
                         return this.user != null;
                     }
                 }
+            });
 
-                    });
             new Vue({
-                        el: '#footer',
-                        data: {
-                            version: "Version",
-                            updates: {},
-                            showModal: false,
-                            hasUpdates: false
-                        }, mounted() {
+                el: '#footer',
+                data: {
+                    version: "Version",
+                    updates: {},
+                    showModal: false,
+                    hasUpdates: false
+                },
+                mounted() {
                     axios.get("v1/public/version").then(response => {
                         this.version = response.data.productName + " " + response.data.version;
                         return response.data
@@ -147,41 +149,41 @@
                         this.updates = updatesData.data.reverse();
                     });
                 }
-                    });
+            });
             new Vue({
-                        el: '#nav',
-                        data: {
-                            admin: globals.admin,
-                            licenseLoaded: false,
-                            license: "free",
-                        }, mounted() {
-                            axios.get("v1/public/license").then(response => {
-                                globals.license = response.data.edition.toLowerCase();
-                                globals.features = response.data.featureList;
-                                this.licenseLoaded = true;
-                                axios.get("v1/public/me").then(response => {
-                                    globals.authenticationEnabled = response.data.authentication;
-                                    globals.adminNode = response.data.adminNode;
-                                    if (globals.authenticationEnabled) {
-                                        this.admin = false;
-                                        globals.admin = false;
-                                        axios.get("v1/public/user").then(
-                                                response => {
-                                                    globals.admin = globals.adminNode && response.data.adminUser;
-                                                    this.admin = globals.admin;
-                                                    loadFragment();
-                                                });
+                el: '#nav',
+                data: {
+                    admin: globals.admin,
+                    licenseLoaded: false,
+                    license: "free",
+                },
+                mounted() {
+                    axios.get("v1/public/license").then(response => {
+                        globals.license = response.data.edition.toLowerCase();
+                        globals.features = response.data.featureList;
+                        this.licenseLoaded = true;
+                        axios.get("v1/public/me").then(response => {
+                            globals.authenticationEnabled = response.data.authentication;
+                            globals.adminNode = response.data.adminNode;
+                            if (globals.authenticationEnabled) {
+                                this.admin = false;
+                                globals.admin = false;
+                                axios.get("v1/public/user").then(
+                                        response => {
+                                            globals.admin = globals.adminNode && response.data.adminUser;
+                                            this.admin = globals.admin;
+                                            loadFragment();
+                                        });
 
-                                    } else {
-                                        this.admin = response.data.adminNode;
-                                        globals.admin = response.data.adminNode;
-                                        loadFragment();
-                                    }
-                                });
-                            });
-                }, methods: {
-                        }
+                            } else {
+                                this.admin = response.data.adminNode;
+                                globals.admin = response.data.adminNode;
+                                loadFragment();
+                            }
+                        });
                     });
+                }
+            });
 
             $.ajaxPrefilter(function (options, original_Options, jqXHR) {
                 options.async = true;
@@ -191,10 +193,6 @@
                 console.info(window.location.hash);
                 loadFragment();
             });
-
-
-
-
         });
 
         function loadFragment() {
@@ -218,9 +216,9 @@
 
     <script type="text/x-template" id="modal-template">
         <transition name="modal">
-            <div class="modal-mask">
+            <div class="modal-mask" @click.stop="$emit('close')">
                 <div class="modal-wrapper">
-                    <div class="modal-container">
+                    <div class="modal-container" @click.stop="">
 
                         <div class="modal-header">
                             <slot name="header">
@@ -234,7 +232,7 @@
 
                         <div class="modal-footer">
                             <slot name="footer">
-                                <button class="modal-default-button" @click="$emit('close')">
+                                <button class="modal-default-button" @click.stop="$emit('close')">
                                     OK
                                 </button>
                             </slot>
@@ -289,6 +287,7 @@
                 <li v-for="update in updates">
                     <h4>{{ update.name }}</h4>
                     <p>{{ update.body }}</p>
+                    <hr />
                 </li>
             </ul>
         </div>

@@ -283,14 +283,9 @@ input[type="search"] {
 	border: none;
 	cursor: pointer;
 }
-	.icon span{
-		display: none;
-	}
-/*.icon.refresh{*/
-	/**/
-	/*background: url('../img/icon-refresh.png') no-repeat center center;*/
-	/*background-size: 20px 20px;*/
-/*}*/
+.icon span{
+	display: none;
+}
 .msg{
 	margin: 15px 0;
 	padding: 10px 18px;
@@ -810,6 +805,8 @@ select {
 
 .modal-container {
 	width: 40%;
+	max-height: 400px;
+	overflow: auto;
 	margin: 0px auto;
 	padding: 20px 30px;
 	background-color: #fff;
@@ -828,6 +825,7 @@ select {
 .modal-body {
 	margin: 20px 0;
 	text-align: left;
+	white-space: pre-wrap;
 }
 
 .modal-default-button {
