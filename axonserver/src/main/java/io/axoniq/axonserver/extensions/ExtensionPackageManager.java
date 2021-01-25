@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Optional;
+import javax.transaction.Transactional;
 
 /**
  * @author Marc Gathier
@@ -84,6 +85,7 @@ public class ExtensionPackageManager implements SmartLifecycle {
         return 0;
     }
 
+    @Transactional
     public void uninstallExtension(ExtensionKey extensionKey) {
         extensionContextManager.uninstall(extensionKey);
         osgiController.uninstallExtension(extensionKey);
@@ -96,6 +98,7 @@ public class ExtensionPackageManager implements SmartLifecycle {
         });
     }
 
+    @Transactional
     public ExtensionPackage addExtension(String fileName, InputStream inputStream) {
         File target = new File(bundleDirectory + File.separatorChar + fileName);
         writeToFile(inputStream, target);
