@@ -63,6 +63,11 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>io.axoniq</groupId>
+                <artifactId>grpc-manual-flow-control</artifactId>
+                <version>1.0</version>
+            </dependency>
+            <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
                 <version>${netty.version}</version>

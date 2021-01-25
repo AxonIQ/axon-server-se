@@ -35,6 +35,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.axoniq</groupId>
+            <artifactId>grpc-manual-flow-control</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.axoniq.axonserver</groupId>
             <artifactId>axonserver-grpc</artifactId>
             <version>${project.parent.version}</version>
