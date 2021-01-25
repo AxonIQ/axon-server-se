@@ -126,9 +126,9 @@ podTemplate(label: label,
                 if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
                     def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
-                            string(name: 'groupId', value: pomGroupId),
-                            string(name: 'artifactId', value: pomArtifactId),
-                            string(name: 'projectVersion', value: pomVersion)
+                            string(name: 'serverEdition', value: 'se'),
+                            string(name: 'projectVersion', value: pomVersion),
+                            string(name: 'cliVersion', value: pomVersion)
                         ]
                     if (canaryTests.result == "FAILURE") {
                         slackReport = slackReport + "\nCanary Tests FAILED!"
