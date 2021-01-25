@@ -46,7 +46,7 @@ public class SnapshotWriteStorage {
                                          completableFuture.complete(Confirmation.newBuilder().setSuccess(true).build());
                          if( ! listeners.isEmpty()) {
                     listeners.values()
-                            .forEach(consumer -> snapshotStored(consumer, firstToken, eventMessage));
+                             .forEach(consumer -> snapshotStored(consumer, firstToken, snapshot));
                 }            } else {
                                          completableFuture.completeExceptionally(cause);
                                      }

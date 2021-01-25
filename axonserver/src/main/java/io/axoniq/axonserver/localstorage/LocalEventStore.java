@@ -539,7 +539,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                     responseObserver,
                                                     workers.snapshotWriteStorage,
                                                     workers.snapshotStreamReader
-                );
+        );
     }
 
     @Override
@@ -851,10 +851,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         @Override
         public EventWithToken decorateEventWithToken(EventWithToken event) {
-            EventWithToken intercepted = EventWithToken.newBuilder(event)
-                                                       .setEvent(eventInterceptors.readEvent(event.getEvent(),
-                                                                                             extensionUnitOfWork))
-                                                       .build();
+            if (eventInterceptors.noReadInterceptors(extensionUnitOfWork.context())) {
+                return eventDecorator.decorateEventWithToken(event);
+            }
+
+            EventWithToken intercepted = event.getEvent().getSnapshot() ?
+                    EventWithToken.newBuilder(event)
+                                  .setEvent(eventInterceptors.readSnapshot(event.getEvent(),
+                                                                           extensionUnitOfWork))
+                                  .build() :
+                    EventWithToken.newBuilder(event)
+                                  .setEvent(eventInterceptors.readEvent(event.getEvent(),
+                                                                        extensionUnitOfWork))
+                                  .build();
             return eventDecorator.decorateEventWithToken(intercepted);
         }
     }
