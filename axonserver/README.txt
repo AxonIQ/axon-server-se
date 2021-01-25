@@ -3,6 +3,18 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.9
+-------------------------------
+* Fix for concurrency issue in listing aggregates events during appending events for the same aggregate
+
+Release Notes for version 4.4.8
+-------------------------------
+* New metric to monitor query response times per query handler
+
+Release Notes for version 4.4.7
+-------------------------------
+* Improvement for subscription query: initial result are now provided by a single instance per component
+
 Release Notes for version 4.4.6
 -------------------------------
 * Fix for processor information showing information on disconnected applications

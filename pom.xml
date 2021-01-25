@@ -52,7 +52,7 @@
         <netty.tcnative.version>2.0.31.Final</netty.tcnative.version>
         <netty.version>4.1.51.Final</netty.version>
         <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
-        <axonserver.api.version>4.4</axonserver.api.version>
+        <axonserver.api.version>4.5-SNAPSHOT</axonserver.api.version>
         <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>

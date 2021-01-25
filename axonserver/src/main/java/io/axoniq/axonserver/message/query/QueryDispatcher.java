@@ -91,13 +91,19 @@ public class QueryDispatcher {
         if (queryInformation != null) {
             ClientStreamIdentification clientStream = new ClientStreamIdentification(queryInformation.getContext(),
                                                                                      clientStreamId);
+            long responseTime = System.currentTimeMillis() - queryInformation.getTimestamp();
+            queryMetricsRegistry.addEndToEndResponseTime(queryInformation.getQuery(),
+                                                         clientId,
+                                                         clientStream.getContext(),
+                                                         responseTime);
             if (queryInformation.forward(clientStreamId, queryResponse) <= 0) {
                 queryCache.remove(queryInformation.getKey());
                 if (!proxied) {
-                    queryMetricsRegistry.add(queryInformation.getQuery(),
-                                             queryInformation.getSourceClientId(), clientId,
-                                             clientStream.getContext(),
-                                             System.currentTimeMillis() - queryInformation.getTimestamp());
+                    queryMetricsRegistry.addHandlerResponseTime(queryInformation.getQuery(),
+                                                                queryInformation.getSourceClientId(), clientId,
+                                                                clientStream.getContext(),
+                                                                responseTime
+                    );
                 }
             }
         } else {
@@ -121,11 +127,12 @@ public class QueryDispatcher {
                 queryCache.remove(queryInformation.getKey());
             }
             if (!proxied) {
-                queryMetricsRegistry.add(queryInformation.getQuery(),
-                                         queryInformation.getSourceClientId(),
-                                         clientId,
-                                         queryInformation.getContext(),
-                                         System.currentTimeMillis() - queryInformation.getTimestamp());
+                queryMetricsRegistry.addHandlerResponseTime(queryInformation.getQuery(),
+                                                            queryInformation.getSourceClientId(),
+                                                            clientId,
+                                                            queryInformation.getContext(),
+                                                            System.currentTimeMillis() - queryInformation
+                                                                    .getTimestamp());
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);
