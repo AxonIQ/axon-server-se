@@ -26,7 +26,7 @@ public class AuditLog implements ApplicationListener<AbstractAuthenticationEvent
     }
 
     public static String username(Principal principal) {
-        return (principal == null) ? "<anonymous>" : principal.getName();
+        return (principal == null) ? "<anonymous>" : principal.getName().replaceAll("[\n|\r|\t]", "_");
     }
 
     private static final Logger auditLog = getLogger();

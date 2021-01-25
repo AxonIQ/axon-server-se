@@ -12,6 +12,8 @@ package io.axoniq.axonserver.extensions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.file.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
@@ -31,6 +33,7 @@ import javax.transaction.Transactional;
 @Component
 public class ExtensionPackageManager implements SmartLifecycle {
 
+    private final Logger logger = LoggerFactory.getLogger(ExtensionPackageManager.class);
     private final ApplicationEventPublisher eventPublisher;
     private final String bundleDirectory;
     private final ExtensionPackageRepository extensionPackageRepository;
@@ -63,8 +66,8 @@ public class ExtensionPackageManager implements SmartLifecycle {
                                                                bundleDirectory + File.separatorChar + extensionPackage
                                                                        .getFilename()));
             extensionContextManager.start();
-        } catch (Exception ioException) {
-            ioException.printStackTrace();
+        } catch (Exception exception) {
+            logger.warn("Failed to start extensions", exception);
         }
         running = true;
     }
