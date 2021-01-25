@@ -24,13 +24,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.commons.compress.utils.IOUtils.toByteArray;
+import static com.google.common.io.ByteStreams.toByteArray;
+
 
 /**
  * Wrapper around an Event that keeps track of the Serialized form of the Event, to prevent unnecessary
  * (un)marshalling of Event messages.
  */
-public class SerializedEvent  {
+public class SerializedEvent {
 
     private final byte[] serializedData;
     private volatile Event event;

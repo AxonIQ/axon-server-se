@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 /**
  * Configuration for Micrometer meterics.
@@ -38,14 +38,14 @@ public class MetricsConfiguration {
             MessagingPlatformConfiguration messagingPlatformConfiguration) {
         MeterFilter defaultFilter = new MeterFilter() {
             @Override
-            public DistributionStatisticConfig configure(Meter.Id id, @NotNull DistributionStatisticConfig config) {
+            public DistributionStatisticConfig configure(Meter.Id id, @Nonnull DistributionStatisticConfig config) {
                 if (id.getName().startsWith("axon") || id.getName().startsWith("local")) {
                     return DistributionStatisticConfig.builder()
                                                       .percentiles(PERCENTILE_MEDIAN,
                                                                    PERCENTILE_NINETYFIVE,
                                                                    PERCENTILE_NINETYNINE)
-                                                      .minimumExpectedValue(TimeUnit.MILLISECONDS.toMillis(1))
-                                                      .maximumExpectedValue(TimeUnit.SECONDS.toMillis(10))
+                                                      .minimumExpectedValue((double) TimeUnit.MILLISECONDS.toMillis(1))
+                                                      .maximumExpectedValue((double) TimeUnit.SECONDS.toMillis(10))
                                                       .expiry(Duration.ofMinutes(messagingPlatformConfiguration
                                                                                          .getMetricsInterval()))
                                                       .build()
