@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import com.google.common.collect.Iterables;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -22,12 +23,15 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.metric.TimeMeasuredPublisher;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.io.IOException;
@@ -108,6 +112,38 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public abstract void handover(Long segment, Runnable callback);
+
+    public Publisher<SerializedEvent> eventsPerAggregate(String aggregateId,
+                                                         long firstSequenceNumber,
+                                                         long lastSequenceNumber,
+                                                         long minToken) {
+        //segment - allposition in that segment
+        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                   firstSequenceNumber,
+                                                                                   lastSequenceNumber,
+                                                                                   Long.MAX_VALUE,
+                                                                                   minToken);
+        List<Iterable<SerializedEvent>> all = new ArrayList<>();
+        positionInfos.forEach((segment, info) -> {
+            all.add(eventsForPositions(segment, info.positions(), firstSequenceNumber, lastSequenceNumber));
+        });
+        Flux<SerializedEvent> eventFlux = Flux.fromIterable(Iterables.concat(all)); //TODO: this is opening all segments indipendently from boundaries, find a better way
+        return new TimeMeasuredPublisher<>(eventFlux, aggregateReadTimer);
+    }
+
+    private Iterable<SerializedEvent> eventsForPositions(long segment,
+                                                        List<Integer> positions,
+                                                        long minSequenceNumber,
+                                                        long maxSequenceNumber) {
+        Optional<EventSource> buffer = getEventSource(segment);
+        if (!buffer.isPresent() && next != null) {
+            return next.eventsForPositions(segment, positions, minSequenceNumber, maxSequenceNumber);
+        }
+        if (buffer.isPresent()) {
+            return new EventSourceIterable(positions, buffer.get(), minSequenceNumber, maxSequenceNumber);
+        }
+        return Collections.emptyList();
+    }
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,

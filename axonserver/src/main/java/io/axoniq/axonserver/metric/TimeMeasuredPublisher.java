@@ -6,6 +6,9 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 /**
  * @author Sara Pellegrini
@@ -15,10 +18,16 @@ public class TimeMeasuredPublisher<T> implements Publisher<T> {
 
     private final Publisher<T> delegatePublisher;
     private final Timer subscriptionTimer;
+    private final LongSupplier timeSupplier;
 
     public TimeMeasuredPublisher(Publisher<T> delegatePublisher, Timer subscriptionTimer) {
+        this(delegatePublisher, subscriptionTimer, System::currentTimeMillis);
+    }
+
+    public TimeMeasuredPublisher(Publisher<T> delegatePublisher, Timer subscriptionTimer, LongSupplier timeSupplier) {
         this.delegatePublisher = delegatePublisher;
         this.subscriptionTimer = subscriptionTimer;
+        this.timeSupplier = timeSupplier;
     }
 
     @Override
@@ -30,16 +39,16 @@ public class TimeMeasuredPublisher<T> implements Publisher<T> {
     private final class TimeSubscriber implements Subscriber<T> {
 
         private final Subscriber<? super T> delegateSubscriber;
-        private final long before = System.currentTimeMillis();
+        private final AtomicLong before = new AtomicLong();
 
         private TimeSubscriber(Subscriber<? super T> delegateSubscriber) {
             this.delegateSubscriber = delegateSubscriber;
         }
 
-
         @Override
         public void onSubscribe(Subscription s) {
             delegateSubscriber.onSubscribe(s);
+            before.set(timeSupplier.getAsLong());
         }
 
         @Override
@@ -55,7 +64,7 @@ public class TimeMeasuredPublisher<T> implements Publisher<T> {
         @Override
         public void onComplete() {
             delegateSubscriber.onComplete();
-            subscriptionTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
+            subscriptionTimer.record(timeSupplier.getAsLong() - before.get(), TimeUnit.MILLISECONDS);
         }
     }
 }

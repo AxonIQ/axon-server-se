@@ -8,19 +8,19 @@ import java.util.function.Predicate;
  * @author Sara Pellegrini
  * @since
  */
-public class SequenceBoundaries implements Predicate<SerializedEvent> {
+public class OutsideSequenceBoundaries implements Predicate<SerializedEvent> {
 
     private final long minSequenceNumber;
     private final long maxSequenceNumber;
 
-    public SequenceBoundaries(long minSequenceNumber, long maxSequenceNumber) {
+    public OutsideSequenceBoundaries(long minSequenceNumber, long maxSequenceNumber) {
         this.minSequenceNumber = minSequenceNumber;
         this.maxSequenceNumber = maxSequenceNumber;
     }
 
     @Override
     public boolean test(SerializedEvent event) {
-        return (event.getAggregateSequenceNumber() >= minSequenceNumber
-                && event.getAggregateSequenceNumber() < maxSequenceNumber);
+        return event.getAggregateSequenceNumber() < minSequenceNumber
+                || event.getAggregateSequenceNumber() >= maxSequenceNumber;
     }
 }

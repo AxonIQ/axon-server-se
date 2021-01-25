@@ -24,6 +24,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
+import reactor.core.publisher.Flux;
 
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +53,8 @@ public interface EventStore {
      */
     StreamObserver<InputStream> createAppendEventConnection(String context,
                                                             StreamObserver<Confirmation> responseObserver);
+
+    Flux<SerializedEvent> listAggregateEvents(String context, GetAggregateEventsRequest request);
 
     /**
      * Read events for an aggregate.

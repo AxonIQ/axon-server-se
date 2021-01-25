@@ -16,30 +16,27 @@ class EventSourceIterable implements Iterable<SerializedEvent> {
 
     private final EventSource eventSource;
     private final List<Integer> positions;
-    private final Predicate<SerializedEvent> continueUtntil;
+    private final Predicate<SerializedEvent> completeCondition;
     private final Iterable<SerializedEvent> iterable;
 
 
     public EventSourceIterable(List<Integer> positions,
                                EventSource eventSource,
                                long minSequence,
-                               long maxSequence,
-                               long maxResults) {
+                               long maxSequence) {
         this(positions,
              eventSource,
-             new SequenceBoundaries(minSequence, maxSequence),
-             maxResults);
+             new OutsideSequenceBoundaries(minSequence, maxSequence));
     }
 
 
     public EventSourceIterable(List<Integer> positions,
                                EventSource eventSource,
-                               Predicate<SerializedEvent> valid,
-                               long maxResults) {
+                               Predicate<SerializedEvent> completeCondition) {
         this.positions = positions;
         this.eventSource = eventSource;
-        this.continueUtntil = valid;
-        this.iterable = new LimitedItemsIterable<>(maxResults, EventIterator::new);
+        this.completeCondition = completeCondition;
+        this.iterable = EventIterator::new;
     }
 
     @Nonnull
@@ -71,7 +68,7 @@ class EventSourceIterable implements Iterable<SerializedEvent> {
         private SerializedEvent prefetch() {
             if (nextPosition < positions.size()) {
                 SerializedEvent event = eventSource.readEvent(positions.get(nextPosition++));
-                if (continueUtntil.test(event)) {
+                if (!completeCondition.test(event)) {
                     return event;
                 }
             }
