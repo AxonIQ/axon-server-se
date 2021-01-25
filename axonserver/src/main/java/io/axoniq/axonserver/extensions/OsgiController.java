@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
 @Controller
 public class OsgiController implements ExtensionServiceProvider {
 
-    private final Logger logger = LoggerFactory.getLogger(ExtensionController.class);
+    private final Logger logger = LoggerFactory.getLogger(OsgiController.class);
     private final Set<Consumer<ExtensionKey>> extensionListeners = new CopyOnWriteArraySet<>();
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
@@ -141,7 +141,7 @@ public class OsgiController implements ExtensionServiceProvider {
                                                                     extensionKey(s.getBundle())))
                                     .collect(Collectors.toSet());
         } catch (InvalidSyntaxException e) {
-            throw new RuntimeException(e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Cannot find service references", e);
         }
     }
 
@@ -157,7 +157,7 @@ public class OsgiController implements ExtensionServiceProvider {
                                     .map(s -> bundleContext.getService(s))
                                     .collect(Collectors.toSet());
         } catch (InvalidSyntaxException e) {
-            throw new RuntimeException(e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Cannot find service references", e);
         }
     }
 
@@ -246,11 +246,6 @@ public class OsgiController implements ExtensionServiceProvider {
         }
     }
 
-    public boolean hasBundle(String symbolicName, String version) {
-        return findBundle(symbolicName, version)
-                .isPresent();
-    }
-
     private Optional<Bundle> findBundle(String symbolicName, String version) {
         Version version1 = Version.parseVersion(version);
         Bundle[] bundles = bundleContext.getBundles();
@@ -306,48 +301,8 @@ public class OsgiController implements ExtensionServiceProvider {
         return findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion()).orElse(null);
     }
 
-    public void updateStatus(ExtensionKey bundleInfo, boolean active) {
-        findBundle(bundleInfo.getSymbolicName(), bundleInfo.getVersion())
-                .ifPresent(bundle -> {
-                    if (active) {
-                        start(bundle);
-                    } else {
-                        stop(bundle);
-                    }
-                });
-    }
-
-    private void stop(Bundle bundle) {
-        if (isActive(bundle)) {
-            try {
-                bundle.stop();
-            } catch (BundleException bundleException) {
-                throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                     String.format("Could not stop %s/%s", bundle.getSymbolicName(),
-                                                                   bundle.getVersion()),
-                                                     bundleException);
-            }
-        }
-    }
-
-    private void start(Bundle bundle) {
-        if (!isActive(bundle)) {
-            try {
-                bundle.start();
-            } catch (BundleException bundleException) {
-                throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                     String.format("Could not stop %s/%s", bundle.getSymbolicName(),
-                                                                   bundle.getVersion()),
-                                                     bundleException);
-            }
-        }
-    }
-
     public boolean isActive(Bundle bundle) {
-        if (bundle.getState() == Bundle.ACTIVE) {
-            return true;
-        }
-        return false;
+        return bundle.getState() == Bundle.ACTIVE;
     }
 
     public void startExtension(String fullPath) {

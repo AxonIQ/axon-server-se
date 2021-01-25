@@ -31,7 +31,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Component
 public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryInterceptors {
 
-    private final Logger logger = LoggerFactory.getLogger(DefaultQueryInterceptors.class);
+    private final Logger logger = LoggerFactory.getLogger(DefaultSubscriptionQueryInterceptors.class);
 
     private final List<ServiceWithInfo<SubscriptionQueryRequestInterceptor>> queryRequestInterceptors = new CopyOnWriteArrayList<>();
     private final List<ServiceWithInfo<SubscriptionQueryResponseInterceptor>> queryResponseInterceptors = new CopyOnWriteArrayList<>();

@@ -51,8 +51,7 @@ public class ExtensionContextManager {
     public ExtensionStatus updateStatus(String context, String extension, String version,
                                         boolean active) {
         ExtensionPackage pack = packageRepository.findByExtensionAndVersion(extension, version)
-                                                 .orElseThrow(() -> new RuntimeException(
-                                                         "Extension not found " + extension + "/" + version));
+                                                 .orElseThrow(() -> new ExtensionNotFoundException(extension, version));
 
         ExtensionStatus extensionStatus = extensionStatusRepository.findByContextAndExtension(context, pack)
                                                                    .orElse(new ExtensionStatus(context,
@@ -103,8 +102,7 @@ public class ExtensionContextManager {
 
     public Optional<ExtensionStatus> getStatus(String context, String extension, String version) {
         ExtensionPackage pack = packageRepository.findByExtensionAndVersion(extension, version)
-                                                 .orElseThrow(() -> new RuntimeException(
-                                                         "Extension not found " + extension + "/" + version));
+                                                 .orElseThrow(() -> new ExtensionNotFoundException(extension, version));
         return extensionStatusRepository.findByContextAndExtension(context, pack);
     }
 
@@ -136,8 +134,7 @@ public class ExtensionContextManager {
     public void updateConfiguration(String context, String extension, String version,
                                     Map<String, Map<String, Object>> properties) {
         ExtensionPackage pack = packageRepository.findByExtensionAndVersion(extension, version)
-                                                 .orElseThrow(() -> new RuntimeException(
-                                                         "Extension not found " + extension + "/" + version));
+                                                 .orElseThrow(() -> new ExtensionNotFoundException(extension, version));
         ExtensionStatus extensionStatus = extensionStatusRepository.findByContextAndExtension(context,
                                                                                               pack)
                                                                    .orElse(new ExtensionStatus(context,
@@ -166,12 +163,11 @@ public class ExtensionContextManager {
                                                                                       extensionKey.getVersion());
         if (pack.isPresent()) {
             List<ExtensionStatus> contexts = extensionStatusRepository.findAllByExtension(pack.get());
-            contexts.forEach(extensionStatus -> {
-                applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
-                                                                                 extensionKey,
-                                                                                 null,
-                                                                                 false));
-            });
+            contexts.forEach(extensionStatus -> applicationEventPublisher
+                    .publishEvent(new ExtensionEnabledEvent(extensionStatus.getContext(),
+                                                            extensionKey,
+                                                            null,
+                                                            false)));
             contexts.forEach(extensionStatus -> extensionStatusRepository.deleteById(extensionStatus.getId()));
         }
     }
@@ -209,14 +205,15 @@ public class ExtensionContextManager {
 
     public Iterable<ExtensionInfo> listExtensions() {
         Map<ExtensionKey, ExtensionInfo> extensions = new HashMap<>();
-        packageRepository.findAll().forEach(pack -> {
-            extensions.put(pack.getKey(),
-                           new ExtensionInfo(pack.getExtension(), pack.getVersion(), pack.getFilename()));
-        });
-        extensionStatusRepository.findAll().forEach(extension -> {
-            extensions.get(extension.getExtensionKey())
-                      .addContextInfo(extension.getContext(), extension.isActive());
-        });
+        packageRepository.findAll()
+                         .forEach(pack -> extensions.put(pack.getKey(),
+                                                         new ExtensionInfo(pack.getExtension(),
+                                                                           pack.getVersion(),
+                                                                           pack.getFilename())));
+        extensionStatusRepository.findAll()
+                                 .forEach(extension -> extensions.get(extension.getExtensionKey())
+                                                                 .addContextInfo(extension.getContext(),
+                                                                                 extension.isActive()));
         return extensions.values();
     }
 }

@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionController;
 import io.axoniq.axonserver.extensions.ExtensionInfo;
 import io.axoniq.axonserver.extensions.ExtensionKey;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.Principal;
@@ -113,6 +116,14 @@ public class ExtensionsRestController {
     }
 
     private String uniqueName(String originalFilename) {
+        if (originalFilename == null) {
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "No extension package provided");
+        }
+        if (originalFilename.contains(File.separator)) {
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "Filename should not contain directory separator");
+        }
         int lastDot = originalFilename.lastIndexOf('.');
         return lastDot > 0 ? originalFilename.substring(0, lastDot) + "-" + System.currentTimeMillis()
                 + originalFilename.substring(lastDot)

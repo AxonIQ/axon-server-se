@@ -11,7 +11,6 @@ package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

@@ -29,9 +29,6 @@ public class ExtensionPackage {
     private String version;
     private String filename;
 
-    public ExtensionPackage() {
-    }
-
     public long getId() {
         return id;
     }

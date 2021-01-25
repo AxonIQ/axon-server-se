@@ -28,19 +28,13 @@ public class TokenAuthentication implements Authentication {
     private final boolean authenticated;
     private final String name;
     private final Set<GrantedAuthority> roles;
-    private final Object details;
 
-    public TokenAuthentication(boolean authenticated, String name, Set<String> roles, Object details) {
+    public TokenAuthentication(boolean authenticated, String name, Set<String> roles) {
         this.authenticated = authenticated;
         this.name = name;
-        this.details = details;
         this.roles = roles.stream()
                           .map(s -> (GrantedAuthority) () -> s)
                           .collect(Collectors.toSet());
-    }
-
-    public TokenAuthentication(boolean authenticated, String name, Set<String> roles) {
-        this(authenticated, name, roles, null);
     }
 
     @Override
@@ -55,7 +49,7 @@ public class TokenAuthentication implements Authentication {
 
     @Override
     public Object getDetails() {
-        return details;
+        return null;
     }
 
     @Override

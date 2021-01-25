@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.extensions;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,12 +54,18 @@ public class SystemPackagesProvider {
                             exports.add(manifest.getMainAttributes()
                                                 .getValue("Export-Package"));
                         }
+                    } catch (IOException ioException) {
+                        throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                             "Error reading manifest from " + manifestUrl,
+                                                             ioException);
                     }
                 }
             }
             return String.join(",", exports.toArray(new String[0]));
         } catch (IOException ioException) {
-            throw new RuntimeException(ioException);
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "Error finding manifest files",
+                                                 ioException);
         }
     }
 

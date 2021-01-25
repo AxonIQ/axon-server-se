@@ -17,8 +17,7 @@ package io.axoniq.axonserver.localstorage.transformation;
 public interface EventTransformerFactory {
 
     /**
-     * Get an event transformer. The transformer may be based on flags (for existing data) or based on
-     * settings in the storage properties (for new data). //TODO rephrase
+     * Get an event transformer.
      *
      * @param flags the flags for existing data
      * @return the transformer

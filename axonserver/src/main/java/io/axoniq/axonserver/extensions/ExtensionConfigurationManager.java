@@ -14,8 +14,6 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.interceptor.ExtensionEnabledEvent;
 import io.axoniq.axonserver.rest.ExtensionPropertyGroup;
 import org.osgi.framework.Bundle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -36,8 +34,6 @@ import java.util.stream.Collectors;
  */
 @Component
 public class ExtensionConfigurationManager {
-
-    private final Logger logger = LoggerFactory.getLogger(ExtensionConfigurationManager.class);
 
     private final OsgiController osgiController;
 

@@ -158,7 +158,7 @@ public class EventDispatcher implements AxonServerClientService {
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Error on connection from client", throwable.getMessage());
+                logger.warn("Error on connection from client: {}", throwable.getMessage());
                 StreamObserverUtils.error(appendEventConnection, throwable);
             }
 
