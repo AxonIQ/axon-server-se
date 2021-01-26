@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.reactivestreams.Publisher;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Optional;
@@ -118,10 +119,10 @@ public interface EventStorageEngine {
      * @param lastSequenceNumber  the last sequence number to retrieve (exlusive)
      * @param minToken            the minimum token of the event that are returned
      */
-    Publisher<SerializedEvent> eventsPerAggregate(String aggregateId,
-                                                  long firstSequenceNumber,
-                                                  long lastSequenceNumber,
-                                                  long minToken);
+    Flux<SerializedEvent> eventsPerAggregate(String aggregateId,
+                                             long firstSequenceNumber,
+                                             long lastSequenceNumber,
+                                             long minToken);
 
     /**
      * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.

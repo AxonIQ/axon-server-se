@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,6 +54,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -113,7 +115,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public abstract void handover(Long segment, Runnable callback);
 
-    public Publisher<SerializedEvent> eventsPerAggregate(String aggregateId,
+    public Flux<SerializedEvent> eventsPerAggregate(String aggregateId,
                                                          long firstSequenceNumber,
                                                          long lastSequenceNumber,
                                                          long minToken) {
@@ -127,8 +129,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         positionInfos.forEach((segment, info) -> {
             all.add(eventsForPositions(segment, info.positions(), firstSequenceNumber, lastSequenceNumber));
         });
-        Flux<SerializedEvent> eventFlux = Flux.fromIterable(Iterables.concat(all)); //TODO: this is opening all segments indipendently from boundaries, find a better way
-        return new TimeMeasuredPublisher<>(eventFlux, aggregateReadTimer);
+        Flux<SerializedEvent> eventFlux = Flux.fromIterable(Iterables.concat(all));
+        //TODO: this is opening all segments indipendently from boundaries, find a better way
+        return eventFlux.transform(flux -> new TimeMeasuredPublisher<>(flux, aggregateReadTimer));
+        //TODO: replace the TimeMeasuredPublisher with something better
     }
 
     private Iterable<SerializedEvent> eventsForPositions(long segment,

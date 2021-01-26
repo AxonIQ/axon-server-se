@@ -36,6 +36,7 @@ import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.InputStream;
@@ -64,6 +66,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntConsumer;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
@@ -319,20 +323,32 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public Flux<SerializedEvent> aggregateEvents(String context, GetAggregateEventsRequest request) {
-        AtomicInteger counter = new AtomicInteger();
-        return Flux.from(workers(context).aggregateReader
-                                 .events(request.getAggregateId(),
-                                         request.getAllowSnapshots(),
-                                         request.getInitialSequence(),
-                                         request.getMaxSequence(),
-                                         request.getMinToken()))
-                   .subscribeOn(Schedulers.fromExecutorService(dataFetcher))
-                   .doOnNext(serializedEvent -> counter.incrementAndGet())
-                   .doOnComplete(() -> {
-                       if (counter.get() == 0) {
-                           logger.debug("Aggregate not found: {}", request);
-                       }
-                   });
+        AggregateReader aggregateReader = workers(context).aggregateReader;
+        return aggregateReader
+                .events(request.getAggregateId(),
+                        request.getAllowSnapshots(),
+                        request.getInitialSequence(),
+                        request.getMaxSequence(),
+                        request.getMinToken())
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher))
+                .transform(f -> count(f, counter -> {
+                    if (counter == 0) {
+                        logger.debug("Aggregate not found: {}", request);
+                    }
+                }));
+    }
+
+    private <T> Publisher<T> count(Flux<T> flux, IntConsumer doOnComplete) {
+        final String contextKey = "__COUNTER";
+        return flux.doOnEach(signal -> {
+            if (signal.isOnNext()) {
+                AtomicInteger counter = signal.getContextView().get(contextKey);
+                counter.incrementAndGet();
+            } else if (signal.isOnComplete()) {
+                AtomicInteger counter = signal.getContextView().get(contextKey);
+                doOnComplete.accept(counter.get());
+            }
+        }).contextWrite(ctx -> ctx.put(contextKey, new AtomicInteger()));
     }
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {

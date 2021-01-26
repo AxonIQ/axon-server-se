@@ -79,12 +79,13 @@ public class AggregateReader {
      * @param minToken          the minimum token of the event that are returned
      * @return the events related to the specific aggregate
      */
-    public Publisher<SerializedEvent> events(String aggregateId,
+    public Flux<SerializedEvent> events(String aggregateId,
                                              boolean useSnapshots,
                                              long minSequenceNumber,
                                              long maxSequenceNumber,
                                              long minToken) {
         if (useSnapshots) {
+            //TODO: make it lazy, because this is execute before flux is subscribed
             Optional<SerializedEvent> optionalSnapshot = snapshotReader.readSnapshot(aggregateId, minSequenceNumber);
             if (optionalSnapshot.isPresent()) {
                 SerializedEvent snapshot = optionalSnapshot.get();

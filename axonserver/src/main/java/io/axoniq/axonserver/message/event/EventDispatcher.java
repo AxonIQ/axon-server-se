@@ -36,8 +36,10 @@ import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.util.StreamObserverUtils;
+import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
@@ -170,7 +172,8 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
-        StreamObserver<SerializedEvent> aggregateStreamObserver = new SequenceValidationStreamObserver(responseObserver);
+        StreamObserver<SerializedEvent> aggregateStreamObserver =
+                new SequenceValidationStreamObserver((CallStreamObserver<SerializedEvent>)responseObserver);
         listAggregateEvents(contextProvider.getContext(),
                             request,
                             new ForwardingStreamObserver<>(logger, "listAggregateEvents", aggregateStreamObserver));
@@ -180,6 +183,7 @@ public class EventDispatcher implements AxonServerClientService {
                                     StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
+                new FlowControlledOutgoingStream<>(responseObserver);
                 eventStore.listAggregateEvents(context, request, responseObserver);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);

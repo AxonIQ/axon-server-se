@@ -54,7 +54,7 @@ public interface EventStore {
     StreamObserver<InputStream> createAppendEventConnection(String context,
                                                             StreamObserver<Confirmation> responseObserver);
 
-    Flux<SerializedEvent> listAggregateEvents(String context, GetAggregateEventsRequest request);
+    Flux<SerializedEvent> aggregateEvents(String context, GetAggregateEventsRequest request);
 
     /**
      * Read events for an aggregate.
