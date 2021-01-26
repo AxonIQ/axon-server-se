@@ -191,8 +191,8 @@ footer{
 		margin: 9px 3px;
 		line-height: 20px;
 		font-weight: 300;
-		color: orange;
-		animation: blink 1.5s ease-in infinite;
+		color: red;
+		animation: blink 0.5s ease-in-out infinite;
 		cursor: pointer;
 	}
 
