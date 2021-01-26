@@ -28,8 +28,8 @@ import static org.junit.Assert.*;
 public class DefaultSubscriptionQueryInterceptorsTest {
 
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter();
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
+    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController);
     private final DefaultSubscriptionQueryInterceptors testSubject = new DefaultSubscriptionQueryInterceptors(
             osgiController,
             extensionContextFilter);

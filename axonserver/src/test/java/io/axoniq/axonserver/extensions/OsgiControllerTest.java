@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class OsgiControllerTest {
 
     @Test
-    public void start() throws IOException, BundleException {
+    public void start() throws IOException, BundleException, RequestRejectedException {
         OsgiController osgiController = new OsgiController("cache",
                                                            "onFirstInit");
         osgiController.start();

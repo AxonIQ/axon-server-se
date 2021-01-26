@@ -74,7 +74,7 @@ public class ExtensionConfigurationManagerTest {
         Map<String, Map<String, ?>> configurationPerContext = new HashMap<>();
 
         @Override
-        public String id() {
+        public String category() {
             return "demo";
         }
 

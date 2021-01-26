@@ -9,10 +9,12 @@
 
 package io.axoniq.axonserver.extensions;
 
+import javax.annotation.Nonnull;
+
 /**
  * @author Marc Gathier
  */
-public class ServiceWithInfo<T extends Ordered> {
+public class ServiceWithInfo<T extends Ordered> implements Comparable<ServiceWithInfo<T>> {
 
     private final T service;
     private final ExtensionKey extensionKey;
@@ -32,5 +34,13 @@ public class ServiceWithInfo<T extends Ordered> {
 
     public int order() {
         return service.order();
+    }
+
+    @Override
+    public int compareTo(@Nonnull ServiceWithInfo<T> o) {
+        if (o.order() == service.order()) {
+            return service.getClass().getName().compareTo(o.service.getClass().getName());
+        }
+        return Integer.compare(service().order(), o.order());
     }
 }

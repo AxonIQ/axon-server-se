@@ -13,6 +13,7 @@ import io.axoniq.axonserver.exception.ConcurrencyExceptions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -293,13 +294,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     return;
                 }
                 runInDataWriterPool(() -> {
-                    eventInterceptors.eventsPreCommit(eventList, interceptorContext);
-                    workers(context)
-                            .eventWriteStorage
-                            .store(eventList)
-                            .thenAccept(r -> eventInterceptors.eventsPostCommit(eventList, interceptorContext))
-                            .thenRun(this::confirm)
-                            .exceptionally(this::error);
+                    try {
+                        eventInterceptors.eventsPreCommit(eventList, interceptorContext);
+                        workers(context)
+                                .eventWriteStorage
+                                .store(eventList)
+                                .thenAccept(r -> eventInterceptors.eventsPostCommit(eventList, interceptorContext))
+                                .thenRun(this::confirm)
+                                .exceptionally(this::error);
+                    } catch (RequestRejectedException e) {
+                        responseObserver.onError(e);
+                    }
                 }, this::error);
             }
 

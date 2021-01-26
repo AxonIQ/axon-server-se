@@ -9,10 +9,8 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionServiceProvider;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.Ordered;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedCommand;
@@ -23,9 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Bundles the interceptors for commands in a single component.
@@ -38,55 +34,28 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultCommandInterceptors.class);
 
-    private final List<ServiceWithInfo<CommandRequestInterceptor>> commandRequestInterceptors = new CopyOnWriteArrayList<>();
-    private final List<ServiceWithInfo<CommandResponseInterceptor>> commandResponseInterceptors = new CopyOnWriteArrayList<>();
-    private final ExtensionServiceProvider extensionServiceProvider;
     private final ExtensionContextFilter extensionContextFilter;
-    private volatile boolean initialized;
 
 
-    public DefaultCommandInterceptors(ExtensionServiceProvider extensionServiceProvider,
-                                      ExtensionContextFilter extensionContextFilter) {
-        this.extensionServiceProvider = extensionServiceProvider;
+    public DefaultCommandInterceptors(ExtensionContextFilter extensionContextFilter) {
         this.extensionContextFilter = extensionContextFilter;
-        extensionServiceProvider.registerExtensionListener(serviceEvent -> {
-            logger.debug("service event {}", serviceEvent);
-            initialized = false;
-        });
-    }
-
-    private void ensureInitialized() {
-        if (!initialized) {
-            synchronized (extensionServiceProvider) {
-                if (initialized) {
-                    return;
-                }
-                initHooks(CommandRequestInterceptor.class, commandRequestInterceptors);
-                initHooks(CommandResponseInterceptor.class, commandResponseInterceptors);
-
-                initialized = true;
-            }
-        }
-    }
-
-    private <T extends Ordered> void initHooks(Class<T> clazz, List<ServiceWithInfo<T>> hooks) {
-        hooks.clear();
-        hooks.addAll(extensionServiceProvider.getServicesWithInfo(clazz));
-        hooks.sort(Comparator.comparingInt(ServiceWithInfo::order));
-        logger.debug("{} {}}", hooks.size(), clazz.getSimpleName());
     }
 
     @Override
     public SerializedCommand commandRequest(SerializedCommand serializedCommand,
                                             ExtensionUnitOfWork extensionUnitOfWork) {
-        ensureInitialized();
+        List<CommandRequestInterceptor> commandRequestInterceptors = extensionContextFilter.getServicesForContext(
+                CommandRequestInterceptor.class,
+                extensionUnitOfWork.context());
         if (commandRequestInterceptors.isEmpty()) {
             return serializedCommand;
         }
         Command command = serializedCommand.wrapped();
-        for (ServiceWithInfo<CommandRequestInterceptor> commandRequestInterceptor : commandRequestInterceptors) {
-            if (extensionContextFilter.test(extensionUnitOfWork.context(), commandRequestInterceptor.extensionKey())) {
-                command = commandRequestInterceptor.service().commandRequest(command, extensionUnitOfWork);
+        for (CommandRequestInterceptor commandRequestInterceptor : commandRequestInterceptors) {
+            try {
+                command = commandRequestInterceptor.commandRequest(command, extensionUnitOfWork);
+            } catch (RequestRejectedException e) {
+                e.printStackTrace();
             }
         }
         return new SerializedCommand(command);
@@ -95,17 +64,16 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
     @Override
     public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
                                                      ExtensionUnitOfWork extensionUnitOfWork) {
-        ensureInitialized();
+        List<CommandResponseInterceptor> commandResponseInterceptors = extensionContextFilter.getServicesForContext(
+                CommandResponseInterceptor.class,
+                extensionUnitOfWork.context());
         if (commandResponseInterceptors.isEmpty()) {
             return serializedResponse;
         }
         CommandResponse response = serializedResponse.wrapped();
         try {
-            for (ServiceWithInfo<CommandResponseInterceptor> commandResponseInterceptor : commandResponseInterceptors) {
-                if (extensionContextFilter.test(extensionUnitOfWork.context(),
-                                                commandResponseInterceptor.extensionKey())) {
-                    response = commandResponseInterceptor.service().commandResponse(response, extensionUnitOfWork);
-                }
+            for (CommandResponseInterceptor commandResponseInterceptor : commandResponseInterceptors) {
+                response = commandResponseInterceptor.commandResponse(response, extensionUnitOfWork);
             }
         } catch (Exception ex) {
             logger.warn("{}: an exception occurred in a CommandResponseInterceptor",

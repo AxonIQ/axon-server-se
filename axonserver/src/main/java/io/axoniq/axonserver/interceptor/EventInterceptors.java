@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.event.Event;
 
 import java.util.List;
@@ -40,7 +41,7 @@ public interface EventInterceptors {
      */
     Event appendSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext);
 
-    void eventsPreCommit(List<Event> events, ExtensionUnitOfWork interceptorContext);
+    void eventsPreCommit(List<Event> events, ExtensionUnitOfWork interceptorContext) throws RequestRejectedException;
 
     void eventsPostCommit(List<Event> events, ExtensionUnitOfWork interceptorContext);
 

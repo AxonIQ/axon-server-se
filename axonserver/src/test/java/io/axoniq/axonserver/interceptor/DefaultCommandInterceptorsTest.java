@@ -28,10 +28,9 @@ import static org.junit.Assert.*;
 public class DefaultCommandInterceptorsTest {
 
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter();
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final DefaultCommandInterceptors testSubject = new DefaultCommandInterceptors(osgiController,
-                                                                                          extensionContextFilter);
+    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController);
+    private final DefaultCommandInterceptors testSubject = new DefaultCommandInterceptors(extensionContextFilter);
 
     @Test
     public void commandRequest() {

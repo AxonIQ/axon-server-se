@@ -12,6 +12,7 @@ package io.axoniq.axonserver.interceptor;
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.extensions.ExtensionKey;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
 import io.axoniq.axonserver.extensions.hook.PostCommitSnapshotHook;
@@ -41,10 +42,9 @@ import static org.junit.Assert.*;
 public class DefaultEventInterceptorsTest {
 
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter();
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(osgiController,
-                                                                                      extensionContextFilter);
+    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController);
+    private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(extensionContextFilter);
 
 
     @Test
@@ -76,7 +76,7 @@ public class DefaultEventInterceptorsTest {
     }
 
     @Test
-    public void eventsPreCommit() {
+    public void eventsPreCommit() throws RequestRejectedException {
         AtomicInteger hookCalled = new AtomicInteger();
         osgiController.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) -> {
             hookCalled.incrementAndGet();

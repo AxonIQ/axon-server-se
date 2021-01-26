@@ -9,10 +9,8 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionServiceProvider;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.Ordered;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedQuery;
@@ -22,9 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Bundles all interceptors for query handling in a single class.
@@ -37,54 +33,28 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultQueryInterceptors.class);
 
-    private final List<ServiceWithInfo<QueryRequestInterceptor>> queryRequestInterceptors = new CopyOnWriteArrayList<>();
-    private final List<ServiceWithInfo<QueryResponseInterceptor>> queryResponseInterceptors = new CopyOnWriteArrayList<>();
-
-    private final ExtensionServiceProvider extensionServiceProvider;
     private final ExtensionContextFilter extensionContextFilter;
-    private volatile boolean initialized;
 
-    public DefaultQueryInterceptors(ExtensionServiceProvider extensionServiceProvider,
-                                    ExtensionContextFilter extensionContextFilter) {
-        this.extensionServiceProvider = extensionServiceProvider;
+    public DefaultQueryInterceptors(
+            ExtensionContextFilter extensionContextFilter) {
         this.extensionContextFilter = extensionContextFilter;
-        extensionServiceProvider.registerExtensionListener(serviceEvent -> {
-            logger.debug("service event {}", serviceEvent);
-            initialized = false;
-        });
     }
 
-    private void ensureInitialized() {
-        if (!initialized) {
-            synchronized (extensionServiceProvider) {
-                if (initialized) {
-                    return;
-                }
-                initHooks(QueryRequestInterceptor.class, queryRequestInterceptors);
-                initHooks(QueryResponseInterceptor.class, queryResponseInterceptors);
-
-                initialized = true;
-            }
-        }
-    }
-
-    private <T extends Ordered> void initHooks(Class<T> clazz, List<ServiceWithInfo<T>> hooks) {
-        hooks.clear();
-        hooks.addAll(extensionServiceProvider.getServicesWithInfo(clazz));
-        hooks.sort(Comparator.comparingInt(ServiceWithInfo::order));
-        logger.debug("{} {}}", hooks.size(), clazz.getSimpleName());
-    }
 
     @Override
     public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork) {
-        ensureInitialized();
+        List<QueryRequestInterceptor> queryRequestInterceptors = extensionContextFilter.getServicesForContext(
+                QueryRequestInterceptor.class,
+                extensionUnitOfWork.context());
         if (queryRequestInterceptors.isEmpty()) {
             return serializedQuery;
         }
         QueryRequest query = serializedQuery.query();
-        for (ServiceWithInfo<QueryRequestInterceptor> queryRequestInterceptor : queryRequestInterceptors) {
-            if (extensionContextFilter.test(extensionUnitOfWork.context(), queryRequestInterceptor.extensionKey())) {
-                query = queryRequestInterceptor.service().queryRequest(query, extensionUnitOfWork);
+        for (QueryRequestInterceptor queryRequestInterceptor : queryRequestInterceptors) {
+            try {
+                query = queryRequestInterceptor.queryRequest(query, extensionUnitOfWork);
+            } catch (RequestRejectedException e) {
+                e.printStackTrace();
             }
         }
         return new SerializedQuery(serializedQuery.context(), serializedQuery.clientStreamId(), query);
@@ -92,13 +62,12 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     @Override
     public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork extensionUnitOfWork) {
-        ensureInitialized();
+        List<QueryResponseInterceptor> queryResponseInterceptors = extensionContextFilter.getServicesForContext(
+                QueryResponseInterceptor.class,
+                extensionUnitOfWork.context());
         try {
-            for (ServiceWithInfo<QueryResponseInterceptor> queryResponseInterceptor : queryResponseInterceptors) {
-                if (extensionContextFilter.test(extensionUnitOfWork.context(),
-                                                queryResponseInterceptor.extensionKey())) {
-                    response = queryResponseInterceptor.service().queryResponse(response, extensionUnitOfWork);
-                }
+            for (QueryResponseInterceptor queryResponseInterceptor : queryResponseInterceptors) {
+                response = queryResponseInterceptor.queryResponse(response, extensionUnitOfWork);
             }
         } catch (Exception ex) {
             logger.warn("{}: an exception occurred in a QueryResponseInterceptor",

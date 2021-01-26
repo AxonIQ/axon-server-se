@@ -9,17 +9,34 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionKey;
+import io.axoniq.axonserver.extensions.ExtensionServiceProvider;
+import io.axoniq.axonserver.extensions.Ordered;
+import io.axoniq.axonserver.extensions.ServiceWithInfo;
+import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
+import io.axoniq.axonserver.extensions.hook.PostCommitSnapshotHook;
+import io.axoniq.axonserver.extensions.hook.PreCommitEventsHook;
+import io.axoniq.axonserver.extensions.interceptor.AppendEventInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.AppendSnapshotInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.ReadEventInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.ReadSnapshotInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryRequestInterceptor;
+import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryResponseInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiPredicate;
 
 /**
  * Checks if an extension is active for a specific context.
@@ -28,14 +45,80 @@ import java.util.function.BiPredicate;
  * @since 4.5
  */
 @Component
-public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey> {
+public class ExtensionContextFilter {
 
+    private final Class<? extends Ordered>[] interceptorClasses = new Class[]{
+            AppendEventInterceptor.class,
+            PreCommitEventsHook.class,
+            PostCommitEventsHook.class,
+            AppendSnapshotInterceptor.class,
+            PostCommitSnapshotHook.class,
+            ReadEventInterceptor.class,
+            ReadSnapshotInterceptor.class,
+            CommandRequestInterceptor.class,
+            CommandResponseInterceptor.class,
+            QueryRequestInterceptor.class,
+            QueryResponseInterceptor.class,
+            SubscriptionQueryRequestInterceptor.class,
+            SubscriptionQueryResponseInterceptor.class
+    };
     private final Logger logger = LoggerFactory.getLogger(ExtensionContextFilter.class);
     private final Map<String, Map<String, String>> enabledExtensionsPerContext = new ConcurrentHashMap<>();
+    private final ExtensionServiceProvider extensionServiceProvider;
+    private final Map<Class<? extends Ordered>, List<ServiceWithInfo<Ordered>>> serviceMap = new HashMap<>();
+    private volatile boolean initialized;
+
+    public ExtensionContextFilter(ExtensionServiceProvider extensionServiceProvider) {
+        this.extensionServiceProvider = extensionServiceProvider;
+        extensionServiceProvider.registerExtensionListener(serviceEvent -> {
+            logger.debug("extension event {}", serviceEvent);
+            initialized = false;
+        });
+    }
+
+
+    private void ensureInitialized() {
+        if (!initialized) {
+            synchronized (extensionServiceProvider) {
+                if (initialized) {
+                    return;
+                }
+
+                for (Class<? extends Ordered> interceptorClass : interceptorClasses) {
+                    serviceMap.put(interceptorClass, initHooks((Class<Ordered>) interceptorClass));
+                }
+
+                initialized = true;
+            }
+        }
+    }
+
+    private <T extends Ordered> List<ServiceWithInfo<T>> initHooks(Class<T> interceptorClass) {
+        List<ServiceWithInfo<T>> hooks = new ArrayList<>();
+        hooks.addAll(extensionServiceProvider.getServicesWithInfo(interceptorClass));
+        hooks.sort(ServiceWithInfo::compareTo);
+        logger.debug("{} {}}", hooks.size(), interceptorClass.getSimpleName());
+        return hooks;
+    }
+
+    public <T extends Ordered> List<T> getServicesForContext(Class<T> interceptorClass, String context) {
+        ensureInitialized();
+        List<T> interceptors = new ArrayList<>();
+        Map<String, String> enabledExtensions = enabledExtensionsPerContext.getOrDefault(context,
+                                                                                         Collections.emptyMap());
+        serviceMap.get(interceptorClass).forEach(service -> {
+            if (service.extensionKey().getVersion().equals(enabledExtensions
+                                                                   .get(service.extensionKey().getSymbolicName()))) {
+                interceptors.add((T) service.service());
+            }
+        });
+        return interceptors;
+    }
 
     /**
      * Handles {@link ExtensionEnabledEvent} events, published when an extension becomes active or is
      * de-activated for a specific context.
+     *
      * @param extensionEnabled the event
      */
     @EventListener
@@ -59,19 +142,5 @@ public class ExtensionContextFilter implements BiPredicate<String, ExtensionKey>
                 logger.info("{}: Extension {} deactivated", extensionEnabled.context(), extensionEnabled.extension());
             }
         }
-    }
-
-    /**
-     * Checks if an extension is active for a specific context.
-     *
-     * @param context      the name of the context
-     * @param extensionKey the key of the extension
-     * @return true if the extension is active for the given context
-     */
-    @Override
-    public boolean test(String context, ExtensionKey extensionKey) {
-        return extensionKey.getVersion().equals(
-                enabledExtensionsPerContext.getOrDefault(context, Collections.emptyMap())
-                                           .get(extensionKey.getSymbolicName()));
     }
 }

@@ -88,15 +88,15 @@ public class CommandDispatcher {
 
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver) {
-        ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(context, authentication);
-        request = commandInterceptors.commandRequest(request, interceptorContext);
+        ExtensionUnitOfWork extensionUnitOfWork = new DefaultInterceptorContext(context, authentication);
+        request = commandInterceptors.commandRequest(request, extensionUnitOfWork);
         commandRate(context).mark();
         CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
                                                                               request.wrapped(),
                                                                               request.getRoutingKey());
         dispatchToCommandHandler(request,
                                  commandHandler,
-                                 serializedCommandResponse -> intercept(interceptorContext,
+                                 serializedCommandResponse -> intercept(extensionUnitOfWork,
                                                                         serializedCommandResponse,
                                                                         responseObserver),
                                  ErrorCode.NO_HANDLER_FOR_COMMAND,
@@ -104,10 +104,10 @@ public class CommandDispatcher {
         );
     }
 
-    private void intercept(ExtensionUnitOfWork interceptorContext,
+    private void intercept(ExtensionUnitOfWork extensionUnitOfWork,
                            SerializedCommandResponse response,
                            Consumer<SerializedCommandResponse> responseObserver) {
-        response = commandInterceptors.commandResponse(response, interceptorContext);
+        response = commandInterceptors.commandResponse(response, extensionUnitOfWork);
         responseObserver.accept(response);
     }
 
