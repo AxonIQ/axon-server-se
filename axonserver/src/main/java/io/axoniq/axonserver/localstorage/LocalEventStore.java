@@ -46,6 +46,8 @@ import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -315,6 +317,24 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }, responseStreamObserver::onError);
     }
 
+    @Override
+    public Flux<SerializedEvent> aggregateEvents(String context, GetAggregateEventsRequest request) {
+        AtomicInteger counter = new AtomicInteger();
+        return Flux.from(workers(context).aggregateReader
+                                 .events(request.getAggregateId(),
+                                         request.getAllowSnapshots(),
+                                         request.getInitialSequence(),
+                                         request.getMaxSequence(),
+                                         request.getMinToken()))
+                   .subscribeOn(Schedulers.fromExecutorService(dataFetcher))
+                   .doOnNext(serializedEvent -> counter.incrementAndGet())
+                   .doOnComplete(() -> {
+                       if (counter.get() == 0) {
+                           logger.debug("Aggregate not found: {}", request);
+                       }
+                   });
+    }
+
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {
         runInPool(dataFetcher, task, onError);
     }
@@ -494,7 +514,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                     responseObserver,
                                                     workers.snapshotWriteStorage,
                                                     workers.snapshotStreamReader
-                );
+        );
     }
 
     @Override
