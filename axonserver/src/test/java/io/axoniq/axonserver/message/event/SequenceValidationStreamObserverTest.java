@@ -2,6 +2,7 @@ package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
@@ -16,11 +17,11 @@ import static org.mockito.Mockito.*;
 public class SequenceValidationStreamObserverTest {
 
     private SequenceValidationStreamObserver testSubject;
-    private StreamObserver<SerializedEvent> delegateMock;
+    private CallStreamObserver<SerializedEvent> delegateMock;
 
     @Before
     public void setup() {
-        delegateMock = mock(StreamObserver.class);
+        delegateMock = mock(CallStreamObserver.class);
         testSubject = new SequenceValidationStreamObserver(delegateMock);
     }
 

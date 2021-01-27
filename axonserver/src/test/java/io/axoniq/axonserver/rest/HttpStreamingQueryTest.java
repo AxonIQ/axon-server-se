@@ -29,6 +29,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -50,6 +51,14 @@ public class HttpStreamingQueryTest {
     @Before
     public void setUp() {
         EventStorageEngine engine = new EventStorageEngine() {
+
+
+            @Override
+            public Flux<SerializedEvent> eventsPerAggregate(String aggregateId, long firstSequenceNumber,
+                                                            long lastSequenceNumber, long minToken) {
+                return Flux.empty();
+            }
+
             @Override
             public void init(boolean validate, long defaultFirstToken) {
 
