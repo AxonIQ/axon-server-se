@@ -157,32 +157,27 @@ public class EventsRestController {
                                                                          .build();
 
             ObjectMapper objectMapper = new ObjectMapper();
-            eventStoreClient.listAggregateEvents(context, request, new StreamObserver<SerializedEvent>() {
-                @Override
-                public void onNext(SerializedEvent event) {
-                    try {
-                        sseEmitter.send(SseEmitter.event().data(objectMapper
-                                                                        .writeValueAsString(new JsonEvent(event.asEvent()))));
-                    } catch (Exception e) {
-                        logger.warn("Exception on sending event - {}", e.getMessage(), e);
-                    }
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    sseEmitter.completeWithError(throwable);
-                }
-
-                @Override
-                public void onCompleted() {
-                    try {
-                        sseEmitter.send(SseEmitter.event().comment("End of stream"));
-                    } catch (IOException e) {
-                        logger.debug("Error on sending completed", e);
-                    }
-                    sseEmitter.complete();
-                }
-            });
+            eventStoreClient
+                    .aggregateEvents(context, request)
+                    .subscribe(event ->
+                               {
+                                   try {
+                                       sseEmitter.send(SseEmitter.event()
+                                                                 .data(objectMapper
+                                                                               .writeValueAsString(new JsonEvent(event.asEvent()))));
+                                   } catch (Exception e) {
+                                       logger.warn("Exception on sending event - {}", e.getMessage(), e);
+                                   }
+                               },
+                               sseEmitter::completeWithError,
+                               () -> {
+                                   try {
+                                       sseEmitter.send(SseEmitter.event().comment("End of stream"));
+                                   } catch (IOException e) {
+                                       logger.debug("Error on sending completed", e);
+                                   }
+                                   sseEmitter.complete();
+                               });
         } else {
             StreamObserver<GetEventsRequest> requestStream = eventStoreClient
                     .listEvents(context, new StreamObserver<InputStream>() {
