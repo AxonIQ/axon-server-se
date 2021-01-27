@@ -11,11 +11,16 @@ package io.axoniq.axonserver.message.query;
 
 
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.interceptor.NoOpQueryInterceptors;
+import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -31,6 +36,8 @@ import org.mockito.junit.*;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -157,25 +164,121 @@ public class QueryDispatcherTest {
 //        verify(queryCache, times(1)).put(any(), any());
     }
 
-    //@Test
-    public void queryError() {
+    @Test
+    public void queryRequestRejected() throws ExecutionException, InterruptedException {
+        testSubject = new QueryDispatcher(registrationCache,
+                                          queryCache,
+                                          queryMetricsRegistry,
+                                          new MyQueryInterceptors(),
+                                          meterFactory,
+                                          10_000);
         QueryRequest request = QueryRequest.newBuilder()
+                                           .setMessageIdentifier("REJECT")
                                            .setQuery("test")
                                            .setMessageIdentifier("1234")
                                            .build();
-        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
-        Set<QueryHandler> handlers = new HashSet<>();
 
-        handlers.add(new DirectQueryHandler(new FailingStreamObserver<>(),
-                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
-                                            "componentName", "client"));
+        CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
+        CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
+        Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
+                                                                                                  null,
+                                                                                                  null,
+                                                                                                  null) {
+            @Override
+            public void dispatch(SubscriptionQueryRequest query) {
+
+            }
+        });
         when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                          responseObserver::onNext,
-                          client -> responseObserver.onCompleted());
-        assertEquals(1, responseObserver.values().size());
-//        verify(queryCache, times(1)).put(any(), any());
+                          futureResponse::complete,
+                          client -> futureCompleted.complete(true));
+        QueryResponse response = futureResponse.get();
+        assertEquals(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR.getCode(), response.getErrorCode());
+        assertTrue(futureCompleted.get());
+    }
+
+    @Test
+    public void queryRequestInterceptorFailed() throws ExecutionException, InterruptedException {
+        testSubject = new QueryDispatcher(registrationCache,
+                                          queryCache,
+                                          queryMetricsRegistry,
+                                          new MyQueryInterceptors(),
+                                          meterFactory,
+                                          10_000);
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setMessageIdentifier("FAIL")
+                                           .setQuery("test")
+                                           .setMessageIdentifier("1234")
+                                           .build();
+
+        CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
+        CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
+        Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
+                                                                                                  null,
+                                                                                                  null,
+                                                                                                  null) {
+            @Override
+            public void dispatch(SubscriptionQueryRequest query) {
+
+            }
+        });
+        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                          futureResponse::complete,
+                          client -> futureCompleted.complete(true));
+        QueryResponse response = futureResponse.get();
+        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
+        assertTrue(futureCompleted.get());
+    }
+
+    @Test
+    public void queryResponseInterceptorFailed() throws ExecutionException, InterruptedException {
+        QueryCache myQueryCache = new QueryCache(10000, 10000);
+        testSubject = new QueryDispatcher(registrationCache,
+                                          myQueryCache,
+                                          queryMetricsRegistry,
+                                          new MyQueryInterceptors(),
+                                          meterFactory,
+                                          10_000);
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setMessageIdentifier("RESPOND")
+                                           .setQuery("test")
+                                           .setMessageIdentifier("1234")
+                                           .build();
+
+        CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
+        CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
+        Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
+                                                                                                  new ClientStreamIdentification(
+                                                                                                          Topology.DEFAULT_CONTEXT,
+                                                                                                          "clientStreamId"),
+                                                                                                  null,
+                                                                                                  null) {
+            @Override
+            public void dispatch(SubscriptionQueryRequest query) {
+
+            }
+        });
+        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                          futureResponse::complete,
+                          client -> futureCompleted.complete(true));
+
+        testSubject.handleResponse(QueryResponse.newBuilder().setMessageIdentifier("FAIL")
+                                                .setRequestIdentifier(request.getMessageIdentifier()).build(),
+                                   "clientStreamId",
+                                   "clientId",
+                                   false);
+
+        QueryResponse response = futureResponse.get();
+        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
+        testSubject.handleComplete(request.getMessageIdentifier(), "clientStreamId", "clientId", false);
+
+        assertTrue(futureCompleted.get());
     }
 
     @Test
@@ -223,8 +326,9 @@ public class QueryDispatcherTest {
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
         AtomicInteger dispatchCount = new AtomicInteger(0);
         QueryHandler<?> handler = new DirectQueryHandler(new FailingStreamObserver<>(),
-                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
-                                                      "componentName", "client");
+                                                         new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                        "client"),
+                                                         "componentName", "client");
         when(registrationCache.find(any(), anyObject(), anyObject())).thenReturn(handler);
         testSubject.dispatchProxied(forwardedQuery, r -> dispatchCount.incrementAndGet(), s -> {
         });
@@ -233,4 +337,28 @@ public class QueryDispatcherTest {
     }
 
 
+    private static class MyQueryInterceptors implements QueryInterceptors {
+
+        @Override
+        public SerializedQuery queryRequest(SerializedQuery serializedQuery,
+                                            ExtensionUnitOfWork extensionUnitOfWork)
+                throws RequestRejectedException {
+            if (serializedQuery.getMessageIdentifier().equals("REJECT")) {
+                throw new RequestRejectedException("Rejected");
+            }
+            if (serializedQuery.getMessageIdentifier().equals("FAIL")) {
+                throw new RuntimeException("Query interceptor failed");
+            }
+            return serializedQuery;
+        }
+
+        @Override
+        public QueryResponse queryResponse(QueryResponse response,
+                                           ExtensionUnitOfWork extensionUnitOfWork) {
+            if (response.getMessageIdentifier().equals("FAIL")) {
+                throw new RuntimeException("Query interceptor failed");
+            }
+            return response;
+        }
+    }
 }

@@ -40,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
 import static java.util.Collections.singleton;
 
 /**
@@ -235,8 +236,11 @@ public class QueryDispatcher {
                                                     .setErrorCode(ErrorCode.OTHER.getCode())
                                                     .setMessageIdentifier(serializedQuery.getMessageIdentifier())
                                                     .setErrorMessage(ErrorMessageFactory
-                                                                             .build(otherException
-                                                                                            .getMessage()))
+                                                                             .build(getOrDefault(otherException
+                                                                                                         .getMessage(),
+                                                                                                 otherException
+                                                                                                         .getClass()
+                                                                                                         .getName())))
                                                     .build());
             onCompleted.accept("Failed");
         }
@@ -247,6 +251,7 @@ public class QueryDispatcher {
         try {
             callback.accept(queryInterceptors.queryResponse(response, interceptorContext));
         } catch (Exception ex) {
+            logger.warn("Exception in response interceptor", ex);
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.OTHER.getCode())
                                          .setMessageIdentifier(response.getRequestIdentifier())
