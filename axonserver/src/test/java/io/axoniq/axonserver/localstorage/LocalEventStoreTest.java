@@ -28,6 +28,7 @@ import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -119,27 +120,28 @@ public class LocalEventStoreTest {
     }
 
     @Test
+    public void appendSnapshotCompensate() throws InterruptedException {
+        try {
+            testSubject.appendSnapshot("demo",
+                                       null,
+                                       Event.newBuilder().setMessageIdentifier("FAIL").build())
+                       .get();
+            fail("Expecting exception");
+        } catch (ExecutionException executionException) {
+            assertEquals(1, eventInterceptors.appendSnapshot);
+            assertEquals(0, eventInterceptors.snapshotPostCommit);
+            assertEquals(1, eventInterceptors.compensations.size());
+            assertEquals("Compensate Append Snapshot", eventInterceptors.compensations.get(0));
+        }
+    }
+
+    @Test
     public void createAppendEventConnection() throws ExecutionException, InterruptedException {
         CompletableFuture<Confirmation> result = new CompletableFuture<>();
         StreamObserver<InputStream> eventStream =
                 testSubject.createAppendEventConnection("demo",
                                                         null,
-                                                        new StreamObserver<Confirmation>() {
-                                                            @Override
-                                                            public void onNext(Confirmation o) {
-                                                                result.complete(o);
-                                                            }
-
-                                                            @Override
-                                                            public void onError(Throwable throwable) {
-                                                                result.completeExceptionally(throwable);
-                                                            }
-
-                                                            @Override
-                                                            public void onCompleted() {
-
-                                                            }
-                                                        });
+                                                        new FutureStreamObserver(result));
         eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
         eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
         eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
@@ -149,6 +151,49 @@ public class LocalEventStoreTest {
         result.get();
         assertEquals(1, eventInterceptors.eventsPreCommit);
         assertEquals(1, eventInterceptors.eventsPostCommit);
+    }
+
+    @Test
+    public void createAppendEventConnectionCompensateAppendEntries() throws InterruptedException {
+        CompletableFuture<Confirmation> result = new CompletableFuture<>();
+        eventInterceptors.failPreCommit = true;
+        StreamObserver<InputStream> eventStream =
+                testSubject.createAppendEventConnection("demo",
+                                                        null,
+                                                        new FutureStreamObserver(result));
+        eventStream.onNext(Event.newBuilder().setMessageIdentifier("FAIL").build().toByteString().newInput());
+        eventStream.onNext(Event.newBuilder().setMessageIdentifier("FAIL").build().toByteString().newInput());
+        eventStream.onCompleted();
+        try {
+            result.get();
+            fail("Empty transaction should fail");
+        } catch (ExecutionException executionException) {
+            assertEquals(2, eventInterceptors.appendEvent);
+            assertEquals(0, eventInterceptors.eventsPreCommit);
+            assertEquals(2, eventInterceptors.compensations.size());
+            assertEquals("Compensate Append Event", eventInterceptors.compensations.get(0));
+            assertEquals("Compensate Append Event", eventInterceptors.compensations.get(1));
+        }
+    }
+
+    @Test
+    public void createAppendEventConnectionCompensatePreCommitAndAppendEntry() throws InterruptedException {
+        CompletableFuture<Confirmation> result = new CompletableFuture<>();
+        StreamObserver<InputStream> eventStream =
+                testSubject.createAppendEventConnection("demo",
+                                                        null,
+                                                        new FutureStreamObserver(result));
+        eventStream.onNext(Event.newBuilder().setMessageIdentifier("FAIL").build().toByteString().newInput());
+        eventStream.onCompleted();
+        try {
+            result.get();
+            fail("Empty transaction should fail");
+        } catch (ExecutionException executionException) {
+            assertEquals(1, eventInterceptors.eventsPreCommit);
+            assertEquals(2, eventInterceptors.compensations.size());
+            assertEquals("Compensate Events Pre Commit", eventInterceptors.compensations.get(0));
+            assertEquals("Compensate Append Event", eventInterceptors.compensations.get(1));
+        }
     }
 
     @Test
@@ -224,6 +269,30 @@ public class LocalEventStoreTest {
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(8, eventInterceptors.readEvent));
     }
 
+    private static class FutureStreamObserver implements StreamObserver<Confirmation> {
+
+        private final CompletableFuture<Confirmation> result;
+
+        public FutureStreamObserver(CompletableFuture<Confirmation> result) {
+            this.result = result;
+        }
+
+        @Override
+        public void onNext(Confirmation o) {
+            result.complete(o);
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            result.completeExceptionally(throwable);
+        }
+
+        @Override
+        public void onCompleted() {
+
+        }
+    }
+
     private class CountingEventInterceptors implements EventInterceptors {
 
         boolean failAppend;
@@ -235,12 +304,14 @@ public class LocalEventStoreTest {
         int snapshotPostCommit;
         int readEvent;
         int readSnapshot;
+        List<String> compensations = new ArrayList<>();
 
         @Override
         public Event appendEvent(Event event, ExtensionUnitOfWork interceptorContext) {
             if (failAppend) {
                 throw new RuntimeException("appendEvent");
             }
+            interceptorContext.onFailure(e -> compensations.add("Compensate Append Event"));
             appendEvent++;
             return event;
         }
@@ -250,6 +321,7 @@ public class LocalEventStoreTest {
             if (failAppend) {
                 throw new RuntimeException("appendSnapshot");
             }
+            interceptorContext.onFailure(e -> compensations.add("Compensate Append Snapshot"));
             appendSnapshot++;
             return snapshot;
         }
@@ -259,6 +331,7 @@ public class LocalEventStoreTest {
             if (failPreCommit) {
                 throw new RuntimeException("eventsPreCommit");
             }
+            interceptorContext.onFailure(e -> compensations.add("Compensate Events Pre Commit"));
             eventsPreCommit++;
         }
 
@@ -359,6 +432,11 @@ public class LocalEventStoreTest {
 
         @Override
         public CompletableFuture<Long> store(List<Event> eventList) {
+            if (eventList.get(0).getMessageIdentifier().equals("FAIL")) {
+                CompletableFuture<Long> completableFuture = new CompletableFuture<>();
+                completableFuture.completeExceptionally(new RuntimeException("Empty transaction"));
+                return completableFuture;
+            }
             return CompletableFuture.completedFuture(0L);
         }
 

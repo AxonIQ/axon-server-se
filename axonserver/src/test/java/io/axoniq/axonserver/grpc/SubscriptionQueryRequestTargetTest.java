@@ -10,12 +10,15 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.test.FakeStreamObserver;
+import io.grpc.StatusRuntimeException;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -60,15 +63,50 @@ public class SubscriptionQueryRequestTargetTest {
         assertEquals(1, interceptors.subscriptionQueryResponseCount);
     }
 
+    @Test
+    public void interceptorOnSubscribeRejects() {
+        interceptors.rejectRequest = true;
+        testSubject.consume(SubscriptionQueryRequest.newBuilder().setSubscribe(SubscriptionQuery.getDefaultInstance())
+                                                    .build());
+        assertEquals(1, responseStreamObserver.errors().size());
+        StatusRuntimeException exception = (StatusRuntimeException) responseStreamObserver.errors().get(0);
+        assertEquals(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR.getGrpcCode().getCode(),
+                     exception.getStatus().getCode());
+        assertEquals(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR.getCode(),
+                     exception.getTrailers().get(GrpcMetadataKeys.ERROR_CODE_KEY));
+    }
+
+    @Test
+    public void interceptorOnSubscribeFails() {
+        interceptors.failRequest = true;
+        testSubject.consume(SubscriptionQueryRequest.newBuilder().setSubscribe(SubscriptionQuery.getDefaultInstance())
+                                                    .build());
+        assertEquals(1, responseStreamObserver.errors().size());
+        StatusRuntimeException exception = (StatusRuntimeException) responseStreamObserver.errors().get(0);
+        assertEquals(ErrorCode.OTHER.getGrpcCode().getCode(),
+                     exception.getStatus().getCode());
+        assertEquals(ErrorCode.OTHER.getCode(),
+                     exception.getTrailers().get(GrpcMetadataKeys.ERROR_CODE_KEY));
+    }
+
     private static class TestSubscriptionQueryInterceptors implements SubscriptionQueryInterceptors {
 
+        public boolean rejectRequest;
+        public boolean failRequest;
         int subscriptionQueryRequestCount;
         int subscriptionQueryResponseCount;
         UUID lastUUID;
 
         @Override
         public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                                 ExtensionUnitOfWork extensionContext) {
+                                                                 ExtensionUnitOfWork extensionContext)
+                throws RequestRejectedException {
+            if (rejectRequest) {
+                throw new RequestRejectedException("Rejected");
+            }
+            if (failRequest) {
+                throw new RuntimeException("Failed");
+            }
             subscriptionQueryRequestCount++;
             extensionContext.addDetails("RequestId", UUID.randomUUID());
             return subscriptionQueryRequest;

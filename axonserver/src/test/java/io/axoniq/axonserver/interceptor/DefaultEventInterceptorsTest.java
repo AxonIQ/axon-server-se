@@ -95,6 +95,25 @@ public class DefaultEventInterceptorsTest {
         assertEquals(1, hookCalled.get());
     }
 
+    @Test
+    public void eventsPreCommitTriesToUpdateEventList() throws RequestRejectedException {
+        AtomicInteger hookCalled = new AtomicInteger();
+        extensionServiceProvider.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) -> {
+            events.clear();
+            hookCalled.incrementAndGet();
+        }, EXTENSION_KEY));
+
+        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
+        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        try {
+            testSubject.eventsPreCommit(asList(event("aggrId1", 0),
+                                               event("aggrId1", 1)),
+                                        testExtensionUnitOfWork);
+            fail("pre commit fails when hook tries to change event list");
+        } catch (UnsupportedOperationException unsupportedOperationException) {
+
+        }
+    }
 
     @Test
     public void eventsPostCommit() {

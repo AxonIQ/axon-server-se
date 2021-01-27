@@ -24,6 +24,7 @@ import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import io.axoniq.axonserver.message.query.subscription.handler.DirectUpdateHandler;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
@@ -36,6 +37,8 @@ import java.util.function.Consumer;
  * @author Sara Pellegrini
  */
 public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<SubscriptionQueryRequest> {
+
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionQueryRequestTarget.class);
 
     private final String context;
     private final SubscriptionQueryInterceptors subscriptionQueryInterceptors;
@@ -111,6 +114,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
                                                                e.getMessage(),
                                                                e));
         } catch (Exception e) {
+            logger.warn("{}: Exception in consuming SubscriptionQueryRequest", context, e);
             errorHandler.accept(e);
         }
     }

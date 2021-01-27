@@ -252,6 +252,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                      }
                                                  }));
         } catch (RequestRejectedException requestRejectedException) {
+            interceptorContext.compensate();
             completableFuture
                     .completeExceptionally(new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
                                                                           "Snapshot rejected by interceptor",
@@ -313,6 +314,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                 .thenRun(this::confirm)
                                 .exceptionally(this::error);
                     } catch (RequestRejectedException e) {
+                        interceptorContext.compensate();
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
                                                                                 "Event rejected by interceptor",
                                                                                 e));
@@ -327,6 +329,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 } else {
                     logger.warn("{}: Error while storing events", context, exception);
                 }
+                interceptorContext.compensate();
                 responseObserver.onError(exception);
                 return null;
             }
