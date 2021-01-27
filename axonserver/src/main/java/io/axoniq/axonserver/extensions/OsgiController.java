@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.extensions;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.Registration;
@@ -24,7 +25,7 @@ import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
 import java.io.File;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -58,8 +60,16 @@ public class OsgiController implements ExtensionServiceProvider {
     private final Set<Consumer<ExtensionKey>> extensionListeners = new CopyOnWriteArraySet<>();
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
+    private final boolean extensionsEnabled;
     private final SystemPackagesProvider systemPackagesProvider;
     private BundleContext bundleContext;
+
+    @Autowired
+    public OsgiController(MessagingPlatformConfiguration configuration) {
+        this(configuration.getExtensionCacheDirectory(),
+             configuration.getExtensionCleanPolicy(),
+             configuration.isExtensionsEnabled());
+    }
 
     /**
      * Constructs an instance
@@ -67,11 +77,10 @@ public class OsgiController implements ExtensionServiceProvider {
      * @param cacheDirectory   OSGi cache directory
      * @param cacheCleanPolicy clean policy of the OSGi cache (none or onFirstInit)
      */
-    public OsgiController(@Value("${axoniq.axonserver.extension.cache.path:cache}") String cacheDirectory,
-                          @Value("${axoniq.axonserver.extension.cache.clean:none}") String cacheCleanPolicy
-    ) {
+    public OsgiController(String cacheDirectory, String cacheCleanPolicy, boolean extensionsEnabled) {
         this.cacheDirectory = cacheDirectory;
         this.cacheCleanPolicy = cacheCleanPolicy;
+        this.extensionsEnabled = extensionsEnabled;
         this.systemPackagesProvider = new SystemPackagesProvider();
     }
 
@@ -80,6 +89,9 @@ public class OsgiController implements ExtensionServiceProvider {
      * {@code bundleDirectory}.
      */
     public void start() {
+        if (!extensionsEnabled) {
+            return;
+        }
         Map<String, String> osgiConfig = new HashMap<>();
         osgiConfig.put(Constants.FRAMEWORK_STORAGE, cacheDirectory);
         osgiConfig.put(Constants.FRAMEWORK_STORAGE_CLEAN, cacheCleanPolicy);
@@ -172,6 +184,9 @@ public class OsgiController implements ExtensionServiceProvider {
      * @return list of all installed extensions
      */
     public Set<ExtensionKey> listExtensions() {
+        if (!extensionsEnabled) {
+            return Collections.emptySet();
+        }
         return Arrays.stream(bundleContext.getBundles())
                      .filter(b -> !Objects.isNull(b.getSymbolicName()))
                      .filter(b -> !b.getSymbolicName().contains("org.apache.felix"))
@@ -183,6 +198,9 @@ public class OsgiController implements ExtensionServiceProvider {
      * Stops the controller, uninstalls all the loaded extensions.
      */
     public void stop() {
+        if (!extensionsEnabled) {
+            return;
+        }
         for (Bundle bundle : bundleContext.getBundles()) {
             try {
                 if (!bundle.getSymbolicName().contains("org.apache.felix")) {

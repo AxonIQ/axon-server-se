@@ -220,7 +220,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                           Event snapshot) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
         runInDataWriterPool(() -> doAppendSnapshot(context, authentication, snapshot, completableFuture),
-                            completableFuture::completeExceptionally);
+                            ex -> {
+                                logger.warn("{}: Append snapshot failed", context, ex);
+                                completableFuture.completeExceptionally(ex);
+                            });
         return completableFuture;
     }
 
@@ -235,18 +238,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
         }
         DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
-        Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, interceptorContext);
-        workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
-                                             .whenComplete(((confirmation, throwable) -> {
-                                                 if (throwable != null) {
-                                                     interceptorContext.compensate();
-                                                     completableFuture.completeExceptionally(throwable);
-                                                 } else {
-                                                     eventInterceptors.snapshotPostCommit(snapshotAfterInterceptors,
-                                                                                          interceptorContext);
-                                                     completableFuture.complete(confirmation);
-                                                 }
-                                             }));
+        try {
+            Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, interceptorContext);
+            workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
+                                                 .whenComplete(((confirmation, throwable) -> {
+                                                     if (throwable != null) {
+                                                         interceptorContext.compensate();
+                                                         completableFuture.completeExceptionally(throwable);
+                                                     } else {
+                                                         eventInterceptors.snapshotPostCommit(snapshotAfterInterceptors,
+                                                                                              interceptorContext);
+                                                         completableFuture.complete(confirmation);
+                                                     }
+                                                 }));
+        } catch (RequestRejectedException requestRejectedException) {
+            completableFuture
+                    .completeExceptionally(new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
+                                                                          "Snapshot rejected by interceptor",
+                                                                          requestRejectedException));
+        }
     }
 
     @Override
@@ -303,7 +313,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                 .thenRun(this::confirm)
                                 .exceptionally(this::error);
                     } catch (RequestRejectedException e) {
-                        responseObserver.onError(e);
+                        responseObserver.onError(new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
+                                                                                "Event rejected by interceptor",
+                                                                                e));
                     }
                 }, this::error);
             }
@@ -348,7 +360,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 logger.debug("Aggregate not found: {}", request);
             }
             responseStreamObserver.onCompleted();
-        }, responseStreamObserver::onError);
+        }, error -> {
+            logger.warn("Problem encountered while reading events for aggregate " + request.getAggregateId(), error);
+            responseStreamObserver.onError(error);
+        });
     }
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {

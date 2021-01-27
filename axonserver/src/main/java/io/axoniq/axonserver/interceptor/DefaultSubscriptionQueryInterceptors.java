@@ -36,16 +36,13 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
 
     @Override
     public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                             ExtensionUnitOfWork extensionContext) {
+                                                             ExtensionUnitOfWork extensionContext)
+            throws RequestRejectedException {
 
         SubscriptionQueryRequest query = subscriptionQueryRequest;
         for (SubscriptionQueryRequestInterceptor queryRequestInterceptor : extensionContextFilter.getServicesForContext(
                 SubscriptionQueryRequestInterceptor.class, extensionContext.context())) {
-            try {
-                query = queryRequestInterceptor.subscriptionQueryRequest(query, extensionContext);
-            } catch (RequestRejectedException e) {
-                e.printStackTrace();
-            }
+            query = queryRequestInterceptor.subscriptionQueryRequest(query, extensionContext);
         }
         return query;
     }
@@ -54,18 +51,12 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
     public SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
                                                                ExtensionUnitOfWork extensionContext) {
         SubscriptionQueryResponse query = subscriptionQueryResponse;
-        try {
-            for (SubscriptionQueryResponseInterceptor queryRequestInterceptor : extensionContextFilter
-                    .getServicesForContext(
-                            SubscriptionQueryResponseInterceptor.class,
-                            extensionContext.context()
-                    )) {
-                query = queryRequestInterceptor.subscriptionQueryResponse(query, extensionContext);
-            }
-        } catch (Exception ex) {
-            logger.warn("{}: an exception occurred in a SubscriptionQueryResponseInterceptor",
-                        extensionContext.context(),
-                        ex);
+        for (SubscriptionQueryResponseInterceptor queryRequestInterceptor : extensionContextFilter
+                .getServicesForContext(
+                        SubscriptionQueryResponseInterceptor.class,
+                        extensionContext.context()
+                )) {
+            query = queryRequestInterceptor.subscriptionQueryResponse(query, extensionContext);
         }
         return query;
     }

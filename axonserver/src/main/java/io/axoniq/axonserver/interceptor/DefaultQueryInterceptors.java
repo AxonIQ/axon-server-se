@@ -42,7 +42,8 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
 
     @Override
-    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork) {
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork)
+            throws RequestRejectedException {
         List<QueryRequestInterceptor> queryRequestInterceptors = extensionContextFilter.getServicesForContext(
                 QueryRequestInterceptor.class,
                 extensionUnitOfWork.context());
@@ -51,11 +52,7 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
         }
         QueryRequest query = serializedQuery.query();
         for (QueryRequestInterceptor queryRequestInterceptor : queryRequestInterceptors) {
-            try {
-                query = queryRequestInterceptor.queryRequest(query, extensionUnitOfWork);
-            } catch (RequestRejectedException e) {
-                e.printStackTrace();
-            }
+            query = queryRequestInterceptor.queryRequest(query, extensionUnitOfWork);
         }
         return new SerializedQuery(serializedQuery.context(), serializedQuery.clientStreamId(), query);
     }

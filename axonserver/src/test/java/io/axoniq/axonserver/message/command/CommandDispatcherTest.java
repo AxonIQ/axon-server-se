@@ -12,12 +12,16 @@ package io.axoniq.axonserver.message.command;
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.interceptor.NoOpCommandInterceptors;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.interceptor.CommandInterceptors;
+import io.axoniq.axonserver.interceptor.NoOpCommandInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -29,6 +33,9 @@ import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.junit.*;
 
+import java.time.Clock;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -84,8 +91,8 @@ public class CommandDispatcherTest {
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
         assertEquals(0, responseObserver.values().size());
         Mockito.verify(commandCache, times(1)).put(eq("12"), any());
-
     }
+
     @Test
     public void dispatchNotFound() {
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
@@ -216,5 +223,103 @@ public class CommandDispatcherTest {
 
         commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()), false);
         assertTrue(responseHandled.get());
+    }
+
+    @Test
+    public void dispatchRequestRejected() throws ExecutionException, InterruptedException {
+        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,
+                                                  new CommandInterceptors() {
+                                                      @Override
+                                                      public SerializedCommand commandRequest(
+                                                              SerializedCommand serializedCommand,
+                                                              ExtensionUnitOfWork extensionUnitOfWork)
+                                                              throws RequestRejectedException {
+                                                          throw new RequestRejectedException("failed");
+                                                      }
+
+                                                      @Override
+                                                      public SerializedCommandResponse commandResponse(
+                                                              SerializedCommandResponse serializedResponse,
+                                                              ExtensionUnitOfWork extensionUnitOfWork) {
+                                                          return serializedResponse;
+                                                      }
+                                                  }, 10_000);
+        CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
+        commandDispatcher.dispatch("demo",
+                                   null,
+                                   new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
+                                   r -> futureResponse.complete(r));
+        SerializedCommandResponse response = futureResponse.get();
+        assertEquals(ErrorCode.COMMAND_REJECTED_BY_INTERCEPTOR.getCode(), response.getErrorCode());
+        assertEquals("1234", response.getRequestIdentifier());
+    }
+
+    @Test
+    public void dispatchRequestInterceptorException() throws ExecutionException, InterruptedException {
+        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,
+                                                  new CommandInterceptors() {
+                                                      @Override
+                                                      public SerializedCommand commandRequest(
+                                                              SerializedCommand serializedCommand,
+                                                              ExtensionUnitOfWork extensionUnitOfWork)
+                                                              throws RequestRejectedException {
+                                                          throw new RuntimeException("failed");
+                                                      }
+
+                                                      @Override
+                                                      public SerializedCommandResponse commandResponse(
+                                                              SerializedCommandResponse serializedResponse,
+                                                              ExtensionUnitOfWork extensionUnitOfWork) {
+                                                          return serializedResponse;
+                                                      }
+                                                  }, 10_000);
+        CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
+        commandDispatcher.dispatch("demo",
+                                   null,
+                                   new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
+                                   r -> futureResponse.complete(r));
+        SerializedCommandResponse response = futureResponse.get();
+        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
+        assertEquals("1234", response.getRequestIdentifier());
+    }
+
+    @Test
+    public void handleResponseInterceptorException() throws ExecutionException, InterruptedException {
+        commandCache = new CommandCache(10000, Clock.systemUTC(), 100000);
+        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
+        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
+        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
+                                                               client, "client", "component");
+        when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
+        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,
+                                                  new CommandInterceptors() {
+                                                      @Override
+                                                      public SerializedCommand commandRequest(
+                                                              SerializedCommand serializedCommand,
+                                                              ExtensionUnitOfWork extensionUnitOfWork)
+                                                              throws RequestRejectedException {
+                                                          return serializedCommand;
+                                                      }
+
+                                                      @Override
+                                                      public SerializedCommandResponse commandResponse(
+                                                              SerializedCommandResponse serializedResponse,
+                                                              ExtensionUnitOfWork extensionUnitOfWork) {
+                                                          throw new RuntimeException("failed");
+                                                      }
+                                                  }, 10_000);
+
+        CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, null,
+                                   new SerializedCommand(Command.newBuilder()
+                                                                .setMessageIdentifier("TheCommand")
+                                                                .build()), futureResponse::complete);
+
+
+        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                      .setRequestIdentifier("TheCommand")
+                                                                                      .build()), false);
+        SerializedCommandResponse response = futureResponse.get();
+        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
     }
 }

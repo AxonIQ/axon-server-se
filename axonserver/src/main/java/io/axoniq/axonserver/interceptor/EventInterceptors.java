@@ -39,7 +39,7 @@ public interface EventInterceptors {
      * @param interceptorContext the caller's context
      * @return the new event
      */
-    Event appendSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext);
+    Event appendSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext) throws RequestRejectedException;
 
     void eventsPreCommit(List<Event> events, ExtensionUnitOfWork interceptorContext) throws RequestRejectedException;
 

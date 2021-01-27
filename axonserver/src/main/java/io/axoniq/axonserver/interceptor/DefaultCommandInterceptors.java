@@ -43,7 +43,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     @Override
     public SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                            ExtensionUnitOfWork extensionUnitOfWork) {
+                                            ExtensionUnitOfWork extensionUnitOfWork) throws RequestRejectedException {
         List<CommandRequestInterceptor> commandRequestInterceptors = extensionContextFilter.getServicesForContext(
                 CommandRequestInterceptor.class,
                 extensionUnitOfWork.context());
@@ -52,11 +52,7 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
         }
         Command command = serializedCommand.wrapped();
         for (CommandRequestInterceptor commandRequestInterceptor : commandRequestInterceptors) {
-            try {
-                command = commandRequestInterceptor.commandRequest(command, extensionUnitOfWork);
-            } catch (RequestRejectedException e) {
-                e.printStackTrace();
-            }
+            command = commandRequestInterceptor.commandRequest(command, extensionUnitOfWork);
         }
         return new SerializedCommand(command);
     }

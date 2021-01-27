@@ -26,7 +26,6 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.junit.*;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
@@ -42,20 +42,21 @@ import static org.junit.Assert.*;
 public class DefaultEventInterceptorsTest {
 
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController);
+    private final TestExtensionServiceProvider extensionServiceProvider = new TestExtensionServiceProvider();
+    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(extensionServiceProvider,
+                                                                                             true);
     private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(extensionContextFilter);
 
 
     @Test
     public void appendEvent() {
-        osgiController.add(new ServiceWithInfo<>((AppendEventInterceptor) (event, extensionContext) ->
+        extensionServiceProvider.add(new ServiceWithInfo<>((AppendEventInterceptor) (event, extensionContext) ->
                 Event.newBuilder()
                      .setMessageIdentifier(UUID.randomUUID().toString())
                      .setAggregateIdentifier(UUID.randomUUID().toString())
                      .setPayload(serializedObject(null, null, "data2"))
                      .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                 EXTENSION_KEY));
+                                                           EXTENSION_KEY));
 
 
         Event orgEvent = event("aggregate1", 0);
@@ -78,16 +79,19 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void eventsPreCommit() throws RequestRejectedException {
         AtomicInteger hookCalled = new AtomicInteger();
-        osgiController.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) -> {
-            hookCalled.incrementAndGet();
-        }, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) ->
+                hookCalled.incrementAndGet(), EXTENSION_KEY));
 
         TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
-        testSubject.eventsPreCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
+        testSubject.eventsPreCommit(asList(event("aggrId1", 0),
+                                           event("aggrId1", 1)),
+                                    testExtensionUnitOfWork);
         assertEquals(0, hookCalled.get());
 
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        testSubject.eventsPreCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
+        testSubject.eventsPreCommit(asList(event("aggrId1", 0),
+                                           event("aggrId1", 1)),
+                                    testExtensionUnitOfWork);
         assertEquals(1, hookCalled.get());
     }
 
@@ -95,33 +99,38 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void eventsPostCommit() {
         AtomicInteger hookCalled = new AtomicInteger();
-        osgiController.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) -> {
-            hookCalled.incrementAndGet();
-        }, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) ->
+                hookCalled.incrementAndGet(), EXTENSION_KEY));
 
         TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
-        testSubject.eventsPostCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
+        testSubject.eventsPostCommit(asList(event("aggrId1", 0),
+                                            event("aggrId1", 1)),
+                                     testExtensionUnitOfWork);
         assertEquals(0, hookCalled.get());
 
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        testSubject.eventsPostCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
+        testSubject.eventsPostCommit(asList(event("aggrId1", 0),
+                                            event("aggrId1", 1)),
+                                     testExtensionUnitOfWork);
         assertEquals(1, hookCalled.get());
     }
 
     @Test
     public void eventsPostCommitWithException() {
-        osgiController.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) -> {
+        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) -> {
             throw new RuntimeException("Error in post commit hook");
         }, EXTENSION_KEY));
 
         TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        testSubject.eventsPostCommit(Arrays.asList(event("aggrId1", 0), event("aggrId1", 1)), testExtensionUnitOfWork);
+        testSubject.eventsPostCommit(asList(event("aggrId1", 0),
+                                            event("aggrId1", 1)),
+                                     testExtensionUnitOfWork);
     }
 
     @Test
     public void snapshotPostCommitWithException() {
-        osgiController.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> {
+        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> {
             throw new RuntimeException("Error in post commit hook");
         }, EXTENSION_KEY));
 
@@ -133,9 +142,8 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void snapshotPostCommit() {
         AtomicInteger hookCalled = new AtomicInteger();
-        osgiController.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> {
-            hookCalled.incrementAndGet();
-        }, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> hookCalled
+                .incrementAndGet(), EXTENSION_KEY));
 
         TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
         testSubject.snapshotPostCommit(event("aggrId1", 0), testExtensionUnitOfWork);
@@ -147,14 +155,14 @@ public class DefaultEventInterceptorsTest {
     }
 
     @Test
-    public void appendSnapshot() {
-        osgiController.add(new ServiceWithInfo<>((AppendSnapshotInterceptor) (event, extensionContext) ->
+    public void appendSnapshot() throws RequestRejectedException {
+        extensionServiceProvider.add(new ServiceWithInfo<>((AppendSnapshotInterceptor) (event, extensionContext) ->
                 Event.newBuilder()
                      .setMessageIdentifier(UUID.randomUUID().toString())
                      .setAggregateIdentifier(UUID.randomUUID().toString())
                      .setPayload(serializedObject(null, null, "data2"))
                      .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                 EXTENSION_KEY));
+                                                           EXTENSION_KEY));
 
 
         Event orgEvent = event("aggregate1", 0, true);
@@ -176,7 +184,8 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void noReadInterceptors() {
-        osgiController.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event,
+                                                           EXTENSION_KEY));
         assertTrue(testSubject.noReadInterceptors("default"));
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
         assertFalse(testSubject.noReadInterceptors("default"));
@@ -184,7 +193,8 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void noReadInterceptorsWithSnapshotRead() {
-        osgiController.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event,
+                                                           EXTENSION_KEY));
         assertTrue(testSubject.noReadInterceptors("default"));
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
         assertFalse(testSubject.noReadInterceptors("default"));
@@ -192,10 +202,11 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void readSnapshot() {
-        osgiController.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> {
-            return Event.newBuilder(event).putMetaData("intercepted", metaDataValue("yes"))
-                        .setAggregateIdentifier(UUID.randomUUID().toString()).build();
-        }, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) ->
+                Event.newBuilder(event)
+                     .putMetaData("intercepted", metaDataValue("yes"))
+                     .setAggregateIdentifier(UUID.randomUUID().toString())
+                     .build(), EXTENSION_KEY));
 
         Event event = event("sample", 0, true);
         ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
@@ -211,10 +222,11 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void readEvent() {
-        osgiController.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> {
-            return Event.newBuilder(event).putMetaData("intercepted", metaDataValue("yes"))
-                        .setAggregateIdentifier(UUID.randomUUID().toString()).build();
-        }, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) ->
+                Event.newBuilder(event)
+                     .putMetaData("intercepted", metaDataValue("yes"))
+                     .setAggregateIdentifier(UUID.randomUUID().toString())
+                     .build(), EXTENSION_KEY));
 
         Event event = event("sample", 0);
         ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
@@ -230,7 +242,7 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void checkOrdering() {
         List<Integer> calledInOrder = new LinkedList<>();
-        osgiController.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
+        extensionServiceProvider.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
             private static final int ORDER = 100;
 
             @Override
@@ -244,7 +256,7 @@ public class DefaultEventInterceptorsTest {
                 return ORDER;
             }
         }, EXTENSION_KEY));
-        osgiController.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
+        extensionServiceProvider.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
             private static final int ORDER = 5;
 
             @Override
@@ -271,9 +283,11 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void noEventReadInterceptors() {
         extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        osgiController.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event,
+                                                           EXTENSION_KEY));
         assertTrue(testSubject.noEventReadInterceptors("default"));
-        osgiController.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event, EXTENSION_KEY));
+        extensionServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event,
+                                                           EXTENSION_KEY));
         assertFalse(testSubject.noEventReadInterceptors("default"));
     }
 

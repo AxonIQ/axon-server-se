@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.extensions.ExtensionKey;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
@@ -29,11 +30,11 @@ public class DefaultCommandInterceptorsTest {
 
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController);
+    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController, true);
     private final DefaultCommandInterceptors testSubject = new DefaultCommandInterceptors(extensionContextFilter);
 
     @Test
-    public void commandRequest() {
+    public void commandRequest() throws RequestRejectedException {
         osgiController.add(new ServiceWithInfo<>((CommandRequestInterceptor) (command, extensionContext) ->
                 Command.newBuilder()
                        .putMetaData("demo", metaDataValue("demoValue")).build(),

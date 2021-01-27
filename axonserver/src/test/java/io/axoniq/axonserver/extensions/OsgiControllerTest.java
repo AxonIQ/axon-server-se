@@ -30,7 +30,8 @@ public class OsgiControllerTest {
     @Test
     public void start() throws IOException, BundleException, RequestRejectedException {
         OsgiController osgiController = new OsgiController("cache",
-                                                           "onFirstInit");
+                                                           "onFirstInit",
+                                                           true);
         osgiController.start();
 
         File bundlesDir = new File(TestUtils.fixPathOnWindows(ExtensionController

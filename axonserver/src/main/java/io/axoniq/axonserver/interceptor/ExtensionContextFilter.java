@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.extensions.ExtensionServiceProvider;
 import io.axoniq.axonserver.extensions.Ordered;
 import io.axoniq.axonserver.extensions.ServiceWithInfo;
@@ -27,6 +28,7 @@ import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryRequestInter
 import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryResponseInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -66,10 +68,19 @@ public class ExtensionContextFilter {
     private final Map<String, Map<String, String>> enabledExtensionsPerContext = new ConcurrentHashMap<>();
     private final ExtensionServiceProvider extensionServiceProvider;
     private final Map<Class<? extends Ordered>, List<ServiceWithInfo<Ordered>>> serviceMap = new HashMap<>();
+    private final boolean enabled;
     private volatile boolean initialized;
 
-    public ExtensionContextFilter(ExtensionServiceProvider extensionServiceProvider) {
+    @Autowired
+    public ExtensionContextFilter(ExtensionServiceProvider extensionServiceProvider,
+                                  MessagingPlatformConfiguration messagingPlatformConfiguration) {
+        this(extensionServiceProvider, messagingPlatformConfiguration.isExtensionsEnabled());
+    }
+
+    public ExtensionContextFilter(ExtensionServiceProvider extensionServiceProvider,
+                                  boolean extensionEnabled) {
         this.extensionServiceProvider = extensionServiceProvider;
+        this.enabled = extensionEnabled;
         extensionServiceProvider.registerExtensionListener(serviceEvent -> {
             logger.debug("extension event {}", serviceEvent);
             initialized = false;
@@ -78,7 +89,7 @@ public class ExtensionContextFilter {
 
 
     private void ensureInitialized() {
-        if (!initialized) {
+        if (enabled && !initialized) {
             synchronized (extensionServiceProvider) {
                 if (initialized) {
                     return;
@@ -102,6 +113,9 @@ public class ExtensionContextFilter {
     }
 
     public <T extends Ordered> List<T> getServicesForContext(Class<T> interceptorClass, String context) {
+        if (!enabled) {
+            return Collections.emptyList();
+        }
         ensureInitialized();
         List<T> interceptors = new ArrayList<>();
         Map<String, String> enabledExtensions = enabledExtensionsPerContext.getOrDefault(context,

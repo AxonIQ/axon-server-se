@@ -15,6 +15,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
@@ -42,7 +43,10 @@ import java.util.stream.Collectors;
 import static java.util.Collections.singleton;
 
 /**
+ * Dispatches queries to the correct handlers and dispatches responses back to the caller.
+ *
  * @author Marc Gathier
+ * @since 4.0
  */
 @Component("QueryDispatcher")
 public class QueryDispatcher {
@@ -78,7 +82,7 @@ public class QueryDispatcher {
      *
      * @param queryResponse  the {@link QueryResponse} has been received
      * @param clientStreamId the query long living stream identifier that the client used to send the response
-     * @param clientId
+     * @param clientId       the client id of the client that sent the response
      * @param proxied        {@code true} if the response has been proxied by another AS node, {@code true} if the
      *                       response is directly received from the client handler.
      */
@@ -147,8 +151,8 @@ public class QueryDispatcher {
     /**
      * Removes the query from the cache and completes it with a {@link ErrorCode#COMMAND_TIMEOUT} error.
      *
-     * @param client
-     * @param messageId
+     * @param client    the client where the query should be handled
+     * @param messageId the request id for the query
      */
     public void removeFromCache(String client, String messageId) {
         QueryInformation query = queryCache.remove(messageId);
@@ -165,57 +169,91 @@ public class QueryDispatcher {
     public void query(SerializedQuery serializedQuery, Authentication principal,
                       Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
-        QueryRequest query = serializedQuery.query();
-        long timeout =
-                System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
-        Set<? extends QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
-        if (handlers.isEmpty()) {
-            callback.accept(QueryResponse.newBuilder()
-                                         .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
-                                         .setMessageIdentifier(query.getMessageIdentifier())
-                                         .setErrorMessage(ErrorMessageFactory
-                                                                  .build("No handler for query: " + query.getQuery()))
-                                         .build());
-            onCompleted.accept("NoClient");
-        } else {
-            QueryDefinition queryDefinition = new QueryDefinition(serializedQuery.context(), query.getQuery());
-            int expectedResults = Integer.MAX_VALUE;
-            int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
-            if (nrOfResults > 0) {
-                expectedResults = nrOfResults;
-            }
-            ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(serializedQuery.context(),
-                                                                                   principal);
-            try {
-                SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(serializedQuery, interceptorContext);
+        ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(serializedQuery.context(),
+                                                                               principal);
+
+        Consumer<QueryResponse> interceptedCallback = r -> intercept(interceptorContext, r, callback);
+        try {
+            serializedQuery = queryInterceptors.queryRequest(serializedQuery, interceptorContext);
+
+            SerializedQuery serializedQuery2 = serializedQuery;
+            QueryRequest query = serializedQuery2.query();
+
+            long timeout =
+                    System.currentTimeMillis() + ProcessingInstructionHelper
+                            .timeout(query.getProcessingInstructionsList());
+            Set<? extends QueryHandler> handlers = registrationCache.find(serializedQuery.context(), query);
+            if (handlers.isEmpty()) {
+                interceptedCallback.accept(QueryResponse.newBuilder()
+                                                        .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
+                                                        .setMessageIdentifier(query.getMessageIdentifier())
+                                                        .setErrorMessage(ErrorMessageFactory
+                                                                                 .build("No handler for query: " + query
+                                                                                         .getQuery()))
+                                                        .build());
+                onCompleted.accept("NoClient");
+            } else {
+                QueryDefinition queryDefinition = new QueryDefinition(serializedQuery.context(), query.getQuery());
+                int expectedResults = Integer.MAX_VALUE;
+                int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
+                if (nrOfResults > 0) {
+                    expectedResults = nrOfResults;
+                }
                 QueryInformation queryInformation = new QueryInformation(query.getMessageIdentifier(),
                                                                          query.getClientId(), queryDefinition,
                                                                          handlers.stream()
                                                                                  .map(QueryHandler::getClientStreamId)
                                                                                  .collect(Collectors.toSet()),
                                                                          expectedResults,
-                                                                         response -> intercept(interceptorContext,
-                                                                                               response,
-                                                                                               callback),
+                                                                         interceptedCallback,
                                                                          onCompleted);
                 queryCache.put(query.getMessageIdentifier(), queryInformation);
                 handlers.forEach(h -> dispatchOne(h, serializedQuery2, timeout));
-            } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
-                callback.accept(QueryResponse.newBuilder()
-                                             .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
-                                             .setMessageIdentifier(query.getMessageIdentifier())
-                                             .setErrorMessage(ErrorMessageFactory
-                                                                      .build(insufficientBufferCapacityException
-                                                                                     .getMessage()))
-                                             .build());
-                onCompleted.accept("NoCapacity");
             }
+        } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
+            interceptedCallback.accept(QueryResponse.newBuilder()
+                                                    .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
+                                                    .setMessageIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setErrorMessage(ErrorMessageFactory
+                                                                             .build(insufficientBufferCapacityException
+                                                                                            .getMessage()))
+                                                    .build());
+            onCompleted.accept("NoCapacity");
+        } catch (RequestRejectedException requestRejectedException) {
+            interceptedCallback.accept(QueryResponse.newBuilder()
+                                                    .setErrorCode(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR.getCode())
+                                                    .setMessageIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setErrorMessage(ErrorMessageFactory
+                                                                             .build(requestRejectedException
+                                                                                            .getMessage()))
+                                                    .build());
+            onCompleted.accept("Rejected");
+        } catch (Exception otherException) {
+            logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
+                        serializedQuery.query().getQuery(), otherException);
+            interceptedCallback.accept(QueryResponse.newBuilder()
+                                                    .setErrorCode(ErrorCode.OTHER.getCode())
+                                                    .setMessageIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setErrorMessage(ErrorMessageFactory
+                                                                             .build(otherException
+                                                                                            .getMessage()))
+                                                    .build());
+            onCompleted.accept("Failed");
         }
     }
 
     private void intercept(ExtensionUnitOfWork interceptorContext, QueryResponse response,
                            Consumer<QueryResponse> callback) {
-        callback.accept(queryInterceptors.queryResponse(response, interceptorContext));
+        try {
+            callback.accept(queryInterceptors.queryResponse(response, interceptorContext));
+        } catch (Exception ex) {
+            callback.accept(QueryResponse.newBuilder()
+                                         .setErrorCode(ErrorCode.OTHER.getCode())
+                                         .setMessageIdentifier(response.getRequestIdentifier())
+                                         .setErrorMessage(ErrorMessageFactory
+                                                                  .build(ex.getMessage()))
+                                         .build());
+        }
     }
 
     public MeterFactory.RateMeter queryRate(String context) {
@@ -231,7 +269,7 @@ public class QueryDispatcher {
                 System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         String context = serializedQuery.context();
         String clientId = serializedQuery.clientStreamId();
-        QueryHandler queryHandler = registrationCache.find(context, query, clientId);
+        QueryHandler<?> queryHandler = registrationCache.find(context, query, clientId);
         if (queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
@@ -268,7 +306,7 @@ public class QueryDispatcher {
         }
     }
 
-    private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
+    private void dispatchOne(QueryHandler<?> queryHandler, SerializedQuery query, long timeout) {
         try {
             queryHandler.enqueue(query, queryQueue, timeout);
         } catch (MessagingPlatformException mpe) {

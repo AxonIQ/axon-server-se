@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionController;
@@ -45,13 +46,19 @@ public class ExtensionsRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
     private final ExtensionController extensionController;
+    private final boolean extensionsEnabled;
 
-    public ExtensionsRestController(ExtensionController extensionController) {
+    public ExtensionsRestController(ExtensionController extensionController,
+                                    MessagingPlatformConfiguration configuration) {
+        this.extensionsEnabled = configuration.isExtensionsEnabled();
         this.extensionController = extensionController;
     }
 
     @GetMapping
     public Iterable<ExtensionInfo> currentExtensions(@ApiIgnore Principal principal) {
+        if (!extensionsEnabled) {
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+        }
         auditLog.info("[{}] Request to list current extensions. ",
                       AuditLog.username(principal));
         return extensionController.listExtensions();
@@ -60,6 +67,9 @@ public class ExtensionsRestController {
     @DeleteMapping
     public void uninstallExtension(@RequestParam String extension, @RequestParam String version,
                                    @ApiIgnore Principal principal) {
+        if (!extensionsEnabled) {
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+        }
         auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal), extension, version);
         extensionController.uninstallExtension(new ExtensionKey(extension, version));
     }
@@ -70,6 +80,9 @@ public class ExtensionsRestController {
                              @RequestParam(required = false, name = "targetContext") String context,
                              @RequestParam boolean active,
                              @ApiIgnore Principal principal) {
+        if (!extensionsEnabled) {
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+        }
         auditLog.info("[{}] Request to {} extension {}/{}. ",
                       AuditLog.username(principal),
                       active ? "start" : "stop",
@@ -83,6 +96,9 @@ public class ExtensionsRestController {
                                               @RequestParam String version,
                                               @RequestParam(required = false, name = "targetContext") String context,
                                               @ApiIgnore Principal principal) {
+        if (!extensionsEnabled) {
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+        }
         auditLog.info("[{}] Request to unregister extension {}/{} for context {}.",
                       AuditLog.username(principal),
                       extension,
@@ -97,6 +113,9 @@ public class ExtensionsRestController {
                                                           @RequestParam String version,
                                                           @RequestParam(required = false, name = "targetContext") String context,
                                                           @ApiIgnore Principal principal) {
+        if (!extensionsEnabled) {
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+        }
         auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal), extension, version);
         return extensionController.listProperties(new ExtensionKey(extension, version), context);
     }
@@ -105,6 +124,9 @@ public class ExtensionsRestController {
     public ExtensionKey installExtension(@RequestPart("bundle") MultipartFile extensionBundle,
                                          @ApiIgnore Principal principal)
             throws IOException {
+        if (!extensionsEnabled) {
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+        }
         auditLog.info("[{}] Request to install extension {}. ",
                       AuditLog.username(principal),
                       extensionBundle.getOriginalFilename());
@@ -133,6 +155,9 @@ public class ExtensionsRestController {
     @PostMapping("configuration")
     public void updateConfiguration(@RequestBody ExtensionConfigurationJSON configurationJSON,
                                     @ApiIgnore Principal principal) {
+        if (!extensionsEnabled) {
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+        }
         auditLog.info("[{}] Request to update configuration of {}/{}. ", AuditLog.username(principal),
                       configurationJSON.getExtension(),
                       configurationJSON.getVersion());

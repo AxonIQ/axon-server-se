@@ -106,16 +106,13 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event appendSnapshot(Event snapshot, ExtensionUnitOfWork extensionUnitOfWork) {
+    public Event appendSnapshot(Event snapshot, ExtensionUnitOfWork extensionUnitOfWork)
+            throws RequestRejectedException {
         Event intercepted = snapshot;
         for (AppendSnapshotInterceptor appendSnapshotInterceptor : extensionContextFilter.getServicesForContext(
                 AppendSnapshotInterceptor.class,
                 extensionUnitOfWork.context())) {
-            try {
-                intercepted = appendSnapshotInterceptor.appendSnapshot(intercepted, extensionUnitOfWork);
-            } catch (RequestRejectedException e) {
-                e.printStackTrace();
-            }
+            intercepted = appendSnapshotInterceptor.appendSnapshot(intercepted, extensionUnitOfWork);
         }
         return mergeEvent(snapshot, intercepted);
     }

@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.extensions.ExtensionKey;
+import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryResponseInterceptor;
@@ -29,13 +30,12 @@ public class DefaultSubscriptionQueryInterceptorsTest {
 
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController);
+    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController, true);
     private final DefaultSubscriptionQueryInterceptors testSubject = new DefaultSubscriptionQueryInterceptors(
-            osgiController,
             extensionContextFilter);
 
     @Test
-    public void queryRequest() {
+    public void queryRequest() throws RequestRejectedException {
         osgiController
                 .add(new ServiceWithInfo<>((SubscriptionQueryRequestInterceptor) (queryRequest, extensionContext) ->
                         SubscriptionQueryRequest.newBuilder(queryRequest)
