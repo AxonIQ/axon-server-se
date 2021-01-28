@@ -12,6 +12,7 @@ package io.axoniq.axonserver.message.event;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.stereotype.Component;
@@ -23,11 +24,14 @@ import org.springframework.stereotype.Component;
 public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
     private final LocalEventStore localEventStore;
     private final Topology clusterController;
+    private final DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties;
 
     public LocalEventStoreHealthIndicator(LocalEventStore localEventStore,
-                                          Topology clusterController) {
+                                          Topology clusterController,
+                                          DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties) {
         this.localEventStore = localEventStore;
         this.clusterController = clusterController;
+        this.diskSpaceHealthProperties = diskSpaceHealthProperties;
     }
 
     @Override
@@ -45,6 +49,6 @@ public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
                 // ignore
             }
         });
-        localEventStore.health(builder);
+        localEventStore.health(builder, diskSpaceHealthProperties);
     }
 }

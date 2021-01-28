@@ -26,7 +26,10 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.Status;
 import org.springframework.data.util.CloseableIterator;
 
 import java.io.File;
@@ -469,24 +472,42 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void health(Health.Builder builder) {
+    public void health(Health.Builder builder, DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties) {
         String storage = storageProperties.getStorage(context);
         SegmentBasedEventStore n = next;
         Path path = Paths.get(storage);
         try {
             FileStore store = Files.getFileStore(path);
+
+            long diskFreeInBytes = store.getUsableSpace();
+            long threshold = diskSpaceHealthProperties.getThreshold().toBytes();
+            if (store.getUsableSpace() >= threshold) {
+                builder.up();
+            } else {
+                logger.warn(String.format("Free disk space below threshold. Available: %d bytes (threshold: %s)", diskFreeInBytes, threshold));
+                builder.status(new Status("WARN"));
+            }
+
+            builder.withDetail(context + ".total", store.getTotalSpace());
             builder.withDetail(context + ".free", store.getUsableSpace());
             builder.withDetail(context + ".path", path.toString());
+            builder.withDetail(context + ".threshold", threshold);
         } catch (IOException e) {
             logger.warn("Failed to retrieve filestore for {}", path, e);
         }
         while (n != null) {
             if (!storage.equals(next.storageProperties.getStorage(context))) {
-                n.health(builder);
+                n.health(builder, diskSpaceHealthProperties);
                 return;
             }
             n = n.next;
         }
+    }
+
+    @Override
+    public Path getFileStore() {
+        String storage = storageProperties.getStorage(context);
+        return Paths.get(storage);
     }
 
     protected void renameFileIfNecessary(long segment) {

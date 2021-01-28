@@ -13,6 +13,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.data.util.CloseableIterator;
 
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -98,6 +99,11 @@ public class FakeEventStore implements EventStorageEngine {
     //Not implemented for FakeEventStore
     @Override
     public void deleteAllEventData() {
+    }
+
+    @Override
+    public Path getFileStore() {
+        return  null;
     }
 
     @Override

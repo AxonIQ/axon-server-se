@@ -31,6 +31,7 @@ import org.springframework.data.util.CloseableIterator;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -130,6 +131,11 @@ public class HttpStreamingQueryTest {
             @Override
             public void deleteAllEventData() {
 
+            }
+
+            @Override
+            public Path getFileStore() {
+                return null;
             }
         };
 

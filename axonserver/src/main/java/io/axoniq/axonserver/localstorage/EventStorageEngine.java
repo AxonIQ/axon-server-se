@@ -10,9 +10,11 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -182,8 +184,9 @@ public interface EventStorageEngine {
     /**
      * Adds information to the actuator health endpoint for this event store.
      * @param builder actuator health builder
+     * @param diskSpaceHealthIndicatorProperties properties or health indicators
      */
-    default void health(Health.Builder builder) {
+    default void health(Health.Builder builder, DiskSpaceHealthIndicatorProperties diskSpaceHealthIndicatorProperties) {
     }
 
     /**
@@ -231,4 +234,10 @@ public interface EventStorageEngine {
      */
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
+
+    /**
+     * Returns configured file store
+     * @return file store
+     */
+    Path getFileStore();
 }

@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.data.util.CloseableIterator;
@@ -48,10 +49,8 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -62,6 +61,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
@@ -83,6 +83,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final int maxEventCount;
+    private final List<Consumer<Path>> fileStoreListeners = new ArrayList<>();
+
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
      * events
@@ -138,8 +140,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void initContext(String context, boolean validating, long defaultFirstEventIndex,
                             long defaultFirstSnapshotIndex) {
         try {
-            workersMap.computeIfAbsent(context, Workers::new)
-                      .ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
+            Workers workers = workersMap.computeIfAbsent(context, Workers::new);
+            workers.ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
+
+            fileStoreListeners.forEach(c-> {
+                c.accept(workers.eventStorageEngine.getFileStore());
+                c.accept(workers.snapshotStorageEngine.getFileStore());
+            });
+
         } catch (RuntimeException ex) {
             workersMap.remove(context);
             throw ex;
@@ -633,8 +641,24 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return Stream.empty();
     }
 
-    public void health(Health.Builder builder) {
-        workersMap.values().forEach(worker -> worker.eventStreamReader.health(builder));
+    public void health(Health.Builder builder, DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties) {
+        workersMap.values().forEach(worker -> worker.eventStreamReader.health(builder, diskSpaceHealthProperties));
+    }
+
+
+    public void registerFileStoreListener(Consumer<Path> consumer) {
+        fileStoreListeners.add(consumer);
+    }
+
+    /**
+     * Returns configured distinct file stores configured for each worker
+     */
+    public List<Path> getFileStores() {
+        return workersMap.values()
+                .stream()
+                .flatMap(w->w.getFileStores().stream())
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     private boolean isClientException(Throwable exception) {
@@ -671,6 +695,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final Gauge gauge;
         private final Gauge snapshotGauge;
         private final Object initLock = new Object();
+
+
 
 
         public Workers(String context) {
@@ -719,6 +745,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     snapshotStorageEngine.close(false);
                     throw runtimeException;
                 }
+
+
             }
         }
 
@@ -768,6 +796,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public void deleteAllEventData() {
             eventWriteStorage.deleteAllEventData();
             snapshotWriteStorage.deleteAllEventData();
+        }
+
+        /**
+         * Returns configured file stores
+         */
+        public List<Path> getFileStores(){
+
+
+            return Arrays.asList(eventStorageEngine.getFileStore(),snapshotStorageEngine.getFileStore());
         }
     }
 }
