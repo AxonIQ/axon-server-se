@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -215,5 +216,11 @@ public class ExtensionContextManager {
                                                                  .addContextInfo(extension.getContext(),
                                                                                  extension.isActive()));
         return extensions.values();
+    }
+
+    public List<ExtensionStatus> findAll(ExtensionKey extensionKey) {
+        return packageRepository.findByExtensionAndVersion(extensionKey.getSymbolicName(), extensionKey.getVersion())
+                                .map(extensionStatusRepository::findAllByExtension)
+                                .orElse(Collections.emptyList());
     }
 }

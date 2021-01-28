@@ -159,7 +159,7 @@ public class ExtensionPackageManager implements SmartLifecycle {
                                          .map(pack -> pack.getFilename().equals(filename) ? pack : null);
     }
 
-    public File getFile(String name, String version) {
+    public File getFullPath(String name, String version) {
         return extensionPackageRepository.findByExtensionAndVersion(name, version)
                                          .map(pack -> new File(
                                                  bundleDirectory + File.separatorChar + pack.getFilename()))

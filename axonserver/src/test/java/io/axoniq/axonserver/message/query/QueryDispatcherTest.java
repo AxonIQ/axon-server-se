@@ -38,6 +38,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -178,18 +180,6 @@ public class QueryDispatcherTest {
 
         CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
         CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
-        Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
-                                                                                                  new ClientStreamIdentification(
-                                                                                                          Topology.DEFAULT_CONTEXT,
-                                                                                                          "clientStreamId"),
-                                                                                                  null,
-                                                                                                  null) {
-            @Override
-            public void dispatch(SubscriptionQueryRequest query) {
-
-            }
-        });
-        when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                           futureResponse::complete,
@@ -200,7 +190,7 @@ public class QueryDispatcherTest {
     }
 
     @Test
-    public void queryRequestInterceptorFailed() throws ExecutionException, InterruptedException {
+    public void queryRequestInterceptorFailed() throws ExecutionException, InterruptedException, TimeoutException {
         testSubject = new QueryDispatcher(registrationCache,
                                           queryCache,
                                           queryMetricsRegistry,
@@ -210,30 +200,17 @@ public class QueryDispatcherTest {
         QueryRequest request = QueryRequest.newBuilder()
                                            .setMessageIdentifier("FAIL")
                                            .setQuery("test")
-                                           .setMessageIdentifier("1234")
                                            .build();
 
         CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
         CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
-        Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
-                                                                                                  new ClientStreamIdentification(
-                                                                                                          Topology.DEFAULT_CONTEXT,
-                                                                                                          "clientStreamId"),
-                                                                                                  null,
-                                                                                                  null) {
-            @Override
-            public void dispatch(SubscriptionQueryRequest query) {
-
-            }
-        });
-        when(registrationCache.find(any(), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                           futureResponse::complete,
                           client -> futureCompleted.complete(true));
-        QueryResponse response = futureResponse.get();
+        QueryResponse response = futureResponse.get(1, TimeUnit.SECONDS);
         assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
-        assertTrue(futureCompleted.get());
+        assertTrue(futureCompleted.get(1, TimeUnit.SECONDS));
     }
 
     @Test
@@ -300,7 +277,7 @@ public class QueryDispatcherTest {
         testSubject.dispatchProxied(forwardedQuery, r -> {
         }, s -> {
         });
-        assertEquals(1, testSubject.getQueryQueue().getSegments().get("client").size());
+        assertEquals(1, testSubject.getQueryQueue().getSegments().get("client.default").size());
     }
 
     @Test
