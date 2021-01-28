@@ -324,6 +324,9 @@ public class OsgiController implements ExtensionServiceProvider {
     }
 
     public void startExtension(String fullPath) {
+        if (!extensionsEnabled) {
+            return;
+        }
         File extension = new File(fullPath);
         try (InputStream inputStream = new FileInputStream(extension)) {
             Bundle bundle = bundleContext.installBundle(extension.getAbsolutePath(), inputStream);

@@ -38,6 +38,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
+
 /**
  * Rest services to manage users.
  * @author Marc Gathier
@@ -64,7 +66,7 @@ public class UserRestController {
     public void createUser(@RequestBody @Valid UserJson userJson, Principal principal) {
         auditLog.info("[{}] Request to create user \"{}\" with roles {}.",
                       AuditLog.username(principal),
-                      userJson.getUserName(),
+                      sanitize(userJson.getUserName()),
                       userJson.getRoles());
 
         if (userJson.userName != null && userJson.userName.equals(principal.getName())) {
@@ -80,7 +82,7 @@ public class UserRestController {
                 if (!validRoles.contains(role.getRole())) {
                     auditLog.error("[{}] Request to create user \"{}\" with roles {} FAILED: Unknown role \"{}\".",
                                    AuditLog.username(principal),
-                                   userJson.getUserName(),
+                                   sanitize(userJson.getUserName()),
                                    roles,
                                    role);
                     throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE,

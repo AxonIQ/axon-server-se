@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.Principal;
 
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
+
 /**
  * REST interface to manage extensions.
  *
@@ -70,7 +72,9 @@ public class ExtensionsRestController {
         if (!extensionsEnabled) {
             throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
         }
-        auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal), extension, version);
+        auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal),
+                      sanitize(extension),
+                      sanitize(version));
         extensionController.uninstallExtension(new ExtensionKey(extension, version));
     }
 
@@ -86,8 +90,8 @@ public class ExtensionsRestController {
         auditLog.info("[{}] Request to {} extension {}/{}. ",
                       AuditLog.username(principal),
                       active ? "start" : "stop",
-                      extension,
-                      version);
+                      sanitize(extension),
+                      sanitize(version));
         extensionController.updateExtensionStatus(new ExtensionKey(extension, version), context, active);
     }
 
@@ -101,9 +105,9 @@ public class ExtensionsRestController {
         }
         auditLog.info("[{}] Request to unregister extension {}/{} for context {}.",
                       AuditLog.username(principal),
-                      extension,
-                      version,
-                      context);
+                      sanitize(extension),
+                      sanitize(version),
+                      sanitize(context));
         extensionController.unregisterExtensionForContext(new ExtensionKey(extension, version), context);
     }
 
@@ -116,7 +120,9 @@ public class ExtensionsRestController {
         if (!extensionsEnabled) {
             throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
         }
-        auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal), extension, version);
+        auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal),
+                      sanitize(extension),
+                      sanitize(version));
         return extensionController.listProperties(new ExtensionKey(extension, version), context);
     }
 
@@ -129,7 +135,7 @@ public class ExtensionsRestController {
         }
         auditLog.info("[{}] Request to install extension {}. ",
                       AuditLog.username(principal),
-                      extensionBundle.getOriginalFilename());
+                      sanitize(extensionBundle.getOriginalFilename()));
 
         try (InputStream inputStream = extensionBundle.getInputStream()) {
             String effectiveFilename = uniqueName(extensionBundle.getOriginalFilename());
@@ -159,8 +165,8 @@ public class ExtensionsRestController {
             throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
         }
         auditLog.info("[{}] Request to update configuration of {}/{}. ", AuditLog.username(principal),
-                      configurationJSON.getExtension(),
-                      configurationJSON.getVersion());
+                      sanitize(configurationJSON.getExtension()),
+                      sanitize(configurationJSON.getVersion()));
         extensionController.updateConfiguration(new ExtensionKey(configurationJSON.getExtension(),
                                                                  configurationJSON.getVersion()),
                                                 configurationJSON.getContext(),

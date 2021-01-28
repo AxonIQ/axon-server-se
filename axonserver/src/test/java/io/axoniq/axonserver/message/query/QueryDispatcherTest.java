@@ -161,7 +161,6 @@ public class QueryDispatcherTest {
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
         assertEquals(0, responseObserver.values().size());
-//        verify(queryCache, times(1)).put(any(), any());
     }
 
     @Test
@@ -175,13 +174,14 @@ public class QueryDispatcherTest {
         QueryRequest request = QueryRequest.newBuilder()
                                            .setMessageIdentifier("REJECT")
                                            .setQuery("test")
-                                           .setMessageIdentifier("1234")
                                            .build();
 
         CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
         CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
         Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
-                                                                                                  null,
+                                                                                                  new ClientStreamIdentification(
+                                                                                                          Topology.DEFAULT_CONTEXT,
+                                                                                                          "clientStreamId"),
                                                                                                   null,
                                                                                                   null) {
             @Override
@@ -216,7 +216,9 @@ public class QueryDispatcherTest {
         CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
         CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
         Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
-                                                                                                  null,
+                                                                                                  new ClientStreamIdentification(
+                                                                                                          Topology.DEFAULT_CONTEXT,
+                                                                                                          "clientStreamId"),
                                                                                                   null,
                                                                                                   null) {
             @Override
@@ -290,15 +292,15 @@ public class QueryDispatcherTest {
         FakeStreamObserver<QueryProviderInbound> FakeStreamObserver = new FakeStreamObserver<>();
         SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
 
-        QueryHandler handler = new DirectQueryHandler(FakeStreamObserver,
-                                                      new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
-                                                      "componentName", "client");
-        when(registrationCache.find(any(), anyObject(), anyObject())).thenReturn(handler);
+        QueryHandler<?> handler = new DirectQueryHandler(FakeStreamObserver,
+                                                         new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                        "client"),
+                                                         "componentName", "client");
+        when(registrationCache.find(any(), any(), any())).thenReturn(handler);
         testSubject.dispatchProxied(forwardedQuery, r -> {
         }, s -> {
         });
-        //assertEquals(1, FakeStreamObserver.count);
-//        verify(queryCache, times(1)).put(any(), any());
+        assertEquals(1, testSubject.getQueryQueue().getSegments().get("client").size());
     }
 
     @Test
@@ -329,11 +331,10 @@ public class QueryDispatcherTest {
                                                          new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                         "client"),
                                                          "componentName", "client");
-        when(registrationCache.find(any(), anyObject(), anyObject())).thenReturn(handler);
+        when(registrationCache.find(any(), any(), any())).thenReturn(handler);
         testSubject.dispatchProxied(forwardedQuery, r -> dispatchCount.incrementAndGet(), s -> {
         });
-        testSubject.getQueryQueue().take("client");
-//        verify(queryCache, times(0)).put(any(), any());
+        assertEquals(1, testSubject.getQueryQueue().getSegments().get("client").size());
     }
 
 

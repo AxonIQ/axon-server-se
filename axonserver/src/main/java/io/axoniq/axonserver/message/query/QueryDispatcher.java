@@ -170,12 +170,12 @@ public class QueryDispatcher {
     public void query(SerializedQuery serializedQuery, Authentication principal,
                       Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
-        ExtensionUnitOfWork interceptorContext = new DefaultInterceptorContext(serializedQuery.context(),
-                                                                               principal);
+        ExtensionUnitOfWork extensionUnitOfWork = new DefaultInterceptorContext(serializedQuery.context(),
+                                                                                principal);
 
-        Consumer<QueryResponse> interceptedCallback = r -> intercept(interceptorContext, r, callback);
+        Consumer<QueryResponse> interceptedCallback = r -> intercept(extensionUnitOfWork, r, callback);
         try {
-            serializedQuery = queryInterceptors.queryRequest(serializedQuery, interceptorContext);
+            serializedQuery = queryInterceptors.queryRequest(serializedQuery, extensionUnitOfWork);
 
             SerializedQuery serializedQuery2 = serializedQuery;
             QueryRequest query = serializedQuery2.query();
@@ -246,12 +246,12 @@ public class QueryDispatcher {
         }
     }
 
-    private void intercept(ExtensionUnitOfWork interceptorContext, QueryResponse response,
+    private void intercept(ExtensionUnitOfWork extensionUnitOfWork, QueryResponse response,
                            Consumer<QueryResponse> callback) {
         try {
-            callback.accept(queryInterceptors.queryResponse(response, interceptorContext));
+            callback.accept(queryInterceptors.queryResponse(response, extensionUnitOfWork));
         } catch (Exception ex) {
-            logger.warn("Exception in response interceptor", ex);
+            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), ex);
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.OTHER.getCode())
                                          .setMessageIdentifier(response.getRequestIdentifier())

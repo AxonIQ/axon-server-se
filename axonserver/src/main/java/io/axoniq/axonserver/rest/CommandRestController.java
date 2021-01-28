@@ -49,6 +49,7 @@ import javax.validation.Valid;
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
 import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
 /**
  * REST controller to retrieve information about subscribed commands and to dispatch commands.
@@ -79,7 +80,7 @@ public class CommandRestController {
                 "[{}] Request to list all Commands for which component \"{}\" in context \"{}\" has a registered handler.",
                 AuditLog.username(principal),
                 component,
-                context);
+                sanitize(context));
 
         return new ComponentItems<>(component, context, new DefaultCommands(registrationCache));
     }

@@ -125,7 +125,7 @@ public class CommandDispatcher {
         try {
             responseObserver.accept(commandInterceptors.commandResponse(response, extensionUnitOfWork));
         } catch (Exception ex) {
-            logger.warn("Exception in response interceptor", ex);
+            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), ex);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(), ErrorCode.OTHER,
                                                          "Exception in response interceptor: " + ex.getMessage()));
         }
