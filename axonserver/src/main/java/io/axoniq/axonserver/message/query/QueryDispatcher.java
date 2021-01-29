@@ -15,7 +15,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
@@ -220,12 +219,12 @@ public class QueryDispatcher {
                                                                                             .getMessage()))
                                                     .build());
             onCompleted.accept("NoCapacity");
-        } catch (RequestRejectedException requestRejectedException) {
+        } catch (MessagingPlatformException messagingPlatformException) {
             interceptedCallback.accept(QueryResponse.newBuilder()
-                                                    .setErrorCode(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR.getCode())
+                                                    .setErrorCode(messagingPlatformException.getErrorCode().getCode())
                                                     .setMessageIdentifier(serializedQuery.getMessageIdentifier())
                                                     .setErrorMessage(ErrorMessageFactory
-                                                                             .build(requestRejectedException
+                                                                             .build(messagingPlatformException
                                                                                             .getMessage()))
                                                     .build());
             onCompleted.accept("Rejected");

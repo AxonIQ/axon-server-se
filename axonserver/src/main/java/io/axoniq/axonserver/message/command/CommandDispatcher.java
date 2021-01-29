@@ -14,7 +14,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
@@ -107,10 +106,11 @@ public class CommandDispatcher {
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
                                      "No Handler for command: " + request.getCommand()
             );
-        } catch (RequestRejectedException requestRejectedException) {
+        } catch (MessagingPlatformException other) {
+            logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
             interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
-                                                                    ErrorCode.COMMAND_REJECTED_BY_INTERCEPTOR,
-                                                                    requestRejectedException.getMessage()));
+                                                                    other.getErrorCode(),
+                                                                    other.getMessage()));
         } catch (Exception other) {
             logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
             interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
@@ -124,10 +124,16 @@ public class CommandDispatcher {
                            Consumer<SerializedCommandResponse> responseObserver) {
         try {
             responseObserver.accept(commandInterceptors.commandResponse(response, extensionUnitOfWork));
-        } catch (Exception ex) {
+        } catch (MessagingPlatformException ex) {
             logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), ex);
-            responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(), ErrorCode.OTHER,
-                                                         "Exception in response interceptor: " + ex.getMessage()));
+            responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
+                                                         ex.getErrorCode(),
+                                                         ex.getMessage()));
+        } catch (Exception other) {
+            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), other);
+            responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
+                                                         ErrorCode.OTHER,
+                                                         other.getMessage()));
         }
     }
 

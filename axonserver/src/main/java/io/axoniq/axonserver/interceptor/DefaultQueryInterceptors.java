@@ -9,13 +9,17 @@
 
 package io.axoniq.axonserver.interceptor;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.RequestRejectedException;
+import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
+import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -34,27 +38,57 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
     private final Logger logger = LoggerFactory.getLogger(DefaultQueryInterceptors.class);
 
     private final ExtensionContextFilter extensionContextFilter;
+    private final InterceptorTimer interceptorTimer;
 
     public DefaultQueryInterceptors(
-            ExtensionContextFilter extensionContextFilter) {
+            ExtensionContextFilter extensionContextFilter,
+            MeterFactory meterFactory) {
         this.extensionContextFilter = extensionContextFilter;
+        this.interceptorTimer = new InterceptorTimer(meterFactory);
     }
 
 
     @Override
-    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork)
-            throws RequestRejectedException {
-        List<QueryRequestInterceptor> queryRequestInterceptors = extensionContextFilter.getServicesForContext(
-                QueryRequestInterceptor.class,
-                extensionUnitOfWork.context());
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork) {
+        List<ServiceWithInfo<QueryRequestInterceptor>> queryRequestInterceptors = extensionContextFilter
+                .getServicesWithInfoForContext(
+                        QueryRequestInterceptor.class,
+                        extensionUnitOfWork.context());
         if (queryRequestInterceptors.isEmpty()) {
             return serializedQuery;
         }
-        QueryRequest query = serializedQuery.query();
-        for (QueryRequestInterceptor queryRequestInterceptor : queryRequestInterceptors) {
-            query = queryRequestInterceptor.queryRequest(query, extensionUnitOfWork);
-        }
-        return new SerializedQuery(serializedQuery.context(), serializedQuery.clientStreamId(), query);
+        QueryRequest intercepted = interceptorTimer.time(extensionUnitOfWork.context(),
+                                                         "QueryRequestInterceptor",
+                                                         () -> {
+                                                             QueryRequest query = serializedQuery.query();
+                                                             for (ServiceWithInfo<QueryRequestInterceptor> queryRequestInterceptor : queryRequestInterceptors) {
+                                                                 try {
+                                                                     query = queryRequestInterceptor.service()
+                                                                                                    .queryRequest(query,
+                                                                                                                  extensionUnitOfWork);
+                                                                 } catch (RequestRejectedException requestRejectedException) {
+                                                                     throw new MessagingPlatformException(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR,
+                                                                                                          extensionUnitOfWork
+                                                                                                                  .context()
+                                                                                                                  +
+                                                                                                                  ": query rejected by the QueryRequestInterceptor in "
+                                                                                                                  + queryRequestInterceptor
+                                                                                                                  .extensionKey(),
+                                                                                                          requestRejectedException);
+                                                                 } catch (Exception interceptorException) {
+                                                                     throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
+                                                                                                          extensionUnitOfWork
+                                                                                                                  .context()
+                                                                                                                  +
+                                                                                                                  ": Exception thrown by the QueryRequestInterceptor in "
+                                                                                                                  + queryRequestInterceptor
+                                                                                                                  .extensionKey(),
+                                                                                                          interceptorException);
+                                                                 }
+                                                             }
+                                                             return query;
+                                                         });
+        return new SerializedQuery(serializedQuery.context(), serializedQuery.clientStreamId(), intercepted);
     }
 
     @Override

@@ -71,8 +71,6 @@ public class SystemPackagesProvider {
 
     private boolean export(String manifestUrl) {
         return manifestUrl.contains("org.osgi") ||
-                manifestUrl.contains("org.apache.felix.metatype") ||
-                manifestUrl.contains("org.apache.felix.configadmin") ||
                 manifestUrl.contains("axon-server-extension-api") ||
                 manifestUrl.contains("axonserver-extension-api");
     }

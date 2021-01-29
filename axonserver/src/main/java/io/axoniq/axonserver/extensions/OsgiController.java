@@ -42,7 +42,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.jar.Attributes;
 import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 public class OsgiController implements ExtensionServiceProvider {
 
     private final Logger logger = LoggerFactory.getLogger(OsgiController.class);
-    private final Set<Consumer<ExtensionKey>> extensionListeners = new CopyOnWriteArraySet<>();
+    private final Set<BiConsumer<ExtensionKey, String>> extensionListeners = new CopyOnWriteArraySet<BiConsumer<ExtensionKey, String>>();
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
     private final boolean extensionsEnabled;
@@ -96,7 +96,7 @@ public class OsgiController implements ExtensionServiceProvider {
         osgiConfig.put(Constants.FRAMEWORK_STORAGE, cacheDirectory);
         osgiConfig.put(Constants.FRAMEWORK_STORAGE_CLEAN, cacheCleanPolicy);
         osgiConfig.put(Constants.FRAMEWORK_SYSTEMPACKAGES_EXTRA, systemPackagesProvider.getSystemPackages());
-        logger.debug("System packages {}", systemPackagesProvider.getSystemPackages());
+        logger.info("System packages {}", systemPackagesProvider.getSystemPackages());
         try {
             FrameworkFactory frameworkFactory = ServiceLoader.load(FrameworkFactory.class)
                                                              .iterator().next();
@@ -111,11 +111,24 @@ public class OsgiController implements ExtensionServiceProvider {
                              event.getType(),
                              event.getBundle().getState());
                 if (activeStateChanged(event.getType())) {
-                    extensionListeners.forEach(s -> s.accept(extensionKey(event.getBundle())));
+                    extensionListeners.forEach(s -> s.accept(extensionKey(event.getBundle()), eventType(event)));
                 }
             });
         } catch (Exception ex) {
             logger.error("OSGi Failed to Start", ex);
+        }
+    }
+
+    private String eventType(BundleEvent event) {
+        switch (event.getType()) {
+            case BundleEvent.INSTALLED:
+                return "Installed";
+            case BundleEvent.STARTED:
+                return "Started";
+            case BundleEvent.STOPPED:
+                return "Stopped";
+            default:
+                return "Unknown: " + event.getType();
         }
     }
 
@@ -130,7 +143,7 @@ public class OsgiController implements ExtensionServiceProvider {
      * @return a registration
      */
     @Override
-    public Registration registerExtensionListener(Consumer<ExtensionKey> listener) {
+    public Registration registerExtensionListener(BiConsumer<ExtensionKey, String> listener) {
         extensionListeners.add(listener);
         return () -> extensionListeners.remove(listener);
     }
@@ -232,15 +245,17 @@ public class OsgiController implements ExtensionServiceProvider {
                 }
                 logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
             } else {
-                    logger.info("updating bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
-                    try (InputStream is = new FileInputStream(extensionPackageFile)) {
-                        current.get().update(is);
-                    }
-                extensionListeners.forEach(s -> s.accept(bundleInfo));
+                logger.info("updating bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
+                try (InputStream is = new FileInputStream(extensionPackageFile)) {
+                    current.get().update(is);
                 }
+                extensionListeners.forEach(s -> s.accept(bundleInfo, "Updated"));
+            }
 
             return bundleInfo;
         } catch (BundleException bundleException) {
+            logger.warn("Could not install extension {} ", extensionPackageFile
+                    .getAbsolutePath(), bundleException);
             throw new MessagingPlatformException(ErrorCode.OTHER,
                                                  "Could not install extension " + extensionPackageFile
                                                          .getAbsolutePath(),
@@ -285,7 +300,7 @@ public class OsgiController implements ExtensionServiceProvider {
                 bundle.uninstall();
 
                 ExtensionKey key = extensionKey(bundle);
-                extensionListeners.forEach(s -> s.accept(key));
+                extensionListeners.forEach(s -> s.accept(key, "Uninstalled"));
             } catch (BundleException bundleException) {
                 throw new MessagingPlatformException(ErrorCode.OTHER,
                                                      "Could not uninstall extension " + bundle.getLocation(),
@@ -337,5 +352,27 @@ public class OsgiController implements ExtensionServiceProvider {
         } catch (BundleException e) {
             throw new MessagingPlatformException(ErrorCode.OTHER, fullPath + ": Cannot start extension package", e);
         }
+    }
+
+    public String getStatus(ExtensionKey key) {
+        return findBundle(key.getSymbolicName(), key.getVersion())
+                .map(b -> bundleStatus(b))
+                .orElse(null);
+    }
+
+    private String bundleStatus(Bundle bundle) {
+        switch (bundle.getState()) {
+            case Bundle.ACTIVE:
+                return "Active";
+            case Bundle.INSTALLED:
+                return "Installed";
+            case Bundle.RESOLVED:
+                return "Resolved";
+            case Bundle.STARTING:
+                return "Starting";
+            case Bundle.STOPPING:
+                return "Stopping";
+        }
+        return "Other: " + bundle.getState();
     }
 }

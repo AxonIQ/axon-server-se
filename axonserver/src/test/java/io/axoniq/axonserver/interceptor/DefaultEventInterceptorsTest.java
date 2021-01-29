@@ -24,6 +24,9 @@ import io.axoniq.axonserver.extensions.interceptor.ReadSnapshotInterceptor;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import java.util.LinkedList;
@@ -45,7 +48,11 @@ public class DefaultEventInterceptorsTest {
     private final TestExtensionServiceProvider extensionServiceProvider = new TestExtensionServiceProvider();
     private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(extensionServiceProvider,
                                                                                              true);
-    private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(extensionContextFilter);
+    private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(),
+                                                               new DefaultMetricCollector());
+
+    private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(extensionContextFilter,
+                                                                                      meterFactory);
 
 
     @Test

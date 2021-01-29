@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 
@@ -28,8 +27,7 @@ public interface QueryInterceptors {
      * @param extensionUnitOfWork the unit of work for the query
      * @return the query after the interceptors are executed
      */
-    SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork)
-            throws RequestRejectedException;
+    SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork);
 
     /**
      * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor} instances. Interceptors

@@ -85,7 +85,9 @@ public enum BaseMetricName implements MetricName {
     AXON_LAST_SEQUENCE_READTIME("local.lastsequence.readtime",
                                 "Elapsed time for retrieving the last sequence number for an aggregate"),
     LOCAL_QUERY_RESPONSE_TIME("local.query.responsetime",
-                              "Response time for query execution from time received by Axon Server to response received");
+                              "Response time for query execution from time received by Axon Server to response received"),
+    INTERCEPTOR_DURATION("local.interceptor.duration",
+                         "Total time executing interceptors (tags: context and interceptor type)");
 
 
     private final String name;

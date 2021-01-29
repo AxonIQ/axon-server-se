@@ -81,8 +81,7 @@ public class ExtensionContextFilter {
                                   boolean extensionEnabled) {
         this.extensionServiceProvider = extensionServiceProvider;
         this.enabled = extensionEnabled;
-        extensionServiceProvider.registerExtensionListener(serviceEvent -> {
-            logger.debug("extension event {}", serviceEvent);
+        extensionServiceProvider.registerExtensionListener((extension, status) -> {
             initialized = false;
         });
     }
@@ -110,6 +109,24 @@ public class ExtensionContextFilter {
         hooks.sort(ServiceWithInfo::compareTo);
         logger.debug("{} {}}", hooks.size(), interceptorClass.getSimpleName());
         return hooks;
+    }
+
+    public <T extends Ordered> List<ServiceWithInfo<T>> getServicesWithInfoForContext(Class<T> interceptorClass,
+                                                                                      String context) {
+        if (!enabled) {
+            return Collections.emptyList();
+        }
+        ensureInitialized();
+        List<ServiceWithInfo<T>> interceptors = new ArrayList<>();
+        Map<String, String> enabledExtensions = enabledExtensionsPerContext.getOrDefault(context,
+                                                                                         Collections.emptyMap());
+        serviceMap.get(interceptorClass).forEach(service -> {
+            if (service.extensionKey().getVersion().equals(enabledExtensions
+                                                                   .get(service.extensionKey().getSymbolicName()))) {
+                interceptors.add((ServiceWithInfo<T>) service);
+            }
+        });
+        return interceptors;
     }
 
     public <T extends Ordered> List<T> getServicesForContext(Class<T> interceptorClass, String context) {

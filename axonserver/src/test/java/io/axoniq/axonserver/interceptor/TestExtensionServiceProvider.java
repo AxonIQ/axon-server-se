@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * @author Marc Gathier
@@ -27,15 +27,15 @@ import java.util.function.Consumer;
 class TestExtensionServiceProvider implements ExtensionServiceProvider {
 
     private final List<ServiceWithInfo<? extends Ordered>> services = new ArrayList<>();
-    private final Set<Consumer<ExtensionKey>> listeners = new HashSet<>();
+    private final Set<BiConsumer<ExtensionKey, String>> listeners = new HashSet<>();
 
     public void add(ServiceWithInfo<? extends Ordered> service) {
         services.add(service);
-        listeners.forEach(c -> c.accept(service.extensionKey()));
+        listeners.forEach(c -> c.accept(service.extensionKey(), "Running"));
     }
 
     @Override
-    public Registration registerExtensionListener(Consumer<ExtensionKey> listener) {
+    public Registration registerExtensionListener(BiConsumer<ExtensionKey, String> listener) {
         listeners.add(listener);
         return null;
     }

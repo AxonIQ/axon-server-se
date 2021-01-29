@@ -36,15 +36,18 @@ public class ExtensionContextManager {
     private final ExtensionStatusRepository extensionStatusRepository;
     private final ExtensionPackageRepository packageRepository;
     private final ExtensionConfigurationSerializer extensionConfigurationSerializer;
+    private final OsgiController osgiController;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public ExtensionContextManager(ExtensionStatusRepository extensionStatusRepository,
                                    ExtensionPackageRepository packageRepository,
                                    ExtensionConfigurationSerializer extensionConfigurationSerializer,
+                                   OsgiController osgiController,
                                    @Qualifier("localEventPublisher") ApplicationEventPublisher applicationEventPublisher) {
         this.extensionStatusRepository = extensionStatusRepository;
         this.packageRepository = packageRepository;
         this.extensionConfigurationSerializer = extensionConfigurationSerializer;
+        this.osgiController = osgiController;
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
@@ -62,6 +65,14 @@ public class ExtensionContextManager {
                                      .ifPresent(currentActive -> {
                                          currentActive.setActive(false);
                                          extensionStatusRepository.save(currentActive);
+                                         applicationEventPublisher.publishEvent(new ExtensionEnabledEvent(context,
+                                                                                                          currentActive
+                                                                                                                  .getExtensionKey(),
+                                                                                                          extensionConfigurationSerializer
+                                                                                                                  .deserialize(
+                                                                                                                          currentActive
+                                                                                                                                  .getConfiguration()),
+                                                                                                          false));
                                      });
         }
 
@@ -78,6 +89,7 @@ public class ExtensionContextManager {
 
     public void start() {
         packageRepository.findAll().forEach(extensionPackage -> {
+
 
         });
         extensionStatusRepository.findAll().forEach(extensionStatus -> {
@@ -210,7 +222,8 @@ public class ExtensionContextManager {
                          .forEach(pack -> extensions.put(pack.getKey(),
                                                          new ExtensionInfo(pack.getExtension(),
                                                                            pack.getVersion(),
-                                                                           pack.getFilename())));
+                                                                           pack.getFilename(),
+                                                                           osgiController.getStatus(pack.getKey()))));
         extensionStatusRepository.findAll()
                                  .forEach(extension -> extensions.get(extension.getExtensionKey())
                                                                  .addContextInfo(extension.getContext(),

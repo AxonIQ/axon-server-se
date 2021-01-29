@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.extensions.ExtensionKey;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryResponseInterceptor;
@@ -19,6 +18,9 @@ import io.axoniq.axonserver.grpc.query.QueryUpdateComplete;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import static org.junit.Assert.*;
@@ -31,11 +33,14 @@ public class DefaultSubscriptionQueryInterceptorsTest {
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
     private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController, true);
+
+    private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(),
+                                                               new DefaultMetricCollector());
     private final DefaultSubscriptionQueryInterceptors testSubject = new DefaultSubscriptionQueryInterceptors(
-            extensionContextFilter);
+            extensionContextFilter, meterFactory);
 
     @Test
-    public void queryRequest() throws RequestRejectedException {
+    public void queryRequest() {
         osgiController
                 .add(new ServiceWithInfo<>((SubscriptionQueryRequestInterceptor) (queryRequest, extensionContext) ->
                         SubscriptionQueryRequest.newBuilder(queryRequest)

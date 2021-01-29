@@ -13,8 +13,8 @@ import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -232,9 +232,9 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommand commandRequest(
                                                               SerializedCommand serializedCommand,
-                                                              ExtensionUnitOfWork extensionUnitOfWork)
-                                                              throws RequestRejectedException {
-                                                          throw new RequestRejectedException("failed");
+                                                              ExtensionUnitOfWork extensionUnitOfWork) {
+                                                          throw new MessagingPlatformException(ErrorCode.COMMAND_REJECTED_BY_INTERCEPTOR,
+                                                                                               "failed");
                                                       }
 
                                                       @Override
@@ -261,9 +261,9 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommand commandRequest(
                                                               SerializedCommand serializedCommand,
-                                                              ExtensionUnitOfWork extensionUnitOfWork)
-                                                              throws RequestRejectedException {
-                                                          throw new RuntimeException("failed");
+                                                              ExtensionUnitOfWork extensionUnitOfWork) {
+                                                          throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
+                                                                                               "failed");
                                                       }
 
                                                       @Override
@@ -279,7 +279,7 @@ public class CommandDispatcherTest {
                                    new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
                                    r -> futureResponse.complete(r));
         SerializedCommandResponse response = futureResponse.get();
-        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
+        assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
         assertEquals("1234", response.getRequestIdentifier());
     }
 
@@ -296,8 +296,7 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommand commandRequest(
                                                               SerializedCommand serializedCommand,
-                                                              ExtensionUnitOfWork extensionUnitOfWork)
-                                                              throws RequestRejectedException {
+                                                              ExtensionUnitOfWork extensionUnitOfWork) {
                                                           return serializedCommand;
                                                       }
 
@@ -305,7 +304,8 @@ public class CommandDispatcherTest {
                                                       public SerializedCommandResponse commandResponse(
                                                               SerializedCommandResponse serializedResponse,
                                                               ExtensionUnitOfWork extensionUnitOfWork) {
-                                                          throw new RuntimeException("failed");
+                                                          throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
+                                                                                               "failed");
                                                       }
                                                   }, 10_000);
 
@@ -320,6 +320,6 @@ public class CommandDispatcherTest {
                                                                                       .setRequestIdentifier("TheCommand")
                                                                                       .build()), false);
         SerializedCommandResponse response = futureResponse.get();
-        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
+        assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
     }
 }

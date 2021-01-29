@@ -11,8 +11,8 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
@@ -99,13 +99,12 @@ public class SubscriptionQueryRequestTargetTest {
 
         @Override
         public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                                 ExtensionUnitOfWork extensionContext)
-                throws RequestRejectedException {
+                                                                 ExtensionUnitOfWork extensionContext) {
             if (rejectRequest) {
-                throw new RequestRejectedException("Rejected");
+                throw new MessagingPlatformException(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR, "Rejected");
             }
             if (failRequest) {
-                throw new RuntimeException("Failed");
+                throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR, "Failed");
             }
             subscriptionQueryRequestCount++;
             extensionContext.addDetails("RequestId", UUID.randomUUID());
@@ -116,7 +115,7 @@ public class SubscriptionQueryRequestTargetTest {
         public SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
                                                                    ExtensionUnitOfWork extensionContext) {
             subscriptionQueryResponseCount++;
-            lastUUID = (UUID) extensionContext.getDetails("RequestId");
+            lastUUID = extensionContext.getDetails("RequestId");
             return subscriptionQueryResponse;
         }
     }

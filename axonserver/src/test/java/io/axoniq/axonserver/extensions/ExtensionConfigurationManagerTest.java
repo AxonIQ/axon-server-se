@@ -74,11 +74,6 @@ public class ExtensionConfigurationManagerTest {
         Map<String, Map<String, ?>> configurationPerContext = new HashMap<>();
 
         @Override
-        public String category() {
-            return "demo";
-        }
-
-        @Override
         public void updated(String context, Map<String, ?> configuration) {
             if (configuration == null) {
                 configurationPerContext.remove(context);
@@ -88,10 +83,10 @@ public class ExtensionConfigurationManagerTest {
         }
 
         @Override
-        public List<ExtensionPropertyDefinition> attributes() {
-            return Arrays.asList(
+        public Configuration configuration() {
+            return new Configuration(Arrays.asList(
                     new ExtensionPropertyDefinition("id1", "name1", 0, "default", AttributeType.STRING, "description")
-            );
+            ), "demo");
         }
     }
 }

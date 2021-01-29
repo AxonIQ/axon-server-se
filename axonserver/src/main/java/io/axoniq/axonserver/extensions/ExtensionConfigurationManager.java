@@ -70,7 +70,7 @@ public class ExtensionConfigurationManager {
 
         Map<String, Map<String, Object>> nonNullProperties = properties == null ? Collections.emptyMap() : properties;
         configurationListeners.forEach(listener -> listener
-                .updated(context, nonNullProperties.get(listener.category())));
+                .updated(context, nonNullProperties.get(listener.configuration().name())));
     }
 
 
@@ -88,16 +88,17 @@ public class ExtensionConfigurationManager {
 
         List<ExtensionPropertyGroup> extensionProperties = new ArrayList<>();
         osgiController.getConfigurationListeners(bundleInfo)
-                      .forEach(configurationListener ->
-                                       extensionProperties
-                                               .add(new ExtensionPropertyGroup(configurationListener.category(),
-                                                                               configurationListener.category(),
-                                                                               configurationListener
-                                                                                       .attributes()
-                                                                                       .stream()
-                                                                                       .map(ExtensionProperty::new)
-                                                                                       .collect(Collectors
-                                                                                                        .toList()))));
+                      .forEach(configurationListener -> {
+                          Configuration configuration = configurationListener.configuration();
+                          extensionProperties
+                                  .add(new ExtensionPropertyGroup(configuration.name(),
+                                                                  configuration.name(),
+                                                                  configuration.properties()
+                                                                               .stream()
+                                                                               .map(ExtensionProperty::new)
+                                                                               .collect(Collectors
+                                                                                                .toList())));
+                      });
 
         return extensionProperties;
     }

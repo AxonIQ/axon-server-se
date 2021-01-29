@@ -18,12 +18,22 @@ package io.axoniq.axonserver.extensions;
 public class ExtensionEvent {
 
     private final ExtensionKey extension;
+    private final String status;
 
     public ExtensionEvent(ExtensionKey extension) {
-        this.extension = extension;
+        this(extension, null);
+    }
+
+    public ExtensionEvent(ExtensionKey extensionKey, String status) {
+        this.extension = extensionKey;
+        this.status = status;
     }
 
     public ExtensionKey getExtension() {
         return extension;
+    }
+
+    public String getStatus() {
+        return status;
     }
 }

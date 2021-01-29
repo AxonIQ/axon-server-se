@@ -12,14 +12,14 @@ package io.axoniq.axonserver.extensions;
 import io.axoniq.axonserver.localstorage.Registration;
 
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * @author Marc Gathier
  */
 public interface ExtensionServiceProvider {
 
-    Registration registerExtensionListener(Consumer<ExtensionKey> listener);
+    Registration registerExtensionListener(BiConsumer<ExtensionKey, String> listener);
 
     <T extends Ordered> Set<ServiceWithInfo<T>> getServicesWithInfo(Class<T> clazz);
 }

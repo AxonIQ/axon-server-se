@@ -12,9 +12,6 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
@@ -109,10 +106,6 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
                     break;
                 default:
             }
-        } catch (RequestRejectedException e) {
-            errorHandler.accept(new MessagingPlatformException(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR,
-                                                               e.getMessage(),
-                                                               e));
         } catch (Exception e) {
             logger.warn("{}: Exception in consuming SubscriptionQueryRequest", context, e);
             errorHandler.accept(e);

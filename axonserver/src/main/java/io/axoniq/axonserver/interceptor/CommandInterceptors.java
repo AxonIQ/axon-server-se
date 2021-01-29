@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 
@@ -31,7 +30,7 @@ public interface CommandInterceptors {
      * @return the command after executing the interceptors
      */
     SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                     ExtensionUnitOfWork extensionUnitOfWork) throws RequestRejectedException;
+                                     ExtensionUnitOfWork extensionUnitOfWork);
 
     /**
      * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor} instances.

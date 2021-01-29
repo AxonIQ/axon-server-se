@@ -23,12 +23,14 @@ public class ExtensionInfo {
     private final String version;
     private final String name;
     private final String filename;
+    private final String extensionStatus;
     private final List<ExtensionContextInfo> contextInfoList = new LinkedList<>();
 
-    public ExtensionInfo(String name, String version, String filename) {
+    public ExtensionInfo(String name, String version, String filename, String extensionStatus) {
         this.version = version;
         this.name = name;
         this.filename = filename;
+        this.extensionStatus = extensionStatus;
     }
 
     public String getVersion() {
@@ -45,6 +47,10 @@ public class ExtensionInfo {
 
     public String getFilename() {
         return filename;
+    }
+
+    public String getExtensionStatus() {
+        return extensionStatus;
     }
 
     public void addContextInfo(String context, boolean active) {

@@ -149,9 +149,9 @@ public class MessagingPlatformConfiguration {
      */
     private String extensionCacheDirectory = "cache";
     /**
-     * Clean policy for extensions cache on startup
+     * Clean policy for extensions cache on startup (values none or onFirstInit)
      */
-    private String extensionCleanPolicy = "none";
+    private String extensionCleanPolicy = "onFirstInit";
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;

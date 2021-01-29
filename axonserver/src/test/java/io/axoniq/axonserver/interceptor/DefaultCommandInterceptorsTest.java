@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.extensions.ExtensionKey;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.extensions.ServiceWithInfo;
 import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
@@ -19,6 +18,9 @@ import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import static org.junit.Assert.*;
@@ -31,10 +33,15 @@ public class DefaultCommandInterceptorsTest {
     public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
     private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
     private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController, true);
-    private final DefaultCommandInterceptors testSubject = new DefaultCommandInterceptors(extensionContextFilter);
+
+    private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(),
+                                                               new DefaultMetricCollector());
+
+    private final DefaultCommandInterceptors testSubject = new DefaultCommandInterceptors(extensionContextFilter,
+                                                                                          meterFactory);
 
     @Test
-    public void commandRequest() throws RequestRejectedException {
+    public void commandRequest() {
         osgiController.add(new ServiceWithInfo<>((CommandRequestInterceptor) (command, extensionContext) ->
                 Command.newBuilder()
                        .putMetaData("demo", metaDataValue("demoValue")).build(),

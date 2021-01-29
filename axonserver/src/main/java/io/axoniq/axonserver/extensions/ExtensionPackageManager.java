@@ -53,6 +53,11 @@ public class ExtensionPackageManager implements SmartLifecycle {
         this.extensionContextManager = extensionContextManager;
         this.eventPublisher = eventPublisher;
         this.bundleDirectory = bundleDirectory;
+        this.osgiController.registerExtensionListener(this::extensionStatusChanged);
+    }
+
+    private void extensionStatusChanged(ExtensionKey extensionKey, String status) {
+        eventPublisher.publishEvent(new ExtensionEvent(extensionKey, status));
     }
 
     @Override
@@ -61,10 +66,12 @@ public class ExtensionPackageManager implements SmartLifecycle {
         try {
             Files.createDirectories(new File(bundleDirectory).toPath());
             extensionPackageRepository.findAll()
-                                      .forEach(extensionPackage ->
-                                                       osgiController.startExtension(
-                                                               bundleDirectory + File.separatorChar + extensionPackage
-                                                                       .getFilename()));
+                                      .forEach(extensionPackage -> {
+                                          osgiController.startExtension(
+                                                  bundleDirectory + File.separatorChar + extensionPackage
+                                                          .getFilename());
+                                          extensionStatusChanged(extensionPackage.getKey(), "Started");
+                                      });
             extensionContextManager.start();
         } catch (Exception exception) {
             logger.warn("Failed to start extensions", exception);
@@ -97,7 +104,6 @@ public class ExtensionPackageManager implements SmartLifecycle {
                 extensionKey.getVersion()).ifPresent(p -> {
             extensionPackageRepository.deleteById(p.getId());
             FileUtils.delete(new File(bundleDirectory + File.separatorChar + p.getFilename()));
-            eventPublisher.publishEvent(new ExtensionEvent(p.getKey()));
         });
     }
 
@@ -125,7 +131,6 @@ public class ExtensionPackageManager implements SmartLifecycle {
             pack = extensionPackageRepository.save(pack);
         }
         extensionContextManager.publishConfiguration(pack);
-        eventPublisher.publishEvent(new ExtensionEvent(extensionKey));
         return pack;
     }
 
