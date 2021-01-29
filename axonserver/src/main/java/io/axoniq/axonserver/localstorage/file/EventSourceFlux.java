@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
@@ -10,7 +12,7 @@ import javax.annotation.Nonnull;
 
 /**
  * @author Sara Pellegrini
- * @since
+ * @since 4.5
  */
 class EventSourceIterable implements Iterable<SerializedEvent> {
 
@@ -19,6 +21,7 @@ class EventSourceIterable implements Iterable<SerializedEvent> {
     private final Predicate<SerializedEvent> completeCondition;
     private final Iterable<SerializedEvent> iterable;
 
+    private final Logger logger = LoggerFactory.getLogger(EventSourceIterable.class);
 
     public EventSourceIterable(List<Integer> positions,
                                EventSource eventSource,
@@ -67,6 +70,7 @@ class EventSourceIterable implements Iterable<SerializedEvent> {
 
         private SerializedEvent prefetch() {
             if (nextPosition < positions.size()) {
+                logger.trace("Reading event from EventSource in the thread {}", Thread.currentThread().getName());
                 SerializedEvent event = eventSource.readEvent(positions.get(nextPosition++));
                 if (!completeCondition.test(event)) {
                     return event;

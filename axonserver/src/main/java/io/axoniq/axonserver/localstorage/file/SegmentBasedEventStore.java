@@ -26,13 +26,11 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.TimeMeasuredPublisher;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +42,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
@@ -54,7 +55,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -120,11 +120,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                          long lastSequenceNumber,
                                                          long minToken) {
         //segment - allposition in that segment
+        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
                                                                                    lastSequenceNumber,
                                                                                    Long.MAX_VALUE,
                                                                                    minToken);
+        logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
         List<Iterable<SerializedEvent>> all = new ArrayList<>();
         positionInfos.forEach((segment, info) -> {
             all.add(eventsForPositions(segment, info.positions(), firstSequenceNumber, lastSequenceNumber));
@@ -557,15 +559,19 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     protected void recreateIndexFromIterator(long segment, EventIterator iterator) {
+        Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
         while (iterator.hasNext()) {
             EventInformation event = iterator.next();
             if (event.isDomainEvent()) {
-                indexManager.addToActiveSegment(segment, event.getEvent().getAggregateIdentifier(), new IndexEntry(
+                IndexEntry indexEntry = new IndexEntry(
                         event.getEvent().getAggregateSequenceNumber(),
                         event.getPosition(),
-                        event.getToken()));
+                        event.getToken());
+                loadedEntries.computeIfAbsent(event.getEvent().getAggregateIdentifier(), id -> new LinkedList<>())
+                             .add(indexEntry);
             }
         }
+        indexManager.addToActiveSegment(segment, loadedEntries);
         indexManager.complete(segment);
     }
 

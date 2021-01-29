@@ -48,7 +48,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Signal;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.InputStream;
@@ -66,7 +65,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.IntConsumer;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -328,9 +326,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .events(request.getAggregateId(),
                         request.getAllowSnapshots(),
                         request.getInitialSequence(),
-                        request.getMaxSequence(),
+                        getMaxSequence(request),
                         request.getMinToken())
-                .subscribeOn(Schedulers.fromExecutorService(dataFetcher))
+                .publishOn(Schedulers.fromExecutorService(dataFetcher), 25)
                 .transform(f -> count(f, counter -> {
                     if (counter == 0) {
                         logger.debug("Aggregate not found: {}", request);

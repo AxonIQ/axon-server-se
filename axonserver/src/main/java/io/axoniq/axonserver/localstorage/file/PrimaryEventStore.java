@@ -33,6 +33,7 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
@@ -101,15 +102,19 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         WritableEventSource buffer = getOrOpenDatafile(first);
         indexManager.remove(first);
         long sequence = first;
+        Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
         try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first)) {
             while (sequence < nextToken && iterator.hasNext()) {
                 EventInformation event = iterator.next();
                 if (event.isDomainEvent()) {
-                    indexManager.addToActiveSegment(first, event.getEvent().getAggregateIdentifier(), new IndexEntry(
+                    IndexEntry indexEntry = new IndexEntry(
                             event.getEvent().getAggregateSequenceNumber(),
                             event.getPosition(),
                             sequence
-                    ));
+                    );
+                    loadedEntries.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
+                                                  aggregateId -> new LinkedList<>())
+                                 .add(indexEntry);
                 }
                 sequence++;
             }
@@ -121,19 +126,22 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                         pendingEvents.size());
                 for (EventInformation event : pendingEvents) {
                     if (event.isDomainEvent()) {
-                        indexManager.addToActiveSegment(first,
-                                                        event.getEvent().getAggregateIdentifier(),
-                                                        new IndexEntry(
-                                                                event.getEvent().getAggregateSequenceNumber(),
-                                                                event.getPosition(),
-                                                                sequence
-                                                        ));
+                        IndexEntry indexEntry = new IndexEntry(
+                                event.getEvent().getAggregateSequenceNumber(),
+                                event.getPosition(),
+                                sequence
+                        );
+                        loadedEntries.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
+                                                      aggregateId -> new LinkedList<>())
+                                     .add(indexEntry);
                     }
                     sequence++;
                 }
             }
             lastToken.set(sequence - 1);
         }
+
+        indexManager.addToActiveSegment(first, loadedEntries);
 
         buffer.putInt(buffer.position(), 0);
         WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
