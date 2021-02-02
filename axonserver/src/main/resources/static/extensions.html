@@ -88,6 +88,10 @@
                             for (let j = 0; j < item.properties.length; j++) {
                                 let prop = item.properties[j];
                                 properties[prop.id] = prop.value;
+                                if (this.isMulti(prop) && prop.newValue) {
+                                    properties[prop.id].push(prop.newValue);
+                                    prop.newValue = "";
+                                }
                             }
                             updatedExt.properties[item.id] = properties;
                             updatedExt.context = ext.context;
@@ -167,6 +171,32 @@
                         }, function (sub) {
                             me.subscription = sub;
                         });
+                    },
+                    isMulti(attr) {
+                        return attr.cardinality > 0;
+                    },
+                    deleteAttrValue(attr, idx) {
+                        attr.value.splice(idx, 1);
+                    },
+                    addAttrValue(attr) {
+                        attr.value.push(attr.newValue);
+                        attr.newValue = "";
+                    },
+                    isSingle(attr) {
+                        return attr.cardinality == 0;
+                    },
+                    inputType(attr) {
+                        if (attr.type == 'PASSWORD') {
+                            return "password";
+                        }
+                        if (attr.type == 'INTEGER' ||
+                                attr.type == 'LONG' ||
+                                attr.type == 'FLOAT' ||
+                                attr.type == 'DOUBLE') {
+                            return "number";
+                        }
+
+                        return "text";
                     }
                 }
             });
@@ -267,16 +297,46 @@
                                 <table class="nestedTable extensionProperties">
                                     <tbody>
                                         <tr v-for="attr in group.properties">
-                                            <td width="20%">{{ attr.id }}</td>
+                                            <td width="20%" :title="attr.description">{{ attr.id }}</td>
                                             <td>
-                                                <input v-if="!hasOptions(attr) && attr.type != 'PASSWORD'" type="text"
+                                                <div v-if="isSingle(attr)">
+                                                <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                       :title="attr.type"
                                                        v-model="attr.value"/>
-                                                <input v-if="!hasOptions(attr) && attr.type == 'PASSWORD'"
-                                                       type="password" v-model="attr.value"/>
                                                 <select v-if="hasOptions(attr)" v-model="attr.value">
                                                     <option v-for="(value,idx) in attr.optionValues"
                                                             :value="value">{{ attr.optionLabels[idx] }}</option>
                                                 </select>
+                                                </div>
+                                                <ul v-if="isMulti(attr)">
+                                                    <li v-for="(val,valIdx) in attr.value" style="padding: 2px">
+                                                    <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                           :title="attr.type"
+                                                           v-model="attr.value[valIdx]"/>
+                                                    <select v-if="hasOptions(attr)" v-model="attr.value[valIdx]">
+                                                        <option v-for="(value,idx) in attr.optionValues"
+                                                                :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                    </select>
+                                                        <span @click="deleteAttrValue(attr, valIdx)"
+                                                              style="float: unset;width: 20px;padding-left: 2px;display: inline;"
+                                                              title="Delete Attribute Value">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </span>
+                                                        </li>
+                                                    <li style="padding: 2px">
+                                                    <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                           :title="attr.type"
+                                                           v-model="attr.newValue"/>
+                                                    <select v-if="hasOptions(attr)" v-model="attr.newValue">
+                                                        <option v-for="(value,idx) in attr.optionValues"
+                                                                :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                    </select>
+                                                        <span @click="addAttrValue(attr)" title="Add Attribute Value"
+                                                              style="float: unset;width: 20px;padding-left: 2px;display: inline;">
+                                                            <i class="fas fa-plus"></i>
+                                                        </span>
+                                                    </li>
+                                                </ul>
                                             </td>
                                         </tr>
                                     </tbody>

@@ -69,7 +69,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 try {
                     e = preCommitInterceptor.service().appendEvent(e, extensionUnitOfWork);
                 } catch (Exception ex) {
-                    throw new MessagingPlatformException(ErrorCode.OTHER,
+                    throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                          preCommitInterceptor.extensionKey()
                                                                  + ": Error in AppendEventInterceptor",
                                                          ex);
@@ -105,7 +105,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
                                                                  + preCommitEventsHook.extensionKey(),
                                                          requestRejectedException);
                 } catch (Exception ex) {
-                    throw new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
+                    throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                          extensionUnitOfWork.context() +
                                                                  ": Exception thrown by the PreCommitEventsHook in "
                                                                  + preCommitEventsHook.extensionKey(),
@@ -131,7 +131,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 try {
                     postCommitEventsHook.service().onPostCommitEvent(immutableList, extensionUnitOfWork);
                 } catch (Exception ex) {
-                    logger.warn("{} : Exception thrown by the PreCommitEventsHook in {}",
+                    logger.warn("{} : Exception thrown by the PostCommitEventsHook in {}",
                                 extensionUnitOfWork.context(), postCommitEventsHook.extensionKey(), ex);
                 }
             }
@@ -183,7 +183,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
                                                                  + appendSnapshotInterceptor.extensionKey(),
                                                          requestRejectedException);
                 } catch (Exception ex) {
-                    throw new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
+                    throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                          extensionUnitOfWork.context() +
                                                                  ": Exception thrown by the AppendSnapshotInterceptor in "
                                                                  + appendSnapshotInterceptor.extensionKey(),
@@ -214,7 +214,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 try {
                     s = snapshotReadInterceptor.service().readSnapshot(s, extensionUnitOfWork);
                 } catch (Exception ex) {
-                    throw new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
+                    throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                          extensionUnitOfWork.context() +
                                                                  ": Exception thrown by the ReadSnapshotInterceptor in "
                                                                  + snapshotReadInterceptor.extensionKey(),
@@ -238,7 +238,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 try {
                     e = eventReadInterceptor.service().readEvent(e, extensionUnitOfWork);
                 } catch (Exception ex) {
-                    throw new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
+                    throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                          extensionUnitOfWork.context() +
                                                                  ": Exception thrown by the ReadEventInterceptor in "
                                                                  + eventReadInterceptor.extensionKey(),

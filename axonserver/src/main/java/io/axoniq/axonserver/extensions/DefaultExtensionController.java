@@ -63,26 +63,18 @@ public class DefaultExtensionController implements ExtensionController {
         extensionContextManager.getStatus(Topology.DEFAULT_CONTEXT,
                                           extensionKey.getSymbolicName(),
                                           extensionKey.getVersion())
-                               .ifPresent(extensionStatus -> setValues(definedProperties,
-                                                                       extensionStatus.getConfiguration()));
+                               .ifPresent(extensionStatus -> ExtensionPropertyUtils.setValues(definedProperties,
+                                                                                              extensionStatus
+                                                                                                      .getConfiguration(),
+                                                                                              extensionConfigurationSerializer));
         return definedProperties;
-    }
-
-    private void setValues(List<ExtensionPropertyGroup> definedProperties, String serializedConfiguration) {
-        Map<String, Map<String, Object>> configuration = extensionConfigurationSerializer.deserialize(
-                serializedConfiguration);
-        if (configuration != null) {
-            definedProperties.forEach(propertyGroup -> {
-                Map<String, Object> configurationForGroup = configuration.get(propertyGroup.getId());
-                propertyGroup.getProperties().forEach(prop -> prop
-                        .setValue(configurationForGroup.getOrDefault(prop.getId(), prop.getDefaultValue())));
-            });
-        }
     }
 
     @Override
     public void updateConfiguration(ExtensionKey extensionKey, String context,
                                     Map<String, Map<String, Object>> properties) {
+        properties = ExtensionPropertyUtils.validateProperties(properties,
+                                                               listProperties(extensionKey, Topology.DEFAULT_CONTEXT));
         extensionContextManager.updateConfiguration(Topology.DEFAULT_CONTEXT,
                                                     extensionKey.getSymbolicName(),
                                                     extensionKey.getVersion(),

@@ -14,10 +14,12 @@ package io.axoniq.axonserver.extensions;
  */
 public class ExtensionProperty {
 
+    public static final String DUMMY_PASSWORD = "!DUMMY_PASSWORD!";
+
     private final String id;
     private final String name;
     private final int cardinality;
-    private final String defaultValue;
+    private final Object defaultValue;
     private Object value;
     private final AttributeType type;
     private final String[] optionLabels;
@@ -52,13 +54,16 @@ public class ExtensionProperty {
         return cardinality;
     }
 
-    public String getDefaultValue() {
+    public Object getDefaultValue() {
         return defaultValue;
     }
 
     public Object getValue() {
         if (AttributeType.PASSWORD.equals(type)) {
-            return null;
+            return DUMMY_PASSWORD;
+        }
+        if (cardinality > 0 && value == null) {
+            return new Object[0];
         }
         return value;
     }
@@ -81,5 +86,9 @@ public class ExtensionProperty {
 
     public void setValue(Object value) {
         this.value = value;
+    }
+
+    public Object internalValue() {
+        return value;
     }
 }
