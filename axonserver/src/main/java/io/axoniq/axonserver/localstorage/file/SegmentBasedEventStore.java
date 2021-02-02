@@ -39,7 +39,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
@@ -517,15 +520,19 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     protected void recreateIndexFromIterator(long segment, EventIterator iterator) {
+        Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
         while (iterator.hasNext()) {
             EventInformation event = iterator.next();
             if (event.isDomainEvent()) {
-                indexManager.addToActiveSegment(segment, event.getEvent().getAggregateIdentifier(), new IndexEntry(
+                IndexEntry indexEntry = new IndexEntry(
                         event.getEvent().getAggregateSequenceNumber(),
                         event.getPosition(),
-                        event.getToken()));
+                        event.getToken());
+                loadedEntries.computeIfAbsent(event.getEvent().getAggregateIdentifier(), id -> new LinkedList<>())
+                             .add(indexEntry);
             }
         }
+        indexManager.addToActiveSegment(segment, loadedEntries);
         indexManager.complete(segment);
     }
 
