@@ -272,7 +272,7 @@ public class DefaultEventInterceptorsTest {
             private static final int ORDER = 100;
 
             @Override
-            public Event readEvent(Event event, ExtensionUnitOfWork extensionContext) {
+            public Event readEvent(Event event, ExtensionUnitOfWork extensionUnitOfWork) {
                 calledInOrder.add(ORDER);
                 return event;
             }
@@ -286,7 +286,7 @@ public class DefaultEventInterceptorsTest {
             private static final int ORDER = 5;
 
             @Override
-            public Event readEvent(Event event, ExtensionUnitOfWork extensionContext) {
+            public Event readEvent(Event event, ExtensionUnitOfWork extensionUnitOfWork) {
                 calledInOrder.add(ORDER);
                 return event;
             }

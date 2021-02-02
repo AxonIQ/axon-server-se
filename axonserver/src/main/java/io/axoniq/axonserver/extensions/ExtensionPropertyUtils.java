@@ -52,13 +52,14 @@ public class ExtensionPropertyUtils {
     }
 
     private static Object convertType(Object value, ExtensionProperty extensionProperty) {
-        if (extensionProperty.getCardinality() > 0) {
+        if (Cardinality.MULTI.equals(extensionProperty.getCardinality())) {
             if (value.getClass().isArray()) {
                 Object[] valueArr = (Object[]) value;
+                List<Object> converted = new ArrayList<>();
                 for (int i = 0; i < valueArr.length; i++) {
-                    valueArr[i] = convertType(valueArr[i], extensionProperty);
+                    converted.add(convertType(valueArr[i], extensionProperty));
                 }
-                return valueArr;
+                return converted;
             }
 
             if (value instanceof List) {
@@ -72,11 +73,12 @@ public class ExtensionPropertyUtils {
 
             if (value instanceof String) {
                 Object[] valueArr = ((String) value).split(",");
+                List<Object> converted = new ArrayList<>();
                 if (valueArr.length > 1) {
                     for (int i = 0; i < valueArr.length; i++) {
-                        valueArr[i] = convertType(valueArr[i], extensionProperty);
+                        converted.add(convertType(valueArr[i], extensionProperty));
                     }
-                    return valueArr;
+                    return converted;
                 }
             }
         }

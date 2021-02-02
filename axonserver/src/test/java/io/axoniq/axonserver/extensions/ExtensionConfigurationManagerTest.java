@@ -85,7 +85,7 @@ public class ExtensionConfigurationManagerTest {
         @Override
         public Configuration configuration() {
             return new Configuration(Arrays.asList(
-                    new ExtensionPropertyDefinition("id1", "name1", 0, "default", AttributeType.STRING, "description")
+                    ExtensionPropertyDefinition.newBuilder("id1", "name1").build()
             ), "demo");
         }
     }

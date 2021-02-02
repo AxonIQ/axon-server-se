@@ -18,7 +18,7 @@ public class ExtensionProperty {
 
     private final String id;
     private final String name;
-    private final int cardinality;
+    private final Cardinality cardinality;
     private final Object defaultValue;
     private Object value;
     private final AttributeType type;
@@ -50,7 +50,7 @@ public class ExtensionProperty {
         return name;
     }
 
-    public int getCardinality() {
+    public Cardinality getCardinality() {
         return cardinality;
     }
 
@@ -62,7 +62,7 @@ public class ExtensionProperty {
         if (AttributeType.PASSWORD.equals(type)) {
             return DUMMY_PASSWORD;
         }
-        if (cardinality > 0 && value == null) {
+        if (Cardinality.MULTI.equals(cardinality) && value == null) {
             return new Object[0];
         }
         return value;

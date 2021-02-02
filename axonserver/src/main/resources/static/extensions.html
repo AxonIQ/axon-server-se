@@ -173,7 +173,7 @@
                         });
                     },
                     isMulti(attr) {
-                        return attr.cardinality > 0;
+                        return attr.cardinality === 'MULTI';
                     },
                     deleteAttrValue(attr, idx) {
                         attr.value.splice(idx, 1);
@@ -183,16 +183,16 @@
                         attr.newValue = "";
                     },
                     isSingle(attr) {
-                        return attr.cardinality == 0;
+                        return attr.cardinality === 'SINGLE';
                     },
                     inputType(attr) {
-                        if (attr.type == 'PASSWORD') {
+                        if (attr.type === 'PASSWORD') {
                             return "password";
                         }
-                        if (attr.type == 'INTEGER' ||
-                                attr.type == 'LONG' ||
-                                attr.type == 'FLOAT' ||
-                                attr.type == 'DOUBLE') {
+                        if (attr.type === 'INTEGER' ||
+                                attr.type === 'LONG' ||
+                                attr.type === 'FLOAT' ||
+                                attr.type === 'DOUBLE') {
                             return "number";
                         }
 
@@ -202,17 +202,17 @@
             });
 
 </script>
-<span id="extensions">
+<section id="extensions">
     <section id="extensionOverview">
         <div class="results singleHeader">
             <table :key="componentKey">
                 <thead>
-                    <tr>
-                        <th style="width: 25%">Extension Name</th>
-                        <th style="width: 10%">Version</th>
-                        <th style="width: 10%">Extension Status</th>
-                        <th style="width: 35%" v-if="isEnterprise()">Status per Context</th>
-                        <th style="width: 35%" v-if="!isEnterprise()">Actions</th>
+                <tr>
+                    <th style="width: 25%">Extension Name</th>
+                    <th style="width: 10%">Version</th>
+                    <th style="width: 10%">Extension Status</th>
+                    <th style="width: 35%" v-if="isEnterprise()">Status per Context</th>
+                    <th style="width: 35%" v-if="!isEnterprise()">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -371,4 +371,4 @@
         </div>
     </section>
 
-</span>
+</section>
