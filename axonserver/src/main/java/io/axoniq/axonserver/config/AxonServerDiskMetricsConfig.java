@@ -19,7 +19,6 @@ import java.nio.file.FileSystem;
  * @since 4.5
  */
 @Configuration
-@DependsOn("eventStoreManager")
 public class AxonServerDiskMetricsConfig {
 
     private final Logger logger = LoggerFactory.getLogger(AxonServerDiskMetricsConfig.class);
