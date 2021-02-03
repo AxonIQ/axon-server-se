@@ -24,14 +24,12 @@ import org.springframework.stereotype.Component;
 public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
     private final LocalEventStore localEventStore;
     private final Topology clusterController;
-    private final DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties;
+
 
     public LocalEventStoreHealthIndicator(LocalEventStore localEventStore,
-                                          Topology clusterController,
-                                          DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties) {
+                                          Topology clusterController) {
         this.localEventStore = localEventStore;
         this.clusterController = clusterController;
-        this.diskSpaceHealthProperties = diskSpaceHealthProperties;
     }
 
     @Override
@@ -49,6 +47,5 @@ public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
                 // ignore
             }
         });
-        localEventStore.health(builder, diskSpaceHealthProperties);
     }
 }

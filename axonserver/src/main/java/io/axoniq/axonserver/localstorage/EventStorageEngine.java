@@ -182,14 +182,6 @@ public interface EventStorageEngine {
     long getTokenAt(long instant);
 
     /**
-     * Adds information to the actuator health endpoint for this event store.
-     * @param builder actuator health builder
-     * @param diskSpaceHealthIndicatorProperties properties or health indicators
-     */
-    default void health(Health.Builder builder, DiskSpaceHealthIndicatorProperties diskSpaceHealthIndicatorProperties) {
-    }
-
-    /**
      * Rolls back storage engine to token. Implementations may keep more when token is not at a transaction boundary.
      * @param token the last token to keep.
      */
@@ -235,9 +227,4 @@ public interface EventStorageEngine {
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
 
-    /**
-     * Returns configured file store
-     * @return file store
-     */
-    Path getFileStore();
 }

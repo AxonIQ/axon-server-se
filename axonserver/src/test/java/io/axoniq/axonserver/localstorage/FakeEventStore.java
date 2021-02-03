@@ -102,11 +102,6 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Path getFileStore() {
-        return  null;
-    }
-
-    @Override
     public long getTokenAt(long instant) {
         return 0;
     }

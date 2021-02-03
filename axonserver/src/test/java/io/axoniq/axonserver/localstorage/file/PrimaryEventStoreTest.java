@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -27,6 +28,7 @@ import org.junit.rules.*;
 import org.springframework.data.util.CloseableIterator;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -37,6 +39,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 
 /**
  * @author Marc Gathier
@@ -45,6 +50,8 @@ public class PrimaryEventStoreTest {
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
     private PrimaryEventStore testSubject;
+
+    private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     @Before
     public void setUp() throws IOException {
@@ -66,13 +73,17 @@ public class PrimaryEventStoreTest {
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties.getEvent(),
                                                                  meterFactory);
+
+        doNothing().when(fileSystemMonitor).registerPath(any());
+
         testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                             indexManager,
                                             eventTransformerFactory,
                                             embeddedDBProperties.getEvent(),
                                             second,
-                                            meterFactory);
+                                            meterFactory, fileSystemMonitor);
         testSubject.init(false);
+        verify(fileSystemMonitor).registerPath(any(Path.class));
     }
 
     @Test

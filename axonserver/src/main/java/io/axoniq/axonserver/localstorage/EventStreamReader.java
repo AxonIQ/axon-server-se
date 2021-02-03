@@ -49,10 +49,6 @@ public class EventStreamReader {
         return eventStorageEngine.getTokenAt(instant);
     }
 
-    public void health(Health.Builder builder, DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties) {
-        eventStorageEngine.health(builder, diskSpaceHealthProperties);
-    }
-
     /**
      * Returns the last token in the event store.
      * @return the last token

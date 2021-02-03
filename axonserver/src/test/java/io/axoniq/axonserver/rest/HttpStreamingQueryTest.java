@@ -133,10 +133,6 @@ public class HttpStreamingQueryTest {
 
             }
 
-            @Override
-            public Path getFileStore() {
-                return null;
-            }
         };
 
         LocalEventStore localEventStore = new LocalEventStore(new EventStoreFactory() {

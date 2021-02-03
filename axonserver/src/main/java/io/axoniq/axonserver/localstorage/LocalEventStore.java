@@ -83,7 +83,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final int maxEventCount;
-    private final List<Consumer<Path>> fileStoreListeners = new ArrayList<>();
 
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
@@ -142,12 +141,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         try {
             Workers workers = workersMap.computeIfAbsent(context, Workers::new);
             workers.ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
-
-            fileStoreListeners.forEach(c-> {
-                c.accept(workers.eventStorageEngine.getFileStore());
-                c.accept(workers.snapshotStorageEngine.getFileStore());
-            });
-
         } catch (RuntimeException ex) {
             workersMap.remove(context);
             throw ex;
@@ -641,26 +634,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return Stream.empty();
     }
 
-    public void health(Health.Builder builder, DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties) {
-        workersMap.values().forEach(worker -> worker.eventStreamReader.health(builder, diskSpaceHealthProperties));
-    }
-
-
-    public void registerFileStoreListener(Consumer<Path> consumer) {
-        fileStoreListeners.add(consumer);
-    }
-
-    /**
-     * Returns configured distinct file stores configured for each worker
-     */
-    public List<Path> getFileStores() {
-        return workersMap.values()
-                .stream()
-                .flatMap(w->w.getFileStores().stream())
-                .distinct()
-                .collect(Collectors.toList());
-    }
-
     private boolean isClientException(Throwable exception) {
         return exception instanceof MessagingPlatformException
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
@@ -798,14 +771,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             snapshotWriteStorage.deleteAllEventData();
         }
 
-        /**
-         * Returns configured file stores
-         */
-        public List<Path> getFileStores(){
-
-
-            return Arrays.asList(eventStorageEngine.getFileStore(),snapshotStorageEngine.getFileStore());
-        }
     }
 }
 

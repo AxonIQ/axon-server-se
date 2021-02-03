@@ -100,11 +100,12 @@ public class AxonServerStandardConfiguration {
     public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
                                                EventTransformerFactory eventTransformerFactory,
                                                StorageTransactionManagerFactory storageTransactionManagerFactory,
-                                               MeterFactory meterFactory) {
+                                               MeterFactory meterFactory,
+                                               FileSystemMonitor fileSystemMonitor) {
         return new StandardEventStoreFactory(embeddedDBProperties,
                                              eventTransformerFactory,
                                              storageTransactionManagerFactory,
-                                             meterFactory);
+                                             meterFactory, fileSystemMonitor);
     }
 
     @Bean
