@@ -102,7 +102,7 @@ public class FileSystemMonitor extends AbstractHealthIndicator {
                 if (store.getUsableSpace() < threshold) {
                     logger.warn(String.format("Free disk space at path '%s' is below threshold. " +
                             "Available: %d bytes (threshold: %s)",path.toString(), diskFreeInBytes, threshold));
-                    builder.status("WARN"); //HealthStatus.WARN_STATUS
+                    builder.status(HealthStatus.WARN_STATUS);
                 }
 
                 builder.withDetail(mountOf(path).toString() + ".total", store.getTotalSpace());

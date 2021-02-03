@@ -105,7 +105,7 @@ public class FileSystemMonitorTest {
         Health.Builder builder = mock(Health.Builder.class);
         testSubject.doHealthCheck(builder);
 
-        verify(builder).status("WARN"); //HealthStatus.WARN_STATUS
+        verify(builder).status(HealthStatus.WARN_STATUS);
         verify(builder).withDetail("/" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("/" +".free", DISK_SIZE.toBytes());
         verify(builder).withDetail("/" +".threshold", THRESHOLD.toBytes());
@@ -163,7 +163,7 @@ public class FileSystemMonitorTest {
         Health.Builder builder = mock(Health.Builder.class);
         testSubject.doHealthCheck(builder);
 
-        verify(builder).status("WARN"); //HealthStatus.WARN_STATUS
+        verify(builder).status(HealthStatus.WARN_STATUS);
         verify(builder).withDetail("/" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("/" +".free", DISK_SIZE.toBytes());
         verify(builder).withDetail("/" +".threshold", THRESHOLD.toBytes());
@@ -220,7 +220,7 @@ public class FileSystemMonitorTest {
         Health.Builder builder = mock(Health.Builder.class);
         testSubject.doHealthCheck(builder);
 
-        verify(builder).status("WARN");//HealthStatus.WARN_STATUS
+        verify(builder).status(HealthStatus.WARN_STATUS);
         verify(builder).withDetail("C:\\" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("C:\\" +".free", DISK_SIZE.toBytes());
         verify(builder).withDetail("C:\\" +".threshold", THRESHOLD.toBytes());
