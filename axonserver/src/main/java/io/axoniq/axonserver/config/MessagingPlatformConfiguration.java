@@ -147,11 +147,11 @@ public class MessagingPlatformConfiguration {
     /**
      * Directory for osgi cache for extensions
      */
-    private String extensionCacheDirectory = "extensions/cache";
+    private String extensionCacheDirectory = "plugins/cache";
     /**
      * Directory for installed extension packages
      */
-    private String extensionPackageDirectory = "extensions/bundles";
+    private String extensionPackageDirectory = "plugins/bundles";
     /**
      * Clean policy for extensions cache on startup (values "none" or "onFirstInit")
      */
