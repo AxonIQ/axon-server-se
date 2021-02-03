@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.binder.jvm.DiskSpaceMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
+import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.context.annotation.Configuration;
@@ -28,7 +29,7 @@ import java.util.List;
  * @since 4.5
  */
 @Configuration
-public class FileSystemMonitor extends DiskSpaceHealthIndicator {
+public class FileSystemMonitor extends AbstractHealthIndicator {
 
     private final Logger logger = LoggerFactory.getLogger(FileSystemMonitor.class);
     private final DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties;
@@ -39,7 +40,7 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
 
     public FileSystemMonitor(DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties,
                              MeterRegistry meterRegistry) {
-        super(diskSpaceHealthProperties.getPath(), diskSpaceHealthProperties.getThreshold());
+
         this.diskSpaceHealthProperties = diskSpaceHealthProperties;
         this.meterRegistry = meterRegistry;
     }
