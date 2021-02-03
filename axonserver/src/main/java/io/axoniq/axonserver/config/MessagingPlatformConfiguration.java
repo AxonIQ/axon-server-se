@@ -147,9 +147,13 @@ public class MessagingPlatformConfiguration {
     /**
      * Directory for osgi cache for extensions
      */
-    private String extensionCacheDirectory = "cache";
+    private String extensionCacheDirectory = "extensions/cache";
     /**
-     * Clean policy for extensions cache on startup (values none or onFirstInit)
+     * Directory for installed extension packages
+     */
+    private String extensionPackageDirectory = "extensions/bundles";
+    /**
+     * Clean policy for extensions cache on startup (values "none" or "onFirstInit")
      */
     private String extensionCleanPolicy = "onFirstInit";
 
@@ -423,5 +427,13 @@ public class MessagingPlatformConfiguration {
 
     public void setExtensionCleanPolicy(String extensionCleanPolicy) {
         this.extensionCleanPolicy = extensionCleanPolicy;
+    }
+
+    public String getExtensionPackageDirectory() {
+        return extensionPackageDirectory;
+    }
+
+    public void setExtensionPackageDirectory(String extensionPackageDirectory) {
+        this.extensionPackageDirectory = extensionPackageDirectory;
     }
 }

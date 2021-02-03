@@ -9,12 +9,12 @@
 
 package io.axoniq.axonserver.extensions;
 
+import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.file.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
@@ -46,13 +46,13 @@ public class ExtensionPackageManager implements SmartLifecycle {
             OsgiController osgiController,
             ExtensionContextManager extensionContextManager,
             ApplicationEventPublisher eventPublisher,
-            @Value("${axoniq.axonserver.extension.bundle.path:bundles}") String bundleDirectory
+            MessagingPlatformConfiguration messagingPlatformConfiguration
     ) {
         this.extensionPackageRepository = extensionPackageRepository;
         this.osgiController = osgiController;
         this.extensionContextManager = extensionContextManager;
         this.eventPublisher = eventPublisher;
-        this.bundleDirectory = bundleDirectory;
+        this.bundleDirectory = messagingPlatformConfiguration.getExtensionPackageDirectory();
         this.osgiController.registerExtensionListener(this::extensionStatusChanged);
     }
 
