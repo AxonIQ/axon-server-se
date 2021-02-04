@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.interceptor;
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.extensions.ExtensionKey;
 import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.extensions.RequestRejectedException;
@@ -117,8 +118,7 @@ public class DefaultEventInterceptorsTest {
                                                event("aggrId1", 1)),
                                         testExtensionUnitOfWork);
             fail("pre commit fails when hook tries to change event list");
-        } catch (UnsupportedOperationException unsupportedOperationException) {
-
+        } catch (MessagingPlatformException messagingPlatformException) {
         }
     }
 

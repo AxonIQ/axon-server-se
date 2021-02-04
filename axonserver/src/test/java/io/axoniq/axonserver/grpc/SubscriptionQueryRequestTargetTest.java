@@ -83,9 +83,9 @@ public class SubscriptionQueryRequestTargetTest {
                                                     .build());
         assertEquals(1, responseStreamObserver.errors().size());
         StatusRuntimeException exception = (StatusRuntimeException) responseStreamObserver.errors().get(0);
-        assertEquals(ErrorCode.OTHER.getGrpcCode().getCode(),
+        assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getGrpcCode().getCode(),
                      exception.getStatus().getCode());
-        assertEquals(ErrorCode.OTHER.getCode(),
+        assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(),
                      exception.getTrailers().get(GrpcMetadataKeys.ERROR_CODE_KEY));
     }
 

@@ -49,14 +49,19 @@ def getTestSummary = { ->
  */
 podTemplate(label: label,
     containers: [
-        containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:latest',
+        containerTemplate(name: 'maven-jdk8', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:8',
             command: 'cat', ttyEnabled: true,
             resourceRequestCpu: '1000m', resourceLimitCpu: '1000m',
             resourceRequestMemory: '3200Mi', resourceLimitMemory: '4Gi',
             envVars: [
                 envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ])
+            ]),
+        containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11',
+            envVars: [
+                envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
+            ],
+            command: 'cat', ttyEnabled: true)
     ],
     volumes: [
         secretVolume(secretName: 'cacerts', mountPath: '/docker-java-home/lib/security'), // For our Nexus certificates
@@ -77,7 +82,7 @@ podTemplate(label: label,
             def mavenTarget = "clean verify"
 
             stage ('Maven build') {
-                container("maven") {
+                container("maven-jdk8") {
                     if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                         mavenTarget = "clean deploy"
                     }
@@ -113,7 +118,7 @@ podTemplate(label: label,
                 sonarOptions = "-Dsonar.pullrequest.branch=" + gitBranch + " -Dsonar.pullrequest.key=" + env.CHANGE_ID
             }
             stage ('Run SonarQube') {
-                container("maven") {
+                container("maven-jdk11") {
                     sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
                     slackReport = slackReport + "\nSources analyzed in SonarQube."
                 }
