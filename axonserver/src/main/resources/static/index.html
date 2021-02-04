@@ -72,6 +72,12 @@
         axios.interceptors.response.use(function (response) {
             return response;
         }, function (error) {
+
+            //ignore error requests when checking for updates
+            if (error.response.data.path.includes("/updates")) {
+                return Promise.reject(error)
+            }
+
             let errorData = JSON.stringify(error.response.data);
             console.log("Error on " + error.request.url + " " + errorData);
             alert(errorData);
