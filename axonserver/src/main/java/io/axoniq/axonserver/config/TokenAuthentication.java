@@ -54,7 +54,7 @@ public class TokenAuthentication implements Authentication {
 
     @Override
     public Object getPrincipal() {
-        return name;
+        return new ApplicationPrincipal(name);
     }
 
     @Override
@@ -70,5 +70,22 @@ public class TokenAuthentication implements Authentication {
     @Override
     public String getName() {
         return name;
+    }
+
+    public static class ApplicationPrincipal {
+
+        private final String name;
+
+        public ApplicationPrincipal(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String toString() {
+            return name;
+        }
     }
 }

@@ -18,6 +18,7 @@ import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -64,10 +65,14 @@ public class UserRestController {
 
     @PostMapping("users")
     public void createUser(@RequestBody @Valid UserJson userJson, Principal principal) {
-        auditLog.info("[{}] Request to create user \"{}\" with roles {}.",
-                      AuditLog.username(principal),
-                      sanitize(userJson.getUserName()),
-                      userJson.getRoles());
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to create user \"{}\" with roles {}.",
+                          AuditLog.username(principal),
+                          sanitize(userJson.getUserName()),
+                          Arrays.stream(userJson.getRoles())
+                                .map(StringUtils::sanitize)
+                                .collect(Collectors.toSet()));
+        }
 
         if (userJson.userName != null && userJson.userName.equals(principal.getName())) {
             throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN,

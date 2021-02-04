@@ -47,6 +47,7 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
 public class ExtensionsRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
+    public static final String EXTENSIONS_DISABLED = "Extensions disabled";
     private final ExtensionController extensionController;
     private final boolean extensionsEnabled;
 
@@ -59,7 +60,7 @@ public class ExtensionsRestController {
     @GetMapping
     public Iterable<ExtensionInfo> currentExtensions(@ApiIgnore Principal principal) {
         if (!extensionsEnabled) {
-            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, EXTENSIONS_DISABLED);
         }
         auditLog.info("[{}] Request to list current extensions. ",
                       AuditLog.username(principal));
@@ -70,7 +71,7 @@ public class ExtensionsRestController {
     public void uninstallExtension(@RequestParam String extension, @RequestParam String version,
                                    @ApiIgnore Principal principal) {
         if (!extensionsEnabled) {
-            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, EXTENSIONS_DISABLED);
         }
         auditLog.info("[{}] Request to uninstall extension {}/{}. ", AuditLog.username(principal),
                       sanitize(extension),
@@ -85,7 +86,7 @@ public class ExtensionsRestController {
                              @RequestParam boolean active,
                              @ApiIgnore Principal principal) {
         if (!extensionsEnabled) {
-            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, EXTENSIONS_DISABLED);
         }
         auditLog.info("[{}] Request to {} extension {}/{}. ",
                       AuditLog.username(principal),
@@ -101,7 +102,7 @@ public class ExtensionsRestController {
                                               @RequestParam(required = false, name = "targetContext") String context,
                                               @ApiIgnore Principal principal) {
         if (!extensionsEnabled) {
-            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, EXTENSIONS_DISABLED);
         }
         auditLog.info("[{}] Request to unregister extension {}/{} for context {}.",
                       AuditLog.username(principal),
@@ -118,7 +119,7 @@ public class ExtensionsRestController {
                                                           @RequestParam(required = false, name = "targetContext") String context,
                                                           @ApiIgnore Principal principal) {
         if (!extensionsEnabled) {
-            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, EXTENSIONS_DISABLED);
         }
         auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal),
                       sanitize(extension),
@@ -131,7 +132,7 @@ public class ExtensionsRestController {
                                          @ApiIgnore Principal principal)
             throws IOException {
         if (!extensionsEnabled) {
-            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, EXTENSIONS_DISABLED);
         }
         auditLog.info("[{}] Request to install extension {}. ",
                       AuditLog.username(principal),
@@ -162,7 +163,7 @@ public class ExtensionsRestController {
     public void updateConfiguration(@RequestBody ExtensionConfigurationJSON configurationJSON,
                                     @ApiIgnore Principal principal) {
         if (!extensionsEnabled) {
-            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, "Extensions disabled");
+            throw new MessagingPlatformException(ErrorCode.EXTENSIONS_DISABLED, EXTENSIONS_DISABLED);
         }
         auditLog.info("[{}] Request to update configuration of {}/{}. ", AuditLog.username(principal),
                       sanitize(configurationJSON.getExtension()),

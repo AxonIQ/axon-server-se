@@ -44,27 +44,31 @@ public class SystemPackagesProvider {
             while (manifestEnumeration.hasMoreElements()) {
                 URL manifestUrl = manifestEnumeration.nextElement();
                 if (export(manifestUrl.toString())) {
-                    try (InputStream manifestInputStream = manifestUrl.openStream()) {
-                        Manifest manifest = new Manifest(manifestInputStream);
-                        String name = manifest.getMainAttributes().getValue("Export-Package");
-                        if (name != null) {
-                            logger.debug("Adding exports from {} to system packages path",
-                                         manifest.getMainAttributes()
-                                                 .getValue("Bundle-SymbolicName"));
-                            exports.add(manifest.getMainAttributes()
-                                                .getValue("Export-Package"));
-                        }
-                    } catch (IOException ioException) {
-                        throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                             "Error reading manifest from " + manifestUrl,
-                                                             ioException);
-                    }
+                    extractExportedPackages(exports, manifestUrl);
                 }
             }
             return String.join(",", exports.toArray(new String[0]));
         } catch (IOException ioException) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
                                                  "Error finding manifest files",
+                                                 ioException);
+        }
+    }
+
+    private void extractExportedPackages(List<String> exports, URL manifestUrl) {
+        try (InputStream manifestInputStream = manifestUrl.openStream()) {
+            Manifest manifest = new Manifest(manifestInputStream);
+            String name = manifest.getMainAttributes().getValue("Export-Package");
+            if (name != null) {
+                logger.debug("Adding exports from {} to system packages path",
+                             manifest.getMainAttributes()
+                                     .getValue("Bundle-SymbolicName"));
+                exports.add(manifest.getMainAttributes()
+                                    .getValue("Export-Package"));
+            }
+        } catch (IOException ioException) {
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "Error reading manifest from " + manifestUrl,
                                                  ioException);
         }
     }

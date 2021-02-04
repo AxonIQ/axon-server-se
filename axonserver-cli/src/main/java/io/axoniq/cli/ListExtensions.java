@@ -40,31 +40,27 @@ public class ListExtensions extends AxonIQCliCommand {
                                                      ExtensionInfo[].class,
                                                      200,
                                                      getToken(commandLine));
-                System.out.printf("%-30s %-15s %-20s %-10s%n", "Name", "Version", "Context", "Status");
+                showExtensionsAsTable(extensions);
+            }
+        }
+    }
 
-                for (ExtensionInfo extensionInfo : extensions) {
-                    if (extensionInfo.getContextInfoList().length == 0) {
-                        System.out.printf("%-30s %-15s%n",
-                                          extensionInfo.getName(),
-                                          extensionInfo.getVersion());
-                    } else {
-                        for (int i = 0; i < extensionInfo.getContextInfoList().length; i++) {
-                            ExtensionInfo.ExtensionContextInfo contextInfo = extensionInfo.getContextInfoList()[i];
-                            if (i == 0) {
-                                System.out.printf("%-30s %-15s %-20s %-10s%n",
-                                                  extensionInfo.getName(),
-                                                  extensionInfo.getVersion(),
-                                                  contextInfo.getContext(),
-                                                  contextInfo.isActive() ? "Active" : "Registered");
-                            } else {
-                                System.out.printf("%-30s %-15s %-20s %-10s%n",
-                                                  "",
-                                                  "",
-                                                  contextInfo.getContext(),
-                                                  contextInfo.isActive() ? "Active" : "Registered");
-                            }
-                        }
-                    }
+    private static void showExtensionsAsTable(ExtensionInfo[] extensions) {
+        System.out.printf("%-30s %-15s %-20s %-10s%n", "Name", "Version", "Context", "Status");
+
+        for (ExtensionInfo extensionInfo : extensions) {
+            if (extensionInfo.getContextInfoList().length == 0) {
+                System.out.printf("%-30s %-15s%n",
+                                  extensionInfo.getName(),
+                                  extensionInfo.getVersion());
+            } else {
+                for (int i = 0; i < extensionInfo.getContextInfoList().length; i++) {
+                    ExtensionInfo.ExtensionContextInfo contextInfo = extensionInfo.getContextInfoList()[i];
+                    System.out.printf("%-30s %-15s %-20s %-10s%n",
+                                      i == 0 ? extensionInfo.getName() : "",
+                                      i == 0 ? extensionInfo.getVersion() : "",
+                                      contextInfo.getContext(),
+                                      contextInfo.isActive() ? "Active" : "Registered");
                 }
             }
         }

@@ -49,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class ExtensionContextFilter {
 
+    @SuppressWarnings("unchecked")
     private final Class<? extends Ordered>[] interceptorClasses = new Class[]{
             AppendEventInterceptor.class,
             PreCommitEventsHook.class,
@@ -81,9 +82,7 @@ public class ExtensionContextFilter {
                                   boolean extensionEnabled) {
         this.extensionServiceProvider = extensionServiceProvider;
         this.enabled = extensionEnabled;
-        extensionServiceProvider.registerExtensionListener((extension, status) -> {
-            initialized = false;
-        });
+        extensionServiceProvider.registerExtensionListener((extension, status) -> initialized = false);
     }
 
 
@@ -95,6 +94,7 @@ public class ExtensionContextFilter {
                 }
 
                 for (Class<? extends Ordered> interceptorClass : interceptorClasses) {
+                    //noinspection unchecked
                     serviceMap.put(interceptorClass, initHooks((Class<Ordered>) interceptorClass));
                 }
 
@@ -104,8 +104,8 @@ public class ExtensionContextFilter {
     }
 
     private <T extends Ordered> List<ServiceWithInfo<T>> initHooks(Class<T> interceptorClass) {
-        List<ServiceWithInfo<T>> hooks = new ArrayList<>();
-        hooks.addAll(extensionServiceProvider.getServicesWithInfo(interceptorClass));
+        List<ServiceWithInfo<T>> hooks = new ArrayList<>(extensionServiceProvider
+                                                                 .getServicesWithInfo(interceptorClass));
         hooks.sort(ServiceWithInfo::compareTo);
         logger.debug("{} {}}", hooks.size(), interceptorClass.getSimpleName());
         return hooks;
@@ -123,6 +123,7 @@ public class ExtensionContextFilter {
         serviceMap.get(interceptorClass).forEach(service -> {
             if (service.extensionKey().getVersion().equals(enabledExtensions
                                                                    .get(service.extensionKey().getSymbolicName()))) {
+                //noinspection unchecked
                 interceptors.add((ServiceWithInfo<T>) service);
             }
         });
@@ -140,6 +141,7 @@ public class ExtensionContextFilter {
         serviceMap.get(interceptorClass).forEach(service -> {
             if (service.extensionKey().getVersion().equals(enabledExtensions
                                                                    .get(service.extensionKey().getSymbolicName()))) {
+                //noinspection unchecked
                 interceptors.add((T) service.service());
             }
         });
@@ -161,7 +163,9 @@ public class ExtensionContextFilter {
                                                            .put(extensionEnabled.extension().getSymbolicName(),
                                                                 extensionEnabled.extension().getVersion());
             if (oldVersion == null || !extensionEnabled.extension().getVersion().equals(oldVersion)) {
-                logger.info("{}: Extension {} activated", extensionEnabled.context(), extensionEnabled.extension());
+                if (logger.isInfoEnabled()) {
+                    logger.info("{}: Extension {} activated", extensionEnabled.context(), extensionEnabled.extension());
+                }
             }
         } else {
             String oldVersion = enabledExtensionsPerContext.getOrDefault(extensionEnabled.context(),
@@ -170,7 +174,11 @@ public class ExtensionContextFilter {
             if (oldVersion != null && extensionEnabled.extension().getVersion().equals(oldVersion)) {
                 enabledExtensionsPerContext.get(extensionEnabled.context())
                                            .remove(extensionEnabled.extension().getSymbolicName());
-                logger.info("{}: Extension {} deactivated", extensionEnabled.context(), extensionEnabled.extension());
+                if (logger.isInfoEnabled()) {
+                    logger.info("{}: Extension {} deactivated",
+                                extensionEnabled.context(),
+                                extensionEnabled.extension());
+                }
             }
         }
     }

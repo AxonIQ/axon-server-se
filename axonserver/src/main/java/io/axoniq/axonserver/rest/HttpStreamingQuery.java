@@ -131,7 +131,7 @@ public class HttpStreamingQuery {
                 @Override
                 public void onError(Throwable throwable) {
                     try {
-                        logger.warn("Error while processing query {} - {}", query, throwable.getMessage());
+                        logger.warn("Error while processing query {} - {}", query, throwable.getMessage(), throwable);
                         sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
                         sseEmitter.complete();
                     } catch (Exception ignore) {

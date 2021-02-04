@@ -22,13 +22,23 @@ import java.util.Map;
 import static io.axoniq.axonserver.extensions.ExtensionProperty.DUMMY_PASSWORD;
 
 /**
+ * Utility methods to work with extension properties
+ *
  * @author Marc Gathier
+ * @since 4.5
  */
 public class ExtensionPropertyUtils {
 
     private ExtensionPropertyUtils() {
     }
 
+    /**
+     * Checks types of properties provided and maps values to the correct type.
+     * Throws an exception if one of properties cannot be mapped to the defined type.
+     * @param properties map of properties per listener
+     * @param listProperties defined properties per listener
+     * @return updated map of properties per listener
+     */
     public static Map<String, Map<String, Object>> validateProperties(Map<String, Map<String, Object>> properties,
                                                                       List<ExtensionPropertyGroup> listProperties) {
         Map<String, Map<String, Object>> validatedProperties = new HashMap<>();
@@ -111,7 +121,7 @@ public class ExtensionPropertyUtils {
                     } catch (NumberFormatException nfe) {
                         throw new MessagingPlatformException(ErrorCode.OTHER,
                                                              extensionProperty.getId()
-                                                                     + ": Cannot convert value to integer");
+                                                                     + ": Cannot convert value to long");
                     }
                 }
                 throw new MessagingPlatformException(ErrorCode.OTHER,
@@ -170,6 +180,13 @@ public class ExtensionPropertyUtils {
         throw new MessagingPlatformException(ErrorCode.OTHER, extensionProperty.getId() + ": Unknown type");
     }
 
+    /**
+     * Merges the set properties with the default values of the properties.
+     *
+     * @param definedProperties                properties defined for an extension
+     * @param serializedConfiguration          serialized currently set values for the properties
+     * @param extensionConfigurationSerializer serializer to deserialize the values
+     */
     public static void setValues(List<ExtensionPropertyGroup> definedProperties,
                                  String serializedConfiguration,
                                  ExtensionConfigurationSerializer extensionConfigurationSerializer) {

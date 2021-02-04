@@ -19,8 +19,6 @@ import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryResponseInte
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.metric.MeterFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -31,7 +29,6 @@ import java.util.List;
 @Component
 public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryInterceptors {
 
-    private final Logger logger = LoggerFactory.getLogger(DefaultSubscriptionQueryInterceptors.class);
     private final ExtensionContextFilter extensionContextFilter;
     private final InterceptorTimer interceptorTimer;
 

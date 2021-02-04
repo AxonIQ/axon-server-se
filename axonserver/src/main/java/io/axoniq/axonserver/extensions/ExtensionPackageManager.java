@@ -99,12 +99,14 @@ public class ExtensionPackageManager implements SmartLifecycle {
     public void uninstallExtension(ExtensionKey extensionKey) {
         extensionContextManager.uninstall(extensionKey);
         osgiController.uninstallExtension(extensionKey);
-        extensionPackageRepository.findByExtensionAndVersion(
-                extensionKey.getSymbolicName(),
-                extensionKey.getVersion()).ifPresent(p -> {
-            extensionPackageRepository.deleteById(p.getId());
-            FileUtils.delete(new File(bundleDirectory + File.separatorChar + p.getFilename()));
-        });
+        synchronized (extensionPackageRepository) {
+            extensionPackageRepository.findByExtensionAndVersion(
+                    extensionKey.getSymbolicName(),
+                    extensionKey.getVersion()).ifPresent(p -> {
+                extensionPackageRepository.deleteById(p.getId());
+                FileUtils.delete(new File(bundleDirectory + File.separatorChar + p.getFilename()));
+            });
+        }
     }
 
     @Transactional
