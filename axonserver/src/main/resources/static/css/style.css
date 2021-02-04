@@ -795,7 +795,6 @@ select {
 	height: 100%;
 	background-color: rgba(0, 0, 0, 0.5);
 	display: table;
-	transition: opacity 0.3s ease;
 }
 
 .modal-wrapper {
@@ -847,10 +846,4 @@ select {
 
 .modal-leave-active {
 	opacity: 0;
-}
-
-.modal-enter .modal-container,
-.modal-leave-active .modal-container {
-	-webkit-transform: scale(1.1);
-	transform: scale(1.1);
 }

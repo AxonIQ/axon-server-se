@@ -274,6 +274,7 @@
     <p>{{version}} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="Newer version available!" class="important">
         <i class="fas fa-exclamation-triangle"></i></a> by <span>AxonIQ</span> <a href="#info" class="info"><i class="fas fa-info-circle"></i></a></p>
 
+
     <modal style="visibility: visible" v-if="showModal" @close="showModal = false">
         <h3 slot="header">Newer version available!</h3>
         <div slot="body">
