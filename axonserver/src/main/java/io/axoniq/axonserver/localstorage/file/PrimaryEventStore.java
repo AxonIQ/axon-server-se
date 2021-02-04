@@ -361,7 +361,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 logger.debug("Handed over {}, remaining segments: {}",
                              writePosition.segment,
                              getSegments());
-                source.clean(storageProperties.getPrimaryCleanupDelay());
+                if (source != null) {
+                    source.clean(storageProperties.getPrimaryCleanupDelay());
+                }
             });
         }
     }
