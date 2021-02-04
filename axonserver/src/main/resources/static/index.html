@@ -135,7 +135,8 @@
                         this.version = response.data.productName + " " + response.data.version;
                         return response.data
                     }).then(data => {
-                        let productVersion = data.productName.includes("Enterprise") ? "axonserver" : "axonserver-se"
+                        let product = data.productName.includes("Enterprise") ? "axonserver" : "axonserver-se"
+                        let productVersion = data.version
                             return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}`)}
                     ).then(updatesData=> {
                         if (updatesData.data !== undefined || updatesData.data!== 0) {
