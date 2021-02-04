@@ -187,6 +187,20 @@ footer{
 		color: darkgray;
 	}
 
+	footer .important {
+		margin: 9px 3px;
+		line-height: 20px;
+		font-weight: 300;
+		color: red;
+		animation: blink 0.5s ease-in-out infinite;
+		cursor: pointer;
+	}
+
+	@keyframes blink {
+		from, to { opacity: 1 }
+		50% { opacity: 0 }
+	}
+
 	footer .info:hover {
 		color: lightgray;
 	}
@@ -269,14 +283,9 @@ input[type="search"] {
 	border: none;
 	cursor: pointer;
 }
-	.icon span{
-		display: none;
-	}
-/*.icon.refresh{*/
-	/**/
-	/*background: url('../img/icon-refresh.png') no-repeat center center;*/
-	/*background-size: 20px 20px;*/
-/*}*/
+.icon span{
+	display: none;
+}
 .msg{
 	margin: 15px 0;
 	padding: 10px 18px;
@@ -777,3 +786,64 @@ select {
 		}
 }
 
+.modal-mask {
+	position: fixed;
+	z-index: 9998;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: table;
+}
+
+.modal-wrapper {
+	display: table-cell;
+	vertical-align: middle;
+}
+
+.modal-container {
+	width: 40%;
+	max-height: 400px;
+	overflow: auto;
+	margin: 0px auto;
+	padding: 20px 30px;
+	background-color: #fff;
+	border-radius: 2px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.33);
+	transition: all 0.3s ease;
+	font-family: Helvetica, Arial, sans-serif;
+}
+
+.modal-header h3 {
+	margin-top: 0;
+	color: #DA5407;
+	text-align: left;
+}
+
+.modal-body {
+	margin: 20px 0;
+	text-align: left;
+	white-space: pre-wrap;
+}
+
+.modal-default-button {
+
+}
+
+/*
+ * The following styles are auto-applied to elements with
+ * transition="modal" when their visibility is toggled
+ * by Vue.js.
+ *
+ * You can easily play with the modal transition by editing
+ * these styles.
+ */
+
+.modal-enter {
+	opacity: 0;
+}
+
+.modal-leave-active {
+	opacity: 0;
+}
