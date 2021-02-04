@@ -10,8 +10,6 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
-import org.springframework.boot.actuate.health.Health;
 
 import java.util.function.Predicate;
 
