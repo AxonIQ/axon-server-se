@@ -18,6 +18,7 @@ import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -37,6 +38,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
+
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
 /**
  * Rest services to manage users.
@@ -62,14 +65,31 @@ public class UserRestController {
 
     @PostMapping("users")
     public void createUser(@RequestBody @Valid UserJson userJson, Principal principal) {
-        auditLog.info("[{}] Request to create user \"{}\" with roles {}.", AuditLog.username(principal), userJson.getUserName(), userJson.getRoles());
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to create user \"{}\" with roles {}.",
+                          AuditLog.username(principal),
+                          sanitize(userJson.getUserName()),
+                          Arrays.stream(userJson.getRoles())
+                                .map(StringUtils::sanitize)
+                                .collect(Collectors.toSet()));
+        }
+
+        if (userJson.userName != null && userJson.userName.equals(principal.getName())) {
+            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
+                                                 "Not allowed to change your own credentials");
+        }
+
         Set<String> validRoles = roleController.listRoles().stream().map(Role::getRole).collect(Collectors.toSet());
         Set<UserRole> roles = new HashSet<>();
-        if( userJson.roles != null) {
+        if (userJson.roles != null) {
             roles = Arrays.stream(userJson.roles).map(UserRole::parse).collect(Collectors.toSet());
             for (UserRole role : roles) {
                 if (!validRoles.contains(role.getRole())) {
-                    auditLog.error("[{}] Request to create user \"{}\" with roles {} FAILED: Unknown role \"{}\".", AuditLog.username(principal), userJson.getUserName(), roles, role);
+                    auditLog.error("[{}] Request to create user \"{}\" with roles {} FAILED: Unknown role \"{}\".",
+                                   AuditLog.username(principal),
+                                   sanitize(userJson.getUserName()),
+                                   roles,
+                                   role);
                     throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE,
                                                          role + ": Role unknown");
                 }

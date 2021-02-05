@@ -84,7 +84,7 @@
                                         </td>
                                         <td>
                                             <select class="roleName" v-model="newRole.role">
-                                                <option v-for="r in appRoles">{{r}}</option>
+                                                <option v-for="r in appRoles">{{ r }}</option>
                                             </select>
                                         </td>
                                         <td><span @click="addContextRole()" title="Add">
@@ -93,6 +93,39 @@
                                 </tbody>
                             </table>
                         </span>
+                    </li>
+                        <li>
+                            <span class="narrow">Application Properties</span>
+                            <span>
+                                <table class="nestedTable">
+                                    <tbody>
+                                        <tr v-for="key in Object.keys(application.metaData)">
+                                            <td style="width: 60%">{{ key }}</td>
+                                            <td><input class="propertyValue" data-lpignore="true"
+                                                       v-model="application.metaData[key]"></td>
+                                            <td style="width: 20px">
+                                                <span @click="deleteMetaData(key)" title="Delete Application Property">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="width: 60%">
+                                                <input class="propertyValue" v-model="application.metaDataLabel">
+                                            </td>
+                                            <td>
+                                                <input class="propertyValue" data-lpignore="true"
+                                                       v-model="application.metaDataValue">
+                                            </td>
+                                            <td style="width: 20px">
+                                                <span @click="addMetaData()" title="Add Application Property">
+                                                    <i class="fas fa-plus"></i>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </span>
                     </li>
                     <li>
                         <span class="narrow">&nbsp;</span>

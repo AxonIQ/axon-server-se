@@ -25,6 +25,9 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -148,9 +151,14 @@ public class StandardIndexManager implements IndexManager {
         }
         db.close();
 
-        if (!tempFile.renameTo(storageProperties.index(context, segment))) {
+        try {
+            Files.move(tempFile.toPath(), storageProperties.index(context, segment).toPath(),
+                       StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
-                                                 "Failed to rename index file:" + tempFile);
+                                                 "Failed to rename index file" + storageProperties
+                                                         .index(context, segment),
+                                                 e);
         }
 
         PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment)

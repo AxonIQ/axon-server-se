@@ -11,13 +11,15 @@
 globals.pageView = new Vue({
             el: '#settings',
             data: {
-                license: {},
+                license: {
+                    featureList: []
+                },
                 status: {},
                 node: {},
                 timer: null,
                 nodes: [],
                 contexts: [],
-                context: null
+                context: null,
             }, mounted() {
         axios.get("v1/public/license").then(response => { this.license = response.data });
         axios.get("v1/public/me").then(response => { this.node = response.data });

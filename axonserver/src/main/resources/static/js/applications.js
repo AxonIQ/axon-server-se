@@ -12,7 +12,11 @@ globals.pageView = new Vue(
         {
             el: '#application',
             data: {
-                application: {workingRoles: []},
+                application: {
+                    workingRoles: [], metaData: {},
+                    metaDataLabel: "",
+                    metaDataValue: "",
+                },
                 applications: [],
                 contexts: [],
                 appRoles: [],
@@ -35,7 +39,7 @@ globals.pageView = new Vue(
                         axios.get("v1/public/applications").then(response => {
                             this.applications = response.data;
 
-                            for( let a = 0 ; a < this.applications.length; a++ ) {
+                            for (let a = 0; a < this.applications.length; a++) {
                                 let app = this.applications[a];
                                 app.workingRoles = [];
                                 for (let c = 0; c < app.roles.length; c++) {
@@ -45,6 +49,10 @@ globals.pageView = new Vue(
                                     }
                                 }
                             }
+
+                            this.application.metaData = {};
+                            this.application.metaDataLabel = "";
+                            this.application.metaDataValue = "";
                         });
                     },
 
@@ -52,8 +60,12 @@ globals.pageView = new Vue(
                         if (this.newRole.context && this.newRole.role) {
                             this.addNewRole(this.newRole);
                         }
+                        if (application.metaDataLabel && application.metaDataValue) {
+                            this.addMetaData();
+                        }
+
                         this.application.roles = [];
-                        for( let r = 0 ; r < this.application.workingRoles.length; r++) {
+                        for (let r = 0; r < this.application.workingRoles.length; r++) {
                             let context = this.getContextRoles(this.application.workingRoles[r].context);
                             context.roles.push(this.application.workingRoles[r].role);
                         }
@@ -61,7 +73,15 @@ globals.pageView = new Vue(
                         this.application.workingRoles = null
                         axios.post('v1/applications', this.application).then(response => {
                             this.feedback = application.name + ": Application Token: " + response.data;
-                            this.application = {roles: [], workingRoles: []};
+                            this.application = {
+                                roles: [],
+                                workingRoles: [],
+                                metaData: {},
+                                metaDataLabel: "",
+                                metaDataValue: "",
+                                name: "",
+                                description: ""
+                            };
                             this.newRole = {};
                             this.loadApplications();
                         });
@@ -96,7 +116,14 @@ globals.pageView = new Vue(
                     },
 
                     selectApp(app) {
-                        this.application = {name: app.name, description: app.description, workingRoles: app.workingRoles.slice()};
+                        this.application = {
+                            name: app.name,
+                            description: app.description,
+                            metaData: app.metaData,
+                            metaDataLabel: "",
+                            metaDataValue: "",
+                            workingRoles: app.workingRoles.slice()
+                        };
                         this.feedback = "";
                     },
                     connect() {
@@ -134,14 +161,24 @@ globals.pageView = new Vue(
                             alert("Select role and context to add");
                         }
                     },
-                    existsNewRole() {
-                        for (var a = 0; a < this.application.workingRoles.length; a++) {
-                            if (this.application.workingRoles[a].context == this.newRole.context &&
-                                    this.application.workingRoles[a].role == this.newRole.role) {
-                                return true;
-                            }
+                existsNewRole() {
+                    for (var a = 0; a < this.application.workingRoles.length; a++) {
+                        if (this.application.workingRoles[a].context == this.newRole.context &&
+                                this.application.workingRoles[a].role == this.newRole.role) {
+                            return true;
                         }
-                        return false;
                     }
+                    return false;
+                },
+                addMetaData() {
+                    this.application.metaData[this.application.metaDataLabel] = this.application.metaDataValue;
+                    this.application.metaDataLabel = '';
+                    this.application.metaDataValue = '';
+                },
+                deleteMetaData(key) {
+                    delete this.application.metaData[key];
+                    this.$forceUpdate();
                 }
+
+            }
             });

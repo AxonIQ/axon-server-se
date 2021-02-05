@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 /**
  * @author Marc Gathier
@@ -58,5 +59,9 @@ public class FileUtils {
             return false;
         }
         return true;
+    }
+
+    public static void rename(File target, File currentLocation) throws IOException {
+        Files.move(target.toPath(), currentLocation.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 }

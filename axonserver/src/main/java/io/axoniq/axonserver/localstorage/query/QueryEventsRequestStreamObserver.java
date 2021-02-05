@@ -21,7 +21,14 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.QueryValue;
 import io.axoniq.axonserver.grpc.event.RowResponse;
-import io.axoniq.axonserver.localstorage.*;
+import io.axoniq.axonserver.localstorage.AggregateReader;
+import io.axoniq.axonserver.localstorage.EventDecorator;
+import io.axoniq.axonserver.localstorage.EventStreamReader;
+import io.axoniq.axonserver.localstorage.EventWriteStorage;
+import io.axoniq.axonserver.localstorage.QueryOptions;
+import io.axoniq.axonserver.localstorage.Registration;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SnapshotWriteStorage;
 import io.axoniq.axonserver.localstorage.query.result.AbstractMapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.BooleanExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.DefaultQueryResult;
@@ -41,7 +48,13 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -160,8 +173,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 sendColumns(pipeLine, aggregateIdentifier != null);
                 if (queryEventsRequest.getLiveEvents() && maxToken > connectionToken) {
                     if(querySnapshots) {
-                        registration = snapshotWriteStorage.registerEventListener((token, event) -> pushEventFromStream(token,
-                                Collections.singletonList(new SerializedEvent(event)),
+                        registration = snapshotWriteStorage.registerEventListener((token, event) -> pushEventFromStream(
+                                token,
+                                Collections.singletonList(Event.newBuilder(event).setSnapshot(true).build()),
                                 pipeLine));
                     } else {
                         registration = eventWriteStorage.registerEventListener((token, events) -> pushEventFromStream(token,
@@ -258,10 +272,10 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         return timeWindowList.get(0).toStringUtf8();
     }
 
-    private void pushEventFromStream(long firstToken, List<SerializedEvent> events, Pipeline pipeLine) {
+    private void pushEventFromStream(long firstToken, List<Event> events, Pipeline pipeLine) {
         logger.debug("Push event from stream");
-        for (SerializedEvent event : events) {
-            EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event.asEvent()).setToken(firstToken++)
+        for (Event event : events) {
+            EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event).setToken(firstToken++)
                                                           .build();
             try {
                 if (!pushEvent(eventWithToken, pipeLine)) {

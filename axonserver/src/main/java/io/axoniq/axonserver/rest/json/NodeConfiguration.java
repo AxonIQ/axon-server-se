@@ -26,6 +26,7 @@ public class NodeConfiguration {
     private boolean developmentMode;
     private Iterable<String> storageContextNames;
     private Iterable<String> contextNames;
+    private boolean extensionsEnabled;
 
     public NodeConfiguration(AxonServerNode delegate) {
         this.delegate = delegate;
@@ -116,5 +117,13 @@ public class NodeConfiguration {
 
     public Iterable<String> getStorageContextNames() {
         return storageContextNames;
+    }
+
+    public void setExtensionsEnabled(boolean extensionsEnabled) {
+        this.extensionsEnabled = extensionsEnabled;
+    }
+
+    public boolean getExtensionsEnabled() {
+        return extensionsEnabled;
     }
 }

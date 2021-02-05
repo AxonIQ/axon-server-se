@@ -30,6 +30,8 @@ public class Application {
 
     private Set<ApplicationContext> roles = new HashSet<>();
 
+    private Map<String, String> metaData = new HashMap<>();
+
     public Application() {
     }
 
@@ -37,7 +39,7 @@ public class Application {
         this.name = name;
         this.description = description;
         this.token = token;
-        if( roles != null) {
+        if (roles != null) {
             Map<String, List<String>> rolesPerContext = new HashMap<>();
             Arrays.stream(roles).forEach(r -> {
                 if( r.contains("@")) {
@@ -82,5 +84,13 @@ public class Application {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public Map<String, String> getMetaData() {
+        return metaData;
+    }
+
+    public void setMetaData(Map<String, String> metaData) {
+        this.metaData = metaData;
     }
 }
