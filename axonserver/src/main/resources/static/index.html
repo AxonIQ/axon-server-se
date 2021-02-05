@@ -228,7 +228,7 @@
             });
         }
 
-        Vue.component("modal", {
+        Vue.component("modal-updates", {
             template: "#modal-template"
         });
 
@@ -252,7 +252,7 @@
 
                         <div class="modal-footer">
                             <slot name="footer">
-                                <button class="modal-default-button" @click.stop="$emit('close')">
+                                <button class="button" @click.stop="$emit('close')">
                                     OK
                                 </button>
                             </slot>
@@ -302,7 +302,7 @@
         <i class="fas fa-exclamation-triangle"></i></a> by <span>AxonIQ</span> <a href="#info" class="info"><i class="fas fa-info-circle"></i></a></p>
 
 
-    <modal style="visibility: visible" v-if="showModal" @close="showModal = false">
+    <modal-updates style="visibility: visible" v-if="showModal" @close="showModal = false">
         <h3 slot="header">Newer version available!</h3>
         <div slot="body">
             <p>We strongly encourage to update to latest Axon Server version as soon as possible.</p>
@@ -316,7 +316,7 @@
             </ul>
         </div>
 
-    </modal>
+    </modal-updates>
 
 
 </footer>
