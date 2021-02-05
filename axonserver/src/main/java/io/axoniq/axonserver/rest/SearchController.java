@@ -11,12 +11,14 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import springfox.documentation.annotations.ApiIgnore;
 
 import static io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver.TIME_WINDOW_CUSTOM;
 
@@ -47,9 +49,17 @@ public class SearchController {
                             @RequestParam(value = "liveupdates", required = false, defaultValue = "false") Boolean liveupdates,
                             @RequestParam(value = "forceleader", required = false, defaultValue = "false") Boolean forceReadFromLeader,
                             @RequestParam(value = "querySnapshots", required = false, defaultValue = "false") Boolean querySnapshots,
-                            @RequestParam("clientToken") String clientToken) {
+                            @RequestParam("clientToken") String clientToken,
+                            @ApiIgnore Authentication authentication) {
         SseEmitter sseEmitter = new SseEmitter(timeout);
-        httpStreamingQuery.query(context, query, timewindow, liveupdates, forceReadFromLeader, clientToken, sseEmitter, querySnapshots);
+        httpStreamingQuery.query(context,
+                                 authentication,
+                                 query,
+                                 timewindow,
+                                 liveupdates,
+                                 forceReadFromLeader,
+                                 clientToken,
+                                 sseEmitter, querySnapshots);
         return sseEmitter;
     }
 

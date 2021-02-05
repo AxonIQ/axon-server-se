@@ -48,8 +48,16 @@ public class EventInformation {
         return event.asEvent();
     }
 
-    public EventWithToken asEventWithToken() {
-        return event.asEventWithToken();
+    public EventWithToken asEventWithToken(boolean snapshot) {
+        EventWithToken eventWithToken = event.asEventWithToken();
+        if (snapshot) {
+            eventWithToken = EventWithToken.newBuilder()
+                                           .setToken(eventWithToken.getToken())
+                                           .setEvent(Event.newBuilder(eventWithToken.getEvent())
+                                                          .setSnapshot(true))
+                                           .build();
+        }
+        return eventWithToken;
     }
 
     public SerializedEventWithToken getSerializedEventWithToken() {

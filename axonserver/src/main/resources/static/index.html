@@ -153,39 +153,57 @@
                 }
             });
             new Vue({
-                el: '#nav',
-                data: {
-                    admin: globals.admin,
-                    licenseLoaded: false,
-                    license: "free",
-                },
-                mounted() {
-                    axios.get("v1/public/license").then(response => {
-                        globals.license = response.data.edition.toLowerCase();
-                        globals.features = response.data.featureList;
-                        this.licenseLoaded = true;
-                        axios.get("v1/public/me").then(response => {
-                            globals.authenticationEnabled = response.data.authentication;
-                            globals.adminNode = response.data.adminNode;
-                            if (globals.authenticationEnabled) {
-                                this.admin = false;
-                                globals.admin = false;
-                                axios.get("v1/public/user").then(
-                                        response => {
-                                            globals.admin = globals.adminNode && response.data.adminUser;
-                                            this.admin = globals.admin;
+                        el: '#nav',
+                        data: {
+                            admin: globals.admin,
+                            licenseLoaded: false,
+                            license: "free",
+                            extensionsEnabled: false
+                        }, mounted() {
+                            axios.get("v1/public/license").then(response => {
+                                globals.license = response.data.edition.toLowerCase();
+                                globals.features = response.data.featureList;
+                                this.licenseLoaded = true;
+                                axios.get("v1/public/me").then(response => {
+                                    globals.authenticationEnabled = response.data.authentication;
+                                    globals.adminNode = response.data.adminNode;
+                                    this.extensionsEnabled = response.data.extensionsEnabled;
+                                    if (globals.authenticationEnabled) {
+                                        this.admin = false;
+                                        globals.admin = false;
+                                        axios.get("v1/public/user").then(
+                                                response => {
+                                                    globals.admin = globals.adminNode && response.data.adminUser;
+                                                    this.admin = globals.admin;
+                                                    this.setHeight();
                                             loadFragment();
                                         });
 
+                                    } else {
+                                        this.admin = response.data.adminNode;
+                                        globals.admin = response.data.adminNode;
+                                        this.setHeight();
+                                        loadFragment();
+                                    }
+                                });
+                            });
+                }, methods: {
+                    setHeight() {
+                        if (globals.admin) {
+                            if (globals.features.length > 0) {
+                                $("nav").css("min-height", "847px");
+                                $("article").css("min-height", "847px");
                             } else {
-                                this.admin = response.data.adminNode;
-                                globals.admin = response.data.adminNode;
-                                loadFragment();
+                                $("nav").css("min-height", "580px");
+                                $("article").css("min-height", "580px");
                             }
-                        });
-                    });
+                        } else {
+                            $("nav").css("min-height", "414px");
+                            $("article").css("min-height", "414px");
+                        }
+                    }
                 }
-            });
+                    });
 
             $.ajaxPrefilter(function (options, original_Options, jqXHR) {
                 options.async = true;
@@ -256,10 +274,13 @@
     <a href="#applications" class="menu-applications" v-if="admin && hasFeature('APP_AUTHENTICATION')"><i
             class="fas fa-window-restore fa-2x"></i>Apps</a>
     <a href="#users" class="menu-users" v-if="admin"><i class="fas fa-users fa-2x"></i> Users</a>
-    <a href="#context" class="menu-context" v-if="admin && hasFeature('MULTI_CONTEXT')"><i class="fas fa-sitemap fa-2x"></i> Contexts</a>
+    <a href="#context" class="menu-context" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
+            class="fas fa-sitemap fa-2x"></i> Contexts</a>
     <a href="#replicationgroups" class="menu-replicationgroups" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
             class="fas fa-clone fa-2x"></i>Replication groups</a>
-    <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
+    <a href="#extensions" class="menu-replicationgroups" v-if="extensionsEnabled && admin"><i
+            class="fas fa-plus-square fa-2x"></i>Extensions</a>
+        <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
     </span>
 </nav>
 

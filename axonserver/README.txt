@@ -60,6 +60,19 @@ Release Notes for version 4.4
 * tag-based routing of commands and queries
 * support fom token store identifiers to identify which tracking event processors share a token store
 
+Release Notes for version 4.3.9
+-------------------------------
+* Fixed stream completed by the server in case of inactivity
+
+Release Notes for version 4.3.8
+-------------------------------
+* Complete the stream in case of exception during the load of events.
+* Fix for connections not correctly registered
+
+Release Notes for version 4.3.7
+-------------------------------
+* Fix race condition in queries and commands handlers unsubscription during reconnection
+
 Release Notes for version 4.3.6
 -------------------------------
 * Fixed concurrency issue in subscribing/unsubscribing commands
