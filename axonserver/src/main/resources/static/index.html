@@ -182,12 +182,9 @@
                                                             && response.data.readOnlyAdminUser;
                                                     this.admin = globals.admin;
                                                     this.readOnlyAdmin = globals.readOnlyAdmin;
+                                                    this.setHeight();
                                                     loadFragment();
                                                 });
-                                                    this.setHeight();
-                                            loadFragment();
-                                        });
-
                                     } else {
                                         this.admin = response.data.adminNode;
                                         globals.admin = response.data.adminNode;
@@ -199,8 +196,7 @@
                 }, methods: {
                     showConfiguration: function () {
                         return this.admin || this.readOnlyAdmin;
-                    }
-                }
+                    },
                     setHeight() {
                         if (globals.admin) {
                             if (globals.features.length > 0) {
