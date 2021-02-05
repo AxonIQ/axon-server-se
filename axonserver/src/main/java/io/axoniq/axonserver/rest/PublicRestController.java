@@ -58,6 +58,7 @@ public class PublicRestController {
     private final AccessControlConfiguration accessControlConfiguration;
     private final VersionInfoProvider versionInfoSupplier;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
+    private final boolean extensionsEnabled;
 
     @Value("${axoniq.axonserver.devmode.enabled:false}")
     private boolean isDevelopmentMode;
@@ -79,6 +80,7 @@ public class PublicRestController {
         this.features = features;
         this.sslConfiguration = messagingPlatformConfiguration.getSsl();
         this.accessControlConfiguration = messagingPlatformConfiguration.getAccesscontrol();
+        this.extensionsEnabled = messagingPlatformConfiguration.isExtensionsEnabled();
         this.versionInfoSupplier = versionInfoSupplier;
         this.subscriptionMetricsRegistry = subscriptionMetricsRegistry;
     }
@@ -104,6 +106,7 @@ public class PublicRestController {
         node.setContextNames(topology.getMyContextNames());
         node.setStorageContextNames(topology.getMyStorageContextNames());
         node.setClustered(features.isEnterprise());
+        node.setExtensionsEnabled(extensionsEnabled);
         return node;
     }
 

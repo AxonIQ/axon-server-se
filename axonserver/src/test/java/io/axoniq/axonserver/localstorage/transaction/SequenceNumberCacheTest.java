@@ -167,10 +167,10 @@ public class SequenceNumberCacheTest {
                 serializedEvent("OTHER", "SampleAgg", 11)));
     }
 
-    private SerializedEvent serializedEvent(String aggregateId, String aggregateType, int sequenceNumber) {
-        return new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggregateId)
-                                        .setAggregateType(aggregateType)
-                                        .setAggregateSequenceNumber(sequenceNumber)
-                                        .build());
+    private Event serializedEvent(String aggregateId, String aggregateType, int sequenceNumber) {
+        return Event.newBuilder().setAggregateIdentifier(aggregateId)
+                    .setAggregateType(aggregateType)
+                    .setAggregateSequenceNumber(sequenceNumber)
+                    .build();
     }
 }

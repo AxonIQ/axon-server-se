@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
@@ -51,7 +52,7 @@ public interface EventStorageEngine {
      * @param eventList list of events
      * @return completable future containing the token of the first stored event
      */
-    default CompletableFuture<Long> store(List<SerializedEvent> eventList) {
+    default CompletableFuture<Long> store(List<Event> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;

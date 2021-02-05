@@ -12,6 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.query.DefaultQueries;
 import io.axoniq.axonserver.component.query.Query;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -20,10 +21,12 @@ import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.rest.json.QueryRequestJson;
 import io.axoniq.axonserver.rest.json.QueryResponseJson;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.ObjectUtils;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.IOException;
 import java.util.List;
@@ -85,16 +89,19 @@ public class QueryRestController {
     })
     public SseEmitter execute(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
-            @RequestBody @Valid QueryRequestJson query) {
+            @RequestBody @Valid QueryRequestJson query,
+            @ApiIgnore Authentication principal) {
         SseEmitter sseEmitter = new SseEmitter();
-        queryDispatcher.query(new SerializedQuery(context, query.asQueryRequest()), r -> {
+        queryDispatcher.query(new SerializedQuery(context, query.asQueryRequest()),
+                              ObjectUtils.getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                              r -> {
                                   try {
                                       sseEmitter.send(SseEmitter.event().data(new QueryResponseJson(r)));
                                   } catch (IOException e) {
                                       logger.debug("Error while emitting query response", e);
                                   }
                               },
-                              completed->sseEmitter.complete());
+                              completed -> sseEmitter.complete());
         return sseEmitter;
     }
 

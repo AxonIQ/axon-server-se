@@ -12,6 +12,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.AxonServerAccessController;
 import io.grpc.Context;
 import io.grpc.Metadata;
+import org.springframework.security.core.Authentication;
 
 /**
  * Defines constants for keys that can be passed in gRPC metadata.
@@ -26,5 +27,5 @@ public interface GrpcMetadataKeys {
     Metadata.Key<String> CONTEXT_MD_KEY = Metadata.Key.of("AxonIQ-Context", Metadata.ASCII_STRING_MARSHALLER);
     Metadata.Key<String> AXONDB_CONTEXT_MD_KEY = Metadata.Key.of("Context", Metadata.ASCII_STRING_MARSHALLER);
     Context.Key<String> CONTEXT_KEY = Context.key("AxonIQ-Context");
-    Context.Key<String> TOKEN_CONTEXT_KEY = Context.key(AxonServerAccessController.TOKEN_PARAM);
+    Context.Key<Authentication> PRINCIPAL_CONTEXT_KEY = Context.key(AxonServerAccessController.PRINCIPAL_PARAM);
 }
