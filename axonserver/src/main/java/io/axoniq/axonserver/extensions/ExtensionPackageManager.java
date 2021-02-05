@@ -66,17 +66,23 @@ public class ExtensionPackageManager implements SmartLifecycle {
         try {
             Files.createDirectories(new File(bundleDirectory).toPath());
             extensionPackageRepository.findAll()
-                                      .forEach(extensionPackage -> {
-                                          osgiController.startExtension(
-                                                  bundleDirectory + File.separatorChar + extensionPackage
-                                                          .getFilename());
-                                          extensionStatusChanged(extensionPackage.getKey(), "Started");
-                                      });
+                                      .forEach(this::startExtension);
             extensionContextManager.start();
         } catch (Exception exception) {
-            logger.warn("Failed to start extensions", exception);
+            logger.error("Failed to start extensions", exception);
         }
         running = true;
+    }
+
+    private void startExtension(ExtensionPackage extensionPackage) {
+        try {
+            osgiController.startExtension(
+                    bundleDirectory + File.separatorChar + extensionPackage
+                            .getFilename());
+            extensionStatusChanged(extensionPackage.getKey(), "Started");
+        } catch (Exception ex) {
+            logger.error("Failed to start extension {}", extensionPackage.getKey(), ex);
+        }
     }
 
     @Override

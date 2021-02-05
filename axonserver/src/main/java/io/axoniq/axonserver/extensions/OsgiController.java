@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 public class OsgiController implements ExtensionServiceProvider {
 
     private final Logger logger = LoggerFactory.getLogger(OsgiController.class);
-    private final Set<BiConsumer<ExtensionKey, String>> extensionListeners = new CopyOnWriteArraySet<BiConsumer<ExtensionKey, String>>();
+    private final Set<BiConsumer<ExtensionKey, String>> extensionListeners = new CopyOnWriteArraySet<>();
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
     private final boolean extensionsEnabled;
@@ -343,21 +343,13 @@ public class OsgiController implements ExtensionServiceProvider {
             return;
         }
         File extension = new File(fullPath);
-        try (InputStream inputStream = new FileInputStream(extension)) {
-            Bundle bundle = bundleContext.installBundle(extension.getAbsolutePath(), inputStream);
-            logger.info("adding bundle {}/{}", bundle.getSymbolicName(), bundle.getVersion());
-            bundle.start();
-        } catch (IOException e) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, fullPath + ": Cannot read extension package", e);
-        } catch (BundleException e) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, fullPath + ": Cannot start extension package", e);
-        }
+        addExtension(extension);
     }
 
     public String getStatus(ExtensionKey key) {
         return findBundle(key.getSymbolicName(), key.getVersion())
-                .map(b -> bundleStatus(b))
-                .orElse(null);
+                .map(this::bundleStatus)
+                .orElse("Not Found");
     }
 
     private String bundleStatus(Bundle bundle) {
@@ -372,7 +364,8 @@ public class OsgiController implements ExtensionServiceProvider {
                 return "Starting";
             case Bundle.STOPPING:
                 return "Stopping";
+            default:
+                return "Other: " + bundle.getState();
         }
-        return "Other: " + bundle.getState();
     }
 }
