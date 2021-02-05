@@ -9,6 +9,8 @@ import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,8 +30,8 @@ import java.util.List;
  * @author Stefan Dragisic
  * @since 4.5
  */
-@Configuration
-public class FileSystemMonitor extends AbstractHealthIndicator {
+@Configuration("diskSpace")
+public class FileSystemMonitor extends DiskSpaceHealthIndicator {
 
     private final Logger logger = LoggerFactory.getLogger(FileSystemMonitor.class);
     private final DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties;
@@ -40,7 +42,7 @@ public class FileSystemMonitor extends AbstractHealthIndicator {
 
     public FileSystemMonitor(DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties,
                              MeterRegistry meterRegistry) {
-
+        super(null,null);
         this.diskSpaceHealthProperties = diskSpaceHealthProperties;
         this.meterRegistry = meterRegistry;
     }
@@ -107,7 +109,7 @@ public class FileSystemMonitor extends AbstractHealthIndicator {
 
                 builder.withDetail(mountOf(path).toString() + ".total", store.getTotalSpace());
                 builder.withDetail(mountOf(path).toString() +".free", store.getUsableSpace());
-                builder.withDetail(mountOf(path).toString() +".threshold", threshold);
+                builder.withDetail(".threshold", threshold);
             } catch (
                     Exception e) {
                 logger.error("Failed to retrieve file store for {}", path, e);

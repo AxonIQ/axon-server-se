@@ -53,6 +53,7 @@ import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -277,4 +278,12 @@ public class AxonServerStandardConfiguration {
             }
         };
     }
+
+    @Bean
+    public DiskSpaceHealthIndicator diskSpaceHealthIndicator() {
+        //disable regular diskSpaceHealthIndicator bean
+        //using FileSystemMonitor instead
+        return null;
+    }
+
 }

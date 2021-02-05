@@ -81,6 +81,9 @@ public class FileSystemMonitorTest {
         testSubject.doHealthCheck(builder);
 
         verify(builder).up();
+        verify(builder).withDetail("/" + ".total", DISK_SIZE.toBytes());
+        verify(builder).withDetail("/" +".free", DISK_SIZE.toBytes());
+        verify(builder).withDetail(".threshold", THRESHOLD.toBytes());
     }
 
     @Test
@@ -108,7 +111,7 @@ public class FileSystemMonitorTest {
         verify(builder).status(HealthStatus.WARN_STATUS);
         verify(builder).withDetail("/" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("/" +".free", DISK_SIZE.toBytes());
-        verify(builder).withDetail("/" +".threshold", THRESHOLD.toBytes());
+        verify(builder).withDetail(".threshold", THRESHOLD.toBytes());
     }
 
 
@@ -138,7 +141,7 @@ public class FileSystemMonitorTest {
         verify(builder).up();
         verify(builder).withDetail("/" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("/" +".free", DISK_SIZE.toBytes());
-        verify(builder).withDetail("/" +".threshold", THRESHOLD.toBytes());
+        verify(builder).withDetail(".threshold", THRESHOLD.toBytes());
     }
 
     @Test
@@ -166,7 +169,7 @@ public class FileSystemMonitorTest {
         verify(builder).status(HealthStatus.WARN_STATUS);
         verify(builder).withDetail("/" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("/" +".free", DISK_SIZE.toBytes());
-        verify(builder).withDetail("/" +".threshold", THRESHOLD.toBytes());
+        verify(builder).withDetail(".threshold", THRESHOLD.toBytes());
     }
 
     //*********************** WINDOWS ***********************
@@ -195,7 +198,7 @@ public class FileSystemMonitorTest {
         verify(builder).up();
         verify(builder).withDetail("C:\\" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("C:\\" +".free", DISK_SIZE.toBytes());
-        verify(builder).withDetail("C:\\" +".threshold", THRESHOLD.toBytes());
+        verify(builder).withDetail(".threshold", THRESHOLD.toBytes());
     }
 
     @Test
@@ -223,7 +226,7 @@ public class FileSystemMonitorTest {
         verify(builder).status(HealthStatus.WARN_STATUS);
         verify(builder).withDetail("C:\\" + ".total", DISK_SIZE.toBytes());
         verify(builder).withDetail("C:\\" +".free", DISK_SIZE.toBytes());
-        verify(builder).withDetail("C:\\" +".threshold", THRESHOLD.toBytes());
+        verify(builder).withDetail(".threshold", THRESHOLD.toBytes());
     }
 
 }
