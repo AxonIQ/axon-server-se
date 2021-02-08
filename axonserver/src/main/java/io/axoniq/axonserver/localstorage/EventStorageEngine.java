@@ -11,9 +11,11 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -181,13 +183,6 @@ public interface EventStorageEngine {
     long getTokenAt(long instant);
 
     /**
-     * Adds information to the actuator health endpoint for this event store.
-     * @param builder actuator health builder
-     */
-    default void health(Health.Builder builder) {
-    }
-
-    /**
      * Rolls back storage engine to token. Implementations may keep more when token is not at a transaction boundary.
      * @param token the last token to keep.
      */
@@ -232,4 +227,5 @@ public interface EventStorageEngine {
      */
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
+
 }
