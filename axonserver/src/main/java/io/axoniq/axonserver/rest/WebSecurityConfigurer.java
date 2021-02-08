@@ -23,15 +23,19 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.filter.GenericFilterBean;
 
-import javax.servlet.*;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * The default {@link WebSecurityConfigurerAdapter} for Axon Server. This one configures the token filter, and sets
@@ -84,19 +88,11 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
             ExpressionUrlAuthorizationConfigurer<HttpSecurity>.ExpressionInterceptUrlRegistry auth = http
                     .authorizeRequests();
 
-            if (accessController.isRoleBasedAuthentication()) {
                 auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
                         .authenticated()
                         .accessDecisionManager(new AffirmativeBased(
                                 Collections.singletonList(
                                         new RestRequestAccessDecisionVoter(accessController))));
-            } else {
-                auth.antMatchers("/", "/**/*.html", "/v1/**", "/v2/**", "/internal/**")
-                        .authenticated()
-                        .accessDecisionManager(new AffirmativeBased(
-                                Collections.singletonList(
-                                        new StandardEditionRestRequestAccessDecisionVoter())));
-            }
             auth
                     .anyRequest().permitAll()
                     .and()

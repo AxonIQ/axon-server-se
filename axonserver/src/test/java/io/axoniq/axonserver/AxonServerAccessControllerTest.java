@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import org.junit.*;
@@ -32,7 +33,8 @@ public class AxonServerAccessControllerTest {
 
     @Before
     public void setup() {
-        testSubject = new AxonServerStandardAccessController(messagingPlatformConfiguration);
+        UserController userController = mock(UserController.class);
+        testSubject = new AxonServerStandardAccessController(messagingPlatformConfiguration, userController);
         AccessControlConfiguration accessControlConfiguation = new AccessControlConfiguration();
         accessControlConfiguation.setToken("1");
         when(messagingPlatformConfiguration.getAccesscontrol()).thenReturn(accessControlConfiguation);
