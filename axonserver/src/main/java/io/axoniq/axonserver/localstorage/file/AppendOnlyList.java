@@ -146,7 +146,7 @@ public class AppendOnlyList<T> extends AbstractList<T> {
 
             @Override
             public void remove() {
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException(LIST_IS_APPEND_ONLY);
             }
         };
     }
