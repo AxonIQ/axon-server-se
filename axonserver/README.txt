@@ -3,6 +3,32 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.9
+-------------------------------
+* Fix for concurrency issue in listing aggregates events during appending events for the same aggregate
+
+Release Notes for version 4.4.8
+-------------------------------
+* New metric to monitor query response times per query handler
+
+Release Notes for version 4.4.7
+-------------------------------
+* Improvement for subscription query: initial result are now provided by a single instance per component
+
+Release Notes for version 4.4.6
+-------------------------------
+* Fix for processor information showing information on disconnected applications
+* Fix for issue with null expressions in ad-hoc queries
+* Updated GRPC version to 1.34.0
+* Added option to limit the number of commands/queries in progress
+
+Release Notes for version 4.4.5
+-------------------------------
+* Improved reporting of errors while initializing the event store
+* Fix for NullPointerException when event processor status was sent to Axon Server before registration request
+  was processed
+* Improved handling of request processor status after an application disconnect
+
 Release Notes for version 4.4.4
 -------------------------------
 * Improved QueryService logging
@@ -33,6 +59,19 @@ Release Notes for version 4.4
 * Axon Server can now act as an event scheduler
 * tag-based routing of commands and queries
 * support fom token store identifiers to identify which tracking event processors share a token store
+
+Release Notes for version 4.3.9
+-------------------------------
+* Fixed stream completed by the server in case of inactivity
+
+Release Notes for version 4.3.8
+-------------------------------
+* Complete the stream in case of exception during the load of events.
+* Fix for connections not correctly registered
+
+Release Notes for version 4.3.7
+-------------------------------
+* Fix race condition in queries and commands handlers unsubscription during reconnection
 
 Release Notes for version 4.3.6
 -------------------------------

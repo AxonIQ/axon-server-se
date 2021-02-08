@@ -46,6 +46,11 @@ public class NumericExpressionResult implements ExpressionResult {
     }
 
     @Override
+    public boolean isNull() {
+        return value == null;
+    }
+
+    @Override
     public boolean isNonNull() {
         return value != null;
     }

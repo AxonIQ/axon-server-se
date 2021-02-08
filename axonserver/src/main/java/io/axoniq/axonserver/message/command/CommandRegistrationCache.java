@@ -193,7 +193,7 @@ public class CommandRegistrationCache {
      */
     public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
         String command = request.getName();
-        Set<ClientStreamIdentification> candidates = getCandidates(request);
+        Set<ClientStreamIdentification> candidates = getCandidates(context, request);
         if (candidates.isEmpty()) {
             return null;
         }
@@ -210,10 +210,11 @@ public class CommandRegistrationCache {
                 .orElse(null);
     }
 
-    private Set<ClientStreamIdentification> getCandidates(Command command) {
+    private Set<ClientStreamIdentification> getCandidates(String context, Command command) {
 
         Set<ClientStreamIdentification> candidates = registrationsPerClient.entrySet()
                                                                            .stream()
+                                                                           .filter(entry -> context.equals(entry.getKey().getContext()))
                                                                            .filter(entry -> entry
                                                                                    .getValue()
                                                                                    .containsKey(

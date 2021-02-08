@@ -11,9 +11,10 @@ package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
+import org.springframework.util.StringUtils;
 
 import java.time.Clock;
 import java.util.HashMap;
@@ -83,7 +84,7 @@ public class SequenceNumberCache {
      *
      * @param events list of events to store
      */
-    public void reserveSequenceNumbers(List<SerializedEvent> events) {
+    public void reserveSequenceNumbers(List<Event> events) {
         reserveSequenceNumbers(events, false);
     }
 
@@ -97,11 +98,10 @@ public class SequenceNumberCache {
      * @param events list of events to store
      * @param force  accept the sequence numbers from the events list as valid
      */
-    public Runnable reserveSequenceNumbers(List<SerializedEvent> events, boolean force) {
+    public Runnable reserveSequenceNumbers(List<Event> events, boolean force) {
         Map<String, MinMaxPair> minMaxPerAggregate = new HashMap<>();
         events.stream()
-              .filter(SerializedEvent::isDomainEvent)
-              .map(SerializedEvent::asEvent)
+              .filter(this::isDomainEvent)
               .forEach(e -> minMaxPerAggregate.computeIfAbsent(e.getAggregateIdentifier(),
                                                                i -> new MinMaxPair(e.getAggregateIdentifier(),
                                                                                    e.getAggregateSequenceNumber()))
@@ -133,6 +133,10 @@ public class SequenceNumberCache {
                 }
             }
         return unreserve;
+    }
+
+    private boolean isDomainEvent(Event e) {
+        return !StringUtils.isEmpty(e.getAggregateType());
     }
 
     /**

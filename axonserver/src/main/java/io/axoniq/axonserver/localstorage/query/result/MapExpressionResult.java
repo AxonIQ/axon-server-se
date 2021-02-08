@@ -43,6 +43,11 @@ public class MapExpressionResult implements AbstractMapExpressionResult {
     }
 
     @Override
+    public boolean isNull() {
+        return false;
+    }
+
+    @Override
     public boolean isNonNull() {
         return true;
     }

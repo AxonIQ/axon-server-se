@@ -28,6 +28,7 @@ import io.axoniq.axonserver.localstorage.EventWriteStorage;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SnapshotWriteStorage;
 import io.axoniq.axonserver.localstorage.query.result.AbstractMapExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.BooleanExpressionResult;
 import io.axoniq.axonserver.localstorage.query.result.DefaultQueryResult;
@@ -48,6 +49,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -60,6 +62,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * @author Marc Gathier
@@ -75,8 +78,12 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                                                                                                            "ad-hoc-query-"));
     public static final String COLUMN_NAME_TOKEN = "token";
 
+    private final SnapshotWriteStorage snapshotWriteStorage;
+    private final EventStreamReader snapshotStreamReader;
+
     private final EventWriteStorage eventWriteStorage;
     private final EventStreamReader eventStreamReader;
+
     private final AggregateReader aggregateReader;
     private final long defaultLimit;
     private final long timeout;
@@ -89,7 +96,9 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     public QueryEventsRequestStreamObserver(EventWriteStorage eventWriteStorage, EventStreamReader eventStreamReader,
                                             AggregateReader aggregateReader,
                                             long defaultLimit, long timeout, EventDecorator eventDecorator,
-                                            StreamObserver<QueryEventsResponse> responseObserver) {
+                                            StreamObserver<QueryEventsResponse> responseObserver,
+                                            SnapshotWriteStorage snapshotWriteStorage,
+                                            EventStreamReader snapshotStreamReader) {
         this.eventWriteStorage = eventWriteStorage;
         this.eventStreamReader = eventStreamReader;
         this.aggregateReader = aggregateReader;
@@ -97,11 +106,24 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         this.timeout = timeout;
         this.eventDecorator = eventDecorator;
         this.responseObserver = responseObserver;
+        this.snapshotWriteStorage = snapshotWriteStorage;
+        this.snapshotStreamReader = snapshotStreamReader;
+
     }
 
     @Override
     public void onNext(QueryEventsRequest queryEventsRequest) {
         try {
+            boolean querySnapshots = queryEventsRequest.getQuerySnapshots();
+
+            EventStreamReader streamReader;
+
+            if(querySnapshots) {
+                streamReader = snapshotStreamReader;
+            } else {
+                streamReader = eventStreamReader;
+            }
+
             Sender sender = senderRef.updateAndGet(s -> {
                 if (s == null) {
                     return new Sender(queryEventsRequest.getNumberOfPermits(),
@@ -111,7 +133,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 return s;
             });
             if (sender.start()) {
-                long connectionToken = eventStreamReader.getLastToken();
+                long connectionToken = streamReader.getLastToken();
                 long maxToken = Long.MAX_VALUE;
                 long minConnectionToken = StringUtils.isEmpty(queryEventsRequest.getQuery()) ? Math.max(
                         connectionToken - defaultLimit, 0) : 0;
@@ -150,14 +172,21 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 pipeLine = new QueryProcessor().buildPipeline(query, this::send);
                 sendColumns(pipeLine, aggregateIdentifier != null);
                 if (queryEventsRequest.getLiveEvents() && maxToken > connectionToken) {
-                    registration = eventWriteStorage.registerEventListener((token, events) -> pushEventFromStream(token,
-                                                                                                                  events,
-                                                                                                                  pipeLine));
+                    if(querySnapshots) {
+                        registration = snapshotWriteStorage.registerEventListener((token, event) -> pushEventFromStream(
+                                token,
+                                Collections.singletonList(Event.newBuilder(event).setSnapshot(true).build()),
+                                pipeLine));
+                    } else {
+                        registration = eventWriteStorage.registerEventListener((token, events) -> pushEventFromStream(token,
+                                events,
+                                pipeLine));
+                    }
                 }
                 if (aggregateIdentifier == null) {
                     QueryOptions queryOptions = new QueryOptions(minConnectionToken, maxToken, query.getStartTime());
                     senderService.submit(() -> {
-                        eventStreamReader.query(queryOptions,
+                        streamReader.query(queryOptions,
                                                 event -> pushEvent(event, pipeLine));
                         Optional.ofNullable(senderRef.get())
                                 .ifPresent(Sender::completed);
@@ -165,15 +194,30 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 } else {
                     String finalAggregateIdentifier = aggregateIdentifier;
                     senderService.submit(() -> {
-                        aggregateReader.readEvents(finalAggregateIdentifier, false, 0, serializedEvent -> {
+
+                        Consumer<SerializedEvent> eventConsumer = serializedEvent -> {
                             Event event = serializedEvent.asEvent();
                             if (event.getTimestamp() >= query.getStartTime()) {
                                 pushEvent(EventWithToken.newBuilder()
-                                                        .setEvent(event)
-                                                        .setToken(event.getAggregateSequenceNumber())
-                                                        .build(), pipeLine);
+                                        .setEvent(event)
+                                        .setToken(event.getAggregateSequenceNumber())
+                                        .build(), pipeLine);
                             }
-                        });
+                        };
+
+                        if (querySnapshots) {
+                            aggregateReader.readSnapshots(finalAggregateIdentifier,
+                                    0,
+                                    Long.MAX_VALUE,
+                                    Integer.MAX_VALUE,
+                                    eventConsumer);
+                        } else {
+                            aggregateReader.readEvents(finalAggregateIdentifier,
+                                    false,
+                                    0, eventConsumer);
+                        }
+
+
                         Optional.ofNullable(senderRef.get())
                                 .ifPresent(Sender::completed);
                     });
@@ -228,10 +272,10 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         return timeWindowList.get(0).toStringUtf8();
     }
 
-    private void pushEventFromStream(long firstToken, List<SerializedEvent> events, Pipeline pipeLine) {
+    private void pushEventFromStream(long firstToken, List<Event> events, Pipeline pipeLine) {
         logger.debug("Push event from stream");
-        for (SerializedEvent event : events) {
-            EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event.asEvent()).setToken(firstToken++)
+        for (Event event : events) {
+            EventWithToken eventWithToken = EventWithToken.newBuilder().setEvent(event).setToken(firstToken++)
                                                           .build();
             try {
                 if (!pushEvent(eventWithToken, pipeLine)) {
@@ -454,8 +498,8 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         }
 
         private QueryValue wrap(ExpressionResult expressionResult) {
-            if (expressionResult == null) {
-                return QueryValue.newBuilder().build();
+            if (expressionResult == null || expressionResult.isNull()) {
+                return QueryValue.getDefaultInstance();
             }
             if (expressionResult instanceof TimestampExpressionResult) {
                 return QueryValue.newBuilder().setTextValue(expressionResult.toString()).build();

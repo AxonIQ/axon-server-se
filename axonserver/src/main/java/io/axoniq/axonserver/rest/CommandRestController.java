@@ -12,6 +12,7 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -23,6 +24,7 @@ import io.axoniq.axonserver.topology.Topology;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.Collections;
@@ -45,6 +48,8 @@ import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
+import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
 /**
  * REST controller to retrieve information about subscribed commands and to dispatch commands.
@@ -68,15 +73,22 @@ public class CommandRestController {
     }
 
     @GetMapping("/components/{component}/commands")
-    public Iterable<ComponentCommand> getByComponent(@PathVariable("component") String component, @RequestParam("context") String context, Principal principal){
-        auditLog.info("[{}] Request to list all Commands for which component \"{}\" in context \"{}\" has a registered handler.", AuditLog.username(principal), component, context);
+    public Iterable<ComponentCommand> getByComponent(@PathVariable("component") String component,
+                                                     @RequestParam("context") String context,
+                                                     @ApiIgnore Principal principal) {
+        auditLog.info(
+                "[{}] Request to list all Commands for which component \"{}\" in context \"{}\" has a registered handler.",
+                AuditLog.username(principal),
+                component,
+                sanitize(context));
 
-        return new ComponentItems<>(component, context, new DefaultCommands( registrationCache));
+        return new ComponentItems<>(component, context, new DefaultCommands(registrationCache));
     }
 
     @GetMapping("commands")
-    public List<JsonClientMapping> get(Principal principal) {
-        auditLog.info("[{}] Request to list all Commands which have a registered handler.", AuditLog.username(principal));
+    public List<JsonClientMapping> get(@ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request to list all Commands which have a registered handler.",
+                      AuditLog.username(principal));
 
         return registrationCache.getAll().entrySet().stream().map(JsonClientMapping::from).collect(Collectors.toList());
     }
@@ -86,24 +98,30 @@ public class CommandRestController {
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataType = "string", paramType = "header")
     })
-    public Future<CommandResponseJson> execute(@RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
-                                               @RequestBody @Valid CommandRequestJson command, Principal principal) {
+    public Future<CommandResponseJson> execute(
+            @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
+            @RequestBody @Valid CommandRequestJson command,
+            @ApiIgnore Authentication principal) {
         auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
 
         CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
-        commandDispatcher.dispatch(context, new SerializedCommand(command.asCommand()), r -> result.complete(new CommandResponseJson(r.wrapped())), false);
+        commandDispatcher.dispatch(context,
+                                   getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                   new SerializedCommand(command.asCommand()),
+                                   r -> result.complete(new CommandResponseJson(r.wrapped())));
         return result;
     }
 
     @GetMapping("commands/queues")
-    public List<JsonQueueInfo> queues(Principal principal) {
+    public List<JsonQueueInfo> queues(@ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to list all CommandQueues.", AuditLog.username(principal));
 
-        return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(Collectors.toList());
+        return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
+                Collectors.toList());
     }
 
     @GetMapping("commands/count")
-    public int count(Principal principal) {
+    public int count(@ApiIgnore Principal principal) {
         if (auditLog.isDebugEnabled()) {
             auditLog.debug("[{}] Request for the active command count.", AuditLog.username(principal));
         }

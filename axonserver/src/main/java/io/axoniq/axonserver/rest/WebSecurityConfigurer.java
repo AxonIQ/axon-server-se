@@ -204,12 +204,20 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
 
                 if (token != null) {
                     try {
-                        Set<String> roles = accessController.getRoles(token);
+                        String context = request.getHeader(AxonServerAccessController.CONTEXT_PARAM);
+                        if (context == null) {
+                            context = request.getParameter(AxonServerAccessController.CONTEXT_PARAM);
+                        }
+                        if (context == null) {
+                            context = request.getParameter("context");
+                        }
+                        if (context == null) {
+                            context = accessController.defaultContextForRest();
+                        }
+                        Authentication authentication = accessController
+                                .authentication(context, token);
                         auditLog.trace("Access using configured token.");
-                        SecurityContextHolder.getContext().setAuthentication(
-                                new AuthenticationToken(true,
-                                        "AuthenticatedApp",
-                                        roles));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
                     } catch (InvalidTokenException invalidTokenException) {
                         auditLog.error("Access attempted with invalid token.");
                         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;

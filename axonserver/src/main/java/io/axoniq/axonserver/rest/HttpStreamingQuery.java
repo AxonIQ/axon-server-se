@@ -25,6 +25,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -49,8 +50,9 @@ public class HttpStreamingQuery {
     }
 
     @Async
-    public void query(String context, String queryString, String timeWindow, boolean liveUpdates,
-                      boolean forceReadFromLeader, String clientToken, SseEmitter sseEmitter) {
+    public void query(String context, Authentication authentication, String queryString, String timeWindow,
+                      boolean liveUpdates,
+                      boolean forceReadFromLeader, String clientToken, SseEmitter sseEmitter, boolean querySnapshots) {
         Sender oldSender = senderPerClient.remove(clientToken);
         if (oldSender != null) {
             logger.debug("Stopping sender for {}", clientToken);
@@ -63,7 +65,13 @@ public class HttpStreamingQuery {
                 sseEmitter.complete();
                 return;
             }
-            Sender sender = new Sender(sseEmitter, eventStore, context, queryString, timeWindow, liveUpdates);
+            Sender sender = new Sender(sseEmitter,
+                                       eventStore,
+                                       context,
+                                       authentication,
+                                       queryString,
+                                       timeWindow,
+                                       liveUpdates, querySnapshots);
             senderPerClient.put(clientToken, sender);
             sseEmitter.onTimeout(sender::stop);
         } catch (Exception e) {
@@ -83,20 +91,23 @@ public class HttpStreamingQuery {
         private final StreamObserver<QueryEventsRequest> querySender;
         private volatile boolean closed;
 
-        public Sender(SseEmitter sseEmitter, EventStore eventStore, String context, String query, String timeWindow,
-                      boolean liveUpdates) {
+        public Sender(SseEmitter sseEmitter, EventStore eventStore, String context, Authentication authentication,
+                      String query, String timeWindow,
+                      boolean liveUpdates, boolean querySnapshots) {
             this.sseEmitter = sseEmitter;
-            this.querySender = eventStore.queryEvents(context, new StreamObserver<QueryEventsResponse>() {
-                @Override
-                public void onNext(QueryEventsResponse queryEventsResponse) {
-                    try {
-                        if (closed) {
-                            return;
-                        }
-                        switch (queryEventsResponse.getDataCase()) {
-                            case COLUMNS:
-                                emitColumns(queryEventsResponse.getColumns());
-                                break;
+            this.querySender = eventStore.queryEvents(context,
+                                                      authentication,
+                                                      new StreamObserver<QueryEventsResponse>() {
+                                                          @Override
+                                                          public void onNext(QueryEventsResponse queryEventsResponse) {
+                                                              try {
+                                                                  if (closed) {
+                                                                      return;
+                                                                  }
+                                                                  switch (queryEventsResponse.getDataCase()) {
+                                                                      case COLUMNS:
+                                                                          emitColumns(queryEventsResponse.getColumns());
+                                                                          break;
                             case ROW:
                                 emitRows(queryEventsResponse.getRow());
                                 break;
@@ -120,7 +131,7 @@ public class HttpStreamingQuery {
                 @Override
                 public void onError(Throwable throwable) {
                     try {
-                        logger.warn("Error while processing query {} - {}", query, throwable.getMessage());
+                        logger.warn("Error while processing query {} - {}", query, throwable.getMessage(), throwable);
                         sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
                         sseEmitter.complete();
                     } catch (Exception ignore) {
@@ -139,6 +150,7 @@ public class HttpStreamingQuery {
                                                  .setNumberOfPermits(Long.MAX_VALUE)
                                                  .setForceReadFromLeader(liveUpdates)
                                                  .setQuery(query)
+                                                 .setQuerySnapshots(querySnapshots)
                                                  .setUnknownFields(UnknownFieldSet.newBuilder()
                                                                                   .addField(TIME_WINDOW_FIELD,
                                                                                             UnknownFieldSet.Field

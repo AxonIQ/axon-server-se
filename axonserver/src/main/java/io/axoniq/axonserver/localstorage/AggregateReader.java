@@ -50,8 +50,11 @@ public class AggregateReader {
 
     public void readSnapshots(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults,
                               Consumer<SerializedEvent> eventConsumer) {
-        snapshotReader.streamByAggregateId(aggregateId, minSequenceNumber, maxSequenceNumber,
-                                           maxResults > 0 ? maxResults : Integer.MAX_VALUE, eventConsumer);
+        snapshotReader.streamByAggregateId(aggregateId,
+                                           minSequenceNumber,
+                                           maxSequenceNumber,
+                                           maxResults > 0 ? maxResults : Integer.MAX_VALUE,
+                                           e -> eventConsumer.accept(e.asSnapshot()));
     }
 
     public long readHighestSequenceNr(String aggregateId) {

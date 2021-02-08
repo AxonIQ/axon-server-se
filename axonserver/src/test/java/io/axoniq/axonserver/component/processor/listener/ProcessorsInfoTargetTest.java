@@ -13,6 +13,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
 import io.axoniq.axonserver.component.processor.ClientEventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 
 import java.util.Spliterators;
@@ -25,7 +26,8 @@ import static org.junit.Assert.*;
  */
 public class ProcessorsInfoTargetTest {
 
-    private ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget();
+    private final FakeClock clock = new FakeClock();
+    private final ProcessorsInfoTarget testSubject = new ProcessorsInfoTarget(clock, 100);
 
     @Test
     public void onEventProcessorStatusChange() {
@@ -47,14 +49,12 @@ public class ProcessorsInfoTargetTest {
                                                                filter(cp -> cp.clientId().equals("client"))
                                                        .findFirst().orElse(null);
         assertNotNull(clientProcessor);
-    }
-
-    @Test
-    public void onClientConnected() {
-    }
-
-    @Test
-    public void onClientDisconnected() {
+        clock.timeElapses(120);
+        clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0),
+                                               false).
+                                               filter(cp -> cp.clientId().equals("client"))
+                                       .findFirst().orElse(null);
+        assertNull(clientProcessor);
     }
 
 }

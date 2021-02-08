@@ -19,16 +19,19 @@ import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.rest.json.MetaDataJson;
 import io.axoniq.axonserver.rest.json.SerializedObjectJson;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.ObjectUtils;
 import io.axoniq.axonserver.util.StringUtils;
 import io.grpc.stub.StreamObserver;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -37,11 +40,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -54,6 +57,7 @@ import javax.validation.constraints.Size;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
+import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
 
 /**
  * REST endpoint to retrieve and store events and snapshots.
@@ -84,7 +88,7 @@ public class EventsRestController {
             @RequestParam(value = "aggregateId", required = true) String aggregateId,
             @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
             @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
-            final Principal principal) {
+            @ApiIgnore final Authentication principal) {
         auditLog.info("[{}@{}] Request for list of snapshots of aggregate \"{}\", [{}-{}]",
                       AuditLog.username(principal), context, aggregateId, initialSequence, maxSequence);
 
@@ -96,6 +100,8 @@ public class EventsRestController {
                                                                                                    >= 0 ? maxSequence : Long.MAX_VALUE)
                                                                            .build();
         eventStoreClient.listAggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+                                                getOrDefault(principal,
+                                                             GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                                 request,
                                                 new StreamObserver<SerializedEvent>() {
                                                     @Override
@@ -143,7 +149,7 @@ public class EventsRestController {
             @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
             @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
             @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout,
-            final Principal principal) {
+            @ApiIgnore final Authentication principal) {
         auditLog.info("[{}@{}] Request for an event-stream of aggregate \"{}\", starting at sequence {}, token {}.",
                       AuditLog.username(principal), context, aggregateId, initialSequence, trackingToken);
 
@@ -157,16 +163,24 @@ public class EventsRestController {
                                                                          .build();
 
             ObjectMapper objectMapper = new ObjectMapper();
-            eventStoreClient.listAggregateEvents(context, request, new StreamObserver<SerializedEvent>() {
-                @Override
-                public void onNext(SerializedEvent event) {
-                    try {
-                        sseEmitter.send(SseEmitter.event().data(objectMapper
-                                                                        .writeValueAsString(new JsonEvent(event.asEvent()))));
-                    } catch (Exception e) {
-                        logger.warn("Exception on sending event - {}", e.getMessage(), e);
-                    }
-                }
+            eventStoreClient.listAggregateEvents(context,
+                                                 getOrDefault(principal,
+                                                              GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                                 request,
+                                                 new StreamObserver<SerializedEvent>() {
+                                                     @Override
+                                                     public void onNext(SerializedEvent event) {
+                                                         try {
+                                                             sseEmitter.send(SseEmitter.event().data(objectMapper
+                                                                                                             .writeValueAsString(
+                                                                                                                     new JsonEvent(
+                                                                                                                             event.asEvent()))));
+                                                         } catch (Exception e) {
+                                                             logger.warn("Exception on sending event - {}",
+                                                                         e.getMessage(),
+                                                                         e);
+                                                         }
+                                                     }
 
                 @Override
                 public void onError(Throwable throwable) {
@@ -185,17 +199,22 @@ public class EventsRestController {
             });
         } else {
             StreamObserver<GetEventsRequest> requestStream = eventStoreClient
-                    .listEvents(context, new StreamObserver<InputStream>() {
-                        @Override
-                        public void onNext(InputStream inputStream) {
-                            try {
-                                EventWithToken eventMessageWithToken = EventWithToken.parseFrom(inputStream);
-                                sseEmitter.send(SseEmitter.event()
-                                                          .id(String.valueOf(eventMessageWithToken.getToken() + 1))
-                                                          .data(new JsonEvent(eventMessageWithToken.getEvent())));
-                            } catch (IOException e) {
-                                logger.debug("Exception on sending event - {}", e.getMessage(), e);
-                                throw new RuntimeException(e);
+                    .listEvents(context,
+                                getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                new StreamObserver<InputStream>() {
+                                    @Override
+                                    public void onNext(InputStream inputStream) {
+                                        try {
+                                            EventWithToken eventMessageWithToken = EventWithToken
+                                                    .parseFrom(inputStream);
+                                            sseEmitter.send(SseEmitter.event()
+                                                                      .id(String.valueOf(
+                                                                              eventMessageWithToken.getToken() + 1))
+                                                                      .data(new JsonEvent(eventMessageWithToken
+                                                                                                  .getEvent())));
+                                        } catch (IOException e) {
+                                            logger.debug("Exception on sending event - {}", e.getMessage(), e);
+                                            throw new RuntimeException(e);
                             }
                         }
 
@@ -229,7 +248,7 @@ public class EventsRestController {
     public Future<Void> submitEvents(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @Valid @RequestBody JsonEventList jsonEvents,
-            final Principal principal) {
+            @ApiIgnore final Authentication principal) {
         auditLog.info("[{}@{}] Request to submit events.", AuditLog.username(principal), context);
 
         if (jsonEvents.messages.isEmpty()) {
@@ -237,6 +256,8 @@ public class EventsRestController {
         }
         CompletableFuture<Void> result = new CompletableFuture<>();
         StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context,
+                                                                                    getOrDefault(principal,
+                                                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                                                                     new StreamObserver<Confirmation>() {
                                                                                         @Override
                                                                                         public void onNext(
@@ -282,7 +303,7 @@ public class EventsRestController {
     public Future<Void> appendSnapshotOld(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
-            final Principal principal) {
+            @ApiIgnore final Authentication principal) {
         auditLog.warn("[{}@{}] Request to append event(s) using deprecated API", AuditLog.username(principal), context);
 
         return appendSnapshot(context, jsonEvent, principal);
@@ -303,12 +324,14 @@ public class EventsRestController {
     public Future<Void> appendSnapshot(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
-            final Principal principal) {
+            @ApiIgnore final Authentication principal) {
         auditLog.info("[{}@{}] Request to append event(s)", AuditLog.username(principal), context);
 
         Event event = jsonEvent.asEvent();
         CompletableFuture<Void> result = new CompletableFuture<>();
         eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+                                        ObjectUtils.getOrDefault(principal,
+                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
                                         event,
                                         new StreamObserver<Confirmation>() {
                                             @Override

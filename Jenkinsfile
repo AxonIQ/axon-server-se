@@ -61,7 +61,12 @@ podTemplate(label: label,
             command: 'cat', ttyEnabled: true,
             envVars: [
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ])
+            ]),
+        containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11',
+            envVars: [
+                envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
+            ],
+            command: 'cat', ttyEnabled: true)
     ],
     volumes: [
         secretVolume(secretName: 'maven-settings', mountPath: '/maven_settings')          // For the settings.xml
@@ -130,9 +135,9 @@ podTemplate(label: label,
                 if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
                     def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
-                            string(name: 'groupId', value: pomGroupId),
-                            string(name: 'artifactId', value: pomArtifactId),
-                            string(name: 'projectVersion', value: pomVersion)
+                            string(name: 'serverEdition', value: 'se'),
+                            string(name: 'projectVersion', value: pomVersion),
+                            string(name: 'cliVersion', value: pomVersion)
                         ]
                     if (canaryTests.result == "FAILURE") {
                         slackReport = slackReport + "\nCanary Tests FAILED!"
