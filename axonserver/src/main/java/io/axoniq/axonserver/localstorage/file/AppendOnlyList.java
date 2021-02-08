@@ -29,16 +29,13 @@ import javax.annotation.Nonnull;
  * @author Marc Gathier
  * @since 4.5
  */
+@SuppressWarnings("squid:S2160")
 public class AppendOnlyList<T> extends AbstractList<T> {
 
     public static final String LIST_IS_APPEND_ONLY = "List is append only";
     private final Node<T> head;
     private final AtomicInteger size = new AtomicInteger();
     private final AtomicReference<Node<T>> last = new AtomicReference<>();
-
-    public AppendOnlyList() {
-        this(Collections.emptyList());
-    }
 
     public AppendOnlyList(List<T> values) {
         head = new Node<>(values);
@@ -94,16 +91,6 @@ public class AppendOnlyList<T> extends AbstractList<T> {
     @Override
     public boolean removeIf(Predicate<? super T> filter) {
         throw new UnsupportedOperationException(LIST_IS_APPEND_ONLY);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return super.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return super.hashCode();
     }
 
     public T last() {
