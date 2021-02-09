@@ -13,8 +13,6 @@ import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.version.VersionInfo;
-import io.axoniq.axonserver.version.VersionInfoProvider;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
@@ -24,6 +22,8 @@ import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.json.UserInfo;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.version.VersionInfo;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -35,9 +35,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.util.stream.Stream;
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -48,7 +49,7 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping("/v1/public")
 public class PublicRestController {
 
-    private final Iterable<AxonServer> axonServerProvider;
+    private final Function<String, Stream<AxonServer>> axonServerProvider;
     private final Topology topology;
     private final CommandDispatcher commandDispatcher;
     private final QueryDispatcher queryDispatcher;
@@ -58,11 +59,12 @@ public class PublicRestController {
     private final AccessControlConfiguration accessControlConfiguration;
     private final VersionInfoProvider versionInfoSupplier;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
+    private final boolean extensionsEnabled;
 
     @Value("${axoniq.axonserver.devmode.enabled:false}")
     private boolean isDevelopmentMode;
 
-    public PublicRestController(Iterable<AxonServer> axonServerProvider,
+    public PublicRestController(Function<String, Stream<AxonServer>> axonServerProvider,
                                 Topology topology,
                                 CommandDispatcher commandDispatcher,
                                 QueryDispatcher queryDispatcher,
@@ -79,6 +81,7 @@ public class PublicRestController {
         this.features = features;
         this.sslConfiguration = messagingPlatformConfiguration.getSsl();
         this.accessControlConfiguration = messagingPlatformConfiguration.getAccesscontrol();
+        this.extensionsEnabled = messagingPlatformConfiguration.isExtensionsEnabled();
         this.versionInfoSupplier = versionInfoSupplier;
         this.subscriptionMetricsRegistry = subscriptionMetricsRegistry;
     }
@@ -88,9 +91,8 @@ public class PublicRestController {
     @ApiOperation(value="Retrieves all nodes in the cluster that the current node knows about.", notes = "For _admin nodes the result contains all nodes, for non _admin nodes the"
             + "result only contains nodes from contexts available on this node and the _admin nodes.")
     public List<JsonServerNode> getClusterNodes() {
-        return StreamSupport.stream(axonServerProvider.spliterator(), false)
-                                               .map(n -> new JsonServerNode(n))
-                                               .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
+        return axonServerProvider.apply(null).map(n -> new JsonServerNode(n))
+                                 .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 
     @GetMapping(path = "me")
@@ -104,6 +106,7 @@ public class PublicRestController {
         node.setContextNames(topology.getMyContextNames());
         node.setStorageContextNames(topology.getMyStorageContextNames());
         node.setClustered(features.isEnterprise());
+        node.setExtensionsEnabled(extensionsEnabled);
         return node;
     }
 

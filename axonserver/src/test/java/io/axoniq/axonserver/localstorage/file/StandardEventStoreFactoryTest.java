@@ -11,11 +11,11 @@ package io.axoniq.axonserver.localstorage.file;
 
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
@@ -34,6 +34,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 
 /**
  * @author Marc Gathier
@@ -42,6 +45,8 @@ public class StandardEventStoreFactoryTest {
 
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
+
+    private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     private StandardEventStoreFactory testSubject;
 
@@ -64,9 +69,10 @@ public class StandardEventStoreFactoryTest {
         embeddedDBProperties.getSnapshot().setUseMmapIndex(false);
         embeddedDBProperties.getSnapshot().setForceCleanMmapIndex(true);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        doNothing().when(fileSystemMonitor).registerPath(any());
         testSubject = new StandardEventStoreFactory(embeddedDBProperties,
                                                     new DefaultEventTransformerFactory(),
-                                                    new DefaultStorageTransactionManagerFactory(), meterFactory);
+                                                    new DefaultStorageTransactionManagerFactory(), meterFactory, fileSystemMonitor);
     }
 
     @Test
@@ -119,16 +125,16 @@ public class StandardEventStoreFactoryTest {
         eventStorageEngine.close(true);
     }
 
-    private SerializedEvent newEvent(String aggregateIdentifier, int sequenceNumber) {
-        return new SerializedEvent(Event.newBuilder()
-                                        .setAggregateIdentifier(aggregateIdentifier)
-                                        .setAggregateSequenceNumber(sequenceNumber)
-                                        .setAggregateType("Demo")
-                                        .setPayload(
-                                                SerializedObject.newBuilder()
-                                                                .setData(dummyData(500))
-                                                                .build())
-                                        .build());
+    private Event newEvent(String aggregateIdentifier, int sequenceNumber) {
+        return Event.newBuilder()
+                    .setAggregateIdentifier(aggregateIdentifier)
+                    .setAggregateSequenceNumber(sequenceNumber)
+                    .setAggregateType("Demo")
+                    .setPayload(
+                            SerializedObject.newBuilder()
+                                            .setData(dummyData(500))
+                                            .build())
+                    .build();
     }
 
     private ByteString dummyData(int size) {

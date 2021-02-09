@@ -7,7 +7,9 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -21,34 +23,40 @@ import java.util.stream.StreamSupport;
 @Component
 public class AxonServersOverviewProvider {
 
-    private final Iterable<Application> applicationProvider;
+    private final Function<String, Stream<Application>> applicationProvider;
+    private final Function<String, Stream<AxonServer>> axonServerProvider;
 
-    private final Iterable<AxonServer> axonServerProvider;
-
-    public AxonServersOverviewProvider(Iterable<Application> applicationProvider,
-                                       Iterable<AxonServer> axonServerProvider) {
+    public AxonServersOverviewProvider(Function<String, Stream<Application>> applicationProvider,
+                                       Function<String, Stream<AxonServer>> axonServerProvider) {
         this.applicationProvider = applicationProvider;
         this.axonServerProvider = axonServerProvider;
     }
 
     public ApplicationsAndNodes applicationsAndNodes() {
-        return new ApplicationsAndNodes(listApplications(),listNodes());
+        return applicationsAndNodes(null);
     }
 
-    public List<ConnectedApplication> listApplications() {
-        return StreamSupport.stream(applicationProvider.spliterator(), false)
-                .map(ConnectedApplication::new)
-                .sorted(Comparator.comparing(ConnectedApplication::getName)).collect(Collectors.toList());
+    public ApplicationsAndNodes applicationsAndNodes(String context) {
+        return new ApplicationsAndNodes(listApplications(context), listNodes(context));
     }
 
-    public List<ServerNode> listNodes() {
-        return StreamSupport.stream(axonServerProvider.spliterator(), false)
-                .map(ServerNode::new)
-                .sorted(Comparator.comparing(ServerNode::getName)).collect(Collectors.toList());
+    public List<ConnectedApplication> listApplications(String context) {
+        return applicationProvider.apply(context)
+                                  .map(ConnectedApplication::new)
+                                  .sorted(Comparator.comparing(ConnectedApplication::getName)).collect(Collectors
+                                                                                                               .toList());
+    }
+
+    public List<ServerNode> listNodes(String context) {
+        return axonServerProvider.apply(context)
+                                 .map(ServerNode::new)
+                                 .filter(s -> s.hasContext(context))
+                                 .sorted(Comparator.comparing(ServerNode::getName)).collect(Collectors.toList());
     }
 
 
     public static class ApplicationsAndNodes {
+
         List<ConnectedApplication> applications;
         List<ServerNode> nodes;
 
@@ -143,6 +151,13 @@ public class AxonServersOverviewProvider {
 
         public boolean isAdmin() {
             return wrapped.isAdminLeader();
+        }
+
+        public boolean hasContext(String context) {
+            if (context == null) {
+                return true;
+            }
+            return StreamSupport.stream(getContexts().spliterator(), false).anyMatch(s -> s.equals(context));
         }
     }
 }

@@ -13,6 +13,7 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -33,9 +34,9 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -132,8 +133,8 @@ public class GatewayTest {
             }
 
             @Override
-            public Set<String> getRoles(String token) {
-                return Collections.emptySet();
+            public Authentication authentication(String context, String token) {
+                return GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
             }
         };
 

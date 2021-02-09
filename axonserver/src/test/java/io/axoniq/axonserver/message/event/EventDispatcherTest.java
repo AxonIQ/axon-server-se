@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class EventDispatcherTest {
+
     private EventDispatcher testSubject;
     @Mock
     private EventStore eventStoreClient;
@@ -54,11 +56,12 @@ public class EventDispatcherTest {
 
     @Before
     public void setUp() {
-        when(eventStoreClient.createAppendEventConnection(any(), any())).thenReturn(appendEventConnection);
+        when(eventStoreClient.createAppendEventConnection(any(), any(), any())).thenReturn(appendEventConnection);
         when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
         when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
+                                          () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()));
     }
@@ -92,16 +95,16 @@ public class EventDispatcherTest {
     public void appendSnapshot() {
         FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
         CompletableFuture<Confirmation> appendFuture = new CompletableFuture<>();
-        when(eventStoreClient.appendSnapshot(any(), any(Event.class))).thenReturn(appendFuture);
+        when(eventStoreClient.appendSnapshot(any(), any(), any(Event.class))).thenReturn(appendFuture);
         testSubject.appendSnapshot(Event.newBuilder().build(), responseObserver);
         appendFuture.complete(Confirmation.newBuilder().build());
-        verify(eventStoreClient).appendSnapshot(any(), any(Event.class));
+        verify(eventStoreClient).appendSnapshot(any(), any(), any(Event.class));
         assertEquals(1, responseObserver.values().size());
     }
 
     @Test
     public void listAggregateEventsNoEventStore() {
-        testSubject.listAggregateEvents("OtherContext",
+        testSubject.listAggregateEvents("OtherContext", GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                         GetAggregateEventsRequest.newBuilder().build(),
                                         new FakeStreamObserver<>());
     }
@@ -128,8 +131,8 @@ public class EventDispatcherTest {
 
             }
         };
-        when(eventStoreClient.listEvents(any(), any(StreamObserver.class))).then(a -> {
-            eventStoreOutputStreamRef.set((StreamObserver<InputStream>) a.getArguments()[1]);
+        when(eventStoreClient.listEvents(any(), any(), any(StreamObserver.class))).then(a -> {
+            eventStoreOutputStreamRef.set((StreamObserver<InputStream>) a.getArguments()[2]);
             return eventStoreResponseStream;
         });
         StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(responseObserver);
@@ -174,8 +177,8 @@ public class EventDispatcherTest {
 
             }
         };
-        when(eventStoreClient.queryEvents(any(), any(StreamObserver.class))).then(a -> {
-            eventStoreOutputStreamRef.set((StreamObserver<QueryEventsResponse>) a.getArguments()[1]);
+        when(eventStoreClient.queryEvents(any(), any(), any(StreamObserver.class))).then(a -> {
+            eventStoreOutputStreamRef.set((StreamObserver<QueryEventsResponse>) a.getArguments()[2]);
             return eventStoreResponseStream;
         });
         StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(responseObserver);

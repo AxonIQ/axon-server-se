@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static io.axoniq.axonserver.access.user.UserController.PWD_NOLOGON;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.mockito.Matchers.any;
@@ -29,6 +30,7 @@ public class UserControllerTest {
 
     private UserController testSubject;
     private List<User> users;
+    private PasswordEncoder passwordEncoder;
 
     @Before
     public void setup() {
@@ -53,7 +55,7 @@ public class UserControllerTest {
             return null;
         }).when(userRepository).delete(any(User.class));
 
-        testSubject = new UserController(new PasswordEncoder() {
+        passwordEncoder = new PasswordEncoder() {
             @Override
             public String encode(CharSequence charSequence) {
                 return "Encoded:" + charSequence;
@@ -63,7 +65,8 @@ public class UserControllerTest {
             public boolean matches(CharSequence charSequence, String s) {
                 return false;
             }
-        }, userRepository);
+        };
+        testSubject = new UserController(passwordEncoder, userRepository);
     }
 
     @Test
@@ -95,8 +98,35 @@ public class UserControllerTest {
     }
 
     @Test
+    public void newUserWithoutPassword() {
+        assertEquals(PWD_NOLOGON,
+                     testSubject.updateUser("Demo3", null, Collections.emptySet()).getPassword());
+    }
+
+    @Test
     public void syncUser() {
-        testSubject.syncUser(new User("Demo", "TEST"));
-        assertEquals("TEST", users.get(0).getPassword());
+        testSubject.syncUser(new User("Demo", "newpassword"));
+        assertEquals("newpassword", users.get(0).getPassword());
+    }
+
+    @Test
+    public void syncUserWithoutPassword() {
+        testSubject.updateUser("Demo4", "newpassword", Collections.emptySet());
+        User jpaUser = testSubject.findUser("Demo4");
+        jpaUser = new User(jpaUser.getUserName(), null, jpaUser.getRoles());
+        testSubject.syncUser(jpaUser);
+        assertEquals(passwordEncoder.encode("newpassword"), testSubject.findUser("Demo4").getPassword());
+    }
+
+    @Test
+    public void syncNewUser() {
+        testSubject.syncUser(new User("Demo5", passwordEncoder.encode("newpassword"), Collections.emptySet()));
+        assertEquals("Encoded:newpassword", testSubject.findUser("Demo5").getPassword());
+    }
+
+    @Test
+    public void syncNewUserWithoutPassword() {
+        testSubject.syncUser(new User("Demo6", null, Collections.emptySet()));
+        assertEquals(PWD_NOLOGON, testSubject.findUser("Demo6").getPassword());
     }
 }

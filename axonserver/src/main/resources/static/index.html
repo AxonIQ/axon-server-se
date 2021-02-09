@@ -32,10 +32,10 @@
             license: "free",
             features: [],
             hasFeature: function(featureName) {
-                    for( let idx = 0; idx < globals.features.length; idx++) {
-                        if( globals.features[idx] === featureName) return true;
-                    }
-                    return false;
+                for( let idx = 0; idx < globals.features.length; idx++) {
+                    if( globals.features[idx] === featureName) return true;
+                }
+                return false;
             },
             isEnterprise: function() {
                 return globals.license === 'enterprise edition'
@@ -72,6 +72,12 @@
         axios.interceptors.response.use(function (response) {
             return response;
         }, function (error) {
+
+            //ignore error requests when checking for updates
+            if (error.response.data.path.includes("/updates")) {
+                return Promise.reject(error)
+            }
+
             let errorData = JSON.stringify(error.response.data);
             console.log("Error on " + error.request.url + " " + errorData);
             alert(errorData);
@@ -104,39 +110,55 @@
 
         $(document).ready(function () {
             new Vue({
-                        el: "#logout",
-                        data: {
-                            user: null
-                        }, mounted() {
-                    axios.get("v1/public/user").then(
-                            response => {
-                                if (response.data && response.data.user) {
-                                    this.user = response.data.user;
-                                }
-                            });
-                }, methods: {
+                el: "#logout",
+                data: {
+                    user: null
+                },
+                mounted() {
+                    axios.get("v1/public/user").then(response => {
+                        if (response.data && response.data.user) {
+                            this.user = response.data.user;
+                        }
+                    });
+                },
+                methods: {
                     loggedIn: function () {
                         return this.user != null;
                     }
                 }
+            });
 
-                    });
             new Vue({
-                        el: '#footer',
-                        data: {
-                            version: "Version"
-                        }, mounted() {
+                el: '#footer',
+                data: {
+                    version: "Version",
+                    updates: {},
+                    showModal: false,
+                    hasUpdates: false
+                },
+                mounted() {
                     axios.get("v1/public/version").then(response => {
                         this.version = response.data.productName + " " + response.data.version;
+                        return response.data
+                    }).then(data => {
+                        let product = data.productName.includes("Enterprise") ? "axonserver" : "axonserver-se"
+                        let productVersion = data.version
+                            return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}`)}
+                    ).then(updatesData=> {
+                        if (updatesData.data !== undefined || updatesData.data!== 0) {
+                            this.hasUpdates = true
+                        }
+                        this.updates = updatesData.data.reverse();
                     });
                 }
-                    });
+            });
             new Vue({
                         el: '#nav',
                         data: {
                             admin: globals.admin,
                             licenseLoaded: false,
                             license: "free",
+                            extensionsEnabled: false
                         }, mounted() {
                             axios.get("v1/public/license").then(response => {
                                 globals.license = response.data.edition.toLowerCase();
@@ -145,6 +167,7 @@
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
                                     globals.adminNode = response.data.adminNode;
+                                    this.extensionsEnabled = response.data.extensionsEnabled;
                                     if (globals.authenticationEnabled) {
                                         this.admin = false;
                                         globals.admin = false;
@@ -152,18 +175,34 @@
                                                 response => {
                                                     globals.admin = globals.adminNode && response.data.adminUser;
                                                     this.admin = globals.admin;
-                                                    loadFragment();
-                                                });
+                                                    this.setHeight();
+                                            loadFragment();
+                                        });
 
                                     } else {
                                         this.admin = response.data.adminNode;
                                         globals.admin = response.data.adminNode;
+                                        this.setHeight();
                                         loadFragment();
                                     }
                                 });
                             });
                 }, methods: {
+                    setHeight() {
+                        if (globals.admin) {
+                            if (globals.features.length > 0) {
+                                $("nav").css("min-height", "847px");
+                                $("article").css("min-height", "847px");
+                            } else {
+                                $("nav").css("min-height", "580px");
+                                $("article").css("min-height", "580px");
+                            }
+                        } else {
+                            $("nav").css("min-height", "414px");
+                            $("article").css("min-height", "414px");
                         }
+                    }
+                }
                     });
 
             $.ajaxPrefilter(function (options, original_Options, jqXHR) {
@@ -174,10 +213,6 @@
                 console.info(window.location.hash);
                 loadFragment();
             });
-
-
-
-
         });
 
         function loadFragment() {
@@ -192,8 +227,41 @@
                 document.title = "AxonDashboard: " + route
             });
         }
+
+        Vue.component("modal-updates", {
+            template: "#modal-template"
+        });
+
     </script>
 
+    <script type="text/x-template" id="modal-template">
+        <transition name="modal">
+            <div style="visibility: hidden"  class="modal-mask" @click.stop="$emit('close')">
+                <div class="modal-wrapper">
+                    <div class="modal-container" @click.stop="">
+
+                        <div class="modal-header">
+                            <slot name="header">
+                            </slot>
+                        </div>
+
+                        <div class="modal-body">
+                            <slot name="body">
+                            </slot>
+                        </div>
+
+                        <div class="modal-footer">
+                            <slot name="footer">
+                                <button class="button" @click.stop="$emit('close')">
+                                    OK
+                                </button>
+                            </slot>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+    </script>
 </head>
 <body>
 <nav id="nav">
@@ -206,10 +274,13 @@
     <a href="#applications" class="menu-applications" v-if="admin && hasFeature('APP_AUTHENTICATION')"><i
             class="fas fa-window-restore fa-2x"></i>Apps</a>
     <a href="#users" class="menu-users" v-if="admin"><i class="fas fa-users fa-2x"></i> Users</a>
-    <a href="#context" class="menu-context" v-if="admin && hasFeature('MULTI_CONTEXT')"><i class="fas fa-sitemap fa-2x"></i> Contexts</a>
+    <a href="#context" class="menu-context" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
+            class="fas fa-sitemap fa-2x"></i> Contexts</a>
     <a href="#replicationgroups" class="menu-replicationgroups" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
             class="fas fa-clone fa-2x"></i>Replication groups</a>
-    <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
+    <a href="#extensions" class="menu-replicationgroups" v-if="extensionsEnabled && admin"><i
+            class="fas fa-plus-square fa-2x"></i>Extensions</a>
+        <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
     </span>
 </nav>
 
@@ -227,7 +298,27 @@
 </article>
 
 <footer id="footer">
-    <p>{{version}} by <span>AxonIQ</span></p>
+    <p>{{version}} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="New version available!" class="important">
+        <i class="fas fa-exclamation-triangle"></i></a> by <span>AxonIQ</span> <a href="#info" class="info"><i class="fas fa-info-circle"></i></a></p>
+
+
+    <modal-updates style="visibility: visible" v-if="showModal" @close="showModal = false">
+        <h3 slot="header">New version available!</h3>
+        <div slot="body">
+            <p>We strongly encourage you to update to the latest Axon Server version, as soon as possible.</p>
+            <br/>
+            <ul id="updates">
+                <li v-for="update in updates">
+                    <h4>{{ update.name }}</h4>
+                    <p>{{ update.body }}</p>
+                    <hr />
+                </li>
+            </ul>
+        </div>
+
+    </modal-updates>
+
+
 </footer>
 </body>
 </html>

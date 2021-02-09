@@ -32,3 +32,4 @@ dev/node3/**
 
 data/
 **/THIRD-PARTY.properties
+/axonserver/cache/

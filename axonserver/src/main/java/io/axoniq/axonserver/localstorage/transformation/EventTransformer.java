@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -12,12 +12,14 @@ package io.axoniq.axonserver.localstorage.transformation;
 /**
  * Transformer to transform events between protobuf event bytes and stored event bytes.
  * Transformer implementations may perform compression or encryption before storing.
+ *
  * @author Marc Gathier
  */
 public interface EventTransformer {
 
     /**
      * Converts stored bytes to protobuf bytes.
+     *
      * @param eventBytes bytes as stored
      * @return protobuf event bytes
      */
@@ -25,6 +27,7 @@ public interface EventTransformer {
 
     /**
      * Converts protobuf event bytes to bytes to store.
+     *
      * @param bytes protobuf event bytes
      * @return transformed bytes to store
      */
