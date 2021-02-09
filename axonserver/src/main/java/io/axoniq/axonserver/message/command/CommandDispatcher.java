@@ -23,6 +23,7 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +51,7 @@ import javax.annotation.Nonnull;
 public class CommandDispatcher {
 
     private final CommandRegistrationCache registrations;
-    private final ConcurrentHashMap<String,CommandInformation> commandCache;
+    private final ConstraintCache<String, CommandInformation> commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
@@ -58,7 +59,7 @@ public class CommandDispatcher {
     private final CommandInterceptors commandInterceptors;
 
     public CommandDispatcher(CommandRegistrationCache registrations,
-                             ConcurrentHashMap<String,CommandInformation> commandCache,
+                             ConstraintCache<String, CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
                              MeterFactory meterFactory,
                              CommandInterceptors commandInterceptors,
@@ -72,7 +73,7 @@ public class CommandDispatcher {
                                                 BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
                                                 meterFactory,
                                                 ErrorCode.COMMAND_DISPATCH_ERROR);
-        metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConcurrentHashMap::size);
+        metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
     }
 
 

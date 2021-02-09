@@ -12,6 +12,7 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
+import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,11 +21,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
-import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 import static java.lang.String.format;
 
@@ -35,7 +36,9 @@ import static java.lang.String.format;
  * @author Marc Gathier
  */
 @Component("QueryCache")
-public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
+public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
+        implements ConstraintCache<String, QueryInformation> {
+
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
     private final long cacheCapacity;
@@ -53,7 +56,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation> {
         }
     }
 
-    public QueryInformation remove(String messagId) {
+    private QueryInformation remove(String messagId) {
         logger.debug("Remove messageId {}", messagId);
         return super.remove(messagId);
     }
