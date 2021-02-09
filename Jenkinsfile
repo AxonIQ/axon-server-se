@@ -54,7 +54,12 @@ podTemplate(label: label,
             resourceRequestCpu: '1000m', resourceLimitCpu: '1000m',
             resourceRequestMemory: '3200Mi', resourceLimitMemory: '4Gi',
             envVars: [
-                envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
+                envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m'),
+                envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
+            ]),
+        containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11',
+            command: 'cat', ttyEnabled: true,
+            envVars: [
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
             ]),
         containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11',
@@ -64,7 +69,6 @@ podTemplate(label: label,
             command: 'cat', ttyEnabled: true)
     ],
     volumes: [
-        secretVolume(secretName: 'cacerts', mountPath: '/docker-java-home/lib/security'), // For our Nexus certificates
         secretVolume(secretName: 'maven-settings', mountPath: '/maven_settings')          // For the settings.xml
     ]) {
         node(label) {
@@ -95,7 +99,7 @@ podTemplate(label: label,
                         sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"   // Ignore test failures; we want the numbers only.
 
                         if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
-                            slackReport = slackReport + "\nDeployed to dev-nexus"
+                            slackReport = slackReport + "\nDeployed to Nexus"
                          }
 
                          if (relevantBranch(gitBranch, dockerBranches)) {

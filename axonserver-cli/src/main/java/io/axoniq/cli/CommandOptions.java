@@ -304,6 +304,14 @@ public class CommandOptions {
             .desc("[Optional] Password for the user")
             .build();
     /**
+     * Signify this user will not have a password, which effectively creates a locked account.
+     */
+    public static final Option NO_PASSWORD = Option
+            .builder()
+            .longOpt("no-password")
+            .desc("[Optional] Create a (locked) user account without a password.")
+            .build();
+    /**
      * Defines the token for a new application. If this is omitted Axon Server will generate a token.
      */
     public static final Option SET_TOKEN = Option

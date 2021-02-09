@@ -45,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.data.util.CloseableIterator;
@@ -55,10 +56,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -69,6 +68,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
@@ -91,6 +91,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final EventInterceptors eventInterceptors;
     private final int maxEventCount;
+
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
      * events
@@ -152,8 +153,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void initContext(String context, boolean validating, long defaultFirstEventIndex,
                             long defaultFirstSnapshotIndex) {
         try {
-            workersMap.computeIfAbsent(context, Workers::new)
-                      .ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
+            Workers workers = workersMap.computeIfAbsent(context, Workers::new);
+            workers.ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
         } catch (RuntimeException ex) {
             workersMap.remove(context);
             throw ex;
@@ -701,10 +702,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return Stream.empty();
     }
 
-    public void health(Health.Builder builder) {
-        workersMap.values().forEach(worker -> worker.eventStreamReader.health(builder));
-    }
-
     private boolean isClientException(Throwable exception) {
         return exception instanceof MessagingPlatformException
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
@@ -739,6 +736,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final Gauge snapshotGauge;
         private final Object initLock = new Object();
         private volatile boolean initialized;
+
+
 
 
         public Workers(String context) {
@@ -787,6 +786,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     snapshotStorageEngine.close(false);
                     throw runtimeException;
                 }
+
+
             }
         }
 
@@ -837,6 +838,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventWriteStorage.deleteAllEventData();
             snapshotWriteStorage.deleteAllEventData();
         }
+
     }
 
     private class InterceptorAwareEventDecorator implements EventDecorator {

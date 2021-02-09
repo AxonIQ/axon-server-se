@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,21 +18,24 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
-import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 /**
  * Cache for pending commands.
  * Has a scheduled task to check for commands that are pending for longer than the configured timeout
  * and will cancel these commands when timeout occurs.
+ *
  * @author Marc Gathier
  */
 @Component
-public class CommandCache extends ConcurrentHashMap<String, CommandInformation> {
+public class CommandCache extends ConcurrentHashMap<String, CommandInformation>
+        implements ConstraintCache<String, CommandInformation> {
+
     private final Logger logger = LoggerFactory.getLogger(CommandCache.class);
     private final long defaultCommandTimeout;
     private final Clock clock;
