@@ -140,6 +140,22 @@ public class MessagingPlatformConfiguration {
      * Number of threads for executing incoming gRPC requests for internal communication
      */
     private int clusterExecutorThreadCount = 4;
+    /**
+     * Enable extensions for Axon Server
+     */
+    private boolean extensionsEnabled = true;
+    /**
+     * Directory for osgi cache for extensions
+     */
+    private String extensionCacheDirectory = "plugins/cache";
+    /**
+     * Directory for installed extension packages
+     */
+    private String extensionPackageDirectory = "plugins/bundles";
+    /**
+     * Clean policy for extensions cache on startup (values "none" or "onFirstInit")
+     */
+    private String extensionCleanPolicy = "onFirstInit";
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -387,5 +403,37 @@ public class MessagingPlatformConfiguration {
 
     public void setWebSocketAllowedOrigins(String webSocketAllowedOrigins) {
         this.webSocketAllowedOrigins = webSocketAllowedOrigins;
+    }
+
+    public boolean isExtensionsEnabled() {
+        return extensionsEnabled;
+    }
+
+    public void setExtensionsEnabled(boolean extensionsEnabled) {
+        this.extensionsEnabled = extensionsEnabled;
+    }
+
+    public String getExtensionCacheDirectory() {
+        return extensionCacheDirectory;
+    }
+
+    public void setExtensionCacheDirectory(String extensionCacheDirectory) {
+        this.extensionCacheDirectory = extensionCacheDirectory;
+    }
+
+    public String getExtensionCleanPolicy() {
+        return extensionCleanPolicy;
+    }
+
+    public void setExtensionCleanPolicy(String extensionCleanPolicy) {
+        this.extensionCleanPolicy = extensionCleanPolicy;
+    }
+
+    public String getExtensionPackageDirectory() {
+        return extensionPackageDirectory;
+    }
+
+    public void setExtensionPackageDirectory(String extensionPackageDirectory) {
+        this.extensionPackageDirectory = extensionPackageDirectory;
     }
 }

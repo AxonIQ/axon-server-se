@@ -15,7 +15,6 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
@@ -119,16 +118,16 @@ public class StandardEventStoreFactoryTest {
         eventStorageEngine.close(true);
     }
 
-    private SerializedEvent newEvent(String aggregateIdentifier, int sequenceNumber) {
-        return new SerializedEvent(Event.newBuilder()
-                                        .setAggregateIdentifier(aggregateIdentifier)
-                                        .setAggregateSequenceNumber(sequenceNumber)
-                                        .setAggregateType("Demo")
-                                        .setPayload(
-                                                SerializedObject.newBuilder()
-                                                                .setData(dummyData(500))
-                                                                .build())
-                                        .build());
+    private Event newEvent(String aggregateIdentifier, int sequenceNumber) {
+        return Event.newBuilder()
+                    .setAggregateIdentifier(aggregateIdentifier)
+                    .setAggregateSequenceNumber(sequenceNumber)
+                    .setAggregateType("Demo")
+                    .setPayload(
+                            SerializedObject.newBuilder()
+                                            .setData(dummyData(500))
+                                            .build())
+                    .build();
     }
 
     private ByteString dummyData(int size) {

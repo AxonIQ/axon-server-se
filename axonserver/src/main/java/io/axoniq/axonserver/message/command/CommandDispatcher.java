@@ -13,9 +13,12 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.interceptor.CommandInterceptors;
+import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -25,14 +28,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 /**
  * Responsible for managing command subscriptions and processing commands.
@@ -50,15 +56,18 @@ public class CommandDispatcher {
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
+    private final CommandInterceptors commandInterceptors;
 
     public CommandDispatcher(CommandRegistrationCache registrations,
                              ConstraintCache<String, CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
                              MeterFactory meterFactory,
+                             CommandInterceptors commandInterceptors,
                              @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
+        this.commandInterceptors = commandInterceptors;
         commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
                                                 queueCapacity,
                                                 BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
@@ -68,28 +77,67 @@ public class CommandDispatcher {
     }
 
 
-    public void dispatch(String context, SerializedCommand request,
-                         Consumer<SerializedCommandResponse> responseObserver, boolean proxied) {
-        if (proxied) {
-            String clientStreamId = request.getClientStreamId();
-            ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
-            CommandHandler<?> handler = registrations.findByClientAndCommand(clientIdentification,
-                                                                             request.getCommand());
-            dispatchToCommandHandler(request, handler, responseObserver,
-                                     ErrorCode.CLIENT_DISCONNECTED,
-                                     String.format("Client %s not found while processing: %s"
-                                             , clientStreamId, request.getCommand()));
-        } else {
+    public void dispatchProxied(String context, SerializedCommand request,
+                                Consumer<SerializedCommandResponse> responseObserver) {
+        String clientStreamId = request.getClientStreamId();
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
+        CommandHandler<?> handler = registrations.findByClientAndCommand(clientIdentification,
+                                                                         request.getCommand());
+        dispatchToCommandHandler(request, handler, responseObserver,
+                                 ErrorCode.CLIENT_DISCONNECTED,
+                                 String.format("Client %s not found while processing: %s"
+                                         , clientStreamId, request.getCommand()));
+    }
+
+    public void dispatch(String context, Authentication authentication, SerializedCommand request,
+                         Consumer<SerializedCommandResponse> responseObserver) {
+        ExtensionUnitOfWork extensionUnitOfWork = new DefaultInterceptorContext(context, authentication);
+        Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(extensionUnitOfWork,
+                                                                                         r,
+                                                                                         responseObserver);
+        try {
+            request = commandInterceptors.commandRequest(request, extensionUnitOfWork);
             commandRate(context).mark();
             CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
                                                                                   request.wrapped(),
                                                                                   request.getRoutingKey());
-            dispatchToCommandHandler(request, commandHandler, responseObserver,
+            dispatchToCommandHandler(request,
+                                     commandHandler,
+                                     interceptedResponseObserver,
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
                                      "No Handler for command: " + request.getCommand()
             );
+        } catch (MessagingPlatformException other) {
+            logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
+            interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
+                                                                    other.getErrorCode(),
+                                                                    other.getMessage()));
+        } catch (Exception other) {
+            logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
+            interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
+                                                                    ErrorCode.OTHER,
+                                                                    other.getMessage()));
         }
     }
+
+    private void intercept(ExtensionUnitOfWork extensionUnitOfWork,
+                           SerializedCommandResponse response,
+                           Consumer<SerializedCommandResponse> responseObserver) {
+        try {
+            responseObserver.accept(commandInterceptors.commandResponse(response, extensionUnitOfWork));
+        } catch (MessagingPlatformException ex) {
+            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), ex);
+            responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
+                                                         ex.getErrorCode(),
+                                                         ex.getMessage()));
+        } catch (Exception other) {
+            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), other);
+            responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
+                                                         ErrorCode.OTHER,
+                                                         other.getMessage()));
+        }
+    }
+
 
     public MeterFactory.RateMeter commandRate(String context) {
         return commandRatePerContext.computeIfAbsent(context,
@@ -115,52 +163,39 @@ public class CommandDispatcher {
                                           ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
             logger.warn("No Handler for command: {}", command.getName());
-            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
-                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
-                                                                                 .setErrorCode(noHandlerErrorCode
-                                                                                                       .getCode())
-                                                                                 .setErrorMessage(ErrorMessageFactory
-                                                                                                          .build(noHandlerMessage))
-                                                                                 .build()));
+            responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
+                                                         noHandlerErrorCode,
+                                                         noHandlerMessage));
             return;
         }
 
         try {
             logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
             CommandInformation commandInformation = new CommandInformation(command.getName(),
-                                                                                    command.wrapped().getClientId(),
-                                                                       commandHandler.getClientId(),
-                                                                                    responseObserver,
-                                                                       commandHandler.getClientStreamIdentification(),
-                                                                       commandHandler.getComponentName());
-        commandCache.put(command.getMessageIdentifier(), commandInformation);
-        WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
-                                                           commandHandler.getClientId(),
-                                                           command);
+                                                                           command.wrapped().getClientId(),
+                                                                           commandHandler.getClientId(),
+                                                                           responseObserver,
+                                                                           commandHandler
+                                                                                   .getClientStreamIdentification(),
+                                                                           commandHandler.getComponentName());
+            commandCache.put(command.getMessageIdentifier(), commandInformation);
+            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
+                                                               commandHandler.getClientId(),
+                                                               command);
             commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
-            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
-                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
-                                                                                 .setErrorCode(ErrorCode.TOO_MANY_REQUESTS
-                                                                                                       .getCode())
-                                                                                 .setErrorMessage(ErrorMessageFactory
-                                                                                                          .build(insufficientBufferCapacityException
-                                                                                                                         .getMessage()))
-                                                                                 .build()));
+            responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
+                                                         ErrorCode.TOO_MANY_REQUESTS,
+                                                         insufficientBufferCapacityException
+                                                                 .getMessage()));
         } catch (MessagingPlatformException mpe) {
             commandCache.remove(command.getMessageIdentifier());
-            responseObserver.accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                                                                                 .setMessageIdentifier(command.getMessageIdentifier())
-                                                                                 .setRequestIdentifier(command.getMessageIdentifier())
-                                                                                 .setErrorCode(mpe.getErrorCode()
-                                                                                                  .getCode())
-                                                                                 .setErrorMessage(ErrorMessageFactory
-                                                                                                          .build(mpe.getMessage()))
-                                                                                 .build()));
+            responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
+                                                         mpe.getErrorCode(),
+                                                         mpe.getMessage()));
         }
     }
+
 
 
     public void handleResponse(SerializedCommandResponse commandResponse, boolean proxied) {
@@ -198,25 +233,15 @@ public class CommandDispatcher {
         CommandHandler<?> client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
                                                                       request.getRoutingKey());
         if (client == null) {
-            commandInformation.getResponseConsumer().accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                                                                                                         .setMessageIdentifier(
-                                                                                                                 request.getMessageIdentifier())
-                                                                                                         .setRequestIdentifier(
-                                                                                                                 request.getMessageIdentifier())
-                                                                                                         .setErrorCode(
-                                                                                                                 ErrorCode.NO_HANDLER_FOR_COMMAND
-                                                                                                                         .getCode())
-                                                                                                         .setErrorMessage(
-                                                                                                                 ErrorMessageFactory
-                                                                                                                         .build("No Handler for command: "
-                                                                                                                                        + request
-                                                                                                                                 .getName()))
-                                                                                                         .build()));
+            commandInformation.getResponseConsumer().accept(errorCommandResponse(request.getMessageIdentifier(),
+                                                                                 ErrorCode.NO_HANDLER_FOR_COMMAND,
+                                                                                 "No Handler for command: "
+                                                                                         + request
+                                                                                         .getName()));
             return null;
         }
 
         logger.debug("Dispatch {} to: {}", request.getName(), client.getClientStreamIdentification());
-
         commandCache.put(request.getMessageIdentifier(), new CommandInformation(request.getName(),
                                                                                 request.wrapped().getClientId(),
                                                                                 client.getClientId(),
@@ -234,22 +259,29 @@ public class CommandDispatcher {
         messageIds.forEach(m -> {
             CommandInformation ci = commandCache.remove(m);
             if (ci != null) {
-                ci.getResponseConsumer().accept(new SerializedCommandResponse(CommandResponse.newBuilder()
-                                                                                             .setMessageIdentifier(m)
-                                                                                             .setRequestIdentifier(m)
-                                                                                             .setErrorMessage(
-                                                                                                     ErrorMessageFactory
-                                                                                                             .build("Connection lost while executing command on: "
-                                                                                                                            + ci
-                                                                                                                     .getClientStreamIdentification()))
-                                                                                             .setErrorCode(ErrorCode.CONNECTION_TO_HANDLER_LOST
-                                                                                                                   .getCode())
-                                                                                             .build()));
+                ci.getResponseConsumer()
+                  .accept(errorCommandResponse(m,
+                                               ErrorCode.CONNECTION_TO_HANDLER_LOST,
+                                               "Connection lost while executing command on: " + ci
+                                                       .getTargetClientId()));
             }
         });
     }
 
     public int activeCommandCount() {
         return commandCache.size();
+    }
+
+    @Nonnull
+    private SerializedCommandResponse errorCommandResponse(String requestIdentifier, ErrorCode errorCode,
+                                                           String errorMessage) {
+        return new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                            .setMessageIdentifier(UUID.randomUUID().toString())
+                                                            .setRequestIdentifier(requestIdentifier)
+                                                            .setErrorCode(errorCode
+                                                                                  .getCode())
+                                                            .setErrorMessage(ErrorMessageFactory
+                                                                                     .build(errorMessage))
+                                                            .build());
     }
 }

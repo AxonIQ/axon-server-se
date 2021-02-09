@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
@@ -143,7 +144,7 @@ public class HttpStreamingQueryTest {
             public EventStorageEngine createSnapshotStorageEngine(String context) {
                 return engine;
             }
-        }, new SimpleMeterRegistry(), eventStore -> null);
+        }, new SimpleMeterRegistry(), eventStore -> null, new NoOpEventInterceptors());
         localEventStore.initContext(Topology.DEFAULT_CONTEXT, false);
         EventStoreLocator eventStoreLocator = new DefaultEventStoreLocator(localEventStore);
         testSubject = new HttpStreamingQuery(eventStoreLocator);
@@ -174,9 +175,9 @@ public class HttpStreamingQueryTest {
         emitter.onCompletion(latch::countDown);
 
         emitter.onTimeout(latch::countDown);
-        testSubject.query(Topology.DEFAULT_CONTEXT, "aggregateIdentifier contains \"demo\" | limit( 10)",
+        testSubject.query(Topology.DEFAULT_CONTEXT, null, "aggregateIdentifier contains \"demo\" | limit( 10)",
                           QueryEventsRequestStreamObserver.TIME_WINDOW_CUSTOM, true, false,
-                          "token", emitter);
+                          "token", emitter, false);
 
         latch.await(1, TimeUnit.SECONDS);
         assertEquals(13, messages.size());

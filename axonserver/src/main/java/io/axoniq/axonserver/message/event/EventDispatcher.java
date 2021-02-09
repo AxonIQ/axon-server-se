@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -43,6 +44,7 @@ import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -89,6 +91,7 @@ public class EventDispatcher implements AxonServerClientService {
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
     private final EventStoreLocator eventStoreLocator;
+    private final AuthenticationProvider authenticationProvider;
     private final MeterFactory meterFactory;
     private final ContextProvider contextProvider;
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
@@ -97,19 +100,22 @@ public class EventDispatcher implements AxonServerClientService {
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
+                           AuthenticationProvider authenticationProvider,
                            MeterFactory meterFactory) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
+        this.authenticationProvider = authenticationProvider;
         this.meterFactory = meterFactory;
     }
 
 
     public StreamObserver<InputStream> appendEvent(StreamObserver<Confirmation> responseObserver) {
-        return appendEvent(contextProvider.getContext(),
+        return appendEvent(contextProvider.getContext(), authenticationProvider.get(),
                            new ForwardingStreamObserver<>(logger, "appendEvent", responseObserver));
     }
 
-    public StreamObserver<InputStream> appendEvent(String context, StreamObserver<Confirmation> responseObserver) {
+    public StreamObserver<InputStream> appendEvent(String context, Authentication authentication,
+                                                   StreamObserver<Confirmation> responseObserver) {
         EventStore eventStore = eventStoreLocator.getEventStore(context);
 
         if (eventStore == null) {
@@ -117,19 +123,43 @@ public class EventDispatcher implements AxonServerClientService {
                                                                     NO_EVENT_STORE_CONFIGURED + context));
             return new NoOpStreamObserver<>();
         }
-        StreamObserver<InputStream> appendEventConnection = eventStore.createAppendEventConnection(context,
-                                                                                                   responseObserver);
+        StreamObserver<InputStream> appendEventConnection =
+                eventStore.createAppendEventConnection(context, authentication,
+                                                       new StreamObserver<Confirmation>() {
+                                                           @Override
+                                                           public void onNext(Confirmation confirmation) {
+                                                               responseObserver.onNext(confirmation);
+                                                           }
+
+                                                           @Override
+                                                           public void onError(Throwable throwable) {
+                                                               StreamObserverUtils.error(responseObserver,
+                                                                                         MessagingPlatformException
+                                                                                                     .create(throwable));
+                                                           }
+
+                                                           @Override
+                                                           public void onCompleted() {
+
+                                                                   responseObserver.onCompleted();
+                                                           }
+                                                       });
         return new StreamObserver<InputStream>() {
             @Override
-            public void onNext(InputStream event) {
-                appendEventConnection.onNext(event);
-                eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
+            public void onNext(InputStream inputStream) {
+                try {
+                    appendEventConnection.onNext(inputStream);
+                    eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
+                } catch (Exception exception) {
+                    StreamObserverUtils.error(appendEventConnection, exception);
+                    StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
+                }
             }
 
             @Override
             public void onError(Throwable throwable) {
                 logger.warn("Error on connection from client: {}", throwable.getMessage());
-                appendEventConnection.onError(throwable);
+                StreamObserverUtils.error(appendEventConnection, throwable);
             }
 
             @Override
@@ -149,37 +179,47 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void appendSnapshot(Event event, StreamObserver<Confirmation> confirmationStreamObserver) {
         appendSnapshot(contextProvider.getContext(),
+                       authenticationProvider.get(),
                        event,
                        new ForwardingStreamObserver<>(logger, "appendSnapshot", confirmationStreamObserver));
     }
 
-    public void appendSnapshot(String context, Event request, StreamObserver<Confirmation> responseObserver) {
+    public void appendSnapshot(String context, Authentication authentication, Event snapshot,
+                               StreamObserver<Confirmation> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-            eventStore.appendSnapshot(context, request).whenComplete((c, t) -> {
-                if (t != null) {
-                    logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                    responseObserver.onError(t);
-                } else {
-                    responseObserver.onNext(c);
-                    responseObserver.onCompleted();
-                }
-            });
+            try {
+                eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
+                eventStore.appendSnapshot(context, authentication, snapshot).whenComplete((c, t) -> {
+                    if (t != null) {
+                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
+                        responseObserver.onError(t);
+                    } else {
+                        responseObserver.onNext(c);
+                        responseObserver.onCompleted();
+                    }
+                });
+            } catch (Exception ex) {
+                responseObserver.onError(ex);
+            }
         });
     }
 
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
-        listAggregateEvents(contextProvider.getContext(),
+        StreamObserver<SerializedEvent> aggregateStreamObserver = new SequenceValidationStreamObserver(responseObserver);
+        listAggregateEvents(contextProvider.getContext(), authenticationProvider.get(),
                             request,
-                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", responseObserver));
+                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", aggregateStreamObserver));
     }
 
-    public void listAggregateEvents(String context, GetAggregateEventsRequest request,
+    public void listAggregateEvents(String context, Authentication principal, GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                eventStore.listAggregateEvents(context, request, responseObserver);
+                eventStore.listAggregateEvents(context,
+                                               principal,
+                                               request,
+                                               responseObserver);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);
                 responseObserver.onError(GrpcExceptionBuilder.build(t));
@@ -188,11 +228,12 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        return listEvents(contextProvider.getContext(), responseObserver);
+        return listEvents(contextProvider.getContext(), authenticationProvider.get(), responseObserver);
     }
 
-    public StreamObserver<GetEventsRequest> listEvents(String context, StreamObserver<InputStream> responseObserver) {
-        return new GetEventsRequestStreamObserver(responseObserver, context);
+    public StreamObserver<GetEventsRequest> listEvents(String context, Authentication principal,
+                                                       StreamObserver<InputStream> responseObserver) {
+        return new GetEventsRequestStreamObserver(responseObserver, context, principal);
     }
 
     @EventListener
@@ -357,7 +398,7 @@ public class EventDispatcher implements AxonServerClientService {
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> responseObserver0) {
         String context = contextProvider.getContext();
-
+        Authentication authentication = authenticationProvider.get();
         ForwardingStreamObserver<QueryEventsResponse> responseObserver =
                 new ForwardingStreamObserver<>(logger, "queryEvents", responseObserver0);
         return new StreamObserver<QueryEventsRequest>() {
@@ -374,7 +415,7 @@ public class EventDispatcher implements AxonServerClientService {
                                                                                 NO_EVENT_STORE_CONFIGURED + context));
                         return;
                     }
-                    requestObserver.set(eventStore.queryEvents(context, responseObserver));
+                    requestObserver.set(eventStore.queryEvents(context, authentication, responseObserver));
                 }
                 try {
                     requestObserver.get().onNext(request);
@@ -404,11 +445,15 @@ public class EventDispatcher implements AxonServerClientService {
         };
     }
 
-    public void listAggregateSnapshots(String context, GetAggregateSnapshotsRequest request,
+    public void listAggregateSnapshots(String context, Authentication authentication,
+                                       GetAggregateSnapshotsRequest request,
                                        StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                eventStore.listAggregateSnapshots(context, request, responseObserver);
+                eventStore.listAggregateSnapshots(context,
+                                                  authentication,
+                                                  request,
+                                                  responseObserver);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateSnapshots", t.getMessage(), t);
                 responseObserver.onError(GrpcExceptionBuilder.build(t));
@@ -416,9 +461,9 @@ public class EventDispatcher implements AxonServerClientService {
         });
     }
 
-    private void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
-                                        StreamObserver<SerializedEvent> responseObserver) {
-        listAggregateSnapshots(contextProvider.getContext(), request, responseObserver);
+    public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
+                                       StreamObserver<SerializedEvent> responseObserver) {
+        listAggregateSnapshots(contextProvider.getContext(), authenticationProvider.get(), request, responseObserver);
     }
 
 
@@ -479,13 +524,16 @@ public class EventDispatcher implements AxonServerClientService {
     private class GetEventsRequestStreamObserver implements StreamObserver<GetEventsRequest> {
 
         private final StreamObserver<InputStream> responseObserver;
+        private final Authentication principal;
         private final String context;
         volatile StreamObserver<GetEventsRequest> eventStoreRequestObserver;
         volatile EventTrackerInfo trackerInfo;
 
-        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, String context) {
-            this.responseObserver = responseObserver;
+        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, String context,
+                                       Authentication principal) {
             this.context = context;
+            this.responseObserver = responseObserver;
+            this.principal = principal;
         }
 
         @Override
@@ -521,7 +569,7 @@ public class EventDispatcher implements AxonServerClientService {
                         return false;
                     }
                     eventStoreRequestObserver =
-                            eventStore.listEvents(context, new StreamObserver<InputStream>() {
+                            eventStore.listEvents(context, principal, new StreamObserver<InputStream>() {
                                 @Override
                                 public void onNext(InputStream eventWithToken) {
                                     responseObserver.onNext(eventWithToken);
@@ -554,7 +602,7 @@ public class EventDispatcher implements AxonServerClientService {
                 }
 
                 trackingEventProcessors.computeIfAbsent(new ClientStreamIdentification(trackerInfo.context,
-                                                                                 trackerInfo.client),
+                                                                                       trackerInfo.client),
                                                         key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
                 logger.info("Starting tracking event processor for {}:{} - {}",
                             getEventsRequest.getClientId(),
@@ -576,7 +624,7 @@ public class EventDispatcher implements AxonServerClientService {
             logger.info("Removed tracker info {}", trackerInfo);
             if (trackerInfo != null) {
                 trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
-                                                                                  trackerInfo.client),
+                                                                                        trackerInfo.client),
                                                          (c, streams) -> {
                                                              logger.debug("{}: {} streams",
                                                                           trackerInfo.client,

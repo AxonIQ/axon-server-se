@@ -13,8 +13,9 @@ package io.axoniq.axonserver.localstorage.transformation;
  * @author Marc Gathier
  */
 public class DefaultEventTransformerFactory implements EventTransformerFactory {
+
     @Override
-    public EventTransformer get(byte version, int flags) {
+    public EventTransformer get(int flags) {
         return NoOpEventTransformer.INSTANCE;
     }
 

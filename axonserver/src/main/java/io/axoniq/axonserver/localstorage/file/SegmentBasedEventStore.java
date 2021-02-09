@@ -14,6 +14,7 @@ import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
@@ -163,6 +164,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             if (segment <= queryOptions.getMaxToken()) {
                 Optional<EventSource> eventSource = getEventSource(segment);
                 AtomicBoolean done = new AtomicBoolean();
+                boolean snapshot = EventType.SNAPSHOT.equals(type.getEventType());
                 eventSource.ifPresent(e -> {
                     long minTimestampInSegment = Long.MAX_VALUE;
                     EventInformation eventWithToken;
@@ -177,7 +179,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                         }
                         if (eventWithToken.getToken() >= queryOptions.getMinToken()
                                 && eventWithToken.getEvent().getTimestamp() >= queryOptions.getMinTimestamp()
-                                && !consumer.test(eventWithToken.asEventWithToken())) {
+                                && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
                             iterator.close();
                             return;
                         }

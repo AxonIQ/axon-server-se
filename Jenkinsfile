@@ -49,17 +49,26 @@ def getTestSummary = { ->
  */
 podTemplate(label: label,
     containers: [
-        containerTemplate(name: 'maven', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:latest',
+        containerTemplate(name: 'maven-jdk8', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:8',
             command: 'cat', ttyEnabled: true,
             resourceRequestCpu: '1000m', resourceLimitCpu: '1000m',
             resourceRequestMemory: '3200Mi', resourceLimitMemory: '4Gi',
             envVars: [
-                envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m -Djavax.net.ssl.trustStore=/docker-java-home/lib/security/cacerts -Djavax.net.ssl.trustStorePassword=changeit'),
+                envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m'),
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ])
+            ]),
+        containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11',
+            command: 'cat', ttyEnabled: true,
+            envVars: [
+                envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
+            ]),
+        containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11',
+            envVars: [
+                envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
+            ],
+            command: 'cat', ttyEnabled: true)
     ],
     volumes: [
-        secretVolume(secretName: 'cacerts', mountPath: '/docker-java-home/lib/security'), // For our Nexus certificates
         secretVolume(secretName: 'maven-settings', mountPath: '/maven_settings')          // For the settings.xml
     ]) {
         node(label) {
@@ -77,7 +86,7 @@ podTemplate(label: label,
             def mavenTarget = "clean verify"
 
             stage ('Maven build') {
-                container("maven") {
+                container("maven-jdk8") {
                     if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                         mavenTarget = "clean deploy"
                     }
@@ -90,7 +99,7 @@ podTemplate(label: label,
                         sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"   // Ignore test failures; we want the numbers only.
 
                         if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
-                            slackReport = slackReport + "\nDeployed to dev-nexus"
+                            slackReport = slackReport + "\nDeployed to Nexus"
                          }
 
                          if (relevantBranch(gitBranch, dockerBranches)) {
@@ -113,7 +122,7 @@ podTemplate(label: label,
                 sonarOptions = "-Dsonar.pullrequest.branch=" + gitBranch + " -Dsonar.pullrequest.key=" + env.CHANGE_ID
             }
             stage ('Run SonarQube') {
-                container("maven") {
+                container("maven-jdk11") {
                     sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
                     slackReport = slackReport + "\nSources analyzed in SonarQube."
                 }
@@ -126,9 +135,9 @@ podTemplate(label: label,
                 if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
                     def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
                         parameters: [
-                            string(name: 'groupId', value: pomGroupId),
-                            string(name: 'artifactId', value: pomArtifactId),
-                            string(name: 'projectVersion', value: pomVersion)
+                            string(name: 'serverEdition', value: 'se'),
+                            string(name: 'projectVersion', value: pomVersion),
+                            string(name: 'cliVersion', value: pomVersion)
                         ]
                     if (canaryTests.result == "FAILURE") {
                         slackReport = slackReport + "\nCanary Tests FAILED!"

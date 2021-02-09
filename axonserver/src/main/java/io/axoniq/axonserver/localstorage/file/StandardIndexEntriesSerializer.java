@@ -14,8 +14,6 @@ import org.mapdb.DataOutput2;
 import org.mapdb.Serializer;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import javax.annotation.Nonnull;
 
 /**
@@ -66,10 +64,10 @@ public class StandardIndexEntriesSerializer implements Serializer<IndexEntries> 
     public IndexEntries deserialize(@Nonnull DataInput2 input, int available) throws IOException {
         int count = input.unpackInt();
         long sequenceNumber = input.unpackLong();
-        List<Integer> entryList = new ArrayList<>(count);
+        StandardIndexEntries standardIndexEntries = new StandardIndexEntries(sequenceNumber);
         for (int i = 0; i < count; i++) {
-            entryList.add(input.unpackInt());
+            standardIndexEntries.add(input.unpackInt());
         }
-        return new StandardIndexEntries(sequenceNumber, entryList);
+        return standardIndexEntries;
     }
 }

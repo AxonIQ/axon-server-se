@@ -83,7 +83,11 @@ public enum BaseMetricName implements MetricName {
     AXON_INDEX_CLOSE("file.index.close", "Rate of index files closed"),
     AXON_AGGREGATE_READTIME("local.aggregate.readtime", "Elapsed time for reading events from the event store"),
     AXON_LAST_SEQUENCE_READTIME("local.lastsequence.readtime",
-                                "Elapsed time for retrieving the last sequence number for an aggregate");
+                                "Elapsed time for retrieving the last sequence number for an aggregate"),
+    LOCAL_QUERY_RESPONSE_TIME("local.query.responsetime",
+                              "Response time for query execution from time received by Axon Server to response received"),
+    INTERCEPTOR_DURATION("local.interceptor.duration",
+                         "Total time executing interceptors (tags: context and interceptor type)");
 
 
     private final String name;

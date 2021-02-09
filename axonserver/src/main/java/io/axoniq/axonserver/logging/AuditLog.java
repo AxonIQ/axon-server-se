@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 
 import java.security.Principal;
 
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
+
 @Component
 public class AuditLog implements ApplicationListener<AbstractAuthenticationEvent> {
 
@@ -26,7 +28,7 @@ public class AuditLog implements ApplicationListener<AbstractAuthenticationEvent
     }
 
     public static String username(Principal principal) {
-        return (principal == null) ? "<anonymous>" : principal.getName();
+        return (principal == null) ? "<anonymous>" : sanitize(principal.getName());
     }
 
     private static final Logger auditLog = getLogger();

@@ -35,9 +35,9 @@ public class ByteBufferEventSource implements EventSource {
     public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory,
                                  StorageProperties storageProperties) {
         this.path = path;
-        byte version = buffer.get();
+        buffer.get();
         int flags = buffer.getInt();
-        this.eventTransformer = eventTransformerFactory.get(version, flags);
+        this.eventTransformer = eventTransformerFactory.get(flags);
         this.buffer = buffer;
         this.main = true;
         this.onClose = null;

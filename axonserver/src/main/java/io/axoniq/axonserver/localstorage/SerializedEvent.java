@@ -161,4 +161,12 @@ public class SerializedEvent  {
     public ByteString asByteString() {
         return ByteString.copyFrom(serializedData);
     }
+
+    public SerializedEvent asSnapshot() {
+        return new SerializedEvent(Event.newBuilder(asEvent()).setSnapshot(true).build());
+    }
+
+    public boolean isSnapshot() {
+        return asEvent().getSnapshot();
+    }
 }

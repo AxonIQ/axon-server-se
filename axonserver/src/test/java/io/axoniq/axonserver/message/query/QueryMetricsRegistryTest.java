@@ -35,13 +35,17 @@ public class QueryMetricsRegistryTest {
 
     @Test
     public void add() {
-        testSubject.add(new QueryDefinition(DEFAULT_CONTEXT, "a"), "source", "target", DEFAULT_CONTEXT, 1L);
+        testSubject.addHandlerResponseTime(new QueryDefinition(DEFAULT_CONTEXT, "a"),
+                                           "source",
+                                           "target",
+                                           DEFAULT_CONTEXT,
+                                           1L);
     }
 
     @Test
     public void get() {
         QueryDefinition queryDefinition = new QueryDefinition(DEFAULT_CONTEXT, "a");
-        testSubject.add(queryDefinition, "source", "target", DEFAULT_CONTEXT, 1L);
+        testSubject.addHandlerResponseTime(queryDefinition, "source", "target", DEFAULT_CONTEXT, 1L);
         QueryMetricsRegistry.QueryMetric queryMetric = testSubject
                 .queryMetric(queryDefinition, "target", DEFAULT_CONTEXT, "");
         assertEquals(1, queryMetric.getCount());

@@ -13,6 +13,7 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.rest.WebSecurityConfigurer.TokenAuthenticationFilter;
 import org.junit.*;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -34,7 +35,7 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  */
 public class WebSecurityConfigurationTest {
-    private WebSecurityConfiguration.TokenAuthenticationFilter testSubject;
+    private TokenAuthenticationFilter testSubject;
     private AtomicInteger statusCodeHolder = new AtomicInteger();
     private ServletResponse response = new MockHttpServletResponse(){
         @Override
@@ -59,7 +60,7 @@ public class WebSecurityConfigurationTest {
         messagingPlatformConfiguration.getAccesscontrol().setToken("123456");
         AxonServerAccessController accessController = new AxonServerStandardAccessController(
                 messagingPlatformConfiguration);
-        testSubject = new WebSecurityConfiguration.TokenAuthenticationFilter(accessController);
+        testSubject = new TokenAuthenticationFilter(accessController);
         SecurityContextHolder.getContext().setAuthentication(null);
     }
 
