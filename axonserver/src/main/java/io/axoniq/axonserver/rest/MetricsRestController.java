@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.ArrayList;
@@ -59,7 +60,7 @@ public class MetricsRestController {
 
 
     @GetMapping("/command-metrics")
-    public List<CommandMetricsRegistry.CommandMetric> getCommandMetrics(final Principal principal) {
+    public List<CommandMetricsRegistry.CommandMetric> getCommandMetrics(@ApiIgnore final Principal principal) {
         auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
 
         List<CommandMetricsRegistry.CommandMetric> metrics = new ArrayList<>();
@@ -81,7 +82,7 @@ public class MetricsRestController {
     }
 
     @GetMapping("/query-metrics")
-    public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(final Principal principal) {
+    public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(@ApiIgnore final Principal principal) {
         auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
 
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();

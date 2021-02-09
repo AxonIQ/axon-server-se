@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 
@@ -38,7 +39,8 @@ public class InstructionRestController {
     }
 
     @PatchMapping
-    public String requestReconnect(@RequestParam(value = "client") String clientId, final Principal principal) {
+    public String requestReconnect(@RequestParam(value = "client") String clientId,
+                                   @ApiIgnore final Principal principal) {
         auditLog.info("[{}] Request client \"{}\" to reconnect.", AuditLog.username(principal), clientId);
 
         if (platformService.requestReconnect(clientId)) {

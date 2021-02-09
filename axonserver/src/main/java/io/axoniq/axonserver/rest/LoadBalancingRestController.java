@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.Set;
@@ -50,14 +51,14 @@ public class LoadBalancingRestController {
     }
 
     @GetMapping("processors/loadbalance/strategies")
-    public Iterable<? extends Printable> getStrategies(final Principal principal) {
+    public Iterable<? extends Printable> getStrategies(@ApiIgnore final Principal principal) {
         auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(principal));
 
         return strategyController.findAll();
     }
 
     @GetMapping("processors/loadbalance/strategies/factories")
-    public Set<String> getLoadBalancingStrategyFactoryBean(final Principal principal) {
+    public Set<String> getLoadBalancingStrategyFactoryBean(@ApiIgnore final Principal principal) {
         auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));
 
         return strategyController.getFactoryBeans();
@@ -76,7 +77,7 @@ public class LoadBalancingRestController {
                                      @RequestParam("context") String context,
                                      @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                      @RequestParam("strategy") String strategyName,
-                                     final Principal principal) {
+                                     @ApiIgnore final Principal principal) {
         auditLog.debug("[{}@{}] Request to set load-balancing strategy for processor \"{}\" to \"{}\".",
                        AuditLog.username(principal), context,
                        processor, strategyName);

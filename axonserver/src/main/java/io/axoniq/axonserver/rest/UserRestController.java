@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.Arrays;
@@ -64,7 +65,8 @@ public class UserRestController {
     }
 
     @PostMapping("users")
-    public void createUser(@RequestBody @Valid UserJson userJson, Principal principal) {
+    public void createUser(@RequestBody @Valid UserJson userJson,
+                           @ApiIgnore Principal principal) {
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to create user \"{}\" with roles {}.",
                           AuditLog.username(principal),
@@ -100,10 +102,12 @@ public class UserRestController {
     }
 
     @GetMapping("public/users")
-    public List<UserJson> listUsers(Principal principal) {
+    public List<UserJson> listUsers(@ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to list users and their roles.", AuditLog.username(principal));
         try {
-            return userController.getUsers().stream().map(UserJson::new).sorted(Comparator.comparing(UserJson::getUserName)).collect(Collectors.toList());
+            return userController.getUsers().stream().map(UserJson::new).sorted(Comparator
+                                                                                        .comparing(UserJson::getUserName))
+                                 .collect(Collectors.toList());
         } catch (Exception exception) {
             logger.info("[{}] List users failed - {}", AuditLog.username(principal), exception.getMessage(), exception);
             throw new MessagingPlatformException(ErrorCode.OTHER, exception.getMessage());
@@ -111,12 +115,16 @@ public class UserRestController {
     }
 
     @DeleteMapping(path = "users/{name}")
-    public void dropUser(@PathVariable("name") String name, Principal principal) {
+    public void dropUser(@PathVariable("name") String name,
+                         @ApiIgnore Principal principal) {
         try {
             auditLog.info("[{}] Request to delete user \"{}\".", AuditLog.username(principal), name);
             userController.deleteUser(name);
         } catch (Exception exception) {
-            auditLog.error("[{}] Delete user {} failed - {}", AuditLog.username(principal), name, exception.getMessage());
+            auditLog.error("[{}] Delete user {} failed - {}",
+                           AuditLog.username(principal),
+                           name,
+                           exception.getMessage());
             throw new MessagingPlatformException(ErrorCode.OTHER, exception.getMessage());
         }
     }
