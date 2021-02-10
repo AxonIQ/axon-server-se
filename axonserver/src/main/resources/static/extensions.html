@@ -104,6 +104,10 @@
                     install() {
                         this.currentExtension = null;
                         this.newExtension = {configuration: {}, start: true};
+                        this.$modal.show("newExtensionDetails");
+                    },
+                    hideModal(name) {
+                        this.$modal.hide(name);
                     },
                     start(ext, context) {
                         let me = this;
@@ -111,9 +115,9 @@
                                            + "&targetContext=" + context
                                            + "&active=true")
                                 .then(response => {
-                                          this.currentExtension = null;
-                                          this.newExtension = null;
-                                          setTimeout(me.loadExtensions, 1000);
+                                    this.currentExtension = null;
+                                    this.newExtension = null;
+                                    setTimeout(me.loadExtensions, 1000);
                                       }
                                 );
                     },
@@ -161,6 +165,7 @@
                                        }
                                    }).then(response => {
                             setTimeout(me.loadExtensions, 1000);
+                            this.hideModal("newExtensionDetails");
                             me.newExtension = null;
                         });
                     },
@@ -270,7 +275,7 @@
                 </tbody>
             </table>
             <div class="buttons" style="padding-top: 10px" v-if="admin">
-                <button @click.prevent="install()" class="button">Add</button>
+                <button @click.prevent="install()" class="button">Upload</button>
             </div>
         </div>
     </section>
@@ -352,23 +357,28 @@
         </div>
     </section>
 
-    <section id="newExtensionDetails" v-if="newExtension">
-        <div class="column wide">
-                <form id="licenseForm" enctype="multipart/form-data">
+    <modal name="newExtensionDetails" width="550" height="250">
+        <div class="column configuration modal">
+            <h2>Upload Extension</h2>
+            <form id="licenseForm" enctype="multipart/form-data">
                 <ul>
                     <li>
-                        <span class="narrow">Name</span>
-                        <span class="narrow"><input type="file" ref="extensionFileRef" id="extensionFile"
-                                                    name="extensionFile"/></span>
+                        <span>Name</span>
+                        <span><input type="file" ref="extensionFileRef" id="extensionFile"
+                                     name="extensionFile"/></span>
                     </li>
-
                     <li>
-                        <span class="narrow">&nbsp;</span>
-                        <span><button @click.prevent="add(newExtension)" class="button">Save</button></span>
+                        <span>&nbsp;</span>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span><button @click.prevent="add(newExtension)" class="button">Save</button>
+                        <button @click.prevent="hideModal('newExtensionDetails')" class="button">Cancel</button>
+                            </span>
                     </li>
                 </ul>
-                </form>
+            </form>
         </div>
-    </section>
+    </modal>
 
 </section>
