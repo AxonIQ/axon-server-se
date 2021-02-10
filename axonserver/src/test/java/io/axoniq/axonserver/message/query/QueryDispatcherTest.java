@@ -209,7 +209,7 @@ public class QueryDispatcherTest {
                           futureResponse::complete,
                           client -> futureCompleted.complete(true));
         QueryResponse response = futureResponse.get(1, TimeUnit.SECONDS);
-        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
+        assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
         assertTrue(futureCompleted.get(1, TimeUnit.SECONDS));
     }
 
@@ -254,7 +254,7 @@ public class QueryDispatcherTest {
                                    false);
 
         QueryResponse response = futureResponse.get();
-        assertEquals(ErrorCode.OTHER.getCode(), response.getErrorCode());
+        assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
         testSubject.handleComplete(request.getMessageIdentifier(), "clientStreamId", "clientId", false);
 
         assertTrue(futureCompleted.get());
