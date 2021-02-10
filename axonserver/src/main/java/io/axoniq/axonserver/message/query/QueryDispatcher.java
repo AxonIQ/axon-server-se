@@ -213,6 +213,8 @@ public class QueryDispatcher {
                 handlers.forEach(h -> dispatchOne(h, serializedQuery2, timeout));
             }
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
+            logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
+                        serializedQuery.query().getQuery(), insufficientBufferCapacityException);
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
                                                     .setMessageIdentifier(serializedQuery.getMessageIdentifier())
@@ -222,6 +224,8 @@ public class QueryDispatcher {
                                                     .build());
             onCompleted.accept("NoCapacity");
         } catch (MessagingPlatformException messagingPlatformException) {
+            logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
+                        serializedQuery.query().getQuery(), messagingPlatformException);
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(messagingPlatformException.getErrorCode().getCode())
                                                     .setMessageIdentifier(serializedQuery.getMessageIdentifier())
@@ -254,7 +258,7 @@ public class QueryDispatcher {
         } catch (Exception ex) {
             logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), ex);
             callback.accept(QueryResponse.newBuilder()
-                                         .setErrorCode(ErrorCode.OTHER.getCode())
+                                         .setErrorCode(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode())
                                          .setMessageIdentifier(response.getRequestIdentifier())
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))
