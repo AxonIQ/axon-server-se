@@ -26,6 +26,11 @@ import java.util.Set;
  */
 @Controller
 public class UserController {
+    /**
+     * An account without a password gets this value  instead.
+     */
+    public static final String PWD_NOLOGON = "nologon";
+
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
 
@@ -35,6 +40,11 @@ public class UserController {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Remove a user by name, if currently defined in the database.
+     *
+     * @param username the name of the user.
+     */
     @Transactional
     public void deleteUser(String username) {
         synchronized (userRepository) {
@@ -45,14 +55,36 @@ public class UserController {
         }
     }
 
+    /**
+     * Return a list of all users.
+     *
+     * @return a {@link List} of all {@link User}s.
+     */
     public List<User> getUsers() {
         return userRepository.findAll();
     }
 
-    private User syncUser(String username, String password, Set<UserRole> roles) {
+    /**
+     * Updates/creates a user with specified password and roles. If password is set, it will be hashed. If no password
+     * is set and the user already exists the stored password is not changed. If the user does not exist, and the
+     * password is {@code null}, the user will get a {@link #PWD_NOLOGON} marker instead.
+     *
+     * Note that the {@link #PWD_NOLOGON} marker prevents a match with any password, as it is not hashed.
+     *
+     * @param username the username
+     * @param password the plaintext password
+     * @param roles    the roles granted to the user
+     * @return the stored information, including the current (hashed) password.
+     */
+    @Transactional
+    public User updateUser(String username, String password, Set<UserRole> roles) {
         synchronized (userRepository) {
             if (StringUtils.isEmpty(password)) {
-                password = getPassword(username);
+                final User currentUser = findUser(username);
+
+                password = (currentUser != null) ? currentUser.getPassword() : PWD_NOLOGON;
+            } else {
+                password = passwordEncoder.encode(password);
             }
             User user = userRepository.save(new User(username, password, roles));
             userRepository.flush();
@@ -61,36 +93,43 @@ public class UserController {
     }
 
     /**
-     * Updates/creates a user with specified password and roles. If password is set, it will be hashed. If no password
-     * is set and
-     * user already exists the stored password is not changed.
+     * Updates/creates a {@link User} in the database. If a password is set, it will be hashed. If no password
+     * is set and the user already exists the stored password is not changed. If the user does not exist, and the
+     * password is not set, the user will get a {@link #PWD_NOLOGON} marker instead.
      *
-     * @param username the username
-     * @param password the plaintext password
-     * @param roles    the roles granted to the user
-     * @return the stored information, including the hashed password
+     * Note that the {@link #PWD_NOLOGON} marker prevents a match with any password, as it is not hashed.
+     *
+     * @param jpaUser the {@link User} object to store.
      */
-    @Transactional
-    public User updateUser(String username, String password, Set<UserRole> roles) {
-        return syncUser(username, password == null ? null: passwordEncoder.encode(password), roles);
-    }
-
     @Transactional
     public void syncUser(User jpaUser) {
         synchronized (userRepository) {
             if (StringUtils.isEmpty(jpaUser.getPassword())) {
-                jpaUser.setPassword(getPassword(jpaUser.getUserName()));
+                final User currentUser = findUser(jpaUser.getUserName());
+                jpaUser.setPassword((currentUser == null) ? PWD_NOLOGON : currentUser.getPassword());
             }
             userRepository.save(jpaUser);
         }
     }
 
+    /**
+     * Return the current (hashed) password of a user with the given name, or {@code null} if the user is not found.
+     *
+     * @param userName the name of the user to search for.
+     * @return the current (hashed) password of a user, or {@code null} if the user is not found.
+     */
     public String getPassword(String userName) {
         return userRepository.findById(userName).map(User::getPassword).orElse(null);
     }
 
-    public User findUser(String name) {
-        return userRepository.findById(name).orElse(null);
+    /**
+     * Return the {@link User} with the given name if found, or {@code null} if not found.
+     *
+     * @param userName the name of the user to search for.
+     * @return the {@link User} if found, or {@code null} if not found.
+     */
+    public User findUser(String userName) {
+        return userRepository.findById(userName).orElse(null);
     }
 
     /**
@@ -103,6 +142,9 @@ public class UserController {
         userRepository.findAll().forEach(user -> user.removeContext(context));
     }
 
+    /**
+     * Remove all users in the repository.
+     */
     @Transactional
     public void deleteAll() {
         userRepository.deleteAll();

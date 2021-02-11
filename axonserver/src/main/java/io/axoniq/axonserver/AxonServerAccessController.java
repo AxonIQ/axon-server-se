@@ -11,6 +11,7 @@ package io.axoniq.axonserver;
 
 
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
 import java.util.Set;
@@ -25,6 +26,7 @@ public interface AxonServerAccessController {
     String TOKEN_PARAM = "AxonIQ-Access-Token";
     String AXONDB_TOKEN_PARAM = "Access-Token";
     String CONTEXT_PARAM = "AxonIQ-Context";
+    String PRINCIPAL_PARAM = "AxonIQ-Principal";
 
     /**
      * Checks if a specific method is allowed in given {@code context} for application {@code token}.
@@ -41,15 +43,6 @@ public interface AxonServerAccessController {
      * @return true if this Axon Server version support role based authentication
      */
     boolean isRoleBasedAuthentication();
-
-    /**
-     * Returns the roles granted to the application identified by this token.
-     * If token is unknown it throws an {@link io.axoniq.axonserver.exception.InvalidTokenException}.
-     *
-     * @param token the app's token
-     * @return the roles granted to the application identified by this token
-     */
-    Set<String> getRoles(String token);
 
     /**
      * Retrieves all roles that include the specified operation.
@@ -75,14 +68,24 @@ public interface AxonServerAccessController {
      * @return the query
      */
     default String usersByUsernameQuery() {
-        return "select username,password, enabled from users where username=?";
+        return "select username,password, enabled from users where (username=?) and (password<>'nologon')";
     }
 
     /**
      * Returns (native SQL) query to retrieve the roles per user.
+     *
      * @return the query
      */
     default String authoritiesByUsernameQuery() {
         return "select username, role from user_roles where username=?";
     }
+
+    /**
+     * @param context the name of the context
+     * @param token   the token passed with the request
+     * @return authentication information for the application
+     *
+     * @throws io.axoniq.axonserver.exception.InvalidTokenException when the token is unknown
+     */
+    Authentication authentication(String context, String token);
 }

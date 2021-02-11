@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -14,6 +15,9 @@ import java.io.File;
 import java.net.UnknownHostException;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 
 /**
  * @author Marc Gathier
@@ -21,6 +25,8 @@ import static org.junit.Assert.*;
 public class ValidLastIndexTest {
 
     private PrimaryEventStore testSubject;
+    private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
+
 
     File sampleEventStoreFolder = new File(TestUtils
                                                    .fixPathOnWindows(InputStreamEventStore.class
@@ -31,6 +37,7 @@ public class ValidLastIndexTest {
     @Before
     public void init() {
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        doNothing().when(fileSystemMonitor).registerPath(any());
 
         StorageProperties storageProperties = new StorageProperties(new SystemInfoProvider() {
             @Override
@@ -55,7 +62,7 @@ public class ValidLastIndexTest {
                                             new DefaultEventTransformerFactory(),
                                             storageProperties,
                                             secondaryEventStore,
-                                            meterFactory);
+                                            meterFactory, fileSystemMonitor);
     }
 
     @Test

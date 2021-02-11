@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -17,6 +18,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 
 /**
  * @author Marc Gathier
@@ -24,6 +28,7 @@ import static org.junit.Assert.*;
 public class RecreateIndexTest {
 
     private PrimaryEventStore testSubject;
+    private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     @Before
     public void init() {
@@ -55,12 +60,15 @@ public class RecreateIndexTest {
                                                                               new DefaultEventTransformerFactory(),
                                                                               storageProperties,
                                                                               meterFactory);
+
+        doNothing().when(fileSystemMonitor).registerPath(any());
+
         testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
                                             indexManager,
                                             new DefaultEventTransformerFactory(),
                                             storageProperties,
                                             secondaryEventStore,
-                                            meterFactory);
+                                            meterFactory, fileSystemMonitor);
     }
 
     @Test

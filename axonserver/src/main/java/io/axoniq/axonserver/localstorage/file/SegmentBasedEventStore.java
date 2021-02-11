@@ -15,6 +15,7 @@ import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
@@ -28,7 +29,10 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.Status;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
@@ -205,6 +209,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             if (segment <= queryOptions.getMaxToken()) {
                 Optional<EventSource> eventSource = getEventSource(segment);
                 AtomicBoolean done = new AtomicBoolean();
+                boolean snapshot = EventType.SNAPSHOT.equals(type.getEventType());
                 eventSource.ifPresent(e -> {
                     long minTimestampInSegment = Long.MAX_VALUE;
                     EventInformation eventWithToken;
@@ -219,7 +224,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                         }
                         if (eventWithToken.getToken() >= queryOptions.getMinToken()
                                 && eventWithToken.getEvent().getTimestamp() >= queryOptions.getMinTimestamp()
-                                && !consumer.test(eventWithToken.asEventWithToken())) {
+                                && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
                             iterator.close();
                             return;
                         }
@@ -508,27 +513,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             return Stream.concat(filenames, indexManager.getBackupFilenames(lastSegmentBackedUp));
         }
         return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
-    }
-
-    @Override
-    public void health(Health.Builder builder) {
-        String storage = storageProperties.getStorage(context);
-        SegmentBasedEventStore n = next;
-        Path path = Paths.get(storage);
-        try {
-            FileStore store = Files.getFileStore(path);
-            builder.withDetail(context + ".free", store.getUsableSpace());
-            builder.withDetail(context + ".path", path.toString());
-        } catch (IOException e) {
-            logger.warn("Failed to retrieve filestore for {}", path, e);
-        }
-        while (n != null) {
-            if (!storage.equals(next.storageProperties.getStorage(context))) {
-                n.health(builder);
-                return;
-            }
-            n = n.next;
-        }
     }
 
     protected void renameFileIfNecessary(long segment) {

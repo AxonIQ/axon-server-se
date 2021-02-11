@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -15,6 +16,9 @@ import java.net.UnknownHostException;
 import java.time.Instant;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 
 /**
  * @author Marc Gathier
@@ -22,6 +26,7 @@ import static org.junit.Assert.*;
 public class TokenAtTest {
 
     private static PrimaryEventStore testSubject;
+    private final static FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     @BeforeClass
     public static void init() {
@@ -53,12 +58,15 @@ public class TokenAtTest {
                                                                               new DefaultEventTransformerFactory(),
                                                                               storageProperties,
                                                                               meterFactory);
+
+        doNothing().when(fileSystemMonitor).registerPath(any());
+
         testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
                                             indexManager,
                                             new DefaultEventTransformerFactory(),
                                             storageProperties,
                                             secondaryEventStore,
-                                            meterFactory);
+                                            meterFactory, fileSystemMonitor);
         testSubject.init(true);
     }
 

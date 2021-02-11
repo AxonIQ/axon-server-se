@@ -9,16 +9,16 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -27,6 +27,7 @@ import org.junit.rules.*;
 import org.springframework.data.util.CloseableIterator;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -37,6 +38,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 
 /**
  * @author Marc Gathier
@@ -45,6 +49,8 @@ public class PrimaryEventStoreTest {
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
     private PrimaryEventStore testSubject;
+
+    private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     @Before
     public void setUp() throws IOException {
@@ -66,13 +72,17 @@ public class PrimaryEventStoreTest {
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties.getEvent(),
                                                                  meterFactory);
+
+        doNothing().when(fileSystemMonitor).registerPath(any());
+
         testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                             indexManager,
                                             eventTransformerFactory,
                                             embeddedDBProperties.getEvent(),
                                             second,
-                                            meterFactory);
+                                            meterFactory, fileSystemMonitor);
         testSubject.init(false);
+        verify(fileSystemMonitor).registerPath(any(Path.class));
     }
 
     @Test
@@ -120,12 +130,12 @@ public class PrimaryEventStoreTest {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<SerializedEvent> newEvents = new ArrayList<>();
+            List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, numOfEvents).forEach(i -> {
-                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId)
-                                                       .setAggregateSequenceNumber(i)
-                                                       .setAggregateType("Demo")
-                                                       .setPayload(SerializedObject.newBuilder().build()).build()));
+                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId)
+                                   .setAggregateSequenceNumber(i)
+                                   .setAggregateType("Demo")
+                                   .setPayload(SerializedObject.newBuilder().build()).build());
             });
             testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });
@@ -135,8 +145,8 @@ public class PrimaryEventStoreTest {
 
     private void storeEvent() {
         CountDownLatch latch = new CountDownLatch(1);
-        SerializedEvent newEvent = new SerializedEvent(Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
-                                                            .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
+        Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
+                              .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build();
         testSubject.store(Collections.singletonList(newEvent)).thenAccept(t -> latch.countDown());
     }
 
@@ -146,10 +156,10 @@ public class PrimaryEventStoreTest {
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
-            List<SerializedEvent> newEvents = new ArrayList<>();
+            List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, 100).forEach(i -> {
-                newEvents.add(new SerializedEvent(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                                       .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build()));
+                newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
+                                   .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build());
             });
             testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });

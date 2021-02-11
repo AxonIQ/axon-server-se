@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.transaction;
 
-import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.grpc.event.Event;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -21,9 +21,9 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface StorageTransactionManager {
 
-    CompletableFuture<Long> store(List<SerializedEvent> eventList);
+    CompletableFuture<Long> store(List<Event> eventList);
 
-    Runnable reserveSequenceNumbers(List<SerializedEvent> eventList);
+    Runnable reserveSequenceNumbers(List<Event> eventList);
 
     default long waitingTransactions() {
         return 0;

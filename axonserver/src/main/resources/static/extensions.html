@@ -1,0 +1,384 @@
+<!--
+  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~ under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+
+<script>
+    //# sourceURL=extensions.js
+    globals.pageView = new Vue(
+            {
+                el: '#extensions',
+                data: {
+                    extensions: [],
+                    admin: globals.admin,
+                    confirmData: {},
+                    currentExtension: null,
+                    roles: [],
+                    newExtension: null,
+                    componentKey: 0,
+                    webSocketInfo: globals.webSocketInfo,
+                    contexts: ["default"]
+                }, mounted() {
+                    this.loadExtensions();
+                    if (this.isEnterprise()) {
+                        axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
+                            this.contexts = response.data;
+                        });
+                    }
+                    this.connect();
+                }, beforeDestroy() {
+                    if (this.subscription) {
+                        this.subscription.unsubscribe();
+                    }
+                }, methods: {
+                    loadExtensions() {
+                        axios.get("v1/extensions").then(response => {
+                            this.extensions = response.data;
+                            this.componentKey++;
+                        });
+                    },
+                    selectExtension(ext, context) {
+                        axios.get("v1/extensions/configuration?extension=" + ext.name + "&version=" + ext.version
+                                          + "&targetContext=" + context).then(
+                                response => {
+                                    this.currentExtension = {
+                                        name: ext.name,
+                                        version: ext.version,
+                                        configuration: response.data,
+                                        context: context
+                                    };
+                                    this.newExtension = null;
+                                });
+                    },
+                    deleteExtension(ext) {
+                        if (confirm("Delete extension: " + ext.name)) {
+                            let me = this;
+                            axios.delete("v1/extensions?extension=" + ext.name + "&version=" + ext.version)
+                                    .then(response => {
+                                              this.currentExtension = null;
+                                              this.newExtension = null;
+                                              setTimeout(me.loadExtensions, 1000);
+                                          }
+                                    );
+                        }
+                    },
+                    isActiveSE(ext) {
+                        return ext.contextInfoList && ext.contextInfoList.length > 0 && ext.contextInfoList[0].active;
+                    },
+                    unregisterExtensionForContext(ext, context) {
+                        let me = this;
+                        axios.delete("v1/extensions/context?extension=" + ext.name + "&version=" + ext.version
+                                             + "&targetContext=" + context)
+                                .then(response => {
+                                          this.currentExtension = null;
+                                          this.newExtension = null;
+                                          setTimeout(me.loadExtensions, 1000);
+                                      }
+                                );
+                    },
+                    save(ext) {
+                        let updatedExt = {extension: ext.name, version: ext.version, properties: {}};
+                        for (let i = 0; i < ext.configuration.length; i++) {
+                            let item = ext.configuration[i];
+                            let properties = {};
+                            for (let j = 0; j < item.properties.length; j++) {
+                                let prop = item.properties[j];
+                                properties[prop.id] = prop.value;
+                                if (this.isMulti(prop) && prop.newValue) {
+                                    properties[prop.id].push(prop.newValue);
+                                    prop.newValue = "";
+                                }
+                            }
+                            updatedExt.properties[item.id] = properties;
+                            updatedExt.context = ext.context;
+                        }
+                        axios.post("v1/extensions/configuration", updatedExt).then(response => {
+                            this.currentExtension = null;
+                            this.loadExtensions();
+                        })
+                    },
+                    install() {
+                        this.currentExtension = null;
+                        this.newExtension = {configuration: {}, start: true};
+                        this.$modal.show("newExtensionDetails");
+                    },
+                    hideModal(name) {
+                        this.$modal.hide(name);
+                    },
+                    start(ext, context) {
+                        let me = this;
+                        axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
+                                           + "&targetContext=" + context
+                                           + "&active=true")
+                                .then(response => {
+                                    this.currentExtension = null;
+                                    this.newExtension = null;
+                                    setTimeout(me.loadExtensions, 1000);
+                                      }
+                                );
+                    },
+                    registerExtensionForContext(ext) {
+                        let me = this;
+                        axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
+                                           + "&targetContext=" + ext.newContext
+                                           + "&active=false")
+                                .then(response => {
+                                          this.currentExtension = null;
+                                          this.newExtension = null;
+                                          setTimeout(me.loadExtensions, 1000);
+                                      }
+                                );
+                    },
+                    stop(ext, context) {
+                        let me = this;
+                        axios.post("v1/extensions/status?extension=" + ext.name + "&version=" + ext.version
+                                           + "&targetContext=" + context
+                                           + "&active=false")
+                                .then(response => {
+                                          this.currentExtension = null;
+                                          this.newExtension = null;
+                                          setTimeout(me.loadExtensions, 1000);
+                                      }
+                                );
+                    },
+                    hasOptions(attr) {
+                        return attr.optionLabels && attr.optionLabels.length > 0;
+                    },
+                    add() {
+                        let fd = new FormData();
+                        let files = this.$refs.extensionFileRef.files[0];
+                        if (files == undefined) {
+                            alert("Select an extension file first")
+                            return false;
+                        }
+
+                        let me = this;
+                        fd.append('bundle', files);
+                        axios.post("/v1/extensions", fd,
+                                   {
+                                       headers: {
+                                           'Content-Type': 'multipart/form-data'
+                                       }
+                                   }).then(response => {
+                            setTimeout(me.loadExtensions, 1000);
+                            this.hideModal("newExtensionDetails");
+                            me.newExtension = null;
+                        });
+                    },
+                    connect() {
+                        let me = this;
+                        me.webSocketInfo.subscribe('/topic/extensions', function () {
+                            setTimeout(me.loadExtensions, 1000)
+                        }, function (sub) {
+                            me.subscription = sub;
+                        });
+                    },
+                    isMulti(attr) {
+                        return attr.cardinality === 'MULTI';
+                    },
+                    deleteAttrValue(attr, idx) {
+                        attr.value.splice(idx, 1);
+                    },
+                    addAttrValue(attr) {
+                        attr.value.push(attr.newValue);
+                        attr.newValue = "";
+                    },
+                    isSingle(attr) {
+                        return attr.cardinality === 'SINGLE';
+                    },
+                    inputType(attr) {
+                        if (attr.type === 'PASSWORD') {
+                            return "password";
+                        }
+                        if (attr.type === 'INTEGER' ||
+                                attr.type === 'LONG' ||
+                                attr.type === 'FLOAT' ||
+                                attr.type === 'DOUBLE') {
+                            return "number";
+                        }
+
+                        return "text";
+                    }
+                }
+            });
+
+</script>
+<section id="extensions">
+    <section id="extensionOverview">
+        <div class="results singleHeader">
+            <table :key="componentKey">
+                <thead>
+                <tr>
+                    <th style="width: 25%">Extension Name</th>
+                    <th style="width: 10%">Version</th>
+                    <th style="width: 10%">Extension Status</th>
+                    <th style="width: 35%" v-if="isEnterprise()">Status per Context</th>
+                    <th style="width: 35%" v-if="!isEnterprise()">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="extension in extensions">
+                        <td :title="extension.filename">{{ extension.name }}</td>
+                        <td>{{ extension.version }}
+                            <span @click="deleteExtension(extension)" title="Delete">
+                                <i class="far fa-trash-alt"/>
+                            </span>
+                        </td>
+                        <td>{{ extension.extensionStatus }}</td>
+
+                        <td v-if="isEnterprise()">
+                             <table>
+                                 <tr v-for="contextInfo in extension.contextInfoList">
+                                     <td style="padding: 0">{{ contextInfo.context }}</td>
+                                     <td style="padding: 0">{{ contextInfo.active ? "Active" : "Registered" }}</td>
+                                     <td style="padding: 0">
+                                    <span v-if="admin"
+                                          @click="unregisterExtensionForContext(extension, contextInfo.context)"
+                                          title="Delete"><i
+                                            class="far fa-trash-alt"></i></span>
+                                    <span @click="selectExtension(extension, contextInfo.context)" title="Edit">
+                                        <i class="fas fa-pencil-alt"/></span>
+                                    <span v-if="admin && !contextInfo.active"
+                                          @click="start(extension, contextInfo.context)" title="Start">
+                                        <i class="far fa-play-circle"/></span>
+                                    <span v-if="admin && contextInfo.active"
+                                          @click="stop(extension, contextInfo.context)" title="Stop">
+                                        <i class="far fa-pause-circle"/></span>
+                                     </td>
+                                 </tr>
+                             </table>
+
+                            <span v-if="admin">
+                                <select v-model="extension.newContext">
+                                    <option v-for="n in contexts">{{ n }}</option>
+                                </select>
+                                <span @click="registerExtensionForContext(extension)" title="Add"><i
+                                        class="fas fa-plus"></i></span>
+                            </span>
+
+                        </td>
+                        <td v-if="!isEnterprise()">
+                            <span @click="selectExtension(extension, 'default')" title="Edit"><i
+                                    class="fas fa-pencil-alt"/></span>
+                            <span v-if="admin && !isActiveSE(extension)"
+                                  @click="start(extension, 'default')" title="Start"><i
+                                    class="far fa-play-circle"/></span>
+                            <span v-if="admin && isActiveSE(extension)" @click="stop(extension, 'default')"
+                                  title="Stop"><i
+                                    class="far fa-pause-circle"/></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="buttons" style="padding-top: 10px" v-if="admin">
+                <button @click.prevent="install()" class="button">Upload</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="extensionDetails" v-if="currentExtension">
+        <div class="column wide">
+            <form>
+                <ul>
+                    <li>
+                        <span class="narrow">Context</span>
+                        <span class="narrow">{{ currentExtension.context }}</span>
+                    </li>
+                    <li>
+                        <span class="narrow">Name</span>
+                        <span class="narrow">{{ currentExtension.name }}</span>
+                    </li>
+                    <li>
+                        <span class="narrow">Version</span>
+                        <span class="narrow">{{ currentExtension.version }}</span>
+                    </li>
+                    <li v-for="group in currentExtension.configuration">
+                        <span class="narrow">{{ group.name }}</span>
+                        <span>
+                                <table class="nestedTable extensionProperties">
+                                    <tbody>
+                                        <tr v-for="attr in group.properties">
+                                            <td width="20%" :title="attr.description">{{ attr.id }}</td>
+                                            <td>
+                                                <div v-if="isSingle(attr)">
+                                                <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                       :title="attr.type"
+                                                       v-model="attr.value"/>
+                                                <select v-if="hasOptions(attr)" v-model="attr.value">
+                                                    <option v-for="(value,idx) in attr.optionValues"
+                                                            :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                </select>
+                                                </div>
+                                                <ul v-if="isMulti(attr)">
+                                                    <li v-for="(val,valIdx) in attr.value" style="padding: 2px">
+                                                    <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                           :title="attr.type"
+                                                           v-model="attr.value[valIdx]"/>
+                                                    <select v-if="hasOptions(attr)" v-model="attr.value[valIdx]">
+                                                        <option v-for="(value,idx) in attr.optionValues"
+                                                                :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                    </select>
+                                                        <span @click="deleteAttrValue(attr, valIdx)"
+                                                              style="float: unset;width: 20px;padding-left: 2px;display: inline;"
+                                                              title="Delete Attribute Value">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </span>
+                                                        </li>
+                                                    <li style="padding: 2px">
+                                                    <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                           :title="attr.type"
+                                                           v-model="attr.newValue"/>
+                                                    <select v-if="hasOptions(attr)" v-model="attr.newValue">
+                                                        <option v-for="(value,idx) in attr.optionValues"
+                                                                :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                    </select>
+                                                        <span @click="addAttrValue(attr)" title="Add Attribute Value"
+                                                              style="float: unset;width: 20px;padding-left: 2px;display: inline;">
+                                                            <i class="fas fa-plus"></i>
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="narrow">&nbsp;</span>
+                        <span><button @click.prevent="save(currentExtension)" class="button">Save</button></span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </section>
+
+    <modal name="newExtensionDetails" width="550" height="250">
+        <div class="column configuration modal">
+            <h2>Upload Extension</h2>
+            <form id="licenseForm" enctype="multipart/form-data">
+                <ul>
+                    <li>
+                        <span>Name</span>
+                        <span><input type="file" ref="extensionFileRef" id="extensionFile"
+                                     name="extensionFile"/></span>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span><button @click.prevent="add(newExtension)" class="button">Save</button>
+                        <button @click.prevent="hideModal('newExtensionDetails')" class="button">Cancel</button>
+                            </span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </modal>
+
+</section>

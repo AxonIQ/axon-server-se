@@ -17,6 +17,8 @@ import io.axoniq.axonserver.topology.SimpleAxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
+import java.util.List;
+
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
@@ -36,29 +38,30 @@ public class OverviewModelTest {
     @Before
     public void setUp() {
         Topology clusterController = mock(Topology.class);
-        Iterable<AxonServer> hubs = asList(new FakeAxonServer(true,
-                                                              new SimpleAxonServerNode("hub1","localhost",1,2),
-                                                              asSet("contex", "default"),
-                                                              asSet( "default")),
-                                           new FakeAxonServer(false,
-                                                              new SimpleAxonServerNode("hub2", "localhost",  4, 5),
-                                                              asSet("contex"),
-                                                              asSet() ));
+        List<AxonServer> hubs = asList(new FakeAxonServer(true,
+                                                          new SimpleAxonServerNode("hub1", "localhost", 1, 2),
+                                                          asSet("contex", "default"),
+                                                          asSet("default")),
+                                       new FakeAxonServer(false,
+                                                          new SimpleAxonServerNode("hub2", "localhost", 4, 5),
+                                                          asSet("contex"),
+                                                          asSet()));
 
-        Iterable<Application> applications = singletonList(new FakeApplication("app",
-                                                                               "comp",
-                                                                               "context",
-                                                                               2,
-                                                                               asList("hub1", "hub2")));
+        List<Application> applications = singletonList(new FakeApplication("app",
+                                                                           "comp",
+                                                                           "context",
+                                                                           2,
+                                                                           asList("hub1", "hub2")));
 
-        axonServersOverviewProvider = new AxonServersOverviewProvider(applications, hubs);
+        axonServersOverviewProvider = new AxonServersOverviewProvider(context -> applications.stream(),
+                                                                      context -> hubs.stream());
 
-        testSubject = new OverviewModel(clusterController, applications, hubs);
+        testSubject = new OverviewModel(clusterController, c -> applications.stream(), c -> hubs.stream());
     }
 
     @Test
     public void overview() {
-        OverviewModel.SvgOverview overview = testSubject.overview(null);
+        OverviewModel.SvgOverview overview = testSubject.overview(null, null);
         assertTrue(overview.getHeight() > 0);
         assertTrue(overview.getWidth() > 0);
         assertTrue(overview.getSvgObjects().length() > 0);
@@ -68,7 +71,7 @@ public class OverviewModelTest {
     @Test
     public void overviewV2() {
         AxonServersOverviewProvider.ApplicationsAndNodes applicationsAndNodes = axonServersOverviewProvider
-                .applicationsAndNodes();
+                .applicationsAndNodes(null);
         assertEquals("app", applicationsAndNodes.getApplications().get(0).getName());
         assertEquals("context", applicationsAndNodes.getApplications().get(0).getContext());
         assertEquals(2, applicationsAndNodes.getApplications().get(0).getInstances());

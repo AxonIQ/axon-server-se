@@ -11,7 +11,7 @@ package io.axoniq.axonserver.localstorage.transformation;
 
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.util.StringUtils;
 
 import java.util.Map;
 
@@ -20,12 +20,12 @@ import java.util.Map;
  */
 public class WrappedEvent implements ProcessedEvent {
 
-    private final SerializedEvent event;
+    private final Event event;
     private final byte[] dataForWrite;
 
-    public WrappedEvent(SerializedEvent event, EventTransformer eventTransformer) {
+    public WrappedEvent(Event event, EventTransformer eventTransformer) {
         this.event = event;
-        this.dataForWrite = eventTransformer.toStorage(event.serializedData());
+        this.dataForWrite = eventTransformer.toStorage(event.toByteArray());
     }
 
     @Override
@@ -40,55 +40,52 @@ public class WrappedEvent implements ProcessedEvent {
 
     @Override
     public String getAggregateIdentifier() {
-        return event().getAggregateIdentifier();
+        return event.getAggregateIdentifier();
     }
 
     @Override
     public long getAggregateSequenceNumber() {
-        return event().getAggregateSequenceNumber();
+        return event.getAggregateSequenceNumber();
     }
 
     @Override
     public String getMessageIdentifier() {
-        return event().getMessageIdentifier();
+        return event.getMessageIdentifier();
     }
 
     @Override
     public byte[] getPayloadBytes() {
-        return event().getPayload().getData().toByteArray();
+        return event.getPayload().getData().toByteArray();
     }
 
     @Override
     public String getPayloadRevision() {
-        return event().getPayload().getRevision();
+        return event.getPayload().getRevision();
     }
 
     @Override
     public String getPayloadType() {
-        return event().getPayload().getType();
+        return event.getPayload().getType();
     }
 
     @Override
     public long getTimestamp() {
-        return event().getTimestamp();
+        return event.getTimestamp();
     }
 
     @Override
     public String getAggregateType() {
-        return event().getAggregateType();
+        return event.getAggregateType();
     }
 
     @Override
     public Map<String, MetaDataValue> getMetaData() {
-        return event().getMetaDataMap();
+        return event.getMetaDataMap();
     }
 
     @Override
     public boolean isDomainEvent() {
-        return event.isDomainEvent();
+        return !StringUtils.isEmpty(event.getAggregateType());
     }
 
-    private Event event() {
-        return event.asEvent();
-    }
 }

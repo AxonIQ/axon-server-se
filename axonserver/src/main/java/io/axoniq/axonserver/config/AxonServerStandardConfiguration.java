@@ -16,6 +16,7 @@ import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -33,7 +34,6 @@ import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -53,6 +53,7 @@ import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -100,11 +101,12 @@ public class AxonServerStandardConfiguration {
     public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
                                                EventTransformerFactory eventTransformerFactory,
                                                StorageTransactionManagerFactory storageTransactionManagerFactory,
-                                               MeterFactory meterFactory) {
+                                               MeterFactory meterFactory,
+                                               FileSystemMonitor fileSystemMonitor) {
         return new StandardEventStoreFactory(embeddedDBProperties,
                                              eventTransformerFactory,
                                              storageTransactionManagerFactory,
-                                             meterFactory);
+                                             meterFactory, fileSystemMonitor);
     }
 
     @Bean
@@ -276,4 +278,12 @@ public class AxonServerStandardConfiguration {
             }
         };
     }
+
+    @Bean
+    public DiskSpaceHealthIndicator diskSpaceHealthIndicator() {
+        //disable regular diskSpaceHealthIndicator bean
+        //using FileSystemMonitor instead
+        return null;
+    }
+
 }

@@ -9,12 +9,15 @@
 
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.reactivestreams.Publisher;
+import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -53,7 +56,7 @@ public interface EventStorageEngine {
      * @param eventList list of events
      * @return completable future containing the token of the first stored event
      */
-    default CompletableFuture<Long> store(List<SerializedEvent> eventList) {
+    default CompletableFuture<Long> store(List<Event> eventList) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;
@@ -196,13 +199,6 @@ public interface EventStorageEngine {
     long getTokenAt(long instant);
 
     /**
-     * Adds information to the actuator health endpoint for this event store.
-     * @param builder actuator health builder
-     */
-    default void health(Health.Builder builder) {
-    }
-
-    /**
      * Rolls back storage engine to token. Implementations may keep more when token is not at a transaction boundary.
      * @param token the last token to keep.
      */
@@ -247,4 +243,5 @@ public interface EventStorageEngine {
      */
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
+
 }

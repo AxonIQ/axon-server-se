@@ -8,6 +8,8 @@ import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -48,5 +50,22 @@ public class StandardIndexEntriesTest {
             System.out.println(expectedPosition);
         }
         running.set(false);
+    }
+
+    @Test
+    public void addAndLoopPerformance() {
+        StandardIndexEntries standardIndexEntries = new StandardIndexEntries(10);
+        standardIndexEntries.last();
+        long before = System.currentTimeMillis();
+        IntStream.range(0, 200_000).forEach(i -> standardIndexEntries.add(new IndexEntry(1, i, 1)));
+        assertTrue("Added entries - " + (System.currentTimeMillis() - before),
+                   System.currentTimeMillis() - before < 250);
+        AtomicLong total = new AtomicLong();
+        before = System.currentTimeMillis();
+        standardIndexEntries.positions().forEach(total::addAndGet);
+        assertTrue("Iterate entries - " + (System.currentTimeMillis() - before),
+                   System.currentTimeMillis() - before < 250);
+        Assert.assertEquals(1998, (int) standardIndexEntries.positions().get(1998));
+        Assert.assertEquals(4000, (int) standardIndexEntries.positions().get(4000));
     }
 }

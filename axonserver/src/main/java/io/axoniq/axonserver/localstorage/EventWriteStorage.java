@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage;
 
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ import java.util.function.BiConsumer;
 public class EventWriteStorage {
     private static final Logger logger = LoggerFactory.getLogger(EventWriteStorage.class);
 
-    private final Map<String, BiConsumer<Long, List<SerializedEvent>>> listeners = new ConcurrentHashMap<>();
+    private final Map<String, BiConsumer<Long, List<Event>>> listeners = new ConcurrentHashMap<>();
     private final StorageTransactionManager storageTransactionManager;
 
 
@@ -37,15 +38,17 @@ public class EventWriteStorage {
         this.storageTransactionManager = storageTransactionManager;
     }
 
-    public CompletableFuture<Void> store(List<SerializedEvent> eventList) {
-        if( eventList.isEmpty()) return CompletableFuture.completedFuture(null);
+    public CompletableFuture<Void> store(List<Event> eventList) {
+        if (eventList.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         AtomicReference<Runnable> unreserve = new AtomicReference<>(() -> {
         });
         try {
             unreserve.set(reserveSequences(eventList));
             storageTransactionManager.store(eventList).whenComplete((firstToken, cause) -> {
-                if( cause == null) {
+                if (cause == null) {
                     completableFuture.complete(null);
 
                     if( ! listeners.isEmpty()) {
@@ -65,21 +68,20 @@ public class EventWriteStorage {
     }
 
     private void eventsStored(
-            BiConsumer<Long, List<SerializedEvent>> consumer,
-            Long firstToken, List<SerializedEvent> eventList) {
+            BiConsumer<Long, List<Event>> consumer,
+            Long firstToken, List<Event> eventList) {
         try {
             consumer.accept(firstToken, eventList);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             logger.debug("Listener failed", ex);
         }
-
     }
 
-    private Runnable reserveSequences(List<SerializedEvent> eventList) {
+    private Runnable reserveSequences(List<Event> eventList) {
         return storageTransactionManager.reserveSequenceNumbers(eventList);
     }
 
-    public Registration registerEventListener(BiConsumer<Long, List<SerializedEvent>> listener) {
+    public Registration registerEventListener(BiConsumer<Long, List<Event>> listener) {
         String id = UUID.randomUUID().toString();
         listeners.put(id, listener);
         return () -> listeners.remove(id);

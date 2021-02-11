@@ -15,8 +15,11 @@ import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
 
+import static io.axoniq.cli.CommandOptions.PROPERTIES;
+
 /**
  * Handler for the register-application command.
+ *
  * @author Marc Gathier
  * @since 4.0
  */
@@ -30,6 +33,7 @@ public class RegisterApplication extends AxonIQCliCommand {
                                                      CommandOptions.APPLICATION_ROLES,
                                                      CommandOptions.APPLICATION_DESCRIPTION,
                                                      CommandOptions.TOKEN,
+                                                     PROPERTIES,
                                                      CommandOptions.SET_TOKEN);
         String url = createUrl(commandLine, "/v1/applications");
 
@@ -47,10 +51,20 @@ public class RegisterApplication extends AxonIQCliCommand {
                                                   commandLine
                                                           .getOptionValues(CommandOptions.APPLICATION_ROLES.getOpt()));
 
+        if (commandLine.hasOption(PROPERTIES.getOpt())) {
+            for (String metadataProperty : commandLine.getOptionValues(PROPERTIES.getOpt())) {
+                String[] keyValue = metadataProperty.split("=", 2);
+                if (keyValue.length != 2) {
+                    throw new IllegalArgumentException("Property value must be key=value - " + keyValue);
+                }
+                application.getMetaData().put(keyValue[0].trim(), keyValue[1].trim());
+            }
+        }
+
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
             String response = postJSON(httpclient, url, application, 200, getToken(commandLine));
-            System.out.println("AccessToken is: "+  response);
+            System.out.println("AccessToken is: " + response);
             System.out.println("Please note this token as this will only be provided once!");
         }
     }

@@ -54,6 +54,7 @@ public class ScheduledEventExecutor implements ScheduledTask {
                                .setTimestamp(System.currentTimeMillis()).build();
             StreamObserver<InputStream> inputStream = localEventStore.createAppendEventConnection(scheduledEventWrapper
                                                                                                           .getContext(),
+                                                                                                  null,
                                                                                                   new StreamObserver<Confirmation>() {
                                                                                                       @Override
                                                                                                       public void onNext(

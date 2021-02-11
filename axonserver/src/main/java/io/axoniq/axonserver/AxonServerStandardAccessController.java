@@ -10,18 +10,15 @@
 package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.config.AccessControlConfiguration;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.InvalidTokenException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
-
-import static io.axoniq.axonserver.rest.json.UserInfo.ROLE_ADMIN;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
-
 /**
- * Created by marc on 7/17/2017.
+ * @author Marc Gathier
+ * @since 4.0
  */
 @Component
 public class AxonServerStandardAccessController implements AxonServerAccessController {
@@ -43,12 +40,13 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public Set<String> getRoles(String token) {
-
+    public Authentication authentication(String context, String token) {
         if (!isTokenFromConfigFile(token)) {
             throw new InvalidTokenException();
         }
-        return isAdminToken(token) ? singleton(ROLE_ADMIN) : emptySet();
+        return isAdminToken(token) ?
+                GrpcContextAuthenticationProvider.ADMIN_PRINCIPAL :
+                GrpcContextAuthenticationProvider.USER_PRINCIPAL;
     }
 
     private boolean isAdminToken(String token) {
