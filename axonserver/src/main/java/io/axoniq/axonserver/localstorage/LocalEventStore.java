@@ -46,8 +46,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
-import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -59,8 +57,10 @@ import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -72,7 +72,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
@@ -375,7 +374,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public Flux<SerializedEvent> aggregateEvents(String context, GetAggregateEventsRequest request) {
+    public Flux<SerializedEvent> aggregateEvents(String context,
+                                                 Authentication authentication,
+                                                 GetAggregateEventsRequest request) {
+        EventDecorator activeEventDecorator = eventInterceptors.noReadInterceptors(context) ?
+                eventDecorator :
+                new InterceptorAwareEventDecorator(context, authentication);
         AggregateReader aggregateReader = workers(context).aggregateReader;
         return aggregateReader
                 .events(request.getAggregateId(),
@@ -383,6 +387,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         request.getInitialSequence(),
                         getMaxSequence(request),
                         request.getMinToken())
+                .map(activeEventDecorator::decorateEvent)
                 .publishOn(Schedulers.fromExecutorService(dataFetcher), 25)
                 .transform(f -> count(f, counter -> {
                     if (counter == 0) {

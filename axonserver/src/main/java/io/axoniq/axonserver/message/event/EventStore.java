@@ -24,8 +24,8 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
-import reactor.core.publisher.Flux;
 import org.springframework.security.core.Authentication;
+import reactor.core.publisher.Flux;
 
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
@@ -49,7 +49,8 @@ public interface EventStore {
 
     /**
      * Creates a connection that receives events to be stored in a single transaction.
-     * @param context the context where the events are stored
+     *
+     * @param context          the context where the events are stored
      * @param responseObserver response stream where the event store can confirm completion of the transaction
      * @return stream to send events to
      */
@@ -57,7 +58,9 @@ public interface EventStore {
                                                             Authentication authentication,
                                                             StreamObserver<Confirmation> responseObserver);
 
-    Flux<SerializedEvent> aggregateEvents(String context, GetAggregateEventsRequest request);
+    Flux<SerializedEvent> aggregateEvents(String context,
+                                          Authentication authentication,
+                                          GetAggregateEventsRequest request);
 
     /**
      * Read events for an aggregate.

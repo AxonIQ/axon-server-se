@@ -11,7 +11,6 @@ package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.AuthenticationProvider;
-import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
@@ -226,9 +225,7 @@ public class EventDispatcher implements AxonServerClientService {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver);
-                Flux<SerializedEvent> publisher = eventStore.aggregateEvents(context,
-                                               principal,
-                                               request);
+                Flux<SerializedEvent> publisher = eventStore.aggregateEvents(context, principal, request);
                 outgoingStream.accept(publisher);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);
@@ -237,12 +234,14 @@ public class EventDispatcher implements AxonServerClientService {
         });
     }
 
-    public Flux<SerializedEvent> aggregateEvents(String context, GetAggregateEventsRequest request) {
+    public Flux<SerializedEvent> aggregateEvents(String context,
+                                                 Authentication principal,
+                                                 GetAggregateEventsRequest request) {
         EventStore eventStore = eventStoreLocator.getEventStore(context);
         if (eventStore == null) {
             return Flux.error(new MessagingPlatformException(NO_EVENTSTORE, NO_EVENT_STORE_CONFIGURED + context));
         }
-        return eventStore.aggregateEvents(context, request);
+        return eventStore.aggregateEvents(context, principal, request);
     }
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {

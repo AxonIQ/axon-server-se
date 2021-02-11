@@ -50,7 +50,7 @@ class EventSourceIterable implements Iterable<SerializedEvent> {
 
     private class EventIterator implements Iterator<SerializedEvent> {
 
-        private int nextPosition = 0;
+        private int nextPositionIndex = 0;
         private SerializedEvent next = prefetch();
 
         @Override
@@ -69,9 +69,9 @@ class EventSourceIterable implements Iterable<SerializedEvent> {
         }
 
         private SerializedEvent prefetch() {
-            if (nextPosition < positions.size()) {
+            if (nextPositionIndex < positions.size()) {
                 logger.trace("Reading event from EventSource in the thread {}", Thread.currentThread().getName());
-                SerializedEvent event = eventSource.readEvent(positions.get(nextPosition++));
+                SerializedEvent event = eventSource.readEvent(positions.get(nextPositionIndex++));
                 if (!completeCondition.test(event)) {
                     return event;
                 }
