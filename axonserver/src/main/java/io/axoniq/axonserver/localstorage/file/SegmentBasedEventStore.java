@@ -132,9 +132,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                    minToken);
         logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
         List<Iterable<SerializedEvent>> all = new ArrayList<>();
-        positionInfos.forEach((segment, info) -> {
-            all.add(eventsForPositions(segment, info.positions(), firstSequenceNumber, lastSequenceNumber));
-        });
+        positionInfos.forEach((segment, info) -> all.add(eventsForPositions(segment, info.positions(), firstSequenceNumber, lastSequenceNumber)));
         Flux<SerializedEvent> eventFlux = Flux.fromIterable(Iterables.concat(all));
         //TODO: this is opening all segments indipendently from boundaries, find a better way
         return eventFlux.transform(flux -> new TimeMeasuredPublisher<>(flux, aggregateReadTimer));
