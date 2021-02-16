@@ -74,7 +74,7 @@ public class UserRestController {
                                 .collect(Collectors.toSet()));
         }
 
-        if (userJson.userName != null && userJson.userName.equals(principal.getName())) {
+        if (userJson.userName != null && principal != null && userJson.userName.equals(principal.getName())) {
             throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
                                                  "Not allowed to change your own credentials");
         }
