@@ -62,14 +62,26 @@ public class InputStreamEventStoreTest {
     @Test
     public void getEventSource() {
         EventSource eventSource = testSubject.getEventSource(0).get();
-        EventIterator iterator = eventSource.createEventIterator(0, 5);
-        assertTrue(iterator.hasNext());
-        EventInformation next = iterator.next();
-        assertEquals(5, next.getToken());
-        while( iterator.hasNext()) {
-            next = iterator.next();
+        try (EventIterator iterator = eventSource.createEventIterator(0, 5)) {
+            assertTrue(iterator.hasNext());
+            EventInformation next = iterator.next();
+            assertEquals(5, next.getToken());
+            while (iterator.hasNext()) {
+                next = iterator.next();
+                System.out.println(next.getPosition());
+            }
+            assertEquals(13, next.getToken());
         }
-        assertEquals(13, next.getToken());
+    }
+
+    @Test
+    public void readBackwards() {
+        EventSource eventSource = testSubject.getEventSource(0).get();
+        int[] positions = {432, 502, 572, 642, 712, 782, 852, 922};
+        for (int i = positions.length - 1; i >= 0; i--) {
+            eventSource.readEvent(positions[i]);
+        }
+        eventSource.close();
     }
 
     @Test
@@ -79,7 +91,7 @@ public class InputStreamEventStoreTest {
         assertTrue(iterator.hasNext());
         SerializedTransactionWithToken next = iterator.next();
         assertEquals(5, next.getToken());
-        while( iterator.hasNext()) {
+        while (iterator.hasNext()) {
             next = iterator.next();
         }
         assertEquals(13, next.getToken());
