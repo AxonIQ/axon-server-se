@@ -3,80 +3,65 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.function.Predicate;
-import javax.annotation.Nonnull;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /**
- * @author Sara Pellegrini
- * @since 4.5
+ * @author Milan Savic
  */
-class EventSourceIterable implements Iterable<SerializedEvent> {
+public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
 
-    private final EventSource eventSource;
+    private static final Logger logger = LoggerFactory.getLogger(EventSourceFlux.class);
     private final List<Integer> positions;
-    private final Predicate<SerializedEvent> completeCondition;
-    private final Iterable<SerializedEvent> iterable;
+    private final EventSourceFactory eventSourceFactory;
 
-    private final Logger logger = LoggerFactory.getLogger(EventSourceIterable.class);
-
-    public EventSourceIterable(List<Integer> positions,
-                               EventSource eventSource,
-                               long minSequence,
-                               long maxSequence) {
-        this(positions,
-             eventSource,
-             new OutsideSequenceBoundaries(minSequence, maxSequence));
-    }
-
-
-    public EventSourceIterable(List<Integer> positions,
-                               EventSource eventSource,
-                               Predicate<SerializedEvent> completeCondition) {
+    public EventSourceFlux(List<Integer> positions, EventSourceFactory eventSourceFactory) {
         this.positions = positions;
-        this.eventSource = eventSource;
-        this.completeCondition = completeCondition;
-        this.iterable = EventIterator::new;
+        this.eventSourceFactory = eventSourceFactory;
     }
 
-    @Nonnull
     @Override
-    public Iterator<SerializedEvent> iterator() {
-        return iterable.iterator();
-    }
-
-    private class EventIterator implements Iterator<SerializedEvent> {
-
-        private int nextPositionIndex = 0;
-        private SerializedEvent next = prefetch();
-
-        @Override
-        public boolean hasNext() {
-            return next != null;
-        }
-
-        @Override
-        public SerializedEvent next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException();
-            }
-            SerializedEvent value = next;
-            next = prefetch();
-            return value;
-        }
-
-        private SerializedEvent prefetch() {
-            if (nextPositionIndex < positions.size()) {
-                logger.trace("Reading event from EventSource in the thread {}", Thread.currentThread().getName());
-                SerializedEvent event = eventSource.readEvent(positions.get(nextPositionIndex++));
-                if (!completeCondition.test(event)) {
-                    return event;
+    public Flux<SerializedEvent> get() {
+        return Flux.create(sink -> {
+            EventSource eventSource;
+            try {
+                Optional<EventSource> optional = eventSourceFactory.create();
+                if (!optional.isPresent()) {
+                    sink.complete();
+                    return;
                 }
+                eventSource = optional.get();
+            } catch (Exception e) {
+                sink.error(e);
+                return;
             }
-            return null;
-        }
+            final AtomicInteger nextPositionIndex = new AtomicInteger(0);
+
+            sink.onRequest(requested -> {
+                int count = 0;
+                while (count < requested && nextPositionIndex.get() < positions.size()) {
+                    logger.trace("Reading event from EventSource in the thread {}", Thread.currentThread().getName());
+                    try {
+                        SerializedEvent event = eventSource.readEvent(positions.get(nextPositionIndex
+                                                                                            .getAndIncrement()));
+                        count++;
+                        sink.next(event);
+                    } catch (Exception e) {
+                        sink.error(e);
+                        return;
+                    }
+                }
+
+                if (nextPositionIndex.get() >= positions.size()) {
+                    sink.complete();
+                }
+            });
+
+            sink.onDispose(eventSource::close);
+        });
     }
 }

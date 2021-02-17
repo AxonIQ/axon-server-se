@@ -45,6 +45,11 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
+    protected boolean containsSegment(long segment) {
+        return segments.contains(segment);
+    }
+
+    @Override
     public void initSegments(long lastInitialized) {
         segments.addAll(prepareSegmentStore(lastInitialized));
         if (next != null) {

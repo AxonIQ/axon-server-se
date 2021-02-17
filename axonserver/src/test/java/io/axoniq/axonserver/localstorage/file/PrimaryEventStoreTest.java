@@ -48,24 +48,29 @@ import static org.mockito.Mockito.*;
 public class PrimaryEventStoreTest {
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
-    private PrimaryEventStore testSubject;
+    private final String context = "junit";
+    private final EmbeddedDBProperties embeddedDBProperties;
+    private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-    private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
-
-    @Before
-    public void setUp() throws IOException {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+    public PrimaryEventStoreTest() {
+        embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(
                 tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
-        String context = "junit";
-        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
-                                                                     EventType.EVENT,
-                                                                     meterFactory);
+    }
+
+    private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
+
+    private PrimaryEventStore primaryEventStore() {
+        return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                          EventType.EVENT,
+                                                          meterFactory));
+    }
+
+    private PrimaryEventStore primaryEventStore(IndexManager indexManager) {
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
@@ -75,7 +80,7 @@ public class PrimaryEventStoreTest {
 
         doNothing().when(fileSystemMonitor).registerPath(any());
 
-        testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
+        PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                             indexManager,
                                             eventTransformerFactory,
                                             embeddedDBProperties.getEvent(),
@@ -83,11 +88,18 @@ public class PrimaryEventStoreTest {
                                             meterFactory, fileSystemMonitor);
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(Path.class));
+        return testSubject;
+    }
+
+    @Test
+    public void aggregateEvents() {
+
     }
 
     @Test
     public void transactionsIterator() throws InterruptedException {
-        setupEvents(1000, 2);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 1000, 2);
         Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0, Long.MAX_VALUE);
 
         long counter = 0;
@@ -101,7 +113,8 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void rollbackDeleteSegments() throws InterruptedException {
-        setupEvents(100, 100);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 100, 100);
         Thread.sleep(1500);
         testSubject.rollback(9899);
         assertEquals(9899, testSubject.getLastToken());
@@ -112,7 +125,8 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void rollbackAndRead() throws InterruptedException {
-        setupEvents(5, 3);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 5, 3);
         Thread.sleep(1500);
         testSubject.rollback(2);
         assertEquals(2, testSubject.getLastToken());
@@ -120,13 +134,13 @@ public class PrimaryEventStoreTest {
         testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(2, testSubject.getLastToken());
 
-        storeEvent();
+        storeEvent(testSubject);
 
         testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(3, testSubject.getLastToken());
     }
 
-    private void setupEvents(int numOfTransactions, int numOfEvents) throws InterruptedException {
+    private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents) throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
@@ -143,7 +157,7 @@ public class PrimaryEventStoreTest {
         latch.await(5, TimeUnit.SECONDS);
     }
 
-    private void storeEvent() {
+    private void storeEvent(PrimaryEventStore testSubject) {
         CountDownLatch latch = new CountDownLatch(1);
         Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
                               .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build();
@@ -152,6 +166,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testGlobalIterator() throws InterruptedException {
+        PrimaryEventStore testSubject = primaryEventStore();
         CountDownLatch latch = new CountDownLatch(100);
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {
@@ -180,12 +195,13 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testDeletingAllEvents() throws InterruptedException {
-        setupEvents(5, 3);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 5, 3);
         Thread.sleep(1500);
         testSubject.deleteAllEventData();
         assertEquals(-1, testSubject.getLastToken());
 
-        storeEvent();
+        storeEvent(testSubject);
         assertEquals(0,testSubject.getLastToken());
     }
 }

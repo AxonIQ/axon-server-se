@@ -240,6 +240,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
+    protected boolean containsSegment(long segment) {
+        return readBuffers.containsKey(segment);
+    }
+
+    @Override
     public void close(boolean deleteData) {
         File storageDir = new File(storageProperties.getStorage(context));
         fileSystemMonitor.unregisterPath(storageDir.toPath());

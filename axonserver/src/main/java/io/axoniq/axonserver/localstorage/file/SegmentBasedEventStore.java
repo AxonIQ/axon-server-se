@@ -29,19 +29,10 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.Status;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileStore;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -131,27 +122,28 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                    Long.MAX_VALUE,
                                                                                    minToken);
         logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
-        List<Iterable<SerializedEvent>> all = new ArrayList<>();
-        positionInfos.forEach((segment, info) -> all.add(eventsForPositions(segment, info.positions(), firstSequenceNumber, lastSequenceNumber)));
-        Flux<SerializedEvent> eventFlux = Flux.fromIterable(Iterables.concat(all));
+        Flux<SerializedEvent> eventFlux = Flux.empty();
+        positionInfos.forEach((segment, info) -> eventFlux
+                .concatWith(eventsForPositions(segment, firstSequenceNumber, lastSequenceNumber, info.positions())));
         //TODO: this is opening all segments indipendently from boundaries, find a better way
         return eventFlux.transform(flux -> new TimeMeasuredPublisher<>(flux, aggregateReadTimer));
         //TODO: replace the TimeMeasuredPublisher with something better
     }
 
-    private Iterable<SerializedEvent> eventsForPositions(long segment,
-                                                        List<Integer> positions,
-                                                        long minSequenceNumber,
-                                                        long maxSequenceNumber) {
-        Optional<EventSource> buffer = getEventSource(segment);
-        if (!buffer.isPresent() && next != null) {
-            return next.eventsForPositions(segment, positions, minSequenceNumber, maxSequenceNumber);
+    private Flux<SerializedEvent> eventsForPositions(long segment,
+                                                     long firstSequenceNumber,
+                                                     long lastSequenceNumber,
+                                                     List<Integer> positions) {
+        if (!containsSegment(segment) && next != null) {
+            return next.eventsForPositions(segment, firstSequenceNumber, lastSequenceNumber, positions);
         }
-        if (buffer.isPresent()) {
-            return new EventSourceIterable(positions, buffer.get(), minSequenceNumber, maxSequenceNumber);
-        }
-        return Collections.emptyList();
+        return new EventSourceFlux(positions, () -> getEventSource(segment))
+                .get()
+                .skipWhile(se -> se.getAggregateSequenceNumber() < firstSequenceNumber)
+                .takeUntil(se -> se.getAggregateSequenceNumber() > lastSequenceNumber);
     }
+
+    protected abstract boolean containsSegment(long segment);
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
@@ -172,7 +164,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         aggregateReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
     }
 
-    @Override
+    @Override //TODO it is used for Snapshot only
     public void processEventsPerAggregateHighestFirst(String aggregateId, long firstSequenceNumber,
                                                       long maxSequenceNumber,
                                                       int maxResults, Consumer<SerializedEvent> eventConsumer) {
