@@ -115,6 +115,7 @@ public class StandaloneTaskManagerTest {
                                                 scheduler,
                                                 scheduler.clock());
         testSubject.start();
+        scheduler.timeElapses(0);
     }
 
     @Test
@@ -137,8 +138,10 @@ public class StandaloneTaskManagerTest {
         scheduler.timeElapses(5, TimeUnit.MINUTES);
         assertEquals(1, tasks.size());
         assertEquals(1, scheduler.tasks());
-
-        scheduler.timeElapses(6, TimeUnit.MINUTES);
+        scheduler.timeElapses(5, TimeUnit.MINUTES);
+        assertEquals(1, tasks.size());
+        assertEquals(2, scheduler.tasks());
+        scheduler.timeElapses(1, TimeUnit.MINUTES);
         assertEquals(0, tasks.size());
         assertEquals(1, scheduler.tasks());
         assertEquals(1, executionCounter.get());
@@ -182,7 +185,7 @@ public class StandaloneTaskManagerTest {
                                                new TaskPayload("Dummy", "DummyPayload".getBytes()),
                                                scheduler.clock().millis() + TimeUnit.MINUTES.toMillis(1));
         assertEquals(1, tasks.size());
-        assertEquals(1, scheduler.tasks());
+        assertEquals(2, scheduler.tasks());
         scheduler.timeElapses(5, TimeUnit.SECONDS);
         assertEquals(1, tasks.size());
         testSubject.cancel(taskId);
