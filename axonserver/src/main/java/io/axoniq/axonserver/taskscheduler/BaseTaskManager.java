@@ -163,10 +163,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
 
     private void fetchTasks() {
         try {
-            long min = nextTimestamp.getAndAdd(window);
-            if (min == 0) {
-                nextTimestamp.set(clock.millis() + window);
-            }
+            long min = nextTimestamp.getAndSet(clock.millis() + window);
             Set<String> leaderFor = leaderForGroupProvider.get();
             leaderFor.forEach(context -> {
                 List<Task> tasks = taskRepository.findScheduled(context, min, nextTimestamp.get());
