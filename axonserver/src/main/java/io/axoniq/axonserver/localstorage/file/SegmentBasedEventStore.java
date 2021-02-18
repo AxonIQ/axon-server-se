@@ -23,7 +23,6 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.metric.TimeMeasuredPublisher;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -47,6 +46,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -54,7 +54,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.apache.commons.lang3.ArrayUtils.contains;
 
 /**
@@ -114,8 +113,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long firstSequence,
                                                     long lastSequence,
                                                     long minToken) {
-        //segment - allposition in that segment
         logger.debug("Reading index entries for aggregate {} started.", aggregateId);
+        //Map<segment, all positions in that segment>
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequence,
                                                                                    lastSequence,
@@ -136,11 +135,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                        } else if (signal.isOnComplete()) {
                            AtomicLong subscriptionTime = signal.getContextView().get(subscription_time);
                            long readTime = System.currentTimeMillis() - subscriptionTime.get();
-                           aggregateReadTimer.record(readTime, MILLISECONDS);
+                           aggregateReadTimer.record(readTime, TimeUnit.MILLISECONDS);
                        }
                    })
                    .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence)
-                   .takeWhile(se -> se.getAggregateSequenceNumber() <= lastSequence)
+                   .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence) //remember: last sequence excluded
                    .contextWrite(ctx -> ctx.put(subscription_time, new AtomicLong()));
     }
 
@@ -150,6 +149,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 new EventSourceFlux(positions, () -> getEventSource(segment)).get();
     }
 
+    /**
+     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     *
+     * @param segment the segment to check
+     * @return {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     */
     protected abstract boolean containsSegment(long segment);
 
     @Override
@@ -168,7 +173,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                       eventConsumer,
                                                                                       Long.MAX_VALUE,
                                                                                       minToken));
-        aggregateReadTimer.record(System.currentTimeMillis() - before, MILLISECONDS);
+        aggregateReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -261,7 +266,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         try {
             return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegmentsHint, maxTokenHint);
         } finally {
-            lastSequenceReadTimer.record(System.currentTimeMillis() - before, MILLISECONDS);
+            lastSequenceReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
         }
     }
 

@@ -115,7 +115,7 @@ public interface EventStorageEngine {
      *
      * @param aggregateId         the aggregate identifier
      * @param firstSequenceNumber the first sequence number to retrieve
-     * @param lastSequenceNumber  the last sequence number to retrieve (exlusive)
+     * @param lastSequenceNumber  the last sequence number to retrieve (exclusive)
      * @param minToken            the minimum token of the event that are returned
      */
     Flux<SerializedEvent> eventsPerAggregate(String aggregateId,

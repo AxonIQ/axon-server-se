@@ -11,7 +11,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
+ * This class is able to provide a {@link Flux<SerializedEvent>} that is possible to use in order to read the events
+ * in a reactive way reading in the specified positions of segment using the provided {@link EventSourceFactory}.
+ *
  * @author Milan Savic
+ * @author Sara Pellegrini
  */
 public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
 
@@ -19,11 +23,23 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
     private final List<Integer> positions;
     private final EventSourceFactory eventSourceFactory;
 
+    /**
+     * Creates a new instance able to read events from the specified position using the provided {@link
+     * EventSourceFactory}.
+     *
+     * @param positions          the list of the positions of the interesting events in the segment.
+     * @param eventSourceFactory the factory used to open a new {@link EventSource} to access the segment file.
+     */
     public EventSourceFlux(List<Integer> positions, EventSourceFactory eventSourceFactory) {
         this.positions = positions;
         this.eventSourceFactory = eventSourceFactory;
     }
 
+    /**
+     * Returns the {@link Flux<SerializedEvent>} that provides the events in the specified positions.
+     *
+     * @return the {@link Flux<SerializedEvent>} that provides the events in the specified positions.
+     */
     @Override
     public Flux<SerializedEvent> get() {
         return Flux.create(sink -> {

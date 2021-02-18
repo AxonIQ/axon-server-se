@@ -3,17 +3,22 @@ package io.axoniq.axonserver.localstorage;
 import io.grpc.stub.CallStreamObserver;
 
 /**
+ * Utility class used to simplify the implementation of a {@link CallStreamObserver} based on a delegate
+ * {@link CallStreamObserver}. Extending this class, all the delegated methods are inherited.
+ *
  * @author Milan Savic
+ * @author Sara Pellegrini
+ * @see io.axoniq.axonserver.message.event.ForwardingStreamObserver
  */
-public  class CallStreamObserverDelegator<T> extends CallStreamObserver<T>  {
+public abstract class CallStreamObserverDelegator<T> extends CallStreamObserver<T> {
 
     private final CallStreamObserver<T> delegate;
 
-    public CallStreamObserverDelegator(CallStreamObserver<T> delegate) {
+    protected CallStreamObserverDelegator(CallStreamObserver<T> delegate) {
         this.delegate = delegate;
     }
 
-    protected CallStreamObserver<T> delegate(){
+    protected CallStreamObserver<T> delegate() {
         return delegate;
     }
 

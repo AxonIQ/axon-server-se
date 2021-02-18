@@ -221,7 +221,6 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void listAggregateEvents(String context, Authentication principal, GetAggregateEventsRequest request,
                                     CallStreamObserver<SerializedEvent> responseObserver) {
-        //TODO replace checkConnection?
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver);
