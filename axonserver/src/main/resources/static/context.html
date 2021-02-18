@@ -18,7 +18,8 @@
             newContext: {
                 nodes: [],
                 selectedReplicationGroup: "",
-                replicationGroup: null
+                replicationGroup: null,
+                metaData: {}
             },
             admin: globals.admin,
             webSocketInfo: globals.webSocketInfo,
@@ -225,7 +226,8 @@
                     <ul>
                         <li>
                             <span class="narrow">Context Name</span>
-                            <span><input data-lpignore="true" class="nodeRoleName" v-model="newContext.context"/></span>
+                            <span><input data-lpignore="true" autocomplete="none" class="nodeRoleName"
+                                         v-model="newContext.context"/></span>
                         </li>
                         <li>
                             <span class="narrow">Replication Group</span>
@@ -242,7 +244,7 @@
                                 <ul>
                                     <li>
                                         <span class="narrow">New Replication Group Name</span>
-                                        <span><input data-lpignore="true" class="nodeRoleName"
+                                        <span><input autocomplete="none" data-lpignore="true" class="nodeRoleName"
                                                      v-model="newContext.replicationGroup"/></span>
                                     </li>
                                     <li>
