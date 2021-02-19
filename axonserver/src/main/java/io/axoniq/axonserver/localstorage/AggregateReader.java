@@ -95,7 +95,7 @@ public class AggregateReader {
                     if (snapshot.getAggregateSequenceNumber() >= maxSequenceNumber) {
                         return Flux.empty();
                     }
-                    long actualMinSequenceNumber = optionalSnapshot.get().asEvent().getAggregateSequenceNumber() + 1;
+                    long actualMinSequenceNumber = snapshot.asEvent().getAggregateSequenceNumber() + 1;
                     Publisher<SerializedEvent> events = eventStorageEngine.eventsPerAggregate(aggregateId,
                                                                                               actualMinSequenceNumber,
                                                                                               maxSequenceNumber,
