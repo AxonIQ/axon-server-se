@@ -128,13 +128,13 @@ public class PrimaryEventStoreTest {
 
         StepVerifier.create(testSubject.eventsPerAggregate(aggregateId, 8, 30, 0)
                                        .map(SerializedEvent::getAggregateSequenceNumber))
-                    .expectNext(8L, 11L, 30L)
+                    .expectNext(8L, 11L)
                     .verifyComplete();
 
 
         StepVerifier.create(testSubject.eventsPerAggregate(aggregateId, 7, 30, 0)
                                        .map(SerializedEvent::getAggregateSequenceNumber))
-                    .expectNext(8L, 11L, 30L)
+                    .expectNext(8L, 11L)
                     .verifyComplete();
 
         StepVerifier.create(testSubject.eventsPerAggregate(aggregateId, 8, 31, 0)

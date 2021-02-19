@@ -124,10 +124,12 @@ public interface EventStorageEngine {
                                              long minToken);
 
     /**
-     * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is found.
-     * @param aggregateId the aggregate identifier
+     * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is
+     * found.
+     *
+     * @param aggregateId       the aggregate identifier
      * @param minSequenceNumber the first sequence number to retrieve
-     * @param maxSequenceNumber the last sequence number to retrieve (exlusive)
+     * @param maxSequenceNumber the last sequence number to retrieve (exclusive)
      * @param eventConsumer     the consumer to apply for each event
      */
     void processEventsPerAggregate(String aggregateId, long minSequenceNumber, long maxSequenceNumber, long minToken,
