@@ -92,14 +92,14 @@ public interface IndexManager {
 
 
     /**
-     * Retrieves the last segment and position of an event for given aggregate. Returns null if aggregate is not
-     * found, or no event with sequence number greater than or equal to the minimum sequence number.
+     * Retrieves the index entries of the last segment containing the aggregate where the first sequence
+     * number of events/snapshots for the aggregate in the segment is lower than {@code maxSequenceNumber}.
      *
      * @param aggregateId       the aggregate identifier
-     * @param minSequenceNumber minimum sequence number of the event to find
-     * @return segment and position of the last event
+     * @param maxSequenceNumber maximum sequence number of the event to find (exclusive)
+     * @return segment and position of events for the aggregate in the given segment
      */
-    SegmentAndPosition lastEvent(String aggregateId, long minSequenceNumber);
+    SegmentIndexEntries lastIndexEntries(String aggregateId, long maxSequenceNumber);
 
     /**
      * Returns a stream of index related files that should be included in the backup

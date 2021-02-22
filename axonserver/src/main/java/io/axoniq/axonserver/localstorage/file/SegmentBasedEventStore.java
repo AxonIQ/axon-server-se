@@ -27,18 +27,9 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.Status;
 import org.springframework.data.util.CloseableIterator;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileStore;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -230,24 +221,38 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
-        SegmentAndPosition lastEventPosition = indexManager.lastEvent(aggregateId, minSequenceNumber);
+    public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber, long maxSequenceNumber) {
+
+        SegmentIndexEntries lastEventPosition = indexManager.lastIndexEntries(aggregateId, maxSequenceNumber);
         if (lastEventPosition == null) {
             return Optional.empty();
         }
 
-        return readSerializedEvent(minSequenceNumber, lastEventPosition);
+        return readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
     }
 
-    private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber,
-                                                          SegmentAndPosition lastEventPosition) {
-        Optional<EventSource> eventSource = getEventSource(lastEventPosition.getSegment());
+    private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
+                                                          SegmentIndexEntries lastEventPosition) {
+        Optional<EventSource> eventSource = getEventSource(lastEventPosition.segment());
         if (eventSource.isPresent()) {
-            return readSerializedEvent(eventSource.get(), minSequenceNumber, lastEventPosition.getPosition());
+            try {
+                List<Integer> positions = lastEventPosition.indexEntries().positions();
+                for (int i = positions.size() - 1; i >= 0; i--) {
+                    SerializedEvent event = eventSource.get().readEvent(positions.get(i));
+                    if (event.getAggregateSequenceNumber() >= minSequenceNumber
+                            && event.getAggregateSequenceNumber() < maxSequenceNumber) {
+                        return Optional.of(event);
+                    }
+                }
+
+                return Optional.empty();
+            } finally {
+                eventSource.get().close();
+            }
         }
 
         if (next != null) {
-            return next.readSerializedEvent(minSequenceNumber, lastEventPosition);
+            return next.readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
         }
 
         return Optional.empty();

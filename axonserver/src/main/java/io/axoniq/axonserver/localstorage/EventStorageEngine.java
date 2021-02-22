@@ -11,11 +11,8 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
-import org.springframework.boot.actuate.health.Health;
 import org.springframework.data.util.CloseableIterator;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -102,13 +99,16 @@ public interface EventStorageEngine {
     Registration registerCloseListener(Runnable listener);
 
     /**
-     * Retrieves the last event for a specific aggregate id with a sequence number higher than or equal to the given sequence number.
+     * Retrieves the last event for a specific aggregate id with a sequence number higher than or equal to the given
+     * sequence number.
      * Returns empty optional if aggregate is not found or no event with higher sequence number is found.
+     *
      * @param aggregateIdentifier the aggregate identifier
-     * @param minSequenceNumber the minimum sequence number
+     * @param minSequenceNumber   the minimum sequence number
+     * @param maxSequenceNumber   the last sequence number(exclusive)
      * @return optional containing the latest event
      */
-    Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber);
+    Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber, long maxSequenceNumber);
 
 
     /**

@@ -450,7 +450,8 @@ public class LocalEventStoreTest {
         }
 
         @Override
-        public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
+        public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber,
+                                                      long maxSequenceNumber) {
             return Optional.of(new SerializedEvent(events[events.length - 1]));
         }
     }
