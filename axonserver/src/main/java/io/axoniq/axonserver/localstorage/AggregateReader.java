@@ -78,14 +78,14 @@ public class AggregateReader {
      * @param useSnapshots      if true, the returned events could start from a snapshot, if present
      * @param minSequenceNumber the minimum sequence number of the events that are returned
      * @param maxSequenceNumber the maximum sequence number of the events that are returned (exclusive)
-     * @param minToken          the minimum token of the event that are returned
+     * @param minTokenHint      used for performance reason to avoid to look for events with lower token than this value
      * @return the events related to the specific aggregate
      */
     public Flux<SerializedEvent> events(String aggregateId,
-                                             boolean useSnapshots,
-                                             long minSequenceNumber,
-                                             long maxSequenceNumber,
-                                             long minToken) {
+                                        boolean useSnapshots,
+                                        long minSequenceNumber,
+                                        long maxSequenceNumber,
+                                        long minTokenHint) {
         return Flux.defer(() -> {
             if (useSnapshots) {
                 Optional<SerializedEvent> optionalSnapshot = snapshotReader.readSnapshot(aggregateId,
@@ -99,11 +99,14 @@ public class AggregateReader {
                     Publisher<SerializedEvent> events = eventStorageEngine.eventsPerAggregate(aggregateId,
                                                                                               actualMinSequenceNumber,
                                                                                               maxSequenceNumber,
-                                                                                              minToken);
+                                                                                              minTokenHint);
                     return Flux.just(snapshot).concatWith(events);
                 }
             }
-            return eventStorageEngine.eventsPerAggregate(aggregateId, minSequenceNumber, maxSequenceNumber, minToken);
+            return eventStorageEngine.eventsPerAggregate(aggregateId,
+                                                         minSequenceNumber,
+                                                         maxSequenceNumber,
+                                                         minTokenHint);
         });
     }
 }
