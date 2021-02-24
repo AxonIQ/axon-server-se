@@ -199,23 +199,6 @@ public class LocalEventStoreTest {
     }
 
     @Test
-    public void listAggregateEvents() throws InterruptedException {
-        FakeStreamObserver<SerializedEvent> events = new FakeStreamObserver<>();
-        testSubject.listAggregateEvents("demo", null,
-                                        GetAggregateEventsRequest.newBuilder()
-                                                                 .setAllowSnapshots(true)
-                                                                 .build(),
-                                        events);
-
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, events.completedCount()));
-        assertEquals(1, eventInterceptors.readSnapshot);
-        assertEquals(1, eventInterceptors.readEvent);
-
-        assertTrue(events.values().get(0).isSnapshot());
-        assertFalse(events.values().get(1).isSnapshot());
-    }
-
-    @Test
     public void aggregateEvents() {
         Flux<SerializedEvent> events = testSubject.aggregateEvents("demo", null,
                                                                  GetAggregateEventsRequest.newBuilder()
@@ -228,22 +211,6 @@ public class LocalEventStoreTest {
                     .verifyComplete();
         assertEquals(1, eventInterceptors.readSnapshot);
         assertEquals(1, eventInterceptors.readEvent);
-    }
-
-    @Test
-    public void listAggregateEventsNoSnapshots() throws InterruptedException {
-        FakeStreamObserver<SerializedEvent> events = new FakeStreamObserver<>();
-        testSubject.listAggregateEvents("demo", null,
-                                        GetAggregateEventsRequest.newBuilder()
-                                                                 .build(),
-                                        events);
-
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, events.completedCount()));
-        assertEquals(0, eventInterceptors.readSnapshot);
-        assertEquals(8, eventInterceptors.readEvent);
-
-        assertFalse(events.values().get(0).isSnapshot());
-        assertFalse(events.values().get(1).isSnapshot());
     }
 
     @Test

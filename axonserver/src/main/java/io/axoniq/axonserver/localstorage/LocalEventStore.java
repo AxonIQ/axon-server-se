@@ -346,34 +346,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void listAggregateEvents(String context, Authentication authentication, GetAggregateEventsRequest request,
-                                    StreamObserver<SerializedEvent> responseStreamObserver) {
-        runInDataFetcherPool(() -> {
-            AtomicInteger counter = new AtomicInteger();
-            EventDecorator activeEventDecorator = eventInterceptors.noReadInterceptors(context) ?
-                    eventDecorator :
-                    new InterceptorAwareEventDecorator(context, authentication);
-            workers(context).aggregateReader.readEvents(request.getAggregateId(),
-                                                        request.getAllowSnapshots(),
-                                                        request.getInitialSequence(),
-                                                        getMaxSequence(request),
-                                                        request.getMinToken(),
-                                                        event -> {
-                                                            responseStreamObserver.onNext(activeEventDecorator
-                                                                                                  .decorateEvent(event));
-                                                            counter.incrementAndGet();
-                                                        });
-            if (counter.get() == 0) {
-                logger.debug("Aggregate not found: {}", request);
-            }
-            responseStreamObserver.onCompleted();
-        }, error -> {
-            logger.warn("Problem encountered while reading events for aggregate " + request.getAggregateId(), error);
-            responseStreamObserver.onError(error);
-        });
-    }
-
-    @Override
     public Flux<SerializedEvent> aggregateEvents(String context,
                                                  Authentication authentication,
                                                  GetAggregateEventsRequest request) {

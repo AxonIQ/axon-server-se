@@ -58,19 +58,52 @@ public interface EventStore {
                                                             Authentication authentication,
                                                             StreamObserver<Confirmation> responseObserver);
 
+    /**
+     * Returns a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
+     * The events could start with a snapshot event, if the request allows the usage of the snapshots. All the events
+     * should have a sequential sequence number.
+     *
+     * @param context        the context containing the aggregate
+     * @param authentication the authentication
+     * @param request        the request containing the aggregate identifier and read options
+     * @return a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
+     */
     Flux<SerializedEvent> aggregateEvents(String context,
                                           Authentication authentication,
                                           GetAggregateEventsRequest request);
 
     /**
-     * Read events for an aggregate.
+     * Returns a {@link Flux} of all snapshots events for an aggregate according whit the specified request. The
+     * snapshots are sorted from the latest one. The snapshot sequence numbers are not sequential.
      *
-     * @param context                the context to read from
-     * @param request                the request containing the aggregate identifier and read options
-     * @param responseStreamObserver {@link StreamObserver} where the events will be published
+     * @param context        the context containing the aggregate
+     * @param authentication the authentication
+     * @param request        the request containing the aggregate identifier and read options
+     * @return a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
      */
-    void listAggregateEvents(String context, Authentication authentication, GetAggregateEventsRequest request,
-                             StreamObserver<SerializedEvent> responseStreamObserver);
+    default Flux<SerializedEvent> aggregateSnapshots(String context,
+                                                     Authentication authentication,
+                                                     GetAggregateSnapshotsRequest request) {
+        return Flux.create(
+                sink -> listAggregateSnapshots(context, authentication, request, new StreamObserver<SerializedEvent>() {
+                    @Override
+                    public void onNext(SerializedEvent serializedEvent) {
+                        if (serializedEvent.getAggregateSequenceNumber() < request.getMaxSequence()) {
+                            sink.next(serializedEvent);
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        sink.error(throwable);
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        sink.complete();
+                    }
+                }));
+    }
 
     /**
      * Retrieves the Events from a given tracking token. Results are streamed rather than returned at once. Caller gets
@@ -81,7 +114,8 @@ public interface EventStore {
      * @param responseStreamObserver {@link StreamObserver} where the events will be published
      * @return stream to send initial request and additional control messages to
      */
-    StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication, StreamObserver<InputStream> responseStreamObserver);
+    StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
+                                                StreamObserver<InputStream> responseStreamObserver);
 
     void getFirstToken(String context, GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver);
 
@@ -104,5 +138,4 @@ public interface EventStore {
      * @param context the context to be deleted
      */
     void deleteAllEventData(String context);
-
 }
