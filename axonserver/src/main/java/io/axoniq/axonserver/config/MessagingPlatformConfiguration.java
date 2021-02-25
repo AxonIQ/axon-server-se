@@ -259,6 +259,19 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getDomain() {
+        if (domain == null) {
+            try {
+                String systemHostname = systemInfoProvider.getHostName();
+                int firstDot = systemHostname.indexOf('.');
+                if (firstDot != -1) {
+                    domain = systemHostname.substring(firstDot + 1);
+                } else {
+                    domain = "";
+                }
+            } catch (UnknownHostException e) {
+                logger.warn("Could not determine hostname from inet address: {}", e.getMessage());
+            }
+        }
         return domain;
     }
 
