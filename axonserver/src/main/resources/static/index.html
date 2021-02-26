@@ -298,8 +298,11 @@
 </article>
 
 <footer id="footer">
-    <p>{{version}} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="New version available!" class="important">
-        <i class="fas fa-exclamation-triangle"></i></a> by <span>AxonIQ</span> <a href="#info" class="info"><i class="fas fa-info-circle"></i></a></p>
+    <p>{{ version }} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="New version available!"
+                        class="important">
+        <i class="fas fa-exclamation-triangle"></i></a> by <span class="logo">AxonIQ</span> <a href="#info"
+                                                                                               class="info"><i
+            class="fas fa-info-circle"></i></a></p>
 
 
     <modal-updates style="visibility: visible" v-if="showModal" @close="showModal = false">

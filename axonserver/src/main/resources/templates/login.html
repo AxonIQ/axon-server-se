@@ -14,6 +14,31 @@
     <title>AxonDashboard: Login</title>
     <link rel="stylesheet" href="css/style.css"/>
     <link rel="icon" type="image/x-icon" href="/img/favicon.ico"/>
+    <script src="js/fontawesome-all.js"></script>
+    <style>
+        .externalLogin a {
+            color: #21252b;
+            text-decoration: none;
+            background-color: #f5f5f5;
+            margin: 5px;
+            border: 1px solid #cccccc;
+            padding: 10px;
+            box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
+            border-radius: 4px;
+        }
+
+        .externalLogin {
+            display: inline-block;
+            float: left;
+            margin-top: 20px;
+        }
+
+        .externalLoginSection {
+            border-top: 1px solid #cccccc;
+            padding-left: 27px;
+        }
+    </style>
+
 </head>
 <body>
 <article>
@@ -21,16 +46,13 @@
         <h1>AxonDashboard</h1>
     </header>
 
-    <div th:if="${param.error}" class="msg warning">
-        Invalid username and password.
-    </div>
-    <div th:if="${param.logout}" class="msg warning">
-        You have been logged out.
-    </div>
+    <div th:if="${error}" class="msg warning" th:text="${error}"/>
+
+    <div th:if="${logout}" class="msg warning" th:text="${logout}"/>
 
     <form th:action="@{/login}" method="post">
         <div class="column configuration">
-            <section>
+            <section class="login">
                 <ul>
                     <li>
                         <span>User Name</span>
@@ -47,11 +69,21 @@
                 </ul>
             </section>
         </div>
+
+        <section th:if="${!#lists.isEmpty(externalLogins)}" class="externalLoginSection">
+
+            <div th:each="externalLogin: ${externalLogins}" class="externalLogin">
+                <a th:href="@{${externalLogin.url}}">
+                    <i th:class="${externalLogin.image}"></i>
+                    Sign in with <span th:text="${externalLogin.name}"></span>
+                </a>
+            </div>
+        </section>
     </form>
 </article>
 
 <footer>
-    <p>Axon Server @project.version@ by <span>AxonIQ</span></p>
+    <p><span th:text="${product}"></span> <span th:text="${version}"></span> by <span class="logo">AxonIQ</span></p>
 </footer>
 
 </body>

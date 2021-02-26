@@ -16,7 +16,6 @@ import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -34,6 +33,7 @@ import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -68,6 +68,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
@@ -152,6 +153,12 @@ public class AxonServerStandardConfiguration {
     @ConditionalOnMissingBean(EventDecorator.class)
     public EventDecorator eventDecorator() {
         return new DefaultEventDecorator();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ExternalLoginsProvider.class)
+    public ExternalLoginsProvider externalLoginProvider() {
+        return Collections::emptyList;
     }
 
     @Bean
