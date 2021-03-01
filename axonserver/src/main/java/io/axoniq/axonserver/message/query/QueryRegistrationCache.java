@@ -212,7 +212,8 @@ public class QueryRegistrationCache {
     public QueryHandler find(String context, QueryRequest request, String clientStreamId) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
         ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(context, clientStreamId);
-        return registrationsPerQuery.get(queryDefinition).getHandler(clientStreamIdentification);
+        QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
+        return queryInformation == null ? null : queryInformation.getHandler(clientStreamIdentification);
     }
 
     public Set<ClientStreamIdentification> getClients() {
