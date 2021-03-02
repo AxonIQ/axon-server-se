@@ -10,71 +10,46 @@
 package io.axoniq.axonserver.plugin;
 
 import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
-import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.interceptor.TestPluginUnitOfWork;
 import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 import org.osgi.framework.BundleException;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
+
+import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
  */
 public class OsgiControllerTest {
 
-    @Test
-    public void start() throws IOException, BundleException, RequestRejectedException {
-        OsgiController osgiController = new OsgiController("cache",
-                                                           "onFirstInit",
-                                                           true);
-        osgiController.start();
+    private final OsgiController testSubject = new OsgiController("cache",
+                                                                  "onFirstInit",
+                                                                  true);
 
+    @Before
+    public void setup() {
+        testSubject.start();
+    }
+
+    @Test
+    public void loadBundle() throws IOException, BundleException, RequestRejectedException {
         File bundlesDir = new File(TestUtils.fixPathOnWindows(PluginController
                                                                       .class.getResource(
                 "/sample-bundles").getFile()));
         File[] files = bundlesDir.listFiles((dir, name) -> name.endsWith(".jar"));
         if (files != null) {
             for (File file : files) {
-                osgiController.addPlugin(file);
+                testSubject.addPlugin(file);
             }
         }
 
-        Command command = Command.newBuilder().setClientId("sample").build();
-        List<ServiceWithInfo<CommandRequestInterceptor>> interceptors =
-                osgiController.getServicesWithInfo(CommandRequestInterceptor.class).stream()
-                              .sorted(Comparator.comparing(ServiceWithInfo::order))
-                              .collect(Collectors.toList());
+        assertEquals(1, testSubject.listPlugins().size());
 
-        PluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
-        for (ServiceWithInfo<CommandRequestInterceptor> interceptor : interceptors) {
-            command = interceptor.service().commandRequest(command, unitOfWork);
-        }
-        System.out.println(command);
-
-        osgiController.listPlugins().forEach(s -> System.out.println(" Plugin: " + s));
-        File extraBundlesDir = new File(TestUtils.fixPathOnWindows(PluginController
-                                                                           .class.getResource(
-                "/sample-bundles2").getFile()));
-        files = extraBundlesDir.listFiles((dir, name) -> name.endsWith(".jar"));
-        if (files != null) {
-            for (File file : files) {
-                osgiController.addPlugin(file);
-            }
-        }
-
-        interceptors = osgiController.getServicesWithInfo(CommandRequestInterceptor.class)
-                                     .stream()
-                                     .sorted(Comparator.comparing(ServiceWithInfo::order))
-                                     .collect(Collectors.toList());
-        for (ServiceWithInfo<CommandRequestInterceptor> interceptor : interceptors) {
-            System.out.println(interceptor.pluginKey());
-            command = interceptor.service().commandRequest(command, unitOfWork);
-        }
-        System.out.println(command);
+        Set<ServiceWithInfo<CommandRequestInterceptor>> interceptors = testSubject.getServicesWithInfo(
+                CommandRequestInterceptor.class);
+        assertEquals(1, interceptors.size());
     }
 }
