@@ -749,11 +749,11 @@ select {
 	padding-left: 0;
 }
 
-.extensionProperties input {
+.pluginProperties input {
 	padding: 2px;
 }
 
-.extensionProperties select {
+.pluginProperties select {
 	padding: 2px;
 }
 

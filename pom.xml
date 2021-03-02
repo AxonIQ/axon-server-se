@@ -58,15 +58,15 @@
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <jackson.version>2.9.10.5</jackson.version>
         <gson.version>2.8.6</gson.version>
-        <axonserver-extension-api.version>4.5-SNAPSHOT</axonserver-extension-api.version>
+        <axonserver-plugin-api.version>4.5-SNAPSHOT</axonserver-plugin-api.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>io.axoniq</groupId>
-                <artifactId>axonserver-extension-api</artifactId>
-                <version>${axonserver-extension-api.version}</version>
+                <artifactId>axonserver-plugin-api</artifactId>
+                <version>${axonserver-plugin-api.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>

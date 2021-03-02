@@ -9,10 +9,10 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionKey;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
+import io.axoniq.axonserver.plugin.PluginKey;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.interceptor.QueryRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.QueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -29,43 +29,43 @@ import static org.junit.Assert.*;
  */
 public class DefaultQueryInterceptorsTest {
 
-    public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController, true);
+    public static final PluginKey PLUGIN_KEY = new PluginKey("sample", "1.0");
+    private final TestPluginServiceProvider osgiController = new TestPluginServiceProvider();
+    private final PluginContextFilter pluginContextFilter = new PluginContextFilter(osgiController, true);
     private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(),
                                                                new DefaultMetricCollector());
-    private final DefaultQueryInterceptors testSubject = new DefaultQueryInterceptors(extensionContextFilter,
+    private final DefaultQueryInterceptors testSubject = new DefaultQueryInterceptors(pluginContextFilter,
                                                                                       meterFactory);
 
     @Test
     public void queryRequest() {
-        osgiController.add(new ServiceWithInfo<>((QueryRequestInterceptor) (queryRequest, extensionContext) ->
+        osgiController.add(new ServiceWithInfo<>((QueryRequestInterceptor) (queryRequest, unitOfWork) ->
                 QueryRequest.newBuilder(queryRequest)
                             .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                 EXTENSION_KEY));
+                                                 PLUGIN_KEY));
 
         SerializedQuery intercepted = testSubject.queryRequest(serializedQuery("sample"),
-                                                               new TestExtensionUnitOfWork("default"));
+                                                               new TestPluginUnitOfWork("default"));
         assertFalse(intercepted.query().containsMetaData("demo"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        intercepted = testSubject.queryRequest(serializedQuery("sample"), new TestExtensionUnitOfWork("default"));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        intercepted = testSubject.queryRequest(serializedQuery("sample"), new TestPluginUnitOfWork("default"));
         assertTrue(intercepted.query().containsMetaData("demo"));
     }
 
     @Test
     public void queryResponse() {
-        osgiController.add(new ServiceWithInfo<>((QueryResponseInterceptor) (queryResponse, extensionContext) ->
+        osgiController.add(new ServiceWithInfo<>((QueryResponseInterceptor) (queryResponse, unitOfWork) ->
                 QueryResponse.newBuilder(queryResponse)
                              .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                 EXTENSION_KEY));
+                                                 PLUGIN_KEY));
 
         QueryResponse intercepted = testSubject.queryResponse(queryResponse("test"),
-                                                              new TestExtensionUnitOfWork("default"));
+                                                              new TestPluginUnitOfWork("default"));
         assertFalse(intercepted.containsMetaData("demo"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        intercepted = testSubject.queryResponse(queryResponse("sample"), new TestExtensionUnitOfWork("default"));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        intercepted = testSubject.queryResponse(queryResponse("sample"), new TestPluginUnitOfWork("default"));
         assertTrue(intercepted.containsMetaData("demo"));
     }
 

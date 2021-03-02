@@ -9,10 +9,10 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionKey;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryRequestInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryResponseInterceptor;
+import io.axoniq.axonserver.plugin.PluginKey;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryUpdateComplete;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
@@ -30,55 +30,55 @@ import static org.junit.Assert.*;
  */
 public class DefaultSubscriptionQueryInterceptorsTest {
 
-    public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController, true);
+    public static final PluginKey PLUGIN_KEY = new PluginKey("sample", "1.0");
+    private final TestPluginServiceProvider osgiController = new TestPluginServiceProvider();
+    private final PluginContextFilter pluginContextFilter = new PluginContextFilter(osgiController, true);
 
     private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(),
                                                                new DefaultMetricCollector());
     private final DefaultSubscriptionQueryInterceptors testSubject = new DefaultSubscriptionQueryInterceptors(
-            extensionContextFilter, meterFactory);
+            pluginContextFilter, meterFactory);
 
     @Test
     public void queryRequest() {
         osgiController
-                .add(new ServiceWithInfo<>((SubscriptionQueryRequestInterceptor) (queryRequest, extensionContext) ->
+                .add(new ServiceWithInfo<>((SubscriptionQueryRequestInterceptor) (queryRequest, unitOfWork) ->
                         SubscriptionQueryRequest.newBuilder(queryRequest)
                                                 .setSubscribe(SubscriptionQuery.newBuilder()
                                                                                .setQueryRequest(QueryRequest
                                                                                                         .newBuilder()))
                                                 .build(),
-                                           EXTENSION_KEY));
+                                           PLUGIN_KEY));
 
         SubscriptionQueryRequest intercepted = testSubject.subscriptionQueryRequest(SubscriptionQueryRequest
                                                                                             .getDefaultInstance(),
-                                                                                    new TestExtensionUnitOfWork(
+                                                                                    new TestPluginUnitOfWork(
                                                                                             "default"));
         assertFalse(intercepted.hasSubscribe());
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         intercepted = testSubject.subscriptionQueryRequest(SubscriptionQueryRequest.getDefaultInstance(),
-                                                           new TestExtensionUnitOfWork("default"));
+                                                           new TestPluginUnitOfWork("default"));
         assertTrue(intercepted.hasSubscribe());
     }
 
     @Test
     public void queryResponse() {
         osgiController
-                .add(new ServiceWithInfo<>((SubscriptionQueryResponseInterceptor) (queryResponse, extensionContext) ->
+                .add(new ServiceWithInfo<>((SubscriptionQueryResponseInterceptor) (queryResponse, unitOfWork) ->
                         SubscriptionQueryResponse.newBuilder(queryResponse)
                                                  .setComplete(QueryUpdateComplete.newBuilder()).build(),
-                                           EXTENSION_KEY));
+                                           PLUGIN_KEY));
 
         SubscriptionQueryResponse intercepted = testSubject.subscriptionQueryResponse(SubscriptionQueryResponse
                                                                                               .getDefaultInstance(),
-                                                                                      new TestExtensionUnitOfWork(
+                                                                                      new TestPluginUnitOfWork(
                                                                                               "default"));
         assertFalse(intercepted.hasComplete());
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         intercepted = testSubject.subscriptionQueryResponse(SubscriptionQueryResponse.getDefaultInstance(),
-                                                            new TestExtensionUnitOfWork("default"));
+                                                            new TestPluginUnitOfWork("default"));
         assertTrue(intercepted.hasComplete());
     }
 }

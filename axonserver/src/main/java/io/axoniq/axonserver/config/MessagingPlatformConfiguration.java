@@ -141,21 +141,21 @@ public class MessagingPlatformConfiguration {
      */
     private int clusterExecutorThreadCount = 4;
     /**
-     * Enable extensions for Axon Server
+     * Enable plugins for Axon Server
      */
-    private boolean extensionsEnabled = true;
+    private boolean pluginsEnabled = true;
     /**
-     * Directory for osgi cache for extensions
+     * Directory for osgi cache for plugins
      */
-    private String extensionCacheDirectory = "plugins/cache";
+    private String pluginCacheDirectory = "plugins/cache";
     /**
-     * Directory for installed extension packages
+     * Directory for installed plugin packages
      */
-    private String extensionPackageDirectory = "plugins/bundles";
+    private String pluginPackageDirectory = "plugins/bundles";
     /**
-     * Clean policy for extensions cache on startup (values "none" or "onFirstInit")
+     * Clean policy for plugin cache on startup (values "none" or "onFirstInit")
      */
-    private String extensionCleanPolicy = "onFirstInit";
+    private String pluginCleanPolicy = "onFirstInit";
 
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
@@ -405,35 +405,35 @@ public class MessagingPlatformConfiguration {
         this.webSocketAllowedOrigins = webSocketAllowedOrigins;
     }
 
-    public boolean isExtensionsEnabled() {
-        return extensionsEnabled;
+    public boolean isPluginsEnabled() {
+        return pluginsEnabled;
     }
 
-    public void setExtensionsEnabled(boolean extensionsEnabled) {
-        this.extensionsEnabled = extensionsEnabled;
+    public void setPluginsEnabled(boolean pluginsEnabled) {
+        this.pluginsEnabled = pluginsEnabled;
     }
 
-    public String getExtensionCacheDirectory() {
-        return extensionCacheDirectory;
+    public String getPluginCacheDirectory() {
+        return pluginCacheDirectory;
     }
 
-    public void setExtensionCacheDirectory(String extensionCacheDirectory) {
-        this.extensionCacheDirectory = extensionCacheDirectory;
+    public void setPluginCacheDirectory(String pluginCacheDirectory) {
+        this.pluginCacheDirectory = pluginCacheDirectory;
     }
 
-    public String getExtensionCleanPolicy() {
-        return extensionCleanPolicy;
+    public String getPluginCleanPolicy() {
+        return pluginCleanPolicy;
     }
 
-    public void setExtensionCleanPolicy(String extensionCleanPolicy) {
-        this.extensionCleanPolicy = extensionCleanPolicy;
+    public void setPluginCleanPolicy(String pluginCleanPolicy) {
+        this.pluginCleanPolicy = pluginCleanPolicy;
     }
 
-    public String getExtensionPackageDirectory() {
-        return extensionPackageDirectory;
+    public String getPluginPackageDirectory() {
+        return pluginPackageDirectory;
     }
 
-    public void setExtensionPackageDirectory(String extensionPackageDirectory) {
-        this.extensionPackageDirectory = extensionPackageDirectory;
+    public void setPluginPackageDirectory(String pluginPackageDirectory) {
+        this.pluginPackageDirectory = pluginPackageDirectory;
     }
 }

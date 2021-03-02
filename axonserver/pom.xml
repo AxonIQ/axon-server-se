@@ -36,7 +36,7 @@
     <dependencies>
         <dependency>
             <groupId>io.axoniq</groupId>
-            <artifactId>axonserver-extension-api</artifactId>
+            <artifactId>axonserver-plugin-api</artifactId>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
