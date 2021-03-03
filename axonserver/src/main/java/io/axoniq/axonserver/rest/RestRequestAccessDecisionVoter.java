@@ -53,20 +53,27 @@ public class RestRequestAccessDecisionVoter implements AccessDecisionVoter<Filte
     public int vote(Authentication authentication, FilterInvocation invocation,
                     Collection<ConfigAttribute> configAttributes) {
         if (permitAll(configAttributes)) {
-            LOGGER.debug("PermitAll {}", invocation.getHttpRequest().getRequestURI());
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("PermitAll {}", invocation.getHttpRequest().getRequestURI());
+            }
             return AccessDecisionVoter.ACCESS_GRANTED;
         }
         String operation = invocation.getHttpRequest().getMethod() + ":" + invocation.getHttpRequest().getRequestURI();
         if (invocation.getHttpRequest().getUserPrincipal() == null) {
+            LOGGER.debug("Vote result: DENIED for '{}', no principal in request.", operation);
             return AccessDecisionVoter.ACCESS_DENIED;
         }
         String context = context(invocation.getHttpRequest());
         Set<String> rolesWithAccess = axonServerAccessController.rolesForOperation(operation);
-        LOGGER.debug("Vote for: {}, context = {}, authorities: {}, authoritiesWithAccess: {} ", operation,
-                     context, authentication.getAuthorities(), rolesWithAccess);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Vote for: '{}', auth = '{}', context = '{}', authorities: {}, authoritiesWithAccess: {} ", operation,
+                    authentication.getName(), context, authentication.getAuthorities(), rolesWithAccess);
+        }
         if (!rolesWithAccess.isEmpty() && !authorizedForContext(authentication, context, rolesWithAccess)) {
+            LOGGER.debug("Vote result: DENIED for '{}'", operation);
             return AccessDecisionVoter.ACCESS_DENIED;
         }
+        LOGGER.debug("Vote result: GRANTED for '{}'", operation);
         return AccessDecisionVoter.ACCESS_GRANTED;
     }
 

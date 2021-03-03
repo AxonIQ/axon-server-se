@@ -12,7 +12,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
@@ -99,7 +99,7 @@ public class SubscriptionQueryRequestTargetTest {
 
         @Override
         public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                                 ExtensionUnitOfWork extensionContext) {
+                                                                 PluginUnitOfWork unitOfWork) {
             if (rejectRequest) {
                 throw new MessagingPlatformException(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR, "Rejected");
             }
@@ -107,15 +107,15 @@ public class SubscriptionQueryRequestTargetTest {
                 throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR, "Failed");
             }
             subscriptionQueryRequestCount++;
-            extensionContext.addDetails("RequestId", UUID.randomUUID());
+            unitOfWork.addDetails("RequestId", UUID.randomUUID());
             return subscriptionQueryRequest;
         }
 
         @Override
         public SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
-                                                                   ExtensionUnitOfWork extensionContext) {
+                                                                   PluginUnitOfWork unitOfWork) {
             subscriptionQueryResponseCount++;
-            lastUUID = extensionContext.getDetails("RequestId");
+            lastUUID = unitOfWork.getDetails("RequestId");
             return subscriptionQueryResponse;
         }
     }

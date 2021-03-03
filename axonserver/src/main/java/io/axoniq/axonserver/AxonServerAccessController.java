@@ -68,7 +68,7 @@ public interface AxonServerAccessController {
      * @return the query
      */
     default String usersByUsernameQuery() {
-        return "select username,password, enabled from users where username=?";
+        return "select username,password, enabled from users where (username=?) and (password<>'nologon')";
     }
 
     /**

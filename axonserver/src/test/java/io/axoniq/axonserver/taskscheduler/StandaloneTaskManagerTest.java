@@ -39,11 +39,11 @@ import static org.mockito.Mockito.*;
 public class StandaloneTaskManagerTest {
 
     private StandaloneTaskManager testSubject;
-    private Map<String, Task> tasks = new HashMap<>();
-    private FakeScheduledExecutorService scheduler = new FakeScheduledExecutorService();
-    private AtomicBoolean transientException = new AtomicBoolean();
-    private AtomicBoolean nonTransientException = new AtomicBoolean();
-    private AtomicInteger executionCounter = new AtomicInteger();
+    private final Map<String, Task> tasks = new HashMap<>();
+    private final FakeScheduledExecutorService scheduler = new FakeScheduledExecutorService();
+    private final AtomicBoolean transientException = new AtomicBoolean();
+    private final AtomicBoolean nonTransientException = new AtomicBoolean();
+    private final AtomicInteger executionCounter = new AtomicInteger();
 
     @Before
     public void setup() {
@@ -115,6 +115,7 @@ public class StandaloneTaskManagerTest {
                                                 scheduler,
                                                 scheduler.clock());
         testSubject.start();
+        scheduler.timeElapses(0);
     }
 
     @Test
@@ -136,9 +137,11 @@ public class StandaloneTaskManagerTest {
         assertEquals(1, scheduler.tasks());
         scheduler.timeElapses(5, TimeUnit.MINUTES);
         assertEquals(1, tasks.size());
+        assertEquals(1, scheduler.tasks());
+        scheduler.timeElapses(5, TimeUnit.MINUTES);
+        assertEquals(1, tasks.size());
         assertEquals(2, scheduler.tasks());
-
-        scheduler.timeElapses(6, TimeUnit.MINUTES);
+        scheduler.timeElapses(1, TimeUnit.MINUTES);
         assertEquals(0, tasks.size());
         assertEquals(1, scheduler.tasks());
         assertEquals(1, executionCounter.get());

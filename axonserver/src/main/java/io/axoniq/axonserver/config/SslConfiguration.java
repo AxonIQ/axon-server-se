@@ -35,6 +35,10 @@ public class SslConfiguration {
      * Trusted certificates for verifying the other AxonServer's certificate.
      */
     private String internalTrustManagerFile;
+    /**
+     * File containing the private key to be used in internal communication between Axon Server nodes.
+     */
+    private String internalPrivateKeyFile;
 
     public boolean isEnabled() {
         return enabled;
@@ -61,12 +65,25 @@ public class SslConfiguration {
     }
 
     public String getInternalCertChainFile() {
-        if( internalCertChainFile == null) return certChainFile;
+        if (internalCertChainFile == null) {
+            return certChainFile;
+        }
         return internalCertChainFile;
     }
 
     public void setInternalCertChainFile(String internalCertChainFile) {
         this.internalCertChainFile = internalCertChainFile;
+    }
+
+    public String getInternalPrivateKeyFile() {
+        if (internalPrivateKeyFile == null) {
+            return privateKeyFile;
+        }
+        return internalPrivateKeyFile;
+    }
+
+    public void setInternalPrivateKeyFile(String internalPrivateKeyFile) {
+        this.internalPrivateKeyFile = internalPrivateKeyFile;
     }
 
     public String getInternalTrustManagerFile() {

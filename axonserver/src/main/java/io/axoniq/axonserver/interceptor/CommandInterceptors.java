@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 
@@ -22,25 +22,24 @@ import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 public interface CommandInterceptors {
 
     /**
-     * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor} instances. Interceptors
+     * Invokes all {@link io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor} instances. Interceptors
      * may change the content of the command.
      *
-     * @param serializedCommand   the command to intercept
-     * @param extensionUnitOfWork the unit of work for the command
+     * @param serializedCommand the command to intercept
+     * @param unitOfWork        the unit of work for the command
      * @return the command after executing the interceptors
      */
     SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                     ExtensionUnitOfWork extensionUnitOfWork);
+                                     PluginUnitOfWork unitOfWork);
 
     /**
-     * Invokes all {@link io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor} instances.
-     * Interceptors
-     * may change the content of the response.
+     * Invokes all {@link io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor} instances.
+     * Interceptors may change the content of the response.
      *
-     * @param serializedResponse  the response to intercept
-     * @param extensionUnitOfWork the unit of work for the command
+     * @param serializedResponse the response to intercept
+     * @param unitOfWork         the unit of work for the command
      * @return the response after executing the interceptors
      */
     SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
-                                              ExtensionUnitOfWork extensionUnitOfWork);
+                                              PluginUnitOfWork unitOfWork);
 }

@@ -11,11 +11,11 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
@@ -34,45 +34,45 @@ import java.util.List;
 @Component
 public class DefaultCommandInterceptors implements CommandInterceptors {
 
-    private final ExtensionContextFilter extensionContextFilter;
+    private final PluginContextFilter pluginContextFilter;
     private final InterceptorTimer interceptorTimer;
 
 
-    public DefaultCommandInterceptors(ExtensionContextFilter extensionContextFilter,
+    public DefaultCommandInterceptors(PluginContextFilter pluginContextFilter,
                                       MeterFactory meterFactory) {
-        this.extensionContextFilter = extensionContextFilter;
+        this.pluginContextFilter = pluginContextFilter;
         this.interceptorTimer = new InterceptorTimer(meterFactory);
     }
 
     @Override
     public SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                            ExtensionUnitOfWork extensionUnitOfWork) {
-        List<ServiceWithInfo<CommandRequestInterceptor>> commandRequestInterceptors = extensionContextFilter
+                                            PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<CommandRequestInterceptor>> commandRequestInterceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         CommandRequestInterceptor.class,
-                        extensionUnitOfWork.context());
+                        unitOfWork.context());
         if (commandRequestInterceptors.isEmpty()) {
             return serializedCommand;
         }
         Command intercepted =
-                interceptorTimer.time(extensionUnitOfWork.context(), "CommandRequestInterceptor", () -> {
+                interceptorTimer.time(unitOfWork.context(), "CommandRequestInterceptor", () -> {
                     Command command = serializedCommand.wrapped();
                     for (ServiceWithInfo<CommandRequestInterceptor> commandRequestInterceptor :
                             commandRequestInterceptors) {
                         try {
                             command = commandRequestInterceptor.service().commandRequest(command,
-                                                                                         extensionUnitOfWork);
+                                                                                         unitOfWork);
                         } catch (RequestRejectedException requestRejectedException) {
                             throw new MessagingPlatformException(ErrorCode.COMMAND_REJECTED_BY_INTERCEPTOR,
-                                                                 extensionUnitOfWork.context() +
+                                                                 unitOfWork.context() +
                                                                          ": Command rejected by the CommandRequestInterceptor in "
-                                                                         + commandRequestInterceptor.extensionKey(),
+                                                                         + commandRequestInterceptor.pluginKey(),
                                                                  requestRejectedException);
                         } catch (Exception interceptorException) {
                             throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                                 extensionUnitOfWork.context() +
+                                                                 unitOfWork.context() +
                                                                          ": Exception thrown by the CommandRequestInterceptor in "
-                                                                         + commandRequestInterceptor.extensionKey(),
+                                                                         + commandRequestInterceptor.pluginKey(),
                                                                  interceptorException);
                         }
                     }
@@ -83,26 +83,26 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
 
     @Override
     public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
-                                                     ExtensionUnitOfWork extensionUnitOfWork) {
-        List<ServiceWithInfo<CommandResponseInterceptor>> commandResponseInterceptors = extensionContextFilter
+                                                     PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<CommandResponseInterceptor>> commandResponseInterceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         CommandResponseInterceptor.class,
-                        extensionUnitOfWork.context());
+                        unitOfWork.context());
         if (commandResponseInterceptors.isEmpty()) {
             return serializedResponse;
         }
-        CommandResponse intercepted = interceptorTimer.time(extensionUnitOfWork.context(),
+        CommandResponse intercepted = interceptorTimer.time(unitOfWork.context(),
                                                             "CommandResponseInterceptor", () -> {
                     CommandResponse response = serializedResponse.wrapped();
                     for (ServiceWithInfo<CommandResponseInterceptor> commandResponseInterceptor : commandResponseInterceptors) {
                         try {
                             response = commandResponseInterceptor.service().commandResponse(response,
-                                                                                            extensionUnitOfWork);
+                                                                                            unitOfWork);
                         } catch (Exception interceptorException) {
                             throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                                 extensionUnitOfWork.context() +
+                                                                 unitOfWork.context() +
                                                                          ": Exception thrown by the CommandRequestInterceptor in "
-                                                                         + commandResponseInterceptor.extensionKey(),
+                                                                         + commandResponseInterceptor.pluginKey(),
                                                                  interceptorException);
                         }
                     }

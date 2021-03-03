@@ -12,8 +12,6 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.exception.ConcurrencyExceptions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -29,13 +27,15 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
-import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
+import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Gauge;
@@ -45,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.health.Health;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -91,6 +90,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final EventInterceptors eventInterceptors;
     private final int maxEventCount;
+
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
      * events
@@ -152,8 +152,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void initContext(String context, boolean validating, long defaultFirstEventIndex,
                             long defaultFirstSnapshotIndex) {
         try {
-            workersMap.computeIfAbsent(context, Workers::new)
-                      .ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
+            Workers workers = workersMap.computeIfAbsent(context, Workers::new);
+            workers.ensureInitialized(validating, defaultFirstEventIndex, defaultFirstSnapshotIndex);
         } catch (RuntimeException ex) {
             workersMap.remove(context);
             throw ex;
@@ -237,7 +237,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 return;
             }
         }
-        DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
+        DefaultPluginUnitOfWork interceptorContext = new DefaultPluginUnitOfWork(context, authentication);
         try {
             Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, interceptorContext);
             workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
@@ -264,7 +264,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    Authentication authentication,
                                                                    StreamObserver<Confirmation> responseObserver) {
-        DefaultInterceptorContext interceptorContext = new DefaultInterceptorContext(context, authentication);
+        DefaultPluginUnitOfWork interceptorContext = new DefaultPluginUnitOfWork(context, authentication);
         return new StreamObserver<InputStream>() {
             private final List<Event> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
@@ -701,10 +701,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return Stream.empty();
     }
 
-    public void health(Health.Builder builder) {
-        workersMap.values().forEach(worker -> worker.eventStreamReader.health(builder));
-    }
-
     private boolean isClientException(Throwable exception) {
         return exception instanceof MessagingPlatformException
                 && ((MessagingPlatformException) exception).getErrorCode().isClientException();
@@ -739,6 +735,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private final Gauge snapshotGauge;
         private final Object initLock = new Object();
         private volatile boolean initialized;
+
+
 
 
         public Workers(String context) {
@@ -787,6 +785,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     snapshotStorageEngine.close(false);
                     throw runtimeException;
                 }
+
+
             }
         }
 
@@ -837,33 +837,34 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventWriteStorage.deleteAllEventData();
             snapshotWriteStorage.deleteAllEventData();
         }
+
     }
 
     private class InterceptorAwareEventDecorator implements EventDecorator {
 
-        final ExtensionUnitOfWork extensionUnitOfWork;
+        final PluginUnitOfWork unitOfWork;
 
         public InterceptorAwareEventDecorator(String context, Authentication authentication) {
-            extensionUnitOfWork = new DefaultInterceptorContext(context, authentication);
+            unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
         }
 
         @Override
         public SerializedEvent decorateEvent(SerializedEvent serializedEvent) {
             Event event = serializedEvent.isSnapshot() ?
-                    eventInterceptors.readSnapshot(serializedEvent.asEvent(), extensionUnitOfWork) :
-                    eventInterceptors.readEvent(serializedEvent.asEvent(), extensionUnitOfWork);
+                    eventInterceptors.readSnapshot(serializedEvent.asEvent(), unitOfWork) :
+                    eventInterceptors.readEvent(serializedEvent.asEvent(), unitOfWork);
             return eventDecorator.decorateEvent(new SerializedEvent(event));
         }
 
         @Override
         public InputStream decorateEventWithToken(InputStream inputStream) {
-            if (eventInterceptors.noEventReadInterceptors(extensionUnitOfWork.context())) {
+            if (eventInterceptors.noEventReadInterceptors(unitOfWork.context())) {
                 return eventDecorator.decorateEventWithToken(inputStream);
             }
 
             try {
                 EventWithToken eventWithToken = EventWithToken.parseFrom(inputStream);
-                Event event = eventInterceptors.readEvent(eventWithToken.getEvent(), extensionUnitOfWork);
+                Event event = eventInterceptors.readEvent(eventWithToken.getEvent(), unitOfWork);
                 return eventDecorator.decorateEventWithToken(new SerializedEventWithToken(eventWithToken.getToken(),
                                                                                           event)
                                                                      .asInputStream());
@@ -874,18 +875,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         @Override
         public EventWithToken decorateEventWithToken(EventWithToken event) {
-            if (eventInterceptors.noReadInterceptors(extensionUnitOfWork.context())) {
+            if (eventInterceptors.noReadInterceptors(unitOfWork.context())) {
                 return eventDecorator.decorateEventWithToken(event);
             }
 
             EventWithToken intercepted = event.getEvent().getSnapshot() ?
                     EventWithToken.newBuilder(event)
                                   .setEvent(eventInterceptors.readSnapshot(event.getEvent(),
-                                                                           extensionUnitOfWork))
+                                                                           unitOfWork))
                                   .build() :
                     EventWithToken.newBuilder(event)
                                   .setEvent(eventInterceptors.readEvent(event.getEvent(),
-                                                                        extensionUnitOfWork))
+                                                                        unitOfWork))
                                   .build();
             return eventDecorator.decorateEventWithToken(intercepted);
         }

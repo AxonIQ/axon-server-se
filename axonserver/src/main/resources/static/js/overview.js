@@ -10,26 +10,36 @@
 globals.pageView = new Vue(
         {el: '#overview',
             data: {
-                component: null ,
-                context: null ,
+                component: null,
+                context: null,
                 title: null,
-                webSocketInfo: globals.webSocketInfo
+                activeContext: "_all",
+                webSocketInfo: globals.webSocketInfo,
+                contexts: ["default"]
             },
             mounted() {
                 let me = this;
                 me.webSocketInfo.subscribe('/topic/cluster', function () {
                     me.initOverview();
-                }, function(sub) {
+                }, function (sub) {
                     me.subscription = sub;
                 });
-                me.initOverview();
+                if (globals.isEnterprise()) {
+                    axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
+                        me.contexts = response.data;
+                        me.initOverview();
+                    });
+                } else {
+                    me.initOverview();
+                }
             },
             beforeDestroy() {
                 if( this.subscription) this.subscription.unsubscribe();
             },
             methods: {
                 initOverview() {
-                    $.getJSON("v1/public/overview", function (node) {
+                    let contextString = this.activeContext === "_all" ? "" : "?for-context=" + this.activeContext;
+                    $.getJSON("v1/public/overview" + contextString, function (node) {
                         $("svg").attr("width", node.width).attr("height", node.height);
                         $("g").html(node.svgObjects);
                     });

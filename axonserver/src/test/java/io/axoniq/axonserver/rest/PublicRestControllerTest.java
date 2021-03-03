@@ -62,7 +62,12 @@ public class PublicRestControllerTest {
             }
         });
         clusterController = new DefaultTopology(messagePlatformConfiguration);
-        testSubject = new PublicRestController(new AxonServers(clusterController, new DefaultEventStoreLocator(null)), clusterController, commandDispatcher, queryDispatcher, eventDispatcher, limits,
+        testSubject = new PublicRestController(new AxonServers(clusterController),
+                                               clusterController,
+                                               commandDispatcher,
+                                               queryDispatcher,
+                                               eventDispatcher,
+                                               limits,
                                                messagePlatformConfiguration,
                                                new DefaultVersionInfoProvider(),
                                                () -> new FakeSubscriptionMetrics(500, 400, 1000));

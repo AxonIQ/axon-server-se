@@ -15,14 +15,15 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
 import static java.util.stream.Collectors.toSet;
@@ -32,11 +33,11 @@ import static java.util.stream.Collectors.toSet;
  * sara.pellegrini@gmail.com
  */
 @Component
-public class Applications implements Iterable<Application> {
+public class Applications implements Function<String, Stream<Application>> {
 
     private final Topology clusterController;
 
-    private final Map<ComponentContext,Set<ConnectedClient>> clientsPerComponent = new ConcurrentHashMap<>();
+    private final Map<ComponentContext, Set<ConnectedClient>> clientsPerComponent = new ConcurrentHashMap<>();
 
     public Applications(Topology clusterController) {
         this.clusterController = clusterController;
@@ -73,16 +74,28 @@ public class Applications implements Iterable<Application> {
 
     @Override
     @Nonnull
-    public Iterator<Application> iterator() {
+    public Stream<Application> apply(String context) {
         List<Map.Entry<ComponentContext, Set<ConnectedClient>>> sortedComponents = clientsPerComponent.entrySet()
                                                                                                       .stream()
+                                                                                                      .filter(c -> context
+                                                                                                              == null
+                                                                                                              || c
+                                                                                                              .getKey().context
+                                                                                                              .equals(context))
                                                                                                       .filter(c -> clusterController
                                                                                                               .validContext(
                                                                                                                       c.getKey().context))
                                                                                                       .sorted(
-                (o1, o2) -> {
-                    ConnectedClient client1 = o1.getValue().stream().min(Comparator.comparing(v -> v.axonHubServer))
-                                                              .orElse(new ConnectedClient("", "ZZZZ"));
+                                                                                                              (o1, o2) -> {
+                                                                                                                  ConnectedClient client1 = o1
+                                                                                                                          .getValue()
+                                                                                                                          .stream()
+                                                                                                                          .min(Comparator
+                                                                                                                                       .comparing(
+                                                                                                                                               v -> v.axonHubServer))
+                                                                                                                          .orElse(new ConnectedClient(
+                                                                                                                                  "",
+                                                                                                                                  "ZZZZ"));
                     ConnectedClient client2 = o2.getValue().stream().min(Comparator.comparing(v -> v.axonHubServer))
                                                               .orElse(new ConnectedClient("", "ZZZZ"));
                     int v = client1.axonHubServer.compareTo(client2.axonHubServer);
@@ -117,7 +130,7 @@ public class Applications implements Iterable<Application> {
             public Iterable<String> connectedHubNodes() {
                 return entry.getValue().stream().map(client -> client.axonHubServer).collect(toSet());
             }
-        }).iterator();
+        });
     }
 
     private static class ComponentContext implements Comparable<ComponentContext>{

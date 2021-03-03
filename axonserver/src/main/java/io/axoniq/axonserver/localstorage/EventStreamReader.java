@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import org.springframework.boot.actuate.health.Health;
 
 import java.util.function.Predicate;
 
@@ -46,10 +45,6 @@ public class EventStreamReader {
      */
     public long getTokenAt(long instant) {
         return eventStorageEngine.getTokenAt(instant);
-    }
-
-    public void health(Health.Builder builder) {
-        eventStorageEngine.health(builder);
     }
 
     /**

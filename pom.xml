@@ -51,22 +51,22 @@
         <grpc.version>1.34.0</grpc.version>
         <netty.tcnative.version>2.0.31.Final</netty.tcnative.version>
         <netty.version>4.1.51.Final</netty.version>
-        <projectreactor.version>3.1.7.RELEASE</projectreactor.version>
+        <projectreactor.version>3.4.2</projectreactor.version>
         <axonserver.api.version>4.5-SNAPSHOT</axonserver.api.version>
         <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <jackson.version>2.9.10.5</jackson.version>
         <gson.version>2.8.6</gson.version>
-        <axonserver-extension-api.version>4.5-SNAPSHOT</axonserver-extension-api.version>
+        <axonserver-plugin-api.version>4.5-SNAPSHOT</axonserver-plugin-api.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>io.axoniq</groupId>
-                <artifactId>axonserver-extension-api</artifactId>
-                <version>${axonserver-extension-api.version}</version>
+                <artifactId>axonserver-plugin-api</artifactId>
+                <version>${axonserver-plugin-api.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>

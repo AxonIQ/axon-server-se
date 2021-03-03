@@ -14,17 +14,18 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
+import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,13 +54,14 @@ public class QueryDispatcher {
 
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
-    private final ConcurrentHashMap<String,QueryInformation> queryCache;
+    private final ConstraintCache<String, QueryInformation> queryCache;
     private final QueryInterceptors queryInterceptors;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<WrappedQuery> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
-    public QueryDispatcher(QueryRegistrationCache registrationCache, ConcurrentHashMap<String,QueryInformation> queryCache,
+    public QueryDispatcher(QueryRegistrationCache registrationCache,
+                           ConstraintCache<String, QueryInformation> queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
                            QueryInterceptors queryInterceptors,
                            MeterFactory meterFactory,
@@ -73,7 +75,7 @@ public class QueryDispatcher {
                                              BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
                                              meterFactory,
                                              ErrorCode.QUERY_DISPATCH_ERROR);
-        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConcurrentHashMap::size);
+        queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConstraintCache::size);
     }
 
 
@@ -169,12 +171,12 @@ public class QueryDispatcher {
     public void query(SerializedQuery serializedQuery, Authentication principal,
                       Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
-        ExtensionUnitOfWork extensionUnitOfWork = new DefaultInterceptorContext(serializedQuery.context(),
-                                                                                principal);
+        PluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(serializedQuery.context(),
+                                                                  principal);
 
-        Consumer<QueryResponse> interceptedCallback = r -> intercept(extensionUnitOfWork, r, callback);
+        Consumer<QueryResponse> interceptedCallback = r -> intercept(unitOfWork, r, callback);
         try {
-            serializedQuery = queryInterceptors.queryRequest(serializedQuery, extensionUnitOfWork);
+            serializedQuery = queryInterceptors.queryRequest(serializedQuery, unitOfWork);
 
             SerializedQuery serializedQuery2 = serializedQuery;
             QueryRequest query = serializedQuery2.query();
@@ -211,6 +213,8 @@ public class QueryDispatcher {
                 handlers.forEach(h -> dispatchOne(h, serializedQuery2, timeout));
             }
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
+            logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
+                        serializedQuery.query().getQuery(), insufficientBufferCapacityException);
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
                                                     .setMessageIdentifier(serializedQuery.getMessageIdentifier())
@@ -220,6 +224,8 @@ public class QueryDispatcher {
                                                     .build());
             onCompleted.accept("NoCapacity");
         } catch (MessagingPlatformException messagingPlatformException) {
+            logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
+                        serializedQuery.query().getQuery(), messagingPlatformException);
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(messagingPlatformException.getErrorCode().getCode())
                                                     .setMessageIdentifier(serializedQuery.getMessageIdentifier())
@@ -245,14 +251,14 @@ public class QueryDispatcher {
         }
     }
 
-    private void intercept(ExtensionUnitOfWork extensionUnitOfWork, QueryResponse response,
+    private void intercept(PluginUnitOfWork unitOfWork, QueryResponse response,
                            Consumer<QueryResponse> callback) {
         try {
-            callback.accept(queryInterceptors.queryResponse(response, extensionUnitOfWork));
+            callback.accept(queryInterceptors.queryResponse(response, unitOfWork));
         } catch (Exception ex) {
-            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), ex);
+            logger.warn("{}: Exception in response interceptor", unitOfWork.context(), ex);
             callback.accept(QueryResponse.newBuilder()
-                                         .setErrorCode(ErrorCode.OTHER.getCode())
+                                         .setErrorCode(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode())
                                          .setMessageIdentifier(response.getRequestIdentifier())
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))

@@ -11,11 +11,11 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryRequestInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.SubscriptionQueryResponseInterceptor;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -29,28 +29,28 @@ import java.util.List;
 @Component
 public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryInterceptors {
 
-    private final ExtensionContextFilter extensionContextFilter;
+    private final PluginContextFilter pluginContextFilter;
     private final InterceptorTimer interceptorTimer;
 
     public DefaultSubscriptionQueryInterceptors(
-            ExtensionContextFilter extensionContextFilter,
+            PluginContextFilter pluginContextFilter,
             MeterFactory meterFactory) {
-        this.extensionContextFilter = extensionContextFilter;
+        this.pluginContextFilter = pluginContextFilter;
         this.interceptorTimer = new InterceptorTimer(meterFactory);
     }
 
 
     @Override
     public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                             ExtensionUnitOfWork extensionContext) {
-        List<ServiceWithInfo<SubscriptionQueryRequestInterceptor>> interceptors = extensionContextFilter
+                                                             PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<SubscriptionQueryRequestInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
-                        SubscriptionQueryRequestInterceptor.class, extensionContext.context());
+                        SubscriptionQueryRequestInterceptor.class, unitOfWork.context());
         if (interceptors.isEmpty()) {
             return subscriptionQueryRequest;
         }
 
-        return interceptorTimer.time(extensionContext.context(),
+        return interceptorTimer.time(unitOfWork.context(),
                                      "SubscriptionQueryRequestInterceptor",
                                      () -> {
                                          SubscriptionQueryRequest query = subscriptionQueryRequest;
@@ -58,22 +58,22 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
                                              try {
                                                  query = queryRequestInterceptor.service().subscriptionQueryRequest(
                                                          query,
-                                                         extensionContext);
+                                                         unitOfWork);
                                              } catch (RequestRejectedException requestRejectedException) {
                                                  throw new MessagingPlatformException(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR,
-                                                                                      extensionContext.context()
+                                                                                      unitOfWork.context()
                                                                                               + " : request rejected by interceptor "
                                                                                               +
                                                                                               queryRequestInterceptor
-                                                                                                      .extensionKey(),
+                                                                                                      .pluginKey(),
                                                                                       requestRejectedException);
                                              } catch (Exception requestRejectedException) {
                                                  throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                                                      extensionContext.context()
+                                                                                      unitOfWork.context()
                                                                                               + " : Exception thrown by the SubscriptionQueryRequestInterceptor in "
                                                                                               +
                                                                                               queryRequestInterceptor
-                                                                                                      .extensionKey(),
+                                                                                                      .pluginKey(),
                                                                                       requestRejectedException);
                                              }
                                          }
@@ -83,11 +83,11 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
 
     @Override
     public SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
-                                                               ExtensionUnitOfWork extensionContext) {
-        List<ServiceWithInfo<SubscriptionQueryResponseInterceptor>> interceptors = extensionContextFilter
+                                                               PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<SubscriptionQueryResponseInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         SubscriptionQueryResponseInterceptor.class,
-                        extensionContext.context()
+                        unitOfWork.context()
                 );
         if (interceptors.isEmpty()) {
             return subscriptionQueryResponse;
@@ -96,13 +96,12 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
         SubscriptionQueryResponse query = subscriptionQueryResponse;
         for (ServiceWithInfo<SubscriptionQueryResponseInterceptor> queryRequestInterceptor : interceptors) {
             try {
-                query = queryRequestInterceptor.service().subscriptionQueryResponse(query, extensionContext);
+                query = queryRequestInterceptor.service().subscriptionQueryResponse(query, unitOfWork);
             } catch (Exception requestRejectedException) {
                 throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                     extensionContext.context()
+                                                     unitOfWork.context()
                                                              + " : Exception thrown by the SubscriptionQueryResponseInterceptor in "
-                                                             +
-                                                             queryRequestInterceptor.extensionKey(),
+                                                             + queryRequestInterceptor.pluginKey(),
                                                      requestRejectedException);
             }
         }

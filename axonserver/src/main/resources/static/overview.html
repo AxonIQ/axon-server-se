@@ -132,6 +132,17 @@
 </defs>
 
 <div id="overview">
+    <div class="contextSelector">
+        <span v-if="isEnterprise()" style="margin-left: 15px;">
+            Active context:
+        <select v-model="activeContext" @change="initOverview">
+            <option value="_all">All</option>
+            <option v-for="n in contexts">{{ n }}</option>
+        </select>
+        </span>
+    </div>
+    <br/>
+
     <svg v-show="!component || component === ''" width="900" height="600">
 
         <filter id="f1" width="150%" height="150%">

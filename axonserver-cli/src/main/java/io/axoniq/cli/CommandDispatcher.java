@@ -30,7 +30,7 @@ public class CommandDispatcher {
         CONTEXT(true, false, "Context"),
         METRICS(true, true, "Metrics"),
         USER(true, true, "Users"),
-        EXTENSIONS(true, true, "Extensions"),
+        PLUGINS(true, true, "Plugins"),
         OTHER(false, true, "Other"),
         ;
 
@@ -102,15 +102,15 @@ public class CommandDispatcher {
         executorMap.put("init-cluster", new CommandInformation(Group.CLUSTER, InitNode::run));
         executorMap.put("purge-events", new CommandInformation(Group.OTHER, DeleteEvents::run));
         executorMap.put("update-license", new CommandInformation(Group.CLUSTER, UpdateLicense::run));
-        executorMap.put("upload-extension", new CommandInformation(Group.EXTENSIONS, UploadExtension::run));
-        executorMap.put("configure-extension", new CommandInformation(Group.EXTENSIONS, ConfigureExtension::run));
-        executorMap.put("activate-extension",
-                        new CommandInformation(Group.EXTENSIONS, args -> ActivateExtension.run(args, true)));
-        executorMap.put("pause-extension",
-                        new CommandInformation(Group.EXTENSIONS, args -> ActivateExtension.run(args, false)));
-        executorMap.put("unregister-extension", new CommandInformation(Group.EXTENSIONS, UnregisterExtension::run));
-        executorMap.put("delete-extension", new CommandInformation(Group.EXTENSIONS, DeleteExtension::run));
-        executorMap.put("extensions", new CommandInformation(Group.EXTENSIONS, ListExtensions::run));
+        executorMap.put("upload-plugin", new CommandInformation(Group.PLUGINS, UploadPlugin::run));
+        executorMap.put("configure-plugin", new CommandInformation(Group.PLUGINS, ConfigurePlugin::run));
+        executorMap.put("activate-plugin",
+                        new CommandInformation(Group.PLUGINS, args -> ActivatePlugin.run(args, true)));
+        executorMap.put("pause-plugin",
+                        new CommandInformation(Group.PLUGINS, args -> ActivatePlugin.run(args, false)));
+        executorMap.put("unregister-plugin", new CommandInformation(Group.PLUGINS, UnregisterPlugin::run));
+        executorMap.put("delete-plugin", new CommandInformation(Group.PLUGINS, DeletePlugin::run));
+        executorMap.put("plugins", new CommandInformation(Group.PLUGINS, ListPlugins::run));
     }
 
     public static void main(String[] args)  {
