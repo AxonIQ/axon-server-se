@@ -224,7 +224,12 @@ public class EventDispatcher implements AxonServerClientService {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver);
-                Flux<SerializedEvent> publisher = eventStore.aggregateEvents(context, principal, request);
+                Flux<SerializedEvent> publisher = eventStore.aggregateEvents(context, principal, request)
+                                                            .doOnError(t -> logger
+                                                                    .warn("Error during reading aggregate events. ", t))
+                                                            .doOnEach(m -> logger.trace("event {} for aggregate {}",
+                                                                                        m,
+                                                                                        request.getAggregateId()));
                 outgoingStream.accept(publisher);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);
