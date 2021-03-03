@@ -13,6 +13,7 @@ import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
+import io.axoniq.axonserver.metric.GaugeMetric;
 import io.axoniq.axonserver.serializer.Media;
 import io.micrometer.core.instrument.Tags;
 
@@ -28,7 +29,7 @@ public class HubSubscriptionMetrics implements SubscriptionMetrics {
     private final ClusterMetric activeSubscriptions;
     private final ClusterMetric updates;
 
-    public HubSubscriptionMetrics(Tags tags, CounterMetric active, CounterMetric total, CounterMetric updates,
+    public HubSubscriptionMetrics(Tags tags, GaugeMetric active, CounterMetric total, CounterMetric updates,
                                   BiFunction<String, Tags, ClusterMetric> clusterRegistry) {
         this(
                 new CompositeMetric(total, clusterRegistry.apply(total.getName(), tags)),
@@ -52,7 +53,7 @@ public class HubSubscriptionMetrics implements SubscriptionMetrics {
 
     @Override
     public Long activesCount() {
-        return activeSubscriptions.count();
+        return (long) activeSubscriptions.value();
     }
 
     @Override
