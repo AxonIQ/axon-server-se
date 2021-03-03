@@ -96,8 +96,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         }
 
         return new InputStreamEventSource(storageProperties.dataFile(context, segment),
-                                          eventTransformerFactory,
-                                          storageProperties);
+                                          eventTransformerFactory);
     }
 
     @Override
