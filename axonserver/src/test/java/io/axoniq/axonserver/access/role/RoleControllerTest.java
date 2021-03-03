@@ -58,10 +58,10 @@ public class RoleControllerTest {
     @Test
     public void testFindRoles() {
         List<Role> roles = roleController.listRoles();
-        assertThat(roles.size(), equalTo(12));
+        assertThat(roles.size(), equalTo(13));
         List<String> roleNames = roles.stream().map(Role::getRole).sorted().collect(toList());
         assertThat(roleNames, contains("ADMIN", "CONTEXT_ADMIN", "DISPATCH_COMMANDS", "DISPATCH_QUERY",
                                        "MONITOR", "PUBLISH_EVENTS", "READ", "READ_EVENTS", "SUBSCRIBE_COMMAND_HANDLER",
-                                       "SUBSCRIBE_QUERY_HANDLER", "USE_CONTEXT", "WRITE"));
+                                       "SUBSCRIBE_QUERY_HANDLER", "USE_CONTEXT", "VIEW_CONFIGURATION", "WRITE"));
     }
 }

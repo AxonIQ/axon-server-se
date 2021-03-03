@@ -13,7 +13,15 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
-import io.grpc.*;
+import io.axoniq.axonserver.logging.AuditLog;
+import io.grpc.Context;
+import io.grpc.Contexts;
+import io.grpc.Grpc;
+import io.grpc.Metadata;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
+import io.grpc.StatusRuntimeException;
 import org.springframework.security.core.Authentication;
 
 /**
@@ -35,11 +43,18 @@ public class AuthenticationInterceptor implements ServerInterceptor {
         StatusRuntimeException sre = null;
 
         if (token == null) {
+            AuditLog.getLogger().warn("{}: Request without token sent from {}",
+                                      context,
+                                      serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_TOKEN_MISSING,
                                              "No token for " + serverCall.getMethodDescriptor().getFullMethodName());
         } else if (!axonServerAccessController.allowed(serverCall.getMethodDescriptor().getFullMethodName(),
                                                        context,
                                                        token)) {
+            AuditLog.getLogger().warn("{}: Request with invalid token for {} sent from {}",
+                                      context,
+                                      serverCall.getMethodDescriptor().getFullMethodName(),
+                                      serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
             sre = GrpcExceptionBuilder.build(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
                                              "Invalid token for " + serverCall.getMethodDescriptor()
                                                                               .getFullMethodName());

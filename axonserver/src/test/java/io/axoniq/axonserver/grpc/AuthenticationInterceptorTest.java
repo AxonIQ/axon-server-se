@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.grpc.Attributes;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
@@ -57,6 +58,7 @@ public class AuthenticationInterceptorTest {
     public void setup() {
         when(accessController.allowed(eq("path1"), any(), eq("1234"))).thenReturn(false);
         when(accessController.allowed(eq("path2"), any(), eq("1234"))).thenReturn(true);
+        when(call.getAttributes()).thenReturn(Attributes.EMPTY);
         testSubject = new AuthenticationInterceptor(accessController);
 
         status = ArgumentCaptor.forClass(Status.class);
@@ -76,8 +78,9 @@ public class AuthenticationInterceptorTest {
     }
 
     @Test
-    public void noToken() throws Exception {
+    public void noToken() {
         when(call.getMethodDescriptor()).thenReturn(path1);
+        when(call.getAttributes()).thenReturn(Attributes.EMPTY);
         testSubject.interceptCall(call, metadata, handler);
         verify(call).close(status.capture(), trailers.capture());
         assertEquals(PERMISSION_DENIED, status.getValue().getCode());
@@ -86,7 +89,7 @@ public class AuthenticationInterceptorTest {
     }
 
     @Test
-    public void invalidToken() throws Exception {
+    public void invalidToken() {
         metadata.put(GrpcMetadataKeys.TOKEN_KEY, "1234");
         when(call.getMethodDescriptor()).thenReturn(path1);
 
@@ -99,7 +102,7 @@ public class AuthenticationInterceptorTest {
     }
 
     @Test
-    public void validToken() throws Exception {
+    public void validToken() {
         metadata.put(GrpcMetadataKeys.TOKEN_KEY, "1234");
         when(call.getMethodDescriptor()).thenReturn(path2);
 
