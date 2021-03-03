@@ -11,11 +11,11 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.interceptor.QueryRequestInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.QueryResponseInterceptor;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.interceptor.QueryRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.QueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
@@ -37,27 +37,27 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultQueryInterceptors.class);
 
-    private final ExtensionContextFilter extensionContextFilter;
+    private final PluginContextFilter pluginContextFilter;
     private final InterceptorTimer interceptorTimer;
 
     public DefaultQueryInterceptors(
-            ExtensionContextFilter extensionContextFilter,
+            PluginContextFilter pluginContextFilter,
             MeterFactory meterFactory) {
-        this.extensionContextFilter = extensionContextFilter;
+        this.pluginContextFilter = pluginContextFilter;
         this.interceptorTimer = new InterceptorTimer(meterFactory);
     }
 
 
     @Override
-    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExtensionUnitOfWork extensionUnitOfWork) {
-        List<ServiceWithInfo<QueryRequestInterceptor>> queryRequestInterceptors = extensionContextFilter
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<QueryRequestInterceptor>> queryRequestInterceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         QueryRequestInterceptor.class,
-                        extensionUnitOfWork.context());
+                        unitOfWork.context());
         if (queryRequestInterceptors.isEmpty()) {
             return serializedQuery;
         }
-        QueryRequest intercepted = interceptorTimer.time(extensionUnitOfWork.context(),
+        QueryRequest intercepted = interceptorTimer.time(unitOfWork.context(),
                                                          "QueryRequestInterceptor",
                                                          () -> {
                                                              QueryRequest query = serializedQuery.query();
@@ -65,24 +65,24 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
                                                                  try {
                                                                      query = queryRequestInterceptor.service()
                                                                                                     .queryRequest(query,
-                                                                                                                  extensionUnitOfWork);
+                                                                                                                  unitOfWork);
                                                                  } catch (RequestRejectedException requestRejectedException) {
                                                                      throw new MessagingPlatformException(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR,
-                                                                                                          extensionUnitOfWork
+                                                                                                          unitOfWork
                                                                                                                   .context()
                                                                                                                   +
                                                                                                                   ": query rejected by the QueryRequestInterceptor in "
                                                                                                                   + queryRequestInterceptor
-                                                                                                                  .extensionKey(),
+                                                                                                                  .pluginKey(),
                                                                                                           requestRejectedException);
                                                                  } catch (Exception interceptorException) {
                                                                      throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                                                                          extensionUnitOfWork
+                                                                                                          unitOfWork
                                                                                                                   .context()
                                                                                                                   +
                                                                                                                   ": Exception thrown by the QueryRequestInterceptor in "
                                                                                                                   + queryRequestInterceptor
-                                                                                                                  .extensionKey(),
+                                                                                                                  .pluginKey(),
                                                                                                           interceptorException);
                                                                  }
                                                              }
@@ -92,17 +92,17 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
     }
 
     @Override
-    public QueryResponse queryResponse(QueryResponse response, ExtensionUnitOfWork extensionUnitOfWork) {
-        List<QueryResponseInterceptor> queryResponseInterceptors = extensionContextFilter.getServicesForContext(
+    public QueryResponse queryResponse(QueryResponse response, PluginUnitOfWork unitOfWork) {
+        List<QueryResponseInterceptor> queryResponseInterceptors = pluginContextFilter.getServicesForContext(
                 QueryResponseInterceptor.class,
-                extensionUnitOfWork.context());
+                unitOfWork.context());
         try {
             for (QueryResponseInterceptor queryResponseInterceptor : queryResponseInterceptors) {
-                response = queryResponseInterceptor.queryResponse(response, extensionUnitOfWork);
+                response = queryResponseInterceptor.queryResponse(response, unitOfWork);
             }
         } catch (Exception ex) {
             logger.warn("{}: an exception occurred in a QueryResponseInterceptor",
-                        extensionUnitOfWork.context(), ex);
+                        unitOfWork.context(), ex);
         }
         return response;
     }

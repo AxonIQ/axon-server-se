@@ -9,10 +9,10 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionKey;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.interceptor.CommandRequestInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.CommandResponseInterceptor;
+import io.axoniq.axonserver.plugin.PluginKey;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -30,29 +30,29 @@ import static org.junit.Assert.*;
  */
 public class DefaultCommandInterceptorsTest {
 
-    public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final TestExtensionServiceProvider osgiController = new TestExtensionServiceProvider();
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(osgiController, true);
+    public static final PluginKey PLUGIN_KEY = new PluginKey("sample", "1.0");
+    private final TestPluginServiceProvider osgiController = new TestPluginServiceProvider();
+    private final PluginContextFilter pluginContextFilter = new PluginContextFilter(osgiController, true);
 
     private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(),
                                                                new DefaultMetricCollector());
 
-    private final DefaultCommandInterceptors testSubject = new DefaultCommandInterceptors(extensionContextFilter,
+    private final DefaultCommandInterceptors testSubject = new DefaultCommandInterceptors(pluginContextFilter,
                                                                                           meterFactory);
 
     @Test
     public void commandRequest() {
-        osgiController.add(new ServiceWithInfo<>((CommandRequestInterceptor) (command, extensionContext) ->
+        osgiController.add(new ServiceWithInfo<>((CommandRequestInterceptor) (command, unitOfWork) ->
                 Command.newBuilder()
                        .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                 EXTENSION_KEY));
+                                                 PLUGIN_KEY));
 
         SerializedCommand intercepted = testSubject.commandRequest(serializedCommand("sample"),
-                                                                   new TestExtensionUnitOfWork("default"));
+                                                                   new TestPluginUnitOfWork("default"));
         assertFalse(intercepted.wrapped().containsMetaData("demo"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        intercepted = testSubject.commandRequest(serializedCommand("sample"), new TestExtensionUnitOfWork("default"));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        intercepted = testSubject.commandRequest(serializedCommand("sample"), new TestPluginUnitOfWork("default"));
         assertTrue(intercepted.wrapped().containsMetaData("demo"));
     }
 
@@ -63,18 +63,18 @@ public class DefaultCommandInterceptorsTest {
 
     @Test
     public void commandResponse() {
-        osgiController.add(new ServiceWithInfo<>((CommandResponseInterceptor) (commandResponse, extensionContext) ->
+        osgiController.add(new ServiceWithInfo<>((CommandResponseInterceptor) (commandResponse, unitOfWork) ->
                 CommandResponse.newBuilder()
                                .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                 EXTENSION_KEY));
+                                                 PLUGIN_KEY));
 
         SerializedCommandResponse intercepted = testSubject.commandResponse(serializedCommandResponse("test"),
-                                                                            new TestExtensionUnitOfWork("default"));
+                                                                            new TestPluginUnitOfWork("default"));
         assertFalse(intercepted.wrapped().containsMetaData("demo"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         intercepted = testSubject.commandResponse(serializedCommandResponse("sample"),
-                                                  new TestExtensionUnitOfWork("default"));
+                                                  new TestPluginUnitOfWork("default"));
         assertTrue(intercepted.wrapped().containsMetaData("demo"));
     }
 

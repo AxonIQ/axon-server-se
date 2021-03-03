@@ -11,17 +11,17 @@ package io.axoniq.axonserver.interceptor;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionKey;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
-import io.axoniq.axonserver.extensions.hook.PostCommitSnapshotHook;
-import io.axoniq.axonserver.extensions.hook.PreCommitEventsHook;
-import io.axoniq.axonserver.extensions.interceptor.AppendEventInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.AppendSnapshotInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.ReadEventInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.ReadSnapshotInterceptor;
+import io.axoniq.axonserver.plugin.PluginKey;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.hook.PostCommitEventsHook;
+import io.axoniq.axonserver.plugin.hook.PostCommitSnapshotHook;
+import io.axoniq.axonserver.plugin.hook.PreCommitEventsHook;
+import io.axoniq.axonserver.plugin.interceptor.AppendEventInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.AppendSnapshotInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.ReadEventInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.ReadSnapshotInterceptor;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -45,36 +45,36 @@ import static org.junit.Assert.*;
  */
 public class DefaultEventInterceptorsTest {
 
-    public static final ExtensionKey EXTENSION_KEY = new ExtensionKey("sample", "1.0");
-    private final TestExtensionServiceProvider extensionServiceProvider = new TestExtensionServiceProvider();
-    private final ExtensionContextFilter extensionContextFilter = new ExtensionContextFilter(extensionServiceProvider,
-                                                                                             true);
+    public static final PluginKey PLUGIN_KEY = new PluginKey("sample", "1.0");
+    private final TestPluginServiceProvider pluginServiceProvider = new TestPluginServiceProvider();
+    private final PluginContextFilter pluginContextFilter = new PluginContextFilter(pluginServiceProvider,
+                                                                                    true);
     private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(),
                                                                new DefaultMetricCollector());
 
-    private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(extensionContextFilter,
+    private final DefaultEventInterceptors testSubject = new DefaultEventInterceptors(pluginContextFilter,
                                                                                       meterFactory);
 
 
     @Test
     public void appendEvent() {
-        extensionServiceProvider.add(new ServiceWithInfo<>((AppendEventInterceptor) (event, extensionContext) ->
+        pluginServiceProvider.add(new ServiceWithInfo<>((AppendEventInterceptor) (event, unitOfWork) ->
                 Event.newBuilder()
                      .setMessageIdentifier(UUID.randomUUID().toString())
                      .setAggregateIdentifier(UUID.randomUUID().toString())
                      .setPayload(serializedObject(null, null, "data2"))
                      .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                           EXTENSION_KEY));
+                                                        PLUGIN_KEY));
 
 
         Event orgEvent = event("aggregate1", 0);
 
-        Event intercepted = testSubject.appendEvent(orgEvent, new TestExtensionUnitOfWork("default"));
+        Event intercepted = testSubject.appendEvent(orgEvent, new TestPluginUnitOfWork("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        intercepted = testSubject.appendEvent(orgEvent, new TestExtensionUnitOfWork("default"));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        intercepted = testSubject.appendEvent(orgEvent, new TestPluginUnitOfWork("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());
@@ -87,36 +87,36 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void eventsPreCommit() throws RequestRejectedException {
         AtomicInteger hookCalled = new AtomicInteger();
-        extensionServiceProvider.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) ->
-                hookCalled.incrementAndGet(), EXTENSION_KEY));
+        pluginServiceProvider.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) ->
+                hookCalled.incrementAndGet(), PLUGIN_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
+        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
         testSubject.eventsPreCommit(asList(event("aggrId1", 0),
                                            event("aggrId1", 1)),
-                                    testExtensionUnitOfWork);
+                                    unitOfWork);
         assertEquals(0, hookCalled.get());
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         testSubject.eventsPreCommit(asList(event("aggrId1", 0),
                                            event("aggrId1", 1)),
-                                    testExtensionUnitOfWork);
+                                    unitOfWork);
         assertEquals(1, hookCalled.get());
     }
 
     @Test
     public void eventsPreCommitTriesToUpdateEventList() throws RequestRejectedException {
         AtomicInteger hookCalled = new AtomicInteger();
-        extensionServiceProvider.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) -> {
+        pluginServiceProvider.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) -> {
             events.clear();
             hookCalled.incrementAndGet();
-        }, EXTENSION_KEY));
+        }, PLUGIN_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         try {
             testSubject.eventsPreCommit(asList(event("aggrId1", 0),
                                                event("aggrId1", 1)),
-                                        testExtensionUnitOfWork);
+                                        unitOfWork);
             fail("pre commit fails when hook tries to change event list");
         } catch (MessagingPlatformException messagingPlatformException) {
         }
@@ -125,80 +125,80 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void eventsPostCommit() {
         AtomicInteger hookCalled = new AtomicInteger();
-        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) ->
-                hookCalled.incrementAndGet(), EXTENSION_KEY));
+        pluginServiceProvider.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) ->
+                hookCalled.incrementAndGet(), PLUGIN_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
+        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
         testSubject.eventsPostCommit(asList(event("aggrId1", 0),
                                             event("aggrId1", 1)),
-                                     testExtensionUnitOfWork);
+                                     unitOfWork);
         assertEquals(0, hookCalled.get());
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         testSubject.eventsPostCommit(asList(event("aggrId1", 0),
                                             event("aggrId1", 1)),
-                                     testExtensionUnitOfWork);
+                                     unitOfWork);
         assertEquals(1, hookCalled.get());
     }
 
     @Test
     public void eventsPostCommitWithException() {
-        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) -> {
+        pluginServiceProvider.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) -> {
             throw new RuntimeException("Error in post commit hook");
-        }, EXTENSION_KEY));
+        }, PLUGIN_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         testSubject.eventsPostCommit(asList(event("aggrId1", 0),
                                             event("aggrId1", 1)),
-                                     testExtensionUnitOfWork);
+                                     unitOfWork);
     }
 
     @Test
     public void snapshotPostCommitWithException() {
-        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> {
+        pluginServiceProvider.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> {
             throw new RuntimeException("Error in post commit hook");
-        }, EXTENSION_KEY));
+        }, PLUGIN_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        testSubject.snapshotPostCommit(event("aggrId1", 0), testExtensionUnitOfWork);
+        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
     }
 
     @Test
     public void snapshotPostCommit() {
         AtomicInteger hookCalled = new AtomicInteger();
-        extensionServiceProvider.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> hookCalled
-                .incrementAndGet(), EXTENSION_KEY));
+        pluginServiceProvider.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> hookCalled
+                .incrementAndGet(), PLUGIN_KEY));
 
-        TestExtensionUnitOfWork testExtensionUnitOfWork = new TestExtensionUnitOfWork("default");
-        testSubject.snapshotPostCommit(event("aggrId1", 0), testExtensionUnitOfWork);
+        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
         assertEquals(0, hookCalled.get());
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        testSubject.snapshotPostCommit(event("aggrId1", 0), testExtensionUnitOfWork);
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
         assertEquals(1, hookCalled.get());
     }
 
     @Test
     public void appendSnapshot() throws RequestRejectedException {
-        extensionServiceProvider.add(new ServiceWithInfo<>((AppendSnapshotInterceptor) (event, extensionContext) ->
+        pluginServiceProvider.add(new ServiceWithInfo<>((AppendSnapshotInterceptor) (event, unitOfWork) ->
                 Event.newBuilder()
                      .setMessageIdentifier(UUID.randomUUID().toString())
                      .setAggregateIdentifier(UUID.randomUUID().toString())
                      .setPayload(serializedObject(null, null, "data2"))
                      .putMetaData("demo", metaDataValue("demoValue")).build(),
-                                                           EXTENSION_KEY));
+                                                        PLUGIN_KEY));
 
 
         Event orgEvent = event("aggregate1", 0, true);
 
-        Event intercepted = testSubject.appendSnapshot(orgEvent, new TestExtensionUnitOfWork("default"));
+        Event intercepted = testSubject.appendSnapshot(orgEvent, new TestPluginUnitOfWork("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        intercepted = testSubject.appendSnapshot(orgEvent, new TestExtensionUnitOfWork("default"));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        intercepted = testSubject.appendSnapshot(orgEvent, new TestPluginUnitOfWork("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());
@@ -210,36 +210,36 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void noReadInterceptors() {
-        extensionServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event,
-                                                           EXTENSION_KEY));
+        pluginServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event,
+                                                        PLUGIN_KEY));
         assertTrue(testSubject.noReadInterceptors("default"));
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         assertFalse(testSubject.noReadInterceptors("default"));
     }
 
     @Test
     public void noReadInterceptorsWithSnapshotRead() {
-        extensionServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event,
-                                                           EXTENSION_KEY));
+        pluginServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event,
+                                                        PLUGIN_KEY));
         assertTrue(testSubject.noReadInterceptors("default"));
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         assertFalse(testSubject.noReadInterceptors("default"));
     }
 
     @Test
     public void readSnapshot() {
-        extensionServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) ->
+        pluginServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) ->
                 Event.newBuilder(event)
                      .putMetaData("intercepted", metaDataValue("yes"))
                      .setAggregateIdentifier(UUID.randomUUID().toString())
-                     .build(), EXTENSION_KEY));
+                     .build(), PLUGIN_KEY));
 
         Event event = event("sample", 0, true);
-        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
+        PluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
         Event result = testSubject.readSnapshot(event, unitOfWork);
         assertFalse(result.containsMetaData("intercepted"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         result = testSubject.readSnapshot(event, unitOfWork);
         assertEquals("yes", result.getMetaDataOrDefault("intercepted", metaDataValue("no")).getTextValue());
         assertEquals(event.getAggregateIdentifier(), result.getAggregateIdentifier());
@@ -248,18 +248,18 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void readEvent() {
-        extensionServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) ->
+        pluginServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) ->
                 Event.newBuilder(event)
                      .putMetaData("intercepted", metaDataValue("yes"))
                      .setAggregateIdentifier(UUID.randomUUID().toString())
-                     .build(), EXTENSION_KEY));
+                     .build(), PLUGIN_KEY));
 
         Event event = event("sample", 0);
-        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
+        PluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
         Event result = testSubject.readEvent(event, unitOfWork);
         assertFalse(result.containsMetaData("intercepted"));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         result = testSubject.readEvent(event, unitOfWork);
         assertEquals("yes", result.getMetaDataOrDefault("intercepted", metaDataValue("no")).getTextValue());
         assertEquals(event.getAggregateIdentifier(), result.getAggregateIdentifier());
@@ -268,11 +268,11 @@ public class DefaultEventInterceptorsTest {
     @Test
     public void checkOrdering() {
         List<Integer> calledInOrder = new LinkedList<>();
-        extensionServiceProvider.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
+        pluginServiceProvider.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
             private static final int ORDER = 100;
 
             @Override
-            public Event readEvent(Event event, ExtensionUnitOfWork extensionUnitOfWork) {
+            public Event readEvent(Event event, PluginUnitOfWork extensionUnitOfWork) {
                 calledInOrder.add(ORDER);
                 return event;
             }
@@ -281,12 +281,12 @@ public class DefaultEventInterceptorsTest {
             public int order() {
                 return ORDER;
             }
-        }, EXTENSION_KEY));
-        extensionServiceProvider.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
+        }, PLUGIN_KEY));
+        pluginServiceProvider.add(new ServiceWithInfo<>(new ReadEventInterceptor() {
             private static final int ORDER = 5;
 
             @Override
-            public Event readEvent(Event event, ExtensionUnitOfWork extensionUnitOfWork) {
+            public Event readEvent(Event event, PluginUnitOfWork extensionUnitOfWork) {
                 calledInOrder.add(ORDER);
                 return event;
             }
@@ -295,11 +295,11 @@ public class DefaultEventInterceptorsTest {
             public int order() {
                 return ORDER;
             }
-        }, EXTENSION_KEY));
+        }, PLUGIN_KEY));
 
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
 
-        ExtensionUnitOfWork unitOfWork = new TestExtensionUnitOfWork("default");
+        PluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
         testSubject.readEvent(event("a", 1), unitOfWork);
         assertEquals(2, calledInOrder.size());
         assertEquals(5, (int) calledInOrder.get(0));
@@ -308,12 +308,12 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void noEventReadInterceptors() {
-        extensionContextFilter.on(new ExtensionEnabledEvent("default", EXTENSION_KEY, null, true));
-        extensionServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event,
-                                                           EXTENSION_KEY));
+        pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
+        pluginServiceProvider.add(new ServiceWithInfo<>((ReadSnapshotInterceptor) (event, context) -> event,
+                                                        PLUGIN_KEY));
         assertTrue(testSubject.noEventReadInterceptors("default"));
-        extensionServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event,
-                                                           EXTENSION_KEY));
+        pluginServiceProvider.add(new ServiceWithInfo<>((ReadEventInterceptor) (event, context) -> event,
+                                                        PLUGIN_KEY));
         assertFalse(testSubject.noEventReadInterceptors("default"));
     }
 

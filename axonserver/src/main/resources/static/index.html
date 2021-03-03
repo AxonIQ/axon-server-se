@@ -158,7 +158,7 @@
                             admin: globals.admin,
                             licenseLoaded: false,
                             license: "free",
-                            extensionsEnabled: false
+                            pluginsEnabled: false
                         }, mounted() {
                             axios.get("v1/public/license").then(response => {
                                 globals.license = response.data.edition.toLowerCase();
@@ -167,7 +167,7 @@
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
                                     globals.adminNode = response.data.adminNode;
-                                    this.extensionsEnabled = response.data.extensionsEnabled;
+                                    this.pluginsEnabled = response.data.pluginsEnabled;
                                     if (globals.authenticationEnabled) {
                                         this.admin = false;
                                         globals.admin = false;
@@ -278,8 +278,8 @@
             class="fas fa-sitemap fa-2x"></i> Contexts</a>
     <a href="#replicationgroups" class="menu-replicationgroups" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
             class="fas fa-clone fa-2x"></i>Replication groups</a>
-    <a href="#extensions" class="menu-replicationgroups" v-if="extensionsEnabled && admin"><i
-            class="fas fa-plus-square fa-2x"></i>Extensions</a>
+    <a href="#plugins" class="menu-plugins" v-if="pluginsEnabled && admin"><i
+            class="fas fa-plus-square fa-2x"></i>Plugins</a>
         <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
     </span>
 </nav>

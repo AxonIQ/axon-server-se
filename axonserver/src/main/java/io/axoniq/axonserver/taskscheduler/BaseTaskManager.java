@@ -158,22 +158,18 @@ public abstract class BaseTaskManager implements SmartLifecycle {
 
     private void initFetchTasksRunner() {
         logger.debug("Init fetchTaskRunner, window = {}", window);
-        nextTimestamp.set(clock.millis() + window);
         scheduler.scheduleWithFixedDelay(this::fetchTasks, 0, window, TimeUnit.MILLISECONDS);
     }
 
     private void fetchTasks() {
         try {
-            long min = nextTimestamp.getAndAdd(window);
-            if (min == 0) {
-                nextTimestamp.getAndAdd(window);
-            }
+            long min = nextTimestamp.getAndSet(clock.millis() + window);
             Set<String> leaderFor = leaderForGroupProvider.get();
             leaderFor.forEach(context -> {
-                Iterable<Task> tasks = taskRepository.findScheduled(context, min, nextTimestamp.get());
-                logger.trace("{}: scheduling more tasks {} between {} and {}",
+                List<Task> tasks = taskRepository.findScheduled(context, min, nextTimestamp.get());
+                logger.debug("{}: scheduling {} tasks between {} and {}",
                              context,
-                             ((List) tasks).size(),
+                             tasks.size(),
                              min,
                              nextTimestamp.get());
                 tasks.forEach(this::schedule);

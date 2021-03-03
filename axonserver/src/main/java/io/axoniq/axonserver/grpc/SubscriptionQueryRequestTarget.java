@@ -15,7 +15,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.Subscripti
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
-import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
+import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import io.axoniq.axonserver.message.query.subscription.handler.DirectUpdateHandler;
@@ -49,7 +49,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
     private final UpdateHandler updateHandler;
 
     private final Consumer<Throwable> errorHandler;
-    private final DefaultInterceptorContext extensionUnitOfWork;
+    private final DefaultPluginUnitOfWork unitOfWork;
 
     private volatile String clientId;
 
@@ -61,7 +61,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         super(LoggerFactory.getLogger(SubscriptionQueryRequestTarget.class));
         this.context = context;
         this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
-        this.extensionUnitOfWork = new DefaultInterceptorContext(context, authentication);
+        this.unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
         this.errorHandler = e -> responseObserver.onError(GrpcExceptionBuilder.build(e));
         this.responseObserver = new QueryResponseStreamObserver(new FlowControlledStreamObserver<>(responseObserver,
                                                                                                    errorHandler));
@@ -73,7 +73,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
     @Override
     protected void consume(SubscriptionQueryRequest message) {
         try {
-            message = subscriptionQueryInterceptors.subscriptionQueryRequest(message, extensionUnitOfWork);
+            message = subscriptionQueryInterceptors.subscriptionQueryRequest(message, unitOfWork);
             switch (message.getRequestCase()) {
                 case SUBSCRIBE:
                     if (clientId == null) {
@@ -150,7 +150,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         @Override
         public void onNext(SubscriptionQueryResponse t) {
             try {
-                delegate.onNext(subscriptionQueryInterceptors.subscriptionQueryResponse(t, extensionUnitOfWork));
+                delegate.onNext(subscriptionQueryInterceptors.subscriptionQueryResponse(t, unitOfWork));
             } catch (Exception ex) {
                 errorHandler.accept(ex);
             }
