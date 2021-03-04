@@ -77,7 +77,7 @@
         }, function (error) {
 
             //ignore error requests when checking for updates
-            if (error.response.data.path.includes("/updates")) {
+            if (error.response.data.path && error.response.data.path.includes("/updates")) {
                 return Promise.reject(error)
             }
 
