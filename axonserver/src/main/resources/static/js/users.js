@@ -82,8 +82,9 @@ globals.pageView = new Vue(
                         return;
                     }
                     if (!this.user.password && !this.existsUser(this.user.userName)) {
-                        alert("Please enter password for new user");
-                        return;
+                        if (!confirm("Create user without password?")) {
+                            return;
+                        }
                     }
 
                     this.user.roles = [];

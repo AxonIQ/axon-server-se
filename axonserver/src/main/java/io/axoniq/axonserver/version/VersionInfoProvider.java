@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.version;
 
+import javax.annotation.Nonnull;
+
 /**
  * Provides information on the current version of the product.
  *
@@ -22,5 +24,6 @@ public interface VersionInfoProvider {
      *
      * @return the product name and version
      */
+    @Nonnull
     VersionInfo get();
 }

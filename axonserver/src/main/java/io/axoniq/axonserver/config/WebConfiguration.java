@@ -12,6 +12,7 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.springframework.boot.web.servlet.error.DefaultErrorAttributes;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.context.annotation.Bean;
@@ -39,9 +40,6 @@ import java.util.Map;
 @Configuration
 public class WebConfiguration implements WebMvcConfigurer {
 
-    public WebConfiguration() {
-    }
-
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.setUseSuffixPatternMatch(false);
@@ -50,18 +48,19 @@ public class WebConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/login").setViewName("login");
         registry.addViewController("/error").setViewName("error");
     }
 
+
     @Bean
-    public ErrorAttributes errorAttributes() {
+    public ErrorAttributes errorAttributes(VersionInfoProvider versionInfoProvider) {
         return new DefaultErrorAttributes() {
             @Override
             public Map<String, Object> getErrorAttributes(WebRequest webRequest, boolean includeStackTrace) {
-                Map<String, Object> errorAttributes =  super.getErrorAttributes(webRequest, includeStackTrace);
+                Map<String, Object> errorAttributes = super.getErrorAttributes(webRequest, includeStackTrace);
                 addMessageField(errorAttributes);
-
+                errorAttributes.put("version", versionInfoProvider.get().getVersion());
+                errorAttributes.put("product", versionInfoProvider.get().getProductName());
                 errorAttributes.remove("exception");
                 errorAttributes.remove("errors");
 
