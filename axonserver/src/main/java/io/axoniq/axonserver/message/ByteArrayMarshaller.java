@@ -2,7 +2,7 @@ package io.axoniq.axonserver.message;
 
 import io.grpc.KnownLength;
 import io.grpc.MethodDescriptor;
-import org.apache.commons.compress.utils.IOUtils;
+import org.apache.commons.io.IOUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

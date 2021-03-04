@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -60,7 +61,7 @@ public class OverviewModel {
     }
 
     @GetMapping("/v1/public/overview")
-    public SvgOverview overview(final Principal principal,
+    public SvgOverview overview(@ApiIgnore final Principal principal,
                                 @RequestParam(value = "for-context", required = false) String context) {
         auditLog.debug("[{}] Request to render an SVG cluster overview.", AuditLog.username(principal));
 

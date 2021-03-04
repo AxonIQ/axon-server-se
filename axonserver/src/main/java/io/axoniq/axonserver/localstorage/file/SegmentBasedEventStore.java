@@ -52,7 +52,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.commons.lang3.ArrayUtils.contains;
 
 /**
  * @author Marc Gathier
@@ -208,6 +207,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
         return getLastSequenceNumber(aggregateIdentifier, contains(hints, SearchHint.RECENT_ONLY) ?
                 MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE, Long.MAX_VALUE);
+    }
+
+    private <T> boolean contains(T[] values, T value) {
+        for (T t : values) {
+            if (t.equals(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

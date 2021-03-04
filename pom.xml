@@ -56,7 +56,7 @@
         <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
-        <jackson.version>2.9.10.5</jackson.version>
+        <jackson.version>2.11.4</jackson.version>
         <gson.version>2.8.6</gson.version>
         <axonserver-plugin-api.version>4.5-SNAPSHOT</axonserver-plugin-api.version>
     </properties>
@@ -119,7 +119,7 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>2.1.6.RELEASE</version>
+                <version>2.4.2</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

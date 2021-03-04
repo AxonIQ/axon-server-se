@@ -85,7 +85,7 @@ public class QueryRestController {
     @PostMapping("queries/run")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataType = "string", paramType = "header")
+                    required = false, dataTypeClass = String.class, paramType = "header")
     })
     public SseEmitter execute(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
