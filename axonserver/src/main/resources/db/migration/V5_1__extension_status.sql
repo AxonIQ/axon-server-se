@@ -27,7 +27,7 @@ create table admin_context_plugin_status
 
 
 insert into PATHS_TO_FUNCTIONS
-values ('GET:/v1/plugins', 'GET_PLUGINS');
+values ('GET:/v1/plugins', 'LIST_PLUGINS');
 
 insert into PATHS_TO_FUNCTIONS
 values ('GET:/v1/plugins/configuration', 'GET_PLUGIN_CONFIGURATION');
@@ -48,7 +48,7 @@ insert into PATHS_TO_FUNCTIONS
 values ('POST:/v1/plugins/configuration', 'CONFIGURE_PLUGIN');
 
 insert into FUNCTION_ROLES(function, role)
-values ('GET_PLUGINS', 'ADMIN');
+values ('LIST_PLUGINS', 'ADMIN');
 
 insert into FUNCTION_ROLES(function, role)
 values ('GET_PLUGIN_CONFIGURATION', 'ADMIN');
