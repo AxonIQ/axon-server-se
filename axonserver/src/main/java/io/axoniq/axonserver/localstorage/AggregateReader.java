@@ -88,7 +88,8 @@ public class AggregateReader {
         return Flux.defer(() -> {
             if (useSnapshots) {
                 Optional<SerializedEvent> optionalSnapshot = snapshotReader.readSnapshot(aggregateId,
-                                                                                         minSequenceNumber);
+                                                                                         minSequenceNumber,
+                                                                                         maxSequenceNumber);
                 if (optionalSnapshot.isPresent()) {
                     SerializedEvent snapshot = optionalSnapshot.get();
                     if (snapshot.getAggregateSequenceNumber() >= maxSequenceNumber) {
