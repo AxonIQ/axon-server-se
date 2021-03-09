@@ -22,8 +22,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import javax.sql.DataSource;
 import java.lang.invoke.MethodHandles;
+import javax.sql.DataSource;
 
 /**
  * The Spring Security global configuration class. The {@link WebSecurityConfigurerAdapter} based configurer may be

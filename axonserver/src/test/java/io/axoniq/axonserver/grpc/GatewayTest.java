@@ -128,7 +128,7 @@ public class GatewayTest {
             }
 
             @Override
-            public boolean isRoleBasedAuthentication() {
+            public boolean allowed(String fullMethodName, String context, Authentication authentication) {
                 return false;
             }
 

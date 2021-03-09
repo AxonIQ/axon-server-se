@@ -13,9 +13,6 @@ package io.axoniq.axonserver;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.security.core.Authentication;
 
-import java.util.Collections;
-import java.util.Set;
-
 /**
  * Interface containing operations for access control.
  *
@@ -39,20 +36,14 @@ public interface AxonServerAccessController {
     boolean allowed(String fullMethodName, String context, String token);
 
     /**
-     * Does this Axon Server version support role based authentication.
-     * @return true if this Axon Server version support role based authentication
-     */
-    boolean isRoleBasedAuthentication();
-
-    /**
-     * Retrieves all roles that include the specified operation.
+     * Checks if a specific method is allowed in given {@code context} for {@code authentication}.
      *
-     * @param operation the operation to check
-     * @return all roles that include the specified operation
+     * @param fullMethodName the method name
+     * @param context        the context
+     * @param authentication the authentication information
+     * @return true if method is allowed
      */
-    default Set<String> rolesForOperation(String operation) {
-        return Collections.emptySet();
-    }
+    boolean allowed(String fullMethodName, String context, Authentication authentication);
 
     /**
      * Returns the default context to authenticate against when the REST request does not specify a context.

@@ -9,12 +9,18 @@
 
 package io.axoniq.axonserver;
 
+import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.InvalidTokenException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * @author Marc Gathier
@@ -24,9 +30,12 @@ import org.springframework.stereotype.Component;
 public class AxonServerStandardAccessController implements AxonServerAccessController {
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
+    private final UserController userController;
 
-    public AxonServerStandardAccessController(MessagingPlatformConfiguration messagingPlatformConfiguration) {
+    public AxonServerStandardAccessController(MessagingPlatformConfiguration messagingPlatformConfiguration,
+                                              UserController userController) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
+        this.userController = userController;
     }
 
     @Override
@@ -35,8 +44,29 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
     }
 
     @Override
-    public boolean isRoleBasedAuthentication() {
-        return false;
+    public boolean allowed(String fullMethodName, String context, Authentication authentication) {
+        Set<String> requiredRoles = rolesForOperation(fullMethodName);
+        if (requiredRoles.isEmpty()) {
+            return true;
+        }
+
+        if (authentication instanceof UsernamePasswordAuthenticationToken) {
+            User user = userController.findUser(authentication.getName());
+            if (user != null) {
+                return user.getRoles().stream().anyMatch(r -> requiredRoles.contains(r.getRole()));
+            }
+        }
+
+        return authentication.getAuthorities()
+                             .stream()
+                             .anyMatch(a -> requiredRoles.contains(a.getAuthority()));
+    }
+
+    private Set<String> rolesForOperation(String operation) {
+        if (operation.contains("/v1/users")) {
+            return Collections.singleton("ADMIN");
+        }
+        return Collections.emptySet();
     }
 
     @Override

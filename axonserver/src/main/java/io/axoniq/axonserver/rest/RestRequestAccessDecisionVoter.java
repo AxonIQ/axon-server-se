@@ -18,8 +18,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.web.FilterInvocation;
 
 import java.util.Collection;
-import java.util.Set;
-import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -64,16 +62,10 @@ public class RestRequestAccessDecisionVoter implements AccessDecisionVoter<Filte
             return AccessDecisionVoter.ACCESS_DENIED;
         }
         String context = context(invocation.getHttpRequest());
-        Set<String> rolesWithAccess = axonServerAccessController.rolesForOperation(operation);
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Vote for: '{}', auth = '{}', context = '{}', authorities: {}, authoritiesWithAccess: {} ", operation,
-                    authentication.getName(), context, authentication.getAuthorities(), rolesWithAccess);
-        }
-        if (!rolesWithAccess.isEmpty() && !authorizedForContext(authentication, context, rolesWithAccess)) {
+        if (!axonServerAccessController.allowed(operation, context, authentication)) {
             LOGGER.debug("Vote result: DENIED for '{}'", operation);
             return AccessDecisionVoter.ACCESS_DENIED;
         }
-        LOGGER.debug("Vote result: GRANTED for '{}'", operation);
         return AccessDecisionVoter.ACCESS_GRANTED;
     }
 
@@ -95,14 +87,5 @@ public class RestRequestAccessDecisionVoter implements AccessDecisionVoter<Filte
             context = axonServerAccessController.defaultContextForRest();
         }
         return context;
-    }
-
-    private boolean authorizedForContext(Authentication authentication, String context, Set<String> rolesWithAccess) {
-        Set<String> contextRolesWithAccess = rolesWithAccess.stream()
-                                                            .map(r -> r + '@' + context)
-                                                            .collect(Collectors.toSet());
-
-        return authentication.getAuthorities().stream()
-                             .anyMatch(a -> contextRolesWithAccess.contains(a.getAuthority()));
     }
 }
