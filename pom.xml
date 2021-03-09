@@ -26,7 +26,6 @@
 
     <modules>
         <module>axonserver</module>
-        <module>axonserver-grpc</module>
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
@@ -48,17 +47,15 @@
             gRPC is quite specific about the version of Netty TcNative, so check the dependencies on
             https://github.com/grpc/grpc-java/blob/master/SECURITY.md
         -->
-        <grpc.version>1.34.0</grpc.version>
-        <netty.tcnative.version>2.0.31.Final</netty.tcnative.version>
-        <netty.version>4.1.51.Final</netty.version>
-        <projectreactor.version>3.4.2</projectreactor.version>
-        <axonserver.api.version>4.5-SNAPSHOT</axonserver.api.version>
+        <grpc.version>1.36.0</grpc.version>
+        <netty.tcnative.version>2.0.34.Final</netty.tcnative.version>
+        <netty.version>4.1.52.Final</netty.version>
         <axon.version>4.4</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
-        <jackson.version>2.9.10.5</jackson.version>
         <gson.version>2.8.6</gson.version>
-        <axonserver-extension-api.version>4.5-SNAPSHOT</axonserver-extension-api.version>
+        <axonserver-plugin-api.version>4.5-SNAPSHOT</axonserver-plugin-api.version>
+        <axonserver.api.version>4.5-SNAPSHOT</axonserver.api.version>
     </properties>
 
     <dependencyManagement>
@@ -70,8 +67,8 @@
             </dependency>
             <dependency>
                 <groupId>io.axoniq</groupId>
-                <artifactId>axonserver-extension-api</artifactId>
-                <version>${axonserver-extension-api.version}</version>
+                <artifactId>axonserver-plugin-api</artifactId>
+                <version>${axonserver-plugin-api.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
@@ -109,7 +106,7 @@
             <dependency>
                 <groupId>com.google.code.findbugs</groupId>
                 <artifactId>jsr305</artifactId>
-                <version>1.3.9</version>
+                <version>3.0.2</version>
             </dependency>
             <dependency>
                 <groupId>io.axoniq</groupId>
@@ -119,7 +116,7 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>2.1.6.RELEASE</version>
+                <version>2.4.2</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -135,28 +132,6 @@
                 <version>1</version>
             </dependency>
 
-            <dependency>
-                <groupId>io.projectreactor</groupId>
-                <artifactId>reactor-core</artifactId>
-                <version>${projectreactor.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>io.projectreactor</groupId>
-                <artifactId>reactor-test</artifactId>
-                <version>${projectreactor.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>1.1.11</version>
-            </dependency>
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-core</artifactId>
-                <version>1.1.11</version>
-            </dependency>
 
             <!-- specific eclipse collections version used for mapdb -->
             <dependency>
@@ -182,15 +157,9 @@
             </dependency>
 
             <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>org.apache.felix.framework</artifactId>
-                <version>6.0.3</version>
+                <version>7.0.0</version>
             </dependency>
 
             <dependency>

@@ -28,12 +28,15 @@
         let globals = {
             authenticationEnabled: true,
             admin: false,
+            readOnlyAdmin: false,
             adminNode: true,
             license: "free",
             features: [],
-            hasFeature: function(featureName) {
-                for( let idx = 0; idx < globals.features.length; idx++) {
-                    if( globals.features[idx] === featureName) return true;
+            hasFeature: function (featureName) {
+                for (let idx = 0; idx < globals.features.length; idx++) {
+                    if (globals.features[idx] === featureName) {
+                        return true;
+                    }
                 }
                 return false;
             },
@@ -74,7 +77,7 @@
         }, function (error) {
 
             //ignore error requests when checking for updates
-            if (error.response.data.path.includes("/updates")) {
+            if (error.response.data.path && error.response.data.path.includes("/updates")) {
                 return Promise.reject(error)
             }
 
@@ -156,9 +159,10 @@
                         el: '#nav',
                         data: {
                             admin: globals.admin,
+                            readOnlyAdmin: globals.readOnlyAdmin,
                             licenseLoaded: false,
                             license: "free",
-                            extensionsEnabled: false
+                            pluginsEnabled: false
                         }, mounted() {
                             axios.get("v1/public/license").then(response => {
                                 globals.license = response.data.edition.toLowerCase();
@@ -167,18 +171,20 @@
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
                                     globals.adminNode = response.data.adminNode;
-                                    this.extensionsEnabled = response.data.extensionsEnabled;
+                                    this.pluginsEnabled = response.data.pluginsEnabled;
                                     if (globals.authenticationEnabled) {
                                         this.admin = false;
                                         globals.admin = false;
                                         axios.get("v1/public/user").then(
                                                 response => {
                                                     globals.admin = globals.adminNode && response.data.adminUser;
+                                                    globals.readOnlyAdmin = globals.adminNode
+                                                            && response.data.readOnlyAdminUser;
                                                     this.admin = globals.admin;
+                                                    this.readOnlyAdmin = globals.readOnlyAdmin;
                                                     this.setHeight();
-                                            loadFragment();
-                                        });
-
+                                                    loadFragment();
+                                                });
                                     } else {
                                         this.admin = response.data.adminNode;
                                         globals.admin = response.data.adminNode;
@@ -188,6 +194,9 @@
                                 });
                             });
                 }, methods: {
+                    showConfiguration: function () {
+                        return this.admin || this.readOnlyAdmin;
+                    },
                     setHeight() {
                         if (globals.admin) {
                             if (globals.features.length > 0) {
@@ -271,15 +280,16 @@
     <a href="#query" class="menu-query"><i class="fas fa-search fa-2x"></i>Search</a>
     <a href="#commands" class="menu-commands"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
     <a href="#queries" class="menu-queries"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
-    <a href="#applications" class="menu-applications" v-if="admin && hasFeature('APP_AUTHENTICATION')"><i
+    <a href="#applications" class="menu-applications" v-if="showConfiguration() && hasFeature('APP_AUTHENTICATION')"><i
             class="fas fa-window-restore fa-2x"></i>Apps</a>
-    <a href="#users" class="menu-users" v-if="admin"><i class="fas fa-users fa-2x"></i> Users</a>
-    <a href="#context" class="menu-context" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
+    <a href="#users" class="menu-users" v-if="showConfiguration()"><i class="fas fa-users fa-2x"></i> Users</a>
+    <a href="#context" class="menu-context" v-if="showConfiguration() && hasFeature('MULTI_CONTEXT')"><i
             class="fas fa-sitemap fa-2x"></i> Contexts</a>
-    <a href="#replicationgroups" class="menu-replicationgroups" v-if="admin && hasFeature('MULTI_CONTEXT')"><i
+    <a href="#replicationgroups" class="menu-replicationgroups"
+       v-if="showConfiguration() && hasFeature('MULTI_CONTEXT')"><i
             class="fas fa-clone fa-2x"></i>Replication groups</a>
-    <a href="#extensions" class="menu-replicationgroups" v-if="extensionsEnabled && admin"><i
-            class="fas fa-plus-square fa-2x"></i>Extensions</a>
+        <a href="#plugins" class="menu-plugins" v-if="pluginsEnabled && showConfiguration()"><i
+                class="fas fa-plus-square fa-2x"></i>Plugins</a>
         <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
     </span>
 </nav>
@@ -298,8 +308,11 @@
 </article>
 
 <footer id="footer">
-    <p>{{version}} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="New version available!" class="important">
-        <i class="fas fa-exclamation-triangle"></i></a> by <span>AxonIQ</span> <a href="#info" class="info"><i class="fas fa-info-circle"></i></a></p>
+    <p>{{ version }} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="New version available!"
+                        class="important">
+        <i class="fas fa-exclamation-triangle"></i></a> by <span class="logo">AxonIQ</span> <a href="#info"
+                                                                                               class="info"><i
+            class="fas fa-info-circle"></i></a></p>
 
 
     <modal-updates style="visibility: visible" v-if="showModal" @close="showModal = false">

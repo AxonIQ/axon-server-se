@@ -13,16 +13,16 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.interceptor.CommandInterceptors;
-import io.axoniq.axonserver.interceptor.DefaultInterceptorContext;
+import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,12 +91,12 @@ public class CommandDispatcher {
 
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver) {
-        ExtensionUnitOfWork extensionUnitOfWork = new DefaultInterceptorContext(context, authentication);
-        Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(extensionUnitOfWork,
+        PluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
+        Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(unitOfWork,
                                                                                          r,
                                                                                          responseObserver);
         try {
-            request = commandInterceptors.commandRequest(request, extensionUnitOfWork);
+            request = commandInterceptors.commandRequest(request, unitOfWork);
             commandRate(context).mark();
             CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
                                                                                   request.wrapped(),
@@ -120,18 +120,18 @@ public class CommandDispatcher {
         }
     }
 
-    private void intercept(ExtensionUnitOfWork extensionUnitOfWork,
+    private void intercept(PluginUnitOfWork unitOfWork,
                            SerializedCommandResponse response,
                            Consumer<SerializedCommandResponse> responseObserver) {
         try {
-            responseObserver.accept(commandInterceptors.commandResponse(response, extensionUnitOfWork));
+            responseObserver.accept(commandInterceptors.commandResponse(response, unitOfWork));
         } catch (MessagingPlatformException ex) {
-            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), ex);
+            logger.warn("{}: Exception in response interceptor", unitOfWork.context(), ex);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ex.getErrorCode(),
                                                          ex.getMessage()));
         } catch (Exception other) {
-            logger.warn("{}: Exception in response interceptor", extensionUnitOfWork.context(), other);
+            logger.warn("{}: Exception in response interceptor", unitOfWork.context(), other);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ErrorCode.OTHER,
                                                          other.getMessage()));

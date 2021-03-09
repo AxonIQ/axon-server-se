@@ -14,6 +14,7 @@ import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
+import io.axoniq.axonserver.metric.GaugeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
@@ -56,9 +57,9 @@ public class GlobalSubscriptionMetricRegistry implements Supplier<SubscriptionMe
     @Override
     public HubSubscriptionMetrics get() {
         return new HubSubscriptionMetrics(Tags.empty(),
-                                          new CounterMetric(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_ACTIVE.metric(),
-                                                            () -> (long) active.get()),
-                                          new CounterMetric(total.getId().getName(), () -> (long)total.count()),
+                                          new GaugeMetric(BaseMetricName.AXON_GLOBAL_SUBSCRIPTION_ACTIVE.metric(),
+                                                          () -> (double) active.get()),
+                                          new CounterMetric(total.getId().getName(), () -> (long) total.count()),
                                           new CounterMetric(updates.getId().getName(), () -> (long) updates.count()),
                                           clusterMetricCollector);
     }

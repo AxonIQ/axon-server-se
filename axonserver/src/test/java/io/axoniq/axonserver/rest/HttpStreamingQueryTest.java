@@ -68,7 +68,8 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
+            public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber,
+                                                          long maxSequenceNumber) {
                 return Optional.empty();
             }
 

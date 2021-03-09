@@ -38,12 +38,11 @@ public class AggregateReader {
                            Consumer<SerializedEvent> eventConsumer) {
         long actualMinSequenceNumber = minSequenceNumber;
         if (useSnapshots) {
-            Optional<SerializedEvent> snapshot = snapshotReader.readSnapshot(aggregateId, minSequenceNumber);
+            Optional<SerializedEvent> snapshot = snapshotReader.readSnapshot(aggregateId,
+                                                                             minSequenceNumber,
+                                                                             maxSequenceNumber);
             if (snapshot.isPresent()) {
                 eventConsumer.accept(snapshot.get());
-                if (snapshot.get().getAggregateSequenceNumber() >= maxSequenceNumber) {
-                    return;
-                }
                 actualMinSequenceNumber = snapshot.get().asEvent().getAggregateSequenceNumber() + 1;
             }
         }

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.File;
 import java.security.Principal;
@@ -60,7 +61,7 @@ public class BackupInfoRestController {
             @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
-            Principal principal) {
+            @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
                       AuditLog.username(principal),
                       context,

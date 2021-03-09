@@ -24,10 +24,6 @@
         <section>
             <ul>
                 <li>
-                    <span>timestamp</span>
-                    <span></span>
-                </li>
-                <li>
                     <span>error</span>
                     <span th:text="${error}"></span>
                 </li>
@@ -45,7 +41,7 @@
     </div>
 </article>
 <footer>
-    <p>Axon Server @project.version@ by <span>AxonIQ</span></p>
+    <p><span th:text="${product}"></span> <span th:text="${version}"></span> by <span class="logo">AxonIQ</span></p>
 </footer>
 </body>
 </html>

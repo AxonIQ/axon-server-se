@@ -13,6 +13,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CounterMetric;
+import io.axoniq.axonserver.metric.GaugeMetric;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
@@ -54,7 +55,8 @@ public class ApplicationSubscriptionMetricRegistry {
         Counter updates = updatesMetric(componentName, context);
         return new HubSubscriptionMetrics(
                 Tags.of(MeterFactory.CONTEXT, context, TAG_COMPONENT, componentName),
-                new CounterMetric(activeSubscriptionsMetricName(componentName, context), () -> (long) active.get()),
+                new GaugeMetric(BaseMetricName.AXON_APPLICATION_SUBSCRIPTION_ACTIVE.metric(),
+                                () -> (double) active.get()),
                 new CounterMetric(total.getId().getName(), () -> (long) total.count()),
                 new CounterMetric(updates.getId().getName(), () -> (long) updates.count()),
                 clusterMetricProvider);

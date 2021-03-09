@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.grpc.event.Event;
 
 import java.util.List;
@@ -26,44 +26,44 @@ public interface EventInterceptors {
     /**
      * Intercepts an append event action. The implementation of the interceptor can update the event.
      *
-     * @param event              the new event
-     * @param interceptorContext the caller's context
+     * @param event      the new event
+     * @param unitOfWork the caller's context
      * @return the new event
      */
-    Event appendEvent(Event event, ExtensionUnitOfWork interceptorContext);
+    Event appendEvent(Event event, PluginUnitOfWork unitOfWork);
 
     /**
      * Intercepts an append snapshot action. The implementation of the interceptor can update the snapshot.
      *
      * @param snapshot           the new snapshot
-     * @param interceptorContext the caller's context
+     * @param unitOfWork the caller's context
      * @return the new event
      */
-    Event appendSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext) throws RequestRejectedException;
+    Event appendSnapshot(Event snapshot, PluginUnitOfWork unitOfWork) throws RequestRejectedException;
 
-    void eventsPreCommit(List<Event> events, ExtensionUnitOfWork interceptorContext) throws RequestRejectedException;
+    void eventsPreCommit(List<Event> events, PluginUnitOfWork unitOfWork) throws RequestRejectedException;
 
-    void eventsPostCommit(List<Event> events, ExtensionUnitOfWork interceptorContext);
+    void eventsPostCommit(List<Event> events, PluginUnitOfWork unitOfWork);
 
-    void snapshotPostCommit(Event snapshot, ExtensionUnitOfWork interceptorContext);
+    void snapshotPostCommit(Event snapshot, PluginUnitOfWork unitOfWork);
 
     /**
      * Intercepts a snapshot read from the event store. The implementation of the interceptor can update the snapshot.
      *
      * @param snapshot           the read snapshot
-     * @param interceptorContext the caller's context
+     * @param unitOfWork the caller's context
      * @return the read snapshot
      */
-    Event readSnapshot(Event snapshot, ExtensionUnitOfWork interceptorContext);
+    Event readSnapshot(Event snapshot, PluginUnitOfWork unitOfWork);
 
     /**
      * Intercepts an event read from the event store. The implementation of the interceptor can update the event.
      *
      * @param event              the read event
-     * @param interceptorContext the caller's context
+     * @param unitOfWork the caller's context
      * @return the read event
      */
-    Event readEvent(Event event, ExtensionUnitOfWork interceptorContext);
+    Event readEvent(Event event, PluginUnitOfWork unitOfWork);
 
     /**
      * Checks if there aren't any interceptors for reading events or snapshots.

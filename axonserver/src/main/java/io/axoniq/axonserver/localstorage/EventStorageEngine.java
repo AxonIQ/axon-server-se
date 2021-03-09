@@ -100,13 +100,16 @@ public interface EventStorageEngine {
     Registration registerCloseListener(Runnable listener);
 
     /**
-     * Retrieves the last event for a specific aggregate id with a sequence number higher than or equal to the given sequence number.
+     * Retrieves the last event for a specific aggregate id with a sequence number higher than or equal to the given
+     * {@code minSequenceNumber} and lower than the given {@code maxSequenceNumber}.
      * Returns empty optional if aggregate is not found or no event with higher sequence number is found.
+     *
      * @param aggregateIdentifier the aggregate identifier
-     * @param minSequenceNumber the minimum sequence number
+     * @param minSequenceNumber   the minimum sequence number
+     * @param maxSequenceNumber   the last sequence number(exclusive)
      * @return optional containing the latest event
      */
-    Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber);
+    Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber, long maxSequenceNumber);
 
 
     /**

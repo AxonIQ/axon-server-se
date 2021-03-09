@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.stream.Stream;
@@ -55,7 +56,8 @@ public class ClientApplicationRestController {
      */
     @GetMapping("{component}/instances")
     public Iterable getComponentInstances(@PathVariable("component") String component,
-                                          @RequestParam("context") String context, Principal principal) {
+                                          @RequestParam("context") String context,
+                                          @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for a list of clients belonging to component \"{}\" and context=\"{}\"",
                       AuditLog.username(principal),
                       component,
@@ -70,14 +72,14 @@ public class ClientApplicationRestController {
      * @return stream containing all currently connected clients
      */
     @GetMapping("clients")
-    public Stream<Client> listClients(Principal principal) {
+    public Stream<Client> listClients(@ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for a list of all connected clients.", AuditLog.username(principal));
 
         return StreamSupport.stream(clients.spliterator(), false);
     }
 
     @GetMapping("clientIds")
-    public Printable listClientIds(Principal principal) {
+    public Printable listClientIds(@ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for a list of all connected clients.", AuditLog.username(principal));
 
         return clientIdRegistry;

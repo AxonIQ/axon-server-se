@@ -81,7 +81,7 @@ public class EventsRestController {
     @GetMapping(path = "snapshots")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataType = "string", paramType = "header")
+                    required = false, paramType = "header", dataTypeClass = String.class)
     })
     public SseEmitter findSnapshots(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
@@ -140,7 +140,7 @@ public class EventsRestController {
     @GetMapping(path = "events")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataType = "string", paramType = "header")
+                    required = false, dataTypeClass = String.class, paramType = "header")
     })
     public SseEmitter listAggregateEvents(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
@@ -236,7 +236,7 @@ public class EventsRestController {
     @PostMapping("events")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataType = "string", paramType = "header")
+                    required = false, dataTypeClass = String.class, paramType = "header")
     })
     public Future<Void> submitEvents(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
@@ -290,7 +290,7 @@ public class EventsRestController {
     @PostMapping("snapshot")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataType = "string", paramType = "header")
+                    required = false, dataTypeClass = String.class, paramType = "header")
     })
     @Deprecated
     public Future<Void> appendSnapshotOld(
@@ -312,7 +312,7 @@ public class EventsRestController {
     @PostMapping("snapshots")
     @ApiImplicitParams({
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataType = "string", paramType = "header")
+                    required = false, dataTypeClass = String.class, paramType = "header")
     })
     public Future<Void> appendSnapshot(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,

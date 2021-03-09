@@ -13,6 +13,8 @@ spring:
 
   datasource:
     url: jdbc:h2:retry:${axoniq.axonserver.controldb-path:./data}/axonserver-controldb
+    username: sa
+    password:
 
   h2:
     console:

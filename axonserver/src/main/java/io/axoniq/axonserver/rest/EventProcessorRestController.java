@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.ArrayList;
@@ -66,7 +67,7 @@ public class EventProcessorRestController {
     @GetMapping("components/{component}/processors")
     public Iterable<EventProcessor> componentProcessors(@PathVariable("component") String component,
                                                         @RequestParam("context") String context,
-                                                        final Principal principal) {
+                                                        @ApiIgnore final Principal principal) {
         auditLog.debug("[{}@{}] Request to list Event processors in component \"{}\".",
                        AuditLog.username(principal), context, component);
 
@@ -78,7 +79,7 @@ public class EventProcessorRestController {
                       @PathVariable("processor") String processor,
                       @RequestParam("context") String context,
                       @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                      final Principal principal) {
+                      @ApiIgnore final Principal principal) {
         auditLog.info("[{}@{}] Request to pause Event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processor, component);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier)
@@ -91,7 +92,7 @@ public class EventProcessorRestController {
                       @PathVariable("processor") String processor,
                       @RequestParam("context") String context,
                       @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                      final Principal principal) {
+                      @ApiIgnore final Principal principal) {
         auditLog.info("[{}@{}] Request to start Event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processor, component);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier)
@@ -106,7 +107,7 @@ public class EventProcessorRestController {
                             @RequestParam("target") String target,
                             @RequestParam("context") String context,
                             @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                            final Principal principal) {
+                            @ApiIgnore final Principal principal) {
         auditLog.info("[{}@{}] Request to move segment {} of event processor \"{}\" in component \"{}\" to \"{}\".",
                       AuditLog.username(principal), context, segment, processor, component, target);
         clientsByEventProcessor(context, processor, tokenStoreIdentifier).forEach(clientId -> {
@@ -130,7 +131,7 @@ public class EventProcessorRestController {
                              @PathVariable("processor") String processorName,
                              @RequestParam("context") String context,
                              @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                             final Principal principal) {
+                             @ApiIgnore final Principal principal) {
         auditLog.info("[{}@{}] Request to split segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
         Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
@@ -151,7 +152,7 @@ public class EventProcessorRestController {
                              @PathVariable("processor") String processorName,
                              @RequestParam("context") String context,
                              @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                             final Principal principal) {
+                             @ApiIgnore final Principal principal) {
         auditLog.info("[{}@{}] Request to merge segment of event processor \"{}\" in component \"{}\".",
                       AuditLog.username(principal), context, processorName, component);
         Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
@@ -176,7 +177,7 @@ public class EventProcessorRestController {
     public Iterable<String> getClientInstancesFor(@PathVariable("processor") String processorName,
                                                   @RequestParam("context") String context,
                                                   @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                                  Principal principal) {
+                                                  @ApiIgnore Principal principal) {
         auditLog.info(
                 "[{}] Request for a list of clients for context=\"{}\" that contains the processor \"{}\" @ \"{}\"",
                 AuditLog.username(principal),

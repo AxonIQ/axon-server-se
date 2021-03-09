@@ -21,8 +21,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.Assert.*;
-
 /**
  * @author Marc Gathier
  */
@@ -129,6 +127,18 @@ public class AggregateReaderTest {
 
         Assert.assertEquals(10, events.size());
         Assert.assertEquals("Demo", events.get(0).getAggregateType());
+    }
+
+    @Test
+    public void readEventsWithSnapshotAfterMax() {
+        List<Event> events = new ArrayList<>();
+        testSubject.readEvents("55", true, 0, 30, 0, event -> {
+            events.add(event.asEvent());
+        });
+
+        Assert.assertEquals(5, events.size());
+        Assert.assertEquals("Snapshot", events.get(0).getAggregateType());
+        Assert.assertEquals(25, events.get(0).getAggregateSequenceNumber());
     }
 
     @Test

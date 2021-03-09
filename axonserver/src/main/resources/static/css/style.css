@@ -160,35 +160,36 @@ article {
 	/*overflow-x: hidden; !* prevents a horizontal scrollbar on the page when there is a vertical scrollbar *!*/
 }
 
-footer{
-	height: 40px;
-	margin: -41px 40px 0 104px;
-	border-top: 1px solid #e5e5e5;
-	text-align: right;
-	color: #333;
-	font-size: 12px;
+footer {
+    height: 40px;
+    margin: -41px 40px 0 104px;
+    border-top: 1px solid #e5e5e5;
+    text-align: right;
+    color: #333;
+    font-size: 12px;
 }
-	footer p{
-		margin: 9px 0;
-		line-height: 20px;
-		font-weight: 300;
-	}
 
-	footer span{
-		font-size: 0;
-		display: inline-block;
-		width: 40px;
-		height: 12px;
-		background: url('../img/logo-axoniq.png') no-repeat left center;
-		background-size: contain;
-	}
+footer p {
+    margin: 9px 0;
+    line-height: 20px;
+    font-weight: 300;
+}
 
-	footer .info {
-		margin: 9px 3px;
-		line-height: 20px;
-		font-weight: 300;
-		color: darkgray;
-	}
+footer span.logo {
+    font-size: 0;
+    display: inline-block;
+    width: 40px;
+    height: 12px;
+    background: url('../img/logo-axoniq.png') no-repeat left center;
+    background-size: contain;
+}
+
+footer .info {
+    margin: 9px 3px;
+    line-height: 20px;
+    font-weight: 300;
+    color: darkgray;
+}
 
 	footer .important {
 		margin: 9px 3px;
@@ -749,11 +750,11 @@ select {
 	padding-left: 0;
 }
 
-.extensionProperties input {
+.pluginProperties input {
 	padding: 2px;
 }
 
-.extensionProperties select {
+.pluginProperties select {
 	padding: 2px;
 }
 

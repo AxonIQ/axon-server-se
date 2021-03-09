@@ -73,7 +73,7 @@ public class MultipleSnapshotSegments {
         testSubject.init(true);
         Optional<SerializedEvent> snapshot = testSubject.getLastEvent(
                 "Aggregate-325",
-                0);
+                0, Long.MAX_VALUE);
         assertTrue(snapshot.isPresent());
         assertEquals(1, snapshot.get().getAggregateSequenceNumber());
     }
@@ -83,7 +83,7 @@ public class MultipleSnapshotSegments {
         testSubject.init(true);
         Optional<SerializedEvent> snapshot = testSubject.getLastEvent(
                 "Aggregate-360",
-                0);
+                0, Long.MAX_VALUE);
         assertTrue(snapshot.isPresent());
         assertEquals(1, snapshot.get().getAggregateSequenceNumber());
     }

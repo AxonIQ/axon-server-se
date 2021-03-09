@@ -1,0 +1,389 @@
+<!--
+  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~ under one or more contributor license agreements.
+  ~
+  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+  ~  you may not use this file except in compliance with the license.
+  ~
+  -->
+
+<script>
+    //# sourceURL=plugins.js
+    globals.pageView = new Vue(
+            {
+                el: '#plugins',
+                data: {
+                    plugins: [],
+                    admin: globals.admin,
+                    confirmData: {},
+                    currentPlugin: null,
+                    roles: [],
+                    newPlugin: null,
+                    componentKey: 0,
+                    webSocketInfo: globals.webSocketInfo,
+                    contexts: ["default"]
+                }, mounted() {
+                    this.loadPlugins();
+                    if (this.isEnterprise()) {
+                        axios.get("v1/public/visiblecontexts?includeAdmin=false").then(response => {
+                            this.contexts = response.data;
+                        });
+                    }
+                    this.connect();
+                }, beforeDestroy() {
+                    if (this.subscription) {
+                        this.subscription.unsubscribe();
+                    }
+                }, methods: {
+                    loadPlugins() {
+                        axios.get("v1/plugins").then(response => {
+                            this.plugins = response.data;
+                            this.componentKey++;
+                        });
+                    },
+                    selectPlugin(ext, context) {
+                        axios.get("v1/plugins/configuration?name=" + ext.name + "&version=" + ext.version
+                                          + "&targetContext=" + context).then(
+                                response => {
+                                    this.currentPlugin = {
+                                        name: ext.name,
+                                        version: ext.version,
+                                        configuration: response.data,
+                                        context: context
+                                    };
+                                    this.newPlugin = null;
+                                });
+                    },
+                    deletePlugin(plugin) {
+                        if (confirm("Delete plugin: " + plugin.name)) {
+                            let me = this;
+                            axios.delete("v1/plugins?name=" + plugin.name + "&version=" + plugin.version)
+                                    .then(response => {
+                                              this.currentPlugin = null;
+                                              this.newPlugin = null;
+                                              setTimeout(me.loadPlugins, 1000);
+                                          }
+                                    );
+                        }
+                    },
+                    isActiveSE(plugin) {
+                        return plugin.contextInfoList && plugin.contextInfoList.length > 0
+                                && plugin.contextInfoList[0].active;
+                    },
+                    unregisterPluginForContext(plugin, context) {
+                        let me = this;
+                        axios.delete("v1/plugins/context?name=" + plugin.name + "&version=" + plugin.version
+                                             + "&targetContext=" + context)
+                                .then(response => {
+                                          this.currentPlugin = null;
+                                          this.newPlugin = null;
+                                          setTimeout(me.loadPlugins, 1000);
+                                      }
+                                );
+                    },
+                    save(plugin) {
+                        let updatedPlugin = {
+                            name: plugin.name,
+                            version: plugin.version,
+                            context: plugin.context,
+                            properties: {}
+                        };
+                        for (let i = 0; i < plugin.configuration.length; i++) {
+                            let item = plugin.configuration[i];
+                            let properties = {};
+                            for (let j = 0; j < item.properties.length; j++) {
+                                let prop = item.properties[j];
+                                properties[prop.id] = prop.value;
+                                if (this.isMulti(prop) && prop.newValue) {
+                                    properties[prop.id].push(prop.newValue);
+                                    prop.newValue = "";
+                                }
+                            }
+                            updatedPlugin.properties[item.id] = properties;
+                        }
+                        axios.post("v1/plugins/configuration", updatedPlugin).then(response => {
+                            this.currentPlugin = null;
+                            this.loadPlugins();
+                        })
+                    },
+                    install() {
+                        this.currentPlugin = null;
+                        this.newPlugin = {configuration: {}, start: true};
+                        this.$modal.show("newPluginDetails");
+                    },
+                    hideModal(name) {
+                        this.$modal.hide(name);
+                    },
+                    start(plugin, context) {
+                        let me = this;
+                        axios.post("v1/plugins/status?name=" + plugin.name + "&version=" + plugin.version
+                                           + "&targetContext=" + context
+                                           + "&active=true")
+                                .then(response => {
+                                          this.currentPlugin = null;
+                                          this.newPlugin = null;
+                                          setTimeout(me.loadPlugins, 1000);
+                                      }
+                                );
+                    },
+                    registerPluginForContext(plugin) {
+                        let me = this;
+                        axios.post("v1/plugins/status?name=" + plugin.name + "&version=" + plugin.version
+                                           + "&targetContext=" + plugin.newContext
+                                           + "&active=false")
+                                .then(response => {
+                                          this.currentPlugin = null;
+                                          this.newPlugin = null;
+                                          setTimeout(me.loadPlugins, 1000);
+                                      }
+                                );
+                    },
+                    stop(plugin, context) {
+                        let me = this;
+                        axios.post("v1/plugins/status?name=" + plugin.name + "&version=" + plugin.version
+                                           + "&targetContext=" + context
+                                           + "&active=false")
+                                .then(response => {
+                                          this.currentPlugin = null;
+                                          this.newPlugin = null;
+                                          setTimeout(me.loadPlugins, 1000);
+                                      }
+                                );
+                    },
+                    hasOptions(attr) {
+                        return attr.optionLabels && attr.optionLabels.length > 0;
+                    },
+                    add() {
+                        let fd = new FormData();
+                        let files = this.$refs.pluginFileRef.files[0];
+                        if (files == undefined) {
+                            alert("Select an plugin file first")
+                            return false;
+                        }
+
+                        let me = this;
+                        fd.append('bundle', files);
+                        axios.post("/v1/plugins", fd,
+                                   {
+                                       headers: {
+                                           'Content-Type': 'multipart/form-data'
+                                       }
+                                   }).then(response => {
+                            setTimeout(me.loadPlugins, 1000);
+                            this.hideModal("newPluginDetails");
+                            me.newPlugin = null;
+                        });
+                    },
+                    connect() {
+                        let me = this;
+                        me.webSocketInfo.subscribe('/topic/plugins', function () {
+                            setTimeout(me.loadPlugins, 1000)
+                        }, function (sub) {
+                            me.subscription = sub;
+                        });
+                    },
+                    isMulti(attr) {
+                        return attr.cardinality === 'MULTI';
+                    },
+                    deleteAttrValue(attr, idx) {
+                        attr.value.splice(idx, 1);
+                    },
+                    addAttrValue(attr) {
+                        attr.value.push(attr.newValue);
+                        attr.newValue = "";
+                    },
+                    isSingle(attr) {
+                        return attr.cardinality === 'SINGLE';
+                    },
+                    inputType(attr) {
+                        if (attr.type === 'PASSWORD') {
+                            return "password";
+                        }
+                        if (attr.type === 'INTEGER' ||
+                                attr.type === 'LONG' ||
+                                attr.type === 'FLOAT' ||
+                                attr.type === 'DOUBLE') {
+                            return "number";
+                        }
+
+                        return "text";
+                    }
+                }
+            });
+
+</script>
+<section id="plugins">
+    <section id="pluginOverview">
+        <div class="results singleHeader">
+            <table :key="componentKey">
+                <thead>
+                <tr>
+                    <th style="width: 25%">Plugin Name</th>
+                    <th style="width: 10%">Version</th>
+                    <th style="width: 10%">Plugin Status</th>
+                    <th style="width: 35%" v-if="isEnterprise()">Status per Context</th>
+                    <th style="width: 35%" v-if="!isEnterprise()">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="plugin in plugins">
+                    <td :title="plugin.filename">{{ plugin.name }}</td>
+                    <td>{{ plugin.version }}
+                        <span @click="deletePlugin(plugin)" title="Delete">
+                                <i class="far fa-trash-alt"/>
+                            </span>
+                    </td>
+                    <td>{{ plugin.pluginStatus }}</td>
+
+                    <td v-if="isEnterprise()">
+                        <table>
+                            <tr v-for="contextInfo in plugin.contextInfoList">
+                                <td style="padding: 0">{{ contextInfo.context }}</td>
+                                <td style="padding: 0">{{ contextInfo.active ? "Active" : "Registered" }}</td>
+                                <td style="padding: 0">
+                                    <span v-if="admin"
+                                          @click="unregisterPluginForContext(plugin, contextInfo.context)"
+                                          title="Delete"><i
+                                            class="far fa-trash-alt"></i></span>
+                                    <span @click="selectPlugin(plugin, contextInfo.context)" title="Edit">
+                                        <i class="fas fa-pencil-alt"/></span>
+                                    <span v-if="admin && !contextInfo.active"
+                                          @click="start(plugin, contextInfo.context)" title="Start">
+                                        <i class="far fa-play-circle"/></span>
+                                    <span v-if="admin && contextInfo.active"
+                                          @click="stop(plugin, contextInfo.context)" title="Stop">
+                                        <i class="far fa-pause-circle"/></span>
+                                     </td>
+                                 </tr>
+                             </table>
+
+                            <span v-if="admin">
+                                <select v-model="plugin.newContext">
+                                    <option v-for="n in contexts">{{ n }}</option>
+                                </select>
+                                <span @click="registerPluginForContext(plugin)" title="Add"><i
+                                        class="fas fa-plus"></i></span>
+                            </span>
+
+                        </td>
+                    <td v-if="!isEnterprise()">
+                            <span @click="selectPlugin(plugin, 'default')" title="Edit"><i
+                                    class="fas fa-pencil-alt"/></span>
+                        <span v-if="admin && !isActiveSE(plugin)"
+                              @click="start(plugin, 'default')" title="Start"><i
+                                class="far fa-play-circle"/></span>
+                        <span v-if="admin && isActiveSE(plugin)" @click="stop(plugin, 'default')"
+                              title="Stop"><i
+                                class="far fa-pause-circle"/></span>
+                    </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="buttons" style="padding-top: 10px" v-if="admin">
+                <button @click.prevent="install()" class="button">Upload</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="pluginDetails" v-if="currentPlugin">
+        <div class="column wide">
+            <form>
+                <ul>
+                    <li>
+                        <span class="narrow">Context</span>
+                        <span class="narrow">{{ currentPlugin.context }}</span>
+                    </li>
+                    <li>
+                        <span class="narrow">Name</span>
+                        <span class="narrow">{{ currentPlugin.name }}</span>
+                    </li>
+                    <li>
+                        <span class="narrow">Version</span>
+                        <span class="narrow">{{ currentPlugin.version }}</span>
+                    </li>
+                    <li v-for="group in currentPlugin.configuration">
+                        <span class="narrow">{{ group.name }}</span>
+                        <span>
+                                <table class="nestedTable pluginProperties">
+                                    <tbody>
+                                        <tr v-for="attr in group.properties">
+                                            <td width="20%" :title="attr.description">{{ attr.id }}</td>
+                                            <td>
+                                                <div v-if="isSingle(attr)">
+                                                <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                       :title="attr.type"
+                                                       v-model="attr.value"/>
+                                                <select v-if="hasOptions(attr)" v-model="attr.value">
+                                                    <option v-for="(value,idx) in attr.optionValues"
+                                                            :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                </select>
+                                                </div>
+                                                <ul v-if="isMulti(attr)">
+                                                    <li v-for="(val,valIdx) in attr.value" style="padding: 2px">
+                                                    <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                           :title="attr.type"
+                                                           v-model="attr.value[valIdx]"/>
+                                                    <select v-if="hasOptions(attr)" v-model="attr.value[valIdx]">
+                                                        <option v-for="(value,idx) in attr.optionValues"
+                                                                :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                    </select>
+                                                        <span @click="deleteAttrValue(attr, valIdx)"
+                                                              style="float: unset;width: 20px;padding-left: 2px;display: inline;"
+                                                              title="Delete Attribute Value">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </span>
+                                                        </li>
+                                                    <li style="padding: 2px">
+                                                    <input v-if="!hasOptions(attr)" :type="inputType(attr)"
+                                                           :title="attr.type"
+                                                           v-model="attr.newValue"/>
+                                                    <select v-if="hasOptions(attr)" v-model="attr.newValue">
+                                                        <option v-for="(value,idx) in attr.optionValues"
+                                                                :value="value">{{ attr.optionLabels[idx] }}</option>
+                                                    </select>
+                                                        <span @click="addAttrValue(attr)" title="Add Attribute Value"
+                                                              style="float: unset;width: 20px;padding-left: 2px;display: inline;">
+                                                            <i class="fas fa-plus"></i>
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="narrow">&nbsp;</span>
+                        <span><button @click.prevent="save(currentPlugin)" class="button">Save</button></span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </section>
+
+    <modal name="newPluginDetails" width="550" height="250">
+        <div class="column configuration modal">
+            <h2>Upload Plugin</h2>
+            <form id="pluginForm" enctype="multipart/form-data">
+                <ul>
+                    <li>
+                        <span>Name</span>
+                        <span><input type="file" ref="pluginFileRef" id="pluginFile"
+                                     name="pluginFile"/></span>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                    </li>
+                    <li>
+                        <span>&nbsp;</span>
+                        <span><button @click.prevent="add(newPlugin)" class="button">Save</button>
+                        <button @click.prevent="hideModal('newPluginDetails')" class="button">Cancel</button>
+                            </span>
+                    </li>
+                </ul>
+            </form>
+        </div>
+    </modal>
+
+</section>

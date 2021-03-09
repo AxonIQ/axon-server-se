@@ -71,8 +71,8 @@ public class StandardIndexManager implements IndexManager {
     private final MeterFactory.RateMeter indexOpenMeter;
     private final MeterFactory.RateMeter indexCloseMeter;
     private final RemoteAggregateSequenceNumberResolver remoteIndexManager;
-    private ScheduledFuture<?> cleanupTask;
     private final AtomicLong useMmapAfterIndex = new AtomicLong();
+    private ScheduledFuture<?> cleanupTask;
 
     /**
      * @param context           the context of the storage engine
@@ -335,29 +335,25 @@ public class StandardIndexManager implements IndexManager {
      * Returns the position of the last event for an aggregate.
      *
      * @param aggregateId       the aggregate identifier
-     * @param minSequenceNumber minimum sequence number of the event to find
+     * @param maxSequenceNumber maximum sequence number of the event to find (exclusive)
      * @return
      */
     @Override
-    public SegmentAndPosition lastEvent(String aggregateId, long minSequenceNumber) {
+    public SegmentIndexEntries lastIndexEntries(String aggregateId, long maxSequenceNumber) {
         for (Long segment : activeIndexes.descendingKeySet()) {
             IndexEntries indexEntries = activeIndexes.get(segment).get(aggregateId);
-            if (indexEntries != null) {
-                if (minSequenceNumber < indexEntries.lastSequenceNumber()) {
-                    return new SegmentAndPosition(segment, indexEntries.last());
-                } else {
-                    return null;
-                }
+            if (indexEntries != null && indexEntries.firstSequenceNumber() < maxSequenceNumber) {
+                return new SegmentIndexEntries(segment, indexEntries.range(indexEntries.firstSequenceNumber(),
+                                                                           maxSequenceNumber,
+                                                                           EventType.SNAPSHOT.equals(eventType)));
             }
         }
         for (Long segment : indexesDescending) {
             IndexEntries indexEntries = getPositions(segment, aggregateId);
-            if (indexEntries != null) {
-                if (minSequenceNumber < indexEntries.lastSequenceNumber()) {
-                    return new SegmentAndPosition(segment, indexEntries.last());
-                } else {
-                    return null;
-                }
+            if (indexEntries != null && indexEntries.firstSequenceNumber() < maxSequenceNumber) {
+                return new SegmentIndexEntries(segment, indexEntries.range(indexEntries.firstSequenceNumber(),
+                                                                           maxSequenceNumber,
+                                                                           EventType.SNAPSHOT.equals(eventType)));
             }
         }
         return null;

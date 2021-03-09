@@ -17,13 +17,15 @@ import io.axoniq.axonserver.topology.SimpleAxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import java.util.List;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
-import static org.hibernate.validator.internal.util.CollectionHelper.asSet;
 import static org.mockito.Mockito.*;
 
 /**
@@ -83,4 +85,11 @@ public class OverviewModelTest {
         assertEquals(Integer.valueOf(5), applicationsAndNodes.getNodes().get(1).getHttpPort());
     }
 
+    private <T> Set<T> asSet(T... items) {
+        Set<T> set = new HashSet<>();
+        for (T item : items) {
+            set.add(item);
+        }
+        return set;
+    }
 }

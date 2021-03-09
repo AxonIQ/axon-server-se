@@ -58,29 +58,29 @@ public class CommandOptions {
             .desc("Name of the application")
             .build();
     /**
-     * The name of the extension to manage.
+     * The name of the plugin to manage.
      */
-    public static final Option EXTENSION_NAME = Option
-            .builder("e")
-            .longOpt("extension")
+    public static final Option PLUGIN_NAME = Option
+            .builder("p")
+            .longOpt("plugin")
             .hasArg()
             .required()
-            .desc("Name of the extension")
+            .desc("Name of the plugin")
             .build();
     /**
-     * The version of the extension to manage.
+     * The version of the plugin to manage.
      */
-    public static final Option EXTENSION_VERSION = Option
+    public static final Option PLUGIN_VERSION = Option
             .builder("v")
             .longOpt("version")
             .hasArg()
             .required()
-            .desc("Version of the extension")
+            .desc("Version of the plugin")
             .build();
     /**
-     * The context for the extension
+     * The context for the plugin
      */
-    public static final Option EXTENSION_CONTEXT = Option
+    public static final Option PLUGIN_CONTEXT = Option
             .builder("c")
             .longOpt("context")
             .hasArg()
@@ -341,14 +341,14 @@ public class CommandOptions {
             .build();
 
     /**
-     * Extension file
+     * Plugin file
      */
-    public static final Option EXTENSION_FILE = Option
+    public static final Option PLUGIN_FILE = Option
             .builder("f")
             .required()
             .longOpt("file")
             .hasArg()
-            .desc("Jar file containing the extension bundle")
+            .desc("Jar file containing the plugin bundle")
             .build();
     /**
      * YAML file containing properties

@@ -17,9 +17,7 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 
 /**
@@ -33,13 +31,10 @@ public class InputStreamEventSource implements EventSource {
 
 
     public InputStreamEventSource(File dataFile,
-                                  EventTransformerFactory eventTransformerFactory,
-                                  StorageProperties storageProperties) {
+                                  EventTransformerFactory eventTransformerFactory) {
         try {
             logger.debug("Open file {}", dataFile);
-            dataInputStream = new PositionKeepingDataInputStream(new BufferedInputStream(new FileInputStream(dataFile),
-                                                                                         storageProperties
-                                                                                                 .getReadBufferSize()));
+            dataInputStream = new PositionKeepingDataInputStream(dataFile);
             dataInputStream.readByte();
             int modifiers = dataInputStream.readInt();
             eventTransformer = eventTransformerFactory.get(modifiers);

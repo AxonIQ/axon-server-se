@@ -11,16 +11,16 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.extensions.ExtensionUnitOfWork;
-import io.axoniq.axonserver.extensions.RequestRejectedException;
-import io.axoniq.axonserver.extensions.ServiceWithInfo;
-import io.axoniq.axonserver.extensions.hook.PostCommitEventsHook;
-import io.axoniq.axonserver.extensions.hook.PostCommitSnapshotHook;
-import io.axoniq.axonserver.extensions.hook.PreCommitEventsHook;
-import io.axoniq.axonserver.extensions.interceptor.AppendEventInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.AppendSnapshotInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.ReadEventInterceptor;
-import io.axoniq.axonserver.extensions.interceptor.ReadSnapshotInterceptor;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.RequestRejectedException;
+import io.axoniq.axonserver.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.plugin.hook.PostCommitEventsHook;
+import io.axoniq.axonserver.plugin.hook.PostCommitSnapshotHook;
+import io.axoniq.axonserver.plugin.hook.PreCommitEventsHook;
+import io.axoniq.axonserver.plugin.interceptor.AppendEventInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.AppendSnapshotInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.ReadEventInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.ReadSnapshotInterceptor;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
@@ -40,37 +40,37 @@ import java.util.List;
 public class DefaultEventInterceptors implements EventInterceptors {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultEventInterceptors.class);
-    private final ExtensionContextFilter extensionContextFilter;
+    private final PluginContextFilter pluginContextFilter;
     private final InterceptorTimer interceptorTimer;
 
 
     public DefaultEventInterceptors(
-            ExtensionContextFilter extensionContextFilter,
+            PluginContextFilter pluginContextFilter,
             MeterFactory meterFactory) {
-        this.extensionContextFilter = extensionContextFilter;
+        this.pluginContextFilter = pluginContextFilter;
         this.interceptorTimer = new InterceptorTimer(meterFactory);
     }
 
     @Override
     public Event appendEvent(
-            Event event, ExtensionUnitOfWork extensionUnitOfWork) {
-        List<ServiceWithInfo<AppendEventInterceptor>> interceptors = extensionContextFilter
+            Event event, PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<AppendEventInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         AppendEventInterceptor.class,
-                        extensionUnitOfWork
+                        unitOfWork
                                 .context());
         if (interceptors.isEmpty()) {
             return event;
         }
 
-        Event intercepted = interceptorTimer.time(extensionUnitOfWork.context(), "AppendEventInterceptor", () -> {
+        Event intercepted = interceptorTimer.time(unitOfWork.context(), "AppendEventInterceptor", () -> {
             Event e = event;
             for (ServiceWithInfo<AppendEventInterceptor> preCommitInterceptor : interceptors) {
                 try {
-                    e = preCommitInterceptor.service().appendEvent(e, extensionUnitOfWork);
+                    e = preCommitInterceptor.service().appendEvent(e, unitOfWork);
                 } catch (Exception ex) {
                     throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                         preCommitInterceptor.extensionKey()
+                                                         preCommitInterceptor.pluginKey()
                                                                  + ": Error in AppendEventInterceptor",
                                                          ex);
                 }
@@ -84,31 +84,31 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public void eventsPreCommit(List<Event> events,
-                                ExtensionUnitOfWork extensionUnitOfWork) throws RequestRejectedException {
-        List<ServiceWithInfo<PreCommitEventsHook>> servicesForContext = extensionContextFilter
+                                PluginUnitOfWork unitOfWork) throws RequestRejectedException {
+        List<ServiceWithInfo<PreCommitEventsHook>> servicesForContext = pluginContextFilter
                 .getServicesWithInfoForContext(
                         PreCommitEventsHook.class,
-                        extensionUnitOfWork.context());
+                        unitOfWork.context());
         if (servicesForContext.isEmpty()) {
             return;
         }
 
-        interceptorTimer.time(extensionUnitOfWork.context(), "PreCommitEventsHook", () -> {
+        interceptorTimer.time(unitOfWork.context(), "PreCommitEventsHook", () -> {
             List<Event> immutableEvents = Collections.unmodifiableList(events);
             for (ServiceWithInfo<PreCommitEventsHook> preCommitEventsHook : servicesForContext) {
                 try {
-                    preCommitEventsHook.service().onPreCommitEvents(immutableEvents, extensionUnitOfWork);
+                    preCommitEventsHook.service().onPreCommitEvents(immutableEvents, unitOfWork);
                 } catch (RequestRejectedException requestRejectedException) {
                     throw new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
-                                                         extensionUnitOfWork.context() +
+                                                         unitOfWork.context() +
                                                                  ": Events rejected by the PreCommitEventsHook in "
-                                                                 + preCommitEventsHook.extensionKey(),
+                                                                 + preCommitEventsHook.pluginKey(),
                                                          requestRejectedException);
                 } catch (Exception ex) {
                     throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                         extensionUnitOfWork.context() +
+                                                         unitOfWork.context() +
                                                                  ": Exception thrown by the PreCommitEventsHook in "
-                                                                 + preCommitEventsHook.extensionKey(),
+                                                                 + preCommitEventsHook.pluginKey(),
                                                          ex);
                 }
             }
@@ -116,77 +116,77 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public void eventsPostCommit(List<Event> events, ExtensionUnitOfWork extensionUnitOfWork) {
-        List<ServiceWithInfo<PostCommitEventsHook>> servicesForContext = extensionContextFilter
+    public void eventsPostCommit(List<Event> events, PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<PostCommitEventsHook>> servicesForContext = pluginContextFilter
                 .getServicesWithInfoForContext(
                         PostCommitEventsHook.class,
-                        extensionUnitOfWork.context());
+                        unitOfWork.context());
         if (servicesForContext.isEmpty()) {
             return;
         }
 
-        interceptorTimer.time(extensionUnitOfWork.context(), "PostCommitEventsHook", () -> {
+        interceptorTimer.time(unitOfWork.context(), "PostCommitEventsHook", () -> {
             List<Event> immutableList = Collections.unmodifiableList(events);
             for (ServiceWithInfo<PostCommitEventsHook> postCommitEventsHook : servicesForContext) {
                 try {
-                    postCommitEventsHook.service().onPostCommitEvent(immutableList, extensionUnitOfWork);
+                    postCommitEventsHook.service().onPostCommitEvent(immutableList, unitOfWork);
                 } catch (Exception ex) {
                     logger.warn("{} : Exception thrown by the PostCommitEventsHook in {}",
-                                extensionUnitOfWork.context(), postCommitEventsHook.extensionKey(), ex);
+                                unitOfWork.context(), postCommitEventsHook.pluginKey(), ex);
                 }
             }
         });
     }
 
     @Override
-    public void snapshotPostCommit(Event snapshot, ExtensionUnitOfWork extensionUnitOfWork) {
-        List<ServiceWithInfo<PostCommitSnapshotHook>> interceptors = extensionContextFilter
+    public void snapshotPostCommit(Event snapshot, PluginUnitOfWork unitOfWork) {
+        List<ServiceWithInfo<PostCommitSnapshotHook>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         PostCommitSnapshotHook.class,
-                        extensionUnitOfWork.context());
+                        unitOfWork.context());
         if (interceptors.isEmpty()) {
             return;
         }
 
-        interceptorTimer.time(extensionUnitOfWork.context(), "PostCommitEventsHook", () -> {
+        interceptorTimer.time(unitOfWork.context(), "PostCommitEventsHook", () -> {
             for (ServiceWithInfo<PostCommitSnapshotHook> postCommitSnapshotHook : interceptors) {
                 try {
-                    postCommitSnapshotHook.service().onPostCommitSnapshot(snapshot, extensionUnitOfWork);
+                    postCommitSnapshotHook.service().onPostCommitSnapshot(snapshot, unitOfWork);
                 } catch (Exception ex) {
                     logger.warn("{} : Exception thrown by the PostCommitSnapshotHook in {}",
-                                extensionUnitOfWork.context(), postCommitSnapshotHook.extensionKey(), ex);
+                                unitOfWork.context(), postCommitSnapshotHook.pluginKey(), ex);
                 }
             }
         });
     }
 
     @Override
-    public Event appendSnapshot(Event snapshot, ExtensionUnitOfWork extensionUnitOfWork)
+    public Event appendSnapshot(Event snapshot, PluginUnitOfWork unitOfWork)
             throws RequestRejectedException {
-        List<ServiceWithInfo<AppendSnapshotInterceptor>> interceptors = extensionContextFilter
+        List<ServiceWithInfo<AppendSnapshotInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         AppendSnapshotInterceptor.class,
-                        extensionUnitOfWork.context());
+                        unitOfWork.context());
         if (interceptors.isEmpty()) {
             return snapshot;
         }
 
-        Event intercepted = interceptorTimer.time(extensionUnitOfWork.context(), "AppendSnapshotInterceptor", () -> {
+        Event intercepted = interceptorTimer.time(unitOfWork.context(), "AppendSnapshotInterceptor", () -> {
             Event s = snapshot;
             for (ServiceWithInfo<AppendSnapshotInterceptor> appendSnapshotInterceptor : interceptors) {
                 try {
-                    s = appendSnapshotInterceptor.service().appendSnapshot(s, extensionUnitOfWork);
+                    s = appendSnapshotInterceptor.service().appendSnapshot(s, unitOfWork);
                 } catch (RequestRejectedException requestRejectedException) {
                     throw new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
-                                                         extensionUnitOfWork.context() +
+                                                         unitOfWork.context() +
                                                                  ": Snapshot rejected by the AppendSnapshotInterceptor in "
-                                                                 + appendSnapshotInterceptor.extensionKey(),
+                                                                 + appendSnapshotInterceptor.pluginKey(),
                                                          requestRejectedException);
                 } catch (Exception ex) {
                     throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                         extensionUnitOfWork.context() +
+                                                         unitOfWork.context() +
                                                                  ": Exception thrown by the AppendSnapshotInterceptor in "
-                                                                 + appendSnapshotInterceptor.extensionKey(),
+                                                                 + appendSnapshotInterceptor.pluginKey(),
                                                          ex);
                 }
             }
@@ -202,22 +202,22 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event readSnapshot(Event snapshot, ExtensionUnitOfWork extensionUnitOfWork) {
-        Event intercepted = interceptorTimer.time(extensionUnitOfWork.context(), "ReadSnapshotInterceptor", () -> {
+    public Event readSnapshot(Event snapshot, PluginUnitOfWork unitOfWork) {
+        Event intercepted = interceptorTimer.time(unitOfWork.context(), "ReadSnapshotInterceptor", () -> {
             Event s = snapshot;
 
-            for (ServiceWithInfo<ReadSnapshotInterceptor> snapshotReadInterceptor : extensionContextFilter
+            for (ServiceWithInfo<ReadSnapshotInterceptor> snapshotReadInterceptor : pluginContextFilter
                     .getServicesWithInfoForContext(
                             ReadSnapshotInterceptor.class,
-                            extensionUnitOfWork.context()
+                            unitOfWork.context()
                     )) {
                 try {
-                    s = snapshotReadInterceptor.service().readSnapshot(s, extensionUnitOfWork);
+                    s = snapshotReadInterceptor.service().readSnapshot(s, unitOfWork);
                 } catch (Exception ex) {
                     throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                         extensionUnitOfWork.context() +
+                                                         unitOfWork.context() +
                                                                  ": Exception thrown by the ReadSnapshotInterceptor in "
-                                                                 + snapshotReadInterceptor.extensionKey(),
+                                                                 + snapshotReadInterceptor.pluginKey(),
                                                          ex);
                 }
             }
@@ -227,21 +227,21 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event readEvent(Event event, ExtensionUnitOfWork extensionUnitOfWork) {
-        Event intercepted = interceptorTimer.time(extensionUnitOfWork.context(), "ReadEventInterceptor", () -> {
+    public Event readEvent(Event event, PluginUnitOfWork unitOfWork) {
+        Event intercepted = interceptorTimer.time(unitOfWork.context(), "ReadEventInterceptor", () -> {
             Event e = event;
-            for (ServiceWithInfo<ReadEventInterceptor> eventReadInterceptor : extensionContextFilter
+            for (ServiceWithInfo<ReadEventInterceptor> eventReadInterceptor : pluginContextFilter
                     .getServicesWithInfoForContext(
                             ReadEventInterceptor.class,
-                            extensionUnitOfWork.context()
+                            unitOfWork.context()
                     )) {
                 try {
-                    e = eventReadInterceptor.service().readEvent(e, extensionUnitOfWork);
+                    e = eventReadInterceptor.service().readEvent(e, unitOfWork);
                 } catch (Exception ex) {
                     throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                         extensionUnitOfWork.context() +
+                                                         unitOfWork.context() +
                                                                  ": Exception thrown by the ReadEventInterceptor in "
-                                                                 + eventReadInterceptor.extensionKey(),
+                                                                 + eventReadInterceptor.pluginKey(),
                                                          ex);
                 }
             }
@@ -260,11 +260,11 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public boolean noEventReadInterceptors(String context) {
-        return extensionContextFilter.getServicesForContext(ReadEventInterceptor.class, context).isEmpty();
+        return pluginContextFilter.getServicesForContext(ReadEventInterceptor.class, context).isEmpty();
     }
 
     @Override
     public boolean noSnapshotReadInterceptors(String context) {
-        return extensionContextFilter.getServicesForContext(ReadSnapshotInterceptor.class, context).isEmpty();
+        return pluginContextFilter.getServicesForContext(ReadSnapshotInterceptor.class, context).isEmpty();
     }
 }

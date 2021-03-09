@@ -9,23 +9,25 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.RandomAccessFile;
 
 /**
  * @author Marc Gathier
  */
 public class PositionKeepingDataInputStream {
-    private int position = 0;
-    private DataInputStream reader;
 
-    public PositionKeepingDataInputStream(InputStream fileInputStream) {
-        reader = new DataInputStream(fileInputStream);
+    private int position = 0;
+    private RandomAccessFile reader;
+
+    public PositionKeepingDataInputStream(File file) throws FileNotFoundException {
+        reader = new RandomAccessFile(file, "r");
     }
 
     public byte readByte() throws IOException {
-        byte b  = reader.readByte();
+        byte b = reader.readByte();
         position++;
         return b;
     }
@@ -36,11 +38,9 @@ public class PositionKeepingDataInputStream {
         return i;
     }
 
-    public void position(int position) throws IOException {
-        if( position < this.position) throw new IOException("Cannot move backwards in datastream");
-
-        reader.skipBytes(position - this.position);
-        this.position = position;
+    public void position(int newPosition) throws IOException {
+        reader.seek(newPosition);
+        this.position = newPosition;
     }
 
     public byte[] readEvent() throws IOException {

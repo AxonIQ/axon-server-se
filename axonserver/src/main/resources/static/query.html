@@ -196,6 +196,7 @@
                             if (source) {
                                 source.close();
                             }
+                            this.info = null;
                             source = new EventSource("v1/search?query=" + encodeURIComponent(this.query)
                                                              + "&context=" + encodeURIComponent(this.activeContext)
                                                              + "&timewindow=" + encodeURIComponent(this.timeConstraint)
@@ -203,7 +204,7 @@
                                                              + "&querySnapshots=" + this.querySnapshots
                                                              + "&forceleader=" + this.forceReadFromLeader
                                                              + "&clientToken="
-                                    + encodeURIComponent(clientToken));
+                                                             + encodeURIComponent(clientToken));
                             source.addEventListener('metadata', function (event) {
                                 target.columns = JSON.parse(event.data);
 
@@ -211,6 +212,9 @@
 
                             source.addEventListener('done', function (event) {
                                 target.working = false;
+                                if (target.rows.length === 0 && !target.liveUpdates) {
+                                    target.info = "No query results found, extend the query time window to search for older events";
+                                }
                             });
 
 
@@ -320,6 +324,7 @@
         </span>
     </div>
     <br/>
+
     <form class="search-bar">
         <input v-model="query" id="query" type="search" placeholder="Enter your query here">
         <button @click.prevent="executeQuery()" type="submit" class="button" id="queryButton">Search</button>
@@ -417,11 +422,15 @@
             <tbody class="selectable">
             <tr v-for="row in rows" @click="select(row)" :class="row.style">
                 <td v-for="column in columns">
-                    <div>{{row.value[column]}}</div>
+                    <div>{{ row.value[column] }}</div>
                 </td>
             </tr>
             </tbody>
         </table>
+    </div>
+
+    <div v-if="info" class="msg info">
+        {{ info }}
     </div>
 
     <modal name="result-details" width="900px" height="400px" :draggable="true" :resizable="true" :reset="true"
