@@ -19,7 +19,7 @@ globals.pageView = new Vue(
             },
             mounted() {
                 let me = this;
-                me.webSocketInfo.subscribe('/topic/cluster', function () {
+                me.webSocketInfo.subscribeWithFallback('/topic/cluster', function () {
                     me.initOverview();
                 }, function (sub) {
                     me.subscription = sub;

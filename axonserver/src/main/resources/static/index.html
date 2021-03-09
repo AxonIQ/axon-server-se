@@ -46,27 +46,74 @@
 
             webSocketInfo: {
                 stompConnected: false,
-
+                pollInterval: 5000,
                 stompClient: null,
+                managedSubscriptions: [],
 
-                getStompClient: function() {
-                    if( ! this.stompClient) {
-                        console.info("Creating sockjs client: " + document.location.pathname + 'axonserver-platform-websocket')
+                getStompClient: function () {
+                    if (!this.stompClient) {
+                        console.debug("Creating sockjs client: " + document.location.pathname
+                                              + 'axonserver-platform-websocket')
                         let socket = new SockJS(document.location.pathname + 'axonserver-platform-websocket');
                         this.stompClient = Stomp.over(socket);
                     }
                     return this.stompClient;
                 },
 
+                subscribeWithFallback: function (path, callback, onSubscribe) {
+                    console.debug(`subscribing to ${path}, socket connected = ${this.stompConnected}`)
+                    let me = globals.webSocketInfo;
+                    let managedSubscription = {
+                        subscription: null,
+                        timer: null,
+                        unsubscribe: function () {
+                            console.debug(`unsubscribing to ${path}`)
+                            if (this.subscription) {
+                                this.subscription.unsubscribe();
+                            }
+                            if (this.timer) {
+                                clearInterval(this.timer);
+                            }
+                            let toDelete = this;
+                            me.managedSubscriptions = me.managedSubscriptions.filter((elem) => elem !== toDelete);
+                        },
+                        fallback: function () {
+                            console.info(`Websocket for ${path} closed, fallback to polling`);
+                            this.subscription = null;
+                            this.timer = setInterval(callback, globals.webSocketInfo.pollInterval);
+                        }
+                    };
+                    me.managedSubscriptions.push(managedSubscription);
+                    onSubscribe(managedSubscription);
+                    if (me.stompConnected) {
+                        managedSubscription.subscription = me.getStompClient().subscribe(path, callback);
+                        return;
+                    }
+                    me.getStompClient().connect({}, function (frame) {
+                        me.stompConnected = true;
+                        managedSubscription.subscription = me.getStompClient().subscribe(path, callback);
+                    }, err => {
+                        me.stompConnected = false;
+                        me.stompClient = null;
+                        console.warn("Error on connection: " + JSON.stringify(err));
+                        me.managedSubscriptions.forEach(s => s.fallback());
+                    });
+                },
+
                 subscribe: function (path, callback, onSubscribe) {
+                    console.debug(`subscribing to ${path}, socket connected = ${this.stompConnected}`)
                     let me = globals.webSocketInfo;
                     if (me.stompConnected) {
                         onSubscribe(me.getStompClient().subscribe(path, callback));
                         return;
                     }
-                    me.getStompClient().connect({}, function (frame) {
+                    me.getStompClient().connect({}, () => {
                         me.stompConnected = true;
                         onSubscribe(me.getStompClient().subscribe(path, callback));
+                    }, function (err) {
+                        me.stompConnected = false;
+                        me.stompClient = null;
+                        console.warn("Error on connection: " + JSON.stringify(err));
                     });
                 }
             }

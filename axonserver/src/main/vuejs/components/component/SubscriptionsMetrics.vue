@@ -46,9 +46,11 @@
         }, mounted() {
             this.loadComponentSubscriptionsMetrics();
             let me = this;
-            this.webSocketInfo.subscribe('/topic/cluster', me.loadComponentSubscriptionsMetrics, function (sub) {
-                me.subscription = sub;
-            });
+            this.webSocketInfo.subscribeWithFallback('/topic/cluster',
+                                                     me.loadComponentSubscriptionsMetrics,
+                                                     function (sub) {
+                                                       me.subscription = sub;
+                                                     });
         }, beforeDestroy() {
             if( this.subscription) this.subscription.unsubscribe();
         }, methods: {

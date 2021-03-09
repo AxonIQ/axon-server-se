@@ -66,8 +66,8 @@ globals.pageView = new Vue(
                     return !this.strategy.name || !this.strategy.label || !this.strategy.factoryBean;
                 }, connect() {
                     let me = this;
-                    me.webSocketInfo.subscribe('/topic/application', function () {
-                        me.loadApplications();
+                    me.webSocketInfo.subscribeWithFallback('/topic/application', function () {
+                        me.loadStrategies();
                     }, function (sub) {
                         me.subscription = sub;
                     });

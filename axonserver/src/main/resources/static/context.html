@@ -142,7 +142,7 @@
                 if (this.deleteContextData.context === this.deleteContextData.retypeContext) {
                     axios.delete("v1/context/" + this.deleteContextData.context + "?preserveEventStore="
                                             + this.deleteContextData.preserveData).then(
-                            response => {
+                            () => {
                                 this.loadContexts();
                                 this.hideModal('delete-context');
                             }
@@ -156,9 +156,9 @@
             },
             connect() {
                 let me = this;
-                me.webSocketInfo.subscribe('/topic/cluster', function () {
+                me.webSocketInfo.subscribeWithFallback('/topic/cluster', () => {
                     me.loadContexts();
-                }, function (sub) {
+                }, (sub) => {
                     me.subscription = sub;
                 });
             },

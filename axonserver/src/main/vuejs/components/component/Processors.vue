@@ -205,8 +205,8 @@
             this.loadComponentProcessors();
             this.loadLBStrategies();
             let me = this;
-            me.webSocketInfo.subscribe('/topic/processor', this.loadComponentProcessors, function (sub) {
-                me.subscriptions.push(sub);
+            me.webSocketInfo.subscribeWithFallback('/topic/processor', this.loadComponentProcessors, function (sub) {
+              me.subscriptions.push(sub);
             });
             me.webSocketInfo.subscribe('/topic/cluster', this.loadComponentProcessors, function (sub) {
                 me.subscriptions.push(sub);
