@@ -51,7 +51,7 @@
         }, mounted() {
             this.loadComponentInstances();
             let me = this;
-            this.webSocketInfo.subscribeWithFallback('/topic/cluster', me.loadComponentInstances, function (sub) {
+            this.webSocketInfo.subscribe('/topic/cluster', me.loadComponentInstances, function (sub) {
               me.subscription = sub;
             });
         }, beforeDestroy() {

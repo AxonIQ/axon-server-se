@@ -56,11 +56,13 @@
                                               + 'axonserver-platform-websocket')
                         let socket = new SockJS(document.location.pathname + 'axonserver-platform-websocket');
                         this.stompClient = Stomp.over(socket);
+                        this.stompClient.debug = () => {
+                        };
                     }
                     return this.stompClient;
                 },
 
-                subscribeWithFallback: function (path, callback, onSubscribe) {
+                subscribe: function (path, callback, onSubscribe, fallbackAction) {
                     console.debug(`subscribing to ${path}, socket connected = ${this.stompConnected}`)
                     let me = globals.webSocketInfo;
                     let managedSubscription = {
@@ -80,7 +82,8 @@
                         fallback: function () {
                             console.info(`Websocket for ${path} closed, fallback to polling`);
                             this.subscription = null;
-                            this.timer = setInterval(callback, globals.webSocketInfo.pollInterval);
+                            this.timer = setInterval(fallbackAction ? fallbackAction : callback,
+                                                     globals.webSocketInfo.pollInterval);
                         }
                     };
                     me.managedSubscriptions.push(managedSubscription);
@@ -97,23 +100,6 @@
                         me.stompClient = null;
                         console.warn("Error on connection: " + JSON.stringify(err));
                         me.managedSubscriptions.forEach(s => s.fallback());
-                    });
-                },
-
-                subscribe: function (path, callback, onSubscribe) {
-                    console.debug(`subscribing to ${path}, socket connected = ${this.stompConnected}`)
-                    let me = globals.webSocketInfo;
-                    if (me.stompConnected) {
-                        onSubscribe(me.getStompClient().subscribe(path, callback));
-                        return;
-                    }
-                    me.getStompClient().connect({}, () => {
-                        me.stompConnected = true;
-                        onSubscribe(me.getStompClient().subscribe(path, callback));
-                    }, function (err) {
-                        me.stompConnected = false;
-                        me.stompClient = null;
-                        console.warn("Error on connection: " + JSON.stringify(err));
                     });
                 }
             }

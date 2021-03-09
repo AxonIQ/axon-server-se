@@ -128,7 +128,7 @@ globals.pageView = new Vue(
                     },
                     connect() {
                         let me = this;
-                        me.webSocketInfo.subscribeWithFallback('/topic/application', function () {
+                        me.webSocketInfo.subscribe('/topic/application', function () {
                             me.loadApplications();
                         }, function (sub) {
                             me.subscription = sub;

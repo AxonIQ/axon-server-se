@@ -156,7 +156,7 @@
             },
             connect() {
                 let me = this;
-                me.webSocketInfo.subscribeWithFallback('/topic/cluster', () => {
+                me.webSocketInfo.subscribe('/topic/cluster', () => {
                     me.loadContexts();
                 }, (sub) => {
                     me.subscription = sub;

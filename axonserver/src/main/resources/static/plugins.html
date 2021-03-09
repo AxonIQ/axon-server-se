@@ -176,7 +176,7 @@
                     },
                     connect() {
                         let me = this;
-                        me.webSocketInfo.subscribeWithFallback('/topic/plugins', function () {
+                        me.webSocketInfo.subscribe('/topic/plugins', function () {
                             setTimeout(me.loadPlugins, 1000)
                         }, function (sub) {
                             me.subscription = sub;
