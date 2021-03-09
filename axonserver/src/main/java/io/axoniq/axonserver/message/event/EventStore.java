@@ -88,9 +88,7 @@ public interface EventStore {
                 sink -> listAggregateSnapshots(context, authentication, request, new StreamObserver<SerializedEvent>() {
                     @Override
                     public void onNext(SerializedEvent serializedEvent) {
-                        if (serializedEvent.getAggregateSequenceNumber() < request.getMaxSequence()) {
-                            sink.next(serializedEvent);
-                        }
+                        sink.next(serializedEvent);
                     }
 
                     @Override

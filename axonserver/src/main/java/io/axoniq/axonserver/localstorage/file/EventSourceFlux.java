@@ -16,6 +16,7 @@ import java.util.function.Supplier;
  *
  * @author Milan Savic
  * @author Sara Pellegrini
+ * @since 4.5
  */
 public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
 

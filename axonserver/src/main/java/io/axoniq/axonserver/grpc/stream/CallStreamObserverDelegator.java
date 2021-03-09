@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.localstorage;
+package io.axoniq.axonserver.grpc.stream;
 
 import io.grpc.stub.CallStreamObserver;
 
