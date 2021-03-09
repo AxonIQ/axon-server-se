@@ -229,24 +229,38 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber) {
-        SegmentAndPosition lastEventPosition = indexManager.lastEvent(aggregateId, minSequenceNumber);
+    public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber, long maxSequenceNumber) {
+
+        SegmentIndexEntries lastEventPosition = indexManager.lastIndexEntries(aggregateId, maxSequenceNumber);
         if (lastEventPosition == null) {
             return Optional.empty();
         }
 
-        return readSerializedEvent(minSequenceNumber, lastEventPosition);
+        return readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
     }
 
-    private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber,
-                                                          SegmentAndPosition lastEventPosition) {
-        Optional<EventSource> eventSource = getEventSource(lastEventPosition.getSegment());
+    private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
+                                                          SegmentIndexEntries lastEventPosition) {
+        Optional<EventSource> eventSource = getEventSource(lastEventPosition.segment());
         if (eventSource.isPresent()) {
-            return readSerializedEvent(eventSource.get(), minSequenceNumber, lastEventPosition.getPosition());
+            try {
+                List<Integer> positions = lastEventPosition.indexEntries().positions();
+                for (int i = positions.size() - 1; i >= 0; i--) {
+                    SerializedEvent event = eventSource.get().readEvent(positions.get(i));
+                    if (event.getAggregateSequenceNumber() >= minSequenceNumber
+                            && event.getAggregateSequenceNumber() < maxSequenceNumber) {
+                        return Optional.of(event);
+                    }
+                }
+
+                return Optional.empty();
+            } finally {
+                eventSource.get().close();
+            }
         }
 
         if (next != null) {
-            return next.readSerializedEvent(minSequenceNumber, lastEventPosition);
+            return next.readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
         }
 
         return Optional.empty();

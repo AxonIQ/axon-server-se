@@ -22,10 +22,10 @@ public class SnapshotReader {
         this.datafileManagerChain = datafileManagerChain;
     }
 
-    public Optional<SerializedEvent> readSnapshot(String aggregateId, long minSequenceNumber) {
-            return datafileManagerChain
-                    .getLastEvent(aggregateId, minSequenceNumber)
-                    .map(SerializedEvent::asSnapshot);
+    public Optional<SerializedEvent> readSnapshot(String aggregateId, long minSequenceNumber, long maxSequenceNumber) {
+        return datafileManagerChain
+                .getLastEvent(aggregateId, minSequenceNumber, maxSequenceNumber)
+                .map(SerializedEvent::asSnapshot);
     }
 
     public void streamByAggregateId(String aggregateId, long minSequenceNumber, long maxSequenceNumber, int maxResults, Consumer<SerializedEvent> eventConsumer) {
