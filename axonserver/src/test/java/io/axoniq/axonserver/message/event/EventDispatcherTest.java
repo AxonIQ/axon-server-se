@@ -33,6 +33,7 @@ import org.mockito.junit.*;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
@@ -63,7 +64,8 @@ public class EventDispatcherTest {
         testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
                                           () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                           new MeterFactory(Metrics.globalRegistry,
-                                                           new DefaultMetricCollector()));
+                                                           new DefaultMetricCollector()),
+                                          () -> Executors.newCachedThreadPool());
     }
 
     @Test

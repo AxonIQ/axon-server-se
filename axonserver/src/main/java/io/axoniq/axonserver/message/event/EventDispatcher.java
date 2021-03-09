@@ -16,6 +16,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.grpc.GrpcFlowControlExecutorProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
@@ -58,6 +59,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -101,15 +103,18 @@ public class EventDispatcher implements AxonServerClientService {
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
+    private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
                            AuthenticationProvider authenticationProvider,
-                           MeterFactory meterFactory) {
+                           MeterFactory meterFactory,
+                           GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
         this.authenticationProvider = authenticationProvider;
         this.meterFactory = meterFactory;
+        this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
     }
 
 
@@ -223,7 +228,9 @@ public class EventDispatcher implements AxonServerClientService {
                                     CallStreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver);
+                Executor executor = grpcFlowControlExecutorProvider.provide();
+                OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver,
+                                                                                                    executor);
                 Flux<SerializedEvent> publisher = eventStore.aggregateEvents(context, principal, request)
                                                             .doOnError(t -> logger
                                                                     .warn("Error during reading aggregate events. ", t))
