@@ -41,6 +41,7 @@ import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +52,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,6 +71,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
@@ -342,31 +346,39 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void listAggregateEvents(String context, Authentication authentication, GetAggregateEventsRequest request,
-                                    StreamObserver<SerializedEvent> responseStreamObserver) {
-        runInDataFetcherPool(() -> {
-            AtomicInteger counter = new AtomicInteger();
-            EventDecorator activeEventDecorator = eventInterceptors.noReadInterceptors(context) ?
-                    eventDecorator :
-                    new InterceptorAwareEventDecorator(context, authentication);
-            workers(context).aggregateReader.readEvents(request.getAggregateId(),
-                                                        request.getAllowSnapshots(),
-                                                        request.getInitialSequence(),
-                                                        getMaxSequence(request),
-                                                        request.getMinToken(),
-                                                        event -> {
-                                                            responseStreamObserver.onNext(activeEventDecorator
-                                                                                                  .decorateEvent(event));
-                                                            counter.incrementAndGet();
-                                                        });
-            if (counter.get() == 0) {
-                logger.debug("Aggregate not found: {}", request);
+    public Flux<SerializedEvent> aggregateEvents(String context,
+                                                 Authentication authentication,
+                                                 GetAggregateEventsRequest request) {
+        EventDecorator activeEventDecorator = eventInterceptors.noReadInterceptors(context) ?
+                eventDecorator :
+                new InterceptorAwareEventDecorator(context, authentication);
+        AggregateReader aggregateReader = workers(context).aggregateReader;
+        return aggregateReader
+                .events(request.getAggregateId(),
+                        request.getAllowSnapshots(),
+                        request.getInitialSequence(),
+                        getMaxSequence(request),
+                        request.getMinToken())
+                .map(activeEventDecorator::decorateEvent)
+                .publishOn(Schedulers.fromExecutorService(dataFetcher), 25)
+                .transform(f -> count(f, counter -> {
+                    if (counter == 0) {
+                        logger.debug("Aggregate not found: {}", request);
+                    }
+                }));
+    }
+
+    private <T> Publisher<T> count(Flux<T> flux, IntConsumer doOnComplete) {
+        final String contextKey = "__COUNTER";
+        return flux.doOnEach(signal -> {
+            if (signal.isOnNext()) {
+                AtomicInteger counter = signal.getContextView().get(contextKey);
+                counter.incrementAndGet();
+            } else if (signal.isOnComplete()) {
+                AtomicInteger counter = signal.getContextView().get(contextKey);
+                doOnComplete.accept(counter.get());
             }
-            responseStreamObserver.onCompleted();
-        }, error -> {
-            logger.warn("Problem encountered while reading events for aggregate " + request.getAggregateId(), error);
-            responseStreamObserver.onError(error);
-        });
+        }).contextWrite(ctx -> ctx.put(contextKey, new AtomicInteger()));
     }
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {

@@ -163,40 +163,13 @@ public class EventsRestController {
                                                                          .build();
 
             ObjectMapper objectMapper = new ObjectMapper();
-            eventStoreClient.listAggregateEvents(context,
+            eventStoreClient.aggregateEvents(context,
                                                  getOrDefault(principal,
                                                               GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                                 request,
-                                                 new StreamObserver<SerializedEvent>() {
-                                                     @Override
-                                                     public void onNext(SerializedEvent event) {
-                                                         try {
-                                                             sseEmitter.send(SseEmitter.event().data(objectMapper
-                                                                                                             .writeValueAsString(
-                                                                                                                     new JsonEvent(
-                                                                                                                             event.asEvent()))));
-                                                         } catch (Exception e) {
-                                                             logger.warn("Exception on sending event - {}",
-                                                                         e.getMessage(),
-                                                                         e);
-                                                         }
-                                                     }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    sseEmitter.completeWithError(throwable);
-                }
-
-                @Override
-                public void onCompleted() {
-                    try {
-                        sseEmitter.send(SseEmitter.event().comment("End of stream"));
-                    } catch (IOException e) {
-                        logger.debug("Error on sending completed", e);
-                    }
-                    sseEmitter.complete();
-                }
-            });
+                                                 request)
+                            .doOnError(sseEmitter::completeWithError)
+                            .doOnComplete(() -> completeEmitter(sseEmitter))
+                            .subscribe(event -> send(sseEmitter, objectMapper, event));
         } else {
             StreamObserver<GetEventsRequest> requestStream = eventStoreClient
                     .listEvents(context,
@@ -238,6 +211,26 @@ public class EventsRestController {
             sseEmitter.onError(requestStream::onError);
         }
         return sseEmitter;
+    }
+
+    private void send(SseEmitter sseEmitter, ObjectMapper objectMapper, SerializedEvent event) {
+        try {
+            sseEmitter.send(SseEmitter.event()
+                                      .data(objectMapper
+                                                    .writeValueAsString(new JsonEvent(event.asEvent()))));
+        } catch (Exception e) {
+            logger.warn("Exception on sending event - {}", e.getMessage(), e);
+        }
+    }
+
+    private void completeEmitter(SseEmitter emitter) {
+        try {
+            emitter.send(SseEmitter.event().comment("End of stream"));
+        } catch (IOException e) {
+            logger.debug("Error on sending completed", e);
+        } finally {
+            emitter.complete();
+        }
     }
 
     @PostMapping("events")

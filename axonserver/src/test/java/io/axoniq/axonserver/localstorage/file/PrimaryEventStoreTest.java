@@ -11,25 +11,25 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
 import org.springframework.data.util.CloseableIterator;
+import reactor.test.StepVerifier;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -37,8 +37,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 
@@ -48,24 +49,33 @@ import static org.mockito.Mockito.*;
 public class PrimaryEventStoreTest {
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
-    private PrimaryEventStore testSubject;
+    private final String context = "junit";
+    private final EmbeddedDBProperties embeddedDBProperties;
+    private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-    private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
-
-    @Before
-    public void setUp() throws IOException {
-        EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
+    public PrimaryEventStoreTest() {
+        embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(
                 tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
         embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
-        String context = "junit";
-        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
-                                                                     EventType.EVENT,
-                                                                     meterFactory);
+    }
+
+    private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
+
+    private PrimaryEventStore primaryEventStore() {
+        return primaryEventStore(EventType.EVENT);
+    }
+
+    private PrimaryEventStore primaryEventStore(EventType eventType) {
+        return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+                                                          eventType,
+                                                          meterFactory));
+    }
+
+    private PrimaryEventStore primaryEventStore(IndexManager indexManager) {
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
@@ -75,7 +85,7 @@ public class PrimaryEventStoreTest {
 
         doNothing().when(fileSystemMonitor).registerPath(any());
 
-        testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
+        PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                             indexManager,
                                             eventTransformerFactory,
                                             embeddedDBProperties.getEvent(),
@@ -83,15 +93,70 @@ public class PrimaryEventStoreTest {
                                             meterFactory, fileSystemMonitor);
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(Path.class));
+        return testSubject;
+    }
+
+    @Test
+    public void aggregateEvents() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(6);
+        String aggregateId = "aggregateId";
+        Event.Builder builder = Event.newBuilder()
+                                     .setAggregateIdentifier(aggregateId)
+                                     .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build());
+        PrimaryEventStore testSubject = primaryEventStore(EventType.SNAPSHOT);
+
+        testSubject.store(singletonList(builder.setAggregateSequenceNumber(5).build())).thenAccept(t -> latch
+                .countDown());
+        testSubject.store(singletonList(builder.setAggregateSequenceNumber(6).build())).thenAccept(t -> latch
+                .countDown());
+        testSubject.store(singletonList(builder.setAggregateSequenceNumber(8).build())).thenAccept(t -> latch
+                .countDown());
+        testSubject.store(singletonList(builder.setAggregateSequenceNumber(11).build())).thenAccept(t -> latch
+                .countDown());
+        testSubject.store(singletonList(builder.setAggregateSequenceNumber(30).build())).thenAccept(t -> latch
+                .countDown());
+        testSubject.store(singletonList(builder.setAggregateSequenceNumber(32).build())).thenAccept(t -> latch
+                .countDown());
+        testSubject.store(singletonList(builder.setAggregateSequenceNumber(44).build())).thenAccept(t -> latch
+                .countDown());
+
+        latch.await();
+        StepVerifier.create(testSubject.eventsPerAggregate(aggregateId, 7, 20, 0)
+                                       .map(SerializedEvent::getAggregateSequenceNumber))
+                    .expectNext(8L, 11L)
+                    .verifyComplete();
+
+        StepVerifier.create(testSubject.eventsPerAggregate(aggregateId, 8, 30, 0)
+                                       .map(SerializedEvent::getAggregateSequenceNumber))
+                    .expectNext(8L, 11L)
+                    .verifyComplete();
+
+
+        StepVerifier.create(testSubject.eventsPerAggregate(aggregateId, 7, 30, 0)
+                                       .map(SerializedEvent::getAggregateSequenceNumber))
+                    .expectNext(8L, 11L)
+                    .verifyComplete();
+
+        StepVerifier.create(testSubject.eventsPerAggregate(aggregateId, 8, 31, 0)
+                                       .map(SerializedEvent::getAggregateSequenceNumber))
+                    .expectNext(8L, 11L, 30L)
+                    .verifyComplete();
+    }
+
+    @Test
+    public void testMetricsInReadingAggregatesEvents() {
+        //TODO
     }
 
     @Test
     public void transactionsIterator() throws InterruptedException {
-        setupEvents(1000, 2);
-        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0, Long.MAX_VALUE);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 1000, 2);
+        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0,
+                                                                                                                Long.MAX_VALUE);
 
         long counter = 0;
-        while(transactionWithTokenIterator.hasNext()) {
+        while (transactionWithTokenIterator.hasNext()) {
             counter++;
             transactionWithTokenIterator.next();
         }
@@ -101,7 +166,8 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void rollbackDeleteSegments() throws InterruptedException {
-        setupEvents(100, 100);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 100, 100);
         Thread.sleep(1500);
         testSubject.rollback(9899);
         assertEquals(9899, testSubject.getLastToken());
@@ -112,7 +178,8 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void rollbackAndRead() throws InterruptedException {
-        setupEvents(5, 3);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 5, 3);
         Thread.sleep(1500);
         testSubject.rollback(2);
         assertEquals(2, testSubject.getLastToken());
@@ -120,13 +187,13 @@ public class PrimaryEventStoreTest {
         testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(2, testSubject.getLastToken());
 
-        storeEvent();
+        storeEvent(testSubject);
 
         testSubject.initSegments(Long.MAX_VALUE, 0L);
         assertEquals(3, testSubject.getLastToken());
     }
 
-    private void setupEvents(int numOfTransactions, int numOfEvents) throws InterruptedException {
+    private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents) throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
             String aggId = UUID.randomUUID().toString();
@@ -143,15 +210,16 @@ public class PrimaryEventStoreTest {
         latch.await(5, TimeUnit.SECONDS);
     }
 
-    private void storeEvent() {
+    private void storeEvent(PrimaryEventStore testSubject) {
         CountDownLatch latch = new CountDownLatch(1);
         Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
                               .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build();
-        testSubject.store(Collections.singletonList(newEvent)).thenAccept(t -> latch.countDown());
+        testSubject.store(singletonList(newEvent)).thenAccept(t -> latch.countDown());
     }
 
     @Test
     public void testGlobalIterator() throws InterruptedException {
+        PrimaryEventStore testSubject = primaryEventStore();
         CountDownLatch latch = new CountDownLatch(100);
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {
@@ -180,12 +248,13 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testDeletingAllEvents() throws InterruptedException {
-        setupEvents(5, 3);
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 5, 3);
         Thread.sleep(1500);
         testSubject.deleteAllEventData();
         assertEquals(-1, testSubject.getLastToken());
 
-        storeEvent();
+        storeEvent(testSubject);
         assertEquals(0,testSubject.getLastToken());
     }
 }

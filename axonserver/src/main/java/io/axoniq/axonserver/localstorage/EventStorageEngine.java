@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Optional;
@@ -110,6 +111,20 @@ public interface EventStorageEngine {
      */
     Optional<SerializedEvent> getLastEvent(String aggregateIdentifier, long minSequenceNumber, long maxSequenceNumber);
 
+
+    /**
+     * Returns the events related to the specified aggregate, the have a sequence number included between the specified
+     * boundaries, and token greater than the specified minimum token.
+     *
+     * @param aggregateId         the aggregate identifier
+     * @param firstSequenceNumber the first sequence number to retrieve
+     * @param lastSequenceNumber  the last sequence number to retrieve (exclusive)
+     * @param minToken            the minimum token of the event that are returned
+     */
+    Flux<SerializedEvent> eventsPerAggregate(String aggregateId,
+                                             long firstSequenceNumber,
+                                             long lastSequenceNumber,
+                                             long minToken);
 
     /**
      * Find events for an aggregate and execute the consumer for each event. Stops when last event for aggregate is

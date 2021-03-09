@@ -28,6 +28,7 @@ import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -105,6 +107,54 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public abstract void handover(Long segment, Runnable callback);
+
+    public Flux<SerializedEvent> eventsPerAggregate(String aggregateId,
+                                                    long firstSequence,
+                                                    long lastSequence,
+                                                    long minToken) {
+        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
+        //Map<segment, all positions in that segment>
+        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                   firstSequence,
+                                                                                   lastSequence,
+                                                                                   Long.MAX_VALUE,
+                                                                                   minToken);
+        logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
+        List<Flux<SerializedEvent>> fluxList = positionInfos
+                .entrySet()
+                .stream()
+                .map(e -> eventsForPositions(e.getKey(), e.getValue().positions()))
+                .collect(Collectors.toList());
+        final String subscription_time = "SUBSCRIPTION_TIME";
+        return Flux.concat(fluxList)
+                   .doOnEach(signal -> {
+                       if (signal.isOnSubscribe()) {
+                           AtomicLong subscriptionTime = signal.getContextView().get(subscription_time);
+                           subscriptionTime.set(System.currentTimeMillis());
+                       } else if (signal.isOnComplete()) {
+                           AtomicLong subscriptionTime = signal.getContextView().get(subscription_time);
+                           long readTime = System.currentTimeMillis() - subscriptionTime.get();
+                           aggregateReadTimer.record(readTime, TimeUnit.MILLISECONDS);
+                       }
+                   })
+                   .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence)
+                   .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence) //remember: last sequence excluded
+                   .contextWrite(ctx -> ctx.put(subscription_time, new AtomicLong()));
+    }
+
+    private Flux<SerializedEvent> eventsForPositions(long segment, List<Integer> positions) {
+        return (!containsSegment(segment) && next != null) ?
+                next.eventsForPositions(segment, positions) :
+                new EventSourceFlux(positions, () -> getEventSource(segment)).get();
+    }
+
+    /**
+     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     *
+     * @param segment the segment to check
+     * @return {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     */
+    protected abstract boolean containsSegment(long segment);
 
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,

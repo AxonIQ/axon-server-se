@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
 
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -49,6 +50,12 @@ public class FakeEventStore implements EventStorageEngine {
     @Override
     public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber, long maxSequenceNumber) {
         return Optional.empty();
+    }
+
+    @Override
+    public Flux<SerializedEvent> eventsPerAggregate(String aggregateId, long firstSequenceNumber,
+                                                    long lastSequenceNumber, long minToken) {
+        return Flux.empty();
     }
 
     @Override

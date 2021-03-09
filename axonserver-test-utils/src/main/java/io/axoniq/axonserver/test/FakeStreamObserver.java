@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.test;
 
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 
 import java.util.LinkedList;
@@ -10,7 +11,7 @@ import java.util.List;
  *
  * @author Sara Pellegrini
  */
-public class FakeStreamObserver<M> implements StreamObserver<M> {
+public class FakeStreamObserver<M> extends CallStreamObserver<M> {
 
     private List<M> values = new LinkedList<>();
     private List<Throwable> errors = new LinkedList<>();
@@ -41,5 +42,30 @@ public class FakeStreamObserver<M> implements StreamObserver<M> {
 
     public int completedCount() {
         return completedCount;
+    }
+
+    @Override
+    public boolean isReady() {
+        return false;
+    }
+
+    @Override
+    public void setOnReadyHandler(Runnable runnable) {
+
+    }
+
+    @Override
+    public void disableAutoInboundFlowControl() {
+
+    }
+
+    @Override
+    public void request(int i) {
+
+    }
+
+    @Override
+    public void setMessageCompression(boolean b) {
+
     }
 }

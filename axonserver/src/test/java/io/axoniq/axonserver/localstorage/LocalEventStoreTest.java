@@ -26,6 +26,8 @@ import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -197,36 +199,33 @@ public class LocalEventStoreTest {
     }
 
     @Test
-    public void listAggregateEvents() throws InterruptedException {
-        FakeStreamObserver<SerializedEvent> events = new FakeStreamObserver<>();
-        testSubject.listAggregateEvents("demo", null,
-                                        GetAggregateEventsRequest.newBuilder()
-                                                                 .setAllowSnapshots(true)
-                                                                 .build(),
-                                        events);
+    public void aggregateEvents() {
+        Flux<SerializedEvent> events = testSubject.aggregateEvents("demo", null,
+                                                                 GetAggregateEventsRequest.newBuilder()
+                                                                                          .setAllowSnapshots(true)
+                                                                                          .build());
 
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, events.completedCount()));
+        StepVerifier.create(events.map(SerializedEvent::asEvent)
+                                  .map(Event::getAggregateSequenceNumber))
+                    .expectNext(6L, 7L)
+                    .verifyComplete();
         assertEquals(1, eventInterceptors.readSnapshot);
         assertEquals(1, eventInterceptors.readEvent);
-
-        assertTrue(events.values().get(0).isSnapshot());
-        assertFalse(events.values().get(1).isSnapshot());
     }
 
     @Test
-    public void listAggregateEventsNoSnapshots() throws InterruptedException {
-        FakeStreamObserver<SerializedEvent> events = new FakeStreamObserver<>();
-        testSubject.listAggregateEvents("demo", null,
-                                        GetAggregateEventsRequest.newBuilder()
-                                                                 .build(),
-                                        events);
+    public void aggregateEventsNoSnapshots() {
+        Flux<SerializedEvent> events = testSubject.aggregateEvents("demo", null,
+                                                                 GetAggregateEventsRequest.newBuilder()
+                                                                                          .build());
 
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, events.completedCount()));
+        StepVerifier.create(events.map(SerializedEvent::asEvent)
+                                  .map(Event::getAggregateSequenceNumber))
+                    .expectNext(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L)
+                    .verifyComplete();
+
         assertEquals(0, eventInterceptors.readSnapshot);
         assertEquals(8, eventInterceptors.readEvent);
-
-        assertFalse(events.values().get(0).isSnapshot());
-        assertFalse(events.values().get(1).isSnapshot());
     }
 
     @Test
@@ -388,6 +387,14 @@ public class LocalEventStoreTest {
                                               Consumer<SerializedEvent> eventConsumer) {
             Arrays.stream(events).filter(e -> e.getAggregateSequenceNumber() >= actualMinSequenceNumber)
                   .forEach(e -> eventConsumer.accept(new SerializedEvent(e)));
+        }
+
+        @Override
+        public Flux<SerializedEvent> eventsPerAggregate(String aggregateId, long firstSequenceNumber,
+                                                        long lastSequenceNumber, long minToken) {
+            return Flux.fromStream(Arrays.stream(events)
+                                         .filter(e -> e.getAggregateSequenceNumber() >= firstSequenceNumber))
+                       .map(SerializedEvent::new);
         }
 
         @Override
