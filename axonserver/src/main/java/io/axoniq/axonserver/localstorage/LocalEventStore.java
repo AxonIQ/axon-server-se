@@ -365,7 +365,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     if (counter == 0) {
                         logger.debug("Aggregate not found: {}", request);
                     }
-                }));
+                }))
+                .name("event_stream")
+                .tag("context", context)
+                .tag("stream", "aggregate_events")
+                .tag("origin", "local")
+                .metrics();
     }
 
     private <T> Publisher<T> count(Flux<T> flux, IntConsumer doOnComplete) {
