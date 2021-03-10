@@ -67,7 +67,7 @@ globals.pageView = new Vue(
                 }, connect() {
                     let me = this;
                     me.webSocketInfo.subscribe('/topic/application', function () {
-                        me.loadApplications();
+                        me.loadStrategies();
                     }, function (sub) {
                         me.subscription = sub;
                     });

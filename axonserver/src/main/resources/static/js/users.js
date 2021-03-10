@@ -147,7 +147,7 @@ globals.pageView = new Vue(
                     let me = this;
                     me.webSocketInfo.subscribe('/topic/user', function () {
                         me.loadUsers();
-                    }, function(sub) {
+                    }, function (sub) {
                         me.subscription = sub;
                     });
                 },

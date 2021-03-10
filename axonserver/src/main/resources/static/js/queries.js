@@ -18,15 +18,19 @@ globals.pageView = new Vue(
                 metrics: [],
                 webSocketInfo: globals.webSocketInfo
             }, mounted() {
-                axios.get("v1/public/query-metrics").then(response => {
-                    response.data.forEach(m => {
-                        this.loadMetric(m);
-                    });
-                });
+                this.loadMetrics();
                 this.connect();
             }, beforeDestroy() {
                 if( this.subscription) this.subscription.unsubscribe();
             }, methods: {
+                loadMetrics() {
+                    axios.get("v1/public/query-metrics").then(response => {
+                        this.metrics = [];
+                        response.data.forEach(m => {
+                            this.loadMetric(m);
+                        });
+                    });
+                },
                 loadMetric(m) {
                     if (this.clients.indexOf(m.clientId) === -1) {
                         this.clients.push(m.clientId);
@@ -45,11 +49,11 @@ globals.pageView = new Vue(
                 },
                 connect() {
                     let me = this;
-                        me.webSocketInfo.subscribe('/topic/queries', function (metric) {
-                            me.loadMetric(JSON.parse(metric.body));
-                        }, function(sub) {
-                            me.subscription = sub;
-                        });
+                    me.webSocketInfo.subscribe('/topic/queries', function (metric) {
+                        me.loadMetric(JSON.parse(metric.body));
+                    }, function (sub) {
+                        me.subscription = sub;
+                    }, me.loadMetrics);
                 }
             }
         });
