@@ -17,13 +17,14 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import io.axoniq.axonserver.message.query.subscription.handler.DirectUpdateHandler;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -31,13 +32,15 @@ import java.util.function.Consumer;
  */
 public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<SubscriptionQueryRequest> {
 
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionQueryRequestTarget.class);
+
     private final String context;
 
     private final FlowControlledStreamObserver<SubscriptionQueryResponse> responseObserver;
 
     private final ApplicationEventPublisher eventPublisher;
 
-    private final List<SubscriptionQuery> subscriptionQuery;
+    private final AtomicReference<SubscriptionQuery> subscriptionQuery = new AtomicReference<>();
 
     private final UpdateHandler updateHandler;
 
@@ -50,51 +53,56 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
             ApplicationEventPublisher eventPublisher) {
         super(LoggerFactory.getLogger(SubscriptionQueryRequestTarget.class));
         this.context = context;
-        this.errorHandler = e -> responseObserver.onError(Status.INTERNAL
-                                                                  .withDescription(e.getMessage())
-                                                                  .withCause(e)
-                                                                  .asRuntimeException());
+        this.errorHandler = e -> {
+            responseObserver.onError(Status.INTERNAL
+                                             .withDescription(e.getMessage())
+                                             .withCause(e)
+                                             .asRuntimeException());
+            unsubscribe();
+        };
         this.responseObserver = new FlowControlledStreamObserver<>(responseObserver, errorHandler);
         this.updateHandler = new DirectUpdateHandler(this.responseObserver::onNext);
         this.eventPublisher = eventPublisher;
-        this.subscriptionQuery = new ArrayList<>();
     }
 
     @Override
     protected void consume(SubscriptionQueryRequest message) {
-        switch (message.getRequestCase()) {
-            case SUBSCRIBE:
-                if (clientId == null) {
-                    clientId = message.getSubscribe().getQueryRequest().getClientId();
-                }
-                subscriptionQuery.add(message.getSubscribe());
-                eventPublisher.publishEvent(new SubscriptionQueryRequested(context,
-                                                                           subscriptionQuery.get(0),
-                                                                           updateHandler,
-                                                                           errorHandler));
+        try {
+            switch (message.getRequestCase()) {
+                case SUBSCRIBE:
+                    if (clientId == null) {
+                        clientId = message.getSubscribe().getQueryRequest().getClientId();
+                    }
+                    if (subscriptionQuery.compareAndSet(null, message.getSubscribe())) {
+                        eventPublisher.publishEvent(new SubscriptionQueryRequested(context,
+                                                                                   subscriptionQuery.get(),
+                                                                                   updateHandler,
+                                                                                   errorHandler));
+                    }
 
-                break;
-            case GET_INITIAL_RESULT:
-                if (subscriptionQuery.isEmpty()) {
-                    errorHandler.accept(new IllegalStateException("Initial result asked before subscription"));
                     break;
-                }
-                eventPublisher.publishEvent(new SubscriptionQueryInitialResultRequested(context,
-                                                                                        subscriptionQuery.get(0),
-                                                                                        updateHandler,
-                                                                                        errorHandler));
-                break;
-            case FLOW_CONTROL:
-                responseObserver.addPermits(message.getFlowControl().getNumberOfPermits());
-                break;
-            case UNSUBSCRIBE:
-                if (!subscriptionQuery.isEmpty()) {
-                    unsubscribe(subscriptionQuery.get(0));
-                }
-                break;
-            default:
+                case GET_INITIAL_RESULT:
+                    if (subscriptionQuery.get() == null) {
+                        errorHandler.accept(new IllegalStateException("Initial result asked before subscription"));
+                        break;
+                    }
+                    eventPublisher.publishEvent(new SubscriptionQueryInitialResultRequested(context,
+                                                                                            subscriptionQuery.get(),
+                                                                                            updateHandler,
+                                                                                            errorHandler));
+                    break;
+                case FLOW_CONTROL:
+                    responseObserver.addPermits(message.getFlowControl().getNumberOfPermits());
+                    break;
+                case UNSUBSCRIBE:
+                    unsubscribe();
+                    break;
+                default:
+            }
+        } catch (Exception e) {
+            logger.warn("{}: Exception in consuming SubscriptionQueryRequest", context, e);
+            errorHandler.accept(e);
         }
-
     }
 
     @Override
@@ -104,22 +112,20 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
 
     @Override
     public void onError(Throwable t) {
-        if (!subscriptionQuery.isEmpty()) {
-            unsubscribe(subscriptionQuery.get(0));
-        }
-        responseObserver.onError(t);
+        unsubscribe();
+        StreamObserverUtils.error(responseObserver, t);
     }
 
     @Override
     public void onCompleted() {
-        if (!subscriptionQuery.isEmpty()) {
-            unsubscribe(subscriptionQuery.get(0));
-        }
-        responseObserver.onCompleted();
+        unsubscribe();
+        StreamObserverUtils.complete(responseObserver);
     }
 
-    private void unsubscribe(SubscriptionQuery cancel) {
-        subscriptionQuery.remove(cancel);
-        eventPublisher.publishEvent(new SubscriptionQueryCanceled(context, cancel));
+    private void unsubscribe() {
+        SubscriptionQuery query = this.subscriptionQuery.get();
+        if (query != null) {
+            eventPublisher.publishEvent(new SubscriptionQueryCanceled(context, query));
+        }
     }
 }
