@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.query.subscription;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import javax.annotation.Nonnull;
 
@@ -132,10 +134,28 @@ public class SubscriptionQueryDispatcherTest {
         cache.on(subscribeQuery(requestConsumer, "client2"));
         cache.on(subscribeQuery(requestConsumer, "client3"));
         cache.on(subscribeQuery(requestConsumer, "client4"));
-        testSubject.on(new SubscriptionQueryRequested(context, subscriptionQuery, response -> {
-        }, throwable -> {
-        }));
+        SubscriptionQueryEvents.SubscriptionQueryStarted queryStarted =
+                testSubject.on(new SubscriptionQueryRequested(context,
+                                                              subscriptionQuery,
+                                                              response -> {
+                                                              },
+                                                              throwable -> {
+                                                              }));
         assertEquals(4, count.get());
+        assertNotNull(queryStarted);
+    }
+
+    @Test
+    public void onSubscribeWithoutHandlers() {
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        SubscriptionQueryEvents.SubscriptionQueryStarted queryStarted =
+                testSubject.on(new SubscriptionQueryRequested(context,
+                                                              subscriptionQuery,
+                                                              response -> {
+                                                              },
+                                                              error::set));
+        assertNull(queryStarted);
+        assertNotNull(error.get());
     }
 
     @Test
