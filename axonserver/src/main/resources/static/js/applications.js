@@ -130,7 +130,7 @@ globals.pageView = new Vue(
                         let me = this;
                         me.webSocketInfo.subscribe('/topic/application', function () {
                             me.loadApplications();
-                        }, function(sub) {
+                        }, function (sub) {
                             me.subscription = sub;
                         });
                     },
