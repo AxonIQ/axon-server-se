@@ -132,6 +132,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
     private void unsubscribe() {
         SubscriptionQuery query = this.subscriptionQuery.get();
         if (query != null) {
+            this.subscriptionQuery.set(null);
             eventPublisher.publishEvent(new SubscriptionQueryCanceled(context, query));
         }
     }

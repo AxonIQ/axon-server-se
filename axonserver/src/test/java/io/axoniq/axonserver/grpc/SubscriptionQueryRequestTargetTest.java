@@ -22,6 +22,8 @@ import io.grpc.StatusRuntimeException;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.Assert.*;
@@ -38,8 +40,8 @@ public class SubscriptionQueryRequestTargetTest {
     @Before
     public void setUp() {
         ApplicationEventPublisher eventPublisher = event -> {
-            if (event instanceof SubscriptionQueryEvents.SubscriptionQueryStarted) {
-                SubscriptionQueryEvents.SubscriptionQueryStarted requested = (SubscriptionQueryEvents.SubscriptionQueryStarted) event;
+            if (event instanceof SubscriptionQueryEvents.SubscriptionQueryRequested) {
+                SubscriptionQueryEvents.SubscriptionQueryRequested requested = (SubscriptionQueryEvents.SubscriptionQueryRequested) event;
                 requested.handler().onSubscriptionQueryResponse(SubscriptionQueryResponse.newBuilder().build());
             }
             if (event instanceof SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested) {
@@ -118,5 +120,26 @@ public class SubscriptionQueryRequestTargetTest {
             lastUUID = unitOfWork.getDetails("RequestId");
             return subscriptionQueryResponse;
         }
+    }
+
+    @Test
+    public void onErrorTest() {
+        List<Object> events = new LinkedList<>();
+        testSubject = new SubscriptionQueryRequestTarget("context",
+                                                         null,
+                                                         responseStreamObserver,
+                                                         interceptors,
+                                                         events::add);
+        testSubject.consume(SubscriptionQueryRequest.newBuilder().setSubscribe(SubscriptionQuery.getDefaultInstance())
+                                                    .build());
+
+        assertEquals(1, events.size());
+        Object subscriptionRequested = events.get(0);
+        assertTrue(subscriptionRequested instanceof SubscriptionQueryEvents.SubscriptionQueryRequested);
+        Throwable error = new RuntimeException("something happened during subscribe");
+        ((SubscriptionQueryEvents.SubscriptionQueryRequested) subscriptionRequested).errorHandler().accept(error);
+        assertEquals(2, events.size());
+        Object subscriptionCancelled = events.get(1);
+        assertTrue(subscriptionCancelled instanceof SubscriptionQueryEvents.SubscriptionQueryCanceled);
     }
 }
