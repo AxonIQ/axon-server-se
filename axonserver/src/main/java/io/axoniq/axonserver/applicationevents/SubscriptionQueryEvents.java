@@ -121,6 +121,26 @@ public class SubscriptionQueryEvents {
         public abstract SubscriptionQueryRequest subscriptionQueryRequest();
     }
 
+    public static class SubscriptionQueryStarted extends SubscriptionQueryRequestEvent {
+
+        public SubscriptionQueryStarted(SubscriptionQueryRequested event) {
+            this(event.context(), event.subscription(), event.handler(), event.errorHandler());
+        }
+
+        public SubscriptionQueryStarted(String context, SubscriptionQuery subscription,
+                                        UpdateHandler updateHandler,
+                                        Consumer<Throwable> errorHandler) {
+            super(context, subscription, updateHandler, errorHandler);
+        }
+
+        @Override
+        public SubscriptionQueryRequest subscriptionQueryRequest() {
+            return SubscriptionQueryRequest.newBuilder()
+                                           .setSubscribe(subscription())
+                                           .build();
+        }
+    }
+
     public static class SubscriptionQueryRequested extends SubscriptionQueryRequestEvent {
 
         public SubscriptionQueryRequested(String context, SubscriptionQuery subscription,

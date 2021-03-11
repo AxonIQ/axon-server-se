@@ -51,22 +51,31 @@ public class ApplicationSubscriptionMetricRegistryTest {
 
     @Test
     public void getAfterSubscribe() {
-        testSubject.on(new SubscriptionQueryEvents.SubscriptionQueryRequested("myContext", SubscriptionQuery.newBuilder()
-                                                                                                            .setSubscriptionIdentifier("Subscription-1")
-                                                                                                            .setQueryRequest(
-                                                                                                                    QueryRequest.newBuilder()
-                                                                                                                            .setComponentName("myComponent")
-                                                                                                                            )
-                                                                                                            .build(), null, null));
+        testSubject.on(new SubscriptionQueryEvents.SubscriptionQueryStarted("myContext",
+                                                                            SubscriptionQuery.newBuilder()
+                                                                                             .setSubscriptionIdentifier(
+                                                                                                     "Subscription-1")
+                                                                                             .setQueryRequest(
+                                                                                                     QueryRequest
+                                                                                                             .newBuilder()
+                                                                                                             .setComponentName(
+                                                                                                                     "myComponent")
+                                                                                             )
+                                                                                             .build(),
+                                                                            null,
+                                                                            null));
         HubSubscriptionMetrics metric = testSubject.get("myComponent", "myContext");
         assertEquals(1, (long) metric.activesCount());
 
-        testSubject.on(new SubscriptionQueryEvents.SubscriptionQueryResponseReceived(SubscriptionQueryResponse.newBuilder()
-                                                                                                              .setSubscriptionIdentifier("Subscription-1")
-                                                                                                              .setUpdate(
-                                                                                                                      QueryUpdate.newBuilder()
-                                                                                                              )
-                                                                                                              .build()));
+        testSubject.on(new SubscriptionQueryEvents.SubscriptionQueryResponseReceived(SubscriptionQueryResponse
+                                                                                             .newBuilder()
+                                                                                             .setSubscriptionIdentifier(
+                                                                                                     "Subscription-1")
+                                                                                             .setUpdate(
+                                                                                                     QueryUpdate
+                                                                                                             .newBuilder()
+                                                                                             )
+                                                                                             .build()));
         metric = testSubject.get("myComponent", "myContext");
         assertEquals(1, (long) metric.activesCount());
         assertEquals(1, (long) metric.updatesCount());

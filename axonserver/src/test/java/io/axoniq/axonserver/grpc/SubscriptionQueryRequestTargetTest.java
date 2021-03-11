@@ -12,11 +12,11 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.StatusRuntimeException;
 import org.junit.*;
@@ -38,8 +38,8 @@ public class SubscriptionQueryRequestTargetTest {
     @Before
     public void setUp() {
         ApplicationEventPublisher eventPublisher = event -> {
-            if (event instanceof SubscriptionQueryEvents.SubscriptionQueryRequested) {
-                SubscriptionQueryEvents.SubscriptionQueryRequested requested = (SubscriptionQueryEvents.SubscriptionQueryRequested) event;
+            if (event instanceof SubscriptionQueryEvents.SubscriptionQueryStarted) {
+                SubscriptionQueryEvents.SubscriptionQueryStarted requested = (SubscriptionQueryEvents.SubscriptionQueryStarted) event;
                 requested.handler().onSubscriptionQueryResponse(SubscriptionQueryResponse.newBuilder().build());
             }
             if (event instanceof SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested) {
