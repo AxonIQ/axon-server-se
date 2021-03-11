@@ -63,21 +63,23 @@ public class ApplicationSubscriptionMetricRegistry {
 
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryRequested event){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryStarted event) {
         String componentName = event.subscription().getQueryRequest().getComponentName();
         String context = event.context();
-        activeSubscriptionsMetric(componentName,context).incrementAndGet();
-        totalSubscriptionsMetric(componentName,context).increment();
+        activeSubscriptionsMetric(componentName, context).incrementAndGet();
+        totalSubscriptionsMetric(componentName, context).increment();
         componentNames.putIfAbsent(event.subscriptionId(), componentName);
         contexts.putIfAbsent(event.subscriptionId(), context);
     }
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event) {
         String componentName = event.unsubscribe().getQueryRequest().getComponentName();
-        String context = contexts.remove(event.subscriptionId());
-        activeSubscriptionsMetric(componentName, context).decrementAndGet();
+        String context = event.context();
         componentNames.remove(event.subscriptionId());
+        if (contexts.remove(event.subscriptionId()) != null) {
+            activeSubscriptionsMetric(componentName, context).decrementAndGet();
+        }
     }
 
     @EventListener

@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.message.query.subscription;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
-import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryStarted;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import org.springframework.context.event.EventListener;
@@ -34,7 +34,7 @@ public class DirectSubscriptionQueries implements Iterable<DirectSubscriptionQue
     private final Map<String, Map<String, ContextSubscriptionQuery>> map = new ConcurrentHashMap<>();
 
     @EventListener
-    public void on(SubscriptionQueryRequested event) {
+    public void on(SubscriptionQueryStarted event) {
         SubscriptionQuery request = event.subscription();
         QueryRequest query = request.getQueryRequest();
         ContextSubscriptionQuery contextSubscriptionQuery = new ContextSubscriptionQuery(event.context(), request);

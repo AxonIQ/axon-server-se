@@ -64,7 +64,7 @@ public class GlobalSubscriptionMetricRegistry implements Supplier<SubscriptionMe
     }
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryRequested event){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryStarted event) {
         active.incrementAndGet();
         total.increment();
         subscriptions.add(event.subscriptionId());

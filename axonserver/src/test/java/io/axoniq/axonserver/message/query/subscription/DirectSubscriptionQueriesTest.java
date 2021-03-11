@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.message.query.subscription;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
-import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryStarted;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.message.query.subscription.DirectSubscriptionQueries.ContextSubscriptionQuery;
 import org.junit.*;
@@ -31,7 +31,7 @@ public class DirectSubscriptionQueriesTest {
         DirectSubscriptionQueries subscriptions = new DirectSubscriptionQueries();
         assertFalse(subscriptions.iterator().hasNext());
         SubscriptionQuery request = SubscriptionQuery.newBuilder().build();
-        subscriptions.on(new SubscriptionQueryRequested(context, request, null, null));
+        subscriptions.on(new SubscriptionQueryStarted(context, request, null, null));
         Iterator<ContextSubscriptionQuery> iterator = subscriptions.iterator();
         assertTrue(iterator.hasNext());
         assertEquals(request, iterator.next().subscriptionQuery());
@@ -43,7 +43,7 @@ public class DirectSubscriptionQueriesTest {
         String context = "context";
         DirectSubscriptionQueries subscriptions = new DirectSubscriptionQueries();
         SubscriptionQuery request = SubscriptionQuery.newBuilder().setSubscriptionIdentifier("ID").build();
-        subscriptions.on(new SubscriptionQueryRequested(context, request, null, null));
+        subscriptions.on(new SubscriptionQueryStarted(context, request, null, null));
         assertTrue(subscriptions.iterator().hasNext());
 
         SubscriptionQuery otherRequest = SubscriptionQuery.newBuilder().setSubscriptionIdentifier("otherID").build();

@@ -14,6 +14,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.ProxiedSub
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryCanceled;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
+import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryStarted;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
@@ -62,20 +63,21 @@ public class SubscriptionQueryDispatcher {
 
 
     @EventListener
-    public void on(SubscriptionQueryRequested event) {
+    public SubscriptionQueryStarted on(SubscriptionQueryRequested event) {
         logger.debug("Dispatch subscription query request with subscriptionId = {}", event.subscriptionId());
         SubscriptionQuery query = event.subscription();
         Collection<? extends QueryHandler> handlers = registrationCache.findAll(event.context(),
                                                                                 query.getQueryRequest());
         if (handlers == null || handlers.isEmpty()) {
             event.errorHandler().accept(new IllegalArgumentException(ErrorCode.NO_HANDLER_FOR_QUERY.getCode()));
-            return;
+            return null;
         }
         handlers.forEach(handler -> {
             handler.dispatch(event.subscriptionQueryRequest());
             subscriptionsSent.computeIfAbsent(handler.getClientStreamIdentification(),
                                               client -> new CopyOnWriteArraySet<>()).add(event.subscriptionId());
         });
+        return new SubscriptionQueryStarted(event);
     }
 
     @EventListener

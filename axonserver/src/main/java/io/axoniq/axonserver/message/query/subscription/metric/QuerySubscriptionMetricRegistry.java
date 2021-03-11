@@ -64,7 +64,7 @@ public class QuerySubscriptionMetricRegistry  {
 
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryRequested event){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryStarted event) {
         String queryName = event.subscription().getQueryRequest().getQuery();
         String context = event.context();
         activeSubscriptionsMetric(queryName, context).incrementAndGet();
@@ -74,11 +74,13 @@ public class QuerySubscriptionMetricRegistry  {
     }
 
     @EventListener
-    public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event){
+    public void on(SubscriptionQueryEvents.SubscriptionQueryCanceled event) {
+        String context = event.context();
         String queryName = event.unsubscribe().getQueryRequest().getQuery();
-        String context = contexts.remove(event.subscriptionId());
-        activeSubscriptionsMetric(queryName, context).decrementAndGet();
-        queries.remove(event.subscriptionId(), queryName);
+        contexts.remove(event.subscriptionId());
+        if (queries.remove(event.subscriptionId(), queryName)) {
+            activeSubscriptionsMetric(queryName, context).decrementAndGet();
+        }
     }
 
     @EventListener
