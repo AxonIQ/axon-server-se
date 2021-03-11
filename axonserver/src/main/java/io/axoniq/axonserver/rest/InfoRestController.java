@@ -10,15 +10,15 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.taskscheduler.BaseTaskManager;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -37,10 +37,15 @@ public class InfoRestController {
     @GetMapping("/third-party")
     public  String thirdParty() {
         try {
-            List<String> strings = Files.readAllLines(
-                    Paths.get(this.getClass().getResource("/third-party-licenses.txt").toURI()), Charset.defaultCharset());
-
-            return String.join("", strings);
+            InputStream inputStream = this.getClass().getResourceAsStream("/third-party-licenses.txt");
+            if (inputStream != null) {
+                try {
+                    List<String> lines = IOUtils.readLines(inputStream, Charset.defaultCharset());
+                    return String.join("", lines);
+                } finally {
+                    inputStream.close();
+                }
+            }
         } catch ( Exception e) {
             logger.warn("Third-party licences could not be retrieved... Error: ",e);
         }
