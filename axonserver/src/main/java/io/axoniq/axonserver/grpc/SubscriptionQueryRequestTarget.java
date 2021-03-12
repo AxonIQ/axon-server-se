@@ -26,8 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -44,7 +43,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
 
     private final ApplicationEventPublisher eventPublisher;
 
-    private final List<SubscriptionQuery> subscriptionQuery;
+    private final AtomicReference<SubscriptionQuery> subscriptionQuery = new AtomicReference<>();
 
     private final UpdateHandler updateHandler;
 
@@ -62,12 +61,14 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         this.context = context;
         this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
         this.unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
-        this.errorHandler = e -> responseObserver.onError(GrpcExceptionBuilder.build(e));
+        this.errorHandler = e -> {
+            responseObserver.onError(GrpcExceptionBuilder.build(e));
+            unsubscribe();
+        };
         this.responseObserver = new QueryResponseStreamObserver(new FlowControlledStreamObserver<>(responseObserver,
                                                                                                    errorHandler));
         this.updateHandler = new DirectUpdateHandler(this.responseObserver::onNext);
         this.eventPublisher = eventPublisher;
-        this.subscriptionQuery = new ArrayList<>();
     }
 
     @Override
@@ -79,20 +80,21 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
                     if (clientId == null) {
                         clientId = message.getSubscribe().getQueryRequest().getClientId();
                     }
-                    subscriptionQuery.add(message.getSubscribe());
-                    eventPublisher.publishEvent(new SubscriptionQueryRequested(context,
-                                                                               subscriptionQuery.get(0),
-                                                                               updateHandler,
-                                                                               errorHandler));
+                    if (subscriptionQuery.compareAndSet(null, message.getSubscribe())) {
+                        eventPublisher.publishEvent(new SubscriptionQueryRequested(context,
+                                                                                   subscriptionQuery.get(),
+                                                                                   updateHandler,
+                                                                                   errorHandler));
+                    }
 
                     break;
                 case GET_INITIAL_RESULT:
-                    if (subscriptionQuery.isEmpty()) {
+                    if (subscriptionQuery.get() == null) {
                         errorHandler.accept(new IllegalStateException("Initial result asked before subscription"));
                         break;
                     }
                     eventPublisher.publishEvent(new SubscriptionQueryInitialResultRequested(context,
-                                                                                            subscriptionQuery.get(0),
+                                                                                            subscriptionQuery.get(),
                                                                                             updateHandler,
                                                                                             errorHandler));
                     break;
@@ -100,9 +102,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
                     responseObserver.addPermits(message.getFlowControl().getNumberOfPermits());
                     break;
                 case UNSUBSCRIBE:
-                    if (!subscriptionQuery.isEmpty()) {
-                        unsubscribe(subscriptionQuery.get(0));
-                    }
+                    unsubscribe();
                     break;
                 default:
             }
@@ -119,23 +119,21 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
 
     @Override
     public void onError(Throwable t) {
-        if (!subscriptionQuery.isEmpty()) {
-            unsubscribe(subscriptionQuery.get(0));
-        }
+        unsubscribe();
         StreamObserverUtils.error(responseObserver, t);
     }
 
     @Override
     public void onCompleted() {
-        if (!subscriptionQuery.isEmpty()) {
-            unsubscribe(subscriptionQuery.get(0));
-        }
+        unsubscribe();
         StreamObserverUtils.complete(responseObserver);
     }
 
-    private void unsubscribe(SubscriptionQuery cancel) {
-        subscriptionQuery.remove(cancel);
-        eventPublisher.publishEvent(new SubscriptionQueryCanceled(context, cancel));
+    private void unsubscribe() {
+        SubscriptionQuery query = this.subscriptionQuery.getAndSet(null);
+        if (query != null) {
+            eventPublisher.publishEvent(new SubscriptionQueryCanceled(context, query));
+        }
     }
 
     private class QueryResponseStreamObserver implements StreamObserver<SubscriptionQueryResponse> {
