@@ -12,16 +12,18 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
+import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.StatusRuntimeException;
 import org.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.Assert.*;
@@ -118,5 +120,26 @@ public class SubscriptionQueryRequestTargetTest {
             lastUUID = unitOfWork.getDetails("RequestId");
             return subscriptionQueryResponse;
         }
+    }
+
+    @Test
+    public void onErrorTest() {
+        List<Object> events = new LinkedList<>();
+        testSubject = new SubscriptionQueryRequestTarget("context",
+                                                         null,
+                                                         responseStreamObserver,
+                                                         interceptors,
+                                                         events::add);
+        testSubject.consume(SubscriptionQueryRequest.newBuilder().setSubscribe(SubscriptionQuery.getDefaultInstance())
+                                                    .build());
+
+        assertEquals(1, events.size());
+        Object subscriptionRequested = events.get(0);
+        assertTrue(subscriptionRequested instanceof SubscriptionQueryEvents.SubscriptionQueryRequested);
+        Throwable error = new RuntimeException("something happened during subscribe");
+        ((SubscriptionQueryEvents.SubscriptionQueryRequested) subscriptionRequested).errorHandler().accept(error);
+        assertEquals(2, events.size());
+        Object subscriptionCancelled = events.get(1);
+        assertTrue(subscriptionCancelled instanceof SubscriptionQueryEvents.SubscriptionQueryCanceled);
     }
 }
