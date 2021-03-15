@@ -17,15 +17,20 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
- * Created by Sara Pellegrini on 26/03/2018.
- * sara.pellegrini@gmail.com
+ * Mapper to construct an {@link EventProcessor} based on a given {@link ClientProcessor}.
+ *
+ * @author Sara Pellegrini
+ * @since 4.0
  */
 public class EventProcessorMapping implements BiFunction<String, Collection<ClientProcessor>, EventProcessor> {
+
+    private static final String TRACKING_EVENT_PROCESSOR_MODE = "Tracking";
+    private static final String POOLED_STREAMING_PROCESSOR_MODE = "Pooled";
 
     @Override
     public EventProcessor apply(String name, Collection<ClientProcessor> clientProcessors) {
         String mode = modeOf(clientProcessors);
-        if ("Tracking".equals(mode)) {
+        if (TRACKING_EVENT_PROCESSOR_MODE.equals(mode) || mode.contains(POOLED_STREAMING_PROCESSOR_MODE)) {
             return new TrackingProcessor(name, mode, clientProcessors);
         } else {
             return new GenericProcessor(name, mode, clientProcessors);
@@ -39,6 +44,4 @@ public class EventProcessorMapping implements BiFunction<String, Collection<Clie
         }
         return modes.size() == 1 ? modes.iterator().next() : "Multiple processing mode detected";
     }
-
-
 }
