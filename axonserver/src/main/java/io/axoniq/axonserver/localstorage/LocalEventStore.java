@@ -360,7 +360,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         getMaxSequence(request),
                         request.getMinToken())
                 .map(activeEventDecorator::decorateEvent)
-                .publishOn(Schedulers.fromExecutorService(dataFetcher), 25)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher))
                 .transform(f -> count(f, counter -> {
                     if (counter == 0) {
                         logger.debug("Aggregate not found: {}", request);
