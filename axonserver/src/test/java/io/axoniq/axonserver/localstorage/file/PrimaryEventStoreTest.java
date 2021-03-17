@@ -83,7 +83,7 @@ public class PrimaryEventStoreTest {
                                                                  embeddedDBProperties.getEvent(),
                                                                  meterFactory);
 
-        doNothing().when(fileSystemMonitor).registerPath(any());
+        doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
         PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                             indexManager,
@@ -92,7 +92,7 @@ public class PrimaryEventStoreTest {
                                             second,
                                             meterFactory, fileSystemMonitor);
         testSubject.init(false);
-        verify(fileSystemMonitor).registerPath(any(Path.class));
+        verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));
         return testSubject;
     }
 

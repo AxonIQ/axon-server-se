@@ -20,6 +20,10 @@ import static org.mockito.Mockito.*;
  */
 public class FileSystemMonitorTest {
 
+    public static final String STORE_EVENTS_UNIX = "/store/events";
+    public static final String STORE_NAME = "store";
+    public static final String STORE_EVENTS_OSX = "/store/store";
+    public static final String STORE_EVENTS_WIN = "C:\\store\\events";
     FileSystemMonitor testSubject;
 
     DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties = mock(DiskSpaceHealthIndicatorProperties.class);
@@ -39,15 +43,15 @@ public class FileSystemMonitorTest {
         FileSystem mockFileSystem = mock(FileSystem.class);
         Path pathMock = mock(Path.class);
 
-        when(mockFileSystem.getPath("/store/events")).thenReturn(pathMock);
-        when(pathMock.toString()).thenReturn("/store/events");
+        when(mockFileSystem.getPath(STORE_EVENTS_UNIX)).thenReturn(pathMock);
+        when(pathMock.toString()).thenReturn(STORE_EVENTS_UNIX);
 
-        Path path = mockFileSystem.getPath("/store/events");
+        Path path = mockFileSystem.getPath(STORE_EVENTS_UNIX);
 
-        testSubject.registerPath(path);
+        testSubject.registerPath(STORE_NAME, path);
 
         when(diskSpaceHealthProperties.getThreshold()).thenReturn(THRESHOLD);
-        when(diskSpaceHealthProperties.getPath()).thenReturn(new File("/store/events"));
+        when(diskSpaceHealthProperties.getPath()).thenReturn(new File(STORE_EVENTS_UNIX));
 
         Health.Builder builder = mock(Health.Builder.class);
         testSubject.doHealthCheck(builder);
@@ -69,9 +73,9 @@ public class FileSystemMonitorTest {
                 .setMaxSize(DISK_SIZE.toBytes())
                 .build()
                 );
-        Path path = fileSystem.getPath("/store/events");
+        Path path = fileSystem.getPath(STORE_EVENTS_UNIX);
 
-        testSubject.registerPath(path);
+        testSubject.registerPath(STORE_NAME, path);
 
         when(diskSpaceHealthProperties.getThreshold()).thenReturn(THRESHOLD);
         when(diskSpaceHealthProperties.getPath()).thenReturn(new File(path.toString()));
@@ -94,9 +98,9 @@ public class FileSystemMonitorTest {
                         .setMaxSize(DISK_SIZE.toBytes())
                         .build()
         );
-        Path path = fileSystem.getPath("/store/events");
+        Path path = fileSystem.getPath(STORE_EVENTS_UNIX);
 
-        testSubject.registerPath(path);
+        testSubject.registerPath(STORE_NAME, path);
 
         when(diskSpaceHealthProperties.getThreshold()).thenReturn(THRESHOLD);
         when(diskSpaceHealthProperties.getPath()).thenReturn(new File(path.toString()));
@@ -121,9 +125,9 @@ public class FileSystemMonitorTest {
                         .setMaxSize(DISK_SIZE.toBytes())
                         .build()
         );
-        Path path = fileSystem.getPath("/store/store");
+        Path path = fileSystem.getPath(STORE_EVENTS_OSX);
 
-        testSubject.registerPath(path);
+        testSubject.registerPath(STORE_NAME, path);
 
         when(diskSpaceHealthProperties.getThreshold()).thenReturn(THRESHOLD);
         when(diskSpaceHealthProperties.getPath()).thenReturn(new File(path.toString()));
@@ -146,9 +150,9 @@ public class FileSystemMonitorTest {
                         .setMaxSize(DISK_SIZE.toBytes())
                         .build()
         );
-        Path path = fileSystem.getPath("/store/store");
+        Path path = fileSystem.getPath(STORE_EVENTS_OSX);
 
-        testSubject.registerPath(path);
+        testSubject.registerPath(STORE_NAME, path);
 
         when(diskSpaceHealthProperties.getThreshold()).thenReturn(THRESHOLD);
         when(diskSpaceHealthProperties.getPath()).thenReturn(new File(path.toString()));
@@ -172,9 +176,9 @@ public class FileSystemMonitorTest {
                         .setMaxSize(DISK_SIZE.toBytes())
                         .build()
         );
-        Path path = fileSystem.getPath("C:\\store\\events");
+        Path path = fileSystem.getPath(STORE_EVENTS_WIN);
 
-        testSubject.registerPath(path);
+        testSubject.registerPath(STORE_NAME, path);
 
         when(diskSpaceHealthProperties.getThreshold()).thenReturn(THRESHOLD);
         when(diskSpaceHealthProperties.getPath()).thenReturn(new File(path.toString()));
@@ -197,9 +201,9 @@ public class FileSystemMonitorTest {
                         .setMaxSize(DISK_SIZE.toBytes())
                         .build()
         );
-        Path path = fileSystem.getPath("C:\\store\\events");
+        Path path = fileSystem.getPath(STORE_EVENTS_WIN);
 
-        testSubject.registerPath(path);
+        testSubject.registerPath(STORE_NAME, path);
 
         when(diskSpaceHealthProperties.getThreshold()).thenReturn(THRESHOLD);
         when(diskSpaceHealthProperties.getPath()).thenReturn(new File(path.toString()));

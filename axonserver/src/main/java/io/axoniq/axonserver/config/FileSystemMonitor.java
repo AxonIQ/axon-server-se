@@ -14,8 +14,8 @@ import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
@@ -35,7 +35,7 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
 
     private final MeterRegistry meterRegistry;
 
-    private final List<Path> fileSystems = new ArrayList<>();
+    private final Map<String, Path> fileSystems = new HashMap<>();
 
     public FileSystemMonitor(DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties,
                              MeterRegistry meterRegistry) {
@@ -49,18 +49,18 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
      * for health monitoring and disk metrics biding
      *
      * */
-    public void registerPath(Path fileSystemPath) {
-        logger.info("Monitoring file path '{}'",fileSystemPath.toString());
-        fileSystems.add(fileSystemPath);
+    public void registerPath(final String name, final Path fileSystemPath) {
+        logger.info("Monitoring file store '{}' at path '{}'",name, fileSystemPath);
+        fileSystems.put(name, fileSystemPath);
         bindToMetrics(fileSystemPath);
     }
 
     /**
      * Unregisters file path from health monitoring
      * */
-    public void unregisterPath(Path fileSystemPath) {
-        logger.info("Stopped monitoring file path '{}'",fileSystemPath.toString());
-        fileSystems.removeIf(fs-> fs.compareTo(fileSystemPath) == 0);
+    public void unregisterPath(final String name) {
+        logger.info("Stopped monitoring file store '{}'",name);
+        fileSystems.remove(name);
     }
 
     private void bindToMetrics(Path fileSystemPath) {
@@ -93,7 +93,7 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
     @Override
     protected void doHealthCheck(Health.Builder builder) {
         builder.up();
-        fileSystems.forEach(path -> {
+        fileSystems.forEach((name, path) -> {
             try {
                 FileStore store = Files.getFileStore(path);
                 long diskFreeInBytes = store.getUsableSpace();
@@ -104,9 +104,9 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
                     builder.status(HealthStatus.WARN_STATUS);
                 }
 
-                builder.withDetail(mountOf(path).toString(),
+                builder.withDetail(name,
                         new Details(
-                                store.getUsableSpace(),store.getTotalSpace()
+                                mountOf(path).toString(), store.getUsableSpace(), store.getTotalSpace()
                         )
                 );
 
@@ -116,19 +116,24 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
                 logger.error("Failed to retrieve file store for {}", path, e);
                 builder.down();
                 builder.withDetail("path", path.toString());
-                return;
             }
         });
 
     }
 
-    public class Details {
-        long free;
-        long total;
+    public static class Details {
+        private final String path;
+        private final long free;
+        private final long total;
 
-        public Details(long free, long total) {
+        public Details(String path, long free, long total) {
+            this.path = path;
             this.free = free;
             this.total = total;
+        }
+
+        public String getPath() {
+            return path;
         }
 
         public long getFree() {

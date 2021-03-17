@@ -95,7 +95,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         eventTransformer = eventTransformerFactory.get(storageProperties.getFlags());
         initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir, defaultFirstIndex);
 
-        fileSystemMonitor.registerPath(storageDir.toPath());
+        fileSystemMonitor.registerPath(storeName(), storageDir.toPath());
     }
 
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, long defaultFirstIndex) {
@@ -247,7 +247,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public void close(boolean deleteData) {
         File storageDir = new File(storageProperties.getStorage(context));
-        fileSystemMonitor.unregisterPath(storageDir.toPath());
+        fileSystemMonitor.unregisterPath(storeName());
 
         synchronizer.shutdown(true);
         readBuffers.forEach((s, source) -> {
@@ -485,5 +485,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             size += 4 + event.getSerializedSize();
         }
         return size;
+    }
+
+    private String storeName() {
+        return context + "-" + type.getEventType().name().toLowerCase();
     }
 }
