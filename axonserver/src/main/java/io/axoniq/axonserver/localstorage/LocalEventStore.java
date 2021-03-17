@@ -236,8 +236,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         if (checkSequenceNrForSnapshots) {
             long seqNr = workers(context).aggregateReader.readHighestSequenceNr(snapshot.getAggregateIdentifier());
             if (seqNr < snapshot.getAggregateSequenceNumber()) {
+                String message = String.format(
+                        "Invalid sequence number while storing snapshot. Highest aggregate %s sequence number: %d, snapshot sequence %d.",
+                        snapshot.getAggregateIdentifier(),
+                        seqNr,
+                        snapshot.getAggregateSequenceNumber());
                 completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
-                                                                                       "Invalid sequence number while storing snapshot"));
+                                                                                       message));
                 return;
             }
         }
