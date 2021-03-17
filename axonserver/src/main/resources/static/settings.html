@@ -10,6 +10,17 @@
 <script src="js/settings.js" language="JavaScript"></script>
 <script language="JavaScript">
     $(document).ready(function(){
+
+        // new Vue({
+        //     el: "#licenseeInfo",
+        //     methods: {
+        //         isTodayOrAfter: function(date) {
+        //             console.log(date);
+        //             return new Date(date).valueOf() >= new Date().valueOf();
+        //         }
+        //     }
+        // });
+
         $("body").one('submit', '#licenseForm', function(event) {
             var fd = new FormData();
             var files = $('#license')[0].files[0];
@@ -157,7 +168,8 @@
                     </li>
                     <li v-if="license.licensee">
                         <span>Expiry date</span>
-                        <span id="expiryDate"> {{license.expiryDate | formatDate}}</span>
+                        <span id="expiryDate"
+                              v-bind:style="{ color: (new Date().valueOf() >= new Date(license.expiryDate).valueOf()) ? 'red':'' }"> {{license.expiryDate | formatDate}}</span>
                     </li>
                 </ul>
             </section>
