@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -25,15 +25,18 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
+ * Test class validating the {@link StreamingProcessor}.
+ *
  * @author Sara Pellegrini
  */
-public class TrackingProcessorTest {
+public class StreamingProcessorTest {
 
     @Test
     public void testPrintOnCreatesFullyFledgedJson() {
         String expectedJson =
                 "{\"name\":\"processor name\","
                         + "\"mode\":\"tracking\","
+                        + "\"isStreaming\":true,"
                         + "\"fullName\":\"processor name@TokenStoreIdentifier\","
                         + "\"warnings\":[],"
                         + "\"tokenStoreIdentifier\":\"TokenStoreIdentifier\","
@@ -82,7 +85,7 @@ public class TrackingProcessorTest {
                 new FakeClientProcessor("clientIdTwo", true, processorInfo1)
         );
 
-        TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", testClientProcessors);
+        StreamingProcessor testSubject = new StreamingProcessor("processor name", "tracking", testClientProcessors);
 
         GsonMedia media = new GsonMedia();
         testSubject.printOn(media);
@@ -95,6 +98,7 @@ public class TrackingProcessorTest {
         String expectedJson =
                 "{\"name\":\"processor name\","
                         + "\"mode\":\"tracking\","
+                        + "\"isStreaming\":true,"
                         + "\"fullName\":\"processor name@TokenStoreIdentifier\","
                         + "\"warnings\":[],"
                         + "\"tokenStoreIdentifier\":\"TokenStoreIdentifier\","
@@ -125,7 +129,7 @@ public class TrackingProcessorTest {
         List<ClientProcessor> testClientProcessors =
                 Collections.singletonList(new FakeClientProcessor("clientIdOne", true, processorInfo0));
 
-        TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", testClientProcessors);
+        StreamingProcessor testSubject = new StreamingProcessor("processor name", "tracking", testClientProcessors);
 
         GsonMedia media = new GsonMedia();
         testSubject.printOn(media);
@@ -153,7 +157,7 @@ public class TrackingProcessorTest {
         List<ClientProcessor> testClientProcessors =
                 Collections.singletonList(new FakeClientProcessor("clientIdOne", true, processorInfo0));
 
-        TrackingProcessor testSubject = new TrackingProcessor("processor name", "tracking", testClientProcessors);
+        StreamingProcessor testSubject = new StreamingProcessor("processor name", "tracking", testClientProcessors);
 
         GsonMedia media = new GsonMedia();
         testSubject.printOn(media);
