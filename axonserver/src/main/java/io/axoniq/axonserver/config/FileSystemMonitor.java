@@ -5,12 +5,9 @@ import io.micrometer.core.instrument.binder.jvm.DiskSpaceMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
-import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
@@ -107,17 +104,40 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
                     builder.status(HealthStatus.WARN_STATUS);
                 }
 
-                builder.withDetail(mountOf(path).toString() + ".total", store.getTotalSpace());
-                builder.withDetail(mountOf(path).toString() +".free", store.getUsableSpace());
-                builder.withDetail(".threshold", threshold);
+                builder.withDetail(mountOf(path).toString(),
+                        new Details(
+                                store.getUsableSpace(),store.getTotalSpace()
+                        )
+                );
+
+                builder.withDetail("threshold", threshold);
             } catch (
                     Exception e) {
                 logger.error("Failed to retrieve file store for {}", path, e);
                 builder.down();
-                builder.withDetail(".path", path.toString());
+                builder.withDetail("path", path.toString());
                 return;
             }
         });
+
+    }
+
+    public class Details {
+        long free;
+        long total;
+
+        public Details(long free, long total) {
+            this.free = free;
+            this.total = total;
+        }
+
+        public long getFree() {
+            return free;
+        }
+
+        public long getTotal() {
+            return total;
+        }
     }
 
 

@@ -157,7 +157,8 @@
                     </li>
                     <li v-if="license.licensee">
                         <span>Expiry date</span>
-                        <span id="expiryDate"> {{license.expiryDate | formatDate}}</span>
+                        <span id="expiryDate"
+                              v-bind:style="{ color: (new Date().valueOf() >= new Date(license.expiryDate).valueOf()) ? 'red':'' }"> {{license.expiryDate | formatDate}}</span>
                     </li>
                 </ul>
             </section>
