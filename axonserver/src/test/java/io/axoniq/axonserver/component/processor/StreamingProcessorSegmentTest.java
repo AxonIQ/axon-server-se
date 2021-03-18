@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -17,10 +17,11 @@ import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus
 import static org.junit.Assert.*;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Test class validating the {@link StreamingProcessorSegment}.
+ *
+ * @author Sara Pellegrini
  */
-public class TrackingProcessorSegmentTest {
+public class StreamingProcessorSegmentTest {
 
     @Test
     public void printOn() {
@@ -30,9 +31,15 @@ public class TrackingProcessorSegmentTest {
                                                      .setReplaying(false)
                                                      .setCaughtUp(true)
                                                      .build();
-        TrackingProcessorSegment tracker = new TrackingProcessorSegment("myClient", eventTrackerInfo);
+        StreamingProcessorSegment tracker = new StreamingProcessorSegment("myClient", eventTrackerInfo);
         tracker.printOn(gsonMedia);
-        assertEquals("{\"clientId\":\"myClient\",\"segmentId\":1,\"caughtUp\":true,\"replaying\":false,\"tokenPosition\":0,\"errorState\":\"\",\"onePartOf\":2}",
+        assertEquals("{\"clientId\":\"myClient\","
+                             + "\"segmentId\":1,"
+                             + "\"caughtUp\":true,"
+                             + "\"replaying\":false,"
+                             + "\"tokenPosition\":0,"
+                             + "\"errorState\":\"\","
+                             + "\"onePartOf\":2}",
                      gsonMedia.toString());
     }
 }

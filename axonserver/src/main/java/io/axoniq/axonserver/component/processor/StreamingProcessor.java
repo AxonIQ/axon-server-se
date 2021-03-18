@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -28,15 +28,16 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Tracking Event Processor state representation for the UI.
+ * Streaming Event Processor state representation for the UI.
  *
  * @author Sara Pellegrini
  * @since 4.0
  */
-public class TrackingProcessor extends GenericProcessor implements EventProcessor {
+public class StreamingProcessor extends GenericProcessor implements EventProcessor {
 
     private static final int ZERO_THREADS = 0;
 
+    private static final String TOKEN_STORE_IDENTIFIER = "tokenStoreIdentifier";
     private static final String FREE_THREAD_INSTANCES_COUNT = "freeThreadInstances";
     private static final String ACTIVE_THREADS_COUNT = "activeThreads";
     private static final String CAN_PAUSE_KEY = "canPause";
@@ -48,16 +49,21 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     private final String tokenStoreIdentifier;
 
     /**
-     * Instantiate a {@link TrackingProcessor}, used to represent the state of a Tracking Event Processor in the UI.
+     * Instantiate a {@link StreamingProcessor}, used to represent the state of a Tracking Event Processor in the UI.
      *
      * @param name       a {@link String} defining the processing group name of this Event Processor
      * @param mode       a {@link String} defining the mode of this Event Processor
      * @param processors a {@link Collection} of {@link ClientProcessor}s portraying the state of this Event Processor
      *                   per client it is running on
      */
-    TrackingProcessor(String name, String mode, Collection<ClientProcessor> processors) {
+    StreamingProcessor(String name, String mode, Collection<ClientProcessor> processors) {
         super(name, mode, processors);
         this.tokenStoreIdentifier = processors.iterator().next().eventProcessorInfo().getTokenStoreIdentifier();
+    }
+
+    @Override
+    public Boolean isStreaming() {
+        return true;
     }
 
     @Override
@@ -76,7 +82,7 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     @Override
     public void printOn(Media media) {
         super.printOn(media);
-        media.with("tokenStoreIdentifier", tokenStoreIdentifier);
+        media.with(TOKEN_STORE_IDENTIFIER, tokenStoreIdentifier);
 
         Set<String> freeThreadInstances =
                 processors().stream()
@@ -109,12 +115,14 @@ public class TrackingProcessor extends GenericProcessor implements EventProcesso
     }
 
     private List<Printable> trackers() {
-        return processors()
-                .stream()
-                .flatMap(client -> client.eventProcessorInfo().getSegmentStatusList().stream()
-                                         .map(tracker -> new TrackingProcessorSegment(client.clientId(), tracker)))
-                .sorted(Comparator.comparingInt(TrackingProcessorSegment::segmentId).thenComparing(TrackingProcessorSegment::clientId))
-                .collect(toList());
+        return processors().stream()
+                           .flatMap(client -> client.eventProcessorInfo().getSegmentStatusList().stream()
+                                                    .map(tracker -> new StreamingProcessorSegment(
+                                                            client.clientId(), tracker)
+                                                    ))
+                           .sorted(Comparator.comparingInt(StreamingProcessorSegment::segmentId)
+                                             .thenComparing(StreamingProcessorSegment::clientId))
+                           .collect(toList());
     }
 
     private List<EventProcessorInfo> processorInstances() {
