@@ -1,5 +1,5 @@
 <!--
-  - Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  - Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   - under one or more contributor license agreements.
   -
   -  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -52,25 +52,25 @@
                                   title="Start this Event Processor">
                                 <i class="far fa-play-circle fa-lg"></i>
                             </span>
-                            <span v-if="processor.mode === 'Tracking'"
+                            <span v-if="processor.isStreaming"
                                   :class="{hidden : !processor.canSplit}"
                                   @click="splitSegment(processor)" title="Split the biggest segment in two">
                                 <i class="fas fa-plus fa-lg"></i>
                             </span>
 
-                            <span v-if="processor.mode === 'Tracking'"
+                            <span v-if="processor.isStreaming"
                                   :class="{hidden : !processor.canMerge}"
                                   @click="mergeSegment(processor)" title="Merge the smallest segments in to one">
                                 <i class="fas fa-minus fa-lg"></i>
                             </span>
-                            <span v-if="processor.mode === 'Tracking'"
+                            <span v-if="processor.isStreaming"
                                   @click="showLoadBalance(processor)"
                                   title="Load balance this Event Processor automatically">
                                 <i class="fas fa-balance-scale fa-lg"></i>
                             </span>
                         </td>
                         <td v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" align="right">
-                            <span v-if="processor.mode === 'Tracking'">
+                            <span v-if="processor.isStreaming">
                                 <select v-model="processorsLBStrategies[processor.fullName]"
                                         @change="changeLoadBalancingStrategy(processor, processorsLBStrategies[processor.fullName])">
                                     <option v-for="strategy in loadBalancingStrategies" :value="strategy.name">{{strategy.label}}</option>
@@ -88,7 +88,7 @@
         <section v-if="selected.name" style="display:block; float: left; width: 30%; margin-left: 5%">
             <div class="results singleHeader">
 
-                <table class="nodes" v-if="selected.mode === 'Tracking'">
+                <table class="nodes" v-if="selected.isStreaming">
                     <colgroup>
                         <col width="10%">
                         <col width="40%">
