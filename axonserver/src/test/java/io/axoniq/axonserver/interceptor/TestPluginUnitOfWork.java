@@ -13,7 +13,7 @@ import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * @author Marc Gathier
@@ -57,7 +57,7 @@ public class TestPluginUnitOfWork implements PluginUnitOfWork {
     }
 
     @Override
-    public void onFailure(Consumer<PluginUnitOfWork> compensatingAction) {
+    public void onFailure(BiConsumer<Throwable, PluginUnitOfWork> compensatingAction) {
 
     }
 }

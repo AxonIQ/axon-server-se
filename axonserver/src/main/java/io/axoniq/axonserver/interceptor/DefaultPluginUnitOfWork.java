@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -19,7 +21,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -31,9 +33,11 @@ import java.util.stream.Collectors;
  */
 public class DefaultPluginUnitOfWork implements PluginUnitOfWork {
 
+    private static final Logger logger = LoggerFactory.getLogger(DefaultPluginUnitOfWork.class);
+
     private final String context;
     private final Authentication principal;
-    private final List<Consumer<PluginUnitOfWork>> compensatingActions = new LinkedList<>();
+    private final List<BiConsumer<Throwable, PluginUnitOfWork>> compensatingActions = new LinkedList<>();
     private final Map<String, Object> details = new HashMap<>();
 
     /**
@@ -94,15 +98,21 @@ public class DefaultPluginUnitOfWork implements PluginUnitOfWork {
      * @param compensatingAction runnable compensation action
      */
     @Override
-    public void onFailure(Consumer<PluginUnitOfWork> compensatingAction) {
+    public void onFailure(BiConsumer<Throwable, PluginUnitOfWork> compensatingAction) {
         compensatingActions.add(0, compensatingAction);
     }
 
     /**
      * Execute all compensating actions. The last registered compensating action is executed first.
      */
-    public void compensate() {
-        compensatingActions.forEach(a -> a.accept(this));
+    public void compensate(Throwable cause) {
+        compensatingActions.forEach(a -> {
+            try {
+                a.accept(cause, this);
+            } catch (Exception ex) {
+                logger.warn("{}: Failure during compensate due to {}", context, cause.getMessage(), ex);
+            }
+        });
     }
 
     /**

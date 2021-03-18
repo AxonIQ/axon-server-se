@@ -22,7 +22,6 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +90,7 @@ public class CommandDispatcher {
 
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver) {
-        PluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
+        DefaultPluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
         Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(unitOfWork,
                                                                                          r,
                                                                                          responseObserver);
@@ -112,15 +111,17 @@ public class CommandDispatcher {
             interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
                                                                     other.getErrorCode(),
                                                                     other.getMessage()));
+            unitOfWork.compensate(other);
         } catch (Exception other) {
             logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
             interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
                                                                     ErrorCode.OTHER,
                                                                     other.getMessage()));
+            unitOfWork.compensate(other);
         }
     }
 
-    private void intercept(PluginUnitOfWork unitOfWork,
+    private void intercept(DefaultPluginUnitOfWork unitOfWork,
                            SerializedCommandResponse response,
                            Consumer<SerializedCommandResponse> responseObserver) {
         try {
@@ -130,11 +131,13 @@ public class CommandDispatcher {
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ex.getErrorCode(),
                                                          ex.getMessage()));
+            unitOfWork.compensate(ex);
         } catch (Exception other) {
             logger.warn("{}: Exception in response interceptor", unitOfWork.context(), other);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ErrorCode.OTHER,
                                                          other.getMessage()));
+            unitOfWork.compensate(other);
         }
     }
 

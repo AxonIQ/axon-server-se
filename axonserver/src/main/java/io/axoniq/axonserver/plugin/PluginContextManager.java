@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.plugin;
 
 import io.axoniq.axonserver.interceptor.PluginEnabledEvent;
+import io.axoniq.axonserver.interceptor.PluginRemovedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -129,10 +130,8 @@ public class PluginContextManager {
     @Transactional
     public void remove(ContextPluginStatus updatedStatus) {
         pluginStatusRepository.deleteById(updatedStatus.getId());
-        applicationEventPublisher.publishEvent(new PluginEnabledEvent(updatedStatus.getContext(),
-                                                                      updatedStatus.getPluginKey(),
-                                                                      null,
-                                                                      false));
+        applicationEventPublisher.publishEvent(new PluginRemovedEvent(updatedStatus.getContext(),
+                                                                      updatedStatus.getPluginKey()));
     }
 
     public List<ContextPluginStatus> findAllByContextIn(List<String> contextNames) {

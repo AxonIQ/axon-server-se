@@ -12,6 +12,7 @@ package io.axoniq.axonserver.plugin;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.interceptor.PluginEnabledEvent;
+import io.axoniq.axonserver.interceptor.PluginRemovedEvent;
 import io.axoniq.axonserver.rest.PluginPropertyGroup;
 import org.osgi.framework.Bundle;
 import org.springframework.context.event.EventListener;
@@ -19,7 +20,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -57,6 +58,14 @@ public class PluginConfigurationManager {
         }
     }
 
+    @EventListener
+    @Order(0)
+    public void on(PluginRemovedEvent removedEvent) {
+        Set<ConfigurationListener> configurationListeners = osgiController.getConfigurationListeners(removedEvent
+                                                                                                             .plugin());
+        configurationListeners.forEach(listener -> listener.removed(removedEvent.context()));
+    }
+
     /**
      * Updates the configuration for a context in a plugin.
      *
@@ -68,9 +77,25 @@ public class PluginConfigurationManager {
                                     Map<String, Map<String, Object>> properties) {
         Set<ConfigurationListener> configurationListeners = osgiController.getConfigurationListeners(bundleInfo);
 
-        Map<String, Map<String, Object>> nonNullProperties = properties == null ? Collections.emptyMap() : properties;
+        Map<String, Map<String, Object>> nonNullProperties =
+                properties == null ? defaultProperties(bundleInfo) : properties;
         configurationListeners.forEach(listener -> listener
                 .updated(context, nonNullProperties.get(listener.configuration().name())));
+    }
+
+    private Map<String, Map<String, Object>> defaultProperties(PluginKey bundleInfo) {
+        List<PluginPropertyGroup> groups = configuration(bundleInfo);
+        Map<String, Map<String, Object>> defaultProperties = new HashMap<>();
+        groups.forEach(group -> {
+            Map<String, Object> groupProperties = new HashMap<>();
+            group.getProperties().forEach(property -> {
+                if (property.getDefaultValue() != null) {
+                    groupProperties.put(property.getId(), property.getDefaultValue());
+                }
+            });
+            defaultProperties.put(group.getId(), groupProperties);
+        });
+        return defaultProperties;
     }
 
 

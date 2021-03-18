@@ -74,12 +74,13 @@ public class PluginConfigurationManagerTest {
         Map<String, Map<String, ?>> configurationPerContext = new HashMap<>();
 
         @Override
+        public void removed(String context) {
+            configurationPerContext.remove(context);
+        }
+
+        @Override
         public void updated(String context, Map<String, ?> configuration) {
-            if (configuration == null) {
-                configurationPerContext.remove(context);
-            } else {
-                configurationPerContext.put(context, configuration);
-            }
+            configurationPerContext.put(context, configuration);
         }
 
         @Override

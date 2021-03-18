@@ -93,16 +93,20 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
     @Override
     public QueryResponse queryResponse(QueryResponse response, PluginUnitOfWork unitOfWork) {
-        List<QueryResponseInterceptor> queryResponseInterceptors = pluginContextFilter.getServicesForContext(
-                QueryResponseInterceptor.class,
-                unitOfWork.context());
-        try {
-            for (QueryResponseInterceptor queryResponseInterceptor : queryResponseInterceptors) {
-                response = queryResponseInterceptor.queryResponse(response, unitOfWork);
+        List<ServiceWithInfo<QueryResponseInterceptor>> queryResponseInterceptors = pluginContextFilter
+                .getServicesWithInfoForContext(
+                        QueryResponseInterceptor.class,
+                        unitOfWork.context());
+        for (ServiceWithInfo<QueryResponseInterceptor> queryResponseInterceptor : queryResponseInterceptors) {
+            try {
+                response = queryResponseInterceptor.service().queryResponse(response, unitOfWork);
+            } catch (Exception ex) {
+                throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
+                                                     unitOfWork.context() +
+                                                             ": Exception thrown by the CommandRequestInterceptor in "
+                                                             + queryResponseInterceptor.pluginKey(),
+                                                     ex);
             }
-        } catch (Exception ex) {
-            logger.warn("{}: an exception occurred in a QueryResponseInterceptor",
-                        unitOfWork.context(), ex);
         }
         return response;
     }

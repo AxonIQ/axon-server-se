@@ -34,7 +34,6 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFa
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
@@ -252,7 +251,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
                                                  .whenComplete(((confirmation, throwable) -> {
                                                      if (throwable != null) {
-                                                         interceptorContext.compensate();
+                                                         interceptorContext.compensate(throwable);
                                                          completableFuture.completeExceptionally(throwable);
                                                      } else {
                                                          eventInterceptors.snapshotPostCommit(snapshotAfterInterceptors,
@@ -261,7 +260,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                      }
                                                  }));
         } catch (RequestRejectedException requestRejectedException) {
-            interceptorContext.compensate();
+            interceptorContext.compensate(requestRejectedException);
             completableFuture
                     .completeExceptionally(new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
                                                                           "Snapshot rejected by interceptor",
@@ -285,7 +284,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         Event event = Event.parseFrom(inputStream);
                         eventList.add(eventInterceptors.appendEvent(event, interceptorContext));
                     } catch (Exception e) {
-                        interceptorContext.compensate();
+                        interceptorContext.compensate(e);
                         responseObserver.onError(GrpcExceptionBuilder.build(e));
                     }
                 }
@@ -323,7 +322,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                 .thenRun(this::confirm)
                                 .exceptionally(this::error);
                     } catch (RequestRejectedException e) {
-                        interceptorContext.compensate();
+                        interceptorContext.compensate(e);
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
                                                                                 "Event rejected by interceptor",
                                                                                 e));
@@ -338,7 +337,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 } else {
                     logger.warn("{}: Error while storing events", context, exception);
                 }
-                interceptorContext.compensate();
+                interceptorContext.compensate(exception);
                 responseObserver.onError(exception);
                 return null;
             }
@@ -864,7 +863,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     private class InterceptorAwareEventDecorator implements EventDecorator {
 
-        final PluginUnitOfWork unitOfWork;
+        final DefaultPluginUnitOfWork unitOfWork;
 
         public InterceptorAwareEventDecorator(String context, Authentication authentication) {
             unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
@@ -872,10 +871,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         @Override
         public SerializedEvent decorateEvent(SerializedEvent serializedEvent) {
-            Event event = serializedEvent.isSnapshot() ?
-                    eventInterceptors.readSnapshot(serializedEvent.asEvent(), unitOfWork) :
-                    eventInterceptors.readEvent(serializedEvent.asEvent(), unitOfWork);
-            return eventDecorator.decorateEvent(new SerializedEvent(event));
+            try {
+                Event event = serializedEvent.isSnapshot() ?
+                        eventInterceptors.readSnapshot(serializedEvent.asEvent(), unitOfWork) :
+                        eventInterceptors.readEvent(serializedEvent.asEvent(), unitOfWork);
+                return eventDecorator.decorateEvent(new SerializedEvent(event));
+            } catch (MessagingPlatformException exception) {
+                unitOfWork.compensate(exception);
+                throw exception;
+            }
         }
 
         @Override
@@ -890,7 +894,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 return eventDecorator.decorateEventWithToken(new SerializedEventWithToken(eventWithToken.getToken(),
                                                                                           event)
                                                                      .asInputStream());
+            } catch (RuntimeException exception) {
+                unitOfWork.compensate(exception);
+                throw exception;
             } catch (IOException ioException) {
+                unitOfWork.compensate(ioException);
                 throw new RuntimeException(ioException);
             }
         }

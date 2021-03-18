@@ -67,14 +67,14 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
                                                                                               queryRequestInterceptor
                                                                                                       .pluginKey(),
                                                                                       requestRejectedException);
-                                             } catch (Exception requestRejectedException) {
+                                             } catch (Exception exception) {
                                                  throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                                                       unitOfWork.context()
                                                                                               + " : Exception thrown by the SubscriptionQueryRequestInterceptor in "
                                                                                               +
                                                                                               queryRequestInterceptor
                                                                                                       .pluginKey(),
-                                                                                      requestRejectedException);
+                                                                                      exception);
                                              }
                                          }
                                          return query;

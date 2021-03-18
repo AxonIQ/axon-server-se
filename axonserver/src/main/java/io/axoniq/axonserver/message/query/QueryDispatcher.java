@@ -24,7 +24,6 @@ import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,14 +170,13 @@ public class QueryDispatcher {
     public void query(SerializedQuery serializedQuery, Authentication principal,
                       Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
-        PluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(serializedQuery.context(),
-                                                                  principal);
+        DefaultPluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(serializedQuery.context(),
+                                                                         principal);
 
         Consumer<QueryResponse> interceptedCallback = r -> intercept(unitOfWork, r, callback);
         try {
-            serializedQuery = queryInterceptors.queryRequest(serializedQuery, unitOfWork);
-
-            SerializedQuery serializedQuery2 = serializedQuery;
+            SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(serializedQuery, unitOfWork);
+            ;
             QueryRequest query = serializedQuery2.query();
 
             long timeout =
@@ -234,6 +232,7 @@ public class QueryDispatcher {
                                                                                             .getMessage()))
                                                     .build());
             onCompleted.accept("Rejected");
+            unitOfWork.compensate(messagingPlatformException);
         } catch (Exception otherException) {
             logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
                         serializedQuery.query().getQuery(), otherException);
@@ -248,10 +247,11 @@ public class QueryDispatcher {
                                                                                                          .getName())))
                                                     .build());
             onCompleted.accept("Failed");
+            unitOfWork.compensate(otherException);
         }
     }
 
-    private void intercept(PluginUnitOfWork unitOfWork, QueryResponse response,
+    private void intercept(DefaultPluginUnitOfWork unitOfWork, QueryResponse response,
                            Consumer<QueryResponse> callback) {
         try {
             callback.accept(queryInterceptors.queryResponse(response, unitOfWork));
@@ -263,6 +263,7 @@ public class QueryDispatcher {
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))
                                          .build());
+            unitOfWork.compensate(ex);
         }
     }
 

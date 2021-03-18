@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.logging;
 
+import io.axoniq.axonserver.interceptor.PluginRemovedEvent;
 import io.axoniq.axonserver.plugin.PluginEvent;
 import io.axoniq.axonserver.interceptor.PluginEnabledEvent;
 import org.slf4j.Logger;
@@ -25,15 +26,21 @@ public class PluginEventsLogger {
     private final Logger logger = LoggerFactory.getLogger(PluginEventsLogger.class);
 
     @EventListener
-    public void on(PluginEnabledEvent extensionEnabled) {
-        logger.info("{}: Extension {} updated for context, status = {}", extensionEnabled.context(),
-                    extensionEnabled.plugin(),
-                    extensionEnabled.enabled() ? "Enabled" : "Disabled");
+    public void on(PluginEnabledEvent pluginEnabledEvent) {
+        logger.info("{}: Plugin {} updated for context, status = {}", pluginEnabledEvent.context(),
+                    pluginEnabledEvent.plugin(),
+                    pluginEnabledEvent.enabled() ? "Enabled" : "Disabled");
+    }
+
+    @EventListener
+    public void on(PluginRemovedEvent pluginRemovedEvent) {
+        logger.info("{}: Plugin {} removed for context", pluginRemovedEvent.context(),
+                    pluginRemovedEvent.plugin());
     }
 
     @EventListener
     public void on(PluginEvent statusChanged) {
-        logger.info("Extension {} updated, status = {}",
+        logger.info("Plugin {} updated, status = {}",
                     statusChanged.getPlugin(),
                     statusChanged.getStatus());
     }

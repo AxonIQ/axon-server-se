@@ -109,6 +109,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         } catch (Exception e) {
             logger.warn("{}: Exception in consuming SubscriptionQueryRequest", context, e);
             errorHandler.accept(e);
+            unitOfWork.compensate(e);
         }
     }
 
@@ -150,7 +151,9 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
             try {
                 delegate.onNext(subscriptionQueryInterceptors.subscriptionQueryResponse(t, unitOfWork));
             } catch (Exception ex) {
+                logger.warn("{}: Failure while sending subscription query response", unitOfWork.context(), ex);
                 errorHandler.accept(ex);
+                unitOfWork.compensate(ex);
             }
         }
 

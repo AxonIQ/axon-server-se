@@ -310,7 +310,7 @@ public class LocalEventStoreTest {
             if (failAppend) {
                 throw new RuntimeException("appendEvent");
             }
-            unitOfWork.onFailure(e -> compensations.add("Compensate Append Event"));
+            unitOfWork.onFailure((t, e) -> compensations.add("Compensate Append Event"));
             appendEvent++;
             return event;
         }
@@ -320,7 +320,7 @@ public class LocalEventStoreTest {
             if (failAppend) {
                 throw new RuntimeException("appendSnapshot");
             }
-            unitOfWork.onFailure(e -> compensations.add("Compensate Append Snapshot"));
+            unitOfWork.onFailure((t, e) -> compensations.add("Compensate Append Snapshot"));
             appendSnapshot++;
             return snapshot;
         }
@@ -330,7 +330,7 @@ public class LocalEventStoreTest {
             if (failPreCommit) {
                 throw new RuntimeException("eventsPreCommit");
             }
-            unitOfWork.onFailure(e -> compensations.add("Compensate Events Pre Commit"));
+            unitOfWork.onFailure((t, e) -> compensations.add("Compensate Events Pre Commit"));
             eventsPreCommit++;
         }
 
