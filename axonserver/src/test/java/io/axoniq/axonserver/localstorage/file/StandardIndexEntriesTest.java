@@ -4,7 +4,6 @@ package io.axoniq.axonserver.localstorage.file;
 import org.junit.*;
 
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,8 +22,7 @@ public class StandardIndexEntriesTest {
 
     @Test
     public void testRangeDuringWriting() throws InterruptedException {
-        LinkedList<Integer> list = new LinkedList<>();
-        StandardIndexEntries testSubject = new StandardIndexEntries(0, list);
+        StandardIndexEntries testSubject = new StandardIndexEntries(0);
         AtomicBoolean running = new AtomicBoolean(true);
         AtomicInteger counter = new AtomicInteger(0);
         CountDownLatch started = new CountDownLatch(1);
@@ -47,7 +45,6 @@ public class StandardIndexEntriesTest {
                 assertEquals(expectedPosition, position);
                 expectedPosition = expectedPosition + 1;
             }
-            System.out.println(expectedPosition);
         }
         running.set(false);
     }
@@ -67,5 +64,12 @@ public class StandardIndexEntriesTest {
                    System.currentTimeMillis() - before < 250);
         Assert.assertEquals(1998, (int) standardIndexEntries.positions().get(1998));
         Assert.assertEquals(4000, (int) standardIndexEntries.positions().get(4000));
+    }
+
+    @Test
+    public void range() {
+        StandardIndexEntries standardIndexEntries = new StandardIndexEntries(10, new Integer[]{0, 1, 2, 3, 4, 5, 6});
+        IndexEntries subset = standardIndexEntries.range(11, 14, false);
+        assertEquals(3, subset.size());
     }
 }
