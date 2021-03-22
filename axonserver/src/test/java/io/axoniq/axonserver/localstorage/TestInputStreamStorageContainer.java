@@ -57,7 +57,7 @@ public class TestInputStreamStorageContainer {
         embeddedDBProperties.getSnapshot().setSegmentSize(512 * 1024L);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-        doNothing().when(fileSystemMonitor).registerPath(any());
+        doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
         EventStoreFactory eventStoreFactory = new StandardEventStoreFactory(embeddedDBProperties,
                                                                             new DefaultEventTransformerFactory(),

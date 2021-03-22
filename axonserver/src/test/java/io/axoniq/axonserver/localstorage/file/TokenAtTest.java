@@ -59,7 +59,7 @@ public class TokenAtTest {
                                                                               storageProperties,
                                                                               meterFactory);
 
-        doNothing().when(fileSystemMonitor).registerPath(any());
+        doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
         testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
                                             indexManager,

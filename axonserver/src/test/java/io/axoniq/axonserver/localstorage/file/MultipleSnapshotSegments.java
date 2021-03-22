@@ -39,7 +39,7 @@ public class MultipleSnapshotSegments {
     public void init() {
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-        doNothing().when(fileSystemMonitor).registerPath(any());
+        doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
         StorageProperties storageProperties = new StorageProperties(new SystemInfoProvider() {
             @Override

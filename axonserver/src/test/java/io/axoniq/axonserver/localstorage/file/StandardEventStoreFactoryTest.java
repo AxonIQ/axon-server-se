@@ -69,7 +69,7 @@ public class StandardEventStoreFactoryTest {
         embeddedDBProperties.getSnapshot().setUseMmapIndex(false);
         embeddedDBProperties.getSnapshot().setForceCleanMmapIndex(true);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        doNothing().when(fileSystemMonitor).registerPath(any());
+        doNothing().when(fileSystemMonitor).registerPath(any(), any());
         testSubject = new StandardEventStoreFactory(embeddedDBProperties,
                                                     new DefaultEventTransformerFactory(),
                                                     new DefaultStorageTransactionManagerFactory(), meterFactory, fileSystemMonitor);
