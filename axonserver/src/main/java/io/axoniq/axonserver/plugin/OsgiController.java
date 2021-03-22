@@ -115,7 +115,7 @@ public class OsgiController implements PluginServiceProvider {
                 }
             });
         } catch (Exception ex) {
-            logger.error("OSGi Failed to Start", ex);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "OSGi Failed to Start", ex);
         }
     }
 

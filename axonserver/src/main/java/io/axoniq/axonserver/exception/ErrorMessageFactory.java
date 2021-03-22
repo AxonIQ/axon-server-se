@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.exception;
 
 import io.axoniq.axonserver.grpc.ErrorMessage;
+import io.axoniq.axonserver.util.StringUtils;
 
 /**
  * Creates error messages.
@@ -22,6 +23,9 @@ public class ErrorMessageFactory {
     }
 
     public static ErrorMessage build(String message, String location) {
-        return ErrorMessage.newBuilder().setLocation(location).setMessage(message).build();
+        return ErrorMessage.newBuilder()
+                           .setLocation(location)
+                           .setMessage(StringUtils.getOrDefault(message, "null"))
+                           .build();
     }
 }

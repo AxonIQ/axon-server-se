@@ -48,7 +48,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -113,6 +112,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long lastSequence,
                                                     long minToken) {
         logger.debug("Reading index entries for aggregate {} started.", aggregateId);
+        long startTime = System.currentTimeMillis();
         //Map<segment, all positions in that segment>
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequence,
@@ -125,21 +125,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 .stream()
                 .map(e -> eventsForPositions(e.getKey(), e.getValue().positions()))
                 .collect(Collectors.toList());
-        final String subscription_time = "SUBSCRIPTION_TIME";
         return Flux.concat(fluxList)
                    .doOnEach(signal -> {
-                       if (signal.isOnSubscribe()) {
-                           AtomicLong subscriptionTime = signal.getContextView().get(subscription_time);
-                           subscriptionTime.set(System.currentTimeMillis());
-                       } else if (signal.isOnComplete()) {
-                           AtomicLong subscriptionTime = signal.getContextView().get(subscription_time);
-                           long readTime = System.currentTimeMillis() - subscriptionTime.get();
+                       if (signal.isOnComplete()) {
+                           long readTime = System.currentTimeMillis() - startTime;
                            aggregateReadTimer.record(readTime, TimeUnit.MILLISECONDS);
                        }
                    })
                    .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence)
-                   .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence) //remember: last sequence excluded
-                   .contextWrite(ctx -> ctx.put(subscription_time, new AtomicLong()));
+                   .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence); //remember: last sequence excluded
     }
 
     private Flux<SerializedEvent> eventsForPositions(long segment, List<Integer> positions) {
