@@ -48,7 +48,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
             try {
                 Optional<EventSource> optional = eventSourceFactory.create();
                 if (!optional.isPresent()) {
-                    sink.complete();
+                    sink.error(new RuntimeException("Impossible to access event source!"));
                     return;
                 }
                 eventSource = optional.get();
@@ -61,10 +61,14 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
             sink.onRequest(requested -> {
                 int count = 0;
                 while (count < requested && nextPositionIndex.get() < positions.size()) {
-                    logger.trace("Reading event from EventSource in the thread {}", Thread.currentThread().getName());
+
                     try {
                         SerializedEvent event = eventSource.readEvent(positions.get(nextPositionIndex
                                                                                             .getAndIncrement()));
+                        logger.trace("Reading from EventSource the event with sequence number {} for aggregate {}",
+                                event.getAggregateSequenceNumber(),
+                                event.getAggregateIdentifier());
+
                         count++;
                         sink.next(event);
                     } catch (Exception e) {

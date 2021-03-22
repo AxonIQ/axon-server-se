@@ -13,14 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.EventType;
-import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.QueryOptions;
-import io.axoniq.axonserver.localstorage.Registration;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
+import io.axoniq.axonserver.localstorage.*;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Tags;
@@ -31,19 +24,7 @@ import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
@@ -139,7 +120,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Flux<SerializedEvent> eventsForPositions(long segment, List<Integer> positions) {
         return (!containsSegment(segment) && next != null) ?
                 next.eventsForPositions(segment, positions) :
-                new EventSourceFlux(positions, () -> getEventSource(segment)).get();
+                new EventSourceFlux(positions, () -> eventSource(segment)).get();
     }
 
     /**
@@ -583,6 +564,18 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
      * @return the event source or Optional.empty() if segment not managed by this handler
      */
     public abstract Optional<EventSource> getEventSource(long segment);
+
+    //Retrieves event source from first available layer that is responsible for given segment
+    private Optional<EventSource> eventSource(long segment) {
+        Optional<EventSource> eventSource = getEventSource(segment);
+        if (eventSource.isPresent()) {
+            return eventSource;
+        }
+        if (next == null) {
+            return Optional.empty();
+        }
+        return next.eventSource(segment);
+    }
 
     /**
      * Get all segments
