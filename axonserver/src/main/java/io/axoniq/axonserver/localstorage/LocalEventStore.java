@@ -254,9 +254,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                          interceptorContext.compensate(throwable);
                                                          completableFuture.completeExceptionally(throwable);
                                                      } else {
-                                                         eventInterceptors.snapshotPostCommit(snapshotAfterInterceptors,
-                                                                                              interceptorContext);
-                                                         completableFuture.complete(confirmation);
+                                                         try {
+                                                             eventInterceptors.snapshotPostCommit(
+                                                                     snapshotAfterInterceptors,
+                                                                     interceptorContext);
+                                                             completableFuture.complete(confirmation);
+                                                         } catch (Exception ex) {
+                                                             interceptorContext.compensate(ex);
+                                                             completableFuture.completeExceptionally(ex);
+                                                         }
                                                      }
                                                  }));
         } catch (RequestRejectedException requestRejectedException) {

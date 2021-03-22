@@ -11,6 +11,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.plugin.PostCommitHookException;
 import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
@@ -42,6 +43,9 @@ public class GrpcExceptionBuilder {
         if (throwable instanceof MessagingPlatformException) {
             MessagingPlatformException eventStoreException = (MessagingPlatformException) throwable;
             return build(eventStoreException.getErrorCode(), eventStoreException.getMessage());
+        }
+        if (throwable instanceof PostCommitHookException) {
+            return build(ErrorCode.POST_COMMIT_HOOK_EXCEPTION, throwable.getMessage());
         }
         logger.debug("Internal Server Error found", throwable);
         return build(ErrorCode.OTHER, throwable.getMessage());

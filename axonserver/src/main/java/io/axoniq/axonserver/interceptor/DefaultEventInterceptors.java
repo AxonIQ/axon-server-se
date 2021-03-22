@@ -11,7 +11,10 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.PostCommitHookException;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.plugin.ServiceWithInfo;
 import io.axoniq.axonserver.plugin.hook.PostCommitEventsHook;
@@ -21,8 +24,6 @@ import io.axoniq.axonserver.plugin.interceptor.AppendEventInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.AppendSnapshotInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.ReadEventInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.ReadSnapshotInterceptor;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -131,8 +132,9 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 try {
                     postCommitEventsHook.service().onPostCommitEvent(immutableList, unitOfWork);
                 } catch (Exception ex) {
-                    logger.warn("{} : Exception thrown by the PostCommitEventsHook in {}",
-                                unitOfWork.context(), postCommitEventsHook.pluginKey(), ex);
+                    throw new PostCommitHookException(unitOfWork.context() +
+                                                              ": Exception thrown by the PostCommitEventsHook in "
+                                                              + postCommitEventsHook.pluginKey(), ex);
                 }
             }
         });
@@ -153,8 +155,9 @@ public class DefaultEventInterceptors implements EventInterceptors {
                 try {
                     postCommitSnapshotHook.service().onPostCommitSnapshot(snapshot, unitOfWork);
                 } catch (Exception ex) {
-                    logger.warn("{} : Exception thrown by the PostCommitSnapshotHook in {}",
-                                unitOfWork.context(), postCommitSnapshotHook.pluginKey(), ex);
+                    throw new PostCommitHookException(unitOfWork.context() +
+                                                              ": Exception thrown by the PostCommitSnapshotHook in "
+                                                              + postCommitSnapshotHook.pluginKey(), ex);
                 }
             }
         });
