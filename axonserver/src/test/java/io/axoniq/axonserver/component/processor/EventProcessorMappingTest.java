@@ -38,7 +38,6 @@ public class EventProcessorMappingTest {
     public void testTrackingMode() {
         EventProcessorInfo testProcessorInfo = EventProcessorInfo.newBuilder()
                                                                  .setMode(TRACKING_MODE)
-                                                                 .setIsStreamingProcessor(true)
                                                                  .build();
         ClientProcessor testProcessor = new FakeClientProcessor(CLIENT_ID, true, testProcessorInfo);
 

@@ -25,10 +25,12 @@ import java.util.function.BiFunction;
  */
 public class EventProcessorMapping implements BiFunction<String, Collection<ClientProcessor>, EventProcessor> {
 
+    private static final String TRACKING_EVENT_PROCESSOR_MODE = "Tracking";
+
     @Override
     public EventProcessor apply(String name, Collection<ClientProcessor> clientProcessors) {
         String mode = modeOf(clientProcessors);
-        if (isStreamingProcessor(clientProcessors)) {
+        if (TRACKING_EVENT_PROCESSOR_MODE.equals(mode) || isStreamingProcessor(clientProcessors)) {
             return new StreamingProcessor(name, mode, clientProcessors);
         } else {
             return new GenericProcessor(name, mode, clientProcessors);
