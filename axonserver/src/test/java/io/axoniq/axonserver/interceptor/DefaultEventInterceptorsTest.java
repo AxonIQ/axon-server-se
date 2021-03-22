@@ -13,6 +13,7 @@ import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.plugin.PluginKey;
 import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.PostCommitHookException;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.plugin.ServiceWithInfo;
 import io.axoniq.axonserver.plugin.hook.PostCommitEventsHook;
@@ -149,9 +150,14 @@ public class DefaultEventInterceptorsTest {
 
         TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        testSubject.eventsPostCommit(asList(event("aggrId1", 0),
-                                            event("aggrId1", 1)),
-                                     unitOfWork);
+        try {
+            testSubject.eventsPostCommit(asList(event("aggrId1", 0),
+                                                event("aggrId1", 1)),
+                                         unitOfWork);
+            fail("Expected PostCommitHookException");
+        } catch (PostCommitHookException ex) {
+            // expected
+        }
     }
 
     @Test
@@ -162,7 +168,12 @@ public class DefaultEventInterceptorsTest {
 
         TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
+        try {
+            testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
+            fail("Expected PostCommitHookException");
+        } catch (PostCommitHookException ex) {
+            // expected
+        }
     }
 
     @Test
