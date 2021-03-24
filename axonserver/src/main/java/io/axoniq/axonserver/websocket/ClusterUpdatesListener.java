@@ -54,18 +54,14 @@ public class ClusterUpdatesListener {
 
     @EventListener
     public void on(TopologyEvents.TopologyBaseEvent clusterEvent) {
-        Sinks.EmitResult result;
-
-        while ((result = topologyBaseEventEmitterSink.tryEmitNext(clusterEvent)) == Sinks.EmitResult.FAIL_NON_SERIALIZED) {
+        while (topologyBaseEventEmitterSink.tryEmitNext(clusterEvent) == Sinks.EmitResult.FAIL_NON_SERIALIZED) {
             //busy wait
         }
     }
 
     @EventListener
     public void on(SubscriptionEvents.SubscriptionBaseEvent subscriptionEvent) {
-        Sinks.EmitResult result;
-
-        while ((result = subscriptionBaseEventEmitterSink.tryEmitNext(subscriptionEvent)) == Sinks.EmitResult.FAIL_NON_SERIALIZED) {
+        while (subscriptionBaseEventEmitterSink.tryEmitNext(subscriptionEvent) == Sinks.EmitResult.FAIL_NON_SERIALIZED) {
             //busy wait
         }
     }
