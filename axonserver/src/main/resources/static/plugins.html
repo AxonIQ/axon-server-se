@@ -37,8 +37,10 @@
                 }, methods: {
                     loadPlugins() {
                         axios.get("v1/plugins").then(response => {
-                            this.plugins = response.data;
-                            this.componentKey++;
+                            if (Array.isArray(response.data)) {
+                                this.plugins = response.data;
+                                this.componentKey++;
+                            }
                         });
                     },
                     selectPlugin(ext, context) {

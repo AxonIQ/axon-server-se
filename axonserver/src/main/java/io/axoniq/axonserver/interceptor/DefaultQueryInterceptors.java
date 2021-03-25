@@ -103,7 +103,7 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
             } catch (Exception ex) {
                 throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                      unitOfWork.context() +
-                                                             ": Exception thrown by the CommandRequestInterceptor in "
+                                                             ": Exception thrown by the QueryResponseInterceptor in "
                                                              + queryResponseInterceptor.pluginKey(),
                                                      ex);
             }
