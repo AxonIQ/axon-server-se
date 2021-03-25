@@ -505,12 +505,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        Stream<String> filenames = getSegments().stream()
-                                                .filter(s -> s > lastSegmentBackedUp)
-                                                .map(s -> storageProperties.dataFile(context, s).getAbsolutePath());
+        Stream<String> filenames = Stream.concat(getSegments().stream()
+                                                              .filter(s -> s > lastSegmentBackedUp)
+                                                              .map(s -> storageProperties.dataFile(context, s)
+                                                                                         .getAbsolutePath()),
+                                                 indexManager.getBackupFilenames(lastSegmentBackedUp));
 
         if (next == null) {
-            return Stream.concat(filenames, indexManager.getBackupFilenames(lastSegmentBackedUp));
+            return filenames;
         }
         return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
     }
