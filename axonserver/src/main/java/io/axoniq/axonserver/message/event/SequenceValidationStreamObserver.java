@@ -35,6 +35,7 @@ public class SequenceValidationStreamObserver extends CallStreamObserverDelegato
                                            event.getAggregateIdentifier(),
                                            event.getAggregateSequenceNumber(),
                                            prevEvent.getAggregateSequenceNumber() + 1);
+            logger.error(message);
             delegate().onError(new RuntimeException(message));
             throw new RuntimeException(message);
         }
