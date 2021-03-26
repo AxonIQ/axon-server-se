@@ -21,19 +21,21 @@ import java.util.function.Supplier;
 public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
 
     private static final Logger logger = LoggerFactory.getLogger(EventSourceFlux.class);
-    private final List<Integer> positions;
+    private final IndexEntries indexEntries;
     private final EventSourceFactory eventSourceFactory;
+    private final long segment;
 
     /**
      * Creates a new instance able to read events from the specified position using the provided {@link
      * EventSourceFactory}.
      *
-     * @param positions          the list of the positions of the interesting events in the segment.
+     * @param indexEntries       the list of the positions of the interesting events in the segment.
      * @param eventSourceFactory the factory used to open a new {@link EventSource} to access the segment file.
      */
-    public EventSourceFlux(List<Integer> positions, EventSourceFactory eventSourceFactory) {
-        this.positions = positions;
+    public EventSourceFlux(IndexEntries indexEntries, EventSourceFactory eventSourceFactory, long segment) {
+        this.indexEntries = indexEntries;
         this.eventSourceFactory = eventSourceFactory;
+        this.segment = segment;
     }
 
     /**
@@ -48,7 +50,8 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
             try {
                 Optional<EventSource> optional = eventSourceFactory.create();
                 if (!optional.isPresent()) {
-                    sink.error(new RuntimeException("Impossible to access event source!"));
+                    logger.warn("Event source not found for segment {}",segment);
+                    sink.error(new EventSourceNotFoundException());
                     return;
                 }
                 eventSource = optional.get();
@@ -60,14 +63,15 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
 
             sink.onRequest(requested -> {
                 int count = 0;
-                while (count < requested && nextPositionIndex.get() < positions.size()) {
+                List<Integer> positions = indexEntries.positions();
+                while (count < requested && nextPositionIndex.get() < indexEntries.size()) {
 
                     try {
                         SerializedEvent event = eventSource.readEvent(positions.get(nextPositionIndex
                                                                                             .getAndIncrement()));
                         logger.trace("Reading from EventSource the event with sequence number {} for aggregate {}",
-                                event.getAggregateSequenceNumber(),
-                                event.getAggregateIdentifier());
+                                     event.getAggregateSequenceNumber(),
+                                     event.getAggregateIdentifier());
 
                         count++;
                         sink.next(event);
@@ -77,7 +81,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
                     }
                 }
 
-                if (nextPositionIndex.get() >= positions.size()) {
+                if (nextPositionIndex.get() >= indexEntries.size()) {
                     sink.complete();
                 }
             });

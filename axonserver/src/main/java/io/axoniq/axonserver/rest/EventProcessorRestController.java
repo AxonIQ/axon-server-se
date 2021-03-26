@@ -9,21 +9,11 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
-import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
-import io.axoniq.axonserver.component.processor.EventProcessor;
-import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
-import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.component.processor.*;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
-import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
@@ -44,7 +34,6 @@ public class EventProcessorRestController {
 
     private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
-    private final ClientIdRegistry clientIdRegistry;
 
     /**
      * Instantiate a REST endpoint to open up several Event Processor operations, like start, stop and segment release,
@@ -54,14 +43,11 @@ public class EventProcessorRestController {
      *                              events for the provided endpoints
      * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
      *                              instances containing the known status of all the Event Processors
-     * @param clientIdRegistry
      */
     public EventProcessorRestController(ProcessorEventPublisher processorEventsSource,
-                                        ClientProcessors eventProcessors,
-                                        ClientIdRegistry clientIdRegistry) {
+                                        ClientProcessors eventProcessors) {
         this.processorEventsSource = processorEventsSource;
         this.eventProcessors = eventProcessors;
-        this.clientIdRegistry = clientIdRegistry;
     }
 
     @GetMapping("components/{component}/processors")
