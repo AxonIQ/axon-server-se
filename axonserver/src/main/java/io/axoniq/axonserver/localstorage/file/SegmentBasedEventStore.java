@@ -104,7 +104,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         List<Flux<SerializedEvent>> fluxList = positionInfos
                 .entrySet()
                 .stream()
-                .map(e -> eventsForPositions(e.getKey(), e.getValue().positions()))
+                .map(e -> eventsForPositions(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
         return Flux.concat(fluxList)
                    .doOnEach(signal -> {
@@ -117,10 +117,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence); //remember: last sequence excluded
     }
 
-    private Flux<SerializedEvent> eventsForPositions(long segment, List<Integer> positions) {
+    private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries) {
         return (!containsSegment(segment) && next != null) ?
-                next.eventsForPositions(segment, positions) :
-                new EventSourceFlux(positions, () -> eventSource(segment)).get();
+                next.eventsForPositions(segment, indexEntries) :
+                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment).get();
     }
 
     /**

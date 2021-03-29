@@ -3,9 +3,9 @@ package io.axoniq.axonserver.message.event;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.CallStreamObserver;
-import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import static org.mockito.Mockito.*;
 
@@ -68,7 +68,7 @@ public class SequenceValidationStreamObserverTest {
         verify(delegateMock).onError(throwable);
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testInvalidSequence() {
         SerializedEvent event1 = serializedEvent(0);
         SerializedEvent event2 = serializedEvent(1);
@@ -81,16 +81,16 @@ public class SequenceValidationStreamObserverTest {
         verify(delegateMock).onError(any(RuntimeException.class));
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testRepeatedSequence() {
-        SerializedEvent event1 = serializedEvent(0);
-        SerializedEvent event2 = serializedEvent(1);
-        testSubject.onNext(event1);
-        testSubject.onNext(event2);
-        testSubject.onNext(event2);
-        verify(delegateMock).onNext(event1);
-        verify(delegateMock).onNext(event2);
-        verify(delegateMock).onError(any(RuntimeException.class));
+            SerializedEvent event1 = serializedEvent(0);
+            SerializedEvent event2 = serializedEvent(1);
+            testSubject.onNext(event1);
+            testSubject.onNext(event2);
+            testSubject.onNext(event2);
+            verify(delegateMock).onNext(event1);
+            verify(delegateMock).onNext(event2);
+            verify(delegateMock).onError(any(RuntimeException.class));
     }
 
     @NotNull

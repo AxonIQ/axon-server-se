@@ -5,6 +5,7 @@ import io.grpc.stub.StreamObserver;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Fake implementation of {@link StreamObserver} useful for testing.
@@ -16,6 +17,9 @@ public class FakeStreamObserver<M> extends CallStreamObserver<M> {
     private List<M> values = new LinkedList<>();
     private List<Throwable> errors = new LinkedList<>();
     private int completedCount = 0;
+    private final AtomicBoolean isReady = new AtomicBoolean(false);
+
+    private Runnable onReadyHandler = () -> {};
 
     @Override
     public void onNext(M value) {
@@ -44,14 +48,23 @@ public class FakeStreamObserver<M> extends CallStreamObserver<M> {
         return completedCount;
     }
 
+    public void setIsReady(boolean value) {
+        boolean oldValue = isReady.get();
+        isReady.set(value);
+
+        if (value && !oldValue) {
+            onReadyHandler.run();
+        }
+    }
+
     @Override
     public boolean isReady() {
-        return false;
+        return isReady.get();
     }
 
     @Override
     public void setOnReadyHandler(Runnable runnable) {
-
+        this.onReadyHandler = runnable;
     }
 
     @Override
