@@ -45,7 +45,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      */
     @Override
     public Flux<SerializedEvent> get() {
-        return Flux.create(sink -> {
+        return Flux.push(sink -> {
             EventSource eventSource;
             try {
                 Optional<EventSource> optional = eventSourceFactory.create();
