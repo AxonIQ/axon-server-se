@@ -122,7 +122,7 @@ public class DefaultExecutionContext implements ExecutionContext {
      * @param value the value
      */
     @Override
-    public void addDetails(String key, Object value) {
+    public void putAttribute(String key, Object value) {
         details.put(key, value);
     }
 
@@ -133,7 +133,7 @@ public class DefaultExecutionContext implements ExecutionContext {
      * @return the value
      */
     @Override
-    public Object getDetails(String key) {
+    public Object getAttribute(String key) {
         return details.get(key);
     }
 }
