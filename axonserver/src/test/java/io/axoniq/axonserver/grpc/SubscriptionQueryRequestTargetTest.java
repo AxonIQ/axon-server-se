@@ -16,7 +16,7 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.StatusRuntimeException;
 import org.junit.*;
@@ -101,7 +101,7 @@ public class SubscriptionQueryRequestTargetTest {
 
         @Override
         public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                                 PluginUnitOfWork unitOfWork) {
+                                                                 ExecutionContext executionContext) {
             if (rejectRequest) {
                 throw new MessagingPlatformException(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR, "Rejected");
             }
@@ -109,15 +109,15 @@ public class SubscriptionQueryRequestTargetTest {
                 throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR, "Failed");
             }
             subscriptionQueryRequestCount++;
-            unitOfWork.addDetails("RequestId", UUID.randomUUID());
+            executionContext.putAttribute("RequestId", UUID.randomUUID());
             return subscriptionQueryRequest;
         }
 
         @Override
         public SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
-                                                                   PluginUnitOfWork unitOfWork) {
+                                                                   ExecutionContext executionContext) {
             subscriptionQueryResponseCount++;
-            lastUUID = unitOfWork.getDetails("RequestId");
+            lastUUID = executionContext.getAttribute("RequestId");
             return subscriptionQueryResponse;
         }
     }

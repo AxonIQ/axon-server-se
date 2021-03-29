@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 
@@ -26,20 +26,20 @@ public interface CommandInterceptors {
      * may change the content of the command.
      *
      * @param serializedCommand the command to intercept
-     * @param unitOfWork        the unit of work for the command
+     * @param executionContext  the execution context for the command
      * @return the command after executing the interceptors
      */
     SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                     PluginUnitOfWork unitOfWork);
+                                     ExecutionContext executionContext);
 
     /**
      * Invokes all {@link io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor} instances.
      * Interceptors may change the content of the response.
      *
      * @param serializedResponse the response to intercept
-     * @param unitOfWork         the unit of work for the command
+     * @param unitOfWork         the execution context for the command
      * @return the response after executing the interceptors
      */
     SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
-                                              PluginUnitOfWork unitOfWork);
+                                              ExecutionContext unitOfWork);
 }

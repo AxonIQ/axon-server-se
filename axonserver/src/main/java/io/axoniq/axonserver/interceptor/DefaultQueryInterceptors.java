@@ -11,7 +11,7 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.plugin.ServiceWithInfo;
 import io.axoniq.axonserver.plugin.interceptor.QueryRequestInterceptor;
@@ -49,15 +49,15 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
 
 
     @Override
-    public SerializedQuery queryRequest(SerializedQuery serializedQuery, PluginUnitOfWork unitOfWork) {
+    public SerializedQuery queryRequest(SerializedQuery serializedQuery, ExecutionContext executionContext) {
         List<ServiceWithInfo<QueryRequestInterceptor>> queryRequestInterceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         QueryRequestInterceptor.class,
-                        unitOfWork.context());
+                        executionContext.contextName());
         if (queryRequestInterceptors.isEmpty()) {
             return serializedQuery;
         }
-        QueryRequest intercepted = interceptorTimer.time(unitOfWork.context(),
+        QueryRequest intercepted = interceptorTimer.time(executionContext.contextName(),
                                                          "QueryRequestInterceptor",
                                                          () -> {
                                                              QueryRequest query = serializedQuery.query();
@@ -65,11 +65,11 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
                                                                  try {
                                                                      query = queryRequestInterceptor.service()
                                                                                                     .queryRequest(query,
-                                                                                                                  unitOfWork);
+                                                                                                                  executionContext);
                                                                  } catch (RequestRejectedException requestRejectedException) {
                                                                      throw new MessagingPlatformException(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR,
-                                                                                                          unitOfWork
-                                                                                                                  .context()
+                                                                                                          executionContext
+                                                                                                                  .contextName()
                                                                                                                   +
                                                                                                                   ": query rejected by the QueryRequestInterceptor in "
                                                                                                                   + queryRequestInterceptor
@@ -77,8 +77,8 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
                                                                                                           requestRejectedException);
                                                                  } catch (Exception interceptorException) {
                                                                      throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                                                                          unitOfWork
-                                                                                                                  .context()
+                                                                                                          executionContext
+                                                                                                                  .contextName()
                                                                                                                   +
                                                                                                                   ": Exception thrown by the QueryRequestInterceptor in "
                                                                                                                   + queryRequestInterceptor
@@ -92,17 +92,17 @@ public class DefaultQueryInterceptors implements QueryInterceptors {
     }
 
     @Override
-    public QueryResponse queryResponse(QueryResponse response, PluginUnitOfWork unitOfWork) {
+    public QueryResponse queryResponse(QueryResponse response, ExecutionContext executionContext) {
         List<ServiceWithInfo<QueryResponseInterceptor>> queryResponseInterceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         QueryResponseInterceptor.class,
-                        unitOfWork.context());
+                        executionContext.contextName());
         for (ServiceWithInfo<QueryResponseInterceptor> queryResponseInterceptor : queryResponseInterceptors) {
             try {
-                response = queryResponseInterceptor.service().queryResponse(response, unitOfWork);
+                response = queryResponseInterceptor.service().queryResponse(response, executionContext);
             } catch (Exception ex) {
                 throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                     unitOfWork.context() +
+                                                     executionContext.contextName() +
                                                              ": Exception thrown by the QueryResponseInterceptor in "
                                                              + queryResponseInterceptor.pluginKey(),
                                                      ex);

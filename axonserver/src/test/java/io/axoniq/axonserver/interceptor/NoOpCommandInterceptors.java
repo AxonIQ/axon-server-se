@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 
@@ -20,13 +20,13 @@ public class NoOpCommandInterceptors implements CommandInterceptors {
 
     @Override
     public SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                            PluginUnitOfWork unitOfWork) {
+                                            ExecutionContext executionContext) {
         return serializedCommand;
     }
 
     @Override
     public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
-                                                     PluginUnitOfWork unitOfWork) {
+                                                     ExecutionContext unitOfWork) {
         return serializedResponse;
     }
 }

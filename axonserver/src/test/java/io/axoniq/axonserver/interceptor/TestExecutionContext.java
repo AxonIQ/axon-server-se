@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 
 import java.util.Map;
 import java.util.Set;
@@ -18,16 +18,16 @@ import java.util.function.BiConsumer;
 /**
  * @author Marc Gathier
  */
-public class TestPluginUnitOfWork implements PluginUnitOfWork {
+public class TestExecutionContext implements ExecutionContext {
 
     private final String context;
 
-    public TestPluginUnitOfWork(String context) {
+    public TestExecutionContext(String context) {
         this.context = context;
     }
 
     @Override
-    public String context() {
+    public String contextName() {
         return context;
     }
 
@@ -42,22 +42,22 @@ public class TestPluginUnitOfWork implements PluginUnitOfWork {
     }
 
     @Override
-    public Map<String, String> principalMetaData() {
+    public Map<String, String> principalTags() {
         return null;
     }
 
     @Override
-    public void addDetails(String key, Object value) {
+    public void putAttribute(String key, Object value) {
 
     }
 
     @Override
-    public Object getDetails(String key) {
+    public Object getAttribute(String key) {
         return null;
     }
 
     @Override
-    public void onFailure(BiConsumer<Throwable, PluginUnitOfWork> compensatingAction) {
+    public void onFailure(BiConsumer<Throwable, ExecutionContext> compensatingAction) {
 
     }
 }

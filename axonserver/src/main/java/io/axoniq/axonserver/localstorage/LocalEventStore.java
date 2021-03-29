@@ -27,7 +27,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
-import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
+import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
@@ -245,28 +245,28 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 return;
             }
         }
-        DefaultPluginUnitOfWork interceptorContext = new DefaultPluginUnitOfWork(context, authentication);
+        DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
         try {
-            Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, interceptorContext);
+            Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, executionContext);
             workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
                                                  .whenComplete(((confirmation, throwable) -> {
                                                      if (throwable != null) {
-                                                         interceptorContext.compensate(throwable);
+                                                         executionContext.compensate(throwable);
                                                          completableFuture.completeExceptionally(throwable);
                                                      } else {
                                                          try {
                                                              eventInterceptors.snapshotPostCommit(
                                                                      snapshotAfterInterceptors,
-                                                                     interceptorContext);
+                                                                     executionContext);
                                                              completableFuture.complete(confirmation);
                                                          } catch (Exception ex) {
-                                                             interceptorContext.compensate(ex);
+                                                             executionContext.compensate(ex);
                                                              completableFuture.completeExceptionally(ex);
                                                          }
                                                      }
                                                  }));
         } catch (RequestRejectedException requestRejectedException) {
-            interceptorContext.compensate(requestRejectedException);
+            executionContext.compensate(requestRejectedException);
             completableFuture
                     .completeExceptionally(new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
                                                                           "Snapshot rejected by interceptor",
@@ -278,7 +278,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    Authentication authentication,
                                                                    StreamObserver<Confirmation> responseObserver) {
-        DefaultPluginUnitOfWork interceptorContext = new DefaultPluginUnitOfWork(context, authentication);
+        DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
         return new StreamObserver<InputStream>() {
             private final List<Event> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
@@ -288,9 +288,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (checkMaxEventCount()) {
                     try {
                         Event event = Event.parseFrom(inputStream);
-                        eventList.add(eventInterceptors.appendEvent(event, interceptorContext));
+                        eventList.add(eventInterceptors.appendEvent(event, executionContext));
                     } catch (Exception e) {
-                        interceptorContext.compensate(e);
+                        executionContext.compensate(e);
                         closed.set(true);
                         responseObserver.onError(GrpcExceptionBuilder.build(e));
                     }
@@ -321,15 +321,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 }
                 runInDataWriterPool(() -> {
                     try {
-                        eventInterceptors.eventsPreCommit(eventList, interceptorContext);
+                        eventInterceptors.eventsPreCommit(eventList, executionContext);
                         workers(context)
                                 .eventWriteStorage
                                 .store(eventList)
-                                .thenAccept(r -> eventInterceptors.eventsPostCommit(eventList, interceptorContext))
+                                .thenAccept(r -> eventInterceptors.eventsPostCommit(eventList, executionContext))
                                 .thenRun(this::confirm)
                                 .exceptionally(this::error);
                     } catch (RequestRejectedException e) {
-                        interceptorContext.compensate(e);
+                        executionContext.compensate(e);
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
                                                                                 "Event rejected by interceptor",
                                                                                 e));
@@ -344,7 +344,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 } else {
                     logger.warn("{}: Error while storing events", context, exception);
                 }
-                interceptorContext.compensate(exception);
+                executionContext.compensate(exception);
                 responseObserver.onError(exception);
                 return null;
             }
@@ -870,10 +870,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     private class InterceptorAwareEventDecorator implements EventDecorator {
 
-        final DefaultPluginUnitOfWork unitOfWork;
+        final DefaultExecutionContext unitOfWork;
 
         public InterceptorAwareEventDecorator(String context, Authentication authentication) {
-            unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
+            unitOfWork = new DefaultExecutionContext(context, authentication);
         }
 
         @Override
@@ -891,7 +891,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         @Override
         public InputStream decorateEventWithToken(InputStream inputStream) {
-            if (eventInterceptors.noEventReadInterceptors(unitOfWork.context())) {
+            if (eventInterceptors.noEventReadInterceptors(unitOfWork.contextName())) {
                 return eventDecorator.decorateEventWithToken(inputStream);
             }
 
@@ -912,7 +912,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         @Override
         public EventWithToken decorateEventWithToken(EventWithToken event) {
-            if (eventInterceptors.noReadInterceptors(unitOfWork.context())) {
+            if (eventInterceptors.noReadInterceptors(unitOfWork.contextName())) {
                 return eventDecorator.decorateEventWithToken(event);
             }
 

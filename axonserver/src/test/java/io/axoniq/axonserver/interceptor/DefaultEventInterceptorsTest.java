@@ -12,7 +12,7 @@ package io.axoniq.axonserver.interceptor;
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.plugin.PluginKey;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.plugin.PostCommitHookException;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.plugin.ServiceWithInfo;
@@ -59,7 +59,7 @@ public class DefaultEventInterceptorsTest {
 
     @Test
     public void appendEvent() {
-        pluginServiceProvider.add(new ServiceWithInfo<>((AppendEventInterceptor) (event, unitOfWork) ->
+        pluginServiceProvider.add(new ServiceWithInfo<>((AppendEventInterceptor) (event, executionContext) ->
                 Event.newBuilder()
                      .setMessageIdentifier(UUID.randomUUID().toString())
                      .setAggregateIdentifier(UUID.randomUUID().toString())
@@ -70,12 +70,12 @@ public class DefaultEventInterceptorsTest {
 
         Event orgEvent = event("aggregate1", 0);
 
-        Event intercepted = testSubject.appendEvent(orgEvent, new TestPluginUnitOfWork("default"));
+        Event intercepted = testSubject.appendEvent(orgEvent, new TestExecutionContext("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        intercepted = testSubject.appendEvent(orgEvent, new TestPluginUnitOfWork("default"));
+        intercepted = testSubject.appendEvent(orgEvent, new TestExecutionContext("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());
@@ -91,16 +91,16 @@ public class DefaultEventInterceptorsTest {
         pluginServiceProvider.add(new ServiceWithInfo<>((PreCommitEventsHook) (events, context) ->
                 hookCalled.incrementAndGet(), PLUGIN_KEY));
 
-        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        TestExecutionContext executionContext = new TestExecutionContext("default");
         testSubject.eventsPreCommit(asList(event("aggrId1", 0),
                                            event("aggrId1", 1)),
-                                    unitOfWork);
+                                    executionContext);
         assertEquals(0, hookCalled.get());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         testSubject.eventsPreCommit(asList(event("aggrId1", 0),
                                            event("aggrId1", 1)),
-                                    unitOfWork);
+                                    executionContext);
         assertEquals(1, hookCalled.get());
     }
 
@@ -112,12 +112,12 @@ public class DefaultEventInterceptorsTest {
             hookCalled.incrementAndGet();
         }, PLUGIN_KEY));
 
-        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        TestExecutionContext executionContext = new TestExecutionContext("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         try {
             testSubject.eventsPreCommit(asList(event("aggrId1", 0),
                                                event("aggrId1", 1)),
-                                        unitOfWork);
+                                        executionContext);
             fail("pre commit fails when hook tries to change event list");
         } catch (MessagingPlatformException messagingPlatformException) {
         }
@@ -129,16 +129,16 @@ public class DefaultEventInterceptorsTest {
         pluginServiceProvider.add(new ServiceWithInfo<>((PostCommitEventsHook) (events, context) ->
                 hookCalled.incrementAndGet(), PLUGIN_KEY));
 
-        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        TestExecutionContext executionContext = new TestExecutionContext("default");
         testSubject.eventsPostCommit(asList(event("aggrId1", 0),
                                             event("aggrId1", 1)),
-                                     unitOfWork);
+                                     executionContext);
         assertEquals(0, hookCalled.get());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         testSubject.eventsPostCommit(asList(event("aggrId1", 0),
                                             event("aggrId1", 1)),
-                                     unitOfWork);
+                                     executionContext);
         assertEquals(1, hookCalled.get());
     }
 
@@ -148,12 +148,12 @@ public class DefaultEventInterceptorsTest {
             throw new RuntimeException("Error in post commit hook");
         }, PLUGIN_KEY));
 
-        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        TestExecutionContext executionContext = new TestExecutionContext("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         try {
             testSubject.eventsPostCommit(asList(event("aggrId1", 0),
                                                 event("aggrId1", 1)),
-                                         unitOfWork);
+                                         executionContext);
             fail("Expected PostCommitHookException");
         } catch (PostCommitHookException ex) {
             // expected
@@ -166,10 +166,10 @@ public class DefaultEventInterceptorsTest {
             throw new RuntimeException("Error in post commit hook");
         }, PLUGIN_KEY));
 
-        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
+        TestExecutionContext executionContext = new TestExecutionContext("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         try {
-            testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
+            testSubject.snapshotPostCommit(event("aggrId1", 0), executionContext);
             fail("Expected PostCommitHookException");
         } catch (PostCommitHookException ex) {
             // expected
@@ -182,18 +182,18 @@ public class DefaultEventInterceptorsTest {
         pluginServiceProvider.add(new ServiceWithInfo<>((PostCommitSnapshotHook) (events, context) -> hookCalled
                 .incrementAndGet(), PLUGIN_KEY));
 
-        TestPluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
-        testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
+        TestExecutionContext executionContext = new TestExecutionContext("default");
+        testSubject.snapshotPostCommit(event("aggrId1", 0), executionContext);
         assertEquals(0, hookCalled.get());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        testSubject.snapshotPostCommit(event("aggrId1", 0), unitOfWork);
+        testSubject.snapshotPostCommit(event("aggrId1", 0), executionContext);
         assertEquals(1, hookCalled.get());
     }
 
     @Test
     public void appendSnapshot() throws RequestRejectedException {
-        pluginServiceProvider.add(new ServiceWithInfo<>((AppendSnapshotInterceptor) (event, unitOfWork) ->
+        pluginServiceProvider.add(new ServiceWithInfo<>((AppendSnapshotInterceptor) (event, executionContext) ->
                 Event.newBuilder()
                      .setMessageIdentifier(UUID.randomUUID().toString())
                      .setAggregateIdentifier(UUID.randomUUID().toString())
@@ -204,12 +204,12 @@ public class DefaultEventInterceptorsTest {
 
         Event orgEvent = event("aggregate1", 0, true);
 
-        Event intercepted = testSubject.appendSnapshot(orgEvent, new TestPluginUnitOfWork("default"));
+        Event intercepted = testSubject.appendSnapshot(orgEvent, new TestExecutionContext("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        intercepted = testSubject.appendSnapshot(orgEvent, new TestPluginUnitOfWork("default"));
+        intercepted = testSubject.appendSnapshot(orgEvent, new TestExecutionContext("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());
@@ -246,12 +246,12 @@ public class DefaultEventInterceptorsTest {
                      .build(), PLUGIN_KEY));
 
         Event event = event("sample", 0, true);
-        PluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
-        Event result = testSubject.readSnapshot(event, unitOfWork);
+        ExecutionContext executionContext = new TestExecutionContext("default");
+        Event result = testSubject.readSnapshot(event, executionContext);
         assertFalse(result.containsMetaData("intercepted"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        result = testSubject.readSnapshot(event, unitOfWork);
+        result = testSubject.readSnapshot(event, executionContext);
         assertEquals("yes", result.getMetaDataOrDefault("intercepted", metaDataValue("no")).getTextValue());
         assertEquals(event.getAggregateIdentifier(), result.getAggregateIdentifier());
         assertTrue(event.getSnapshot());
@@ -266,12 +266,12 @@ public class DefaultEventInterceptorsTest {
                      .build(), PLUGIN_KEY));
 
         Event event = event("sample", 0);
-        PluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
-        Event result = testSubject.readEvent(event, unitOfWork);
+        ExecutionContext executionContext = new TestExecutionContext("default");
+        Event result = testSubject.readEvent(event, executionContext);
         assertFalse(result.containsMetaData("intercepted"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        result = testSubject.readEvent(event, unitOfWork);
+        result = testSubject.readEvent(event, executionContext);
         assertEquals("yes", result.getMetaDataOrDefault("intercepted", metaDataValue("no")).getTextValue());
         assertEquals(event.getAggregateIdentifier(), result.getAggregateIdentifier());
     }
@@ -283,7 +283,7 @@ public class DefaultEventInterceptorsTest {
             private static final int ORDER = 100;
 
             @Override
-            public Event readEvent(Event event, PluginUnitOfWork extensionUnitOfWork) {
+            public Event readEvent(Event event, ExecutionContext executionContext) {
                 calledInOrder.add(ORDER);
                 return event;
             }
@@ -297,7 +297,7 @@ public class DefaultEventInterceptorsTest {
             private static final int ORDER = 5;
 
             @Override
-            public Event readEvent(Event event, PluginUnitOfWork extensionUnitOfWork) {
+            public Event readEvent(Event event, ExecutionContext executionContext) {
                 calledInOrder.add(ORDER);
                 return event;
             }
@@ -310,8 +310,8 @@ public class DefaultEventInterceptorsTest {
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
 
-        PluginUnitOfWork unitOfWork = new TestPluginUnitOfWork("default");
-        testSubject.readEvent(event("a", 1), unitOfWork);
+        ExecutionContext executionContext = new TestExecutionContext("default");
+        testSubject.readEvent(event("a", 1), executionContext);
         assertEquals(2, calledInOrder.size());
         assertEquals(5, (int) calledInOrder.get(0));
         assertEquals(100, (int) calledInOrder.get(1));

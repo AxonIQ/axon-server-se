@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.grpc.event.Event;
 
@@ -26,44 +26,44 @@ public interface EventInterceptors {
     /**
      * Intercepts an append event action. The implementation of the interceptor can update the event.
      *
-     * @param event      the new event
-     * @param unitOfWork the caller's context
+     * @param event            the new event
+     * @param executionContext the caller's context
      * @return the new event
      */
-    Event appendEvent(Event event, PluginUnitOfWork unitOfWork);
+    Event appendEvent(Event event, ExecutionContext executionContext);
 
     /**
      * Intercepts an append snapshot action. The implementation of the interceptor can update the snapshot.
      *
-     * @param snapshot           the new snapshot
-     * @param unitOfWork the caller's context
+     * @param snapshot         the new snapshot
+     * @param executionContext the caller's context
      * @return the new event
      */
-    Event appendSnapshot(Event snapshot, PluginUnitOfWork unitOfWork) throws RequestRejectedException;
+    Event appendSnapshot(Event snapshot, ExecutionContext executionContext) throws RequestRejectedException;
 
-    void eventsPreCommit(List<Event> events, PluginUnitOfWork unitOfWork) throws RequestRejectedException;
+    void eventsPreCommit(List<Event> events, ExecutionContext executionContext) throws RequestRejectedException;
 
-    void eventsPostCommit(List<Event> events, PluginUnitOfWork unitOfWork);
+    void eventsPostCommit(List<Event> events, ExecutionContext executionContext);
 
-    void snapshotPostCommit(Event snapshot, PluginUnitOfWork unitOfWork);
+    void snapshotPostCommit(Event snapshot, ExecutionContext executionContext);
 
     /**
      * Intercepts a snapshot read from the event store. The implementation of the interceptor can update the snapshot.
      *
-     * @param snapshot           the read snapshot
-     * @param unitOfWork the caller's context
+     * @param snapshot         the read snapshot
+     * @param executionContext the caller's context
      * @return the read snapshot
      */
-    Event readSnapshot(Event snapshot, PluginUnitOfWork unitOfWork);
+    Event readSnapshot(Event snapshot, ExecutionContext executionContext);
 
     /**
      * Intercepts an event read from the event store. The implementation of the interceptor can update the event.
      *
-     * @param event              the read event
-     * @param unitOfWork the caller's context
+     * @param event            the read event
+     * @param executionContext the caller's context
      * @return the read event
      */
-    Event readEvent(Event event, PluginUnitOfWork unitOfWork);
+    Event readEvent(Event event, ExecutionContext executionContext);
 
     /**
      * Checks if there aren't any interceptors for reading events or snapshots.

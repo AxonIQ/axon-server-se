@@ -42,7 +42,7 @@ public class DefaultSubscriptionQueryInterceptorsTest {
     @Test
     public void queryRequest() {
         osgiController
-                .add(new ServiceWithInfo<>((SubscriptionQueryRequestInterceptor) (queryRequest, unitOfWork) ->
+                .add(new ServiceWithInfo<>((SubscriptionQueryRequestInterceptor) (queryRequest, executionContext) ->
                         SubscriptionQueryRequest.newBuilder(queryRequest)
                                                 .setSubscribe(SubscriptionQuery.newBuilder()
                                                                                .setQueryRequest(QueryRequest
@@ -52,33 +52,33 @@ public class DefaultSubscriptionQueryInterceptorsTest {
 
         SubscriptionQueryRequest intercepted = testSubject.subscriptionQueryRequest(SubscriptionQueryRequest
                                                                                             .getDefaultInstance(),
-                                                                                    new TestPluginUnitOfWork(
+                                                                                    new TestExecutionContext(
                                                                                             "default"));
         assertFalse(intercepted.hasSubscribe());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         intercepted = testSubject.subscriptionQueryRequest(SubscriptionQueryRequest.getDefaultInstance(),
-                                                           new TestPluginUnitOfWork("default"));
+                                                           new TestExecutionContext("default"));
         assertTrue(intercepted.hasSubscribe());
     }
 
     @Test
     public void queryResponse() {
         osgiController
-                .add(new ServiceWithInfo<>((SubscriptionQueryResponseInterceptor) (queryResponse, unitOfWork) ->
+                .add(new ServiceWithInfo<>((SubscriptionQueryResponseInterceptor) (queryResponse, executionContext) ->
                         SubscriptionQueryResponse.newBuilder(queryResponse)
                                                  .setComplete(QueryUpdateComplete.newBuilder()).build(),
                                            PLUGIN_KEY));
 
         SubscriptionQueryResponse intercepted = testSubject.subscriptionQueryResponse(SubscriptionQueryResponse
                                                                                               .getDefaultInstance(),
-                                                                                      new TestPluginUnitOfWork(
+                                                                                      new TestExecutionContext(
                                                                                               "default"));
         assertFalse(intercepted.hasComplete());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         intercepted = testSubject.subscriptionQueryResponse(SubscriptionQueryResponse.getDefaultInstance(),
-                                                            new TestPluginUnitOfWork("default"));
+                                                            new TestExecutionContext("default"));
         assertTrue(intercepted.hasComplete());
     }
 }

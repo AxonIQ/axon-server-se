@@ -39,33 +39,33 @@ public class DefaultQueryInterceptorsTest {
 
     @Test
     public void queryRequest() {
-        osgiController.add(new ServiceWithInfo<>((QueryRequestInterceptor) (queryRequest, unitOfWork) ->
+        osgiController.add(new ServiceWithInfo<>((QueryRequestInterceptor) (queryRequest, executionContext) ->
                 QueryRequest.newBuilder(queryRequest)
                             .putMetaData("demo", metaDataValue("demoValue")).build(),
                                                  PLUGIN_KEY));
 
         SerializedQuery intercepted = testSubject.queryRequest(serializedQuery("sample"),
-                                                               new TestPluginUnitOfWork("default"));
+                                                               new TestExecutionContext("default"));
         assertFalse(intercepted.query().containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        intercepted = testSubject.queryRequest(serializedQuery("sample"), new TestPluginUnitOfWork("default"));
+        intercepted = testSubject.queryRequest(serializedQuery("sample"), new TestExecutionContext("default"));
         assertTrue(intercepted.query().containsMetaData("demo"));
     }
 
     @Test
     public void queryResponse() {
-        osgiController.add(new ServiceWithInfo<>((QueryResponseInterceptor) (queryResponse, unitOfWork) ->
+        osgiController.add(new ServiceWithInfo<>((QueryResponseInterceptor) (queryResponse, executionContext) ->
                 QueryResponse.newBuilder(queryResponse)
                              .putMetaData("demo", metaDataValue("demoValue")).build(),
                                                  PLUGIN_KEY));
 
         QueryResponse intercepted = testSubject.queryResponse(queryResponse("test"),
-                                                              new TestPluginUnitOfWork("default"));
+                                                              new TestExecutionContext("default"));
         assertFalse(intercepted.containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        intercepted = testSubject.queryResponse(queryResponse("sample"), new TestPluginUnitOfWork("default"));
+        intercepted = testSubject.queryResponse(queryResponse("sample"), new TestExecutionContext("default"));
         assertTrue(intercepted.containsMetaData("demo"));
     }
 

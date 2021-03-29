@@ -11,7 +11,7 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 
 /**
  * @author Marc Gathier
@@ -20,13 +20,13 @@ public class NoOpSubscriptionQueryInterceptors implements SubscriptionQueryInter
 
     @Override
     public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                             PluginUnitOfWork unitOfWork) {
+                                                             ExecutionContext executionContext) {
         return subscriptionQueryRequest;
     }
 
     @Override
     public SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
-                                                               PluginUnitOfWork unitOfWork) {
+                                                               ExecutionContext executionContext) {
         return subscriptionQueryResponse;
     }
 }

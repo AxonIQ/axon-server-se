@@ -14,7 +14,7 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -232,7 +232,7 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommand commandRequest(
                                                               SerializedCommand serializedCommand,
-                                                              PluginUnitOfWork unitOfWork) {
+                                                              ExecutionContext executionContext) {
                                                           throw new MessagingPlatformException(ErrorCode.COMMAND_REJECTED_BY_INTERCEPTOR,
                                                                                                "failed");
                                                       }
@@ -240,7 +240,7 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommandResponse commandResponse(
                                                               SerializedCommandResponse serializedResponse,
-                                                              PluginUnitOfWork unitOfWork) {
+                                                              ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
                                                   }, 10_000);
@@ -261,7 +261,7 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommand commandRequest(
                                                               SerializedCommand serializedCommand,
-                                                              PluginUnitOfWork unitOfWork) {
+                                                              ExecutionContext executionContext) {
                                                           throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                                                                "failed");
                                                       }
@@ -269,7 +269,7 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommandResponse commandResponse(
                                                               SerializedCommandResponse serializedResponse,
-                                                              PluginUnitOfWork unitOfWork) {
+                                                              ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
                                                   }, 10_000);
@@ -296,14 +296,14 @@ public class CommandDispatcherTest {
                                                       @Override
                                                       public SerializedCommand commandRequest(
                                                               SerializedCommand serializedCommand,
-                                                              PluginUnitOfWork unitOfWork) {
+                                                              ExecutionContext executionContext) {
                                                           return serializedCommand;
                                                       }
 
                                                       @Override
                                                       public SerializedCommandResponse commandResponse(
                                                               SerializedCommandResponse serializedResponse,
-                                                              PluginUnitOfWork unitOfWork) {
+                                                              ExecutionContext executionContext) {
                                                           throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                                                                "failed");
                                                       }

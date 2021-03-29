@@ -42,17 +42,17 @@ public class DefaultCommandInterceptorsTest {
 
     @Test
     public void commandRequest() {
-        osgiController.add(new ServiceWithInfo<>((CommandRequestInterceptor) (command, unitOfWork) ->
+        osgiController.add(new ServiceWithInfo<>((CommandRequestInterceptor) (command, executionContext) ->
                 Command.newBuilder()
                        .putMetaData("demo", metaDataValue("demoValue")).build(),
                                                  PLUGIN_KEY));
 
         SerializedCommand intercepted = testSubject.commandRequest(serializedCommand("sample"),
-                                                                   new TestPluginUnitOfWork("default"));
+                                                                   new TestExecutionContext("default"));
         assertFalse(intercepted.wrapped().containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        intercepted = testSubject.commandRequest(serializedCommand("sample"), new TestPluginUnitOfWork("default"));
+        intercepted = testSubject.commandRequest(serializedCommand("sample"), new TestExecutionContext("default"));
         assertTrue(intercepted.wrapped().containsMetaData("demo"));
     }
 
@@ -63,18 +63,18 @@ public class DefaultCommandInterceptorsTest {
 
     @Test
     public void commandResponse() {
-        osgiController.add(new ServiceWithInfo<>((CommandResponseInterceptor) (commandResponse, unitOfWork) ->
+        osgiController.add(new ServiceWithInfo<>((CommandResponseInterceptor) (commandResponse, executionContext) ->
                 CommandResponse.newBuilder()
                                .putMetaData("demo", metaDataValue("demoValue")).build(),
                                                  PLUGIN_KEY));
 
         SerializedCommandResponse intercepted = testSubject.commandResponse(serializedCommandResponse("test"),
-                                                                            new TestPluginUnitOfWork("default"));
+                                                                            new TestExecutionContext("default"));
         assertFalse(intercepted.wrapped().containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         intercepted = testSubject.commandResponse(serializedCommandResponse("sample"),
-                                                  new TestPluginUnitOfWork("default"));
+                                                  new TestExecutionContext("default"));
         assertTrue(intercepted.wrapped().containsMetaData("demo"));
     }
 

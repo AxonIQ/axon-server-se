@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.event.Event;
 
 import java.util.List;
@@ -20,37 +20,37 @@ import java.util.List;
 public class NoOpEventInterceptors implements EventInterceptors {
 
     @Override
-    public Event appendEvent(Event event, PluginUnitOfWork unitOfWork) {
+    public Event appendEvent(Event event, ExecutionContext executionContext) {
         return event;
     }
 
     @Override
-    public Event appendSnapshot(Event snapshot, PluginUnitOfWork unitOfWork) {
+    public Event appendSnapshot(Event snapshot, ExecutionContext executionContext) {
         return snapshot;
     }
 
     @Override
-    public void eventsPreCommit(List<Event> events, PluginUnitOfWork unitOfWork) {
+    public void eventsPreCommit(List<Event> events, ExecutionContext executionContext) {
 
     }
 
     @Override
-    public void eventsPostCommit(List<Event> events, PluginUnitOfWork unitOfWork) {
+    public void eventsPostCommit(List<Event> events, ExecutionContext executionContext) {
 
     }
 
     @Override
-    public void snapshotPostCommit(Event snapshot, PluginUnitOfWork unitOfWork) {
+    public void snapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
 
     }
 
     @Override
-    public Event readSnapshot(Event snapshot, PluginUnitOfWork unitOfWork) {
+    public Event readSnapshot(Event snapshot, ExecutionContext executionContext) {
         return snapshot;
     }
 
     @Override
-    public Event readEvent(Event event, PluginUnitOfWork unitOfWork) {
+    public Event readEvent(Event event, ExecutionContext executionContext) {
         return event;
     }
 

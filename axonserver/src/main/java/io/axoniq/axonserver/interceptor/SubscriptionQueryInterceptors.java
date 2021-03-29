@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 
@@ -20,8 +20,8 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 public interface SubscriptionQueryInterceptors {
 
     SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                      PluginUnitOfWork unitOfWork);
+                                                      ExecutionContext executionContext);
 
     SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
-                                                        PluginUnitOfWork unitOfWork);
+                                                        ExecutionContext executionContext);
 }

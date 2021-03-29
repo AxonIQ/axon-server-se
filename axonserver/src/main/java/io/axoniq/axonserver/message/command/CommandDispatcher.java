@@ -17,7 +17,7 @@ import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.interceptor.CommandInterceptors;
-import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
+import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -90,12 +90,12 @@ public class CommandDispatcher {
 
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver) {
-        DefaultPluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
-        Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(unitOfWork,
+        DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
+        Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(executionContext,
                                                                                          r,
                                                                                          responseObserver);
         try {
-            request = commandInterceptors.commandRequest(request, unitOfWork);
+            request = commandInterceptors.commandRequest(request, executionContext);
             commandRate(context).mark();
             CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
                                                                                   request.wrapped(),
@@ -111,33 +111,33 @@ public class CommandDispatcher {
             interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
                                                                     other.getErrorCode(),
                                                                     other.getMessage()));
-            unitOfWork.compensate(other);
+            executionContext.compensate(other);
         } catch (Exception other) {
             logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
             interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
                                                                     ErrorCode.OTHER,
                                                                     other.getMessage()));
-            unitOfWork.compensate(other);
+            executionContext.compensate(other);
         }
     }
 
-    private void intercept(DefaultPluginUnitOfWork unitOfWork,
+    private void intercept(DefaultExecutionContext executionContext,
                            SerializedCommandResponse response,
                            Consumer<SerializedCommandResponse> responseObserver) {
         try {
-            responseObserver.accept(commandInterceptors.commandResponse(response, unitOfWork));
+            responseObserver.accept(commandInterceptors.commandResponse(response, executionContext));
         } catch (MessagingPlatformException ex) {
-            logger.warn("{}: Exception in response interceptor", unitOfWork.context(), ex);
+            logger.warn("{}: Exception in response interceptor", executionContext.contextName(), ex);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ex.getErrorCode(),
                                                          ex.getMessage()));
-            unitOfWork.compensate(ex);
+            executionContext.compensate(ex);
         } catch (Exception other) {
-            logger.warn("{}: Exception in response interceptor", unitOfWork.context(), other);
+            logger.warn("{}: Exception in response interceptor", executionContext.contextName(), other);
             responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
                                                          ErrorCode.OTHER,
                                                          other.getMessage()));
-            unitOfWork.compensate(other);
+            executionContext.compensate(other);
         }
     }
 

@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -31,20 +31,20 @@ import java.util.stream.Collectors;
  * @author Marc Gathier
  * @since 4.5
  */
-public class DefaultPluginUnitOfWork implements PluginUnitOfWork {
+public class DefaultExecutionContext implements ExecutionContext {
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultPluginUnitOfWork.class);
+    private static final Logger logger = LoggerFactory.getLogger(DefaultExecutionContext.class);
 
     private final String context;
     private final Authentication principal;
-    private final List<BiConsumer<Throwable, PluginUnitOfWork>> compensatingActions = new LinkedList<>();
+    private final List<BiConsumer<Throwable, ExecutionContext>> compensatingActions = new LinkedList<>();
     private final Map<String, Object> details = new HashMap<>();
 
     /**
      * @param context   the Axon Server context for the request
      * @param principal the caller's information
      */
-    public DefaultPluginUnitOfWork(String context, Authentication principal) {
+    public DefaultExecutionContext(String context, Authentication principal) {
         this.context = context;
         this.principal = principal;
     }
@@ -55,7 +55,7 @@ public class DefaultPluginUnitOfWork implements PluginUnitOfWork {
      * @return the Axon Server context
      */
     @Override
-    public String context() {
+    public String contextName() {
         return context;
     }
 
@@ -84,7 +84,7 @@ public class DefaultPluginUnitOfWork implements PluginUnitOfWork {
     }
 
     @Override
-    public Map<String, String> principalMetaData() {
+    public Map<String, String> principalTags() {
         if (principal == null || !(principal.getDetails() instanceof Map)) {
             return Collections.emptyMap();
         }
@@ -98,7 +98,7 @@ public class DefaultPluginUnitOfWork implements PluginUnitOfWork {
      * @param compensatingAction runnable compensation action
      */
     @Override
-    public void onFailure(BiConsumer<Throwable, PluginUnitOfWork> compensatingAction) {
+    public void onFailure(BiConsumer<Throwable, ExecutionContext> compensatingAction) {
         compensatingActions.add(0, compensatingAction);
     }
 

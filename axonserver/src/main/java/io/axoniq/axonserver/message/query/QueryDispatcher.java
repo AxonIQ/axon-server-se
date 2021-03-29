@@ -17,7 +17,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
-import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
+import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
@@ -170,12 +170,12 @@ public class QueryDispatcher {
     public void query(SerializedQuery serializedQuery, Authentication principal,
                       Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
         queryRate(serializedQuery.context()).mark();
-        DefaultPluginUnitOfWork unitOfWork = new DefaultPluginUnitOfWork(serializedQuery.context(),
-                                                                         principal);
+        DefaultExecutionContext executionContext = new DefaultExecutionContext(serializedQuery.context(),
+                                                                               principal);
 
-        Consumer<QueryResponse> interceptedCallback = r -> intercept(unitOfWork, r, callback);
+        Consumer<QueryResponse> interceptedCallback = r -> intercept(executionContext, r, callback);
         try {
-            SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(serializedQuery, unitOfWork);
+            SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(serializedQuery, executionContext);
             ;
             QueryRequest query = serializedQuery2.query();
 
@@ -232,7 +232,7 @@ public class QueryDispatcher {
                                                                                             .getMessage()))
                                                     .build());
             onCompleted.accept("Rejected");
-            unitOfWork.compensate(messagingPlatformException);
+            executionContext.compensate(messagingPlatformException);
         } catch (Exception otherException) {
             logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
                         serializedQuery.query().getQuery(), otherException);
@@ -247,23 +247,23 @@ public class QueryDispatcher {
                                                                                                          .getName())))
                                                     .build());
             onCompleted.accept("Failed");
-            unitOfWork.compensate(otherException);
+            executionContext.compensate(otherException);
         }
     }
 
-    private void intercept(DefaultPluginUnitOfWork unitOfWork, QueryResponse response,
+    private void intercept(DefaultExecutionContext executionContext, QueryResponse response,
                            Consumer<QueryResponse> callback) {
         try {
-            callback.accept(queryInterceptors.queryResponse(response, unitOfWork));
+            callback.accept(queryInterceptors.queryResponse(response, executionContext));
         } catch (Exception ex) {
-            logger.warn("{}: Exception in response interceptor", unitOfWork.context(), ex);
+            logger.warn("{}: Exception in response interceptor", executionContext.contextName(), ex);
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode())
                                          .setMessageIdentifier(response.getRequestIdentifier())
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))
                                          .build());
-            unitOfWork.compensate(ex);
+            executionContext.compensate(ex);
         }
     }
 

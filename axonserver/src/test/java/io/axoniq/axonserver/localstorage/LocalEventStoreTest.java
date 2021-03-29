@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -306,52 +306,52 @@ public class LocalEventStoreTest {
         List<String> compensations = new ArrayList<>();
 
         @Override
-        public Event appendEvent(Event event, PluginUnitOfWork unitOfWork) {
+        public Event appendEvent(Event event, ExecutionContext executionContext) {
             if (failAppend) {
                 throw new RuntimeException("appendEvent");
             }
-            unitOfWork.onFailure((t, e) -> compensations.add("Compensate Append Event"));
+            executionContext.onFailure((t, e) -> compensations.add("Compensate Append Event"));
             appendEvent++;
             return event;
         }
 
         @Override
-        public Event appendSnapshot(Event snapshot, PluginUnitOfWork unitOfWork) {
+        public Event appendSnapshot(Event snapshot, ExecutionContext executionContext) {
             if (failAppend) {
                 throw new RuntimeException("appendSnapshot");
             }
-            unitOfWork.onFailure((t, e) -> compensations.add("Compensate Append Snapshot"));
+            executionContext.onFailure((t, e) -> compensations.add("Compensate Append Snapshot"));
             appendSnapshot++;
             return snapshot;
         }
 
         @Override
-        public void eventsPreCommit(List<Event> events, PluginUnitOfWork unitOfWork) {
+        public void eventsPreCommit(List<Event> events, ExecutionContext executionContext) {
             if (failPreCommit) {
                 throw new RuntimeException("eventsPreCommit");
             }
-            unitOfWork.onFailure((t, e) -> compensations.add("Compensate Events Pre Commit"));
+            executionContext.onFailure((t, e) -> compensations.add("Compensate Events Pre Commit"));
             eventsPreCommit++;
         }
 
         @Override
-        public void eventsPostCommit(List<Event> events, PluginUnitOfWork unitOfWork) {
+        public void eventsPostCommit(List<Event> events, ExecutionContext executionContext) {
             eventsPostCommit++;
         }
 
         @Override
-        public void snapshotPostCommit(Event snapshot, PluginUnitOfWork unitOfWork) {
+        public void snapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
             snapshotPostCommit++;
         }
 
         @Override
-        public Event readSnapshot(Event snapshot, PluginUnitOfWork unitOfWork) {
+        public Event readSnapshot(Event snapshot, ExecutionContext executionContext) {
             readSnapshot++;
             return snapshot;
         }
 
         @Override
-        public Event readEvent(Event event, PluginUnitOfWork unitOfWork) {
+        public Event readEvent(Event event, ExecutionContext executionContext) {
             readEvent++;
             return event;
         }

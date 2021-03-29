@@ -11,7 +11,7 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.plugin.ServiceWithInfo;
 import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryRequestInterceptor;
@@ -42,15 +42,15 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
 
     @Override
     public SubscriptionQueryRequest subscriptionQueryRequest(SubscriptionQueryRequest subscriptionQueryRequest,
-                                                             PluginUnitOfWork unitOfWork) {
+                                                             ExecutionContext executionContext) {
         List<ServiceWithInfo<SubscriptionQueryRequestInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
-                        SubscriptionQueryRequestInterceptor.class, unitOfWork.context());
+                        SubscriptionQueryRequestInterceptor.class, executionContext.contextName());
         if (interceptors.isEmpty()) {
             return subscriptionQueryRequest;
         }
 
-        return interceptorTimer.time(unitOfWork.context(),
+        return interceptorTimer.time(executionContext.contextName(),
                                      "SubscriptionQueryRequestInterceptor",
                                      () -> {
                                          SubscriptionQueryRequest query = subscriptionQueryRequest;
@@ -58,10 +58,10 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
                                              try {
                                                  query = queryRequestInterceptor.service().subscriptionQueryRequest(
                                                          query,
-                                                         unitOfWork);
+                                                         executionContext);
                                              } catch (RequestRejectedException requestRejectedException) {
                                                  throw new MessagingPlatformException(ErrorCode.SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR,
-                                                                                      unitOfWork.context()
+                                                                                      executionContext.contextName()
                                                                                               + " : request rejected by interceptor "
                                                                                               +
                                                                                               queryRequestInterceptor
@@ -69,7 +69,7 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
                                                                                       requestRejectedException);
                                              } catch (Exception exception) {
                                                  throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                                                      unitOfWork.context()
+                                                                                      executionContext.contextName()
                                                                                               + " : Exception thrown by the SubscriptionQueryRequestInterceptor in "
                                                                                               +
                                                                                               queryRequestInterceptor
@@ -83,11 +83,11 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
 
     @Override
     public SubscriptionQueryResponse subscriptionQueryResponse(SubscriptionQueryResponse subscriptionQueryResponse,
-                                                               PluginUnitOfWork unitOfWork) {
+                                                               ExecutionContext executionContext) {
         List<ServiceWithInfo<SubscriptionQueryResponseInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         SubscriptionQueryResponseInterceptor.class,
-                        unitOfWork.context()
+                        executionContext.contextName()
                 );
         if (interceptors.isEmpty()) {
             return subscriptionQueryResponse;
@@ -96,10 +96,10 @@ public class DefaultSubscriptionQueryInterceptors implements SubscriptionQueryIn
         SubscriptionQueryResponse query = subscriptionQueryResponse;
         for (ServiceWithInfo<SubscriptionQueryResponseInterceptor> queryRequestInterceptor : interceptors) {
             try {
-                query = queryRequestInterceptor.service().subscriptionQueryResponse(query, unitOfWork);
+                query = queryRequestInterceptor.service().subscriptionQueryResponse(query, executionContext);
             } catch (Exception requestRejectedException) {
                 throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                     unitOfWork.context()
+                                                     executionContext.contextName()
                                                              + " : Exception thrown by the SubscriptionQueryResponseInterceptor in "
                                                              + queryRequestInterceptor.pluginKey(),
                                                      requestRejectedException);

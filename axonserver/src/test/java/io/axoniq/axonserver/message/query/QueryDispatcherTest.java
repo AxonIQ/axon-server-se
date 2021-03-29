@@ -13,7 +13,7 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginUnitOfWork;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -319,7 +319,7 @@ public class QueryDispatcherTest {
 
         @Override
         public SerializedQuery queryRequest(SerializedQuery serializedQuery,
-                                            PluginUnitOfWork unitOfWork) {
+                                            ExecutionContext executionContext) {
             if (serializedQuery.getMessageIdentifier().equals("REJECT")) {
                 throw new MessagingPlatformException(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR, "Rejected");
             }
@@ -331,7 +331,7 @@ public class QueryDispatcherTest {
 
         @Override
         public QueryResponse queryResponse(QueryResponse response,
-                                           PluginUnitOfWork unitOfWork) {
+                                           ExecutionContext executionContext) {
             if (response.getMessageIdentifier().equals("FAIL")) {
                 throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR, "Failed");
             }

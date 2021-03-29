@@ -15,7 +15,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.Subscripti
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
-import io.axoniq.axonserver.interceptor.DefaultPluginUnitOfWork;
+import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import io.axoniq.axonserver.message.query.subscription.handler.DirectUpdateHandler;
@@ -48,7 +48,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
     private final UpdateHandler updateHandler;
 
     private final Consumer<Throwable> errorHandler;
-    private final DefaultPluginUnitOfWork unitOfWork;
+    private final DefaultExecutionContext executionContext;
 
     private volatile String clientId;
 
@@ -60,7 +60,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         super(LoggerFactory.getLogger(SubscriptionQueryRequestTarget.class));
         this.context = context;
         this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
-        this.unitOfWork = new DefaultPluginUnitOfWork(context, authentication);
+        this.executionContext = new DefaultExecutionContext(context, authentication);
         this.errorHandler = e -> {
             responseObserver.onError(GrpcExceptionBuilder.build(e));
             unsubscribe();
@@ -74,7 +74,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
     @Override
     protected void consume(SubscriptionQueryRequest message) {
         try {
-            message = subscriptionQueryInterceptors.subscriptionQueryRequest(message, unitOfWork);
+            message = subscriptionQueryInterceptors.subscriptionQueryRequest(message, executionContext);
             switch (message.getRequestCase()) {
                 case SUBSCRIBE:
                     if (clientId == null) {
@@ -109,7 +109,7 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         } catch (Exception e) {
             logger.warn("{}: Exception in consuming SubscriptionQueryRequest", context, e);
             errorHandler.accept(e);
-            unitOfWork.compensate(e);
+            executionContext.compensate(e);
         }
     }
 
@@ -149,11 +149,13 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         @Override
         public void onNext(SubscriptionQueryResponse t) {
             try {
-                delegate.onNext(subscriptionQueryInterceptors.subscriptionQueryResponse(t, unitOfWork));
+                delegate.onNext(subscriptionQueryInterceptors.subscriptionQueryResponse(t, executionContext));
             } catch (Exception ex) {
-                logger.warn("{}: Failure while sending subscription query response", unitOfWork.context(), ex);
+                logger.warn("{}: Failure while sending subscription query response",
+                            executionContext.contextName(),
+                            ex);
                 errorHandler.accept(ex);
-                unitOfWork.compensate(ex);
+                executionContext.compensate(ex);
             }
         }
 
