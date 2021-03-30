@@ -558,7 +558,7 @@
                                 <configuration>
                                     <resources>
                                         <resource>
-                                            <directory>../../..</directory>
+                                            <directory>../..</directory>
                                             <includes>
                                                 <include>LICENSE</include>
                                             </includes>
