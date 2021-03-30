@@ -20,6 +20,7 @@ import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.query.subscription.UpdateHandler;
 import io.axoniq.axonserver.message.query.subscription.handler.DirectUpdateHandler;
 import io.axoniq.axonserver.util.StreamObserverUtils;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,8 @@ public class SubscriptionQueryRequestTarget extends ReceivingStreamObserver<Subs
         this.executionContext = new DefaultExecutionContext(context, authentication);
         this.errorHandler = e -> {
             responseObserver.onError(GrpcExceptionBuilder.build(e));
+            unsubscribe();
+        };
             unsubscribe();
         };
         this.responseObserver = new QueryResponseStreamObserver(new FlowControlledStreamObserver<>(responseObserver,
