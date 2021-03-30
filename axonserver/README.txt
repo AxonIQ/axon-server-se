@@ -7,6 +7,45 @@ Release Notes for version 4.4.10
 -------------------------------
 * Fix for subscription queries in case of missing query handler
 
+Release Notes for version 4.5
+-----------------------------
+
+New features:
+- Support for customer defined plugins to add custom actions to adding/reading events and snapshots and executing commands and (subscription queries)
+  For more information see https://docs.axoniq.io/reference-guide/axon-server/administration/plugins.
+- Search snapshots in Axon Dashboard
+
+Enhancements:
+- Flow control for reading aggregates
+- Logging of illegal access to Axon Server gRPC services
+- Improved monitoring of available disk space (see https://docs.axoniq.io/reference-guide/axon-server/administration/monitoring/actuator-endpoints)
+- List of used 3rd party libraries available from Dashboard
+- Axon Dashboard checks for Axon Server version updates
+
+Dependency updates:
+- updated gRPC and Netty versions
+- updated Spring Boot version
+- updated Swagger version
+
+Bug fixes:
+- Read aggregate snapshots from closed segments fixed
+
+Notes:
+- Due to the update of the Spring Boot version there are some minor changes to the output of the /actuator/health endpoint.
+  This endpoint now uses the element "components" instead of "details" to output the health per subcategory.
+
+- The swagger endpoint has changed from /swagger-ui.html to /swagger-ui/.
+
+- The default setting for "show-details" for the /actuator/health endpoint has changed from "never" to "always". To hide the
+  details from unauthenticated users, set the property "management.endpoint.health.show-details" to "when-authorized".
+
+- For the Docker image, plugins are stored in the /data/plugins directory.
+
+
+Release Notes for version 4.4.10
+--------------------------------
+* Fix for subscription queries in case of missing query handler
+
 Release Notes for version 4.4.9
 -------------------------------
 * Fix for concurrency issue in listing aggregates events during appending events for the same aggregate

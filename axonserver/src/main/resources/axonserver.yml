@@ -41,6 +41,12 @@ management:
     web:
       exposure:
         include: metrics,info,health,loggers,prometheus,env
+  endpoint:
+    health:
+      show-details: always
+  health:
+    diskspace:
+      threshold: 256MB
 
 
 info:
