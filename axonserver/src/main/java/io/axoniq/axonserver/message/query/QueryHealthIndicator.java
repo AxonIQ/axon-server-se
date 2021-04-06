@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.grpc.QueryService;
+import io.axoniq.axonserver.refactoring.transport.grpc.QueryService;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.stereotype.Component;

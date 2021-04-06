@@ -9,8 +9,10 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.rest.svg.mapping.Application;
-import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
+import io.axoniq.axonserver.refactoring.transport.rest.OverviewModel;
+import io.axoniq.axonserver.refactoring.ui.AxonServersOverviewProvider;
+import io.axoniq.axonserver.refactoring.ui.svg.mapping.Application;
+import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServer;
 import io.axoniq.axonserver.rest.svg.mapping.FakeApplication;
 import io.axoniq.axonserver.rest.svg.mapping.FakeAxonServer;
 import io.axoniq.axonserver.topology.SimpleAxonServerNode;

@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.rest.svg.mapping;
 
+import io.axoniq.axonserver.refactoring.ui.svg.mapping.Storage;
+
 /**
  * Created by Sara Pellegrini on 02/05/2018.
  * sara.pellegrini@gmail.com

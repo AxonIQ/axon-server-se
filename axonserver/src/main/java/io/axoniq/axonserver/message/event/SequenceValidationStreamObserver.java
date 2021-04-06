@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.stream.CallStreamObserverDelegator;
+import io.axoniq.axonserver.refactoring.transport.grpc.stream.CallStreamObserverDelegator;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.CallStreamObserver;
 import org.slf4j.Logger;

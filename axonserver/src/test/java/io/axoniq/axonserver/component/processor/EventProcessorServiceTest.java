@@ -8,7 +8,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegments
 import io.axoniq.axonserver.grpc.InstructionResult;
 import io.axoniq.axonserver.grpc.control.EventProcessorSegmentReference;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.grpc.istruction.result.InstructionResultSource.ResultSubscriber;
+import io.axoniq.axonserver.grpc.instruction.result.InstructionResultSource.ResultSubscriber;
 import org.junit.*;
 
 import java.util.Collections;

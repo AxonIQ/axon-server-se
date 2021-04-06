@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.rest.svg.mapping;
 
+import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServer;
+import io.axoniq.axonserver.refactoring.ui.svg.mapping.Storage;
 import io.axoniq.axonserver.topology.AxonServerNode;
 
 import java.util.Collections;

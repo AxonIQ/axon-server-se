@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.websocket;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
+import io.axoniq.axonserver.refactoring.transport.websocket.WebsocketProcessorEventsSource;
 import org.junit.*;
 
 import java.util.concurrent.Executors;

@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.taskscheduler;
 
 import io.axoniq.axonserver.grpc.TaskStatus;
-import io.axoniq.axonserver.rest.json.UserInfo;
+import io.axoniq.axonserver.refactoring.transport.rest.dto.UserInfo;
 import io.axoniq.axonserver.test.FakeScheduledExecutorService;
 import org.junit.*;
 import org.springframework.transaction.PlatformTransactionManager;

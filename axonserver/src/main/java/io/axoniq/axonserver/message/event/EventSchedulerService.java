@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.AxonServerClientService;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.refactoring.transport.grpc.AxonServerClientService;
+import io.axoniq.axonserver.refactoring.transport.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.event.CancelScheduledEventRequest;
 import io.axoniq.axonserver.grpc.event.Event;

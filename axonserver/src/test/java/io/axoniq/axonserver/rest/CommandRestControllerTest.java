@@ -15,6 +15,7 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.refactoring.transport.rest.CommandRestController;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.FakeStreamObserver;

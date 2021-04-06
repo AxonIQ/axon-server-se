@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.refactoring.transport.grpc.GrpcBufferingInterceptor;
 import io.grpc.*;
 import org.junit.Before;
 import org.junit.Test;

@@ -27,6 +27,7 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.refactoring.transport.grpc.QueryService;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;

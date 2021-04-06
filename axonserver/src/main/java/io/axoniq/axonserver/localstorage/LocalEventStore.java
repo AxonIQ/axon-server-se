@@ -12,7 +12,7 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.exception.ConcurrencyExceptions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.refactoring.transport.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;

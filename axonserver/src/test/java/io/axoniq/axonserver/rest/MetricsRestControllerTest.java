@@ -22,6 +22,7 @@ import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.transport.rest.MetricsRestController;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.jetbrains.annotations.NotNull;

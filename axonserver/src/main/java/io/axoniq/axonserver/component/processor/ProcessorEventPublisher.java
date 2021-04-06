@@ -17,7 +17,7 @@ import io.axoniq.axonserver.applicationevents.EventProcessorEvents.SplitSegmentR
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
-import io.axoniq.axonserver.grpc.PlatformService;
+import io.axoniq.axonserver.refactoring.transport.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import org.jetbrains.annotations.NotNull;

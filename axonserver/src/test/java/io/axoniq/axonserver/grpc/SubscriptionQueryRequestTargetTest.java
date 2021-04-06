@@ -17,6 +17,7 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.refactoring.transport.grpc.GrpcMetadataKeys;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.StatusRuntimeException;
 import org.junit.*;

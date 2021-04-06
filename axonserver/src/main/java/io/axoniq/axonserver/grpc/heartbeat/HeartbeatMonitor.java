@@ -3,7 +3,7 @@ package io.axoniq.axonserver.grpc.heartbeat;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
-import io.axoniq.axonserver.grpc.PlatformService;
+import io.axoniq.axonserver.refactoring.transport.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;

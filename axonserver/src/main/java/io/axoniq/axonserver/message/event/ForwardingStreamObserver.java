@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.stream.CallStreamObserverDelegator;
+import io.axoniq.axonserver.refactoring.transport.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.refactoring.transport.grpc.stream.CallStreamObserverDelegator;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;

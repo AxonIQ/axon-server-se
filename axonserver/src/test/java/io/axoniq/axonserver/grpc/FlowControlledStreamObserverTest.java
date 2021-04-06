@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.refactoring.transport.grpc.FlowControlledStreamObserver;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 

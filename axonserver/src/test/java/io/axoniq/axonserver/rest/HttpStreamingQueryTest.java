@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.*;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
+import io.axoniq.axonserver.refactoring.transport.rest.HttpStreamingQuery;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;

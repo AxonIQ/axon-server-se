@@ -11,15 +11,15 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.refactoring.transport.rest.PublicRestController;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.FakeSubscriptionMetrics;
-import io.axoniq.axonserver.rest.json.NodeConfiguration;
-import io.axoniq.axonserver.rest.svg.mapping.AxonServers;
-import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
+import io.axoniq.axonserver.refactoring.transport.rest.dto.NodeConfiguration;
+import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServers;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;

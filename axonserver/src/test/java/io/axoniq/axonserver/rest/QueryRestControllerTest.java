@@ -17,6 +17,7 @@ import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.transport.rest.QueryRestController;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;

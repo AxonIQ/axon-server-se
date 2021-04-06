@@ -2,8 +2,7 @@ package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.component.instance.ClientIdentifications;
 import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.grpc.InstructionPublisher;
-import io.axoniq.axonserver.grpc.PlatformService;
+import io.axoniq.axonserver.refactoring.transport.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.message.ClientStreamIdentification;

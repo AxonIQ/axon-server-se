@@ -13,6 +13,7 @@ import io.axoniq.axonserver.component.instance.Client;
 import io.axoniq.axonserver.component.instance.Clients;
 import io.axoniq.axonserver.component.instance.FakeClient;
 import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
+import io.axoniq.axonserver.refactoring.transport.rest.ClientApplicationRestController;
 import org.junit.*;
 
 import java.util.Iterator;

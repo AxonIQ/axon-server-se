@@ -14,7 +14,7 @@ import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.rest.WebSecurityConfigurer.TokenAuthenticationFilter;
+import io.axoniq.axonserver.refactoring.transport.rest.WebSecurityConfigurer.TokenAuthenticationFilter;
 import org.junit.*;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
