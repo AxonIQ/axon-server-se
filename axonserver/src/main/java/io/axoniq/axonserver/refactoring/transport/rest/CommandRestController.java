@@ -15,7 +15,7 @@ import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.CommandRequestJson;

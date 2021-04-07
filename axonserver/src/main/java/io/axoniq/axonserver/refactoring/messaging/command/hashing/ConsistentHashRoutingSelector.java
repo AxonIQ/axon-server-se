@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.message.command.hashing;
+package io.axoniq.axonserver.refactoring.messaging.command.hashing;
 
 import io.axoniq.axonserver.message.command.RoutingSelector;
 

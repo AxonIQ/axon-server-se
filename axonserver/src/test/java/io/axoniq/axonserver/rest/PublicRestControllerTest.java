@@ -14,7 +14,7 @@ import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.refactoring.transport.rest.PublicRestController;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.FakeSubscriptionMetrics;

@@ -7,8 +7,10 @@
  *
  */
 
-package io.axoniq.axonserver.message.command;
+package io.axoniq.axonserver.refactoring.messaging.command;
 
+import io.axoniq.axonserver.message.command.CommandInformation;
+import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

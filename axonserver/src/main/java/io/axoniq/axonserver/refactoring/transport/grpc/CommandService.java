@@ -31,7 +31,7 @@ import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.topology.Topology;

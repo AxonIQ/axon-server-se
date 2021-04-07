@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.message.command;
+package io.axoniq.axonserver.refactoring.messaging.command;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -20,6 +20,12 @@ import io.axoniq.axonserver.interceptor.CommandInterceptors;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
+import io.axoniq.axonserver.message.command.CommandHandler;
+import io.axoniq.axonserver.message.command.CommandInformation;
+import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
+import io.axoniq.axonserver.message.command.CommandRegistrationCache;
+import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
+import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.ConstraintCache;

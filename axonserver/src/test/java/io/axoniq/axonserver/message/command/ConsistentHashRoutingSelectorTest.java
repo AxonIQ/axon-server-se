@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.message.command.hashing.ConsistentHashRoutingSelector;
+import io.axoniq.axonserver.refactoring.messaging.command.hashing.ConsistentHashRoutingSelector;
 import org.junit.*;
 
 import java.util.HashMap;

@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.message.command.hashing;
+package io.axoniq.axonserver.refactoring.messaging.command.hashing;
 
 import org.springframework.util.Assert;
 

@@ -23,7 +23,7 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
 import io.axoniq.axonserver.test.FakeStreamObserver;

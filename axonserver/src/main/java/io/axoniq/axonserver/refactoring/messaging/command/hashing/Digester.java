@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.message.command.hashing;
+package io.axoniq.axonserver.refactoring.messaging.command.hashing;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;

@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.message.command;
+package io.axoniq.axonserver.refactoring.messaging.command;
 
 /**
  * @author Stefan Dragisic

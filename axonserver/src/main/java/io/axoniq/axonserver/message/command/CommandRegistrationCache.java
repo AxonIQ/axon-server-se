@@ -15,7 +15,7 @@ import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.hashing.ConsistentHashRoutingSelector;
+import io.axoniq.axonserver.refactoring.messaging.command.hashing.ConsistentHashRoutingSelector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
