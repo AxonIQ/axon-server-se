@@ -9,12 +9,12 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.component.ComponentItems;
-import io.axoniq.axonserver.component.instance.Client;
-import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.grpc.ClientIdRegistry;
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.serializer.Printable;
+import io.axoniq.axonserver.refactoring.client.ComponentItems;
+import io.axoniq.axonserver.refactoring.client.instance.Client;
+import io.axoniq.axonserver.refactoring.client.instance.Clients;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
+import io.axoniq.axonserver.refactoring.transport.rest.serializer.Printable;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

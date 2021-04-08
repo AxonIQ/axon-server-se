@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.refactoring.messaging.command.hashing;
 
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;

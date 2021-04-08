@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.component;
 
+import io.axoniq.axonserver.refactoring.client.ComponentItem;
+
 /**
  * Created by Sara Pellegrini on 30/03/2018.
  * sara.pellegrini@gmail.com

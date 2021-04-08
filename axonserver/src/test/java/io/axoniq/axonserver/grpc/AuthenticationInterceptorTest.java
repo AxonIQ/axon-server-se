@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
 import io.axoniq.axonserver.refactoring.transport.grpc.AuthenticationInterceptor;
 import io.axoniq.axonserver.refactoring.transport.grpc.GrpcMetadataKeys;
 import io.grpc.Attributes;

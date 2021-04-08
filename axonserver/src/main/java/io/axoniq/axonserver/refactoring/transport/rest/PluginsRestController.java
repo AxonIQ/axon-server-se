@@ -11,13 +11,13 @@ package io.axoniq.axonserver.refactoring.transport.rest;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginController;
-import io.axoniq.axonserver.plugin.PluginInfo;
-import io.axoniq.axonserver.plugin.PluginKey;
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.rest.PluginConfigurationJSON;
-import io.axoniq.axonserver.rest.PluginPropertyGroup;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.plugin.PluginController;
+import io.axoniq.axonserver.refactoring.plugin.PluginInfo;
+import io.axoniq.axonserver.refactoring.plugin.PluginKey;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.transport.rest.dto.PluginConfigurationJSON;
+import io.axoniq.axonserver.refactoring.transport.rest.dto.PluginPropertyGroup;
 import org.slf4j.Logger;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.Principal;
 
-import static io.axoniq.axonserver.util.StringUtils.sanitize;
+import static io.axoniq.axonserver.refactoring.util.StringUtils.sanitize;
 
 /**
  * REST interface to manage plugins.

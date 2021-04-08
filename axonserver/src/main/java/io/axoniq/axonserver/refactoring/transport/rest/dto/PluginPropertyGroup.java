@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
-import io.axoniq.axonserver.plugin.PluginProperty;
+import io.axoniq.axonserver.refactoring.plugin.PluginProperty;
 
 import java.util.Collection;
 

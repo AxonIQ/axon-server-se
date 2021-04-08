@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.component;
 
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.refactoring.client.ComponentItems;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import org.junit.*;
 
 import java.util.Iterator;

@@ -9,9 +9,11 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.SerializedCommandResponse;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandCache;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandInformation;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
 import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 

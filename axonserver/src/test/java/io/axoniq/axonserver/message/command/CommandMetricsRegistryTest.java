@@ -9,10 +9,11 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandMetricsRegistry;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Meter;

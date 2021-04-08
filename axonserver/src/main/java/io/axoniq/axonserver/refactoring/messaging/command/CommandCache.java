@@ -9,9 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.messaging.command;
 
-import io.axoniq.axonserver.message.command.CommandInformation;
-import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
-import io.axoniq.axonserver.util.ConstraintCache;
+import io.axoniq.axonserver.refactoring.messaging.ConstraintCache;
+import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

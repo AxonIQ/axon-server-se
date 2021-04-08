@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.metric;
 
+import io.axoniq.axonserver.refactoring.metric.ClusterMetric;
+
 /**
  * Created by Sara Pellegrini on 18/04/2018.
  * sara.pellegrini@gmail.com

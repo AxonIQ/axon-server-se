@@ -9,21 +9,21 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.query.QueryDefinition;
-import io.axoniq.axonserver.message.query.QueryHandler;
-import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
-import io.axoniq.axonserver.message.query.QueryRegistrationCache;
-import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandMetricsRegistry;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryHandler;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryMetricsRegistry;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.query.RoundRobinQueryHandlerSelector;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.axoniq.axonserver.refactoring.transport.rest.MetricsRestController;
-import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;

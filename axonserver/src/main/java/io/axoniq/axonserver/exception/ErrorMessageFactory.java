@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.exception;
 
 import io.axoniq.axonserver.grpc.ErrorMessage;
-import io.axoniq.axonserver.util.StringUtils;
+import io.axoniq.axonserver.refactoring.util.StringUtils;
 
 /**
  * Creates error messages.

@@ -9,10 +9,10 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.access.jpa.User;
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.applicationevents.UserEvents;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
+import io.axoniq.axonserver.refactoring.security.access.UserEvents;
+import io.axoniq.axonserver.refactoring.security.access.jpa.User;
+import io.axoniq.axonserver.refactoring.security.access.user.UserController;
+import io.axoniq.axonserver.refactoring.security.access.user.UserControllerFacade;
 import org.junit.*;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;

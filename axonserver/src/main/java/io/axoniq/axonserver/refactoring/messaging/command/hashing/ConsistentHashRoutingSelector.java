@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.refactoring.messaging.command.hashing;
 
-import io.axoniq.axonserver.message.command.RoutingSelector;
+import io.axoniq.axonserver.refactoring.messaging.command.RoutingSelector;
 
 import java.util.Optional;
 import java.util.Set;

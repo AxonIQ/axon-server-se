@@ -14,8 +14,9 @@ import io.axoniq.axonserver.grpc.event.CancelScheduledEventRequest;
 import io.axoniq.axonserver.grpc.event.RescheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleEventRequest;
 import io.axoniq.axonserver.grpc.event.ScheduleToken;
-import io.axoniq.axonserver.taskscheduler.JacksonTaskPayloadSerializer;
-import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
+import io.axoniq.axonserver.refactoring.taskscheduler.JacksonTaskPayloadSerializer;
+import io.axoniq.axonserver.refactoring.taskscheduler.StandaloneTaskManager;
+import io.axoniq.axonserver.refactoring.transport.grpc.EventSchedulerService;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 

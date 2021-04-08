@@ -10,17 +10,17 @@
 package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.component.query.Query;
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.query.DirectQueryHandler;
-import io.axoniq.axonserver.message.query.QueryDefinition;
-import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.client.query.Query;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDispatcher;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.transport.grpc.DirectQueryHandler;
 import io.axoniq.axonserver.refactoring.transport.rest.QueryRestController;
-import io.axoniq.axonserver.serializer.GsonMedia;
+import io.axoniq.axonserver.refactoring.transport.rest.serializer.GsonMedia;
 import io.axoniq.axonserver.test.FakeStreamObserver;
-import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.util.Iterator;

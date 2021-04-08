@@ -1,8 +1,9 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
-import io.axoniq.axonserver.component.instance.ClientIdentifications;
-import io.axoniq.axonserver.component.version.BackwardsCompatibleVersion;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.client.instance.ClientIdentifications;
+import io.axoniq.axonserver.refactoring.client.version.BackwardsCompatibleVersion;
+import io.axoniq.axonserver.refactoring.transport.heartbeat.HeartbeatProvidedClients;
 import org.junit.*;
 
 import java.util.Arrays;

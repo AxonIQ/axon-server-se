@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
-import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
 import io.grpc.Context;
 import io.grpc.Metadata;
 import org.springframework.security.core.Authentication;

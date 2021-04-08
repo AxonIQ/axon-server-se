@@ -9,8 +9,13 @@
 
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
-import io.axoniq.axonserver.topology.Topology;
-import io.grpc.*;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.grpc.Context;
+import io.grpc.Contexts;
+import io.grpc.Metadata;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
 
 /**
  * Interceptor that retrieves the CONTEXT from the request metadata and adds it in the threadlocal gRPC context.

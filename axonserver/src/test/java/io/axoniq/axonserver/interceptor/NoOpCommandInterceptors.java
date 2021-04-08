@@ -10,8 +10,9 @@
 package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.plugin.ExecutionContext;
-import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandInterceptors;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
 
 /**
  * @author Marc Gathier

@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.refactoring.security.TokenAuthentication;
 import io.axoniq.axonserver.refactoring.transport.grpc.GrpcMetadataKeys;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;

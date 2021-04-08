@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
+import io.axoniq.axonserver.refactoring.security.AuditLog;
 import io.axoniq.axonserver.refactoring.transport.grpc.PlatformService;
-import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

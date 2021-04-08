@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.ui.svg.mapping;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

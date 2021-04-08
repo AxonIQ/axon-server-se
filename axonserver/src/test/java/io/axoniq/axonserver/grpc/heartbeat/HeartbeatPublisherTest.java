@@ -1,9 +1,10 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
-import io.axoniq.axonserver.component.instance.ClientIdentifications;
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.client.instance.ClientIdentifications;
+import io.axoniq.axonserver.refactoring.transport.heartbeat.HeartbeatPublisher;
 import org.junit.*;
 
 import java.util.Arrays;

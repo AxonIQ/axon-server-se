@@ -10,10 +10,10 @@
 package io.axoniq.axonserver.access.role;
 
 import io.axoniq.axonserver.AxonServer;
-import io.axoniq.axonserver.access.jpa.Role;
-import io.axoniq.axonserver.access.roles.RoleController;
-import io.axoniq.axonserver.access.roles.RoleRepository;
-import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.axoniq.axonserver.refactoring.security.access.jpa.Role;
+import io.axoniq.axonserver.refactoring.security.access.roles.RoleController;
+import io.axoniq.axonserver.refactoring.security.access.roles.RoleRepository;
+import io.axoniq.axonserver.refactoring.version.VersionInfoProvider;
 import org.junit.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +29,8 @@ import java.util.List;
 
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
 
 /**
  * Created by Sara Pellegrini on 08/03/2018.

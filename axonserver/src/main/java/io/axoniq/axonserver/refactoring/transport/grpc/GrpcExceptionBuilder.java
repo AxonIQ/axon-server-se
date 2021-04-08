@@ -10,8 +10,8 @@
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.plugin.PostCommitHookException;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
 import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;

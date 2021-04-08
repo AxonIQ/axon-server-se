@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.applicationevents;
 
+import io.axoniq.axonserver.refactoring.transport.applicationevents.LocalEventPublisher;
 import org.junit.*;
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;

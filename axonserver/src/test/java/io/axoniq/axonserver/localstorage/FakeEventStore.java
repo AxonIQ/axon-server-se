@@ -11,6 +11,14 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.refactoring.store.EventStorageEngine;
+import io.axoniq.axonserver.refactoring.store.EventType;
+import io.axoniq.axonserver.refactoring.store.EventTypeContext;
+import io.axoniq.axonserver.refactoring.store.QueryOptions;
+import io.axoniq.axonserver.refactoring.store.Registration;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
+import io.axoniq.axonserver.refactoring.store.SerializedEventWithToken;
+import io.axoniq.axonserver.refactoring.store.SerializedTransactionWithToken;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 

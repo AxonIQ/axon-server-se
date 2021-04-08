@@ -9,11 +9,11 @@
 
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
-import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.InvalidTokenException;
-import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.security.InvalidTokenException;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.Grpc;

@@ -1,11 +1,13 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
-import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 

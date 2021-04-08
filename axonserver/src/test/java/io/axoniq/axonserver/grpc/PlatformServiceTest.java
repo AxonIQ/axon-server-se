@@ -9,9 +9,8 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.TestSystemInfoProvider;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
@@ -19,11 +18,15 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.client.EventProcessorEvents;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
+import io.axoniq.axonserver.refactoring.configuration.topology.DefaultTopology;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
+import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.grpc.PlatformService;
+import io.axoniq.axonserver.refactoring.transport.instruction.DefaultInstructionAckSource;
 import io.axoniq.axonserver.test.FakeStreamObserver;
-import io.axoniq.axonserver.topology.DefaultTopology;
-import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;

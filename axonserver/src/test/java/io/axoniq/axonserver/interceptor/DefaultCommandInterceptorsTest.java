@@ -9,17 +9,20 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginKey;
-import io.axoniq.axonserver.plugin.ServiceWithInfo;
-import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
-import io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor;
+import io.axoniq.axonserver.refactoring.messaging.command.DefaultCommandInterceptors;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.plugin.PluginContextFilter;
+import io.axoniq.axonserver.refactoring.plugin.PluginEnabledEvent;
+import io.axoniq.axonserver.refactoring.plugin.PluginKey;
+import io.axoniq.axonserver.refactoring.plugin.ServiceWithInfo;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 

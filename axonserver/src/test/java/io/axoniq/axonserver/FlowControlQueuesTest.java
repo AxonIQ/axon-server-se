@@ -10,8 +10,8 @@
 package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.message.FlowControlQueues;
+import io.axoniq.axonserver.refactoring.messaging.FlowControlQueues;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
 import org.junit.*;
 
 import java.util.Comparator;

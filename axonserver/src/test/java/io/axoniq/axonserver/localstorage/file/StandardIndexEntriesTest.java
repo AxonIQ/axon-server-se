@@ -1,6 +1,9 @@
 package io.axoniq.axonserver.localstorage.file;
 
 
+import io.axoniq.axonserver.refactoring.store.engine.file.IndexEntries;
+import io.axoniq.axonserver.refactoring.store.engine.file.IndexEntry;
+import io.axoniq.axonserver.refactoring.store.engine.file.StandardIndexEntries;
 import org.junit.*;
 
 import java.util.Collections;

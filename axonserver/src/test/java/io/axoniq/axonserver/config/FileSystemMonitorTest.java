@@ -2,9 +2,10 @@ package io.axoniq.axonserver.config;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import io.axoniq.axonserver.refactoring.transport.rest.actuator.FileSystemMonitor;
+import io.axoniq.axonserver.refactoring.transport.rest.actuator.HealthStatus;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.util.unit.DataSize;

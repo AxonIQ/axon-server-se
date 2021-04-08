@@ -9,19 +9,24 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.EventType;
-import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.store.EventType;
+import io.axoniq.axonserver.refactoring.store.EventTypeContext;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
+import io.axoniq.axonserver.refactoring.store.SerializedEventWithToken;
+import io.axoniq.axonserver.refactoring.store.SerializedTransactionWithToken;
+import io.axoniq.axonserver.refactoring.store.engine.file.EmbeddedDBProperties;
+import io.axoniq.axonserver.refactoring.store.engine.file.IndexManager;
+import io.axoniq.axonserver.refactoring.store.engine.file.InputStreamEventStore;
+import io.axoniq.axonserver.refactoring.store.engine.file.PrimaryEventStore;
+import io.axoniq.axonserver.refactoring.store.engine.file.StandardIndexManager;
+import io.axoniq.axonserver.refactoring.store.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.refactoring.store.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.refactoring.transport.rest.actuator.FileSystemMonitor;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;

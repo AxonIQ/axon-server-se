@@ -11,21 +11,21 @@ package io.axoniq.axonserver.refactoring.transport.rest;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.message.event.EventDispatcher;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
+import io.axoniq.axonserver.refactoring.transport.grpc.EventDispatcher;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.MetaDataJson;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.SerializedObjectJson;
-import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.ObjectUtils;
-import io.axoniq.axonserver.util.StringUtils;
+import io.axoniq.axonserver.refactoring.util.ObjectUtils;
+import io.axoniq.axonserver.refactoring.util.StringUtils;
 import io.grpc.stub.StreamObserver;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -55,9 +55,9 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
-import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
-import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
-import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
+import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.CONTEXT_PARAM;
+import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.TOKEN_PARAM;
+import static io.axoniq.axonserver.refactoring.util.ObjectUtils.getOrDefault;
 
 /**
  * REST endpoint to retrieve and store events and snapshots.

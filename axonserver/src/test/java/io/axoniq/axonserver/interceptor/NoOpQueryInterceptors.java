@@ -9,9 +9,10 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryInterceptors;
+import io.axoniq.axonserver.refactoring.messaging.query.SerializedQuery;
 
 /**
  * @author Marc Gathier

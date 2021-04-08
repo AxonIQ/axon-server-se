@@ -10,6 +10,9 @@
 package io.axoniq.axonserver.plugin;
 
 import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
+import io.axoniq.axonserver.refactoring.plugin.OsgiController;
+import io.axoniq.axonserver.refactoring.plugin.PluginController;
+import io.axoniq.axonserver.refactoring.plugin.ServiceWithInfo;
 import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 import org.osgi.framework.BundleException;

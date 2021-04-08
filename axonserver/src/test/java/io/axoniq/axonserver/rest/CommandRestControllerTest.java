@@ -10,14 +10,14 @@
 package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.component.command.ComponentCommand;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.client.command.ComponentCommand;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.transport.grpc.DirectCommandHandler;
 import io.axoniq.axonserver.refactoring.transport.rest.CommandRestController;
-import io.axoniq.axonserver.serializer.GsonMedia;
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.refactoring.transport.rest.serializer.GsonMedia;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 import org.junit.runner.*;

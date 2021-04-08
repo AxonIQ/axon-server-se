@@ -9,11 +9,20 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.component.processor.*;
-import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
-import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.refactoring.client.processor.ClientsByEventProcessor;
+import io.axoniq.axonserver.refactoring.client.processor.ComponentEventProcessors;
+import io.axoniq.axonserver.refactoring.client.processor.EventProcessor;
+import io.axoniq.axonserver.refactoring.client.processor.EventProcessorIdentifier;
+import io.axoniq.axonserver.refactoring.client.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.refactoring.client.processor.listener.ClientProcessors;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
 import org.slf4j.Logger;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
@@ -41,7 +50,7 @@ public class EventProcessorRestController {
      *
      * @param processorEventsSource the {@link ProcessorEventPublisher} used to publish specific application
      *                              events for the provided endpoints
-     * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
+     * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.refactoring.client.processor.listener.ClientProcessor}
      *                              instances containing the known status of all the Event Processors
      */
     public EventProcessorRestController(ProcessorEventPublisher processorEventsSource,

@@ -9,26 +9,18 @@
 
 package io.axoniq.axonserver.refactoring.messaging.command;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
-import io.axoniq.axonserver.interceptor.CommandInterceptors;
-import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.CommandInformation;
-import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
-import io.axoniq.axonserver.message.command.WrappedCommand;
-import io.axoniq.axonserver.metric.BaseMetricName;
-import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.util.ConstraintCache;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
+import io.axoniq.axonserver.refactoring.messaging.ConstraintCache;
+import io.axoniq.axonserver.refactoring.messaging.FlowControlQueues;
+import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityException;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.metric.BaseMetricName;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.plugin.DefaultExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

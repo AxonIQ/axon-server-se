@@ -9,14 +9,14 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.query.QueryDefinition;
-import io.axoniq.axonserver.message.query.QueryHandler;
-import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
-import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandMetricsRegistry;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryHandler;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryMetricsRegistry;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

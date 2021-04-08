@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDecisionVoter;

@@ -9,19 +9,19 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.component.ComponentItems;
-import io.axoniq.axonserver.component.query.DefaultQueries;
-import io.axoniq.axonserver.component.query.Query;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.grpc.SerializedQuery;
-import io.axoniq.axonserver.message.query.QueryDefinition;
-import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.message.query.QueryHandler;
-import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.client.ComponentItems;
+import io.axoniq.axonserver.refactoring.client.query.DefaultQueries;
+import io.axoniq.axonserver.refactoring.client.query.Query;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDispatcher;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryHandler;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.query.SerializedQuery;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.QueryRequestJson;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.QueryResponseJson;
-import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.util.ObjectUtils;
+import io.axoniq.axonserver.refactoring.util.ObjectUtils;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
@@ -45,8 +45,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
-import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
-import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
+import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.CONTEXT_PARAM;
+import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.TOKEN_PARAM;
 
 /**
  * Rest service to retrieve information on registered queries. Also provides service to send a query to query handlers.

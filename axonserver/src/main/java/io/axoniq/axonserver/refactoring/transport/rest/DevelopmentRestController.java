@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.refactoring.transport.rest;
 
 
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.topology.EventStoreLocator;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.store.EventStoreLocator;
 import io.swagger.annotations.ApiOperation;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;

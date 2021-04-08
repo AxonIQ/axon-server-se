@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 
 import java.util.Map;
 

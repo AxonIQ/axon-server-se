@@ -10,12 +10,12 @@
 package io.axoniq.axonserver.interceptor;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginKey;
+import io.axoniq.axonserver.grpc.MetaDataValue;
+import io.axoniq.axonserver.grpc.SerializedObject;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.plugin.PostCommitHookException;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
-import io.axoniq.axonserver.plugin.ServiceWithInfo;
 import io.axoniq.axonserver.plugin.hook.PostCommitEventsHook;
 import io.axoniq.axonserver.plugin.hook.PostCommitSnapshotHook;
 import io.axoniq.axonserver.plugin.hook.PreCommitEventsHook;
@@ -23,11 +23,14 @@ import io.axoniq.axonserver.plugin.interceptor.AppendEventInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.AppendSnapshotInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.ReadEventInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.ReadSnapshotInterceptor;
-import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.axonserver.grpc.SerializedObject;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.plugin.PluginContextFilter;
+import io.axoniq.axonserver.refactoring.plugin.PluginEnabledEvent;
+import io.axoniq.axonserver.refactoring.plugin.PluginKey;
+import io.axoniq.axonserver.refactoring.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.refactoring.store.DefaultEventInterceptors;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
@@ -37,7 +40,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 
-import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
+import static io.axoniq.axonserver.refactoring.util.StringUtils.getOrDefault;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 

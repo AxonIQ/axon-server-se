@@ -1,11 +1,11 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.refactoring.requestprocessor.SequenceValidationStreamObserver;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
 import io.grpc.stub.CallStreamObserver;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import static org.mockito.Mockito.*;
 

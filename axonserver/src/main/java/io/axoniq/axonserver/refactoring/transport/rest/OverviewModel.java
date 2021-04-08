@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
 import io.axoniq.axonserver.refactoring.ui.svg.Element;
 import io.axoniq.axonserver.refactoring.ui.svg.Elements;
 import io.axoniq.axonserver.refactoring.ui.svg.Fonts;
@@ -23,7 +24,6 @@ import io.axoniq.axonserver.refactoring.ui.svg.mapping.ApplicationBoxMapping;
 import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServer;
 import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServerBoxMapping;
 import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServerPopupMapping;
-import io.axoniq.axonserver.topology.Topology;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;

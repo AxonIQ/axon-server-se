@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
-import io.axoniq.axonserver.version.VersionInfo;
-import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.axoniq.axonserver.refactoring.transport.grpc.GrpcFlowControlledDispatcherListener;
+import io.axoniq.axonserver.refactoring.version.VersionInfo;
+import io.axoniq.axonserver.refactoring.version.VersionInfoProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;

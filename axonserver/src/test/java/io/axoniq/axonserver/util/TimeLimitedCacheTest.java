@@ -9,10 +9,9 @@
 
 package io.axoniq.axonserver.util;
 
+import io.axoniq.axonserver.refactoring.security.TimeLimitedCache;
 import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
-
-import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier

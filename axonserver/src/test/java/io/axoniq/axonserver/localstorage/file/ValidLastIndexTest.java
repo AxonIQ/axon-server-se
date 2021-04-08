@@ -1,12 +1,17 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.localstorage.EventType;
-import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.store.EventType;
+import io.axoniq.axonserver.refactoring.store.EventTypeContext;
+import io.axoniq.axonserver.refactoring.store.engine.file.IndexManager;
+import io.axoniq.axonserver.refactoring.store.engine.file.InputStreamEventStore;
+import io.axoniq.axonserver.refactoring.store.engine.file.PrimaryEventStore;
+import io.axoniq.axonserver.refactoring.store.engine.file.StandardIndexManager;
+import io.axoniq.axonserver.refactoring.store.engine.file.StorageProperties;
+import io.axoniq.axonserver.refactoring.store.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.refactoring.transport.rest.actuator.FileSystemMonitor;
 import io.axoniq.axonserver.test.TestUtils;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
@@ -15,9 +20,8 @@ import java.io.File;
 import java.net.UnknownHostException;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier

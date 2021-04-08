@@ -1,13 +1,14 @@
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
+import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityException;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryCache;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryInformation;
 import junit.framework.TestCase;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.junit.*;
+import org.junit.runner.*;
+import org.mockito.runners.*;
 
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class QueryCacheTest extends TestCase {

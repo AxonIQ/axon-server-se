@@ -9,22 +9,22 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.config.SslConfiguration;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
-import io.axoniq.axonserver.message.event.EventDispatcher;
-import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDispatcher;
+import io.axoniq.axonserver.refactoring.messaging.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.refactoring.security.AccessControlConfiguration;
+import io.axoniq.axonserver.refactoring.transport.grpc.EventDispatcher;
+import io.axoniq.axonserver.refactoring.transport.grpc.SslConfiguration;
+import io.axoniq.axonserver.refactoring.transport.rest.dto.LicenseInfo;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.NodeConfiguration;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.StatusInfo;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.UserInfo;
 import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServer;
-import io.axoniq.axonserver.rest.LicenseInfo;
-import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.version.VersionInfo;
-import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.axoniq.axonserver.refactoring.version.VersionInfo;
+import io.axoniq.axonserver.refactoring.version.VersionInfoProvider;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;

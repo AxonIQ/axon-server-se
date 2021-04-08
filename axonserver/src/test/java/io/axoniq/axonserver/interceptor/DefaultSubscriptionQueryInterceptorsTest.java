@@ -9,17 +9,20 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginKey;
-import io.axoniq.axonserver.plugin.ServiceWithInfo;
-import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryRequestInterceptor;
-import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryResponseInterceptor;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QueryUpdateComplete;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryRequestInterceptor;
+import io.axoniq.axonserver.plugin.interceptor.SubscriptionQueryResponseInterceptor;
+import io.axoniq.axonserver.refactoring.messaging.query.subscription.DefaultSubscriptionQueryInterceptors;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.plugin.PluginContextFilter;
+import io.axoniq.axonserver.refactoring.plugin.PluginEnabledEvent;
+import io.axoniq.axonserver.refactoring.plugin.PluginKey;
+import io.axoniq.axonserver.refactoring.plugin.ServiceWithInfo;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 

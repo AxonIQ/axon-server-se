@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.grpc.command.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
 import org.junit.*;
 
 import java.io.ByteArrayOutputStream;

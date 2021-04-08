@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.refactoring.ui.svg.mapping;
 
 
-import io.axoniq.axonserver.topology.AxonServerNode;
+import io.axoniq.axonserver.refactoring.configuration.topology.AxonServerNode;
 
 import java.util.Collections;
 import java.util.Map;

@@ -1,19 +1,20 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.grpc.ClientIdRegistry;
-import io.axoniq.axonserver.grpc.ClientIdRegistry.ConnectionType;
-import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
-import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityListener.StreamCloser;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
+import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
+import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry.ConnectionType;
+import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
+import io.axoniq.axonserver.refactoring.transport.heartbeat.ApplicationInactivityListener;
+import io.axoniq.axonserver.refactoring.transport.heartbeat.ApplicationInactivityListener.StreamCloser;
 import org.junit.*;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.axoniq.axonserver.grpc.ClientIdRegistry.ConnectionType.COMMAND;
-import static io.axoniq.axonserver.grpc.ClientIdRegistry.ConnectionType.QUERY;
+import static io.axoniq.axonserver.refactoring.transport.ClientIdRegistry.ConnectionType.COMMAND;
+import static io.axoniq.axonserver.refactoring.transport.ClientIdRegistry.ConnectionType.QUERY;
 import static org.junit.Assert.*;
 
 /**

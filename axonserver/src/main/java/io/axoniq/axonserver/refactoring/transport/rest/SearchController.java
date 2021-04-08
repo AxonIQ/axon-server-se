@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import springfox.documentation.annotations.ApiIgnore;
 
-import static io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver.TIME_WINDOW_CUSTOM;
+import static io.axoniq.axonserver.refactoring.store.query.QueryEventsRequestStreamObserver.TIME_WINDOW_CUSTOM;
 
 /**
  * Rest service to perform queries on the event store.

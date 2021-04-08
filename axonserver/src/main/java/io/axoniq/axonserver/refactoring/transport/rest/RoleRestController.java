@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.access.roles.RoleController;
-import io.axoniq.axonserver.access.jpa.Role;
+import io.axoniq.axonserver.refactoring.security.access.jpa.Role;
+import io.axoniq.axonserver.refactoring.security.access.roles.RoleController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

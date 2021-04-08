@@ -9,7 +9,9 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.serializer.GsonMedia;
+import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
+import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
+import io.axoniq.axonserver.refactoring.transport.rest.serializer.GsonMedia;
 import org.junit.*;
 
 import java.util.Set;

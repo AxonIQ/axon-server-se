@@ -1,11 +1,12 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
-import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents.ApplicationConnected;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents.ApplicationDisconnected;
+import io.axoniq.axonserver.refactoring.transport.heartbeat.HeartbeatMonitor;
 import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 

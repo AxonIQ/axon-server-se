@@ -9,8 +9,11 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.version.VersionInfo;
-import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.axoniq.axonserver.refactoring.transport.rest.ExternalLogin;
+import io.axoniq.axonserver.refactoring.transport.rest.ExternalLoginsProvider;
+import io.axoniq.axonserver.refactoring.transport.rest.LoginController;
+import io.axoniq.axonserver.refactoring.version.VersionInfo;
+import io.axoniq.axonserver.refactoring.version.VersionInfoProvider;
 import org.junit.*;
 import org.springframework.web.servlet.ModelAndView;
 

@@ -9,18 +9,18 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.component.ComponentItems;
-import io.axoniq.axonserver.component.command.ComponentCommand;
-import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.refactoring.client.ComponentItems;
+import io.axoniq.axonserver.refactoring.client.command.ComponentCommand;
+import io.axoniq.axonserver.refactoring.client.command.DefaultCommands;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
-import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.CommandRequestJson;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.CommandResponseJson;
-import io.axoniq.axonserver.topology.Topology;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
@@ -46,10 +46,10 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
-import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
-import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
-import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
-import static io.axoniq.axonserver.util.StringUtils.sanitize;
+import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.CONTEXT_PARAM;
+import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.TOKEN_PARAM;
+import static io.axoniq.axonserver.refactoring.util.ObjectUtils.getOrDefault;
+import static io.axoniq.axonserver.refactoring.util.StringUtils.sanitize;
 
 /**
  * REST controller to retrieve information about subscribed commands and to dispatch commands.

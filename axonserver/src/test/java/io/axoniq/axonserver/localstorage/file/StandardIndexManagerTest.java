@@ -1,10 +1,14 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.EventType;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.store.EventType;
+import io.axoniq.axonserver.refactoring.store.engine.file.IndexEntries;
+import io.axoniq.axonserver.refactoring.store.engine.file.IndexEntry;
+import io.axoniq.axonserver.refactoring.store.engine.file.StandardIndexManager;
+import io.axoniq.axonserver.refactoring.store.engine.file.StorageProperties;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;

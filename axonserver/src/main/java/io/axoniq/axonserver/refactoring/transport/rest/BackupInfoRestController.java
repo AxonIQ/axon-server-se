@@ -11,11 +11,11 @@ package io.axoniq.axonserver.refactoring.transport.rest;
 
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.EventType;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.store.EventType;
+import io.axoniq.axonserver.refactoring.store.LocalEventStore;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

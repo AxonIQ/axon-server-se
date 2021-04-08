@@ -1,6 +1,8 @@
 package io.axoniq.axonserver.grpc.instruction.result;
 
 import io.axoniq.axonserver.grpc.InstructionResult;
+import io.axoniq.axonserver.refactoring.transport.instruction.result.InstructionResultSource;
+import io.axoniq.axonserver.refactoring.transport.instruction.result.InstructionResultSourceFactory;
 import org.junit.*;
 
 import java.time.Duration;

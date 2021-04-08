@@ -9,13 +9,23 @@
 
 package io.axoniq.axonserver.refactoring.transport.grpc.axonhub;
 
-import io.axoniq.axonserver.refactoring.transport.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.event.Confirmation;
-import io.axoniq.axonserver.grpc.event.*;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.message.event.EventDispatcher;
-import io.axoniq.axonserver.message.event.InputStreamMarshaller;
-import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
+import io.axoniq.axonserver.grpc.event.TrackingToken;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
+import io.axoniq.axonserver.refactoring.transport.grpc.AxonServerClientService;
+import io.axoniq.axonserver.refactoring.transport.grpc.EventDispatcher;
+import io.axoniq.axonserver.refactoring.transport.grpc.InputStreamMarshaller;
+import io.axoniq.axonserver.refactoring.transport.grpc.SerializedEventMarshaller;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;

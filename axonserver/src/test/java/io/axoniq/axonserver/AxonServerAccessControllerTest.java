@@ -9,9 +9,10 @@
 
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.refactoring.security.AccessControlConfiguration;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.security.access.user.UserController;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;

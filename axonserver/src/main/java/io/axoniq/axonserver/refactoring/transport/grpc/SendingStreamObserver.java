@@ -10,8 +10,7 @@
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.util.StreamObserverUtils;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

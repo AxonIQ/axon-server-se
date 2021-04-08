@@ -9,19 +9,22 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
-import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
-import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.store.EventStorageEngine;
+import io.axoniq.axonserver.refactoring.store.EventStoreFactory;
+import io.axoniq.axonserver.refactoring.store.EventWriteStorage;
+import io.axoniq.axonserver.refactoring.store.engine.file.EmbeddedDBProperties;
+import io.axoniq.axonserver.refactoring.store.engine.file.SegmentBasedEventStore;
+import io.axoniq.axonserver.refactoring.store.engine.file.StandardEventStoreFactory;
+import io.axoniq.axonserver.refactoring.store.transaction.DefaultStorageTransactionManagerFactory;
+import io.axoniq.axonserver.refactoring.store.transaction.SingleInstanceTransactionManager;
+import io.axoniq.axonserver.refactoring.store.transaction.StorageTransactionManager;
+import io.axoniq.axonserver.refactoring.store.transformation.DefaultEventTransformerFactory;
+import io.axoniq.axonserver.refactoring.transport.rest.actuator.FileSystemMonitor;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.io.File;
@@ -31,9 +34,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.IntStream;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier

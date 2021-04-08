@@ -9,13 +9,15 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryMetricsRegistry;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
-import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
+import static io.axoniq.axonserver.refactoring.configuration.topology.Topology.DEFAULT_CONTEXT;
 import static org.junit.Assert.*;
 
 /**

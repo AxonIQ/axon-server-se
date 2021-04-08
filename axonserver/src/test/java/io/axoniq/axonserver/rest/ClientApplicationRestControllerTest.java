@@ -9,10 +9,10 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.component.instance.Client;
-import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.component.instance.FakeClient;
-import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
+import io.axoniq.axonserver.refactoring.client.instance.Client;
+import io.axoniq.axonserver.refactoring.client.instance.Clients;
+import io.axoniq.axonserver.refactoring.client.instance.FakeClient;
+import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.rest.ClientApplicationRestController;
 import org.junit.*;
 
@@ -20,7 +20,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
+import static io.axoniq.axonserver.refactoring.configuration.topology.Topology.DEFAULT_CONTEXT;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 

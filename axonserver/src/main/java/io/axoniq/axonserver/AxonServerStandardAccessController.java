@@ -9,12 +9,13 @@
 
 package io.axoniq.axonserver;
 
-import io.axoniq.axonserver.access.jpa.User;
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.exception.InvalidTokenException;
+import io.axoniq.axonserver.refactoring.security.AccessControlConfiguration;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.security.InvalidTokenException;
+import io.axoniq.axonserver.refactoring.security.access.jpa.User;
+import io.axoniq.axonserver.refactoring.security.access.user.UserController;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;

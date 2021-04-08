@@ -9,11 +9,11 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.PluginKey;
-import io.axoniq.axonserver.plugin.PluginServiceProvider;
 import io.axoniq.axonserver.plugin.Ordered;
-import io.axoniq.axonserver.plugin.ServiceWithInfo;
-import io.axoniq.axonserver.localstorage.Registration;
+import io.axoniq.axonserver.refactoring.plugin.PluginKey;
+import io.axoniq.axonserver.refactoring.plugin.PluginServiceProvider;
+import io.axoniq.axonserver.refactoring.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.refactoring.store.Registration;
 
 import java.util.ArrayList;
 import java.util.HashSet;

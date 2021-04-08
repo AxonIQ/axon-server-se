@@ -1,11 +1,10 @@
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.AxonServerAccessController;
-import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.InvalidTokenException;
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.refactoring.transport.rest.RestRequestAccessDecisionVoter;
+import io.axoniq.axonserver.refactoring.security.AccessControlConfiguration;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.security.InvalidTokenException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;

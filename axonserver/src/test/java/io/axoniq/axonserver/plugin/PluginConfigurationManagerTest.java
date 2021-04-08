@@ -9,8 +9,11 @@
 
 package io.axoniq.axonserver.plugin;
 
-import io.axoniq.axonserver.interceptor.PluginEnabledEvent;
-import io.axoniq.axonserver.rest.PluginPropertyGroup;
+import io.axoniq.axonserver.refactoring.plugin.OsgiController;
+import io.axoniq.axonserver.refactoring.plugin.PluginConfigurationManager;
+import io.axoniq.axonserver.refactoring.plugin.PluginEnabledEvent;
+import io.axoniq.axonserver.refactoring.plugin.PluginKey;
+import io.axoniq.axonserver.refactoring.transport.rest.dto.PluginPropertyGroup;
 import org.junit.*;
 import org.osgi.framework.Bundle;
 

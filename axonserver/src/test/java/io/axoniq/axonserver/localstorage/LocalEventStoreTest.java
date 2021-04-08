@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -18,9 +17,17 @@ import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.interceptor.EventInterceptors;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.refactoring.store.EventInterceptors;
+import io.axoniq.axonserver.refactoring.store.EventStorageEngine;
+import io.axoniq.axonserver.refactoring.store.EventStoreFactory;
+import io.axoniq.axonserver.refactoring.store.EventType;
+import io.axoniq.axonserver.refactoring.store.LocalEventStore;
+import io.axoniq.axonserver.refactoring.store.QueryOptions;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
+import io.axoniq.axonserver.refactoring.store.SerializedEventWithToken;
+import io.axoniq.axonserver.refactoring.store.transaction.StorageTransactionManager;
+import io.axoniq.axonserver.refactoring.store.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -201,9 +208,9 @@ public class LocalEventStoreTest {
     @Test
     public void aggregateEvents() {
         Flux<SerializedEvent> events = testSubject.aggregateEvents("demo", null,
-                                                                 GetAggregateEventsRequest.newBuilder()
-                                                                                          .setAllowSnapshots(true)
-                                                                                          .build());
+                                                                   GetAggregateEventsRequest.newBuilder()
+                                                                                            .setAllowSnapshots(true)
+                                                                                            .build());
 
         StepVerifier.create(events.map(SerializedEvent::asEvent)
                                   .map(Event::getAggregateSequenceNumber))

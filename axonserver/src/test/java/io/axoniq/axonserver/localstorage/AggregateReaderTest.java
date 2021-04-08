@@ -12,6 +12,9 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.refactoring.store.AggregateReader;
+import io.axoniq.axonserver.refactoring.store.SnapshotReader;
+import io.axoniq.axonserver.refactoring.store.SnapshotWriteStorage;
 import org.junit.*;
 import org.junit.rules.*;
 

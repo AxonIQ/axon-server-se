@@ -9,16 +9,21 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
-import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.refactoring.metric.MeterFactory;
+import io.axoniq.axonserver.refactoring.store.DefaultEventDecorator;
+import io.axoniq.axonserver.refactoring.store.EventStorageEngine;
+import io.axoniq.axonserver.refactoring.store.EventStoreFactory;
+import io.axoniq.axonserver.refactoring.store.EventType;
+import io.axoniq.axonserver.refactoring.store.LocalEventStore;
+import io.axoniq.axonserver.refactoring.store.transaction.StorageTransactionManager;
+import io.axoniq.axonserver.refactoring.store.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;

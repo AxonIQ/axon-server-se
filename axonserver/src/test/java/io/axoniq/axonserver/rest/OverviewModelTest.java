@@ -9,20 +9,19 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.refactoring.configuration.topology.SimpleAxonServerNode;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.transport.rest.OverviewModel;
 import io.axoniq.axonserver.refactoring.ui.AxonServersOverviewProvider;
 import io.axoniq.axonserver.refactoring.ui.svg.mapping.Application;
 import io.axoniq.axonserver.refactoring.ui.svg.mapping.AxonServer;
 import io.axoniq.axonserver.rest.svg.mapping.FakeApplication;
 import io.axoniq.axonserver.rest.svg.mapping.FakeAxonServer;
-import io.axoniq.axonserver.topology.SimpleAxonServerNode;
-import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.util.HashSet;
-import java.util.Set;
-
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

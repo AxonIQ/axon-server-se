@@ -9,10 +9,10 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
-import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.util.StringUtils;
+import io.axoniq.axonserver.refactoring.messaging.ProcessingInstructionHelper;
+import io.axoniq.axonserver.refactoring.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;

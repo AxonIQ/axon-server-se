@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.websocket;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdate;
+import io.axoniq.axonserver.refactoring.client.EventProcessorEvents.EventProcessorStatusUpdate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

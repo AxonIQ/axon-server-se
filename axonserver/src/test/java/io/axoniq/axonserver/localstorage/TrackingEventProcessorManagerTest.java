@@ -12,6 +12,8 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.PayloadDescription;
+import io.axoniq.axonserver.refactoring.store.SerializedEventWithToken;
+import io.axoniq.axonserver.refactoring.store.TrackingEventProcessorManager;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;

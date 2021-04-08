@@ -16,8 +16,8 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.QueryValue;
 import io.axoniq.axonserver.grpc.event.RowResponse;
-import io.axoniq.axonserver.message.event.EventStore;
-import io.axoniq.axonserver.topology.EventStoreLocator;
+import io.axoniq.axonserver.refactoring.store.EventStore;
+import io.axoniq.axonserver.refactoring.store.EventStoreLocator;
 import io.grpc.stub.StreamObserver;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -33,7 +33,7 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import static io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver.TIME_WINDOW_FIELD;
+import static io.axoniq.axonserver.refactoring.store.query.QueryEventsRequestStreamObserver.TIME_WINDOW_FIELD;
 
 /**
  * @author Marc Gathier

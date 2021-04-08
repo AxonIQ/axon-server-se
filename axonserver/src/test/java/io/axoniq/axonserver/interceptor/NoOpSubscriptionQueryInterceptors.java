@@ -12,6 +12,7 @@ package io.axoniq.axonserver.interceptor;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.refactoring.messaging.query.subscription.SubscriptionQueryInterceptors;
 
 /**
  * @author Marc Gathier

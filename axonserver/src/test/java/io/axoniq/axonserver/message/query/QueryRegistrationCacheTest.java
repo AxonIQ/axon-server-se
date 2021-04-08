@@ -9,11 +9,16 @@
 
 package io.axoniq.axonserver.message.query;
 
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryHandler;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryHandlerSelector;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryRegistrationCache;
+import io.axoniq.axonserver.refactoring.transport.grpc.DirectQueryHandler;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.junit.runner.*;

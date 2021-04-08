@@ -9,10 +9,8 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.TestSystemInfoProvider;
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -21,14 +19,21 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
+import io.axoniq.axonserver.refactoring.configuration.topology.DefaultTopology;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.FlowControlQueues;
+import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents;
+import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
-import io.axoniq.axonserver.message.command.WrappedCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.messaging.command.WrappedCommand;
+import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
+import io.axoniq.axonserver.refactoring.transport.instruction.DefaultInstructionAckSource;
 import io.axoniq.axonserver.test.FakeStreamObserver;
-import io.axoniq.axonserver.topology.DefaultTopology;
-import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.mockito.*;
@@ -87,7 +92,8 @@ public class CommandServiceTest {
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                              clientStreamId);
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
-                                                                             clientIdentification.getClientStreamId(),new SerializedCommand(Command.newBuilder()
+                                                                             clientIdentification.getClientStreamId(),
+                                                                             new SerializedCommand(Command.newBuilder()
                                                                                                           .build())));
         Thread.sleep(50);
         assertEquals(1, fakeStreamObserver.values().size());
@@ -106,7 +112,7 @@ public class CommandServiceTest {
 
     @Test
     public void unsupportedCommandInstruction() {
-        FakeStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new FakeStreamObserver<>();
+        FakeStreamObserver<SerializedCommandProviderInbound> responseStream = new FakeStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
 
         String instructionId = "instructionId";
@@ -123,7 +129,7 @@ public class CommandServiceTest {
 
     @Test
     public void unsupportedCommandInstructionWithoutInstructionId() {
-        FakeStreamObserver<io.axoniq.axonserver.grpc.SerializedCommandProviderInbound> responseStream = new FakeStreamObserver<>();
+        FakeStreamObserver<SerializedCommandProviderInbound> responseStream = new FakeStreamObserver<>();
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseStream);
 
         requestStream.onNext(CommandProviderOutbound.newBuilder().build());

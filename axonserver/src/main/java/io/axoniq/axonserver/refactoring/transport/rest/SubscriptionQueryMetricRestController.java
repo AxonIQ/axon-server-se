@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
-import io.axoniq.axonserver.message.query.subscription.metric.ApplicationSubscriptionMetricRegistry;
-import io.axoniq.axonserver.message.query.subscription.metric.QuerySubscriptionMetricRegistry;
+import io.axoniq.axonserver.refactoring.messaging.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.refactoring.messaging.query.subscription.metric.ApplicationSubscriptionMetricRegistry;
+import io.axoniq.axonserver.refactoring.messaging.query.subscription.metric.QuerySubscriptionMetricRegistry;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;

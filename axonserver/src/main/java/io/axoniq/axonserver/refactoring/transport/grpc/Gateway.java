@@ -9,10 +9,9 @@
 
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
-import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.grpc.LicenseInterceptor;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
 import io.grpc.Server;
 import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;

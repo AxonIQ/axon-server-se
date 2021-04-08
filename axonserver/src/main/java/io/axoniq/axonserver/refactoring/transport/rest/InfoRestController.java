@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.taskscheduler.BaseTaskManager;
+import io.axoniq.axonserver.refactoring.taskscheduler.BaseTaskManager;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

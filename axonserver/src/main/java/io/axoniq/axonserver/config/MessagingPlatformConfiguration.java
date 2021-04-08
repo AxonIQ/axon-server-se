@@ -10,9 +10,11 @@
 package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.util.StringUtils;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.security.AccessControlConfiguration;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.transport.grpc.SslConfiguration;
+import io.axoniq.axonserver.refactoring.util.StringUtils;
 import io.grpc.internal.GrpcUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,11 +22,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.net.UnknownHostException;
 import java.util.function.BiConsumer;
+import javax.annotation.PostConstruct;
 
-import static io.axoniq.axonserver.logging.AuditLog.enablement;
+import static io.axoniq.axonserver.refactoring.security.AuditLog.enablement;
 
 /**
  * @author Marc Gathier

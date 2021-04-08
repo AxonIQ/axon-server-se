@@ -9,16 +9,16 @@
 
 package io.axoniq.axonserver.refactoring.ui.svg.mapping;
 
-import io.axoniq.axonserver.refactoring.ui.svg.Mapping;
-import io.axoniq.axonserver.refactoring.ui.svg.attribute.Position;
-import io.axoniq.axonserver.refactoring.ui.svg.attribute.StyleClass;
+import io.axoniq.axonserver.refactoring.configuration.topology.AxonServerNode;
 import io.axoniq.axonserver.refactoring.ui.svg.BoxRegistry;
 import io.axoniq.axonserver.refactoring.ui.svg.Fonts;
+import io.axoniq.axonserver.refactoring.ui.svg.Mapping;
 import io.axoniq.axonserver.refactoring.ui.svg.TextLine;
+import io.axoniq.axonserver.refactoring.ui.svg.attribute.Position;
+import io.axoniq.axonserver.refactoring.ui.svg.attribute.StyleClass;
 import io.axoniq.axonserver.refactoring.ui.svg.decorator.Hidden;
 import io.axoniq.axonserver.refactoring.ui.svg.element.Rectangle;
 import io.axoniq.axonserver.refactoring.ui.svg.element.TextBox;
-import io.axoniq.axonserver.topology.AxonServerNode;
 
 import java.util.ArrayList;
 import java.util.List;

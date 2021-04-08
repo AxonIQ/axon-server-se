@@ -9,7 +9,9 @@
 
 package io.axoniq.axonserver.access.user;
 
-import io.axoniq.axonserver.access.jpa.User;
+import io.axoniq.axonserver.refactoring.security.access.jpa.User;
+import io.axoniq.axonserver.refactoring.security.access.user.UserController;
+import io.axoniq.axonserver.refactoring.security.access.user.UserRepository;
 import org.junit.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -17,7 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static io.axoniq.axonserver.access.user.UserController.PWD_NOLOGON;
+import static io.axoniq.axonserver.refactoring.security.access.user.UserController.PWD_NOLOGON;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.mockito.Matchers.any;

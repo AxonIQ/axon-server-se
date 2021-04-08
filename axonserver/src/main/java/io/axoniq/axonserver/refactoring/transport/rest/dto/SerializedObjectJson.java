@@ -11,7 +11,7 @@ package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
-import io.axoniq.axonserver.util.StringUtils;
+import io.axoniq.axonserver.refactoring.util.StringUtils;
 
 /**
  * @author Marc Gathier

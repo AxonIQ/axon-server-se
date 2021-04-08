@@ -9,12 +9,12 @@
 
 package io.axoniq.axonserver.refactoring.transport.grpc.axonhub;
 
-import io.axoniq.axonserver.refactoring.transport.grpc.AxonServerClientService;
-import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
-import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
-import io.axoniq.axonserver.message.ByteArrayMarshaller;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
+import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.transport.grpc.AxonServerClientService;
+import io.axoniq.axonserver.refactoring.transport.grpc.ByteArrayMarshaller;
+import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;

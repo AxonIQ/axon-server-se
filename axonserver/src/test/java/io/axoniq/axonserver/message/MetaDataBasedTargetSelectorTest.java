@@ -9,10 +9,12 @@
 
 package io.axoniq.axonserver.message;
 
-import io.axoniq.axonserver.component.tags.ClientTagsCache;
-import io.axoniq.axonserver.component.tags.ClientTagsUpdate;
-import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
+import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.MetaDataValue;
+import io.axoniq.axonserver.refactoring.client.tags.ClientTagsCache;
+import io.axoniq.axonserver.refactoring.client.tags.ClientTagsUpdate;
+import io.axoniq.axonserver.refactoring.messaging.MetaDataBasedTargetSelector;
+import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
 import org.junit.*;
 
 import java.util.Collections;

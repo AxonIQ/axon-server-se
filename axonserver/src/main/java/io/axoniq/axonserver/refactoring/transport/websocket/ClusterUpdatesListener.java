@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.transport.websocket;
 
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents;
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
+import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

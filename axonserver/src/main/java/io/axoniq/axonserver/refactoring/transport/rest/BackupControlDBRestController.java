@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +26,7 @@ import java.sql.SQLException;
  * @author Sara Pellegrini
  * @since 4.1
  */
-@ConditionalOnMissingClass("io.axoniq.axonserver.rest.ClusterBackupInfoRestController")
+@ConditionalOnMissingClass("io.axoniq.axonserver.refactoring.transport.rest.ClusterBackupInfoRestController")
 @RestController
 public class BackupControlDBRestController {
 

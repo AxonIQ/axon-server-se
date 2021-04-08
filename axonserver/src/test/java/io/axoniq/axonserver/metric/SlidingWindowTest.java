@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.metric;
 
+import io.axoniq.axonserver.refactoring.metric.SlidingWindow;
 import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 

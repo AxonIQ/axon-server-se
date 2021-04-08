@@ -9,8 +9,10 @@
 
 package io.axoniq.axonserver.message.query;
 
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
+import io.axoniq.axonserver.refactoring.messaging.query.RoundRobinQueryHandlerSelector;
 import org.junit.*;
 
 import java.util.NavigableSet;

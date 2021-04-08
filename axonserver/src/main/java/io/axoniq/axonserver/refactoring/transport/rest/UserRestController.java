@@ -10,15 +10,15 @@
 package io.axoniq.axonserver.refactoring.transport.rest;
 
 
-import io.axoniq.axonserver.access.jpa.User;
-import io.axoniq.axonserver.access.jpa.UserRole;
-import io.axoniq.axonserver.access.roles.RoleController;
-import io.axoniq.axonserver.access.jpa.Role;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.util.StringUtils;
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.security.AuditLog;
+import io.axoniq.axonserver.refactoring.security.access.jpa.Role;
+import io.axoniq.axonserver.refactoring.security.access.jpa.User;
+import io.axoniq.axonserver.refactoring.security.access.jpa.UserRole;
+import io.axoniq.axonserver.refactoring.security.access.roles.RoleController;
+import io.axoniq.axonserver.refactoring.security.access.user.UserControllerFacade;
+import io.axoniq.axonserver.refactoring.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -40,7 +40,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
-import static io.axoniq.axonserver.util.StringUtils.sanitize;
+import static io.axoniq.axonserver.refactoring.util.StringUtils.sanitize;
 
 /**
  * Rest services to manage users.

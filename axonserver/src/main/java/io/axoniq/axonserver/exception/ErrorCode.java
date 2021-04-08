@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.exception;
 
+import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
 import io.grpc.Status;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;

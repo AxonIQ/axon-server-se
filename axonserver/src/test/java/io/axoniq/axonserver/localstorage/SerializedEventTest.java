@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
 import org.junit.*;
 
 import java.io.IOException;

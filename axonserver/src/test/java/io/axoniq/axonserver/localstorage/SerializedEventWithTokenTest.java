@@ -13,6 +13,8 @@ import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.refactoring.store.SerializedEvent;
+import io.axoniq.axonserver.refactoring.store.SerializedEventWithToken;
 import org.junit.*;
 
 import java.io.ByteArrayOutputStream;

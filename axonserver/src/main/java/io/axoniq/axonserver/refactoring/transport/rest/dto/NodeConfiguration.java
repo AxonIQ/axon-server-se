@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
-import io.axoniq.axonserver.topology.AxonServerNode;
+import io.axoniq.axonserver.refactoring.configuration.topology.AxonServerNode;
 
 /**
  * Contains information on the current node, including the gRPC and HTTP ports, and Axon Server configuration (SSL, Authentication, Cluster).

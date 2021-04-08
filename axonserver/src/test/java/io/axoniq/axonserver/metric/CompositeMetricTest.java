@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.metric;
 
+import io.axoniq.axonserver.refactoring.metric.CompositeMetric;
 import org.junit.*;
 
 import static java.util.Arrays.asList;

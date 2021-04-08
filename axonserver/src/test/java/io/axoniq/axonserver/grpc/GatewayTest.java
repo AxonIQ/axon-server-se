@@ -9,22 +9,24 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.LicenseAccessController;
-import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
-import io.axoniq.axonserver.config.SslConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInfo;
 import io.axoniq.axonserver.grpc.control.PlatformServiceGrpc;
+import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
+import io.axoniq.axonserver.refactoring.security.AccessControlConfiguration;
+import io.axoniq.axonserver.refactoring.security.AxonServerAccessController;
+import io.axoniq.axonserver.refactoring.transport.ContextProvider;
+import io.axoniq.axonserver.refactoring.transport.DefaultContextProvider;
 import io.axoniq.axonserver.refactoring.transport.grpc.AxonServerClientService;
 import io.axoniq.axonserver.refactoring.transport.grpc.Gateway;
 import io.axoniq.axonserver.refactoring.transport.grpc.GrpcMetadataKeys;
-import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.refactoring.transport.grpc.SslConfiguration;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
