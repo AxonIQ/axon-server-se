@@ -12,6 +12,7 @@ package io.axoniq.axonserver.refactoring.store;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.store.api.EventStore;
 
 import javax.annotation.PostConstruct;
 

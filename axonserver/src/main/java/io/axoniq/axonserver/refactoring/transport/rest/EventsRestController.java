@@ -368,7 +368,7 @@ public class EventsRestController {
         public JsonEvent() {
         }
 
-        JsonEvent(Event event) {
+        public JsonEvent(Event event) {
             messageIdentifier = event.getMessageIdentifier();
             aggregateIdentifier = event.getAggregateIdentifier();
             aggregateSequenceNumber = event.getAggregateSequenceNumber();

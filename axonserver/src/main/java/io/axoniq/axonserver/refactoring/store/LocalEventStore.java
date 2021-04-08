@@ -31,6 +31,7 @@ import io.axoniq.axonserver.refactoring.metric.BaseMetricName;
 import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.axoniq.axonserver.refactoring.plugin.DefaultExecutionContext;
+import io.axoniq.axonserver.refactoring.store.api.EventStore;
 import io.axoniq.axonserver.refactoring.store.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.refactoring.store.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.refactoring.transport.grpc.GrpcExceptionBuilder;

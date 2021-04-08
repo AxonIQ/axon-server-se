@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.store;
 
+import io.axoniq.axonserver.refactoring.store.api.EventStore;
+
 /**
  * Defines an interface to retrieve an event store for a context. Standard Edition only supports context "default", and
  * as it does not support clustering, the current node will always be master for the default context.
