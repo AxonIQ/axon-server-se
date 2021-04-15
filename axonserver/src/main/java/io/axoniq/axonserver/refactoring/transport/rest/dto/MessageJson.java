@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
 import io.axoniq.axonserver.grpc.ErrorMessage;
+import io.axoniq.axonserver.refactoring.messaging.api.Error;
 
 import java.util.List;
 
@@ -21,6 +22,12 @@ public class MessageJson {
     private final String location;
     private final String message;
     private final List<String> details;
+
+    public MessageJson(Error error) {
+        location = error.source();
+        message = error.message();
+        details = error.details();
+    }
 
     public MessageJson(ErrorMessage message) {
         this.message = message.getMessage();

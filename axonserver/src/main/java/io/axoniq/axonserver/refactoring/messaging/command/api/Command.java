@@ -25,5 +25,17 @@ public interface Command extends ContextAware {
 
     Instant timestamp();
 
-    Client requester();
+    default Client requester() {
+        return new Client() {
+            @Override
+            public String id() {
+                return "anonymous";
+            }
+
+            @Override
+            public String applicationName() {
+                return "anonymous";
+            }
+        };
+    }
 }

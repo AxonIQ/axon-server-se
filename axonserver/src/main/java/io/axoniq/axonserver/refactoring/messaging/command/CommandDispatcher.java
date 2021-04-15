@@ -12,25 +12,35 @@ package io.axoniq.axonserver.refactoring.messaging.command;
 import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
+import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.refactoring.api.Authentication;
 import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
 import io.axoniq.axonserver.refactoring.messaging.ConstraintCache;
 import io.axoniq.axonserver.refactoring.messaging.FlowControlQueues;
 import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.messaging.api.Error;
+import io.axoniq.axonserver.refactoring.messaging.api.Message;
+import io.axoniq.axonserver.refactoring.messaging.api.Payload;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandRouter;
 import io.axoniq.axonserver.refactoring.metric.BaseMetricName;
 import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.axoniq.axonserver.refactoring.plugin.DefaultExecutionContext;
+import io.axoniq.axonserver.refactoring.transport.rest.SpringAuthentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -45,7 +55,7 @@ import javax.annotation.Nonnull;
  * @author Marc Gathier
  */
 @Component("CommandDispatcher")
-public class CommandDispatcher {
+public class CommandDispatcher implements CommandRouter {
 
     private final CommandRegistrationCache registrations;
     private final ConstraintCache<String, CommandInformation> commandCache;
@@ -86,6 +96,14 @@ public class CommandDispatcher {
                                          , clientStreamId, request.getCommand()));
     }
 
+    @Deprecated
+    public void dispatch(String context, org.springframework.security.core.Authentication authentication,
+                         SerializedCommand request,
+                         Consumer<SerializedCommandResponse> responseObserver) {
+        dispatch(context, new SpringAuthentication(authentication), request, responseObserver);
+    }
+
+    @Deprecated
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
@@ -284,5 +302,112 @@ public class CommandDispatcher {
                                                             .setErrorMessage(ErrorMessageFactory
                                                                                      .build(errorMessage))
                                                             .build());
+    }
+
+    @Override
+    public Mono<io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse> dispatch(
+            Authentication authentication, Command command) {
+        return Mono.create(sink -> {
+            SerializedCommand serializedCommand = new SerializedCommand(command.message()
+                                                                               .payload()
+                                                                               .map(Payload::data)
+                                                                               .orElseThrow(RuntimeException::new),
+                                                                        //TODO
+                                                                        command.requester().id(),
+                                                                        command.message().id());
+            dispatch(command.context(), authentication, serializedCommand, response -> {
+                sink.success(new MappingCommandResponse(response));
+            });
+        });
+    }
+
+    class MappingCommandResponse implements io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse {
+
+        private final SerializedCommandResponse serializedCommandResponse;
+
+        MappingCommandResponse(
+                SerializedCommandResponse serializedCommandResponse) {
+            this.serializedCommandResponse = serializedCommandResponse;
+        }
+
+        @Override
+        public String requestId() {
+            return serializedCommandResponse.getRequestIdentifier();
+        }
+
+        @Override
+        public Message message() {
+            return new Message() {
+                @Override
+                public String id() {
+                    return serializedCommandResponse.wrapped().getMessageIdentifier();
+                }
+
+                @Override
+                public Optional<Payload> payload() {
+                    if (!serializedCommandResponse.wrapped().hasPayload()) {
+                        return Optional.empty();
+                    }
+                    SerializedObject payload = serializedCommandResponse.wrapped().getPayload();
+                    return Optional.of(new Payload() {
+                        @Override
+                        public String type() {
+                            return payload.getType();
+                        }
+
+                        @Override
+                        public String revision() {
+                            return payload.getRevision();
+                        }
+
+                        @Override
+                        public byte[] data() {
+                            return payload.getData().toByteArray();
+                        }
+                    });
+                }
+
+                @Override
+                public <T> T metadata(String key) {
+                    //TODO
+                    return (T) serializedCommandResponse.wrapped().getMetaDataMap().get(key);
+                }
+
+                @Override
+                public Set<String> metadataKeys() {
+                    return serializedCommandResponse.wrapped().getMetaDataMap().keySet();
+                }
+            };
+        }
+
+        @Override
+        public Optional<Error> error() {
+            if (serializedCommandResponse.getErrorCode().isEmpty()) {
+                return Optional.empty();
+            }
+
+            return Optional.of(new Error() {
+
+                @Override
+                public String code() {
+                    return serializedCommandResponse.getErrorCode();
+                }
+
+                @Override
+                public String message() {
+                    return serializedCommandResponse.wrapped().getErrorMessage().getMessage();
+                }
+
+                @Override
+                public List<String> details() {
+                    return serializedCommandResponse.wrapped().getErrorMessage().getDetailsList();
+                }
+
+                @Override
+                public String source() {
+                    return serializedCommandResponse.wrapped().getErrorMessage().getLocation();
+                }
+            });
+        }
     }
 }

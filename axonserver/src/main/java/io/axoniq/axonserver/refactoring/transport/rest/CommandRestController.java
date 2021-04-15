@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.refactoring.client.ComponentItems;
 import io.axoniq.axonserver.refactoring.client.command.ComponentCommand;
 import io.axoniq.axonserver.refactoring.client.command.DefaultCommands;
@@ -17,7 +16,7 @@ import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
+import io.axoniq.axonserver.refactoring.requestprocessor.command.CommandService;
 import io.axoniq.axonserver.refactoring.security.AuditLog;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.CommandRequestJson;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.CommandResponseJson;
@@ -33,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
@@ -41,14 +41,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
 import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.refactoring.security.AxonServerAccessController.TOKEN_PARAM;
-import static io.axoniq.axonserver.refactoring.util.ObjectUtils.getOrDefault;
 import static io.axoniq.axonserver.refactoring.util.StringUtils.sanitize;
 
 /**
@@ -63,11 +60,14 @@ public class CommandRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
 
+    private final CommandService service;
     private final CommandDispatcher commandDispatcher;
     private final CommandRegistrationCache registrationCache;
 
 
-    public CommandRestController(CommandDispatcher commandDispatcher, CommandRegistrationCache registrationCache) {
+    public CommandRestController(CommandService service,
+                                 CommandDispatcher commandDispatcher, CommandRegistrationCache registrationCache) {
+        this.service = service;
         this.commandDispatcher = commandDispatcher;
         this.registrationCache = registrationCache;
     }
@@ -98,18 +98,12 @@ public class CommandRestController {
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataTypeClass = String.class, paramType = "header")
     })
-    public Future<CommandResponseJson> execute(
+    public Mono<CommandResponseJson> execute(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestBody @Valid CommandRequestJson command,
             @ApiIgnore Authentication principal) {
-        auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
-
-        CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
-        commandDispatcher.dispatch(context,
-                                   getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                   new SerializedCommand(command.asCommand()),
-                                   r -> result.complete(new CommandResponseJson(r.wrapped())));
-        return result;
+        return service.execute(command.asCommandFor(context), new SpringAuthentication(principal))
+                      .map(CommandResponseJson::new);
     }
 
     @GetMapping("commands/queues")

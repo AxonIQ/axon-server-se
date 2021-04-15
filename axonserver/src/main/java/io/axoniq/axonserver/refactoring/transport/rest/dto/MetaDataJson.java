@@ -17,10 +17,16 @@ import java.util.Map;
 /**
  * @author Marc Gathier
  */
-public class MetaDataJson extends HashMap<String,Object> {
+public class MetaDataJson extends HashMap<String, Object> {
 
     public MetaDataJson() {
         super();
+    }
+
+    public static MetaDataJson from(Map<String, Object> metadata) {
+        MetaDataJson metaDataJson = new MetaDataJson();
+        metaDataJson.putAll(metadata);
+        return metaDataJson;
     }
 
     public MetaDataJson(Map<String, MetaDataValue> metaDataMap) {

@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.refactoring.messaging.api;
 
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -10,7 +11,7 @@ public interface Message {
 
     String id();
 
-    Object payload();
+    Optional<Payload> payload();
 
     <T> T metadata(String key);
 

@@ -191,14 +191,14 @@ public interface EventStore {
     @Deprecated
     void getFirstToken(String context, GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver);
 
-    default Mono<Long> getFirstToken(String context) {
+    default Mono<Long> getFirstEventToken(String context) {
         return Mono.empty();
     }
 
     @Deprecated
     void getLastToken(String context, GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver);
 
-    default Mono<Long> getLastToken(String context) {
+    default Mono<Long> getLastEventToken(String context) {
         return Mono.empty();
     }
 

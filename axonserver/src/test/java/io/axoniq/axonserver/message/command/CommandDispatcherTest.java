@@ -16,6 +16,7 @@ import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.interceptor.NoOpCommandInterceptors;
 import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.refactoring.api.Authentication;
 import io.axoniq.axonserver.refactoring.configuration.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
@@ -252,7 +253,7 @@ public class CommandDispatcherTest {
                                                   }, 10_000);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
-                                   null,
+                                   (Authentication) null,
                                    new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
                                    r -> futureResponse.complete(r));
         SerializedCommandResponse response = futureResponse.get();
@@ -281,7 +282,7 @@ public class CommandDispatcherTest {
                                                   }, 10_000);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
-                                   null,
+                                   (Authentication) null,
                                    new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
                                    r -> futureResponse.complete(r));
         SerializedCommandResponse response = futureResponse.get();
@@ -316,7 +317,7 @@ public class CommandDispatcherTest {
                                                   }, 10_000);
 
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
-        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, null,
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, (Authentication) null,
                                    new SerializedCommand(Command.newBuilder()
                                                                 .setMessageIdentifier("TheCommand")
                                                                 .build()), futureResponse::complete);

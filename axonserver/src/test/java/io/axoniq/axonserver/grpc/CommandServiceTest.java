@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.refactoring.api.Authentication;
 import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
 import io.axoniq.axonserver.refactoring.configuration.topology.DefaultTopology;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
@@ -186,7 +187,7 @@ public class CommandServiceTest {
                     .getArguments()[3];
             responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
-        }).when(commandDispatcher).dispatch(any(), any(), any(), any());
+        }).when(commandDispatcher).dispatch(any(), any(Authentication.class), any(), any());
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build().toByteArray(), responseObserver);
         assertEquals(1, responseObserver.values().size());

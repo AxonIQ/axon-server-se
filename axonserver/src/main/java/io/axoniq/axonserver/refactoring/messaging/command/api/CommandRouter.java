@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.refactoring.messaging.command.api;
 
-import org.springframework.security.core.Authentication;
+import io.axoniq.axonserver.refactoring.api.Authentication;
 import reactor.core.publisher.Mono;
 
 /**

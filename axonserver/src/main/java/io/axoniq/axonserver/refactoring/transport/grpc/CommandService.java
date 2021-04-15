@@ -31,6 +31,7 @@ import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.ContextProvider;
 import io.axoniq.axonserver.refactoring.transport.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.refactoring.transport.instruction.InstructionAckSource;
+import io.axoniq.axonserver.refactoring.transport.rest.SpringAuthentication;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -278,7 +279,7 @@ public class CommandService implements AxonServerClientService {
         }
         try {
             commandDispatcher.dispatch(contextProvider.getContext(),
-                                       authenticationProvider.get(),
+                                       new SpringAuthentication(authenticationProvider.get()),
                                        request,
                                        commandResponse -> safeReply(clientId,
                                                                     commandResponse,

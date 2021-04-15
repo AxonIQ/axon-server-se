@@ -10,10 +10,10 @@
 package io.axoniq.axonserver.refactoring.plugin;
 
 import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.refactoring.api.Authentication;
+import io.axoniq.axonserver.refactoring.transport.rest.SpringAuthentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,6 +39,16 @@ public class DefaultExecutionContext implements ExecutionContext {
     private final Authentication principal;
     private final List<BiConsumer<Throwable, ExecutionContext>> compensatingActions = new LinkedList<>();
     private final Map<String, Object> details = new HashMap<>();
+
+
+    /**
+     * @param context   the Axon Server context for the request
+     * @param principal the caller's information
+     */
+    @Deprecated
+    public DefaultExecutionContext(String context, org.springframework.security.core.Authentication principal) {
+        this(context, new SpringAuthentication(principal));
+    }
 
     /**
      * @param context   the Axon Server context for the request
@@ -69,7 +79,7 @@ public class DefaultExecutionContext implements ExecutionContext {
         if (principal == null) {
             return "";
         }
-        return principal.getName();
+        return principal.name();
     }
 
     @Override
@@ -77,19 +87,14 @@ public class DefaultExecutionContext implements ExecutionContext {
         if (principal == null) {
             return Collections.emptySet();
         }
-        return principal.getAuthorities()
-                        .stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .collect(Collectors.toSet());
+        return principal.roles();
     }
 
     @Override
     public Map<String, String> principalTags() {
-        if (principal == null || !(principal.getDetails() instanceof Map)) {
-            return Collections.emptyMap();
-        }
-
-        return (Map<String, String>) principal.getDetails();
+        return principal.detailsKeys()
+                        .stream()
+                        .collect(Collectors.toMap(key -> key, principal::detail));
     }
 
     /**

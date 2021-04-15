@@ -11,12 +11,14 @@ package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
+import io.axoniq.axonserver.refactoring.messaging.api.Payload;
 import io.axoniq.axonserver.refactoring.util.StringUtils;
 
 /**
  * @author Marc Gathier
  */
 public class SerializedObjectJson {
+
     private String type;
     private String data;
     private String revision;
@@ -24,6 +26,13 @@ public class SerializedObjectJson {
     public SerializedObjectJson() {
 
     }
+
+    public SerializedObjectJson(Payload payload) {
+        this.type = payload.type();
+        this.data = new String(payload.data());
+        this.revision = payload.revision();
+    }
+
     public SerializedObjectJson(SerializedObject payload) {
         type = payload.getType();
         data = payload.getData().toStringUtf8();
