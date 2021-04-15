@@ -42,6 +42,7 @@ import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -94,6 +95,8 @@ public class EventDispatcher implements AxonServerClientService {
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
+    @Value("${axoniq.axonserver.read-sequence-validation-strategy:LOG}")
+    private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
@@ -170,7 +173,8 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
-        StreamObserver<SerializedEvent> aggregateStreamObserver = new SequenceValidationStreamObserver(responseObserver);
+        StreamObserver<SerializedEvent> aggregateStreamObserver =
+                new SequenceValidationStreamObserver(responseObserver, sequenceValidationStrategy);
         listAggregateEvents(contextProvider.getContext(),
                             request,
                             new ForwardingStreamObserver<>(logger, "listAggregateEvents", aggregateStreamObserver));

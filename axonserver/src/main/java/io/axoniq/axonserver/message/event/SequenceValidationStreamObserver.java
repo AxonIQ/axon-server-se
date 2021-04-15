@@ -14,14 +14,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * @since 4.4.11
  */
 public class SequenceValidationStreamObserver implements StreamObserver<SerializedEvent> {
-
     private final StreamObserver<SerializedEvent> delegate;
+    private final SequenceValidationStrategy sequenceValidationStrategy;
     private final AtomicReference<SerializedEvent> lastSentEvent = new AtomicReference<>();
     private final Logger logger = LoggerFactory.getLogger(SequenceValidationStreamObserver.class);
 
     public SequenceValidationStreamObserver(
-            StreamObserver<SerializedEvent> delegate) {
+            StreamObserver<SerializedEvent> delegate,
+            SequenceValidationStrategy sequenceValidationStrategy) {
         this.delegate = delegate;
+        this.sequenceValidationStrategy = sequenceValidationStrategy;
     }
 
     @Override
@@ -35,8 +37,14 @@ public class SequenceValidationStreamObserver implements StreamObserver<Serializ
                                            event.getAggregateIdentifier(),
                                            event.getAggregateSequenceNumber(),
                                            prevEvent.getAggregateSequenceNumber() + 1);
-            logger.error(message);
-            delegate.onError(new RuntimeException(message));
+            if(SequenceValidationStrategy.FAIL.equals(sequenceValidationStrategy)) {
+                logger.error(message);
+                delegate.onError(new RuntimeException(message));
+            } else {
+                logger.warn(message);
+                delegate.onNext(event);
+                lastSentEvent.set(event);
+            }
         }
     }
 
