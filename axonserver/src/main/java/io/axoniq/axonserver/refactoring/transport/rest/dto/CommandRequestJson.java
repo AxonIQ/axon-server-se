@@ -37,6 +37,7 @@ public class CommandRequestJson {
     @NotNull(message = "'routingKey' field cannot be missing")
     private String routingKey;
     private long timestamp;
+    @NotNull(message = "'payload' of a command cannot be missing")
     private SerializedObjectJson payload;
     private MetaDataJson metaData = new MetaDataJson();
 

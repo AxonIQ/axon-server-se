@@ -27,7 +27,8 @@ public class CommandRequestProcessor implements CommandService {
 
     @Override
     public Mono<CommandResponse> execute(Command command, Authentication authentication) {
-            auditLog.info("[{}] Request to dispatch a \"{}\" Command.", authentication.name(), command.definition().name());
-            return commandRouter.dispatch(authentication, command);
+        auditLog.info("[{}] Request to dispatch a \"{}\" Command.", authentication.name(), command.definition().name());
+        // TODO: 4/16/2021 validate a command message
+        return commandRouter.dispatch(authentication, command);
     }
 }

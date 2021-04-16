@@ -311,13 +311,13 @@ public class CommandDispatcher implements CommandRouter {
             SerializedCommand serializedCommand = new SerializedCommand(command.message()
                                                                                .payload()
                                                                                .map(Payload::data)
-                                                                               .orElseThrow(RuntimeException::new),
-                                                                        //TODO
+                                                                               .orElseThrow(() -> new IllegalArgumentException("Command payload must not be null")),
                                                                         command.requester().id(),
                                                                         command.message().id());
-            dispatch(command.context(), authentication, serializedCommand, response -> {
-                sink.success(new MappingCommandResponse(response));
-            });
+            dispatch(command.context(),
+                     authentication,
+                     serializedCommand,
+                     response -> sink.success(new MappingCommandResponse(response)));
         });
     }
 
