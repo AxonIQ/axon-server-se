@@ -4,7 +4,7 @@ import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
 import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry.ConnectionType;
-import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
+import io.axoniq.axonserver.refactoring.transport.grpc.CommandGrpcService;
 import io.axoniq.axonserver.refactoring.transport.grpc.QueryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -29,7 +29,7 @@ public class ApplicationInactivityListener {
 
     @Autowired
     public ApplicationInactivityListener(ClientIdRegistry clientIdRegistry,
-                                         CommandService commandService,
+                                         CommandGrpcService commandService,
                                          QueryService queryService) {
         this(Collections.EMPTY_MAP, clientIdRegistry);
         streamClosers.put(ConnectionType.COMMAND, commandService::completeStreamForInactivity);

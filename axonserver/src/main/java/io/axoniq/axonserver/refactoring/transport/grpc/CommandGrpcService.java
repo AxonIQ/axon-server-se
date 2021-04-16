@@ -27,6 +27,7 @@ import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.requestprocessor.command.CommandService;
 import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.ContextProvider;
 import io.axoniq.axonserver.refactoring.transport.heartbeat.ApplicationInactivityException;
@@ -63,8 +64,8 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
  *
  * @author Marc Gathier
  */
-@Service("CommandService")
-public class CommandService implements AxonServerClientService {
+@Service("CommandGrpcService")
+public class CommandGrpcService implements AxonServerClientService {
 
     private static final MethodDescriptor<byte[], SerializedCommandResponse> METHOD_DISPATCH =
             CommandServiceGrpc.getDispatchMethod().toBuilder(ByteArrayMarshaller.instance(),
@@ -79,6 +80,7 @@ public class CommandService implements AxonServerClientService {
                                                                                              .getDefaultInstance()))
                               .build();
 
+    private final CommandService commandService;
 
     private final Topology topology;
     private final CommandDispatcher commandDispatcher;
@@ -86,21 +88,23 @@ public class CommandService implements AxonServerClientService {
     private final AuthenticationProvider authenticationProvider;
     private final ClientIdRegistry clientIdRegistry;
     private final ApplicationEventPublisher eventPublisher;
-    private final Logger logger = LoggerFactory.getLogger(CommandService.class);
+    private final Logger logger = LoggerFactory.getLogger(CommandGrpcService.class);
     private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
 
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
 
-    public CommandService(Topology topology,
-                          CommandDispatcher commandDispatcher,
-                          ContextProvider contextProvider,
-                          AuthenticationProvider authenticationProvider,
-                          ClientIdRegistry clientIdRegistry,
-                          ApplicationEventPublisher eventPublisher,
-                          @Qualifier("commandInstructionAckSource")
-                                  InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
+    public CommandGrpcService(CommandService commandService,
+                              Topology topology,
+                              CommandDispatcher commandDispatcher,
+                              ContextProvider contextProvider,
+                              AuthenticationProvider authenticationProvider,
+                              ClientIdRegistry clientIdRegistry,
+                              ApplicationEventPublisher eventPublisher,
+                              @Qualifier("commandInstructionAckSource")
+                                      InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
+        this.commandService = commandService;
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
         this.contextProvider = contextProvider;
@@ -274,20 +278,15 @@ public class CommandService implements AxonServerClientService {
     public void dispatch(byte[] command, StreamObserver<SerializedCommandResponse> responseObserver) {
         SerializedCommand request = new SerializedCommand(command);
         String clientId = request.wrapped().getClientId();
-        if (logger.isTraceEnabled()) {
-            logger.trace("{}: Received command: {}", clientId, request.wrapped().getName());
-        }
-        try {
-            commandDispatcher.dispatch(contextProvider.getContext(),
-                                       new SpringAuthentication(authenticationProvider.get()),
-                                       request,
-                                       commandResponse -> safeReply(clientId,
-                                                                    commandResponse,
-                                                                    responseObserver));
-        } catch (Exception ex) {
-            logger.warn("Dispatching failed with unexpected error", ex);
-            responseObserver.onError(GrpcExceptionBuilder.build(ex));
-        }
+
+
+        commandService.execute(request.asCommand(contextProvider.getContext()),
+                               new SpringAuthentication(authenticationProvider.get()))
+                      .map(SerializedCommandResponse::new)
+                      .doOnError(error -> logger.warn("Dispatching failed with unexpected error", error))
+                      .subscribe(response -> safeReply(clientId, response, responseObserver),
+                                 error -> responseObserver.onError(GrpcExceptionBuilder.build(error))
+                      );
     }
 
     private void safeReply(String clientId, SerializedCommandResponse commandResponse,

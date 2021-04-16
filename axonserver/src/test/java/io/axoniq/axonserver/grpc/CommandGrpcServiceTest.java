@@ -32,7 +32,7 @@ import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProvi
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
 import io.axoniq.axonserver.refactoring.messaging.command.WrappedCommand;
 import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
-import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
+import io.axoniq.axonserver.refactoring.transport.grpc.CommandGrpcService;
 import io.axoniq.axonserver.refactoring.transport.instruction.DefaultInstructionAckSource;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
@@ -48,10 +48,10 @@ import static org.mockito.Mockito.*;
 /**
  * @author Marc Gathier
  */
-public class CommandServiceTest {
+public class CommandGrpcServiceTest {
 
     private final String clientId = "name";
-    private CommandService testSubject;
+    private CommandGrpcService testSubject;
     private FlowControlQueues<WrappedCommand> commandQueue;
     private ApplicationEventPublisher eventPublisher;
     private CommandDispatcher commandDispatcher;
@@ -67,13 +67,13 @@ public class CommandServiceTest {
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
-        testSubject = new CommandService(topology,
-                                         commandDispatcher,
-                                         () -> Topology.DEFAULT_CONTEXT,
-                                         () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                                         new DefaultClientIdRegistry(),
-                                         eventPublisher,
-                                         new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
+        testSubject = new CommandGrpcService(commandService, topology,
+                                             commandDispatcher,
+                                             () -> Topology.DEFAULT_CONTEXT,
+                                             () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                             new DefaultClientIdRegistry(),
+                                             eventPublisher,
+                                             new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
                                                  CommandProviderInbound.newBuilder().setAck(ack).build())));
     }
 

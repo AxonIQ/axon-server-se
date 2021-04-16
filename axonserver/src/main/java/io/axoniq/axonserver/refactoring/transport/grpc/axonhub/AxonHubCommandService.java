@@ -14,7 +14,7 @@ import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProvi
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
 import io.axoniq.axonserver.refactoring.transport.grpc.AxonServerClientService;
 import io.axoniq.axonserver.refactoring.transport.grpc.ByteArrayMarshaller;
-import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
+import io.axoniq.axonserver.refactoring.transport.grpc.CommandGrpcService;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -26,7 +26,7 @@ import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
  * Entry point to accept axonhub client commands in Axon Server. Difference between Axon Server and AxonHub client is the service name.
- * Delegates the request to the normal (Axon Server) {@link CommandService}
+ * Delegates the request to the normal (Axon Server) {@link CommandGrpcService}
  * @author Marc Gathier
  */
 @Component
@@ -47,9 +47,9 @@ public class AxonHubCommandService implements AxonServerClientService {
                             .setType(MethodDescriptor.MethodType.UNARY)
                             .build();
 
-    private final CommandService commandService;
+    private final CommandGrpcService commandService;
 
-    public AxonHubCommandService(CommandService commandService) {
+    public AxonHubCommandService(CommandGrpcService commandService) {
         this.commandService = commandService;
     }
 

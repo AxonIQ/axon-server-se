@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest.actuator;
 
-import io.axoniq.axonserver.refactoring.transport.grpc.CommandService;
+import io.axoniq.axonserver.refactoring.transport.grpc.CommandGrpcService;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.stereotype.Component;
@@ -20,9 +20,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class CommandHealthIndicator extends AbstractHealthIndicator {
 
-    private final CommandService commandService;
+    private final CommandGrpcService commandService;
 
-    public CommandHealthIndicator(CommandService commandService) {
+    public CommandHealthIndicator(CommandGrpcService commandService) {
         this.commandService = commandService;
     }
 

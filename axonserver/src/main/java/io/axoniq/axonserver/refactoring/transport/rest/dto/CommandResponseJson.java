@@ -13,8 +13,6 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.refactoring.messaging.api.Error;
 import io.axoniq.axonserver.refactoring.messaging.api.Message;
 
-import java.util.stream.Collectors;
-
 /**
  * @author Marc Gathier
  */
@@ -34,9 +32,7 @@ public class CommandResponseJson {
         Message message = r.message();
         payload = message.payload().map(SerializedObjectJson::new).orElse(null);
         messageIdentifier = message.id();
-        metaData = MetaDataJson.from(message.metadataKeys()
-                                            .stream()
-                                            .collect(Collectors.toMap(key -> key, message::metadata)));
+        metaData = MetaDataJson.from(message.metadata());
     }
 
     public CommandResponseJson(CommandResponse r) {
