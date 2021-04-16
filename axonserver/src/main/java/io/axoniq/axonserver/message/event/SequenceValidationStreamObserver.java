@@ -39,7 +39,7 @@ public class SequenceValidationStreamObserver extends CallStreamObserverDelegato
                                            prevEvent.getAggregateSequenceNumber() + 1);
             if(SequenceValidationStrategy.FAIL.equals(sequenceValidationStrategy)) {
                 logger.error(message);
-                delegate.onError(new RuntimeException(message));
+                delegate().onError(new RuntimeException(message));
             } else {
                 logger.warn(message);
                 delegate().onNext(event);

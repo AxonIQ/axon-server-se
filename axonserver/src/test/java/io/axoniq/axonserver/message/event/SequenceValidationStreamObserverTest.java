@@ -68,7 +68,7 @@ public class SequenceValidationStreamObserverTest {
         verify(delegateMock).onError(throwable);
     }
 
-    @Test(expected = RuntimeException.class)
+    @Test
     public void testInvalidSequence() {
         SerializedEvent event1 = serializedEvent(0);
         SerializedEvent event2 = serializedEvent(1);
@@ -95,7 +95,7 @@ public class SequenceValidationStreamObserverTest {
         verify(delegateMock).onNext(event4);
     }
 
-    @Test(expected = RuntimeException.class)
+    @Test
     public void testRepeatedSequence() {
             SerializedEvent event1 = serializedEvent(0);
             SerializedEvent event2 = serializedEvent(1);
