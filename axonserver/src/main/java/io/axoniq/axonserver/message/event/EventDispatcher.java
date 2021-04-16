@@ -96,6 +96,8 @@ public class EventDispatcher implements AxonServerClientService {
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
+    @Value("${axoniq.axonserver.read-sequence-validation-strategy:LOG}")
+    private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
     private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
     private final RetryBackoffSpec retrySpec;
 
@@ -216,7 +218,7 @@ public class EventDispatcher implements AxonServerClientService {
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
         CallStreamObserver<SerializedEvent> streamObserver = (CallStreamObserver<SerializedEvent>) responseObserver;
-        CallStreamObserver<SerializedEvent> validateStreamObserver = new SequenceValidationStreamObserver(streamObserver);
+        CallStreamObserver<SerializedEvent> validateStreamObserver = new SequenceValidationStreamObserver(streamObserver, sequenceValidationStrategy);
         listAggregateEvents(contextProvider.getContext(), authenticationProvider.get(),
                 request,
                 new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));

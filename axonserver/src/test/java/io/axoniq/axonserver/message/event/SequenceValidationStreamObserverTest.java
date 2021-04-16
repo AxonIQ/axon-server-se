@@ -22,7 +22,7 @@ public class SequenceValidationStreamObserverTest {
     @Before
     public void setup() {
         delegateMock = mock(CallStreamObserver.class);
-        testSubject = new SequenceValidationStreamObserver(delegateMock);
+        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.FAIL);
     }
 
     @Test
@@ -79,6 +79,20 @@ public class SequenceValidationStreamObserverTest {
         verify(delegateMock).onNext(event1);
         verify(delegateMock).onNext(event2);
         verify(delegateMock).onError(any(RuntimeException.class));
+    }
+
+    @Test
+    public void testInvalidSequenceLogOnly() {
+        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.LOG);
+        SerializedEvent event1 = serializedEvent(0);
+        SerializedEvent event2 = serializedEvent(1);
+        SerializedEvent event4 = serializedEvent(3);
+        testSubject.onNext(event1);
+        testSubject.onNext(event2);
+        testSubject.onNext(event4);
+        verify(delegateMock).onNext(event1);
+        verify(delegateMock).onNext(event2);
+        verify(delegateMock).onNext(event4);
     }
 
     @Test(expected = RuntimeException.class)
