@@ -181,7 +181,7 @@
                         let productVersion = data.version
                             return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}`)}
                     ).then(updatesData=> {
-                        if (updatesData.data !== undefined || updatesData.data!== 0) {
+                        if (updatesData.data !== undefined && updatesData.data.length !== 0) {
                             this.hasUpdates = true
                         }
                         this.updates = updatesData.data.reverse();
