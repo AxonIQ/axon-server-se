@@ -6,6 +6,7 @@ visit https://docs.axoniq.io.
 Release Notes for version 4.5.1
 -----------------------------
 * Configurable strategy for aggregate events stream sequence validation
+* Fix UI check for updates
 
 Release Notes for version 4.4.11
 -------------------------------
