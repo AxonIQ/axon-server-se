@@ -19,4 +19,9 @@ public class SerializedObjectMapper implements Mapper<SerializedObject, io.axoni
                                                          .setData(ByteString.copyFrom(origin.data()))
                                                          .build();
     }
+
+    @Override
+    public SerializedObject unmap(io.axoniq.axonserver.grpc.SerializedObject origin) {
+        return null;
+    }
 }

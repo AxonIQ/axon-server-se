@@ -19,15 +19,20 @@ import io.axoniq.axonserver.refactoring.messaging.ConstraintCache;
 import io.axoniq.axonserver.refactoring.messaging.FlowControlQueues;
 import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.messaging.api.Client;
 import io.axoniq.axonserver.refactoring.messaging.api.Error;
 import io.axoniq.axonserver.refactoring.messaging.api.Message;
+import io.axoniq.axonserver.refactoring.messaging.api.Registration;
 import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
 import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandlerRegistry;
 import io.axoniq.axonserver.refactoring.messaging.command.api.CommandRouter;
 import io.axoniq.axonserver.refactoring.metric.BaseMetricName;
 import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.axoniq.axonserver.refactoring.plugin.DefaultExecutionContext;
 import io.axoniq.axonserver.refactoring.transport.rest.SpringAuthentication;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +40,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +60,7 @@ import javax.annotation.Nonnull;
  * @author Marc Gathier
  */
 @Component("CommandDispatcher")
-public class CommandDispatcher implements CommandRouter {
+public class CommandDispatcher implements CommandRouter, CommandHandlerRegistry {
 
     private final CommandRegistrationCache registrations;
     private final ConstraintCache<String, CommandInformation> commandCache;
@@ -318,6 +324,25 @@ public class CommandDispatcher implements CommandRouter {
                      serializedCommand,
                      response -> sink.success(new MappingCommandResponse(response)));
         });
+    }
+
+    @Override
+    public Mono<Registration> register(
+            io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler commandHandler) {
+        return Mono.create(sink -> {
+            registrations.add(commandHandler.definition().name(), new BackwardCompatibilityCommandHandler(commandHandler));
+            sink.success(() -> {
+                ClientStreamIdentification clientStreamIdentification =
+                        new ClientStreamIdentification(commandHandler.context(), commandHandler.client().id());
+                registrations.remove(clientStreamIdentification, commandHandler.definition().name());
+            });
+        });
+    }
+
+    @Override
+    public List<io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler> handlers() {
+        // TODO: 4/20/2021 implement :)
+        return new ArrayList<>();
     }
 
     class MappingCommandResponse implements io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse {

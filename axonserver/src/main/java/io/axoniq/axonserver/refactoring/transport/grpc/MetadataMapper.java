@@ -48,4 +48,9 @@ public class MetadataMapper implements Mapper<Map<String, Object>, Map<String, M
                          return builder.build();
                      }));
     }
+
+    @Override
+    public Map<String, Object> unmap(Map<String, MetaDataValue> origin) {
+        return null;
+    }
 }

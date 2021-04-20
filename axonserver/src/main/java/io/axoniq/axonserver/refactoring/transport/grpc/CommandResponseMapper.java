@@ -41,4 +41,9 @@ public class CommandResponseMapper implements Mapper<CommandResponse, Serialized
         origin.message().payload().ifPresent(p -> builder.setPayload(serializedObjectMapper.map(p)));
         return new SerializedCommandResponse(builder.build());
     }
+
+    @Override
+    public CommandResponse unmap(SerializedCommandResponse origin) {
+        return null;
+    }
 }

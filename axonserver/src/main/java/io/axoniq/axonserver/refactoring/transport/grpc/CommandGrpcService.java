@@ -15,7 +15,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.FlowControl;
 import io.axoniq.axonserver.grpc.InstructionAck;
-import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -23,12 +22,14 @@ import io.axoniq.axonserver.refactoring.configuration.TopologyEvents.CommandHand
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.UnsubscribeCommand;
-import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
+import io.axoniq.axonserver.refactoring.messaging.api.Client;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
 import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 import io.axoniq.axonserver.refactoring.requestprocessor.command.CommandService;
 import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
@@ -47,6 +48,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoSink;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -96,6 +99,7 @@ public class CommandGrpcService implements AxonServerClientService {
     private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
     private final Mapper<CommandResponse, SerializedCommandResponse> commandResponseMapper;
+    private final Mapper<Command, SerializedCommand> commandMapper;
 
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
@@ -110,7 +114,9 @@ public class CommandGrpcService implements AxonServerClientService {
                               @Qualifier("commandInstructionAckSource")
                                       InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource,
                               @Qualifier("commandResponseMapper")
-                              Mapper<CommandResponse, SerializedCommandResponse> commandResponseMapper) {
+                                      Mapper<CommandResponse, SerializedCommandResponse> commandResponseMapper,
+                              @Qualifier("commandMapper")
+                              Mapper<Command, SerializedCommand> commandMapper) {
         this.commandService = commandService;
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
@@ -120,6 +126,7 @@ public class CommandGrpcService implements AxonServerClientService {
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
         this.commandResponseMapper = commandResponseMapper;
+        this.commandMapper = commandMapper;
     }
 
     @PreDestroy
@@ -147,10 +154,12 @@ public class CommandGrpcService implements AxonServerClientService {
 
     public StreamObserver<CommandProviderOutbound> openStream(
             StreamObserver<SerializedCommandProviderInbound> responseObserver) {
+        SpringAuthentication springAuthentication = new SpringAuthentication(authenticationProvider.get());
         String context = contextProvider.getContext();
         SendingStreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver = new SendingStreamObserver<>(
                 responseObserver);
         return new ReceivingStreamObserver<CommandProviderOutbound>(logger) {
+            private final Map<String, MonoSink<CommandResponse>> commandsInFlight = new ConcurrentHashMap<>();
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
@@ -169,7 +178,49 @@ public class CommandGrpcService implements AxonServerClientService {
                                                                       clientRef.get().getClientStreamId(),
                                                                       subscribe,
                                                                       commandHandlerRef.get());
-                        eventPublisher.publishEvent(event);
+                        commandService.register(new io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler() {
+                            @Override
+                            public CommandDefinition definition() {
+                                return new CommandDefinition() {
+                                    @Override
+                                    public String name() {
+                                        return subscribe.getCommand();
+                                    }
+
+                                    @Override
+                                    public String context() {
+                                        return context;
+                                    }
+                                };
+                            }
+
+                            @Override
+                            public Client client() {
+                                return new Client() {
+                                    @Override
+                                    public String id() {
+                                        return subscribe.getClientId();
+                                    }
+
+                                    @Override
+                                    public String applicationName() {
+                                        return subscribe.getComponentName();
+                                    }
+                                };
+                            }
+
+                            @Override
+                            public Mono<CommandResponse> handle(Command command) {
+                                return Mono.create(sink -> {
+                                    commandsInFlight.put(command.message().id(), sink);
+                                    SerializedCommandProviderInbound request = SerializedCommandProviderInbound
+                                            .newBuilder()
+                                            .setCommand(commandMapper.map(command))
+                                            .build();
+                                    responseObserver.onNext(request);
+                                });
+                            }
+                        }, springAuthentication);
                         break;
                     case UNSUBSCRIBE:
                         instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
@@ -191,9 +242,10 @@ public class CommandGrpcService implements AxonServerClientService {
                     case COMMAND_RESPONSE:
                         instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
                                                                wrappedResponseObserver);
-                        commandDispatcher.handleResponse(new SerializedCommandResponse(commandFromSubscriber
-                                                                                               .getCommandResponse()),
-                                                         false);
+                        // TODO: 4/20/2021 consider edge cases
+                        commandsInFlight.get(commandFromSubscriber.getCommandResponse().getRequestIdentifier())
+                                        .success(commandResponseMapper.unmap(new SerializedCommandResponse(commandFromSubscriber
+                                                                                                                   .getCommandResponse())));
                         break;
                     case ACK:
                         InstructionAck ack = commandFromSubscriber.getAck();

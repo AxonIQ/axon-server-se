@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.refactoring.messaging.command.api;
 
-import io.axoniq.axonserver.refactoring.client.instance.Client;
+import io.axoniq.axonserver.refactoring.messaging.api.Client;
 import io.axoniq.axonserver.refactoring.messaging.api.ContextAware;
 import reactor.core.publisher.Mono;
 

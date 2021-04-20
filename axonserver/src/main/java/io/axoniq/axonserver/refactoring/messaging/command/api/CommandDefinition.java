@@ -9,4 +9,12 @@ import io.axoniq.axonserver.refactoring.messaging.api.ContextAware;
 public interface CommandDefinition extends ContextAware {
 
     String name();
+
+    // TODO: 4/20/2021 add JavaDoc
+    @Override
+    boolean equals(Object other);
+
+    // TODO: 4/20/2021 add JavaDoc
+    @Override
+    int hashCode();
 }

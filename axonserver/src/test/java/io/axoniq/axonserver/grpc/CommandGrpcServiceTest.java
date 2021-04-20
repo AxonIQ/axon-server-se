@@ -26,14 +26,17 @@ import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.FlowControlQueues;
 import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents;
 import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
+import io.axoniq.axonserver.refactoring.messaging.api.Registration;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
 import io.axoniq.axonserver.refactoring.messaging.command.WrappedCommand;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import io.axoniq.axonserver.refactoring.requestprocessor.command.CommandService;
 import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.grpc.CommandGrpcService;
+import io.axoniq.axonserver.refactoring.transport.grpc.CommandMapper;
 import io.axoniq.axonserver.refactoring.transport.grpc.CommandResponseMapper;
 import io.axoniq.axonserver.refactoring.transport.grpc.MetadataMapper;
 import io.axoniq.axonserver.refactoring.transport.grpc.SerializedObjectMapper;
@@ -73,7 +76,19 @@ public class CommandGrpcServiceTest {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
         SerializedObjectMapper serializedObjectMapper = new SerializedObjectMapper();
-        testSubject = new CommandGrpcService((command, authentication) -> null, topology,
+        testSubject = new CommandGrpcService(new CommandService() {
+            @Override
+            public Mono<io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse> execute(
+                    io.axoniq.axonserver.refactoring.messaging.command.api.Command command,
+                    Authentication authentication) {
+                return null;
+            }
+
+            @Override
+            public Mono<Registration> register(CommandHandler handler, Authentication authentication) {
+                return null;
+            }
+        }, topology,
                                              commandDispatcher,
                                              () -> Topology.DEFAULT_CONTEXT,
                                              () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
@@ -82,7 +97,8 @@ public class CommandGrpcServiceTest {
                                              new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(
                                                      CommandProviderInbound.newBuilder().setAck(ack).build())),
                                              new CommandResponseMapper(serializedObjectMapper,
-                                                                       new MetadataMapper(serializedObjectMapper)));
+                                                                       new MetadataMapper(serializedObjectMapper)),
+                                             new CommandMapper());
     }
 
     @Test
