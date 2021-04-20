@@ -10,8 +10,7 @@
 package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axonserver.grpc.SerializedObject;
-import io.axoniq.axonserver.refactoring.messaging.api.Payload;
+import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
 import io.axoniq.axonserver.refactoring.util.StringUtils;
 
 /**
@@ -27,24 +26,24 @@ public class SerializedObjectJson {
 
     }
 
-    public SerializedObjectJson(Payload payload) {
+    public SerializedObjectJson(SerializedObject payload) {
         this.type = payload.type();
         this.data = new String(payload.data());
         this.revision = payload.revision();
     }
 
-    public SerializedObjectJson(SerializedObject payload) {
+    public SerializedObjectJson(io.axoniq.axonserver.grpc.SerializedObject payload) {
         type = payload.getType();
         data = payload.getData().toStringUtf8();
         revision = payload.getRevision();
     }
 
-    public SerializedObject asSerializedObject() {
-        return SerializedObject.newBuilder()
-                               .setData(ByteString.copyFromUtf8(data))
-                               .setType(type)
-                               .setRevision(StringUtils.getOrDefault(revision, ""))
-                               .build();
+    public io.axoniq.axonserver.grpc.SerializedObject asSerializedObject() {
+        return io.axoniq.axonserver.grpc.SerializedObject.newBuilder()
+                                                         .setData(ByteString.copyFromUtf8(data))
+                                                         .setType(type)
+                                                         .setRevision(StringUtils.getOrDefault(revision, ""))
+                                                         .build();
     }
 
     public String getType() {

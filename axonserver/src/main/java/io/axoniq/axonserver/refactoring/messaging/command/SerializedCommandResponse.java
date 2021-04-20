@@ -18,16 +18,10 @@ import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
-import io.axoniq.axonserver.grpc.ErrorMessage;
-import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.refactoring.messaging.SerializedMessage;
-import io.axoniq.axonserver.refactoring.messaging.api.Error;
-import io.axoniq.axonserver.refactoring.messaging.api.Payload;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * Wrapper around {@link CommandResponse} that maintains serialized data to reduce time to write to stream.
@@ -43,32 +37,6 @@ public class SerializedCommandResponse extends SerializedMessage<CommandResponse
     public SerializedCommandResponse(CommandResponse response) {
         serializedData = response.toByteArray();
         wrapped = response;
-    }
-
-    public SerializedCommandResponse(io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse response) {
-        this.requestIdentifier = response.requestId();
-        CommandResponse.Builder builder = CommandResponse.newBuilder()
-                                                         .setMessageIdentifier(response.message().id())
-                                                         .putAllMetaData(metadata(response.message().metadata()));
-        response.error().ifPresent(e -> builder.setErrorCode(e.code())
-                                               .setErrorMessage(ErrorMessage.newBuilder()
-                                                                            .setErrorCode(e.code())
-                                                                            .setMessage(e.message())
-                                                                            .setLocation(e.source())
-                                                                            .addAllDetails(e.details())));
-        response.message().payload().ifPresent(p -> builder.setPayload(payload(p)));
-        this.wrapped = builder.build();
-        this.serializedData = wrapped.toByteArray();
-    }
-
-    private SerializedObject payload(Payload payload) {
-        // TODO: 4/16/2021 implement
-        return null;
-    }
-
-    private Map<String, MetaDataValue> metadata(Map<String, Object> metadata) {
-        // TODO: 4/16/2021 implement
-        return null;
     }
 
     public SerializedCommandResponse(byte[] readByteArray) {

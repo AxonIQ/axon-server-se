@@ -13,7 +13,7 @@ public interface Message {
 
     String id();
 
-    Optional<Payload> payload();
+    Optional<SerializedObject> payload();
 
     <T> T metadata(String key);
 

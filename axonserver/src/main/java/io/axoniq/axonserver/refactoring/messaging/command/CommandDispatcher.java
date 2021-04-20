@@ -12,7 +12,6 @@ package io.axoniq.axonserver.refactoring.messaging.command;
 import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
-import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.refactoring.api.Authentication;
 import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
@@ -22,7 +21,7 @@ import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityExce
 import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
 import io.axoniq.axonserver.refactoring.messaging.api.Error;
 import io.axoniq.axonserver.refactoring.messaging.api.Message;
-import io.axoniq.axonserver.refactoring.messaging.api.Payload;
+import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
 import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
 import io.axoniq.axonserver.refactoring.messaging.command.api.CommandRouter;
 import io.axoniq.axonserver.refactoring.metric.BaseMetricName;
@@ -310,7 +309,7 @@ public class CommandDispatcher implements CommandRouter {
         return Mono.create(sink -> {
             SerializedCommand serializedCommand = new SerializedCommand(command.message()
                                                                                .payload()
-                                                                               .map(Payload::data)
+                                                                               .map(SerializedObject::data)
                                                                                .orElseThrow(() -> new IllegalArgumentException("Command payload must not be null")),
                                                                         command.requester().id(),
                                                                         command.message().id());
@@ -344,12 +343,12 @@ public class CommandDispatcher implements CommandRouter {
                 }
 
                 @Override
-                public Optional<Payload> payload() {
+                public Optional<SerializedObject> payload() {
                     if (!serializedCommandResponse.wrapped().hasPayload()) {
                         return Optional.empty();
                     }
-                    SerializedObject payload = serializedCommandResponse.wrapped().getPayload();
-                    return Optional.of(new Payload() {
+                    io.axoniq.axonserver.grpc.SerializedObject payload = serializedCommandResponse.wrapped().getPayload();
+                    return Optional.of(new SerializedObject() {
                         @Override
                         public String type() {
                             return payload.getType();

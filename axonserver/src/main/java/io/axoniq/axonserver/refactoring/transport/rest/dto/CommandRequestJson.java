@@ -9,13 +9,11 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest.dto;
 
-import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.refactoring.messaging.ProcessingInstructionHelper;
-import io.axoniq.axonserver.refactoring.messaging.api.Client;
 import io.axoniq.axonserver.refactoring.messaging.api.Message;
-import io.axoniq.axonserver.refactoring.messaging.api.Payload;
+import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
 import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
 import io.axoniq.axonserver.refactoring.util.StringUtils;
 
@@ -137,8 +135,8 @@ public class CommandRequestJson {
                     }
 
                     @Override
-                    public Optional<Payload> payload() {
-                        return Optional.of(new Payload() {
+                    public Optional<SerializedObject> payload() {
+                        return Optional.of(new SerializedObject() {
                             @Override
                             public String type() {
                                 return payload.getType();

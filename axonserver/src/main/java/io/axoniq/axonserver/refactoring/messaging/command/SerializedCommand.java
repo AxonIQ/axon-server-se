@@ -11,15 +11,13 @@ package io.axoniq.axonserver.refactoring.messaging.command;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.refactoring.messaging.ProcessingInstructionHelper;
 import io.axoniq.axonserver.refactoring.messaging.api.Client;
 import io.axoniq.axonserver.refactoring.messaging.api.Message;
-import io.axoniq.axonserver.refactoring.messaging.api.Payload;
+import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
 import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
 import io.axoniq.axonserver.refactoring.transport.grpc.SerializedObjectMapping;
-import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -135,7 +133,7 @@ public class SerializedCommand  {
                     }
 
                     @Override
-                    public Optional<Payload> payload() {
+                    public Optional<SerializedObject> payload() {
                         return Optional.of(new SerializedObjectMapping(wrapped().getPayload()));
                     }
 

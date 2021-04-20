@@ -1,17 +1,15 @@
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
-import io.axoniq.axonserver.grpc.SerializedObject;
-import io.axoniq.axonserver.refactoring.messaging.api.Payload;
-import org.jetbrains.annotations.NotNull;
+import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
 
 /**
  * @author Milan Savic
  */
-public class SerializedObjectMapping implements Payload {
+public class SerializedObjectMapping implements SerializedObject {
 
-    private final SerializedObject payload;
+    private final io.axoniq.axonserver.grpc.SerializedObject payload;
 
-    public SerializedObjectMapping(SerializedObject payload) {
+    public SerializedObjectMapping(io.axoniq.axonserver.grpc.SerializedObject payload) {
         this.payload = payload;
     }
 

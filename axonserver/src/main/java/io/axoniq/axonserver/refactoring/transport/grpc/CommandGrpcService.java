@@ -15,6 +15,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.grpc.FlowControl;
 import io.axoniq.axonserver.grpc.InstructionAck;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -22,14 +23,17 @@ import io.axoniq.axonserver.refactoring.configuration.TopologyEvents.CommandHand
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.UnsubscribeCommand;
+import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 import io.axoniq.axonserver.refactoring.requestprocessor.command.CommandService;
 import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
 import io.axoniq.axonserver.refactoring.transport.ContextProvider;
+import io.axoniq.axonserver.refactoring.transport.Mapper;
 import io.axoniq.axonserver.refactoring.transport.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.refactoring.transport.instruction.InstructionAckSource;
 import io.axoniq.axonserver.refactoring.transport.rest.SpringAuthentication;
@@ -91,6 +95,7 @@ public class CommandGrpcService implements AxonServerClientService {
     private final Logger logger = LoggerFactory.getLogger(CommandGrpcService.class);
     private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
+    private final Mapper<CommandResponse, SerializedCommandResponse> commandResponseMapper;
 
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
@@ -103,7 +108,9 @@ public class CommandGrpcService implements AxonServerClientService {
                               ClientIdRegistry clientIdRegistry,
                               ApplicationEventPublisher eventPublisher,
                               @Qualifier("commandInstructionAckSource")
-                                      InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
+                                      InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource,
+                              @Qualifier("commandResponseMapper")
+                              Mapper<CommandResponse, SerializedCommandResponse> commandResponseMapper) {
         this.commandService = commandService;
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
@@ -112,6 +119,7 @@ public class CommandGrpcService implements AxonServerClientService {
         this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
+        this.commandResponseMapper = commandResponseMapper;
     }
 
     @PreDestroy
@@ -282,7 +290,7 @@ public class CommandGrpcService implements AxonServerClientService {
 
         commandService.execute(request.asCommand(contextProvider.getContext()),
                                new SpringAuthentication(authenticationProvider.get()))
-                      .map(SerializedCommandResponse::new)
+                      .map(commandResponseMapper::map)
                       .doOnError(error -> logger.warn("Dispatching failed with unexpected error", error))
                       .subscribe(response -> safeReply(clientId, response, responseObserver),
                                  error -> responseObserver.onError(GrpcExceptionBuilder.build(error))

@@ -4,7 +4,7 @@ package io.axoniq.axonserver.refactoring.messaging.api;
  * @author Sara Pellegrini
  * @since
  */
-public interface Payload {
+public interface SerializedObject {
 
     String type();
 
