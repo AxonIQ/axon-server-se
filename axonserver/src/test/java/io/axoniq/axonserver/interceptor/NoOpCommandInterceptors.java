@@ -11,8 +11,8 @@ package io.axoniq.axonserver.interceptor;
 
 import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandInterceptors;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 
 /**
  * @author Marc Gathier
@@ -20,14 +20,14 @@ import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandRespo
 public class NoOpCommandInterceptors implements CommandInterceptors {
 
     @Override
-    public SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                            ExecutionContext executionContext) {
+    public Command commandRequest(Command serializedCommand,
+                                  ExecutionContext executionContext) {
         return serializedCommand;
     }
 
     @Override
-    public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
-                                                     ExecutionContext unitOfWork) {
+    public CommandResponse commandResponse(CommandResponse serializedResponse,
+                                           ExecutionContext unitOfWork) {
         return serializedResponse;
     }
 }

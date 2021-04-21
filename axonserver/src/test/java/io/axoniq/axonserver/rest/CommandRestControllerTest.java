@@ -10,15 +10,12 @@
 package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.refactoring.client.command.ComponentCommand;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
-import io.axoniq.axonserver.refactoring.transport.grpc.DirectCommandHandler;
 import io.axoniq.axonserver.refactoring.transport.rest.CommandRestController;
 import io.axoniq.axonserver.refactoring.transport.rest.serializer.GsonMedia;
-import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -41,12 +38,12 @@ public class CommandRestControllerTest {
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
-        commandRegistationCache.add("DoIt",
-                                    new DirectCommandHandler(new FakeStreamObserver<>(),
-                                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                            "client"),
-                                                             "client",
-                                                             "component"));
+//        commandRegistationCache.add("DoIt",
+//                                    new DirectCommandHandler(new FakeStreamObserver<>(),
+//                                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+//                                                                                            "client"),
+//                                                             "client",
+//                                                             "component"));
         testSubject = new CommandRestController(null, commandDispatcher, commandRegistationCache);
     }
 

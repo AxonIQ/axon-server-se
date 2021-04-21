@@ -20,4 +20,8 @@ public interface CommandHandler extends ContextAware {
     Client client();
 
     Mono<CommandResponse> handle(Command command);
+
+    default int loadFactor() {
+        return 100;
+    }
 }

@@ -28,22 +28,25 @@ public class CommandResponseMapper implements Mapper<CommandResponse, Serialized
 
     @Override
     public SerializedCommandResponse map(CommandResponse origin) {
+        if (origin instanceof GrpcCommandResponse) {
+            return ((GrpcCommandResponse) origin).serializedCommandResponse();
+        }
         io.axoniq.axonserver.grpc.command.CommandResponse.Builder builder = io.axoniq.axonserver.grpc.command.CommandResponse
                 .newBuilder()
                 .setMessageIdentifier(origin.message().id())
                 .putAllMetaData(metadataMapper.map(origin.message().metadata()));
         origin.error().ifPresent(e -> builder.setErrorCode(e.code())
-                                               .setErrorMessage(ErrorMessage.newBuilder()
-                                                                            .setErrorCode(e.code())
-                                                                            .setMessage(e.message())
-                                                                            .setLocation(e.source())
-                                                                            .addAllDetails(e.details())));
+                                             .setErrorMessage(ErrorMessage.newBuilder()
+                                                                          .setErrorCode(e.code())
+                                                                          .setMessage(e.message())
+                                                                          .setLocation(e.source())
+                                                                          .addAllDetails(e.details())));
         origin.message().payload().ifPresent(p -> builder.setPayload(serializedObjectMapper.map(p)));
         return new SerializedCommandResponse(builder.build());
     }
 
     @Override
     public CommandResponse unmap(SerializedCommandResponse origin) {
-        return null;
+        return new GrpcCommandResponse(serializedObjectMapper, origin);
     }
 }

@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.refactoring.transport.rest;
 
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryHandler;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryMetricsRegistry;
@@ -74,9 +74,9 @@ public class MetricsRestController {
         return registrations.stream()
                             .map(registration -> commandMetricsRegistry
                                     .commandMetric(registration.getCommand(),
-                                                   commandHander.getClientId(),
-                                                   commandHander.getClientStreamIdentification().getContext(),
-                                                   commandHander.getComponentName()))
+                                                   commandHander.client().id(),
+                                                   commandHander.context(),
+                                                   commandHander.client().applicationName()))
                             // .filter(m -> m.getCount() == 0)
                             .collect(Collectors.toList());
     }

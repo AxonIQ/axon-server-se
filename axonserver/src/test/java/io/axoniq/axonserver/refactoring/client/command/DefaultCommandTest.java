@@ -10,13 +10,16 @@
 package io.axoniq.axonserver.refactoring.client.command;
 
 import com.google.common.collect.ImmutableSet;
-import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.api.Client;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
-import io.axoniq.axonserver.refactoring.transport.grpc.DirectCommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 import io.axoniq.axonserver.refactoring.transport.rest.serializer.GsonMedia;
 import org.junit.*;
+import reactor.core.publisher.Mono;
 
 import static org.junit.Assert.*;
 
@@ -30,12 +33,42 @@ public class DefaultCommandTest {
 
     @Before
     public void setUp() throws Exception {
-        ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new DirectCommandHandler(null,
-                                                                                                new ClientStreamIdentification(
-                                                                                                        Topology.DEFAULT_CONTEXT,
-                                                                                                        "client"),
-                                                                                                "client",
-                                                                                                "componentA"));
+        ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new CommandHandler() {
+            @Override
+            public CommandDefinition definition() {
+                return new CommandDefinition() {
+                    @Override
+                    public String name() {
+                        return "commandName";
+                    }
+
+                    @Override
+                    public String context() {
+                        return Topology.DEFAULT_CONTEXT;
+                    }
+                };
+            }
+
+            @Override
+            public Client client() {
+                return new Client() {
+                    @Override
+                    public String id() {
+                        return "client";
+                    }
+
+                    @Override
+                    public String applicationName() {
+                        return "componentA";
+                    }
+                };
+            }
+
+            @Override
+            public Mono<CommandResponse> handle(Command command) {
+                return null;
+            }
+        });
         defaultCommand = new DefaultCommand(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT,
                                                                                            "commandName"),
                                             commandHandlers);

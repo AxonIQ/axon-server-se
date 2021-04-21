@@ -10,18 +10,17 @@
 package io.axoniq.axonserver.refactoring.transport.grpc;
 
 import io.axoniq.axonserver.ClientStreamIdentification;
-import io.axoniq.axonserver.grpc.InstructionAck;
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.LegacyCommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
 import io.grpc.stub.StreamObserver;
 
 /**
  * @author Marc Gathier
  */
-public class DirectCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
+public class DirectCommandHandler extends LegacyCommandHandler<Command> {
 
-    public DirectCommandHandler(StreamObserver<SerializedCommandProviderInbound> responseObserver,
+    public DirectCommandHandler(StreamObserver<Command> responseObserver,
                                 ClientStreamIdentification clientStreamIdentification, String clientId,
                                 String componentName) {
         super(responseObserver, clientStreamIdentification, clientId, componentName);
@@ -29,16 +28,16 @@ public class DirectCommandHandler extends CommandHandler<SerializedCommandProvid
 
     @Override
     public void dispatch(SerializedCommand request) {
-        observer.onNext(SerializedCommandProviderInbound.newBuilder().setCommand(request).build());
+//        observer.onNext(SerializedCommandProviderInbound.newBuilder().setCommand(request).build());
     }
 
     @Override
     public void confirm(String messageId) {
-        observer.onNext(SerializedCommandProviderInbound.newBuilder()
-                                                        .setAcknowledgement(InstructionAck.newBuilder()
-                                                                                          .setSuccess(true)
-                                                                                          .setInstructionId(messageId)
-                                                                                          .build())
-                                                        .build());
+//        observer.onNext(SerializedCommandProviderInbound.newBuilder()
+//                                                        .setAcknowledgement(InstructionAck.newBuilder()
+//                                                                                          .setSuccess(true)
+//                                                                                          .setInstructionId(messageId)
+//                                                                                          .build())
+//                                                        .build());
     }
 }

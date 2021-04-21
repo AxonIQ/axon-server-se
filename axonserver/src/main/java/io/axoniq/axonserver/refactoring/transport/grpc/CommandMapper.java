@@ -13,11 +13,14 @@ public class CommandMapper implements Mapper<Command, SerializedCommand> {
 
     @Override
     public SerializedCommand map(Command origin) {
+        if (origin instanceof GrpcCommandMapping) {
+            return ((GrpcCommandMapping) origin).serializedCommand();
+        }
         return null;
     }
 
     @Override
     public Command unmap(SerializedCommand origin) {
-        return null;
+        return new GrpcCommandMapping(origin);
     }
 }

@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.refactoring.messaging.command;
 
 import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 
 /**
  * Bundles the interceptors for commands.
@@ -23,21 +25,21 @@ public interface CommandInterceptors {
      * Invokes all {@link io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor} instances. Interceptors
      * may change the content of the command.
      *
-     * @param serializedCommand the command to intercept
-     * @param executionContext  the execution context for the command
+     * @param command          the command to intercept
+     * @param executionContext the execution context for the command
      * @return the command after executing the interceptors
      */
-    SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                     ExecutionContext executionContext);
+    Command commandRequest(Command command,
+                           ExecutionContext executionContext);
 
     /**
      * Invokes all {@link io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor} instances.
      * Interceptors may change the content of the response.
      *
-     * @param serializedResponse the response to intercept
-     * @param unitOfWork         the execution context for the command
+     * @param response   the response to intercept
+     * @param unitOfWork the execution context for the command
      * @return the response after executing the interceptors
      */
-    SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
-                                              ExecutionContext unitOfWork);
+    CommandResponse commandResponse(CommandResponse response,
+                                    ExecutionContext unitOfWork);
 }

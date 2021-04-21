@@ -12,7 +12,7 @@ package io.axoniq.axonserver.refactoring.messaging;
 import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.LegacyCommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryHandler;
 import io.axoniq.axonserver.refactoring.transport.grpc.DirectCommandHandler;
 import io.axoniq.axonserver.refactoring.transport.grpc.DirectQueryHandler;
@@ -135,12 +135,12 @@ public class SubscriptionEvents {
          */
         private final String clientStreamId;
         private final CommandSubscription request;
-        private final CommandHandler handler;
+        private final LegacyCommandHandler handler;
 
         public SubscribeCommand(String context,
                                 String clientStreamId,
                                 CommandSubscription request,
-                                CommandHandler handler) {
+                                LegacyCommandHandler handler) {
             super(context, !(handler instanceof DirectCommandHandler));
             this.clientStreamId = clientStreamId;
             this.request = request;
@@ -151,7 +151,7 @@ public class SubscriptionEvents {
             return request;
         }
 
-        public CommandHandler getHandler() {
+        public LegacyCommandHandler getHandler() {
             return handler;
         }
 

@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.refactoring.client.command;
 
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache.RegistrationEntry;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 
 import java.util.HashMap;
 import java.util.HashSet;

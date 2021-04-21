@@ -20,11 +20,10 @@ import io.axoniq.axonserver.grpc.command.CommandServiceGrpc;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.refactoring.configuration.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
-import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
-import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.UnsubscribeCommand;
 import io.axoniq.axonserver.refactoring.messaging.api.Client;
+import io.axoniq.axonserver.refactoring.messaging.api.Registration;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.command.LegacyCommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
@@ -160,10 +159,11 @@ public class CommandGrpcService implements AxonServerClientService {
                 responseObserver);
         return new ReceivingStreamObserver<CommandProviderOutbound>(logger) {
             private final Map<String, MonoSink<CommandResponse>> commandsInFlight = new ConcurrentHashMap<>();
+            private final Map<String, Registration> registrations = new ConcurrentHashMap<>();
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
-            private final AtomicReference<CommandHandler<?>> commandHandlerRef = new AtomicReference<>();
+            private final AtomicReference<LegacyCommandHandler<?>> commandHandlerRef = new AtomicReference<>();
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
@@ -174,10 +174,6 @@ public class CommandGrpcService implements AxonServerClientService {
                         CommandSubscription subscribe = commandFromSubscriber.getSubscribe();
 
                         checkInitClient(subscribe.getClientId(), subscribe.getComponentName());
-                        SubscribeCommand event = new SubscribeCommand(context,
-                                                                      clientRef.get().getClientStreamId(),
-                                                                      subscribe,
-                                                                      commandHandlerRef.get());
                         commandService.register(new io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler() {
                             @Override
                             public CommandDefinition definition() {
@@ -217,21 +213,19 @@ public class CommandGrpcService implements AxonServerClientService {
                                             .newBuilder()
                                             .setCommand(commandMapper.map(command))
                                             .build();
+
                                     responseObserver.onNext(request);
                                 });
                             }
-                        }, springAuthentication);
+                        }, springAuthentication).subscribe(r -> registrations.put(subscribe.getCommand(), r));
                         break;
                     case UNSUBSCRIBE:
                         instructionAckSource.sendSuccessfulAck(commandFromSubscriber.getInstructionId(),
                                                                wrappedResponseObserver);
-                        if (clientRef.get() != null) {
-                            UnsubscribeCommand unsubscribe =
-                                    new UnsubscribeCommand(context,
-                                                           clientRef.get().getClientStreamId(),
-                                                           commandFromSubscriber.getUnsubscribe(),
-                                                           false);
-                            eventPublisher.publishEvent(unsubscribe);
+                        Registration registration = registrations.remove(commandFromSubscriber.getUnsubscribe()
+                                                                                              .getCommand());
+                        if (registration != null) {
+                            registration.cancel();
                         }
                         break;
                     case FLOW_CONTROL:
@@ -285,11 +279,11 @@ public class CommandGrpcService implements AxonServerClientService {
 
             private void checkInitClient(String clientId, String component) {
                 initClientReference(clientId);
-                commandHandlerRef.compareAndSet(null,
-                                                new DirectCommandHandler(wrappedResponseObserver,
-                                                                         clientRef.get(),
-                                                                         clientId,
-                                                                         component));
+//                commandHandlerRef.compareAndSet(null,
+//                                                new DirectCommandHandler(wrappedResponseObserver,
+//                                                                         clientRef.get(),
+//                                                                         clientId,
+//                                                                         component));
             }
 
             @Override
@@ -306,14 +300,7 @@ public class CommandGrpcService implements AxonServerClientService {
             }
 
             private void cleanup() {
-                if (clientRef.get() != null) {
-                    String clientStreamId = clientRef.get().getClientStreamId();
-                    String clientId = clientIdRef.get();
-                    clientIdRegistry.unregister(clientStreamId, ClientIdRegistry.ConnectionType.COMMAND);
-                    eventPublisher.publishEvent(new CommandHandlerDisconnected(clientRef.get().getContext(),
-                                                                               clientId,
-                                                                               clientStreamId));
-                }
+                registrations.forEach((command, registration) -> registration.cancel());
                 GrpcCommandDispatcherListener listener = listenerRef.get();
                 if (listener != null) {
                     listener.cancel();
@@ -336,11 +323,11 @@ public class CommandGrpcService implements AxonServerClientService {
     }
 
     public void dispatch(byte[] command, StreamObserver<SerializedCommandResponse> responseObserver) {
-        SerializedCommand request = new SerializedCommand(command);
+        SerializedCommand request = new SerializedCommand(command, contextProvider.getContext());
         String clientId = request.wrapped().getClientId();
 
 
-        commandService.execute(request.asCommand(contextProvider.getContext()),
+        commandService.execute(commandMapper.unmap(request),
                                new SpringAuthentication(authenticationProvider.get()))
                       .map(commandResponseMapper::map)
                       .doOnError(error -> logger.warn("Dispatching failed with unexpected error", error))

@@ -10,8 +10,8 @@
 package io.axoniq.axonserver.refactoring.messaging;
 
 import io.axoniq.axonserver.ClientStreamIdentification;
+import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.refactoring.client.tags.ClientTagsCache;
-import io.axoniq.axonserver.refactoring.messaging.api.Message;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -30,9 +30,9 @@ import java.util.function.BiFunction;
  * @since 4.4
  */
 @Component
-public class MetaDataBasedTargetSelector
+public class LegacyMetaDataBasedTargetSelector
         implements
-        BiFunction<Message, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> {
+        BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> {
 
     private final ClientTagsCache clientTagsCache;
 
@@ -41,51 +41,67 @@ public class MetaDataBasedTargetSelector
      *
      * @param clientTagsCache component containing the connected clients and their tags
      */
-    public MetaDataBasedTargetSelector(ClientTagsCache clientTagsCache) {
+    public LegacyMetaDataBasedTargetSelector(ClientTagsCache clientTagsCache) {
         this.clientTagsCache = clientTagsCache;
     }
 
     /**
      * Finds the candidates that best match the meta data from the list of provided candidates.
      *
-     * @param message    message containing meta data
-     * @param candidates set of clients capable of handling the request
+     * @param metaDataMap meta data from the request
+     * @param candidates  set of clients capable of handling the request
      * @return subset of candidates with best matching tags
      */
     @Override
-    public Set<ClientStreamIdentification> apply(Message message,
+    public Set<ClientStreamIdentification> apply(Map<String, MetaDataValue> metaDataMap,
                                                  Set<ClientStreamIdentification> candidates) {
-        if (candidates.size() < 2 || message.metadataKeys().isEmpty()) {
+        if (candidates.size() < 2 || metaDataMap.isEmpty()) {
             return candidates;
         }
         Map<ClientStreamIdentification, Integer> scorePerClient = new HashMap<>();
         candidates.forEach(candidate -> scorePerClient.computeIfAbsent(candidate,
-                                                                       m -> score(message, m)));
+                                                                       m -> score(metaDataMap, m)));
 
         return getHighestScore(scorePerClient);
     }
 
-    private int score(Message message, ClientStreamIdentification client) {
-        if (message.metadataKeys().isEmpty()) {
+    private int score(Map<String, MetaDataValue> metaDataMap, ClientStreamIdentification client) {
+        if (metaDataMap.isEmpty()) {
             return 0;
         }
         Map<String, String> clientTags = clientTagsCache.apply(client);
         int score = 0;
         for (Map.Entry<String, String> tagEntry : clientTags.entrySet()) {
-            score += match(tagEntry, message);
+            score += match(tagEntry, metaDataMap);
         }
 
         return score;
     }
 
-    private int match(Map.Entry<String, String> tagEntry, Message message) {
-        Object metaDataValue = message.metadata(tagEntry.getKey());
+    private int match(Map.Entry<String, String> tagEntry, Map<String, MetaDataValue> metaDataMap) {
+        MetaDataValue metaDataValue = metaDataMap.get(tagEntry.getKey());
 
         return metaDataValue == null ? 0 : matchValues(tagEntry.getValue(), metaDataValue);
     }
 
-    private int matchValues(String value, Object metaDataValue) {
-        boolean match = value.equals(metaDataValue.toString());
+    private int matchValues(String value, MetaDataValue metaDataValue) {
+        boolean match = false;
+        switch (metaDataValue.getDataCase()) {
+            case TEXT_VALUE:
+                match = value.equals(metaDataValue.getTextValue());
+                break;
+            case NUMBER_VALUE:
+                match = value.equals(String.valueOf(metaDataValue.getNumberValue()));
+                break;
+            case BOOLEAN_VALUE:
+                match = value.equals(String.valueOf(metaDataValue.getBooleanValue()));
+                break;
+            case DOUBLE_VALUE:
+                match = value.equals(String.valueOf(metaDataValue.getDoubleValue()));
+                break;
+            default:
+                break;
+        }
         return match ? 1 : -1;
     }
 

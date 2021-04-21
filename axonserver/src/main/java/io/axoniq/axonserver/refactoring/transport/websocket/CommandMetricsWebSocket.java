@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.refactoring.transport.websocket;
 
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -78,8 +78,8 @@ public class CommandMetricsWebSocket {
         return registrations.stream()
                             .map(registration -> commandMetricsRegistry
                                     .commandMetric(registration.getCommand(),
-                                                   commandHander.getClientId(),
-                                                   commandHander.getClientStreamIdentification().getContext(),
-                                                   commandHander.getComponentName()));
+                                                   commandHander.client().id(),
+                                                   commandHander.context(),
+                                                   commandHander.client().applicationName()));
     }
 }

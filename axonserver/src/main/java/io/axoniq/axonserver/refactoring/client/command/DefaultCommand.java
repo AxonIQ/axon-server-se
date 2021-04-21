@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.refactoring.client.command;
 
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import io.axoniq.axonserver.refactoring.transport.rest.serializer.Media;
 
 import java.util.Set;
@@ -32,7 +32,7 @@ class DefaultCommand implements ComponentCommand {
 
     @Override
     public Boolean belongsToComponent(String component) {
-        return commandHandlers.stream().anyMatch(handler -> component.equals(handler.getComponentName()));
+        return commandHandlers.stream().anyMatch(handler -> component.equals(handler.client().applicationName()));
     }
 
     @Override

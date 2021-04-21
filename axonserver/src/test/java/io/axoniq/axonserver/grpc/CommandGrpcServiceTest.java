@@ -17,7 +17,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
-import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.refactoring.api.Authentication;
 import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
@@ -47,8 +46,6 @@ import org.junit.*;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 import reactor.core.publisher.Mono;
-
-import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -119,7 +116,8 @@ public class CommandGrpcServiceTest {
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
                                                                              clientIdentification.getClientStreamId(),
                                                                              new SerializedCommand(Command.newBuilder()
-                                                                                                          .build())));
+                                                                                                          .build(),
+                                                                                                   null)));
         Thread.sleep(50);
         assertEquals(1, fakeStreamObserver.values().size());
     }
@@ -206,12 +204,12 @@ public class CommandGrpcServiceTest {
 
     @Test
     public void dispatch() {
-        doAnswer(invocationOnMock -> {
-            Consumer<SerializedCommandResponse> responseConsumer = (Consumer<SerializedCommandResponse>) invocationOnMock
-                    .getArguments()[3];
-            responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
-            return null;
-        }).when(commandDispatcher).dispatch(any(), any(Authentication.class), any(), any());
+//        doAnswer(invocationOnMock -> {
+//            Consumer<SerializedCommandResponse> responseConsumer = (Consumer<SerializedCommandResponse>) invocationOnMock
+//                    .getArguments()[3];
+//            responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
+//            return null;
+//        }).when(commandDispatcher).dispatch(any(), any(Authentication.class), any(), any());
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build().toByteArray(), responseObserver);
         assertEquals(1, responseObserver.values().size());

@@ -13,46 +13,45 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.refactoring.messaging.ProcessingInstructionHelper;
-import io.axoniq.axonserver.refactoring.messaging.api.Client;
-import io.axoniq.axonserver.refactoring.messaging.api.Message;
-import io.axoniq.axonserver.refactoring.messaging.api.SerializedObject;
-import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
-import io.axoniq.axonserver.refactoring.transport.grpc.SerializedObjectMapping;
-
-import java.time.Instant;
-import java.util.Optional;
-import java.util.Set;
+import io.axoniq.axonserver.refactoring.transport.grpc.GrpcCommandMapping;
 
 /**
  * Wrapper around gRPC {@link Command} to reduce serialization/deserialization.
  * @author Marc Gathier
  */
-public class SerializedCommand  {
+public class SerializedCommand {
 
     private final String clientStreamId;
     private final String messageId;
     private final byte[] serializedData;
+    private final String context;
     private volatile Command command;
 
     public SerializedCommand(Command command) {
-        this(command.toByteArray());
+        this(command, null);
+    }
+
+    public SerializedCommand(Command command, String context) {
+        this(command.toByteArray(), context);
         this.command = command;
     }
 
-    public SerializedCommand(byte[] serializedCommand) {
+    public SerializedCommand(byte[] serializedCommand, String context) {
         this.serializedData = serializedCommand;
         this.clientStreamId = null;
         this.messageId = null;
+        this.context = context;
     }
 
     public SerializedCommand(byte[] serializedCommand, String clientStreamId, String messageId) {
         this.serializedData = serializedCommand;
         this.clientStreamId = clientStreamId;
         this.messageId = messageId;
+        this.context = null;
     }
 
     public static SerializedCommand getDefaultInstance() {
-        return new SerializedCommand(Command.getDefaultInstance());
+        return new SerializedCommand(Command.getDefaultInstance(), null);
     }
 
 
@@ -99,8 +98,13 @@ public class SerializedCommand  {
         return wrapped().getName();
     }
 
+    public String getContext() {
+        return context;
+    }
+
     public String getRoutingKey() {
-        return ProcessingInstructionHelper.routingKey(wrapped().getProcessingInstructionsList(), wrapped().getMessageIdentifier());
+        return ProcessingInstructionHelper.routingKey(wrapped().getProcessingInstructionsList(),
+                                                      wrapped().getMessageIdentifier());
     }
 
     public long getPriority() {
@@ -108,73 +112,6 @@ public class SerializedCommand  {
     }
 
     public io.axoniq.axonserver.refactoring.messaging.command.api.Command asCommand(String context) {
-        return new io.axoniq.axonserver.refactoring.messaging.command.api.Command() {
-            @Override
-            public CommandDefinition definition() {
-                return new CommandDefinition() {
-                    @Override
-                    public String name() {
-                        return getName();
-                    }
-
-                    @Override
-                    public String context() {
-                        return context;
-                    }
-                };
-            }
-
-            @Override
-            public Message message() {
-                return new Message() {
-                    @Override
-                    public String id() {
-                        return getMessageIdentifier();
-                    }
-
-                    @Override
-                    public Optional<SerializedObject> payload() {
-                        return Optional.of(new SerializedObjectMapping(wrapped().getPayload()));
-                    }
-
-                    @Override
-                    public <T> T metadata(String key) {
-                        // TODO: 4/16/2021 convert metadatavalue to real object in a generic way
-                        return (T) wrapped().getMetaDataMap().get(key);
-                    }
-
-                    @Override
-                    public Set<String> metadataKeys() {
-                        return wrapped().getMetaDataMap().keySet();
-                    }
-                };
-            }
-
-            @Override
-            public String routingKey() {
-                return getRoutingKey();
-            }
-
-            @Override
-            public Instant timestamp() {
-                return Instant.ofEpochMilli(wrapped().getTimestamp());
-            }
-
-            @Override
-            public Client requester() {
-                return new Client() {
-
-                    @Override
-                    public String id() {
-                        return getClientStreamId();
-                    }
-
-                    @Override
-                    public String applicationName() {
-                        return wrapped().getComponentName();
-                    }
-                };
-            }
-        };
+        return new GrpcCommandMapping(this);
     }
 }

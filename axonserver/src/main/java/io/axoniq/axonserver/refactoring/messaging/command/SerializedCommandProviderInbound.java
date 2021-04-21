@@ -40,7 +40,8 @@ public class SerializedCommandProviderInbound extends SerializedMessage<CommandP
 
     public SerializedCommandProviderInbound(CommandProviderInbound defaultInstance) {
         wrapped = defaultInstance;
-        serializedCommand = defaultInstance.hasCommand() ? new SerializedCommand(defaultInstance.getCommand()) : null;
+        serializedCommand = defaultInstance.hasCommand() ? new SerializedCommand(defaultInstance.getCommand(),
+                                                                                 null) : null;
         acknowledgement = defaultInstance.hasAck() ? defaultInstance.getAck() : null;
     }
 

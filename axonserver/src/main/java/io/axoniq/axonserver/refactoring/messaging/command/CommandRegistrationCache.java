@@ -10,16 +10,13 @@
 package io.axoniq.axonserver.refactoring.messaging.command;
 
 import io.axoniq.axonserver.ClientStreamIdentification;
-import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
-import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.UnsubscribeCommand;
+import io.axoniq.axonserver.refactoring.messaging.api.Message;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.hashing.ConsistentHashRoutingSelector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -46,10 +43,11 @@ public class CommandRegistrationCache {
     private final Logger logger = LoggerFactory.getLogger(CommandRegistrationCache.class);
     private final ConcurrentMap<ClientStreamIdentification, CommandHandler> commandHandlersPerClientContext = new ConcurrentHashMap<>();
     private final ConcurrentMap<ClientStreamIdentification, Map<String, Integer>> registrationsPerClient = new ConcurrentHashMap<>();
-    private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
 
+    private final ConcurrentMap<CommandTypeIdentifier, RoutingSelector<String>> routingSelectors = new ConcurrentHashMap<>();
     private final Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory;
-    private final BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector;
+
+    private final BiFunction<Message, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector;
 
     /**
      * Autowired constructor.
@@ -59,7 +57,7 @@ public class CommandRegistrationCache {
      */
     @Autowired
     public CommandRegistrationCache(
-            BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector) {
+            BiFunction<Message, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = command -> new ConsistentHashRoutingSelector(loadFactorSolver(command));
         this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
@@ -89,7 +87,7 @@ public class CommandRegistrationCache {
      *                                  request
      */
     public CommandRegistrationCache(Function<CommandTypeIdentifier, RoutingSelector<String>> selectorFactory,
-                                    BiFunction<Map<String, MetaDataValue>, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector) {
+                                    BiFunction<Message, Set<ClientStreamIdentification>, Set<ClientStreamIdentification>> metaDataBasedNodeSelector) {
         this.selectorFactory = selectorFactory;
         this.metaDataBasedNodeSelector = metaDataBasedNodeSelector;
     }
@@ -134,24 +132,23 @@ public class CommandRegistrationCache {
     /**
      * Registers a command provider. If it is an unknown handler it will be added to the consistent hash for the context
      *
-     * @param command        the name of the command
      * @param commandHandler the handler of the command
      */
-    public void add(String command, CommandHandler commandHandler) {
-        add(command, commandHandler, 100);
-    }
+    public void add(CommandHandler commandHandler) {
 
-    private void add(String command, CommandHandler commandHandler, int loadFactor) {
         logger.trace("Add command {} to {} with load factor {}",
-                     command,
-                     commandHandler.clientStreamIdentification,
-                     loadFactor);
-        ClientStreamIdentification clientIdentification = commandHandler.getClientStreamIdentification();
+                     commandHandler.definition().name(),
+                     commandHandler.client(),
+                     commandHandler.loadFactor());
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(commandHandler.context(),
+                                                                                         commandHandler.client().id());
         String context = clientIdentification.getContext();
-        registrationsPerClient.computeIfAbsent(clientIdentification, key -> new ConcurrentHashMap<>()).put(command,
-                                                                                                           loadFactor);
+        registrationsPerClient.computeIfAbsent(clientIdentification, key -> new ConcurrentHashMap<>()).put(
+                commandHandler.definition().name(),
+                commandHandler
+                        .loadFactor());
         commandHandlersPerClientContext.putIfAbsent(clientIdentification, commandHandler);
-        routingSelector(context, command).register(clientIdentification.getClientStreamId());
+        routingSelector(context, commandHandler.definition().name()).register(clientIdentification.getClientStreamId());
     }
 
 
@@ -190,13 +187,13 @@ public class CommandRegistrationCache {
      * Retrieves the client to route a specific command request to, based on its routing key. AxonServer sends requests
      * with same routing key to the same client.
      *
-     * @param context    the context in which the command is requested
      * @param request    the command name
      * @param routingKey the routing key
      * @return a command handler for the command (or null of none found)
      */
-    public CommandHandler getHandlerForCommand(String context, Command request, String routingKey) {
-        String command = request.getName();
+    public CommandHandler getHandlerForCommand(Command request, String routingKey) {
+        String command = request.definition().name();
+        String context = request.definition().context();
         Set<ClientStreamIdentification> candidates = getCandidates(context, request);
         if (candidates.isEmpty()) {
             return null;
@@ -223,12 +220,12 @@ public class CommandRegistrationCache {
                                                                            .filter(entry -> entry
                                                                                    .getValue()
                                                                                    .containsKey(
-                                                                                           command.getName()))
+                                                                                           command.definition().name()))
                                                                            .map(Map.Entry::getKey)
                                                                            .collect(
                                                                                    Collectors
                                                                                            .toSet());
-        return metaDataBasedNodeSelector.apply(command.getMetaDataMap(), candidates);
+        return metaDataBasedNodeSelector.apply(command.message(), candidates);
     }
 
 
@@ -260,18 +257,18 @@ public class CommandRegistrationCache {
         return commandHandlersPerClientContext.get(clientIdentification);
     }
 
-    @EventListener
-    public void on(SubscribeCommand event) {
-        CommandSubscription request = event.getRequest();
-        int loadFactor = request.getLoadFactor() == 0 ? 100 : request.getLoadFactor();
-        add(request.getCommand(), event.getHandler(), loadFactor);
-    }
-
-    @EventListener
-    public void on(UnsubscribeCommand event) {
-        CommandSubscription request = event.getRequest();
-        remove(event.clientIdentification(), request.getCommand());
-    }
+//    @EventListener
+//    public void on(SubscribeCommand event) {
+//        CommandSubscription request = event.getRequest();
+//        int loadFactor = request.getLoadFactor() == 0 ? 100 : request.getLoadFactor();
+//        add(request.getCommand(), event.getHandler(), loadFactor);
+//    }
+//
+//    @EventListener
+//    public void on(UnsubscribeCommand event) {
+//        CommandSubscription request = event.getRequest();
+//        remove(event.clientIdentification(), request.getCommand());
+//    }
 
 
     public static class RegistrationEntry {

@@ -10,11 +10,8 @@
 package io.axoniq.axonserver.refactoring.messaging.command;
 
 import io.axoniq.axonserver.ClientStreamIdentification;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.grpc.ErrorMessage;
-import io.axoniq.axonserver.grpc.command.CommandResponse;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 
-import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
@@ -23,7 +20,7 @@ import java.util.function.Consumer;
 public class CommandInformation {
 
     private final String requestIdentifier;
-    private final Consumer<SerializedCommandResponse> responseConsumer;
+    private final Consumer<CommandResponse> responseConsumer;
     private final long timestamp = System.currentTimeMillis();
     private final ClientStreamIdentification clientStreamIdentification;
     private final String componentName;
@@ -31,7 +28,7 @@ public class CommandInformation {
     private final String targetClientId;
 
     public CommandInformation(String requestIdentifier, String sourceClientId,
-                              String targetClientId, Consumer<SerializedCommandResponse> responseConsumer,
+                              String targetClientId, Consumer<CommandResponse> responseConsumer,
                               ClientStreamIdentification clientStreamIdentification,
                               String componentName) {
         this.requestIdentifier = requestIdentifier;
@@ -46,7 +43,7 @@ public class CommandInformation {
         return requestIdentifier;
     }
 
-    public Consumer<SerializedCommandResponse> getResponseConsumer() {
+    public Consumer<CommandResponse> getResponseConsumer() {
         return responseConsumer;
     }
 
@@ -67,14 +64,14 @@ public class CommandInformation {
     }
 
     public void cancel() {
-        CommandResponse commandResponse = CommandResponse.newBuilder()
-                                                         .setMessageIdentifier(UUID.randomUUID().toString())
-                                                         .setRequestIdentifier(requestIdentifier)
-                                                         .setErrorCode(ErrorCode.COMMAND_TIMEOUT.getCode())
-                                                         .setErrorMessage(ErrorMessage.newBuilder().setMessage(
-                                                                 "Cancelled by AxonServer due to timeout"))
-                                                         .build();
-        responseConsumer.accept(new SerializedCommandResponse(commandResponse));
+//        CommandResponse commandResponse = CommandResponse.newBuilder()
+//                                                         .setMessageIdentifier(UUID.randomUUID().toString())
+//                                                         .setRequestIdentifier(requestIdentifier)
+//                                                         .setErrorCode(ErrorCode.COMMAND_TIMEOUT.getCode())
+//                                                         .setErrorMessage(ErrorMessage.newBuilder().setMessage(
+//                                                                 "Cancelled by AxonServer due to timeout"))
+//                                                         .build();
+        // responseConsumer.accept(new SerializedCommandResponse(commandResponse));
     }
 
     /**

@@ -23,6 +23,10 @@ public interface Command extends ContextAware {
 
     String routingKey();
 
+    default int priority() {
+        return 0;
+    }
+
     Instant timestamp();
 
     default Client requester() {

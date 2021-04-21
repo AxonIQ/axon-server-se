@@ -17,15 +17,16 @@ import java.util.Objects;
 /**
  * @author Marc Gathier
  */
-public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>> {
+public abstract class LegacyCommandHandler<T> implements Comparable<LegacyCommandHandler<T>> {
 
     protected final StreamObserver<T> observer;
     protected final ClientStreamIdentification clientStreamIdentification;
     protected final String componentName;
     private final String clientId;
 
-    public CommandHandler(StreamObserver<T> responseObserver, ClientStreamIdentification clientStreamIdentification,
-                          String clientId, String componentName) {
+    public LegacyCommandHandler(StreamObserver<T> responseObserver,
+                                ClientStreamIdentification clientStreamIdentification,
+                                String clientId, String componentName) {
         this.observer = responseObserver;
         this.clientStreamIdentification = clientStreamIdentification;
         this.clientId = clientId;
@@ -48,7 +49,7 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        CommandHandler<?> that = (CommandHandler<?>) o;
+        LegacyCommandHandler<?> that = (LegacyCommandHandler<?>) o;
         return Objects.equals(observer, that.observer) &&
                 Objects.equals(clientStreamIdentification, that.clientStreamIdentification);
     }
@@ -59,7 +60,7 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
     }
 
     @Override
-    public int compareTo(CommandHandler o) {
+    public int compareTo(LegacyCommandHandler o) {
         int clientResult = clientStreamIdentification.compareTo(o.clientStreamIdentification);
         if (clientResult == 0) {
             clientResult = observer.toString().compareTo(o.observer.toString());

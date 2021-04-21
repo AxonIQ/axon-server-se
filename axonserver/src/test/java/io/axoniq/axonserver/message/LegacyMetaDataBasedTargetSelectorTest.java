@@ -13,7 +13,7 @@ import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.refactoring.client.tags.ClientTagsCache;
 import io.axoniq.axonserver.refactoring.client.tags.ClientTagsUpdate;
-import io.axoniq.axonserver.refactoring.messaging.MetaDataBasedTargetSelector;
+import io.axoniq.axonserver.refactoring.messaging.LegacyMetaDataBasedTargetSelector;
 import io.axoniq.axonserver.refactoring.transport.DefaultClientIdRegistry;
 import org.junit.*;
 
@@ -27,10 +27,10 @@ import static org.junit.Assert.*;
 /**
  * @author Marc Gathier
  */
-public class MetaDataBasedTargetSelectorTest {
+public class LegacyMetaDataBasedTargetSelectorTest {
 
     private ClientTagsCache clientTagsCache = new ClientTagsCache(new DefaultClientIdRegistry());
-    private MetaDataBasedTargetSelector testSubject = new MetaDataBasedTargetSelector(clientTagsCache);
+    private LegacyMetaDataBasedTargetSelector testSubject = new LegacyMetaDataBasedTargetSelector(clientTagsCache);
 
     @Test
     public void findOnOneMetaDataValue() {

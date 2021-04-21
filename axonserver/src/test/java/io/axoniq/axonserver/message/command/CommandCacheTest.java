@@ -13,7 +13,7 @@ import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.refactoring.messaging.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandCache;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandInformation;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 import io.axoniq.axonserver.test.FakeClock;
 import org.junit.*;
 
@@ -37,7 +37,7 @@ public class CommandCacheTest {
 
     @Test
     public void clearOnTimeout() {
-        AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
+        AtomicReference<CommandResponse> responseAtomicReference = new AtomicReference<>();
         testSubject.put("1234", new CommandInformation("1234",
                                                        "Source",
                                                        "Target",
@@ -52,7 +52,7 @@ public class CommandCacheTest {
 
     @Test(expected = InsufficientBufferCapacityException.class)
     public void onFullCapacityThrowError() {
-        AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
+        AtomicReference<CommandResponse> responseAtomicReference = new AtomicReference<>();
 
         testSubject.put("1234", new CommandInformation("1234", "Source", "Target", responseAtomicReference::set,
                                                        new ClientStreamIdentification("context", "client"),

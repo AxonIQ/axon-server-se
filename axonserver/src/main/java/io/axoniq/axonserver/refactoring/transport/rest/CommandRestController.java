@@ -14,8 +14,8 @@ import io.axoniq.axonserver.refactoring.client.command.ComponentCommand;
 import io.axoniq.axonserver.refactoring.client.command.DefaultCommands;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import io.axoniq.axonserver.refactoring.requestprocessor.command.CommandService;
 import io.axoniq.axonserver.refactoring.security.AuditLog;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.CommandRequestJson;
@@ -153,17 +153,30 @@ public class CommandRestController {
             return jsonCommandMapping;
         }
 
-        static JsonClientMapping from(Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
+//        static JsonClientMapping from(Map.Entry<LegacyCommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
+//            JsonClientMapping jsonCommandMapping = new JsonClientMapping();
+//            LegacyCommandHandler commandHandler = entry.getKey();
+//            jsonCommandMapping.client = commandHandler.getClientStreamIdentification().toString();
+//            jsonCommandMapping.component = commandHandler.getComponentName();
+//            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
+//
+//            jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand()).collect(Collectors.toSet());
+//            return jsonCommandMapping;
+//        }
+
+        public static JsonClientMapping from(
+                Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
             JsonClientMapping jsonCommandMapping = new JsonClientMapping();
             CommandHandler commandHandler = entry.getKey();
-            jsonCommandMapping.client = commandHandler.getClientStreamIdentification().toString();
-            jsonCommandMapping.component = commandHandler.getComponentName();
-            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
+            jsonCommandMapping.client = commandHandler.client().id();
+            jsonCommandMapping.component = commandHandler.client().applicationName();
+//            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
 
-            jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand()).collect(Collectors.toSet());
+            jsonCommandMapping.commands = entry.getValue().stream()
+                                               .map(CommandRegistrationCache.RegistrationEntry::getCommand).collect(
+                            Collectors.toSet());
             return jsonCommandMapping;
         }
-
     }
 
     private static class JsonQueueInfo {

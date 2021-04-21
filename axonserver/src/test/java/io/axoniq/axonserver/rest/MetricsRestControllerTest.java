@@ -12,10 +12,8 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.ClientStreamIdentification;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryDefinition;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryHandler;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryMetricsRegistry;
@@ -25,7 +23,6 @@ import io.axoniq.axonserver.refactoring.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.axoniq.axonserver.refactoring.transport.rest.MetricsRestController;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 
 import java.security.Principal;
@@ -50,25 +47,26 @@ public class MetricsRestControllerTest {
     public void setUp() {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
         testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
-        commandRegistrationCache.add("Sample", new CommandHandler<Object>(null,
-                                                                          testclient, "Target",
-                                                                          "testcomponent") {
-            @Override
-            public void dispatch(SerializedCommand request) {
-
-            }
-
-            @Override
-            public void confirm(String messageId) {
-
-            }
-
-            @Override
-            public int compareTo(@NotNull CommandHandler o) {
-                return 0;
-            }
-        });
-        commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
+//        commandRegistrationCache.add("Sample", new LegacyCommandHandler<Object>(null,
+//                                                                                testclient, "Target",
+//                                                                                "testcomponent") {
+//            @Override
+//            public void dispatch(Object request) {
+//
+//            }
+//
+//            @Override
+//            public void confirm(String messageId) {
+//
+//            }
+//
+//            @Override
+//            public int compareTo(@NotNull LegacyCommandHandler o) {
+//                return 0;
+//            }
+//        });
+        commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(),
+                                                                             new DefaultMetricCollector()));
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientStreamIdentification("context", "testclient");

@@ -1,16 +1,13 @@
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.ClientStreamIdentification;
-import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.refactoring.messaging.SubscriptionEvents.SubscribeCommand;
-import io.axoniq.axonserver.refactoring.messaging.command.CommandHandler;
+import io.axoniq.axonserver.refactoring.messaging.api.Message;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandRegistrationCache;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommand;
-import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProviderInbound;
-import io.axoniq.axonserver.test.FakeStreamObserver;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import org.junit.*;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,27 +25,27 @@ public class CommandRegistrationCacheLoadFactorTest {
     @Test
     public void loadFactorBasedDistribution() {
         CommandRegistrationCache testSubject = new CommandRegistrationCache();
+        testSubject.add(commandHandler("client1", "command", 10));
+        testSubject.add(commandHandler("client2", "command", 50));
+        testSubject.add(commandHandler("client3", "command", 40));
 
-        testSubject.on(createSubscribeCommand("client1", "command", 10));
-        testSubject.on(createSubscribeCommand("client2", "command", 50));
-        testSubject.on(createSubscribeCommand("client3", "command", 40));
+        testSubject.add(commandHandler("client1", "anotherCommand", 4));
+        testSubject.add(commandHandler("client2", "anotherCommand", 8));
+        testSubject.add(commandHandler("client3", "anotherCommand", 16));
 
-        testSubject.on(createSubscribeCommand("client1", "anotherCommand", 4));
-        testSubject.on(createSubscribeCommand("client2", "anotherCommand", 8));
-        testSubject.on(createSubscribeCommand("client3", "anotherCommand", 16));
 
         for (int i = 0; i < 1000; i++) {
-            testSubject.on(createSubscribeCommand(randomUUID().toString(), randomUUID().toString(), 44));
+            testSubject.add(commandHandler(randomUUID().toString(), randomUUID().toString(), 44));
         }
 
 
         Map<String, AtomicInteger> counter = new HashMap<>();
 
-        Command command = Command.newBuilder().setName("command").build();
+        Command command = command("command", "context");
         for (int i = 0; i < 10000; i++) {
             String routingKey = randomUUID().toString();
-            CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
-            counter.computeIfAbsent(handler.getClientStreamIdentification().getClientStreamId(),
+            CommandHandler handler = testSubject.getHandlerForCommand(command, routingKey);
+            counter.computeIfAbsent(handler.client().id(),
                                     c -> new AtomicInteger()).incrementAndGet();
         }
 
@@ -58,20 +55,60 @@ public class CommandRegistrationCacheLoadFactorTest {
         System.out.println(counter);
     }
 
+    private CommandHandler commandHandler(String client1, String command, int loadFactor) {
+        return new DummyCommandHandler(command, client1, "someApplication", "someContext");
+    }
+
+    ;
+
+    private Command command(String command, String context) {
+        return new Command() {
+            @Override
+            public CommandDefinition definition() {
+                return new CommandDefinition() {
+                    @Override
+                    public String name() {
+                        return command;
+                    }
+
+                    @Override
+                    public String context() {
+                        return context;
+                    }
+                };
+            }
+
+            @Override
+            public Message message() {
+                return null;
+            }
+
+            @Override
+            public String routingKey() {
+                return null;
+            }
+
+            @Override
+            public Instant timestamp() {
+                return null;
+            }
+        };
+    }
+
     @Test
     public void testLoadFactorSetToZero() {
         CommandRegistrationCache testSubject = new CommandRegistrationCache();
 
-        testSubject.on(createSubscribeCommand("client1", "command", 0));
-        testSubject.on(createSubscribeCommand("client2", "command", 200));
+        testSubject.add(commandHandler("client1", "command", 0));
+        testSubject.add(commandHandler("client2", "command", 200));
 
         Map<String, AtomicInteger> counter = new HashMap<>();
 
-        Command command = Command.newBuilder().setName("command").build();
+        Command command = command("command", "context");
         for (int i = 0; i < 10000; i++) {
             String routingKey = randomUUID().toString();
-            CommandHandler handler = testSubject.getHandlerForCommand("context", command, routingKey);
-            counter.computeIfAbsent(handler.getClientStreamIdentification().getClientStreamId(),
+            CommandHandler handler = testSubject.getHandlerForCommand(command, routingKey);
+            counter.computeIfAbsent(handler.client().id(),
                                     c -> new AtomicInteger()).incrementAndGet();
         }
 
@@ -84,38 +121,5 @@ public class CommandRegistrationCacheLoadFactorTest {
         Integer total = counter.values().stream().map(AtomicInteger::get).reduce(Integer::sum).orElse(0);
         int actualPercentage = counter.get(client).get() * 100 / total;
         return Math.abs(actualPercentage - expectedPercentage) < 5;
-    }
-
-    private SubscribeCommand createSubscribeCommand(
-            String client, String command, int loadFactor) {
-        return new SubscribeCommand(
-                "context",
-                "clientStreamId", CommandSubscription.newBuilder()
-                                                     .setClientId(client)
-                                                     .setComponentName("componentName")
-                                                     .setCommand(command)
-                                                     .setLoadFactor(loadFactor)
-                                                     .build(),
-                new FakeCommandHandler(client));
-    }
-
-
-    private static class FakeCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
-
-        public FakeCommandHandler(String clientId) {
-            super(new FakeStreamObserver<>(),
-                  new ClientStreamIdentification("context", clientId),
-                  clientId, "componentName");
-        }
-
-        @Override
-        public void dispatch(SerializedCommand request) {
-
-        }
-
-        @Override
-        public void confirm(String messageId) {
-
-        }
     }
 }

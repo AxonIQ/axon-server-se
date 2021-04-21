@@ -10,17 +10,19 @@
 package io.axoniq.axonserver.refactoring.messaging.command;
 
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.plugin.interceptor.CommandRequestInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.CommandResponseInterceptor;
 import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
+import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 import io.axoniq.axonserver.refactoring.metric.MeterFactory;
 import io.axoniq.axonserver.refactoring.plugin.InterceptorTimer;
 import io.axoniq.axonserver.refactoring.plugin.PluginContextFilter;
 import io.axoniq.axonserver.refactoring.plugin.ServiceWithInfo;
+import io.axoniq.axonserver.refactoring.transport.Mapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -35,28 +37,35 @@ import java.util.List;
 public class DefaultCommandInterceptors implements CommandInterceptors {
 
     private final PluginContextFilter pluginContextFilter;
+    private final Mapper<Command, SerializedCommand> commandMapper;
+    private final Mapper<CommandResponse, SerializedCommandResponse> commandResponseMapper;
     private final InterceptorTimer interceptorTimer;
 
 
     public DefaultCommandInterceptors(PluginContextFilter pluginContextFilter,
+                                      @Qualifier("commandMapper") Mapper<Command, SerializedCommand> commandMapper,
+                                      @Qualifier("commandResponseMapper") Mapper<CommandResponse, SerializedCommandResponse> commandResponseMapper,
                                       MeterFactory meterFactory) {
         this.pluginContextFilter = pluginContextFilter;
+        this.commandMapper = commandMapper;
+        this.commandResponseMapper = commandResponseMapper;
         this.interceptorTimer = new InterceptorTimer(meterFactory);
     }
 
     @Override
-    public SerializedCommand commandRequest(SerializedCommand serializedCommand,
-                                            ExecutionContext executionContext) {
+    public Command commandRequest(Command originalCommand,
+                                  ExecutionContext executionContext) {
         List<ServiceWithInfo<CommandRequestInterceptor>> commandRequestInterceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         CommandRequestInterceptor.class,
                         executionContext.contextName());
         if (commandRequestInterceptors.isEmpty()) {
-            return serializedCommand;
+            return originalCommand;
         }
-        Command intercepted =
+        SerializedCommand serializedCommand = commandMapper.map(originalCommand);
+        io.axoniq.axonserver.grpc.command.Command intercepted =
                 interceptorTimer.time(executionContext.contextName(), "CommandRequestInterceptor", () -> {
-                    Command command = serializedCommand.wrapped();
+                    io.axoniq.axonserver.grpc.command.Command command = serializedCommand.wrapped();
                     for (ServiceWithInfo<CommandRequestInterceptor> commandRequestInterceptor :
                             commandRequestInterceptors) {
                         try {
@@ -78,30 +87,40 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
                     }
                     return command;
                 });
-        return new SerializedCommand(intercepted);
+        return commandMapper.unmap(new SerializedCommand(intercepted, originalCommand.context()));
     }
 
     @Override
-    public SerializedCommandResponse commandResponse(SerializedCommandResponse serializedResponse,
-                                                     ExecutionContext unitOfWork) {
+    public CommandResponse commandResponse(CommandResponse originalResponse,
+                                           ExecutionContext unitOfWork) {
         List<ServiceWithInfo<CommandResponseInterceptor>> commandResponseInterceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         CommandResponseInterceptor.class,
                         unitOfWork.contextName());
         if (commandResponseInterceptors.isEmpty()) {
-            return serializedResponse;
+            return originalResponse;
         }
-        CommandResponse intercepted = interceptorTimer.time(unitOfWork.contextName(),
-                                                            "CommandResponseInterceptor", () -> {
-                    CommandResponse response = serializedResponse.wrapped();
-                    for (ServiceWithInfo<CommandResponseInterceptor> commandResponseInterceptor : commandResponseInterceptors) {
-                        try {
-                            response = commandResponseInterceptor.service().commandResponse(response,
-                                                                                            unitOfWork);
-                        } catch (Exception interceptorException) {
-                            throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
-                                                                 unitOfWork.contextName() +
-                                                                         ": Exception thrown by the CommandRequestInterceptor in "
+
+        SerializedCommandResponse serializedCommandResponse = commandResponseMapper.map(originalResponse);
+        io.axoniq.axonserver.grpc.command.CommandResponse intercepted = interceptorTimer.time(unitOfWork.contextName(),
+                                                                                              "CommandResponseInterceptor",
+                                                                                              () -> {
+                                                                                                  io.axoniq.axonserver.grpc.command.CommandResponse response = serializedCommandResponse
+                                                                                                          .wrapped();
+                                                                                                  for (ServiceWithInfo<CommandResponseInterceptor> commandResponseInterceptor : commandResponseInterceptors) {
+                                                                                                      try {
+                                                                                                          response = commandResponseInterceptor
+                                                                                                                  .service()
+                                                                                                                  .commandResponse(
+                                                                                                                          response,
+                                                                                                                          unitOfWork);
+                                                                                                      } catch (Exception interceptorException) {
+                                                                                                          throw new MessagingPlatformException(
+                                                                                                                  ErrorCode.EXCEPTION_IN_INTERCEPTOR,
+                                                                                                                  unitOfWork
+                                                                                                                          .contextName()
+                                                                                                                          +
+                                                                                                                          ": Exception thrown by the CommandRequestInterceptor in "
                                                                          + commandResponseInterceptor.pluginKey(),
                                                                  interceptorException);
                         }
@@ -109,6 +128,6 @@ public class DefaultCommandInterceptors implements CommandInterceptors {
                     return response;
                 });
 
-        return new SerializedCommandResponse(intercepted);
+        return commandResponseMapper.unmap(new SerializedCommandResponse(intercepted));
     }
 }
