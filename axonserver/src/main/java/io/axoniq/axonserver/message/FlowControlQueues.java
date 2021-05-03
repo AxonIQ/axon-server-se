@@ -107,12 +107,12 @@ public class FlowControlQueues<T> {
     public void move(String oldDestinationValue, Function<T, String> newDestinationAssignment) {
         logger.debug("Remove: {}", oldDestinationValue);
         BlockingQueue<DestinationNode> oldDestination = segments.remove(oldDestinationValue);
-        if (oldDestination == null) {
-            return;
-        }
         Gauge gauge = gauges.remove(oldDestinationValue);
         if (gauge != null) {
-            gauge.close();
+            meterFactory.remove(gauge);
+        }
+        if (oldDestination == null) {
+            return;
         }
 
         oldDestination.forEach(filterNode -> {
