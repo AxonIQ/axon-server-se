@@ -4,8 +4,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.CallStreamObserver;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import static org.mockito.Mockito.*;
 
@@ -18,11 +17,12 @@ public class SequenceValidationStreamObserverTest {
 
     private SequenceValidationStreamObserver testSubject;
     private CallStreamObserver<SerializedEvent> delegateMock;
+    private String context = "myContext";
 
     @Before
     public void setup() {
         delegateMock = mock(CallStreamObserver.class);
-        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.FAIL);
+        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.FAIL, context);
     }
 
     @Test
@@ -83,7 +83,7 @@ public class SequenceValidationStreamObserverTest {
 
     @Test
     public void testInvalidSequenceLogOnly() {
-        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.LOG);
+        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.LOG, context);
         SerializedEvent event1 = serializedEvent(0);
         SerializedEvent event2 = serializedEvent(1);
         SerializedEvent event4 = serializedEvent(3);
