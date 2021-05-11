@@ -10,6 +10,8 @@ import reactor.core.publisher.Mono;
  */
 public interface CommandHandler extends ContextAware {
 
+    String id();
+
     @Override
     default String context() {
         return definition().context();

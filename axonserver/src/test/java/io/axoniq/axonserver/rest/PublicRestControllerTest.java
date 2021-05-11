@@ -71,7 +71,7 @@ public class PublicRestControllerTest {
                                                limits,
                                                messagePlatformConfiguration,
                                                new DefaultVersionInfoProvider(),
-                                               () -> new FakeSubscriptionMetrics(500, 400, 1000));
+                                               () -> new FakeSubscriptionMetrics(500, 400, 1000), eventStoreService);
 
     }
 

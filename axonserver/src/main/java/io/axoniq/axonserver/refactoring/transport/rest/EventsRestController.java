@@ -163,13 +163,14 @@ public class EventsRestController {
                                                                          .build();
 
             ObjectMapper objectMapper = new ObjectMapper();
-            eventStoreClient.aggregateEvents(context,
-                                                 getOrDefault(principal,
-                                                              GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                                 request)
-                            .doOnError(sseEmitter::completeWithError)
-                            .doOnComplete(() -> completeEmitter(sseEmitter))
-                            .subscribe(event -> send(sseEmitter, objectMapper, event));
+            // TODO: 5/11/21 invoke {@link EventStoreService}
+//            eventStoreClient.aggregateEvents(context,
+//                                                 getOrDefault(principal,
+//                                                              GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+//                                                 request)
+//                            .doOnError(sseEmitter::completeWithError)
+//                            .doOnComplete(() -> completeEmitter(sseEmitter))
+//                            .subscribe(event -> send(sseEmitter, objectMapper, event));
         } else {
             StreamObserver<GetEventsRequest> requestStream = eventStoreClient
                     .listEvents(context,

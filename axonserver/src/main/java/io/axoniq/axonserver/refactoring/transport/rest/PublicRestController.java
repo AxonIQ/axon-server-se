@@ -15,6 +15,7 @@ import io.axoniq.axonserver.refactoring.configuration.topology.Topology;
 import io.axoniq.axonserver.refactoring.messaging.command.CommandDispatcher;
 import io.axoniq.axonserver.refactoring.messaging.query.QueryDispatcher;
 import io.axoniq.axonserver.refactoring.messaging.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.refactoring.requestprocessor.store.EventStoreService;
 import io.axoniq.axonserver.refactoring.security.AccessControlConfiguration;
 import io.axoniq.axonserver.refactoring.transport.grpc.EventDispatcher;
 import io.axoniq.axonserver.refactoring.transport.grpc.SslConfiguration;
@@ -61,6 +62,7 @@ public class PublicRestController {
     private final VersionInfoProvider versionInfoSupplier;
     private final Supplier<SubscriptionMetrics> subscriptionMetricsRegistry;
     private final boolean pluginsEnabled;
+    private final EventStoreService eventStoreService;
 
     @Value("${axoniq.axonserver.devmode.enabled:false}")
     private boolean isDevelopmentMode;
@@ -73,7 +75,7 @@ public class PublicRestController {
                                 FeatureChecker features,
                                 MessagingPlatformConfiguration messagingPlatformConfiguration,
                                 VersionInfoProvider versionInfoSupplier,
-                                Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
+                                Supplier<SubscriptionMetrics> subscriptionMetricsRegistry, EventStoreService eventStoreService) {
         this.axonServerProvider = axonServerProvider;
         this.topology = topology;
         this.commandDispatcher = commandDispatcher;
@@ -85,6 +87,7 @@ public class PublicRestController {
         this.pluginsEnabled = messagingPlatformConfiguration.isPluginsEnabled();
         this.versionInfoSupplier = versionInfoSupplier;
         this.subscriptionMetricsRegistry = subscriptionMetricsRegistry;
+        this.eventStoreService = eventStoreService;
     }
 
 
@@ -135,7 +138,8 @@ public class PublicRestController {
 
     @GetMapping(path = "status")
     @ApiOperation(value="Retrieves status information, used by UI")
-    public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
+    public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
+                             Authentication authentication) {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
         statusInfo.setCommandRate(commandDispatcher.commandRate(context));
@@ -143,7 +147,8 @@ public class PublicRestController {
         if( ! context.startsWith("_")) {
             statusInfo.setEventRate(eventDispatcher.eventRate(context));
             statusInfo.setSnapshotRate(eventDispatcher.snapshotRate(context));
-            statusInfo.setNrOfEvents(eventDispatcher.getNrOfEvents(context));
+            // TODO: 5/11/21 rename the field to the last token instead of nr of events
+            statusInfo.setNrOfEvents(eventStoreService.lastEventToken(context, new SpringAuthentication(authentication)).block());
             statusInfo.setEventTrackers(eventDispatcher.eventTrackerStatus(context));
         }
         statusInfo.setNrOfActiveSubscriptionQueries(subscriptionMetrics.activesCount());

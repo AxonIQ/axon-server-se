@@ -57,9 +57,8 @@ public interface EventStore {
      * @param snapshot the snapshot
      * @return completable future that completes when snapshot is stored
      */
-    default Mono<Confirmation> appendSnapshot(String context,
-                                              Authentication authentication,
-                                              Snapshot snapshot) {
+    default Mono<Void> appendSnapshot(String context,
+                                      Snapshot snapshot, io.axoniq.axonserver.refactoring.api.Authentication authentication) {
         return Mono.empty();
     }
 
@@ -82,9 +81,8 @@ public interface EventStore {
      * @param events  stream of events to be appended
      * @return stream to send events to
      */
-    default Mono<Confirmation> appendEvents(String context,
-                                            Authentication authentication,
-                                            Flux<io.axoniq.axonserver.refactoring.store.api.Event> events) {
+    default Mono<Void> appendEvents(String context,
+                                    Flux<io.axoniq.axonserver.refactoring.store.api.Event> events, io.axoniq.axonserver.refactoring.api.Authentication authentication) {
         return Mono.empty();
     }
 
@@ -109,12 +107,11 @@ public interface EventStore {
      * The events could start with a snapshot event, if the request allows the usage of the snapshots. All the events
      * should have a sequential sequence number.
      *
-     * @param authentication the authentication
      * @param request        the request containing the aggregate identifier and read options
+     * @param authentication the authentication
      * @return a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
      */
-    default Flux<io.axoniq.axonserver.refactoring.store.api.Event> aggregateEvents(Authentication authentication,
-                                                                                   AggregateEventsQuery request) {
+    default Flux<io.axoniq.axonserver.refactoring.store.api.Event> aggregateEvents(AggregateEventsQuery request, io.axoniq.axonserver.refactoring.api.Authentication authentication) {
         return Flux.empty();
     }
 
@@ -157,8 +154,8 @@ public interface EventStore {
      * @param request        the request containing the aggregate identifier and read options
      * @return a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
      */
-    default Flux<Snapshot> aggregateSnapshots(Authentication authentication,
-                                              AggregateSnapshotsQuery request) {
+    default Flux<Snapshot> aggregateSnapshots(AggregateSnapshotsQuery request,
+                                              io.axoniq.axonserver.refactoring.api.Authentication authentication) {
         return Flux.empty();
     }
 
@@ -182,30 +179,30 @@ public interface EventStore {
      * @param request
      * @return stream of events with token
      */
-    default Flux<EventWithToken> listEvents(Authentication authentication,
-                                            EventsQuery request,
-                                            Flux<PayloadType> blackListUpdates) {
+    default Flux<EventWithToken> events(EventsQuery request,
+                                        Flux<PayloadType> blackListUpdates,
+                                        io.axoniq.axonserver.refactoring.api.Authentication authentication) {
         return Flux.empty();
     }
 
     @Deprecated
     void getFirstToken(String context, GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver);
 
-    default Mono<Long> getFirstEventToken(String context) {
+    default Mono<Long> firstEventToken(String context) {
         return Mono.empty();
     }
 
     @Deprecated
     void getLastToken(String context, GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver);
 
-    default Mono<Long> getLastEventToken(String context) {
+    default Mono<Long> lastEventToken(String context) {
         return Mono.empty();
     }
 
     @Deprecated
     void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver);
 
-    default Mono<Long> getTokenAt(String context, Instant timestamp) {
+    default Mono<Long> eventTokenAt(String context, Instant timestamp) {
         return Mono.empty();
     }
 
@@ -213,7 +210,7 @@ public interface EventStore {
     void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                StreamObserver<ReadHighestSequenceNrResponse> responseObserver);
 
-    default Mono<Long> readHighestSequenceNumber(String context, String aggregateId) {
+    default Mono<Long> highestSequenceNumber(String context, String aggregateId) {
         return Mono.empty();
     }
 
@@ -221,12 +218,12 @@ public interface EventStore {
     StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
                                                    StreamObserver<QueryEventsResponse> responseObserver);
 
-    default Flux<EventQueryResponse> queryEvents(Authentication authentication, AdHocEventsQuery query) {
+    default Flux<EventQueryResponse> queryEvents(AdHocEventsQuery query, io.axoniq.axonserver.refactoring.api.Authentication authentication) {
         return Flux.empty();
     }
 
 
-    default Flux<EventQueryResponse> querySnapshots(Authentication authentication, AdHocSnapshotsQuery query) {
+    default Flux<SnapshotQueryResponse> querySnapshots(AdHocSnapshotsQuery query, io.axoniq.axonserver.refactoring.api.Authentication authentication) {
         return Flux.empty();
     }
 

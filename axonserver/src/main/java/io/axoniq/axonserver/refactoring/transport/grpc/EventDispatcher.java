@@ -30,16 +30,14 @@ import io.axoniq.axonserver.refactoring.configuration.TopologyEvents;
 import io.axoniq.axonserver.refactoring.messaging.MessagingPlatformException;
 import io.axoniq.axonserver.refactoring.metric.BaseMetricName;
 import io.axoniq.axonserver.refactoring.metric.MeterFactory;
-import io.axoniq.axonserver.refactoring.requestprocessor.SequenceValidationStreamObserver;
+import io.axoniq.axonserver.refactoring.requestprocessor.store.EventStoreService;
 import io.axoniq.axonserver.refactoring.store.EventStoreLocator;
 import io.axoniq.axonserver.refactoring.store.SerializedEvent;
-import io.axoniq.axonserver.refactoring.store.api.EventStore;
+import io.axoniq.axonserver.refactoring.store.api.*;
 import io.axoniq.axonserver.refactoring.transport.ContextProvider;
-import io.axoniq.flowcontrol.OutgoingStream;
-import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
+import io.axoniq.axonserver.refactoring.transport.rest.SpringAuthentication;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
-import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
@@ -48,20 +46,22 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
 import java.io.InputStream;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -109,6 +109,7 @@ public class EventDispatcher implements AxonServerClientService {
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
     private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
     private final RetryBackoffSpec retrySpec;
+    private final EventStoreService eventStoreService;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
@@ -116,76 +117,103 @@ public class EventDispatcher implements AxonServerClientService {
                            MeterFactory meterFactory,
                            GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
-                           @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis) {
+                           @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis, EventStoreService eventStoreService) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
         this.authenticationProvider = authenticationProvider;
         this.meterFactory = meterFactory;
         this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
+        this.eventStoreService = eventStoreService;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
     }
 
 
     public StreamObserver<InputStream> appendEvent(StreamObserver<Confirmation> responseObserver) {
-        CallStreamObserver<Confirmation> callStreamObserver = (CallStreamObserver<Confirmation>) responseObserver;
-        return appendEvent(contextProvider.getContext(), authenticationProvider.get(),
-                           new ForwardingStreamObserver<>(logger, "appendEvent", callStreamObserver));
-    }
-
-    public StreamObserver<InputStream> appendEvent(String context, Authentication authentication,
-                                                   StreamObserver<Confirmation> responseObserver) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-
-        if (eventStore == null) {
-            responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                                                    NO_EVENT_STORE_CONFIGURED + context));
-            return new NoOpStreamObserver<>();
-        }
-        StreamObserver<InputStream> appendEventConnection =
-                eventStore.createAppendEventConnection(context, authentication,
-                                                       new StreamObserver<Confirmation>() {
-                                                           @Override
-                                                           public void onNext(Confirmation confirmation) {
-                                                               responseObserver.onNext(confirmation);
-                                                           }
-
-                                                           @Override
-                                                           public void onError(Throwable throwable) {
-                                                               StreamObserverUtils.error(responseObserver,
-                                                                                         MessagingPlatformException
-                                                                                                 .create(throwable));
-                                                           }
-
-                                                           @Override
-                                                           public void onCompleted() {
-
-                                                               responseObserver.onCompleted();
-                                                           }
-                                                       });
-        return new StreamObserver<InputStream>() {
+        AtomicReference<FluxSink<io.axoniq.axonserver.refactoring.store.api.Event>> eventSinkRef = new AtomicReference<>();
+        StreamObserver<InputStream> inputStreamStreamObserver = new StreamObserver<InputStream>() {
             @Override
             public void onNext(InputStream inputStream) {
-                try {
-                    appendEventConnection.onNext(inputStream);
-                    eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
-                } catch (Exception exception) {
-                    StreamObserverUtils.error(appendEventConnection, exception);
-                    StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
-                }
+                eventSinkRef.get().next(null);//todo convert input stream to event
             }
 
             @Override
             public void onError(Throwable throwable) {
-                logger.warn("Error on connection from client: {}", throwable.getMessage());
-                StreamObserverUtils.error(appendEventConnection, throwable);
+                eventSinkRef.get().error(throwable);
             }
 
             @Override
             public void onCompleted() {
-                appendEventConnection.onCompleted();
+                eventSinkRef.get().complete();
             }
         };
+        // TODO: 5/11/21 add flow control magic
+        eventStoreService.appendEvents(contextProvider.getContext(),
+                Flux.create(eventSinkRef::set),
+                new SpringAuthentication(authenticationProvider.get()))
+        .subscribe(successConsumer -> {
+            responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+            responseObserver.onCompleted();
+        }, responseObserver::onError);
+        return inputStreamStreamObserver;
+//        CallStreamObserver<Confirmation> callStreamObserver = (CallStreamObserver<Confirmation>) responseObserver;
+//        return appendEvent(contextProvider.getContext(), authenticationProvider.get(),
+//                           new ForwardingStreamObserver<>(logger, "appendEvent", callStreamObserver));
     }
+
+//    public StreamObserver<InputStream> appendEvent(String context, Authentication authentication,
+//                                                   StreamObserver<Confirmation> responseObserver) {
+//        EventStore eventStore = eventStoreLocator.getEventStore(context);
+//
+//        if (eventStore == null) {
+//            responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
+//                                                                    NO_EVENT_STORE_CONFIGURED + context));
+//            return new NoOpStreamObserver<>();
+//        }
+//        StreamObserver<InputStream> appendEventConnection =
+//                eventStore.createAppendEventConnection(context, authentication,
+//                                                       new StreamObserver<Confirmation>() {
+//                                                           @Override
+//                                                           public void onNext(Confirmation confirmation) {
+//                                                               responseObserver.onNext(confirmation);
+//                                                           }
+//
+//                                                           @Override
+//                                                           public void onError(Throwable throwable) {
+//                                                               StreamObserverUtils.error(responseObserver,
+//                                                                                         MessagingPlatformException
+//                                                                                                 .create(throwable));
+//                                                           }
+//
+//                                                           @Override
+//                                                           public void onCompleted() {
+//
+//                                                               responseObserver.onCompleted();
+//                                                           }
+//                                                       });
+//        return new StreamObserver<InputStream>() {
+//            @Override
+//            public void onNext(InputStream inputStream) {
+//                try {
+//                    appendEventConnection.onNext(inputStream);
+//                    eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
+//                } catch (Exception exception) {
+//                    StreamObserverUtils.error(appendEventConnection, exception);
+//                    StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
+//                }
+//            }
+//
+//            @Override
+//            public void onError(Throwable throwable) {
+//                logger.warn("Error on connection from client: {}", throwable.getMessage());
+//                StreamObserverUtils.error(appendEventConnection, throwable);
+//            }
+//
+//            @Override
+//            public void onCompleted() {
+//                appendEventConnection.onCompleted();
+//            }
+//        };
+//    }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
                                                  BaseMetricName eventsMetricName) {
@@ -196,114 +224,188 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public void appendSnapshot(Event event, StreamObserver<Confirmation> streamObserver) {
-        CallStreamObserver<Confirmation> callStreamObserver = (CallStreamObserver<Confirmation>) streamObserver;
-        appendSnapshot(contextProvider.getContext(),
-                       authenticationProvider.get(),
-                       event,
-                       new ForwardingStreamObserver<>(logger, "appendSnapshot", callStreamObserver));
+        eventStoreService.appendSnapshot(contextProvider.getContext(), map(event), new SpringAuthentication(authenticationProvider.get()))
+        .subscribe(successConsumer -> {
+            streamObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
+            streamObserver.onCompleted();
+        }, streamObserver::onError);
+//        CallStreamObserver<Confirmation> callStreamObserver = (CallStreamObserver<Confirmation>) streamObserver;
+//        appendSnapshot(contextProvider.getContext(),
+//                       authenticationProvider.get(),
+//                       event,
+//                       new ForwardingStreamObserver<>(logger, "appendSnapshot", callStreamObserver));
     }
 
-    public void appendSnapshot(String context, Authentication authentication, Event snapshot,
-                               StreamObserver<Confirmation> responseObserver) {
-        checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            try {
-                eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-                eventStore.appendSnapshot(context, authentication, snapshot).whenComplete((c, t) -> {
-                    if (t != null) {
-                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                        responseObserver.onError(t);
-                    } else {
-                        responseObserver.onNext(c);
-                        responseObserver.onCompleted();
-                    }
-                });
-            } catch (Exception ex) {
-                responseObserver.onError(ex);
-            }
-        });
+    private Snapshot map(Event event) {
+        // TODO: 5/11/21
+        return null;
     }
+
+//    public void appendSnapshot(String context, Authentication authentication, Event snapshot,
+//                               StreamObserver<Confirmation> responseObserver) {
+//        checkConnection(context, responseObserver).ifPresent(eventStore -> {
+//            try {
+//                eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
+//                eventStore.appendSnapshot(context, authentication, snapshot).whenComplete((c, t) -> {
+//                    if (t != null) {
+//                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
+//                        responseObserver.onError(t);
+//                    } else {
+//                        responseObserver.onNext(c);
+//                        responseObserver.onCompleted();
+//                    }
+//                });
+//            } catch (Exception ex) {
+//                responseObserver.onError(ex);
+//            }
+//        });
+//    }
 
 
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
-        CallStreamObserver<SerializedEvent> streamObserver = (CallStreamObserver<SerializedEvent>) responseObserver;
-        CallStreamObserver<SerializedEvent> validateStreamObserver = new SequenceValidationStreamObserver(streamObserver);
-        listAggregateEvents(contextProvider.getContext(), authenticationProvider.get(),
-                            request,
-                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));
+        // TODO: 5/11/21 flow control
+        eventStoreService.aggregateEvents(map(request), new SpringAuthentication(authenticationProvider.get()))
+                         .subscribe(event -> responseObserver.onNext(map(event)),
+                                 responseObserver::onError,
+                                 responseObserver::onCompleted);
+//        CallStreamObserver<SerializedEvent> streamObserver = (CallStreamObserver<SerializedEvent>) responseObserver;
+//        CallStreamObserver<SerializedEvent> validateStreamObserver = new SequenceValidationStreamObserver(streamObserver);
+//        listAggregateEvents(contextProvider.getContext(), authenticationProvider.get(),
+//                            request,
+//                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));
     }
 
-
-    public void listAggregateEvents(String context, Authentication principal, GetAggregateEventsRequest request,
-                                    CallStreamObserver<SerializedEvent> responseObserver) {
-        final String LAST_SEQ_KEY = "__LAST_SEQ";
-        checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            try {
-                Executor executor = grpcFlowControlExecutorProvider.provide();
-                OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver,
-                                                                                                    executor);
-                Flux<SerializedEvent> publisher;
-                publisher = Flux.deferContextual(contextView -> {
-                                                     AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
-                                                     boolean allowedSnapshot =
-                                                             request.getAllowSnapshots()
-                                                                     && lastSeq.get() == -1;
-
-                                                     GetAggregateEventsRequest newRequest = request
-                                                             .toBuilder()
-                                                             .setAllowSnapshots(
-                                                                     allowedSnapshot)
-                                                             .setInitialSequence(lastSeq.get() + 1)
-                                                             .build();
-
-                                                     logger.debug("Reading events from seq#{} for aggregate {}",
-                                                                  lastSeq.get() + 1,
-                                                                  request.getAggregateId());
-                                                     return eventStore
-                                                             .aggregateEvents(context, principal, newRequest);
-                                                 }
-                )
-                                .doOnEach(signal -> {
-                                    if (signal.hasValue()) {
-                                        ((AtomicLong) signal.getContextView().get(LAST_SEQ_KEY))
-                                                .set(signal.get().getAggregateSequenceNumber());
-                                    }
-                                })
-                                .retryWhen(retrySpec
-                                                   .doBeforeRetry(t -> logger
-                                                           .warn("Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
-                                                                 t.failure().getClass().getName(),
-                                                                 t.failure().getMessage(),
-                                                                 request.getAggregateId())))
-                                .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
-                                .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
-                                .contextWrite(c -> c.put(LAST_SEQ_KEY, new AtomicLong(-1)))
-                                .name("event_stream")
-                                .tag("context", context)
-                                .tag("stream", "aggregate_events")
-                                .tag("origin", "cluster")
-                                .metrics();
-
-                outgoingStream.accept(publisher);
-            } catch (RuntimeException t) {
-                logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);
-                responseObserver.onError(GrpcExceptionBuilder.build(t));
-            }
-        });
+    private AggregateEventsQuery map(GetAggregateEventsRequest request) {
+        return null;
     }
 
-    public Flux<SerializedEvent> aggregateEvents(String context,
-                                                 Authentication principal,
-                                                 GetAggregateEventsRequest request) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-        if (eventStore == null) {
-            return Flux.error(new MessagingPlatformException(NO_EVENTSTORE, NO_EVENT_STORE_CONFIGURED + context));
-        }
-        return eventStore.aggregateEvents(context, principal, request);
+    private SerializedEvent map(io.axoniq.axonserver.refactoring.store.api.Event event) {
+        return null;
     }
+
+//    public void listAggregateEvents(String context, Authentication principal, GetAggregateEventsRequest request,
+//                                    CallStreamObserver<SerializedEvent> responseObserver) {
+//        final String LAST_SEQ_KEY = "__LAST_SEQ";
+//        checkConnection(context, responseObserver).ifPresent(eventStore -> {
+//            try {
+//                Executor executor = grpcFlowControlExecutorProvider.provide();
+//                OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver,
+//                                                                                                    executor);
+//                Flux<SerializedEvent> publisher;
+//                publisher = Flux.deferContextual(contextView -> {
+//                                                     AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
+//                                                     boolean allowedSnapshot =
+//                                                             request.getAllowSnapshots()
+//                                                                     && lastSeq.get() == -1;
+//
+//                                                     GetAggregateEventsRequest newRequest = request
+//                                                             .toBuilder()
+//                                                             .setAllowSnapshots(
+//                                                                     allowedSnapshot)
+//                                                             .setInitialSequence(lastSeq.get() + 1)
+//                                                             .build();
+//
+//                                                     logger.debug("Reading events from seq#{} for aggregate {}",
+//                                                                  lastSeq.get() + 1,
+//                                                                  request.getAggregateId());
+//                                                     return eventStore
+//                                                             .aggregateEvents(context, principal, newRequest);
+//                                                 }
+//                )
+//                                .doOnEach(signal -> {
+//                                    if (signal.hasValue()) {
+//                                        ((AtomicLong) signal.getContextView().get(LAST_SEQ_KEY))
+//                                                .set(signal.get().getAggregateSequenceNumber());
+//                                    }
+//                                })
+//                                .retryWhen(retrySpec
+//                                                   .doBeforeRetry(t -> logger
+//                                                           .warn("Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
+//                                                                 t.failure().getClass().getName(),
+//                                                                 t.failure().getMessage(),
+//                                                                 request.getAggregateId())))
+//                                .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
+//                                .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
+//                                .contextWrite(c -> c.put(LAST_SEQ_KEY, new AtomicLong(-1)))
+//                                .name("event_stream")
+//                                .tag("context", context)
+//                                .tag("stream", "aggregate_events")
+//                                .tag("origin", "cluster")
+//                                .metrics();
+//
+//                outgoingStream.accept(publisher);
+//            } catch (RuntimeException t) {
+//                logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);
+//                responseObserver.onError(GrpcExceptionBuilder.build(t));
+//            }
+//        });
+//    }
+
+//    public Flux<SerializedEvent> aggregateEvents(String context,
+//                                                 Authentication principal,
+//                                                 GetAggregateEventsRequest request) {
+//        EventStore eventStore = eventStoreLocator.getEventStore(context);
+//        if (eventStore == null) {
+//            return Flux.error(new MessagingPlatformException(NO_EVENTSTORE, NO_EVENT_STORE_CONFIGURED + context));
+//        }
+//        return eventStore.aggregateEvents(context, principal, request);
+//    }
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
+        // TODO: 5/11/21 flow control
+        SpringAuthentication springAuthentication = new SpringAuthentication(authenticationProvider.get());
+        StreamObserver<GetEventsRequest> inputStream = new StreamObserver<GetEventsRequest>() {
+            private final AtomicReference<Sinks.Many<PayloadType>> blackListSinkRef = new AtomicReference<>();
+            private final AtomicReference<Disposable> eventSubscriptionRef = new AtomicReference<>();
+
+            @Override
+            public void onNext(GetEventsRequest getEventsRequest) {
+                if (blackListSinkRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
+                    // first message contains the request
+                    Disposable eventSubscription = eventStoreService.events(map(getEventsRequest),
+                            blackListSinkRef.get().asFlux(),
+                            springAuthentication).subscribe(event -> responseObserver.onNext(map(event)),
+                            responseObserver::onError,
+                            responseObserver::onCompleted);
+                } else {
+                    // TODO: 5/11/21 check this
+                    blackListSinkRef.get().tryEmitNext(mapBlackListUpdate(getEventsRequest)).orThrow();
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                complete();
+            }
+
+            @Override
+            public void onCompleted() {
+                complete();
+            }
+
+            private void complete() {
+                Disposable eventSubscription = eventSubscriptionRef.get();
+                if (eventSubscription != null) {
+                    eventSubscription.dispose();
+                    blackListSinkRef.get().tryEmitComplete().orThrow();
+                }
+            }
+        };
+
         return listEvents(contextProvider.getContext(), authenticationProvider.get(), responseObserver);
+    }
+
+    private EventsQuery map(GetEventsRequest request) {
+        return null;
+    }
+
+    private PayloadType mapBlackListUpdate(GetEventsRequest request) {
+        return null;
+    }
+
+    private InputStream map(EventWithToken event) {
+        return null;
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, Authentication principal,
@@ -311,6 +413,7 @@ public class EventDispatcher implements AxonServerClientService {
         return new GetEventsRequestStreamObserver(responseObserver, context, principal);
     }
 
+    // TODO: 5/11/21 think of moving this responsibility
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected
@@ -329,41 +432,6 @@ public class EventDispatcher implements AxonServerClientService {
                                  ex.getMessage());
                 }
             });
-        }
-    }
-
-
-    public long getNrOfEvents(String context) {
-        CompletableFuture<Long> lastTokenFuture = new CompletableFuture<>();
-        try {
-            eventStoreLocator.getEventStore(context).getLastToken(context,
-                                                                  GetLastTokenRequest.newBuilder().build(),
-                                                                  new StreamObserver<TrackingToken>() {
-                                                                      @Override
-                                                                      public void onNext(TrackingToken trackingToken) {
-                                                                          lastTokenFuture.complete(trackingToken
-                                                                                                           .getToken());
-                                                                      }
-
-                                                                      @Override
-                                                                      public void onError(Throwable throwable) {
-                                                                          lastTokenFuture.completeExceptionally(
-                                                                                  throwable);
-                                                                      }
-
-                                                                      @Override
-                                                                      public void onCompleted() {
-                                                                          // no action needed
-                                                                      }
-                                                                  });
-
-
-            return lastTokenFuture.get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return -1;
-        } catch (Exception e) {
-            return -1;
         }
     }
 
@@ -416,17 +484,21 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void getFirstToken(GetFirstTokenRequest request, StreamObserver<TrackingToken> streamObserver) {
-        CallStreamObserver<TrackingToken> callStreamObserver = (CallStreamObserver<TrackingToken>) streamObserver;
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                  "getFirstToken",
-                                                                                                  callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                                                          client.getFirstToken(
-                                                                                                  contextProvider
-                                                                                                          .getContext(),
-                                                                                                  request,
-                                                                                                  responseObserver)
-        );
+        eventStoreService.firstEventToken(contextProvider.getContext(),
+                new SpringAuthentication(authenticationProvider.get()))
+        .subscribe(firstToken -> streamObserver.onNext(TrackingToken.newBuilder().setToken(firstToken).build()),
+                streamObserver::onError, streamObserver::onCompleted);
+//        CallStreamObserver<TrackingToken> callStreamObserver = (CallStreamObserver<TrackingToken>) streamObserver;
+//        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
+//                                                                                                  "getFirstToken",
+//                                                                                                  callStreamObserver);
+//        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
+//                                                                                          client.getFirstToken(
+//                                                                                                  contextProvider
+//                                                                                                          .getContext(),
+//                                                                                                  request,
+//                                                                                                  responseObserver)
+//        );
     }
 
     private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
@@ -440,88 +512,163 @@ public class EventDispatcher implements AxonServerClientService {
     }
 
     public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> streamObserver) {
-        CallStreamObserver<TrackingToken> callStreamObserver = (CallStreamObserver<TrackingToken>) streamObserver;
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                  "getLastToken",
-                                                                                                  callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                                                                                          client.getLastToken(
-                                                                                                  contextProvider
-                                                                                                          .getContext(),
-                                                                                                  request,
-                                                                                                  responseObserver)
-        );
+        eventStoreService.lastEventToken(contextProvider.getContext(),
+                new SpringAuthentication(authenticationProvider.get()))
+                .subscribe(lastToken -> streamObserver.onNext(TrackingToken.newBuilder().setToken(lastToken).build()),
+                        streamObserver::onError, streamObserver::onCompleted);
+//        CallStreamObserver<TrackingToken> callStreamObserver = (CallStreamObserver<TrackingToken>) streamObserver;
+//        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
+//                                                                                                  "getLastToken",
+//                                                                                                  callStreamObserver);
+//        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
+//                                                                                          client.getLastToken(
+//                                                                                                  contextProvider
+//                                                                                                          .getContext(),
+//                                                                                                  request,
+//                                                                                                  responseObserver)
+//        );
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> streamObserver) {
-        CallStreamObserver<TrackingToken> callStreamObserver = (CallStreamObserver<TrackingToken>) streamObserver;
-        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
-                                                                                                  "getTokenAt",
-                                                                                                  callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver)
-                .ifPresent(client -> client.getTokenAt(contextProvider.getContext(), request, responseObserver)
-                );
+        eventStoreService.eventTokenAt(contextProvider.getContext(), Instant.ofEpochMilli(request.getInstant()),
+                new SpringAuthentication(authenticationProvider.get()))
+                .subscribe(token -> streamObserver.onNext(TrackingToken.newBuilder().setToken(token).build()),
+                        streamObserver::onError, streamObserver::onCompleted);
+//        CallStreamObserver<TrackingToken> callStreamObserver = (CallStreamObserver<TrackingToken>) streamObserver;
+//        ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
+//                                                                                                  "getTokenAt",
+//                                                                                                  callStreamObserver);
+//        checkConnection(contextProvider.getContext(), responseObserver)
+//                .ifPresent(client -> client.getTokenAt(contextProvider.getContext(), request, responseObserver)
+//                );
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> streamObserver) {
-        CallStreamObserver<ReadHighestSequenceNrResponse> callStreamObserver = (CallStreamObserver<ReadHighestSequenceNrResponse>) streamObserver;
-        ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver =
-                new ForwardingStreamObserver<>(logger, "readHighestSequenceNr", callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver)
-                .ifPresent(client -> client
-                        .readHighestSequenceNr(contextProvider.getContext(), request, responseObserver)
-                );
+        eventStoreService.highestSequenceNumber(contextProvider.getContext(), request.getAggregateId(),
+                new SpringAuthentication(authenticationProvider.get()))
+                .subscribe(seqNumber -> streamObserver.onNext(ReadHighestSequenceNrResponse.newBuilder()
+                                .setToSequenceNr(seqNumber).build()),
+                        streamObserver::onError, streamObserver::onCompleted);
+//        CallStreamObserver<ReadHighestSequenceNrResponse> callStreamObserver = (CallStreamObserver<ReadHighestSequenceNrResponse>) streamObserver;
+//        ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver =
+//                new ForwardingStreamObserver<>(logger, "readHighestSequenceNr", callStreamObserver);
+//        checkConnection(contextProvider.getContext(), responseObserver)
+//                .ifPresent(client -> client
+//                        .readHighestSequenceNr(contextProvider.getContext(), request, responseObserver)
+//                );
+    }
+
+    private AdHocEventsQuery mapEvent(QueryEventsRequest request) {
+        return null;
+    }
+
+    private AdHocSnapshotsQuery mapSnapshot(QueryEventsRequest request) {
+        return null;
+    }
+
+    private QueryEventsResponse mapEvent(EventQueryResponse response) {
+        return null;
+    }
+
+    private QueryEventsResponse mapSnapshot(SnapshotQueryResponse response) {
+        return null;
     }
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> streamObserver) {
-        CallStreamObserver<QueryEventsResponse> callStreamObserver = (CallStreamObserver<QueryEventsResponse>) streamObserver;
-        String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        ForwardingStreamObserver<QueryEventsResponse> responseObserver =
-                new ForwardingStreamObserver<>(logger, "queryEvents", callStreamObserver);
-        return new StreamObserver<QueryEventsRequest>() {
 
-            private final AtomicReference<StreamObserver<QueryEventsRequest>> requestObserver = new AtomicReference<>();
+        StreamObserver<QueryEventsRequest> inputStream = new StreamObserver<QueryEventsRequest>() {
+
+            private final AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
 
             @Override
-            public void onNext(QueryEventsRequest request) {
-                if (requestObserver.get() == null) {
-                    EventStore eventStore = eventStoreLocator.getEventStore(context,
-                                                                            request.getForceReadFromLeader());
-                    if (eventStore == null) {
-                        responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                                                                NO_EVENT_STORE_CONFIGURED + context));
-                        return;
+            public void onNext(QueryEventsRequest queryEventsRequest) {
+                if (subscriptionRef.get() == null) {
+                    Disposable subscription;
+                    if (queryEventsRequest.getQuerySnapshots()) {
+                        subscription = eventStoreService.querySnapshots(mapSnapshot(queryEventsRequest),
+                                new SpringAuthentication(authenticationProvider.get()))
+                                .subscribe(event -> streamObserver.onNext(mapSnapshot(event)),
+                                        streamObserver::onError,
+                                        streamObserver::onCompleted);
+                    } else {
+                        subscription = eventStoreService.queryEvents(mapEvent(queryEventsRequest),
+                                new SpringAuthentication(authenticationProvider.get()))
+                                .subscribe(event -> streamObserver.onNext(mapEvent(event)),
+                                        streamObserver::onError,
+                                        streamObserver::onCompleted);
                     }
-                    requestObserver.set(eventStore.queryEvents(context, authentication, responseObserver));
-                }
-                try {
-                    requestObserver.get().onNext(request);
-                } catch (Exception reason) {
-                    logger.warn("{}: Error forwarding request to event store: {}", context, reason.getMessage());
-                    StreamObserverUtils.complete(requestObserver.get());
+                    subscriptionRef.set(subscription);
                 }
             }
 
             @Override
-            public void onError(Throwable reason) {
-                if (!ExceptionUtils.isCancelled(reason)) {
-                    logger.warn("Error on connection from client: {}", reason.getMessage());
-                }
-                cleanup();
+            public void onError(Throwable throwable) {
+                complete();
             }
 
             @Override
             public void onCompleted() {
-                cleanup();
-                StreamObserverUtils.complete(responseObserver);
+                complete();
             }
 
-            private void cleanup() {
-                StreamObserverUtils.complete(requestObserver.get());
+            private void complete() {
+                Disposable subscription = subscriptionRef.get();
+                if (subscription != null) {
+                    subscription.dispose();
+                }
             }
         };
+
+        return inputStream;
+
+//        CallStreamObserver<QueryEventsResponse> callStreamObserver = (CallStreamObserver<QueryEventsResponse>) streamObserver;
+//        String context = contextProvider.getContext();
+//        Authentication authentication = authenticationProvider.get();
+//        ForwardingStreamObserver<QueryEventsResponse> responseObserver =
+//                new ForwardingStreamObserver<>(logger, "queryEvents", callStreamObserver);
+//        return new StreamObserver<QueryEventsRequest>() {
+//
+//            private final AtomicReference<StreamObserver<QueryEventsRequest>> requestObserver = new AtomicReference<>();
+//
+//            @Override
+//            public void onNext(QueryEventsRequest request) {
+//                if (requestObserver.get() == null) {
+//                    EventStore eventStore = eventStoreLocator.getEventStore(context,
+//                                                                            request.getForceReadFromLeader());
+//                    if (eventStore == null) {
+//                        responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
+//                                                                                NO_EVENT_STORE_CONFIGURED + context));
+//                        return;
+//                    }
+//                    requestObserver.set(eventStore.queryEvents(context, authentication, responseObserver));
+//                }
+//                try {
+//                    requestObserver.get().onNext(request);
+//                } catch (Exception reason) {
+//                    logger.warn("{}: Error forwarding request to event store: {}", context, reason.getMessage());
+//                    StreamObserverUtils.complete(requestObserver.get());
+//                }
+//            }
+//
+//            @Override
+//            public void onError(Throwable reason) {
+//                if (!ExceptionUtils.isCancelled(reason)) {
+//                    logger.warn("Error on connection from client: {}", reason.getMessage());
+//                }
+//                cleanup();
+//            }
+//
+//            @Override
+//            public void onCompleted() {
+//                cleanup();
+//                StreamObserverUtils.complete(responseObserver);
+//            }
+//
+//            private void cleanup() {
+//                StreamObserverUtils.complete(requestObserver.get());
+//            }
+//        };
     }
 
     public void listAggregateSnapshots(String context, Authentication authentication,
@@ -542,9 +689,19 @@ public class EventDispatcher implements AxonServerClientService {
 
     public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
                                        StreamObserver<SerializedEvent> responseObserver) {
-        listAggregateSnapshots(contextProvider.getContext(), authenticationProvider.get(), request, responseObserver);
+
+        eventStoreService.aggregateSnapshots(map(request), new SpringAuthentication(authenticationProvider.get()))
+        .subscribe(snapshot -> responseObserver.onNext(map(snapshot)), responseObserver::onError, responseObserver::onCompleted);
+//        listAggregateSnapshots(contextProvider.getContext(), authenticationProvider.get(), request, responseObserver);
     }
 
+    private AggregateSnapshotsQuery map(GetAggregateSnapshotsRequest request) {
+        return null;
+    }
+
+    private SerializedEvent map(Snapshot snapshot) {
+        return null;
+    }
 
     public MeterFactory.RateMeter eventRate(String context) {
         return eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS);
