@@ -115,8 +115,8 @@ public abstract class BaseTaskManager implements SmartLifecycle {
      */
     @Override
     public void start() {
-        initFetchTasksRunner();
         running = true;
+        initFetchTasksRunner();
     }
 
     /**
