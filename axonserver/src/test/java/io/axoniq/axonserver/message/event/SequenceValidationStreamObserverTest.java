@@ -1,11 +1,19 @@
 package io.axoniq.axonserver.message.event;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.CallStreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
+import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -103,8 +111,8 @@ public class SequenceValidationStreamObserverTest {
             testSubject.onNext(event2);
             testSubject.onNext(event2);
             verify(delegateMock).onNext(event1);
-            verify(delegateMock).onNext(event2);
-            verify(delegateMock).onError(any(RuntimeException.class));
+        verify(delegateMock).onNext(event2);
+        verify(delegateMock).onError(any(RuntimeException.class));
     }
 
     @NotNull
@@ -112,5 +120,17 @@ public class SequenceValidationStreamObserverTest {
         return new SerializedEvent(Event.newBuilder()
                                         .setAggregateSequenceNumber(aggregateSequenceNumber)
                                         .build());
+    }
+
+    @Test
+    public void testLogging() {
+        Logger logger = (Logger) LoggerFactory.getLogger(SequenceValidationStreamObserver.class);
+        ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
+        listAppender.start();
+        logger.addAppender(listAppender);
+        testInvalidSequence();
+        List<ILoggingEvent> logsList = listAppender.list;
+        assertTrue(logsList.get(0).getMessage().contains(context));
+        assertEquals(Level.INFO, logsList.get(0).getLevel());
     }
 }
