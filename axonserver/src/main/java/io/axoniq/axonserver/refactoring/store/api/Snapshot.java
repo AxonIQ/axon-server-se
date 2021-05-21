@@ -6,4 +6,5 @@ package io.axoniq.axonserver.refactoring.store.api;
  */
 public interface Snapshot {
 
+    long sequenceNumber();
 }

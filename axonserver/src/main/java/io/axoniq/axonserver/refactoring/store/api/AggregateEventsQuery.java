@@ -10,9 +10,5 @@ public interface AggregateEventsQuery {
 
     String aggregateId();
 
-    long initialSequenceNumber();
-
-    long maxSequenceNumber();
-
     boolean isSnapshotAllowed();
 }
