@@ -743,7 +743,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public boolean hasContext(String context) {
-        return workersMap.containsKey(context);
+        return workersMap.containsKey(context) && workersMap.get(context).initialized;
     }
 
     private class Workers {
