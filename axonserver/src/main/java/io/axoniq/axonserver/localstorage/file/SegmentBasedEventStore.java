@@ -14,10 +14,7 @@ import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.*;
-import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
@@ -27,7 +24,6 @@ import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -56,8 +52,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final StorageProperties storageProperties;
     protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
-    private final Timer aggregateReadTimer;
-    private final Timer lastSequenceReadTimer;
     protected final SegmentBasedEventStore next;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
@@ -74,16 +68,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
         this.next = nextSegmentsHandler;
-        this.aggregateReadTimer = meterFactory.timer(BaseMetricName.AXON_AGGREGATE_READTIME,
-                                                     Tags.of(MeterFactory.CONTEXT,
-                                                             eventTypeContext.getContext(),
-                                                             "type",
-                                                             eventTypeContext.getEventType().toString()));
-        this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME,
-                                                        Tags.of(MeterFactory.CONTEXT,
-                                                                eventTypeContext.getContext(),
-                                                                "type",
-                                                                eventTypeContext.getEventType().toString()));
     }
 
     public abstract void handover(Long segment, Runnable callback);
@@ -93,7 +77,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long lastSequence,
                                                     long minToken) {
         logger.debug("Reading index entries for aggregate {} started.", aggregateId);
-        long startTime = System.currentTimeMillis();
         //Map<segment, all positions in that segment>
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequence,
@@ -101,26 +84,27 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                    Long.MAX_VALUE,
                                                                                    minToken);
         logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
-        List<Flux<SerializedEvent>> fluxList = positionInfos
-                .entrySet()
-                .stream()
-                .map(e -> eventsForPositions(e.getKey(), e.getValue()))
-                .collect(Collectors.toList());
-        return Flux.concat(fluxList)
-                   .doOnEach(signal -> {
-                       if (signal.isOnComplete()) {
-                           long readTime = System.currentTimeMillis() - startTime;
-                           aggregateReadTimer.record(readTime, TimeUnit.MILLISECONDS);
-                       }
-                   })
+
+        return Flux.fromIterable(positionInfos.entrySet())
+                   .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),2, storageProperties.getSegmentPrefetch())
                    .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence)
-                   .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence); //remember: last sequence excluded
+                   .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
+                   .name("event_stream")
+                   .tag("context", context)
+                   .tag("stream", "aggregate_events")
+                   .tag("origin", "event_sources")
+                   .metrics();
     }
 
     private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries) {
         return (!containsSegment(segment) && next != null) ?
                 next.eventsForPositions(segment, indexEntries) :
-                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment).get();
+                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment).get()
+                        .name("event_stream")
+                        .tag("context", context)
+                        .tag("stream", "aggregate_events")
+                        .tag("origin", "event_source")
+                        .metrics();
     }
 
     /**
@@ -134,7 +118,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
                                           long minToken, Consumer<SerializedEvent> eventConsumer) {
-        long before = System.currentTimeMillis();
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
                                                                                    lastSequenceNumber,
@@ -147,7 +130,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                       eventConsumer,
                                                                                       Long.MAX_VALUE,
                                                                                       minToken));
-        aggregateReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -245,12 +227,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegmentsHint, long maxTokenHint) {
-        long before = System.currentTimeMillis();
-        try {
-            return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegmentsHint, maxTokenHint);
-        } finally {
-            lastSequenceReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
-        }
+        return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegmentsHint, maxTokenHint);
+
     }
 
     @Override
