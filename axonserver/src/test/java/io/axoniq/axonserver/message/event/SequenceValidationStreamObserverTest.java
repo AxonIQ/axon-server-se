@@ -1,12 +1,19 @@
 package io.axoniq.axonserver.message.event;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.CallStreamObserver;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
+import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -18,11 +25,12 @@ public class SequenceValidationStreamObserverTest {
 
     private SequenceValidationStreamObserver testSubject;
     private CallStreamObserver<SerializedEvent> delegateMock;
+    private String context = "myContext";
 
     @Before
     public void setup() {
         delegateMock = mock(CallStreamObserver.class);
-        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.FAIL);
+        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.FAIL, context);
     }
 
     @Test
@@ -83,7 +91,7 @@ public class SequenceValidationStreamObserverTest {
 
     @Test
     public void testInvalidSequenceLogOnly() {
-        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.LOG);
+        testSubject = new SequenceValidationStreamObserver(delegateMock, SequenceValidationStrategy.LOG, context);
         SerializedEvent event1 = serializedEvent(0);
         SerializedEvent event2 = serializedEvent(1);
         SerializedEvent event4 = serializedEvent(3);
@@ -103,8 +111,8 @@ public class SequenceValidationStreamObserverTest {
             testSubject.onNext(event2);
             testSubject.onNext(event2);
             verify(delegateMock).onNext(event1);
-            verify(delegateMock).onNext(event2);
-            verify(delegateMock).onError(any(RuntimeException.class));
+        verify(delegateMock).onNext(event2);
+        verify(delegateMock).onError(any(RuntimeException.class));
     }
 
     @NotNull
@@ -112,5 +120,17 @@ public class SequenceValidationStreamObserverTest {
         return new SerializedEvent(Event.newBuilder()
                                         .setAggregateSequenceNumber(aggregateSequenceNumber)
                                         .build());
+    }
+
+    @Test
+    public void testLogging() {
+        Logger logger = (Logger) LoggerFactory.getLogger(SequenceValidationStreamObserver.class);
+        ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
+        listAppender.start();
+        logger.addAppender(listAppender);
+        testInvalidSequence();
+        List<ILoggingEvent> logsList = listAppender.list;
+        assertTrue(logsList.get(0).getMessage().contains(context));
+        assertEquals(Level.INFO, logsList.get(0).getLevel());
     }
 }

@@ -17,7 +17,20 @@ import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlExecutorProvider;
-import io.axoniq.axonserver.grpc.event.*;
+import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
+import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
+import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -218,10 +231,12 @@ public class EventDispatcher implements AxonServerClientService {
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
         CallStreamObserver<SerializedEvent> streamObserver = (CallStreamObserver<SerializedEvent>) responseObserver;
-        CallStreamObserver<SerializedEvent> validateStreamObserver = new SequenceValidationStreamObserver(streamObserver, sequenceValidationStrategy);
-        listAggregateEvents(contextProvider.getContext(), authenticationProvider.get(),
-                request,
-                new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));
+        String context = contextProvider.getContext();
+        CallStreamObserver<SerializedEvent> validateStreamObserver =
+                new SequenceValidationStreamObserver(streamObserver, sequenceValidationStrategy, context);
+        listAggregateEvents(context, authenticationProvider.get(),
+                            request,
+                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));
     }
 
 

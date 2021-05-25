@@ -17,13 +17,16 @@ import java.util.concurrent.atomic.AtomicReference;
 public class SequenceValidationStreamObserver extends CallStreamObserverDelegator<SerializedEvent> {
     private final SequenceValidationStrategy sequenceValidationStrategy;
     private final AtomicReference<SerializedEvent> lastSentEvent = new AtomicReference<>();
+    private final String context;
     private final Logger logger = LoggerFactory.getLogger(SequenceValidationStreamObserver.class);
 
     public SequenceValidationStreamObserver(
             CallStreamObserver<SerializedEvent> delegate,
-            SequenceValidationStrategy sequenceValidationStrategy) {
+            SequenceValidationStrategy sequenceValidationStrategy,
+            String context) {
         super(delegate);
         this.sequenceValidationStrategy = sequenceValidationStrategy;
+        this.context = context;
     }
 
     @Override
@@ -33,12 +36,14 @@ public class SequenceValidationStreamObserver extends CallStreamObserverDelegato
             delegate().onNext(event);
             lastSentEvent.set(event);
         } else {
-            String message = String.format("Invalid sequence number for aggregate %s. Received: %d, expected: %d",
+            String message = String.format("Invalid sequence number for aggregate %s in context %s. "
+                                                   + "Received: %d, expected: %d",
                                            event.getAggregateIdentifier(),
+                                           context,
                                            event.getAggregateSequenceNumber(),
                                            prevEvent.getAggregateSequenceNumber() + 1);
-            if(SequenceValidationStrategy.FAIL.equals(sequenceValidationStrategy)) {
-                logger.error(message);
+            if (SequenceValidationStrategy.FAIL.equals(sequenceValidationStrategy)) {
+                logger.info(message);
                 delegate().onError(new RuntimeException(message));
             } else {
                 logger.warn(message);
