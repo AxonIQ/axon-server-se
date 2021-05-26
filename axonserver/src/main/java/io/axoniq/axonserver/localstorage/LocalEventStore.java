@@ -54,6 +54,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -72,7 +73,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
 
 /**
  * Component that handles the actual interaction with the event store.
@@ -380,7 +380,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .name("event_stream")
                 .tag("context", context)
                 .tag("stream", "aggregate_events")
-                .tag("origin", "local")
+                .tag("origin", "local_event_store")
                 .metrics();
     }
 

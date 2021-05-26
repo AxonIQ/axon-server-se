@@ -101,11 +101,16 @@ public class StorageProperties implements Cloneable {
      */
     private Boolean forceCleanMmapIndex;
 
+    /**
+     * Define how many events to prefetch from disk when streaming events to the client
+     */
+    private int eventsPerSegmentPrefetch = 50;
 
     /**
      * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
      */
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
+
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
     /**
@@ -115,7 +120,6 @@ public class StorageProperties implements Cloneable {
             Duration.ofDays(7)
     };
     private String indexFormat;
-
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
@@ -173,6 +177,15 @@ public class StorageProperties implements Cloneable {
     public void setStorage(String storage) {
         this.storage = storage;
     }
+
+    public int getEventsPerSegmentPrefetch() {
+        return eventsPerSegmentPrefetch;
+    }
+
+    public void setEventsPerSegmentPrefetch(int eventsPerSegmentPrefetch) {
+        this.eventsPerSegmentPrefetch = eventsPerSegmentPrefetch;
+    }
+
 
     public float getBloomIndexFpp() {
         return bloomIndexFpp;

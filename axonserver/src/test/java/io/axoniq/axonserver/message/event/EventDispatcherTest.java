@@ -70,7 +70,7 @@ public class EventDispatcherTest {
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()),
                 Executors::newCachedThreadPool,
-                3,100);
+                3,100, 50);
     }
 
     @Test

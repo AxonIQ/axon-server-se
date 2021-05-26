@@ -113,6 +113,7 @@ public class EventDispatcher implements AxonServerClientService {
     private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
     private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
     private final RetryBackoffSpec retrySpec;
+    private final int aggregateEventsPrefetch;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
@@ -120,13 +121,15 @@ public class EventDispatcher implements AxonServerClientService {
                            MeterFactory meterFactory,
                            GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
-                           @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis) {
+                           @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
+                           @Value("${axoniq.axonserver.event.aggregate.prefetch:100}") int aggregateEventsPrefetch) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
         this.authenticationProvider = authenticationProvider;
         this.meterFactory = meterFactory;
         this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
+        this.aggregateEventsPrefetch = aggregateEventsPrefetch;
     }
 
 
@@ -267,6 +270,7 @@ public class EventDispatcher implements AxonServerClientService {
                             .aggregateEvents(context, principal, newRequest);
                         }
                 )
+                        .limitRate(aggregateEventsPrefetch)
                         .doOnEach(signal -> {
                             if (signal.hasValue()) {
                                 ((AtomicLong)signal.getContextView().get(LAST_SEQ_KEY))
@@ -282,7 +286,7 @@ public class EventDispatcher implements AxonServerClientService {
                         .name("event_stream")
                         .tag("context", context)
                         .tag("stream", "aggregate_events")
-                        .tag("origin", "cluster")
+                        .tag("origin", "client_request")
                         .metrics();
 
                 outgoingStream.accept(publisher);
