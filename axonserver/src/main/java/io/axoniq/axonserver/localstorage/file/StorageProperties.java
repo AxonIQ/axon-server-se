@@ -104,7 +104,7 @@ public class StorageProperties implements Cloneable {
     /**
      * Define how many events to prefetch from disk when streaming events to the client
      */
-    private int segmentPrefetch = 50;
+    private int eventsPerSegmentPrefetch = 50;
 
     /**
      * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
@@ -178,12 +178,12 @@ public class StorageProperties implements Cloneable {
         this.storage = storage;
     }
 
-    public int getSegmentPrefetch() {
-        return segmentPrefetch;
+    public int getEventsPerSegmentPrefetch() {
+        return eventsPerSegmentPrefetch;
     }
 
-    public void setSegmentPrefetch(int segmentPrefetch) {
-        this.segmentPrefetch = segmentPrefetch;
+    public void setEventsPerSegmentPrefetch(int eventsPerSegmentPrefetch) {
+        this.eventsPerSegmentPrefetch = eventsPerSegmentPrefetch;
     }
 
 

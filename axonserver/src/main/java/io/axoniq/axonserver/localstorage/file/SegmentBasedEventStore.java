@@ -13,17 +13,40 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.*;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import io.axoniq.axonserver.localstorage.EventType;
+import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.QueryOptions;
+import io.axoniq.axonserver.localstorage.Registration;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -52,7 +75,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final StorageProperties storageProperties;
     protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
+    private final Timer lastSequenceReadTimer;
     protected final SegmentBasedEventStore next;
+    private final int PREFETCH_SEGMENT_FILES = 2;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
                                   StorageProperties storageProperties, MeterFactory meterFactory) {
@@ -68,6 +93,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
         this.next = nextSegmentsHandler;
+        this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME,
+                Tags.of(MeterFactory.CONTEXT,
+                        eventTypeContext.getContext(),
+                        "type",
+                        eventTypeContext.getEventType().toString()));
     }
 
     public abstract void handover(Long segment, Runnable callback);
@@ -86,7 +116,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
 
         return Flux.fromIterable(positionInfos.entrySet())
-                   .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),2, storageProperties.getSegmentPrefetch())
+                   .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),
+                           PREFETCH_SEGMENT_FILES,
+                           storageProperties.getEventsPerSegmentPrefetch())
                    .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence)
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
                    .name("event_stream")
@@ -227,8 +259,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegmentsHint, long maxTokenHint) {
-        return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegmentsHint, maxTokenHint);
-
+        long before = System.currentTimeMillis();
+        try {
+            return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegmentsHint, maxTokenHint);
+        } finally {
+            lastSequenceReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
+        }
     }
 
     @Override
