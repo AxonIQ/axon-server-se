@@ -77,7 +77,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
     private final Timer lastSequenceReadTimer;
     protected final SegmentBasedEventStore next;
-    private final int PREFETCH_SEGMENT_FILES = 2;
+    private static final int PREFETCH_SEGMENT_FILES = 2;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
                                   StorageProperties storageProperties, MeterFactory meterFactory) {
