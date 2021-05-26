@@ -109,7 +109,7 @@ public class EventDispatcher implements AxonServerClientService {
                            GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
                            @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
-                           @Value("${axoniq.axonserver.event.aggregate.prefetch:50}") int aggregateEventsPrefetch) {
+                           @Value("${axoniq.axonserver.event.aggregate.prefetch:100}") int aggregateEventsPrefetch) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
         this.authenticationProvider = authenticationProvider;
