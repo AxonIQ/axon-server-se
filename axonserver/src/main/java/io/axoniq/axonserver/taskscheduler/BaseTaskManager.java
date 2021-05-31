@@ -115,8 +115,8 @@ public abstract class BaseTaskManager implements SmartLifecycle {
      */
     @Override
     public void start() {
-        initFetchTasksRunner();
         running = true;
+        initFetchTasksRunner();
     }
 
     /**
@@ -162,6 +162,7 @@ public abstract class BaseTaskManager implements SmartLifecycle {
     }
 
     private void fetchTasks() {
+        if (!running) return;
         try {
             long min = nextTimestamp.getAndSet(clock.millis() + window);
             Set<String> leaderFor = leaderForGroupProvider.get();
