@@ -10,12 +10,9 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import java.util.AbstractList;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -37,10 +34,10 @@ public class AppendOnlyList<T> extends AbstractList<T> {
     private final AtomicInteger size = new AtomicInteger();
     private final AtomicReference<Node<T>> last = new AtomicReference<>();
 
-    public AppendOnlyList(List<T> values) {
+    public AppendOnlyList(T[] values) {
         head = new Node<>(values);
         last.set(head);
-        size.set(values.size());
+        size.set(values.length);
     }
 
     @Override
@@ -94,8 +91,7 @@ public class AppendOnlyList<T> extends AbstractList<T> {
     }
 
     public T last() {
-        List<? extends T> lastValues = last.get().values;
-        return lastValues.get(lastValues.size() - 1);
+        return last.get().last();
     }
 
     public boolean isEmpty() {
@@ -145,14 +141,16 @@ public class AppendOnlyList<T> extends AbstractList<T> {
 
     @Override
     public boolean addAll(Collection<? extends T> values) {
-        last.updateAndGet(l -> l.add(values));
+        last.updateAndGet(l -> l.add(values.toArray()));
         size.addAndGet(values.size());
         return true;
     }
 
     @Override
     public boolean add(T value) {
-        return addAll(Collections.singletonList(value));
+        last.updateAndGet(l -> l.add(new Object[]{value}));
+        size.incrementAndGet();
+        return true;
     }
 
     @Override
@@ -173,31 +171,31 @@ public class AppendOnlyList<T> extends AbstractList<T> {
 
     private static class Node<T> {
 
-        private final List<? extends T> values;
+        private final Object[] values;
         private Node<T> next;
 
-        private Node(List<? extends T> values) {
+        private Node(Object[] values) {
             this.values = values;
         }
 
-        private Node<T> add(Collection<? extends T> values) {
-            this.next = new Node<>(asList(values));
+        private Node add(Object[] values) {
+            this.next = new Node(values);
             return this.next;
         }
 
-        private List<? extends T> asList(Collection<? extends T> values) {
-            if (values instanceof List) {
-                return (List<? extends T>) values;
-            }
-            return new ArrayList<>(values);
-        }
-
         public int size() {
-            return values.size();
+            return values.length;
         }
 
         public T get(int index) {
-            return values.get(index);
+            return (T) values[index];
+        }
+
+        public T last() {
+            if (values.length == 0) {
+                return null;
+            }
+            return (T) values[values.length - 1];
         }
     }
 }

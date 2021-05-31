@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -29,15 +28,16 @@ public class StandardIndexEntries implements IndexEntries {
      * @param firstSequenceNumber first sequence number
      */
     public StandardIndexEntries(long firstSequenceNumber) {
-        this(firstSequenceNumber, Collections.emptyList());
+        this(firstSequenceNumber, new Integer[0]);
     }
 
     /**
      * Initializes the object with given entries and {@code firstSequenceNumber}.
+     *
      * @param firstSequenceNumber first sequence number
-     * @param entries the positions of the aggregate
+     * @param entries             the positions of the aggregate
      */
-    public StandardIndexEntries(long firstSequenceNumber, List<Integer> entries) {
+    public StandardIndexEntries(long firstSequenceNumber, Integer[] entries) {
         this.entries = new AppendOnlyList<>(entries);
         this.firstSequenceNumber = firstSequenceNumber;
     }
@@ -72,6 +72,11 @@ public class StandardIndexEntries implements IndexEntries {
         if (snapshot) {
             return this;
         }
+
+        if (minSequenceNumber <= firstSequenceNumber && maxSequenceNumber >= firstSequenceNumber + size()) {
+            return this;
+        }
+
         List<Integer> reducedEntries = new ArrayList<>();
         long i = firstSequenceNumber;
         for (Integer entry : entries) {
@@ -80,7 +85,8 @@ public class StandardIndexEntries implements IndexEntries {
             }
             i++;
         }
-        return new StandardIndexEntries(Math.max(minSequenceNumber, firstSequenceNumber), reducedEntries);
+        return new StandardIndexEntries(Math.max(minSequenceNumber, firstSequenceNumber),
+                                        reducedEntries.toArray(new Integer[0]));
     }
 
     /**
