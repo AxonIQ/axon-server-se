@@ -65,6 +65,8 @@ public class Gateway implements SmartLifecycle {
         }
 
         started = false;
+        logger.info("Axon Server Gateway stopped");
+
         callback.run();
     }
 

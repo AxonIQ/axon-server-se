@@ -594,12 +594,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public boolean isAutoStartup() {
-        return true;
-    }
-
-    @Override
-    public void stop(@Nonnull Runnable runnable) {
+    public void stop() {
         running = false;
         dataFetcher.shutdown();
         workersMap.forEach((k, workers) -> workers.close(false));
@@ -610,18 +605,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             Thread.currentThread().interrupt();
         }
         dataFetcher.shutdownNow();
-        runnable.run();
     }
 
     @Override
     public void start() {
         running = true;
-    }
-
-    @Override
-    public void stop() {
-        stop(() -> {
-        });
     }
 
     @Override
