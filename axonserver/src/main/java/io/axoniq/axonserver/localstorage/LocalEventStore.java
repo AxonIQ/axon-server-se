@@ -730,8 +730,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotStorageEngine.getFirstToken();
     }
 
-    public boolean hasContext(String context) {
-        return workersMap.containsKey(context);
+    public boolean activeContext(String context) {
+        return workersMap.containsKey(context) && workersMap.get(context).initialized;
     }
 
     private class Workers {
