@@ -29,11 +29,11 @@ public class EventProcessorStatusRefreshTest {
     private EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA", "");
     private EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB", "");
     private EventProcessorIdentifier processorC = new EventProcessorIdentifier("processorC", "");
-    private ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA");
-    private ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB");
-    private ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB");
-    private ClientProcessor clientProcessor4 = new FakeClientProcessor("blueClient", false, "processorB");
-    private ClientProcessor clientProcessor5 = new FakeClientProcessor("blueClient", false, "processorC");
+    private ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA", true);
+    private ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB", true);
+    private ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB", true);
+    private ClientProcessor clientProcessor4 = new FakeClientProcessor("blueClient", false, "processorB", true);
+    private ClientProcessor clientProcessor5 = new FakeClientProcessor("blueClient", false, "processorC", true);
     private List<ClientProcessor> clientProcessors = asList(clientProcessor1,
                                                             clientProcessor2,
                                                             clientProcessor3,
