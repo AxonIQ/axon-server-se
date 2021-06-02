@@ -26,7 +26,7 @@ public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> 
 
     EventProcessorInfo eventProcessorInfo();
 
-    default Boolean running() {
+    default boolean running() {
         return eventProcessorInfo().getRunning();
     }
 
