@@ -11,6 +11,7 @@ package io.axoniq.axonserver.component.processor.balancing.strategy;
 
 import io.axoniq.axonserver.component.processor.balancing.SameProcessor;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
+import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
@@ -37,6 +38,7 @@ public class DefaultInstancesRepository implements ThreadNumberBalancing.Instanc
     public Iterable<ThreadNumberBalancing.Application> findFor(TrackingEventProcessor processor) {
         return () -> stream(processors.spliterator(), false)
                 .filter(new SameProcessor(processor))
+                .filter(ClientProcessor::running)
                 .map(p -> {
                     EventProcessorInfo i = p.eventProcessorInfo();
                     int threadPoolSize = i.getAvailableThreads() + i.getSegmentStatusCount();
