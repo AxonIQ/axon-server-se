@@ -72,7 +72,7 @@ public class StorageProperties implements Cloneable {
      */
     private int memoryMappedSegments = 5;
     /**
-     * Delay to clear ByfeBuffers from off-heap memory for writable segments
+     * Delay to clear ByteBuffers from off-heap memory for writable segments
      */
     private int primaryCleanupDelay = 15;
     /**
