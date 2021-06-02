@@ -68,15 +68,15 @@ public class StorageProperties implements Cloneable {
      */
     private int validationSegments = 10;
     /**
-     * Number of segments to keep in primary location (only for multitier storage option)
+     * Number of recent segments that Axon Server keeps memory mapped
      */
-    private int numberOfSegments = 5;
+    private int memoryMappedSegments = 5;
     /**
      * Delay to clear ByfeBuffers from off-heap memory for writable segments
      */
     private int primaryCleanupDelay = 15;
     /**
-     * Delay to clear ByfeBuffers from off-heap memory for read-only segments
+     * Delay to clear ByteBuffers from off-heap memory for read-only segments
      */
     private int secondaryCleanupDelay = 15;
     /**
@@ -254,12 +254,12 @@ public class StorageProperties implements Cloneable {
         this.validationSegments = validationSegments;
     }
 
-    public int getNumberOfSegments() {
-        return numberOfSegments;
+    public int getMemoryMappedSegments() {
+        return memoryMappedSegments;
     }
 
-    public void setNumberOfSegments(int numberOfSegments) {
-        this.numberOfSegments = numberOfSegments;
+    public void setMemoryMappedSegments(int memoryMappedSegments) {
+        this.memoryMappedSegments = memoryMappedSegments;
     }
 
     public int getPrimaryCleanupDelay() {
