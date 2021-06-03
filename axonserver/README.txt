@@ -3,6 +3,11 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.12
+-------------------------------
+* Fix: Load balancing operations for processors should ignore stopped instances
+* Fix: Stop reading events when query deadline expires
+
 Release Notes for version 4.4.11
 -------------------------------
 * Configurable strategy for aggregate events stream sequence validation
