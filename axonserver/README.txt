@@ -8,14 +8,6 @@ Release Notes for version 4.5.1
 * Configurable strategy for aggregate events stream sequence validation
 * Fix UI check for updates
 
-Release Notes for version 4.4.11
--------------------------------
-* Configurable strategy for aggregate events stream sequence validation
-
-Release Notes for version 4.4.10
--------------------------------
-* Fix for subscription queries in case of missing query handler
-
 Release Notes for version 4.5
 -----------------------------
 
@@ -50,6 +42,18 @@ Notes:
 
 - For the Docker image, plugins are stored in the /data/plugins directory.
 
+Release Notes for version 4.4.12
+-------------------------------
+* Fix: Load balancing operations for processors should ignore stopped instances
+* Fix: Stop reading events when query deadline expires
+
+Release Notes for version 4.4.11
+-------------------------------
+* Configurable strategy for aggregate events stream sequence validation
+
+Release Notes for version 4.4.10
+-------------------------------
+* Fix for subscription queries in case of missing query handler
 
 Release Notes for version 4.4.10
 --------------------------------
