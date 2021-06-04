@@ -29,6 +29,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -45,7 +46,7 @@ public class Synchronizer {
     private final EventTypeContext context;
     private final StorageProperties storageProperties;
     private final Consumer<WritePosition> completeSegmentCallback;
-    private volatile WritePosition current;
+    private final AtomicReference<WritePosition> currentRef = new AtomicReference<>();
     private final ConcurrentSkipListSet<WritePosition> syncAndCloseFile = new ConcurrentSkipListSet<>();
     private final AtomicBoolean updated = new AtomicBoolean();
     private volatile ScheduledFuture<?> forceJob;
@@ -71,9 +72,9 @@ public class Synchronizer {
                             updated.set(true);
 
                                 if (canSyncAt(writePosition)) {
-                                    syncAndCloseFile.add(current);
+                                    syncAndCloseFile.add(currentRef.get());
                                 }
-                                current = writePosition;
+                                currentRef.set(writePosition);
                                 iterator.remove();
                         } else {
                             break;
@@ -85,7 +86,7 @@ public class Synchronizer {
         }
     }
 
-    private void syncAndCloseFile() {
+    private boolean syncAndCloseFile() {
         WritePosition toSync = syncAndCloseFile.pollFirst();
         if (toSync != null) {
             try {
@@ -95,8 +96,10 @@ public class Synchronizer {
             } catch (Exception ex) {
                 log.warn("Failed to close file {} - {}", toSync.segment, ex.getMessage());
                 syncAndCloseFile.add(toSync);
+                return false;
             }
         }
+        return true;
     }
 
     public void register(WritePosition writePosition, StorageCallback callback) {
@@ -105,6 +108,7 @@ public class Synchronizer {
 
 
     private boolean canSyncAt(WritePosition writePosition) {
+        WritePosition current = currentRef.get();
         if (current != null && !Objects.equals(current.segment, writePosition.segment)) {
             log.debug("can sync at {}: {}", writePosition.segment, current.segment);
         }
@@ -112,7 +116,7 @@ public class Synchronizer {
     }
 
     public synchronized void init(WritePosition writePosition) {
-        current = writePosition;
+        currentRef.set(writePosition);
         log.debug("Initializing at {}", writePosition);
         if( syncJob == null) {
             syncJob = fsync.scheduleWithFixedDelay(this::syncAndCloseFile, storageProperties.getSyncInterval(), storageProperties.getSyncInterval(), TimeUnit.MILLISECONDS);
@@ -126,8 +130,9 @@ public class Synchronizer {
 
     public void forceCurrent() {
         if (updated.compareAndSet(true, false)) {
-            if (current != null) {
-                current.force();
+            WritePosition writePosition = currentRef.get();
+            if (writePosition != null) {
+                writePosition.force();
             }
         }
     }
@@ -138,10 +143,15 @@ public class Synchronizer {
         syncJob = null;
         forceJob = null;
         waitForPendingWrites();
-        while( ! syncAndCloseFile.isEmpty()) {
-            syncAndCloseFile();
+        boolean closeMore = true;
+        while( closeMore && ! syncAndCloseFile.isEmpty()) {
+            closeMore = syncAndCloseFile();
         }
         if( shutdown) fsync.shutdown();
+        WritePosition writePosition = currentRef.getAndSet(null);
+        if( writePosition != null) {
+            writePosition.force();
+        }
     }
 
     private void waitForPendingWrites() {

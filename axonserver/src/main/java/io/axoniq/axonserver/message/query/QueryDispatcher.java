@@ -147,6 +147,9 @@ public class QueryDispatcher {
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected event) {
         registrationCache.remove(event.clientIdentification());
+        if( ! event.isProxied()) {
+            queryQueue.move(new ClientStreamIdentification(event.getContext(), event.getClientStreamId()).toString(), query -> null);
+        }
     }
 
     /**

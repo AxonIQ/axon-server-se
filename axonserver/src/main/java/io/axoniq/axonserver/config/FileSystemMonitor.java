@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  *
@@ -35,7 +36,7 @@ public class FileSystemMonitor extends DiskSpaceHealthIndicator {
 
     private final MeterRegistry meterRegistry;
 
-    private final Map<String, Path> fileSystems = new HashMap<>();
+    private final Map<String, Path> fileSystems = new ConcurrentHashMap<>();
 
     public FileSystemMonitor(DiskSpaceHealthIndicatorProperties diskSpaceHealthProperties,
                              MeterRegistry meterRegistry) {

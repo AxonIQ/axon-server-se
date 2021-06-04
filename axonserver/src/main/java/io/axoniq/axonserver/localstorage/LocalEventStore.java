@@ -54,6 +54,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -72,7 +73,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
 
 /**
  * Component that handles the actual interaction with the event store.
@@ -380,7 +380,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .name("event_stream")
                 .tag("context", context)
                 .tag("stream", "aggregate_events")
-                .tag("origin", "local")
+                .tag("origin", "local_event_store")
                 .metrics();
     }
 
@@ -594,12 +594,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public boolean isAutoStartup() {
-        return true;
-    }
-
-    @Override
-    public void stop(@Nonnull Runnable runnable) {
+    public void stop() {
         running = false;
         dataFetcher.shutdown();
         workersMap.forEach((k, workers) -> workers.close(false));
@@ -610,18 +605,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             Thread.currentThread().interrupt();
         }
         dataFetcher.shutdownNow();
-        runnable.run();
     }
 
     @Override
     public void start() {
         running = true;
-    }
-
-    @Override
-    public void stop() {
-        stop(() -> {
-        });
     }
 
     @Override
@@ -742,8 +730,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotStorageEngine.getFirstToken();
     }
 
-    public boolean hasContext(String context) {
-        return workersMap.containsKey(context);
+    public boolean activeContext(String context) {
+        return workersMap.containsKey(context) && workersMap.get(context).initialized;
     }
 
     private class Workers {

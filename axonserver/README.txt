@@ -3,9 +3,18 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
-Release Notes for version 4.4.10
+Release Notes for version 4.5.2
 -------------------------------
-* Fix for subscription queries in case of missing query handler
+* Improved performance for reading aggregates
+* Improvements in shutdown process
+* Reduced memory usage for in memory indexes
+* Fix: Load balancing operations for processors should ignore stopped instances
+* Fix: Stop reading events when query deadline expires
+
+Release Notes for version 4.5.1
+-----------------------------
+* Configurable strategy for aggregate events stream sequence validation
+* Fix UI check for updates
 
 Release Notes for version 4.5
 -----------------------------
@@ -41,6 +50,18 @@ Notes:
 
 - For the Docker image, plugins are stored in the /data/plugins directory.
 
+Release Notes for version 4.4.12
+-------------------------------
+* Fix: Load balancing operations for processors should ignore stopped instances
+* Fix: Stop reading events when query deadline expires
+
+Release Notes for version 4.4.11
+-------------------------------
+* Configurable strategy for aggregate events stream sequence validation
+
+Release Notes for version 4.4.10
+-------------------------------
+* Fix for subscription queries in case of missing query handler
 
 Release Notes for version 4.4.10
 --------------------------------

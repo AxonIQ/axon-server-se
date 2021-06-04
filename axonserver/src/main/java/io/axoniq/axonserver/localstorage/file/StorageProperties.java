@@ -68,15 +68,15 @@ public class StorageProperties implements Cloneable {
      */
     private int validationSegments = 10;
     /**
-     * Number of segments to keep in primary location (only for multitier storage option)
+     * Number of recent segments that Axon Server keeps memory mapped
      */
-    private int numberOfSegments = 5;
+    private int memoryMappedSegments = 5;
     /**
-     * Delay to clear ByfeBuffers from off-heap memory for writable segments
+     * Delay to clear ByteBuffers from off-heap memory for writable segments
      */
     private int primaryCleanupDelay = 15;
     /**
-     * Delay to clear ByfeBuffers from off-heap memory for read-only segments
+     * Delay to clear ByteBuffers from off-heap memory for read-only segments
      */
     private int secondaryCleanupDelay = 15;
     /**
@@ -101,11 +101,16 @@ public class StorageProperties implements Cloneable {
      */
     private Boolean forceCleanMmapIndex;
 
+    /**
+     * Define how many events to prefetch from disk when streaming events to the client
+     */
+    private int eventsPerSegmentPrefetch = 50;
 
     /**
      * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
      */
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
+
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
     /**
@@ -115,7 +120,6 @@ public class StorageProperties implements Cloneable {
             Duration.ofDays(7)
     };
     private String indexFormat;
-
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
@@ -173,6 +177,15 @@ public class StorageProperties implements Cloneable {
     public void setStorage(String storage) {
         this.storage = storage;
     }
+
+    public int getEventsPerSegmentPrefetch() {
+        return eventsPerSegmentPrefetch;
+    }
+
+    public void setEventsPerSegmentPrefetch(int eventsPerSegmentPrefetch) {
+        this.eventsPerSegmentPrefetch = eventsPerSegmentPrefetch;
+    }
+
 
     public float getBloomIndexFpp() {
         return bloomIndexFpp;
@@ -241,12 +254,12 @@ public class StorageProperties implements Cloneable {
         this.validationSegments = validationSegments;
     }
 
-    public int getNumberOfSegments() {
-        return numberOfSegments;
+    public int getMemoryMappedSegments() {
+        return memoryMappedSegments;
     }
 
-    public void setNumberOfSegments(int numberOfSegments) {
-        this.numberOfSegments = numberOfSegments;
+    public void setMemoryMappedSegments(int memoryMappedSegments) {
+        this.memoryMappedSegments = memoryMappedSegments;
     }
 
     public int getPrimaryCleanupDelay() {

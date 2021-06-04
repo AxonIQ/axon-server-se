@@ -17,7 +17,20 @@ import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.GrpcFlowControlExecutorProvider;
-import io.axoniq.axonserver.grpc.event.*;
+import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
+import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
+import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
+import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
+import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -96,8 +109,11 @@ public class EventDispatcher implements AxonServerClientService {
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> eventsCounter = new ConcurrentHashMap<>();
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
+    @Value("${axoniq.axonserver.read-sequence-validation-strategy:LOG}")
+    private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
     private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
     private final RetryBackoffSpec retrySpec;
+    private final int aggregateEventsPrefetch;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
@@ -105,13 +121,15 @@ public class EventDispatcher implements AxonServerClientService {
                            MeterFactory meterFactory,
                            GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
-                           @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis) {
+                           @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
+                           @Value("${axoniq.axonserver.event.aggregate.prefetch:100}") int aggregateEventsPrefetch) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
         this.authenticationProvider = authenticationProvider;
         this.meterFactory = meterFactory;
         this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
+        this.aggregateEventsPrefetch = aggregateEventsPrefetch;
     }
 
 
@@ -216,10 +234,12 @@ public class EventDispatcher implements AxonServerClientService {
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
         CallStreamObserver<SerializedEvent> streamObserver = (CallStreamObserver<SerializedEvent>) responseObserver;
-        CallStreamObserver<SerializedEvent> validateStreamObserver = new SequenceValidationStreamObserver(streamObserver);
-        listAggregateEvents(contextProvider.getContext(), authenticationProvider.get(),
-                request,
-                new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));
+        String context = contextProvider.getContext();
+        CallStreamObserver<SerializedEvent> validateStreamObserver =
+                new SequenceValidationStreamObserver(streamObserver, sequenceValidationStrategy, context);
+        listAggregateEvents(context, authenticationProvider.get(),
+                            request,
+                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));
     }
 
 
@@ -250,6 +270,7 @@ public class EventDispatcher implements AxonServerClientService {
                             .aggregateEvents(context, principal, newRequest);
                         }
                 )
+                        .limitRate(aggregateEventsPrefetch)
                         .doOnEach(signal -> {
                             if (signal.hasValue()) {
                                 ((AtomicLong)signal.getContextView().get(LAST_SEQ_KEY))
@@ -265,7 +286,7 @@ public class EventDispatcher implements AxonServerClientService {
                         .name("event_stream")
                         .tag("context", context)
                         .tag("stream", "aggregate_events")
-                        .tag("origin", "cluster")
+                        .tag("origin", "client_request")
                         .metrics();
 
                 outgoingStream.accept(publisher);

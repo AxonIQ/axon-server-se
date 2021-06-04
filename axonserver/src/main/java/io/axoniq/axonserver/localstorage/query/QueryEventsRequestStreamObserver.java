@@ -86,7 +86,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
 
     private final AggregateReader aggregateReader;
     private final long defaultLimit;
-    private final long timeout;
+    private final long deadline;
     private final EventDecorator eventDecorator;
     private final StreamObserver<QueryEventsResponse> responseObserver;
     private final AtomicReference<Sender> senderRef = new AtomicReference<>();
@@ -103,7 +103,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         this.eventStreamReader = eventStreamReader;
         this.aggregateReader = aggregateReader;
         this.defaultLimit = defaultLimit;
-        this.timeout = timeout;
+        this.deadline = System.currentTimeMillis() + timeout;
         this.eventDecorator = eventDecorator;
         this.responseObserver = responseObserver;
         this.snapshotWriteStorage = snapshotWriteStorage;
@@ -128,7 +128,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
                 if (s == null) {
                     return new Sender(queryEventsRequest.getNumberOfPermits(),
                                       queryEventsRequest.getLiveEvents(),
-                                      System.currentTimeMillis() + timeout);
+                                      deadline);
                 }
                 return s;
             });
@@ -303,7 +303,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             return false;
         }
         try {
-            return pipeLine.process(new DefaultQueryResult(new EventExpressionResult(eventDecorator
+            return !deadlineExpired() && pipeLine.process(new DefaultQueryResult(new EventExpressionResult(eventDecorator
                                                                                              .decorateEventWithToken(
                                                                                                      event))));
         } catch (RuntimeException re) {
@@ -315,6 +315,10 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             }
             return false;
         }
+    }
+
+    private boolean deadlineExpired() {
+        return System.currentTimeMillis() > deadline;
     }
 
     private void sendColumns(Pipeline pipeLine, boolean hideToken) {
@@ -434,7 +438,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
             }
             synchronized (messages) {
                 Iterator<Map.Entry<Object, QueryResult>> it = messages.entrySet().iterator();
-                while (it.hasNext() && permits.decrementAndGet() >= 0) {
+                while (it.hasNext() && permits.decrementAndGet() >= 0 && !deadlineExpired()) {
                     sendToClient(responseObserver, it.next().getValue());
                     it.remove();
                 }

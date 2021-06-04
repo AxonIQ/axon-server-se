@@ -15,13 +15,18 @@ import java.util.concurrent.atomic.AtomicReference;
  * @since 4.4.11
  */
 public class SequenceValidationStreamObserver extends CallStreamObserverDelegator<SerializedEvent> {
-
+    private final SequenceValidationStrategy sequenceValidationStrategy;
     private final AtomicReference<SerializedEvent> lastSentEvent = new AtomicReference<>();
+    private final String context;
     private final Logger logger = LoggerFactory.getLogger(SequenceValidationStreamObserver.class);
 
     public SequenceValidationStreamObserver(
-            CallStreamObserver<SerializedEvent> delegate) {
+            CallStreamObserver<SerializedEvent> delegate,
+            SequenceValidationStrategy sequenceValidationStrategy,
+            String context) {
         super(delegate);
+        this.sequenceValidationStrategy = sequenceValidationStrategy;
+        this.context = context;
     }
 
     @Override
@@ -31,13 +36,20 @@ public class SequenceValidationStreamObserver extends CallStreamObserverDelegato
             delegate().onNext(event);
             lastSentEvent.set(event);
         } else {
-            String message = String.format("Invalid sequence number for aggregate %s. Received: %d, expected: %d",
+            String message = String.format("Invalid sequence number for aggregate %s in context %s. "
+                                                   + "Received: %d, expected: %d",
                                            event.getAggregateIdentifier(),
+                                           context,
                                            event.getAggregateSequenceNumber(),
                                            prevEvent.getAggregateSequenceNumber() + 1);
-            logger.error(message);
-            delegate().onError(new RuntimeException(message));
-            throw new RuntimeException(message);
+            if (SequenceValidationStrategy.FAIL.equals(sequenceValidationStrategy)) {
+                logger.info(message);
+                delegate().onError(new RuntimeException(message));
+            } else {
+                logger.warn(message);
+                delegate().onNext(event);
+                lastSentEvent.set(event);
+            }
         }
     }
 }

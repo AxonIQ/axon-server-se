@@ -28,9 +28,10 @@ public class FakeClientProcessor implements ClientProcessor {
 
     private final EventProcessorInfo eventProcessorInfo;
 
-    public FakeClientProcessor(String clientId, boolean belongsToComponent, String processorName) {
+    public FakeClientProcessor(String clientId, boolean belongsToComponent, String processorName, boolean running) {
         this(clientId, belongsToComponent, EventProcessorInfo.newBuilder()
                                                              .setProcessorName(processorName)
+                                                             .setRunning(running)
                                                              .build());
     }
 
