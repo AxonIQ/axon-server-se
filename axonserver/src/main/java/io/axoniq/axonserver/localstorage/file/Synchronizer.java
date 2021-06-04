@@ -86,7 +86,7 @@ public class Synchronizer {
         }
     }
 
-    private void syncAndCloseFile() {
+    private boolean syncAndCloseFile() {
         WritePosition toSync = syncAndCloseFile.pollFirst();
         if (toSync != null) {
             try {
@@ -96,8 +96,10 @@ public class Synchronizer {
             } catch (Exception ex) {
                 log.warn("Failed to close file {} - {}", toSync.segment, ex.getMessage());
                 syncAndCloseFile.add(toSync);
+                return false;
             }
         }
+        return true;
     }
 
     public void register(WritePosition writePosition, StorageCallback callback) {
@@ -141,8 +143,9 @@ public class Synchronizer {
         syncJob = null;
         forceJob = null;
         waitForPendingWrites();
-        while( ! syncAndCloseFile.isEmpty()) {
-            syncAndCloseFile();
+        boolean closeMore = true;
+        while( closeMore && ! syncAndCloseFile.isEmpty()) {
+            closeMore = syncAndCloseFile();
         }
         if( shutdown) fsync.shutdown();
         WritePosition writePosition = currentRef.getAndSet(null);
