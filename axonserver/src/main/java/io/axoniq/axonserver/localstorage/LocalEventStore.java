@@ -54,7 +54,6 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -72,6 +71,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -96,8 +96,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
-     * events
-     * would be ignored due to blacklist, tracking tokens on client applications would never be updated.
+     * events would be ignored due to blacklist, tracking tokens on client applications would never be updated.
      */
     private final int blacklistedSendAfter;
     private final EventDecorator eventDecorator;
@@ -108,7 +107,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long timeout = 300000;
     @Value("${axoniq.axonserver.new-permits-timeout:120000}")
     private long newPermitsTimeout = 120000;
-    @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
+    @SuppressWarnings("FieldMayBeFinal") @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
     private boolean checkSequenceNrForSnapshots = true;
 
     public LocalEventStore(EventStoreFactory eventStoreFactory,
@@ -287,10 +286,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             public void onNext(InputStream inputStream) {
                 if (checkMaxEventCount()) {
                     try {
-                        Event event = Event.parseFrom(inputStream);
-                        eventList.add(eventInterceptors.appendEvent(event, executionContext));
+                        eventList.add(Event.parseFrom(inputStream));
                     } catch (Exception e) {
-                        executionContext.compensate(e);
                         closed.set(true);
                         responseObserver.onError(GrpcExceptionBuilder.build(e));
                     }
@@ -301,11 +298,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (eventList.size() < maxEventCount) {
                     return true;
                 }
-                if (closed.compareAndSet(false, true)) {
-                    responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
-                                                                        "Maximum number of events in transaction exceeded: "
-                                                                                + maxEventCount));
-                }
+                responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
+                                                                    "Maximum number of events in transaction exceeded: "
+                                                                            + maxEventCount));
                 return false;
             }
 
@@ -321,11 +316,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 }
                 runInDataWriterPool(() -> {
                     try {
-                        eventInterceptors.eventsPreCommit(eventList, executionContext);
+                        List<Event> interceptedEventList = eventList.stream().map(e -> eventInterceptors
+                                .appendEvent(e, executionContext)).collect(Collectors.toList());
+                        eventInterceptors.eventsPreCommit(interceptedEventList, executionContext);
                         workers(context)
                                 .eventWriteStorage
-                                .store(eventList)
-                                .thenAccept(r -> eventInterceptors.eventsPostCommit(eventList, executionContext))
+                                .store(interceptedEventList)
+                                .thenAccept(r -> eventInterceptors.eventsPostCommit(interceptedEventList, executionContext))
                                 .thenRun(this::confirm)
                                 .exceptionally(this::error);
                     } catch (RequestRejectedException e) {
@@ -333,6 +330,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         responseObserver.onError(new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
                                                                                 "Event rejected by interceptor",
                                                                                 e));
+                    } catch (Exception e) {
+                        executionContext.compensate(e);
+                        responseObserver.onError(GrpcExceptionBuilder.build(e));
                     }
                 }, this::error);
             }
@@ -371,7 +371,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         getMaxSequence(request),
                         request.getMinToken())
                 .map(activeEventDecorator::decorateEvent)
-                .subscribeOn(Schedulers.fromExecutorService(dataFetcher),false)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher), false)
                 .transform(f -> count(f, counter -> {
                     if (counter == 0) {
                         logger.debug("Aggregate not found: {}", request);
@@ -753,8 +753,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private volatile boolean initialized;
 
 
-
-
         public Workers(String context) {
             this.eventStorageEngine = eventStoreFactory.createEventStorageEngine(context);
             this.snapshotStorageEngine = eventStoreFactory.createSnapshotStorageEngine(context);
@@ -801,8 +799,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     snapshotStorageEngine.close(false);
                     throw runtimeException;
                 }
-
-
             }
         }
 
@@ -837,9 +833,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
 
         /**
-         * Checks if there are any tracking event processors that are waiting for new permits for a long time.
-         * This may indicate that the connection to the client application has gone. If a tracking event processor
-         * is waiting too long, the connection will be cancelled and the client needs to restart a tracker.
+         * Checks if there are any tracking event processors that are waiting for new permits for a long time. This may
+         * indicate that the connection to the client application has gone. If a tracking event processor is waiting too
+         * long, the connection will be cancelled and the client needs to restart a tracker.
          */
         private void validateActiveConnections() {
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
@@ -853,7 +849,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventWriteStorage.deleteAllEventData();
             snapshotWriteStorage.deleteAllEventData();
         }
-
     }
 
     private class InterceptorAwareEventDecorator implements EventDecorator {
