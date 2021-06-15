@@ -16,6 +16,7 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -31,6 +32,7 @@ public class QueryInformation {
     private final Consumer<String> onAllReceived;
     private final Set<String> clientStreamIds;
     private final String sourceClientId;
+    private final AtomicReference<QueryResponse> failedResponse = new AtomicReference<>();
 
     /**
      * Creates an instance with the specified parameters.
@@ -76,13 +78,19 @@ public class QueryInformation {
      * @return the number of remaining expected response
      */
     public int forward(String clientStreamId, QueryResponse queryResponse) {
-        int remaining = 0;
+        int remaining = remainingReplies.get();
         try {
-            responseConsumer.accept(queryResponse);
-            remaining = remainingReplies.decrementAndGet();
-            if (queryResponse.hasErrorMessage()) {
+            if(hasError(queryResponse)) {
+                failedResponse.set(queryResponse);
                 completed(clientStreamId);
+            } else {
+                remaining = remainingReplies.decrementAndGet();
+                if( remaining >= 0) {
+                    responseConsumer.accept(queryResponse);
+                    failedResponse.set(null);
+                }
             }
+
             if (remaining <= 0) {
                 onAllReceived.accept(clientStreamId);
             }
@@ -90,6 +98,10 @@ public class QueryInformation {
             // ignore exception on sending response, caused by other party already gone
         }
         return remaining;
+    }
+
+    private boolean hasError(QueryResponse queryResponse) {
+        return !queryResponse.getErrorCode().isEmpty() || queryResponse.hasErrorMessage();
     }
 
     /**
@@ -103,6 +115,10 @@ public class QueryInformation {
     public boolean completed(String clientStreamId) {
         clientStreamIds.remove(clientStreamId);
         if (clientStreamIds.isEmpty()) {
+            QueryResponse response = failedResponse.getAndSet(null);
+            if (response != null) {
+                responseConsumer.accept(response);
+            }
             onAllReceived.accept(clientStreamId);
         }
         return clientStreamIds.isEmpty();
