@@ -12,7 +12,6 @@ package io.axoniq.axonserver.refactoring.transport.rest;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -24,7 +23,6 @@ import io.axoniq.axonserver.refactoring.store.SerializedEvent;
 import io.axoniq.axonserver.refactoring.transport.grpc.EventDispatcher;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.MetaDataJson;
 import io.axoniq.axonserver.refactoring.transport.rest.dto.SerializedObjectJson;
-import io.axoniq.axonserver.refactoring.util.ObjectUtils;
 import io.axoniq.axonserver.refactoring.util.StringUtils;
 import io.grpc.stub.StreamObserver;
 import io.swagger.annotations.ApiImplicitParam;
@@ -42,7 +40,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import springfox.documentation.annotations.ApiIgnore;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -248,35 +245,36 @@ public class EventsRestController {
         if (jsonEvents.messages.isEmpty()) {
             throw new IllegalArgumentException("Missing messages");
         }
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context,
-                                                                                    getOrDefault(principal,
-                                                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                                                                    new StreamObserver<Confirmation>() {
-                                                                                        @Override
-                                                                                        public void onNext(
-                                                                                                Confirmation confirmation) {
-                                                                                            result.complete(null);
-                                                                                        }
-
-                                                                                        @Override
-                                                                                        public void onError(
-                                                                                                Throwable throwable) {
-                                                                                            result.completeExceptionally(
-                                                                                                    throwable);
-                                                                                        }
-
-                                                                                        @Override
-                                                                                        public void onCompleted() {
-                                                                                            // no action needed
-                                                                                        }
-                                                                                    });
-        if (eventInputStream != null) {
-            jsonEvents.messages.forEach(jsonEvent -> eventInputStream
-                    .onNext(new ByteArrayInputStream(jsonEvent.asEvent().toByteArray())));
-            eventInputStream.onCompleted();
-        }
-        return result;
+//        CompletableFuture<Void> result = new CompletableFuture<>();
+//        StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context,
+//                                                                                    getOrDefault(principal,
+//                                                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+//                                                                                    new StreamObserver<Confirmation>() {
+//                                                                                        @Override
+//                                                                                        public void onNext(
+//                                                                                                Confirmation confirmation) {
+//                                                                                            result.complete(null);
+//                                                                                        }
+//
+//                                                                                        @Override
+//                                                                                        public void onError(
+//                                                                                                Throwable throwable) {
+//                                                                                            result.completeExceptionally(
+//                                                                                                    throwable);
+//                                                                                        }
+//
+//                                                                                        @Override
+//                                                                                        public void onCompleted() {
+//                                                                                            // no action needed
+//                                                                                        }
+//                                                                                    });
+//        if (eventInputStream != null) {
+//            jsonEvents.messages.forEach(jsonEvent -> eventInputStream
+//                    .onNext(new ByteArrayInputStream(jsonEvent.asEvent().toByteArray())));
+//            eventInputStream.onCompleted();
+//        }
+//        return result;
+        return null;
     }
 
     /**
@@ -323,28 +321,29 @@ public class EventsRestController {
 
         Event event = jsonEvent.asEvent();
         CompletableFuture<Void> result = new CompletableFuture<>();
-        eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
-                                        ObjectUtils.getOrDefault(principal,
-                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                        event,
-                                        new StreamObserver<Confirmation>() {
-                                            @Override
-                                            public void onNext(Confirmation confirmation) {
-                                                result.complete(null);
-                                            }
-
-                                            @Override
-                                            public void onError(Throwable throwable) {
-                                                result.completeExceptionally(throwable);
-                                            }
-
-                                            @Override
-                                            public void onCompleted() {
-                                                // no action needed
-
-                                            }
-                                        });
-        return result;
+//        eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+//                                        ObjectUtils.getOrDefault(principal,
+//                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+//                                        event,
+//                                        new StreamObserver<Confirmation>() {
+//                                            @Override
+//                                            public void onNext(Confirmation confirmation) {
+//                                                result.complete(null);
+//                                            }
+//
+//                                            @Override
+//                                            public void onError(Throwable throwable) {
+//                                                result.completeExceptionally(throwable);
+//                                            }
+//
+//                                            @Override
+//                                            public void onCompleted() {
+//                                                // no action needed
+//
+//                                            }
+//                                        });
+//        return result;
+        return null;
     }
 
     @JsonPropertyOrder({"messageIdentifier",

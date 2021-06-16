@@ -34,6 +34,11 @@ class DummyCommandHandler implements CommandHandler {
     }
 
     @Override
+    public String id() {
+        return null;
+    }
+
+    @Override
     public CommandDefinition definition() {
         return new CommandDefinition() {
             @Override

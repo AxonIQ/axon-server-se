@@ -17,7 +17,4 @@ public interface SnapshotStorage {
 
     Flux<SnapshotQueryResponse> querySnapshots(AdHocSnapshotsQuery query);
 
-    Mono<Long> lastToken();
-
-    Mono<Long> firstToken();
 }

@@ -29,6 +29,7 @@ import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandProvi
 import io.axoniq.axonserver.refactoring.messaging.command.SerializedCommandResponse;
 import io.axoniq.axonserver.refactoring.messaging.command.api.Command;
 import io.axoniq.axonserver.refactoring.messaging.command.api.CommandDefinition;
+import io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler;
 import io.axoniq.axonserver.refactoring.messaging.command.api.CommandResponse;
 import io.axoniq.axonserver.refactoring.requestprocessor.command.CommandService;
 import io.axoniq.axonserver.refactoring.transport.ClientIdRegistry;
@@ -176,6 +177,16 @@ public class CommandGrpcService implements AxonServerClientService {
                         checkInitClient(subscribe.getClientId(), subscribe.getComponentName());
                         commandService.register(new io.axoniq.axonserver.refactoring.messaging.command.api.CommandHandler() {
                             @Override
+                            public String id() {
+                                return null;
+                            }
+
+                            @Override
+                            public String context() {
+                                return CommandHandler.super.context();
+                            }
+
+                            @Override
                             public CommandDefinition definition() {
                                 return new CommandDefinition() {
                                     @Override
@@ -216,6 +227,11 @@ public class CommandGrpcService implements AxonServerClientService {
 
                                     responseObserver.onNext(request);
                                 });
+                            }
+
+                            @Override
+                            public int loadFactor() {
+                                return CommandHandler.super.loadFactor();
                             }
                         }, springAuthentication).subscribe(r -> registrations.put(subscribe.getCommand(), r));
                         break;

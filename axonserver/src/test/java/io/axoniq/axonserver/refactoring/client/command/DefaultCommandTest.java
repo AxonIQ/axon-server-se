@@ -35,6 +35,11 @@ public class DefaultCommandTest {
     public void setUp() throws Exception {
         ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new CommandHandler() {
             @Override
+            public String id() {
+                return null;
+            }
+
+            @Override
             public CommandDefinition definition() {
                 return new CommandDefinition() {
                     @Override
