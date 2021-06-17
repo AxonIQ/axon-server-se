@@ -54,7 +54,6 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -87,7 +86,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
-    private final ExecutorService dataFetcher;
+    public final ExecutorService dataFetcher;
     private final ExecutorService dataWriter;
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
@@ -144,6 +143,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
+        DataFeatcherSchedulerProvider.setDataFetcher(dataFetcher);
         this.dataWriter = Executors.newFixedThreadPool(writerThreads, new CustomizableThreadFactory("data-writer-"));
         this.eventDecorator = eventDecorator;
     }
@@ -371,7 +371,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         getMaxSequence(request),
                         request.getMinToken())
                 .map(activeEventDecorator::decorateEvent)
-                .subscribeOn(Schedulers.fromExecutorService(dataFetcher),false)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher))
                 .transform(f -> count(f, counter -> {
                     if (counter == 0) {
                         logger.debug("Aggregate not found: {}", request);

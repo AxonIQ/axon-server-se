@@ -122,7 +122,7 @@ public class EventDispatcher implements AxonServerClientService {
                            GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
                            @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
-                           @Value("${axoniq.axonserver.event.aggregate.prefetch:100}") int aggregateEventsPrefetch) {
+                           @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
         this.authenticationProvider = authenticationProvider;
@@ -270,7 +270,7 @@ public class EventDispatcher implements AxonServerClientService {
                             .aggregateEvents(context, principal, newRequest);
                         }
                 )
-                        .limitRate(aggregateEventsPrefetch)
+                        .limitRate(aggregateEventsPrefetch*5,aggregateEventsPrefetch)
                         .doOnEach(signal -> {
                             if (signal.hasValue()) {
                                 ((AtomicLong)signal.getContextView().get(LAST_SEQ_KEY))
@@ -282,7 +282,7 @@ public class EventDispatcher implements AxonServerClientService {
                                         t.failure().getClass().getName() ,t.failure().getMessage(), request.getAggregateId())))
                         .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
                         .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
-                        .contextWrite(c -> c.put(LAST_SEQ_KEY, new AtomicLong(-1)))
+                        .contextWrite(c -> c.put(LAST_SEQ_KEY, new AtomicLong(request.getInitialSequence()-1)))
                         .name("event_stream")
                         .tag("context", context)
                         .tag("stream", "aggregate_events")

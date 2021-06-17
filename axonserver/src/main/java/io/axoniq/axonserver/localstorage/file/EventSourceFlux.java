@@ -1,13 +1,15 @@
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.localstorage.DataFeatcherSchedulerProvider;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 /**
@@ -24,6 +26,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
     private final IndexEntries indexEntries;
     private final EventSourceFactory eventSourceFactory;
     private final long segment;
+    private final Supplier<ExecutorService> dataFetcherSchedulerProvider;
 
     /**
      * Creates a new instance able to read events from the specified position using the provided {@link
@@ -33,10 +36,27 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      * @param eventSourceFactory the factory used to open a new {@link EventSource} to access the segment file.
      */
     public EventSourceFlux(IndexEntries indexEntries, EventSourceFactory eventSourceFactory, long segment) {
+        this(indexEntries, eventSourceFactory, segment, new DataFeatcherSchedulerProvider());
+    }
+
+
+    /**
+     * Creates a new instance able to read events from the specified position using the provided {@link
+     * EventSourceFactory}.
+     *
+     * @param indexEntries       the list of the positions of the interesting events in the segment.
+     * @param eventSourceFactory the factory used to open a new {@link EventSource} to access the segment file.
+     */
+    public EventSourceFlux(IndexEntries indexEntries,
+                           EventSourceFactory eventSourceFactory,
+                           long segment,
+                           Supplier<ExecutorService> dataFetcherScheduler) {
         this.indexEntries = indexEntries;
         this.eventSourceFactory = eventSourceFactory;
         this.segment = segment;
+        this.dataFetcherSchedulerProvider = dataFetcherScheduler;
     }
+
 
     /**
      * Returns the {@link Flux<SerializedEvent>} that provides the events in the specified positions.
@@ -45,48 +65,19 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      */
     @Override
     public Flux<SerializedEvent> get() {
-        return Flux.push(sink -> {
-            EventSource eventSource;
-            try {
-                Optional<EventSource> optional = eventSourceFactory.create();
-                if (!optional.isPresent()) {
-                    logger.warn("Event source not found for segment {}",segment);
-                    sink.error(new EventSourceNotFoundException());
-                    return;
-                }
-                eventSource = optional.get();
-            } catch (Exception e) {
-                sink.error(e);
-                return;
+        return Mono.defer(() -> {
+            Optional<EventSource> optional = eventSourceFactory.create();
+            if (!optional.isPresent()) {
+                logger.warn("Event source not found for segment {}", segment);
+                return Mono.error((new EventSourceNotFoundException()));
             }
-            final AtomicInteger nextPositionIndex = new AtomicInteger(0);
-
-            sink.onRequest(requested -> {
-                int count = 0;
-                List<Integer> positions = indexEntries.positions();
-                while (count < requested && nextPositionIndex.get() < indexEntries.size()) {
-
-                    try {
-                        SerializedEvent event = eventSource.readEvent(positions.get(nextPositionIndex
-                                                                                            .getAndIncrement()));
-                        logger.trace("Reading from EventSource the event with sequence number {} for aggregate {}",
-                                     event.getAggregateSequenceNumber(),
-                                     event.getAggregateIdentifier());
-
-                        count++;
-                        sink.next(event);
-                    } catch (Exception e) {
-                        sink.error(e);
-                        return;
-                    }
-                }
-
-                if (nextPositionIndex.get() >= indexEntries.size()) {
-                    sink.complete();
-                }
-            });
-
-            sink.onDispose(eventSource::close);
-        });
+            return Mono.just(optional.get());
+        })
+                .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
+                .flatMapMany(es -> Flux.fromIterable(indexEntries.positions())
+                        .map(es::readEvent));
     }
+
 }
+
+

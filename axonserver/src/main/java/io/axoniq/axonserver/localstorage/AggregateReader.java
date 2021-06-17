@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -85,28 +85,30 @@ public class AggregateReader {
                                         long minSequenceNumber,
                                         long maxSequenceNumber,
                                         long minTokenHint) {
-        return Flux.defer(() -> {
-            if (useSnapshots) {
-                Optional<SerializedEvent> optionalSnapshot = snapshotReader.readSnapshot(aggregateId,
-                                                                                         minSequenceNumber,
-                                                                                         maxSequenceNumber);
-                if (optionalSnapshot.isPresent()) {
-                    SerializedEvent snapshot = optionalSnapshot.get();
-                    if (snapshot.getAggregateSequenceNumber() >= maxSequenceNumber) {
-                        return Flux.empty();
-                    }
-                    long actualMinSequenceNumber = snapshot.asEvent().getAggregateSequenceNumber() + 1;
-                    Publisher<SerializedEvent> events = eventStorageEngine.eventsPerAggregate(aggregateId,
-                                                                                              actualMinSequenceNumber,
-                                                                                              maxSequenceNumber,
-                                                                                              minTokenHint);
-                    return Flux.just(snapshot).concatWith(events);
-                }
-            }
-            return eventStorageEngine.eventsPerAggregate(aggregateId,
-                                                         minSequenceNumber,
-                                                         maxSequenceNumber,
-                                                         minTokenHint);
-        });
+
+        return snapshot(aggregateId, useSnapshots, minSequenceNumber, maxSequenceNumber)
+                .flatMapMany(snapshot ->
+                        Flux.just(snapshot).concatWith(eventStorageEngine.eventsPerAggregate(aggregateId,
+                                snapshot.getAggregateSequenceNumber()+1,
+                                maxSequenceNumber,
+                                minTokenHint)))
+                .switchIfEmpty(eventStorageEngine.eventsPerAggregate(aggregateId,
+                        minSequenceNumber,
+                        maxSequenceNumber,
+                        minTokenHint));
+    }
+
+
+    private Mono<SerializedEvent> snapshot(String aggregateId,
+                                   boolean useSnapshots,
+                                   long minSequenceNumber,
+                                   long maxSequenceNumber){
+        if (useSnapshots){
+            return snapshotReader.snapshot(aggregateId, minSequenceNumber, maxSequenceNumber)
+            .filter(snapshot -> snapshot.getAggregateSequenceNumber() >= maxSequenceNumber);
+        } else {
+            return Mono.empty();
+        }
+
     }
 }
