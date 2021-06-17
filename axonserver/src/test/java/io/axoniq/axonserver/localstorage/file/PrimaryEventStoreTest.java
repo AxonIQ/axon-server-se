@@ -164,35 +164,6 @@ public class PrimaryEventStoreTest {
         assertEquals(1000, counter);
     }
 
-    @Test
-    public void rollbackDeleteSegments() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
-        setupEvents(testSubject, 100, 100);
-        Thread.sleep(1500);
-        testSubject.rollback(9899);
-        assertEquals(9899, testSubject.getLastToken());
-
-        testSubject.rollback(859);
-        assertEquals(899, testSubject.getLastToken());
-    }
-
-    @Test
-    public void rollbackAndRead() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
-        setupEvents(testSubject, 5, 3);
-        Thread.sleep(1500);
-        testSubject.rollback(2);
-        assertEquals(2, testSubject.getLastToken());
-
-        testSubject.initSegments(Long.MAX_VALUE, 0L);
-        assertEquals(2, testSubject.getLastToken());
-
-        storeEvent(testSubject);
-
-        testSubject.initSegments(Long.MAX_VALUE, 0L);
-        assertEquals(3, testSubject.getLastToken());
-    }
-
     private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents) throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
@@ -244,17 +215,5 @@ public class PrimaryEventStoreTest {
             assertEquals(9999, serializedEventWithToken.getToken());
 
         }
-    }
-
-    @Test
-    public void testDeletingAllEvents() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
-        setupEvents(testSubject, 5, 3);
-        Thread.sleep(1500);
-        testSubject.deleteAllEventData();
-        assertEquals(-1, testSubject.getLastToken());
-
-        storeEvent(testSubject);
-        assertEquals(0,testSubject.getLastToken());
     }
 }

@@ -54,7 +54,6 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -193,11 +192,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     @Override
     public void deleteAllEventData(String context) {
-        Workers workers = workersMap.get(context);
+        Workers workers = workersMap.remove(context);
         if (workers == null) {
             return;
         }
-        workers.deleteAllEventData();
+        workers.close(true);
+        initContext(context, false);
     }
 
     public void cancel(String context) {
@@ -845,15 +845,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
             trackingEventManager.validateActiveConnections(minLastPermits);
         }
-
-        /**
-         * Deletes all event and snapshot data for this context.
-         */
-        public void deleteAllEventData() {
-            eventWriteStorage.deleteAllEventData();
-            snapshotWriteStorage.deleteAllEventData();
-        }
-
     }
 
     private class InterceptorAwareEventDecorator implements EventDecorator {

@@ -90,11 +90,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         return segments;
     }
 
-    @Override
-    public void deleteAllEventData() {
-        throw new UnsupportedOperationException("Development mode deletion is not supported in InputStreamEventStore");
-    }
-
     private InputStreamEventSource get(long segment, boolean force) {
         if (!force && !segments.contains(segment)) {
             return null;
