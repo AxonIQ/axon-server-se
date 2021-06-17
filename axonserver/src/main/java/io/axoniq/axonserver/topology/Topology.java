@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.topology;
 
+import java.util.Map;
 import java.util.stream.Stream;
 
 /**
@@ -41,7 +42,10 @@ public interface Topology {
 
     AxonServerNode getMe();
 
-    default AxonServerNode findNodeForClient(String clientName, String componentName, String context) {
+    default AxonServerNode findNodeForClient(String clientId,
+                                             String componentName,
+                                             String context,
+                                             Map<String,String> tags) {
         return getMe();
     }
 

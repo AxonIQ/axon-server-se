@@ -35,6 +35,7 @@ import io.axoniq.axonserver.topology.AxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -81,7 +82,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param topology             the {@link Topology} of the group this Axon Server instance participates in
      * @param contextProvider      a {@link ContextProvider} used to retrieve the context this Axon Server instance is
      *                             working under
-     * @param clientIdRegistry
+     * @param clientIdRegistry      registry to keep track of connected control streams
      * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
      * @param instructionAckSource responsible for sending instruction acknowledgements
      */
@@ -119,11 +120,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     @Override
     public void getPlatformServer(ClientIdentification request, StreamObserver<PlatformInfo> responseObserver) {
         String context = contextProvider.getContext();
-        eventPublisher.publishEvent(new ClientTagsUpdate(request.getClientId(), context, request.getTagsMap()));
         try {
             AxonServerNode connectTo = topology.findNodeForClient(request.getClientId(),
                                                                   request.getComponentName(),
-                                                                  context);
+                                                                  context,
+                                                                  request.getTagsMap());
             responseObserver.onNext(PlatformInfo.newBuilder()
                                                 .setSameConnection(connectTo.getName().equals(topology.getName()))
                                                 .setPrimary(NodeInfo.newBuilder().setNodeName(connectTo.getName())
@@ -160,8 +161,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     instructionAckSource.sendSuccessfulAck(instruction.getInstructionId(), sendingStreamObserver);
                     ClientIdentification client = instruction.getRegister();
                     String clientId = client.getClientId();
-                    String clientStreamId = clientId + "." + UUID.randomUUID().toString();
-                    clientIdRegistry.register(clientStreamId, clientId, ClientIdRegistry.ConnectionType.PLATFORM);
+                    String clientStreamId = clientId + "." + UUID.randomUUID();
+                    clientIdRegistry.register(clientStreamId, new ClientContext(clientId, context), ClientIdRegistry.ConnectionType.PLATFORM);
                     eventPublisher.publishEvent(new ClientTagsUpdate(clientStreamId,
                                                                      context,
                                                                      client.getTagsMap()));
@@ -225,9 +226,10 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
 
     public boolean requestReconnect(String clientId) {
         logger.debug("Request reconnect: {}", clientId);
-        return connectionMap.entrySet().stream()
-                            .filter(e -> e.getKey().clientId.equals(clientId))
-                            .map(e -> requestReconnect(e.getKey()))
+        return connectionMap.keySet()
+                            .stream()
+                            .filter(e -> e.clientId.equals(clientId))
+                            .map(this::requestReconnect)
                             .findFirst().orElse(false);
     }
 
@@ -382,9 +384,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     public void on(ApplicationInactivityTimeout evt) {
         ClientStreamIdentification clientStreamIdentification = evt.clientStreamIdentification();
         ClientComponent clientComponent = new ClientComponent(clientStreamIdentification.getClientStreamId(),
-                                                              evt.clientId(),
+                                                              evt.client().clientId(),
                                                               evt.componentName(),
-                                                              clientStreamIdentification.getContext());
+                                                              evt.client().context());
         String message = "Platform stream inactivity for " + clientStreamIdentification.getClientStreamId();
         ApplicationInactivityException exception = new ApplicationInactivityException(message);
         deregisterClient(clientComponent, exception);
@@ -431,7 +433,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * Represent a client, specifying the {@code client} id, {@code component} name and the {@code context} of the
      * given client.
      */
-    public static class ClientComponent {
+    public static class ClientComponent implements Comparable<ClientComponent> {
 
         private final String clientStreamId;
         private final String clientId;
@@ -512,6 +514,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     ", component='" + component + '\'' +
                     ", context='" + context + '\'' +
                     '}';
+        }
+
+        @Override
+        public int compareTo(@NotNull ClientComponent o) {
+            return clientStreamId.compareTo(o.clientStreamId);
         }
     }
 }
