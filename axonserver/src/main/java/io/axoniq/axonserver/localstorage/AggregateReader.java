@@ -105,7 +105,7 @@ public class AggregateReader {
                                    long maxSequenceNumber){
         if (useSnapshots){
             return snapshotReader.snapshot(aggregateId, minSequenceNumber, maxSequenceNumber)
-            .filter(snapshot -> snapshot.getAggregateSequenceNumber() >= maxSequenceNumber);
+            .filter(snapshot -> snapshot.getAggregateSequenceNumber() < maxSequenceNumber);
         } else {
             return Mono.empty();
         }

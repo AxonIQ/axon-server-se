@@ -12,12 +12,12 @@ import java.util.function.Supplier;
  * @since 4.5.3
  */
 
-public class DataFeatcherSchedulerProvider implements Supplier<ExecutorService> {
+public class DataFetcherSchedulerProvider implements Supplier<ExecutorService> {
 
     private static ExecutorService dataFetcher;
 
     public static void setDataFetcher(ExecutorService dataFetcher) {
-        DataFeatcherSchedulerProvider.dataFetcher = dataFetcher;
+        DataFetcherSchedulerProvider.dataFetcher = dataFetcher;
     }
 
     @Override

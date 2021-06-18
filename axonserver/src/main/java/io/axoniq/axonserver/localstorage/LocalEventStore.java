@@ -86,7 +86,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
     private final Map<String, Workers> workersMap = new ConcurrentHashMap<>();
     private final EventStoreFactory eventStoreFactory;
-    public final ExecutorService dataFetcher;
+    private final ExecutorService dataFetcher;
     private final ExecutorService dataWriter;
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
@@ -143,7 +143,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
-        DataFeatcherSchedulerProvider.setDataFetcher(dataFetcher);
+        DataFetcherSchedulerProvider.setDataFetcher(dataFetcher);
         this.dataWriter = Executors.newFixedThreadPool(writerThreads, new CustomizableThreadFactory("data-writer-"));
         this.eventDecorator = eventDecorator;
     }

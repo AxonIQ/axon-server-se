@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.localstorage.DataFeatcherSchedulerProvider;
+import io.axoniq.axonserver.localstorage.DataFetcherSchedulerProvider;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      * @param eventSourceFactory the factory used to open a new {@link EventSource} to access the segment file.
      */
     public EventSourceFlux(IndexEntries indexEntries, EventSourceFactory eventSourceFactory, long segment) {
-        this(indexEntries, eventSourceFactory, segment, new DataFeatcherSchedulerProvider());
+        this(indexEntries, eventSourceFactory, segment, new DataFetcherSchedulerProvider());
     }
 
 

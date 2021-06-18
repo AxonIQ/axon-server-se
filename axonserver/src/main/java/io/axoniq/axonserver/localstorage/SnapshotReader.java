@@ -26,7 +26,7 @@ public class SnapshotReader {
     private final Supplier<ExecutorService> dataFetcherSchedulerProvider;
 
     public SnapshotReader(EventStorageEngine datafileManagerChain) {
-        this(datafileManagerChain,new DataFeatcherSchedulerProvider());
+        this(datafileManagerChain,new DataFetcherSchedulerProvider());
     }
 
     public SnapshotReader(EventStorageEngine datafileManagerChain,  Supplier<ExecutorService> dataFetcherSchedulerSupplier) {
