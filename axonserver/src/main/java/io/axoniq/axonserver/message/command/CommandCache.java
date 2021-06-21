@@ -9,6 +9,10 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.grpc.ErrorMessage;
+import io.axoniq.axonserver.grpc.SerializedCommandResponse;
+import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +25,7 @@ import org.springframework.util.unit.DataSize;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
@@ -40,7 +45,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation>
     private final long defaultCommandTimeout;
     private final Clock clock;
     private final long cacheCapacity;
-    private final int COMMANDS_PER_GB = 25000;
+    private static final int COMMANDS_PER_GB = 25000;
 
     @Autowired
     public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
@@ -103,6 +108,22 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation>
         if (mappingCount() >= cacheCapacity) {
             throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
             + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
+        }
+    }
+
+    public void error(ErrorCode errorCode, WrappedCommand command) {
+        CommandInformation commandInformation = remove(command.command().getMessageIdentifier());
+        if (commandInformation != null) {
+            commandInformation.getResponseConsumer()
+                              .accept(new SerializedCommandResponse(
+                                      CommandResponse.newBuilder().setRequestIdentifier(UUID.randomUUID().toString())
+                                                     .setRequestIdentifier(command.command().getMessageIdentifier())
+                                                     .setErrorCode(errorCode.getCode())
+                                                     .setErrorMessage(ErrorMessage.newBuilder()
+                                                                                  .setErrorCode(errorCode.getCode())
+                                                                                  .setMessage("Command processing failed in AxonServer")
+                                                                                  .build())
+                                                                                                         .build()));
         }
     }
 }

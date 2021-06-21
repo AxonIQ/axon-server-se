@@ -11,13 +11,14 @@ package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.component.command.ComponentCommand;
+import io.axoniq.axonserver.component.command.FakeCommandHandler;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueueRegistry;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
-import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -27,6 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -36,17 +38,19 @@ public class CommandRestControllerTest {
     private CommandRestController testSubject;
     @Mock
     private CommandDispatcher commandDispatcher;
+    private final FlowControlQueueRegistry flowControlQueueRegistry = new FlowControlQueueRegistry(
+            100, 100, mock(MeterFactory.class));
 
     @Before
     public void setUp() {
         CommandRegistrationCache commandRegistationCache = new CommandRegistrationCache();
         commandRegistationCache.add("DoIt",
-                                    new DirectCommandHandler(new FakeStreamObserver<>(),
-                                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                    new FakeCommandHandler(
+                                                           new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
                                                                                       "client"),
-                                                            "client",
-                                                             "component"));
-        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
+                                                           "client",
+                                                           "component"));
+        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache, flowControlQueueRegistry);
     }
 
     @Test

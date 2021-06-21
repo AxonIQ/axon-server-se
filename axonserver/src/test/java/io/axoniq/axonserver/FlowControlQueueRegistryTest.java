@@ -21,7 +21,7 @@ import static org.junit.Assert.*;
 /**
  * @author Marc Gathier
  */
-public class FlowControlQueuesTest {
+public class FlowControlQueueRegistryTest {
     private static final int SOFT_LIMIT_QUEUE_SIZE = 5;
     private FlowControlQueues<QueueElement> testSubject;
 
@@ -89,7 +89,7 @@ public class FlowControlQueuesTest {
         testSubject.put("one", new QueueElement("C"));
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
-        testSubject.put("one", new QueueElement("F"), -1);
+        testSubject.put("one", new QueueElement("F"), true);
     }
 
     @Test(expected = MessagingPlatformException.class)
@@ -99,8 +99,8 @@ public class FlowControlQueuesTest {
         testSubject.put("one", new QueueElement("C"));
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
-        testSubject.put("one", new QueueElement("F"), 1);
-        testSubject.put("one", new QueueElement("G"), 1);
+        testSubject.put("one", new QueueElement("F"), false);
+        testSubject.put("one", new QueueElement("G"), false);
     }
 
     public static class QueueElement {

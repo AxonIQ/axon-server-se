@@ -2,11 +2,9 @@ package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 
 import java.util.HashMap;
@@ -98,11 +96,10 @@ public class CommandRegistrationCacheLoadFactorTest {
     }
 
 
-    private static class FakeCommandHandler extends CommandHandler<SerializedCommandProviderInbound> {
+    private static class FakeCommandHandler extends CommandHandler {
 
         public FakeCommandHandler(String clientId) {
-            super(new FakeStreamObserver<>(),
-                  new ClientStreamIdentification("context", clientId),
+            super(new ClientStreamIdentification("context", clientId),
                   clientId, "componentName");
         }
 
@@ -112,8 +109,8 @@ public class CommandRegistrationCacheLoadFactorTest {
         }
 
         @Override
-        public void confirm(String messageId) {
-
+        public String getMessagingServerName() {
+            return null;
         }
     }
 }

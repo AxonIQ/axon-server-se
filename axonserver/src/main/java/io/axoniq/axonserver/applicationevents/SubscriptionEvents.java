@@ -13,8 +13,8 @@ import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.DirectCommandHandler;
-import io.axoniq.axonserver.message.query.DirectQueryHandler;
+import io.axoniq.axonserver.message.command.FlowControlledCommandHandler;
+import io.axoniq.axonserver.message.query.FlowControlledQueryHandler;
 import io.axoniq.axonserver.message.query.QueryHandler;
 
 /**
@@ -109,7 +109,7 @@ public class SubscriptionEvents {
 
         public SubscribeQuery(String context, String clientStreamId, QuerySubscription subscription,
                               QueryHandler queryHandler) {
-            super(context, !(queryHandler instanceof DirectQueryHandler));
+            super(context, !(queryHandler instanceof FlowControlledQueryHandler));
             this.clientStreamId = clientStreamId;
             this.subscription = subscription;
             this.queryHandler = queryHandler;
@@ -141,7 +141,7 @@ public class SubscriptionEvents {
                                 String clientStreamId,
                                 CommandSubscription request,
                                 CommandHandler handler) {
-            super(context, !(handler instanceof DirectCommandHandler));
+            super(context, !(handler instanceof FlowControlledCommandHandler));
             this.clientStreamId = clientStreamId;
             this.request = request;
             this.handler = handler;

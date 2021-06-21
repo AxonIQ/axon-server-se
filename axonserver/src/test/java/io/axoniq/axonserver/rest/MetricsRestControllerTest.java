@@ -10,13 +10,12 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.grpc.SerializedCommand;
-import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
+import io.axoniq.axonserver.message.query.FakeQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
-import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -24,7 +23,6 @@ import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 
 import java.security.Principal;
@@ -49,7 +47,7 @@ public class MetricsRestControllerTest {
     public void setUp() {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
         testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
-        commandRegistrationCache.add("Sample", new CommandHandler<Object>(null,
+        commandRegistrationCache.add("Sample", new CommandHandler(
                                                                           testclient, "Target",
                                                                           "testcomponent") {
             @Override
@@ -58,13 +56,8 @@ public class MetricsRestControllerTest {
             }
 
             @Override
-            public void confirm(String messageId) {
-
-            }
-
-            @Override
-            public int compareTo(@NotNull CommandHandler o) {
-                return 0;
+            public String getMessagingServerName() {
+                return null;
             }
         });
         commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
@@ -72,13 +65,8 @@ public class MetricsRestControllerTest {
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
         queryClient = new ClientStreamIdentification("context", "testclient");
         queryRegistrationCache.add(new QueryDefinition("context", "query"), "result",
-                                   new QueryHandler<Object>(null,
-                                                            queryClient, "testcomponent", "Target") {
-                                       @Override
-                                       public void dispatch(SubscriptionQueryRequest query) {
-
-                                       }
-                                   });
+                                   new FakeQueryHandler(
+                                                            queryClient, "testcomponent", "Target") );
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));

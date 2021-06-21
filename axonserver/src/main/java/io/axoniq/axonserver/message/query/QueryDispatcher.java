@@ -20,7 +20,6 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -32,7 +31,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,7 +54,6 @@ public class QueryDispatcher {
     private final ConstraintCache<String, QueryInformation> queryCache;
     private final QueryInterceptors queryInterceptors;
     private final QueryMetricsRegistry queryMetricsRegistry;
-    private final FlowControlQueues<WrappedQuery> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache,
@@ -69,11 +66,6 @@ public class QueryDispatcher {
         this.queryMetricsRegistry = queryMetricsRegistry;
         this.queryCache = queryCache;
         this.queryInterceptors = queryInterceptors;
-        queryQueue = new FlowControlQueues<>(Comparator.comparing(WrappedQuery::priority).reversed(),
-                                             queueCapacity,
-                                             BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
-                                             meterFactory,
-                                             ErrorCode.QUERY_DISPATCH_ERROR);
         queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConstraintCache::size);
     }
 
@@ -147,9 +139,6 @@ public class QueryDispatcher {
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected event) {
         registrationCache.remove(event.clientIdentification());
-        if( ! event.isProxied()) {
-            queryQueue.move(new ClientStreamIdentification(event.getContext(), event.getClientStreamId()).toString(), query -> null);
-        }
     }
 
     /**
@@ -163,10 +152,6 @@ public class QueryDispatcher {
         if (query != null) {
             query.completeWithError(client, ErrorCode.COMMAND_TIMEOUT, "Query cancelled due to timeout");
         }
-    }
-
-    public FlowControlQueues<WrappedQuery> getQueryQueue() {
-        return queryQueue;
     }
 
 
@@ -283,7 +268,7 @@ public class QueryDispatcher {
                 System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         String context = serializedQuery.context();
         String clientId = serializedQuery.clientStreamId();
-        QueryHandler<?> queryHandler = registrationCache.find(context, query, clientId);
+        QueryHandler queryHandler = registrationCache.find(context, query, clientId);
         if (queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
@@ -320,9 +305,9 @@ public class QueryDispatcher {
         }
     }
 
-    private void dispatchOne(QueryHandler<?> queryHandler, SerializedQuery query, long timeout) {
+    private void dispatchOne(QueryHandler queryHandler, SerializedQuery query, long timeout) {
         try {
-            queryHandler.enqueue(query, queryQueue, timeout);
+            queryHandler.dispatch(query, timeout);
         } catch (MessagingPlatformException mpe) {
             QueryInformation information = queryCache.remove(query.getMessageIdentifier());
             if (information != null) {

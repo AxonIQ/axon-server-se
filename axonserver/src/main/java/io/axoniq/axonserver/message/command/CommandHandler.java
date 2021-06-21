@@ -11,23 +11,20 @@ package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.grpc.stub.StreamObserver;
 
 import java.util.Objects;
 
 /**
  * @author Marc Gathier
  */
-public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>> {
+public abstract class CommandHandler implements Comparable<CommandHandler> {
 
-    protected final StreamObserver<T> observer;
     protected final ClientStreamIdentification clientStreamIdentification;
     private final String clientId;
     protected final String componentName;
 
-    public CommandHandler(StreamObserver<T> responseObserver, ClientStreamIdentification clientStreamIdentification,
+    public CommandHandler(ClientStreamIdentification clientStreamIdentification,
                           String clientId, String componentName) {
-        this.observer = responseObserver;
         this.clientStreamIdentification = clientStreamIdentification;
         this.clientId = clientId;
         this.componentName = componentName;
@@ -49,23 +46,18 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        CommandHandler<?> that = (CommandHandler<?>) o;
-        return Objects.equals(observer, that.observer) &&
-                Objects.equals(clientStreamIdentification, that.clientStreamIdentification);
+        CommandHandler that = (CommandHandler) o;
+        return Objects.equals(clientStreamIdentification, that.clientStreamIdentification);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(observer, clientStreamIdentification);
+        return Objects.hash(clientStreamIdentification);
     }
 
     @Override
     public int compareTo(CommandHandler o) {
-        int clientResult = clientStreamIdentification.compareTo(o.clientStreamIdentification);
-        if (clientResult == 0) {
-            clientResult = observer.toString().compareTo(o.observer.toString());
-        }
-        return clientResult;
+        return clientStreamIdentification.compareTo(o.clientStreamIdentification);
     }
 
     /**
@@ -75,17 +67,16 @@ public abstract class CommandHandler<T> implements Comparable<CommandHandler<T>>
      */
     public abstract void dispatch(SerializedCommand request);
 
-    public abstract void confirm(String messageId);
-
-    public String queueName() {
-        return clientStreamIdentification.toString();
-    }
-
-    public String getMessagingServerName() {
-        return null;
-    }
-
     public String getClientId() {
         return clientId;
+    }
+
+    public abstract String getMessagingServerName();
+
+    public boolean isDirect() {
+        return true;
+    }
+
+    public void close() {
     }
 }

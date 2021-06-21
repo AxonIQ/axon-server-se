@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
@@ -119,4 +120,12 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
         }
     }
 
+    public void error(ErrorCode errorCode, String targetClientStreamId, SerializedQuery query) {
+        QueryInformation information = remove(query.query().getMessageIdentifier());
+        if (information != null) {
+            information.completeWithError(targetClientStreamId,
+                                    errorCode,
+                                    format("Connection to handler %s lost", targetClientStreamId));
+        }
+    }
 }

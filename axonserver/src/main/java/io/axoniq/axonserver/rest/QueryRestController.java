@@ -124,7 +124,7 @@ public class QueryRestController {
         }
 
         public static JsonQueryMapping from(
-                Map.Entry<QueryDefinition, Map<String, Set<QueryHandler<?>>>> queryDefinitionEntry,
+                Map.Entry<QueryDefinition, Map<String, Set<QueryHandler>>> queryDefinitionEntry,
                 Set<String> resultNames) {
             JsonQueryMapping queryMapping = new JsonQueryMapping();
             queryMapping.query = queryDefinitionEntry.getKey().getQueryName();
@@ -150,7 +150,7 @@ public class QueryRestController {
             return clients;
         }
 
-        public static JsonComponentMapping from(Map.Entry<String, Set<QueryHandler<?>>> applicationEntry) {
+        public static JsonComponentMapping from(Map.Entry<String, Set<QueryHandler>> applicationEntry) {
             JsonComponentMapping jsonApplicationMapping = new JsonComponentMapping();
             jsonApplicationMapping.component = applicationEntry.getKey();
             jsonApplicationMapping.clients = applicationEntry.getValue().stream().map(QueryHandler::toString).collect(

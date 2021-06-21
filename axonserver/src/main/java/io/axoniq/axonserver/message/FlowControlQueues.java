@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -71,26 +72,24 @@ public class FlowControlQueues<T> {
     }
 
     public void put(String filterValue, T value) {
-        put(filterValue, value, 0);
+        put(filterValue, value, false);
     }
 
-    public void put(String filterValue, T value, long priority) {
+    public void put(String filterValue, T value, boolean hasPriority) {
         if (value == null) {
             throw new NullPointerException();
         }
         BlockingQueue<DestinationNode> destinationSegment = segments.computeIfAbsent(filterValue,
                                                                                      this::newQueueWithMetrics);
         if (destinationSegment.size() >= hardLimit) {
-            logger.warn("Reached hard limit on queue size of {}, priority of item failed to be added {}, hard limit {}.",
+            logger.warn("Reached hard limit on queue size of {}, priority of item failed to be added, hard limit {}.",
                         destinationSegment.size(),
-                        priority,
                         hardLimit);
             throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
         }
-        if (priority <= 0 && destinationSegment.size() >= softLimit) {
-            logger.warn("Reached soft limit on queue size of {}, priority of item failed to be added {}, soft limit {}.",
+        if (hasPriority && destinationSegment.size() >= softLimit) {
+            logger.warn("Reached soft limit on queue size of {}, priority of item failed to be added, soft limit {}.",
                         destinationSegment.size(),
-                        priority,
                         softLimit);
             throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
         }
@@ -130,6 +129,15 @@ public class FlowControlQueues<T> {
         });
     }
 
+    public void drain(String queue, Consumer<T> entryConsumer) {
+        BlockingQueue<DestinationNode> oldDestination = segments.remove(queue);
+        if (oldDestination == null) {
+            return;
+        }
+        oldDestination.forEach(entry -> entryConsumer.accept(entry.value));
+        oldDestination.clear();
+    }
+
     private PriorityBlockingQueue<DestinationNode> newQueueWithMetrics(String destination) {
         PriorityBlockingQueue<DestinationNode> queue = new PriorityBlockingQueue<>();
         if (meterFactory != null && metricName != null) {
@@ -137,7 +145,9 @@ public class FlowControlQueues<T> {
                                              Tags.of("destination", destination),
                                              queue,
                                              BlockingQueue::size);
-            gauges.put(destination, gauge);
+            if (gauge != null) {
+                gauges.put(destination, gauge);
+            }
         }
         return queue;
     }

@@ -15,15 +15,14 @@ import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.Subscripti
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryInitialResultRequested;
 import io.axoniq.axonserver.applicationevents.SubscriptionQueryEvents.SubscriptionQueryRequested;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.grpc.query.SubscriptionQuery;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.query.FakeQueryHandler;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
-import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
 
 import java.util.ArrayList;
@@ -87,8 +86,7 @@ public class SubscriptionQueryDispatcherTest {
     @Nonnull
     private SubscribeQuery subscribeQuery(Consumer<SubscriptionQueryRequest> requestConsumer, String client) {
         final String clientStreamId = client + "StreamId";
-        QueryHandler<QueryProviderInbound> queryHandler = new QueryHandler<QueryProviderInbound>(
-                new FakeStreamObserver<>(),
+        QueryHandler queryHandler = new FakeQueryHandler(
                 new ClientStreamIdentification(context, clientStreamId), COMPONENT, client) {
             @Override
             public void dispatch(SubscriptionQueryRequest query) {

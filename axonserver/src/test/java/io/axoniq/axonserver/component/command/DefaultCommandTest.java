@@ -13,7 +13,6 @@ import com.google.common.collect.ImmutableSet;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
-import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
@@ -30,12 +29,12 @@ public class DefaultCommandTest {
 
     @Before
     public void setUp() throws Exception {
-        ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new DirectCommandHandler(null,
-                                                                                                new ClientStreamIdentification(
+        ImmutableSet<CommandHandler> commandHandlers = ImmutableSet.of(new FakeCommandHandler(
+                                                                                                        new ClientStreamIdentification(
                                                                                                         Topology.DEFAULT_CONTEXT,
                                                                                                         "client"),
-                                                                                                "client",
-                                                                                                "componentA"));
+                                                                                                        "client",
+                                                                                                        "componentA"));
         defaultCommand = new DefaultCommand(new CommandRegistrationCache.RegistrationEntry(Topology.DEFAULT_CONTEXT,
                                                                                            "commandName"), commandHandlers);
     }

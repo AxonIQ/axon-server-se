@@ -92,7 +92,7 @@ public class MetricsRestController {
     }
 
     private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition,
-                                                                   Map<String, Set<QueryHandler<?>>> handlersPerComponent) {
+                                                                   Map<String, Set<QueryHandler>> handlersPerComponent) {
         return handlersPerComponent.entrySet()
                                    .stream()
                                    .map(queryHandlers -> queryHandlers

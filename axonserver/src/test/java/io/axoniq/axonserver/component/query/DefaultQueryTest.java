@@ -10,7 +10,8 @@
 package io.axoniq.axonserver.component.query;
 
 import com.google.common.collect.ImmutableSet;
-import io.axoniq.axonserver.message.query.DirectQueryHandler;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.query.FakeQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
@@ -34,9 +35,9 @@ public class DefaultQueryTest {
     @Before
     public void setUp() throws Exception {
         QueryDefinition queryDefinition = new QueryDefinition("context", "queryName");
-        Map<String, Set<QueryHandler<?>>> handlers = new HashMap<>();
-        handlers.put("componentA", ImmutableSet.of(new DirectQueryHandler(null, null, null, null),
-                                                   new DirectQueryHandler(null, null, null, null)));
+        Map<String, Set<QueryHandler>> handlers = new HashMap<>();
+        handlers.put("componentA", ImmutableSet.of(new FakeQueryHandler(new ClientStreamIdentification("context", "stream1"), null, null),
+                                                   new FakeQueryHandler(new ClientStreamIdentification("context", "stream2"), null, null)));
         handlers.put("componentB", ImmutableSet.of());
         handlers.put("componentC", null);
 
