@@ -21,9 +21,13 @@ import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueueRegistry;
+import io.axoniq.axonserver.message.FlowControlQueues;
+import io.axoniq.axonserver.message.command.CommandCache;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.DirectCommandHandler;
+import io.axoniq.axonserver.message.command.FlowControlledCommandHandler;
+import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.MethodDescriptor;
@@ -83,9 +87,11 @@ public class CommandService implements AxonServerClientService {
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
+    private final FlowControlQueues<WrappedCommand> commandQueues;
 
     @Value("${axoniq.axonserver.command-threads:1}")
     private int processingThreads = 1;
+    private final CommandCache commandCache;
 
     public CommandService(Topology topology,
                           CommandDispatcher commandDispatcher,
@@ -93,6 +99,8 @@ public class CommandService implements AxonServerClientService {
                           AuthenticationProvider authenticationProvider,
                           ClientIdRegistry clientIdRegistry,
                           ApplicationEventPublisher eventPublisher,
+                          FlowControlQueueRegistry flowControlQueueRegistry,
+                          CommandCache commandCache,
                           @Qualifier("commandInstructionAckSource")
                                   InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
         this.topology = topology;
@@ -101,7 +109,10 @@ public class CommandService implements AxonServerClientService {
         this.authenticationProvider = authenticationProvider;
         this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
+        this.commandCache = commandCache;
         this.instructionAckSource = instructionAckSource;
+        this.commandQueues = flowControlQueueRegistry.commandQueues();
+
     }
 
     @PreDestroy
@@ -136,7 +147,7 @@ public class CommandService implements AxonServerClientService {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<GrpcCommandDispatcherListener> listenerRef = new AtomicReference<>();
-            private final AtomicReference<CommandHandler<?>> commandHandlerRef = new AtomicReference<>();
+            private final AtomicReference<CommandHandler> commandHandlerRef = new AtomicReference<>();
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
@@ -204,7 +215,7 @@ public class CommandService implements AxonServerClientService {
             private void flowControl(FlowControl flowControl) {
                 initClientReference(flowControl.getClientId());
                 if (listenerRef.compareAndSet(null,
-                                              new GrpcCommandDispatcherListener(commandDispatcher.getCommandQueues(),
+                                              new GrpcCommandDispatcherListener(commandQueues,
                                                                                 clientRef.get().toString(),
                                                                                 wrappedResponseObserver,
                                                                                 processingThreads))) {
@@ -216,10 +227,11 @@ public class CommandService implements AxonServerClientService {
             private void checkInitClient(String clientId, String component) {
                 initClientReference(clientId);
                 commandHandlerRef.compareAndSet(null,
-                                                new DirectCommandHandler(wrappedResponseObserver,
-                                                                         clientRef.get(),
-                                                                         clientId,
-                                                                         component));
+                                                new FlowControlledCommandHandler(commandQueues,
+                                                                                 clientRef.get(),
+                                                                                 clientId,
+                                                                                 component,
+                                                                                 commandCache));
             }
 
             @Override

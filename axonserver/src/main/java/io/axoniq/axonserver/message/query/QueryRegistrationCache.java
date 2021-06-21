@@ -186,10 +186,10 @@ public class QueryRegistrationCache {
         return registrationsPerQuery.get(queryDefinition).getHandler(client);
     }
 
-    public Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> getAll() {
-        Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> all = new HashMap<>();
+    public Map<QueryDefinition, Map<String, Set<QueryHandler>>> getAll() {
+        Map<QueryDefinition, Map<String, Set<QueryHandler>>> all = new HashMap<>();
         registrationsPerQuery.forEach((query, queryInformation) -> {
-            Map<String, Set<QueryHandler<?>>> componentsMap = new HashMap<>();
+            Map<String, Set<QueryHandler>> componentsMap = new HashMap<>();
             all.put(query, componentsMap);
             queryInformation.handlers.values().forEach(h ->
                                                                componentsMap.computeIfAbsent(h.getComponentName(),
@@ -248,7 +248,10 @@ public class QueryRegistrationCache {
         private final Set<String> resultNames = new CopyOnWriteArraySet<>();
 
         public void removeClient(ClientStreamIdentification clientId) {
-            handlers.remove(clientId);
+            QueryHandler handler = handlers.remove(clientId);
+            if (handler != null) {
+                handler.close();
+            }
         }
 
         public boolean isEmpty() {

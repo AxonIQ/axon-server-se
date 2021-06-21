@@ -19,18 +19,15 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.interceptor.CommandInterceptors;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,25 +50,17 @@ public class CommandDispatcher {
     private final ConstraintCache<String, CommandInformation> commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
-    private final FlowControlQueues<WrappedCommand> commandQueues;
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
     private final CommandInterceptors commandInterceptors;
 
     public CommandDispatcher(CommandRegistrationCache registrations,
                              ConstraintCache<String, CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
-                             MeterFactory meterFactory,
-                             CommandInterceptors commandInterceptors,
-                             @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity) {
+                             CommandInterceptors commandInterceptors) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
         this.commandInterceptors = commandInterceptors;
-        commandQueues = new FlowControlQueues<>(Comparator.comparing(WrappedCommand::priority).reversed(),
-                                                queueCapacity,
-                                                BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
-                                                meterFactory,
-                                                ErrorCode.COMMAND_DISPATCH_ERROR);
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
     }
 
@@ -80,7 +69,7 @@ public class CommandDispatcher {
                                 Consumer<SerializedCommandResponse> responseObserver) {
         String clientStreamId = request.getClientStreamId();
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
-        CommandHandler<?> handler = registrations.findByClientAndCommand(clientIdentification,
+        CommandHandler handler = registrations.findByClientAndCommand(clientIdentification,
                                                                          request.getCommand());
         dispatchToCommandHandler(request, handler, responseObserver,
                                  ErrorCode.CLIENT_DISCONNECTED,
@@ -97,7 +86,7 @@ public class CommandDispatcher {
         try {
             request = commandInterceptors.commandRequest(request, executionContext);
             commandRate(context).mark();
-            CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
+            CommandHandler commandHandler = registrations.getHandlerForCommand(context,
                                                                                   request.wrapped(),
                                                                                   request.getRoutingKey());
             dispatchToCommandHandler(request,
@@ -155,13 +144,10 @@ public class CommandDispatcher {
 
     private void handleDisconnection(ClientStreamIdentification client, boolean proxied) {
         cleanupRegistrations(client);
-        if (!proxied) {
-            getCommandQueues().move(client.toString(), this::redispatch);
-        }
         handlePendingCommands(client);
     }
 
-    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler<?> commandHandler,
+    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
                                           Consumer<SerializedCommandResponse> responseObserver,
                                           ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
@@ -182,10 +168,11 @@ public class CommandDispatcher {
                                                                                    .getClientStreamIdentification(),
                                                                            commandHandler.getComponentName());
             commandCache.put(command.getMessageIdentifier(), commandInformation);
-            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
-                                                               commandHandler.getClientId(),
-                                                               command);
-            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
+//            WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
+//                                                               commandHandler.getClientId(),
+//                                                               command);
+            commandHandler.dispatch(command);
+//            commandQueues.put(commandHandler.queueName(), wrappedCommand, wrappedCommand.priority());
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
                                                          ErrorCode.TOO_MANY_REQUESTS,
@@ -222,38 +209,38 @@ public class CommandDispatcher {
         registrations.remove(client);
     }
 
-    public FlowControlQueues<WrappedCommand> getCommandQueues() {
-        return commandQueues;
-    }
+//    public FlowControlQueues<WrappedCommand> getCommandQueues() {
+//        return commandQueues;
+//    }
 
-    private String redispatch(WrappedCommand command) {
-        SerializedCommand request = command.command();
-        CommandInformation commandInformation = commandCache.remove(request.getMessageIdentifier());
-        if (commandInformation == null) {
-            return null;
-        }
-
-        CommandHandler<?> client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
-                                                                      request.getRoutingKey());
-        if (client == null) {
-            commandInformation.getResponseConsumer().accept(errorCommandResponse(request.getMessageIdentifier(),
-                                                                                 ErrorCode.NO_HANDLER_FOR_COMMAND,
-                                                                                 "No Handler for command: "
-                                                                                         + request
-                                                                                         .getName()));
-            return null;
-        }
-
-        logger.debug("Dispatch {} to: {}", request.getName(), client.getClientStreamIdentification());
-        commandCache.put(request.getMessageIdentifier(), new CommandInformation(request.getName(),
-                                                                                request.wrapped().getClientId(),
-                                                                                client.getClientId(),
-                                                                                commandInformation
-                                                                                        .getResponseConsumer(),
-                                                                                client.getClientStreamIdentification(),
-                                                                                client.getComponentName()));
-        return client.queueName();
-    }
+//    private String redispatch(WrappedCommand command) {
+//        SerializedCommand request = command.command();
+//        CommandInformation commandInformation = commandCache.remove(request.getMessageIdentifier());
+//        if (commandInformation == null) {
+//            return null;
+//        }
+//
+//        CommandHandler<?> client = registrations.getHandlerForCommand(command.client().getContext(), request.wrapped(),
+//                                                                      request.getRoutingKey());
+//        if (client == null) {
+//            commandInformation.getResponseConsumer().accept(errorCommandResponse(request.getMessageIdentifier(),
+//                                                                                 ErrorCode.NO_HANDLER_FOR_COMMAND,
+//                                                                                 "No Handler for command: "
+//                                                                                         + request
+//                                                                                         .getName()));
+//            return null;
+//        }
+//
+//        logger.debug("Dispatch {} to: {}", request.getName(), client.getClientStreamIdentification());
+//        commandCache.put(request.getMessageIdentifier(), new CommandInformation(request.getName(),
+//                                                                                request.wrapped().getClientId(),
+//                                                                                client.getClientId(),
+//                                                                                commandInformation
+//                                                                                        .getResponseConsumer(),
+//                                                                                client.getClientStreamIdentification(),
+//                                                                                client.getComponentName()));
+//        return client.queueName();
+//    }
 
     private void handlePendingCommands(ClientStreamIdentification client) {
         List<String> messageIds = commandCache.entrySet().stream().filter(e -> e.getValue().checkClient(client))

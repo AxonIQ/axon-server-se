@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.grpc.stub.StreamObserver;
@@ -25,19 +26,23 @@ public class GrpcQueryDispatcherListener extends GrpcFlowControlledDispatcherLis
     private static final Logger logger = LoggerFactory.getLogger(GrpcQueryDispatcherListener.class);
     private final QueryDispatcher queryDispatcher;
 
-    public GrpcQueryDispatcherListener(QueryDispatcher queryDispatcher, String client, StreamObserver<QueryProviderInbound> queryProviderInboundStreamObserver, int threads) {
-        super(queryDispatcher.getQueryQueue(), client, queryProviderInboundStreamObserver, threads);
+    public GrpcQueryDispatcherListener(FlowControlQueues<WrappedQuery> flowControlQueues,
+                                       String client,
+                                       StreamObserver<QueryProviderInbound> queryProviderInboundStreamObserver,
+                                       int threads,
+                                       QueryDispatcher queryDispatcher) {
+        super(flowControlQueues, client, queryProviderInboundStreamObserver, threads);
         this.queryDispatcher = queryDispatcher;
     }
 
     @Override
     protected boolean send(WrappedQuery message) {
-        if( logger.isDebugEnabled()) {
-            logger.debug("Send request {}, with priority: {}", message.queryRequest(), message.priority() );
+        WrappedQuery request = validate(message, logger);
+        if( request == null) {
+            queryDispatcher.removeFromCache(message.targetClientId(), message.queryRequest().getMessageIdentifier());
+            return false;
         }
-        SerializedQuery request = validate(message, queryDispatcher, logger);
-        if( request == null) return false;
-        inboundStream.onNext(QueryProviderInbound.newBuilder().setQuery(request.query()).build());
+        inboundStream.onNext(request.request());
         return true;
     }
 

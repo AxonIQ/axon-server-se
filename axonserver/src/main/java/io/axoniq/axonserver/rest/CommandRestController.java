@@ -13,6 +13,7 @@ import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
+import io.axoniq.axonserver.message.FlowControlQueueRegistry;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
@@ -65,11 +66,15 @@ public class CommandRestController {
 
     private final CommandDispatcher commandDispatcher;
     private final CommandRegistrationCache registrationCache;
+    private final FlowControlQueueRegistry flowControlQueueRegistry;
 
 
-    public CommandRestController(CommandDispatcher commandDispatcher, CommandRegistrationCache registrationCache) {
+    public CommandRestController(CommandDispatcher commandDispatcher,
+                                 CommandRegistrationCache registrationCache,
+                                 FlowControlQueueRegistry flowControlQueueRegistry) {
         this.commandDispatcher = commandDispatcher;
         this.registrationCache = registrationCache;
+        this.flowControlQueueRegistry = flowControlQueueRegistry;
     }
 
     @GetMapping("/components/{component}/commands")
@@ -116,7 +121,7 @@ public class CommandRestController {
     public List<JsonQueueInfo> queues(@ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to list all CommandQueues.", AuditLog.username(principal));
 
-        return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
+        return flowControlQueueRegistry.commandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
                 Collectors.toList());
     }
 

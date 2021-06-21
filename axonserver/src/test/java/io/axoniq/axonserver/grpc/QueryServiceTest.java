@@ -24,19 +24,25 @@ import io.axoniq.axonserver.grpc.query.QueryResponse;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.interceptor.NoOpSubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueueRegistry;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.isA;
@@ -55,11 +61,12 @@ public class QueryServiceTest {
     @Before
     public void setUp()  {
         queryDispatcher = mock(QueryDispatcher.class);
-        queryQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
-        when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+        FlowControlQueueRegistry flowControlQueueRegistry = new FlowControlQueueRegistry(100, 100, meterFactory);
+        queryQueue = flowControlQueueRegistry.queryQueues();
         testSubject = new QueryService(topology,
                                        queryDispatcher,
                                        () -> Topology.DEFAULT_CONTEXT,
@@ -67,9 +74,10 @@ public class QueryServiceTest {
                                        new DefaultClientIdRegistry(),
                                        new NoOpSubscriptionQueryInterceptors(),
                                        eventPublisher,
-                                       new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
-                                                                                                    .setAck(ack)
-                                                                                                    .build()));
+                                       flowControlQueueRegistry,
+                                       null, new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
+                                                                                                                .setAck(ack)
+                                                                                                                .build()));
     }
 
     @Test
@@ -79,8 +87,7 @@ public class QueryServiceTest {
         requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2)
                                                                                           .setClientId("name").build())
                                                   .build());
-        Thread.sleep(250);
-        assertEquals(1, queryQueue.getSegments().size());
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, queryQueue.getSegments().size()));
         String key = queryQueue.getSegments().entrySet().iterator().next().getKey();
         String clientStreamId = key.substring(0, key.lastIndexOf("."));
         ClientStreamIdentification clientStreamIdentification =

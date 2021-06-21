@@ -75,7 +75,7 @@ public class QueryMetricsWebSocket {
 
 
     private Stream<QueryMetricsRegistry.QueryMetric> getMetrics(QueryDefinition queryDefinition,
-                                                                Map<String, Set<QueryHandler<?>>> handlersPerComponents) {
+                                                                Map<String, Set<QueryHandler>> handlersPerComponents) {
         return handlersPerComponents
                 .entrySet().stream()
                 .flatMap(queryHandlers -> queryHandlers

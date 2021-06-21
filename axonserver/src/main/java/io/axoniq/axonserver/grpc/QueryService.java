@@ -28,10 +28,14 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.grpc.query.SubscriptionQueryResponse;
 import io.axoniq.axonserver.interceptor.SubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.query.DirectQueryHandler;
+import io.axoniq.axonserver.message.FlowControlQueueRegistry;
+import io.axoniq.axonserver.message.FlowControlQueues;
+import io.axoniq.axonserver.message.query.FlowControlledQueryHandler;
+import io.axoniq.axonserver.message.query.QueryCache;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;
+import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
@@ -73,9 +77,12 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<QueryProviderInbound> instructionAckSource;
+    private final FlowControlQueues<WrappedQuery> queryQueues;
 
+    @SuppressWarnings("FieldMayBeFinal")
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
+    private final QueryCache queryCache;
 
 
     public QueryService(Topology topology,
@@ -85,6 +92,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         ClientIdRegistry clientIdRegistry,
                         SubscriptionQueryInterceptors subscriptionQueryInterceptors,
                         ApplicationEventPublisher eventPublisher,
+                        FlowControlQueueRegistry flowControlQueueRegistry,
+                        QueryCache queryCache,
                         @Qualifier("queryInstructionAckSource")
                                 InstructionAckSource<QueryProviderInbound> instructionAckSource) {
         this.topology = topology;
@@ -94,7 +103,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         this.clientIdRegistry = clientIdRegistry;
         this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
         this.eventPublisher = eventPublisher;
+        this.queryCache = queryCache;
         this.instructionAckSource = instructionAckSource;
+        this.queryQueues = flowControlQueueRegistry.queryQueues();
     }
 
     @PreDestroy
@@ -115,7 +126,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<GrpcQueryDispatcherListener> listener = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
-            private final AtomicReference<QueryHandler<QueryProviderInbound>> queryHandler = new AtomicReference<>();
+            private final AtomicReference<QueryHandler> queryHandler = new AtomicReference<>();
 
             @Override
             protected void consume(QueryProviderOutbound queryProviderOutbound) {
@@ -224,10 +235,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
 
             private void flowControl(FlowControl flowControl) {
                 initClientReference(flowControl.getClientId());
-                if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryDispatcher,
+                if (listener.compareAndSet(null, new GrpcQueryDispatcherListener(queryQueues,
                                                                                  clientRef.get().toString(),
                                                                                  wrappedQueryProviderInboundObserver,
-                                                                                 processingThreads))) {
+                                                                                 processingThreads,
+                                                                                 queryDispatcher))) {
                     dispatcherListeners.put(clientRef.get(), listener.get());
                 }
                 listener.get().addPermits(flowControl.getPermits());
@@ -244,8 +256,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             private void checkInitClient(String clientId, String componentName) {
                 initClientReference(clientId);
                 queryHandler.compareAndSet(null,
-                                           new DirectQueryHandler(wrappedQueryProviderInboundObserver, clientRef.get(),
-                                                                  componentName, clientId));
+                                           new FlowControlledQueryHandler(queryQueues, clientRef.get(),
+                                                                          componentName, clientId, queryCache));
             }
 
             @Override

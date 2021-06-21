@@ -11,6 +11,8 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.SerializedQuery;
+import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 /**
@@ -23,6 +25,7 @@ public class WrappedQuery {
     private final ClientStreamIdentification targetClientStreamIdentification;
     private final String targetClientId;
     private final SerializedQuery queryRequest;
+    private final SubscriptionQueryRequest subscriptionQueryRequest;
     private final long timeout;
     private final long priority;
 
@@ -33,10 +36,26 @@ public class WrappedQuery {
         this.queryRequest = queryRequest;
         this.timeout = timeout;
         this.priority = ProcessingInstructionHelper.priority(queryRequest.query().getProcessingInstructionsList());
+        this.subscriptionQueryRequest = null;
+    }
+    public WrappedQuery(ClientStreamIdentification targetClientStreamIdentification,
+                        String targetClientId, SubscriptionQueryRequest subscriptionQueryRequest, long timeout) {
+        this.targetClientStreamIdentification = targetClientStreamIdentification;
+        this.targetClientId = targetClientId;
+        this.queryRequest = null;
+        this.timeout = timeout;
+        this.priority = 0;
+        this.subscriptionQueryRequest = subscriptionQueryRequest;
     }
 
-    public SerializedQuery queryRequest() {
-        return queryRequest;
+    public QueryProviderInbound request() {
+        if (subscriptionQueryRequest != null) {
+            return QueryProviderInbound.newBuilder()
+                                       .setSubscriptionQueryRequest(subscriptionQueryRequest)
+                                       .build();
+        }
+
+        return QueryProviderInbound.newBuilder().setQuery(queryRequest.query()).build();
     }
 
     public long timeout() {
@@ -57,5 +76,9 @@ public class WrappedQuery {
 
     public String context() {
         return targetClientStreamIdentification.getContext();
+    }
+
+    public SerializedQuery queryRequest() {
+        return queryRequest;
     }
 }
