@@ -34,7 +34,7 @@ public class FlowControlledCommandHandler extends CommandHandler {
     public void dispatch(SerializedCommand request) {
         WrappedCommand wrappedCommand = new WrappedCommand(clientStreamIdentification,
                                                            getClientId(), request);
-        commandQueues.put(clientStreamIdentification.toString(), wrappedCommand, wrappedCommand.priority() < 0);
+        commandQueues.put(clientStreamIdentification.toString(), wrappedCommand, wrappedCommand.priority() > 0);
     }
 
     @Override
