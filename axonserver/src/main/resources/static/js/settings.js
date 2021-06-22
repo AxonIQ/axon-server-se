@@ -20,10 +20,18 @@ globals.pageView = new Vue({
                 nodes: [],
                 contexts: [],
                 context: null,
+                initCluster: false
             }, mounted() {
         axios.get("v1/public/license").then(response => { this.license = response.data });
         axios.get("v1/public/me").then(response => { this.node = response.data });
-        axios.get("v1/public").then(response => { this.nodes = response.data });
+        axios.get("v1/public").then(response => {
+            this.nodes = response.data
+            if (this.nodes.length === 1 && globals.isEnterprise()) {
+                axios.get("v1/public/replicationgroups").then(response => {
+                    this.initCluster = true;
+                });
+            }
+        });
         this.timer = setInterval(this.reloadStatus, 5000);
         if (globals.isEnterprise()) {
             let me = this;

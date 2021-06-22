@@ -14,15 +14,15 @@ package io.axoniq.axonserver.localstorage.file;
  */
 public class SegmentIndexEntries {
 
-    private final long segment;
+    private final FileVersion segment;
     private final IndexEntries indexEntries;
 
-    public SegmentIndexEntries(long segment, IndexEntries indexEntries) {
+    public SegmentIndexEntries(FileVersion segment, IndexEntries indexEntries) {
         this.segment = segment;
         this.indexEntries = indexEntries;
     }
 
-    public long segment() {
+    public FileVersion segment() {
         return segment;
     }
 

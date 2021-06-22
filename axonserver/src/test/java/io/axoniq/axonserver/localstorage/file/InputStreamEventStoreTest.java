@@ -10,22 +10,23 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.TestUtils;
+import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
 import java.util.SortedSet;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
+import static junit.framework.TestCase.*;
 
 /**
  * @author Marc Gathier
@@ -103,5 +104,23 @@ public class InputStreamEventStoreTest {
         assertTrue(segments.contains(0L));
         assertTrue(segments.contains(14L));
         assertEquals(14, (long)segments.first());
+    }
+
+    @Test
+    public void transform() {
+        testSubject.transformContents(event -> {
+            System.out.println("id=" + event.getAggregateIdentifier());
+            if (event.getAggregateIdentifier().equals("abb070e9-943f-4947-8def-c50481b968c7")) {
+                return Event.getDefaultInstance();
+            }
+            return event;
+        });
+
+        SerializedEvent event = testSubject.eventsPerAggregate(
+                "abb070e9-943f-4947-8def-c50481b968c7",
+                0,
+                Long.MAX_VALUE,
+                0).blockLast();
+        assertNull(event);
     }
 }

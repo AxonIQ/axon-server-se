@@ -59,7 +59,7 @@
     </div>
 
     <div v-if="!node.adminNode" class="msg warning">
-        This is not an ADMIN node
+        This is not an ADMIN node <span v-if="initCluster">Init Cluster</span>
     </div>
 
     <div class="column-wrapper">

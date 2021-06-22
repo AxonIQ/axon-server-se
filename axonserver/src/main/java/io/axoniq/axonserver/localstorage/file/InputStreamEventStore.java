@@ -11,14 +11,30 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * Manages the completed segments for the event store.
@@ -28,7 +44,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
  */
 public class InputStreamEventStore extends SegmentBasedEventStore implements ReadOnlySegmentsHandler {
 
-    private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
+    private final NavigableMap<Long, Integer> segments = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
 
     public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
@@ -39,34 +55,127 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    public void handover(Long segment, Runnable callback) {
-        segments.add(segment);
+    public void handover(FileVersion segment, Runnable callback) {
+        segments.put(segment.segment(), segment.version());
         callback.run();
     }
 
     @Override
     protected boolean containsSegment(long segment) {
-        return segments.contains(segment);
+        return segments.containsKey(segment);
+    }
+
+    @Override
+    protected Optional<EventSource> getEventSource(long segment) {
+        Integer version = segments.get(segment);
+        if (version != null) {
+            return getEventSource(new FileVersion(segment, version));
+        }
+        return Optional.empty();
     }
 
     @Override
     public void initSegments(long lastInitialized) {
-        segments.addAll(prepareSegmentStore(lastInitialized));
+        segments.putAll(prepareSegmentStore(lastInitialized));
         if (next != null) {
-            next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
+            next.initSegments(segments.isEmpty() ? lastInitialized : segments.navigableKeySet().last());
         }
     }
 
     @Override
     public void close(boolean deleteData) {
         if (deleteData) {
-            segments.forEach(this::removeSegment);
+            segments.forEach((segment, version) -> removeSegment(segment));
         }
     }
 
+    public void transformContents(UnaryOperator<Event> transformationFunction) {
+        NavigableSet<Long> segmentsToTransform = new TreeSet<>(segments.keySet());
+        for (Long segment : segmentsToTransform) {
+            Integer version = segments.get(segment);
+            if (version != null) {
+                transformSegment(segment, version, transformationFunction);
+            }
+        }
+    }
+
+    private void transformSegment(long segment, int currentVersion, UnaryOperator<Event> transformationFunction) {
+        Map<String, List<IndexEntry>> indexEntriesMap = new HashMap<>();
+        AtomicBoolean changed = new AtomicBoolean();
+        File dataFile = storageProperties.dataFile(
+                context,
+                new FileVersion(segment, currentVersion + 1));
+        try (TransactionIterator transactionIterator = getTransactions(segment, segment);
+             // TODO: 5/19/2021 write to temp file first 
+             DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(dataFile))) {
+            dataOutputStream.write(PrimaryEventStore.VERSION);
+            dataOutputStream.writeInt(storageProperties.getFlags());
+            int pos = 5;
+            long token = segment;
+            while (transactionIterator.hasNext()) {
+                SerializedTransactionWithToken transaction = transactionIterator
+                        .next();
+                List<Event> updatedEvents =
+                        transaction.getEvents()
+                                   .stream()
+                                   .map(serializedEvent -> {
+                                       Event original = serializedEvent.asEvent();
+                                       if (isSoftDeleted(original)) return original;
+                                       Event transformed = transformationFunction.apply(original);
+                                       if (transformed == null) transformed = Event.getDefaultInstance();
+                                       if (!original.equals(transformed)) {
+                                           changed.set(true);
+                                       }
+                                       return transformed;
+                                   })
+                                   .collect(Collectors.toList());
+
+                int eventPosition = pos + 7;
+                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                DataOutputStream eventsBlock = new DataOutputStream(bytes);
+                for (Event updatedEvent : updatedEvents) {
+                    int size = updatedEvent.getSerializedSize();
+                    eventsBlock.writeInt(size);
+                    eventsBlock.write(updatedEvent.toByteArray());
+                    if (!updatedEvent.getAggregateType().isEmpty()) {
+                        indexEntriesMap.computeIfAbsent(updatedEvent.getAggregateIdentifier(), id -> new ArrayList<>())
+                                       .add(new IndexEntry(updatedEvent.getAggregateSequenceNumber(), eventPosition, token));
+                    }
+                    eventPosition += size + 4;
+                    token++;
+                }
+
+                byte[] eventBytes = bytes.toByteArray();
+                dataOutputStream.writeInt(eventBytes.length);
+                dataOutputStream.write(TRANSACTION_VERSION);
+                dataOutputStream.writeShort(updatedEvents.size());
+                dataOutputStream.write(eventBytes);
+                Checksum checksum = new Checksum();
+                pos += eventBytes.length + 4 + 7;
+                dataOutputStream.writeInt(checksum.update(eventBytes).get());
+            }
+            dataOutputStream.writeInt(0);
+            dataOutputStream.writeInt(0);
+
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
+        }
+        if( changed.get()) {
+            indexManager.createNewVersion(segment, currentVersion + 1, indexEntriesMap);
+            segments.put(segment, currentVersion + 1);
+        } else {
+            FileUtils.delete(dataFile);
+        }
+
+    }
+
+    private boolean isSoftDeleted(Event original) {
+        return original.getMessageIdentifier().isEmpty();
+    }
 
     private void removeSegment(long segment) {
-        if (segments.remove(segment) && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+        Integer version = segments.remove(segment);
+        if (version != null && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
                 !indexManager.remove(segment))) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
                                                  "Failed to rollback " + getType().getEventType()
@@ -75,7 +184,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    public Optional<EventSource> getEventSource(long segment) {
+    public Optional<EventSource> getEventSource(FileVersion segment) {
         logger.debug("Get eventsource: {}", segment);
         InputStreamEventSource eventSource = get(segment, false);
         logger.trace("result={}", eventSource);
@@ -87,7 +196,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
     @Override
     protected SortedSet<Long> getSegments() {
-        return segments;
+        return segments.navigableKeySet();
     }
 
     @Override
@@ -95,8 +204,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         throw new UnsupportedOperationException("Development mode deletion is not supported in InputStreamEventStore");
     }
 
-    private InputStreamEventSource get(long segment, boolean force) {
-        if (!force && !segments.contains(segment)) {
+    private InputStreamEventSource get(FileVersion segment, boolean force) {
+        if (!force && !segments.containsKey(segment.segment())) {
             return null;
         }
 
@@ -105,9 +214,9 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    protected void recreateIndex(long segment) {
+    protected void recreateIndex(FileVersion segment) {
         try (InputStreamEventSource is = get(segment, true);
-             EventIterator iterator = createEventIterator(is, segment, segment)) {
+             EventIterator iterator = createEventIterator(is, segment.segment(), segment.segment())) {
             recreateIndexFromIterator(segment, iterator);
         }
     }

@@ -43,8 +43,11 @@ public interface IndexManager {
      *
      * @param segment the first token in the segment
      */
-    void complete(long segment);
+    default void complete(long segment) {
+        complete(new FileVersion(segment, 0));
+    }
 
+    void complete(FileVersion segment);
     /**
      * Retrieves the sequence number of the last event for the given aggregate.
      *
@@ -80,7 +83,7 @@ public interface IndexManager {
      * @param minToken            minimum token hint for the entries to return
      * @return map of positions per segment
      */
-    SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
+    SortedMap<FileVersion, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
                                                   long maxResults, long minToken);
 
     /**
@@ -116,4 +119,6 @@ public interface IndexManager {
      * @param indexEntries list of index entries to add
      */
     void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
+
+    void createNewVersion(long segment, int version, Map<String, List<IndexEntry>> indexEntriesMap);
 }

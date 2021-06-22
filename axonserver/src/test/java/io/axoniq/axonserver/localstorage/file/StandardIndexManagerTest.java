@@ -66,11 +66,11 @@ public class StandardIndexManagerTest {
         Future[] futures = new Future[concurrentRequests];
         for (int i = 0; i < concurrentRequests; i++) {
             Future<?> future = executorService.submit(() -> {
-                SortedMap<Long, IndexEntries> actual = indexManager.lookupAggregate(aggregateId,
+                SortedMap<FileVersion, IndexEntries> actual = indexManager.lookupAggregate(aggregateId,
                                                                                     0,
                                                                                     Long.MAX_VALUE,
                                                                                     Long.MAX_VALUE, 0);
-                assertEquals(positionInfo.getSequenceNumber(), actual.get(0L).firstSequenceNumber());
+                assertEquals(positionInfo.getSequenceNumber(), actual.get(new FileVersion(0L, 0)).firstSequenceNumber());
             });
             futures[i] = future;
         }
@@ -102,7 +102,7 @@ public class StandardIndexManagerTest {
         indexManager.complete(10);
         indexManager.addToActiveSegment(15L, aggregateId, new IndexEntry(7, 0, 0));
 
-        SortedMap<Long, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, 5, 100, 0);
+        SortedMap<FileVersion, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, 5, 100, 0);
         assertEquals(1, position.size());
         assertNotNull(position.get(0L));
     }
@@ -123,13 +123,13 @@ public class StandardIndexManagerTest {
         indexManager.complete(10);
         indexManager.addToActiveSegment(15L, aggregateId, new IndexEntry(7, 0, 0));
 
-        SortedMap<Long, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 11);
+        SortedMap<FileVersion, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 11);
         assertEquals(2, position.size());
-        assertNotNull(position.get(10L));
-        assertNotNull(position.get(15L));
+        assertNotNull(position.get(new FileVersion(10L, 0)));
+        assertNotNull(position.get(new FileVersion(15, 0)));
         position = indexManager.lookupAggregate(aggregateId, 0, Long.MAX_VALUE, 100, 15);
         assertEquals(2, position.size());
-        assertNotNull(position.get(15L));
+        assertNotNull(position.get(new FileVersion(15L, 0)));
     }
 
     @Test

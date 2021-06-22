@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventType;
@@ -39,17 +40,19 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,7 +103,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                         eventTypeContext.getEventType().toString()));
     }
 
-    public abstract void handover(Long segment, Runnable callback);
+    public abstract void handover(FileVersion segment, Runnable callback);
 
     public Flux<SerializedEvent> eventsPerAggregate(String aggregateId,
                                                     long firstSequence,
@@ -108,7 +111,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long minToken) {
         logger.debug("Reading index entries for aggregate {} started.", aggregateId);
         //Map<segment, all positions in that segment>
-        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+        SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequence,
                                                                                    lastSequence,
                                                                                    Long.MAX_VALUE,
@@ -128,10 +131,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .metrics();
     }
 
-    private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries) {
-        return (!containsSegment(segment) && next != null) ?
+    private Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries) {
+        return (!containsSegment(segment.segment()) && next != null) ?
                 next.eventsForPositions(segment, indexEntries) :
-                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment).get()
+                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment.segment()).get()
                         .name("event_stream")
                         .tag("context", context)
                         .tag("stream", "aggregate_events")
@@ -150,7 +153,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
                                           long minToken, Consumer<SerializedEvent> eventConsumer) {
-        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+        SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
                                                                                    lastSequenceNumber,
                                                                                    Long.MAX_VALUE,
@@ -168,15 +171,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public void processEventsPerAggregateHighestFirst(String aggregateId, long firstSequenceNumber,
                                                       long maxSequenceNumber,
                                                       int maxResults, Consumer<SerializedEvent> eventConsumer) {
-        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+        SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequenceNumber,
                                                                                    maxSequenceNumber,
                                                                                    maxResults,
                                                                                    0);
 
-        List<Long> segmentsContainingAggregate = new ArrayList<>(positionInfos.keySet());
+        List<FileVersion> segmentsContainingAggregate = new ArrayList<>(positionInfos.keySet());
         Collections.reverse(segmentsContainingAggregate);
-        for (Long segmentContainingAggregate : segmentsContainingAggregate) {
+        for (FileVersion segmentContainingAggregate : segmentsContainingAggregate) {
             IndexEntries entries = positionInfos.get(segmentContainingAggregate);
             List<Integer> positions = new ArrayList<>(entries.positions());
             Collections.reverse(positions);
@@ -224,6 +227,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                         done.set(true);
                     }
                     iterator.close();
+                    e.close();
                 });
                 if (done.get()) {
                     return;
@@ -238,6 +242,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
     }
 
+    protected abstract Optional<EventSource> getEventSource(long segment);
+
     protected EventIterator createEventIterator(EventSource e, long segment, long startToken) {
         return e.createEventIterator(segment, startToken);
     }
@@ -246,6 +252,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
         return getLastSequenceNumber(aggregateIdentifier, contains(hints, SearchHint.RECENT_ONLY) ?
                 MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE, Long.MAX_VALUE);
+    }
+
+    @Override
+    public void transformContents(UnaryOperator<Event> transformationFunction) {
+        if ( next != null) {
+            next.transformContents(transformationFunction);
+        }
     }
 
     private <T> boolean contains(T[] values, T value) {
@@ -464,28 +477,33 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return new TransactionWithTokenIterator(firstToken, limitToken);
     }
 
-    protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {
-        SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
+    protected Map<Long, Integer> prepareSegmentStore(long lastInitialized) {
+        NavigableMap<Long, Integer> segments = new TreeMap<>(Comparator.reverseOrder());
         File events = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(events);
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
         Arrays.stream(eventFiles)
-              .map(name -> Long.valueOf(name.substring(0, name.indexOf('.'))))
-              .filter(segment -> segment < lastInitialized)
-              .forEach(segments::add);
+              .map(FileUtils::process)
+              .filter(segment -> segment.segment() < lastInitialized)
+              .forEach(segment -> segments.compute(segment.segment(), (s,old) -> {
+                  if (old == null) return segment.version();
+                  return Math.max(old, segment.version());
+              }));
 
-        segments.forEach(this::renameFileIfNecessary);
-        long firstValidIndex = segments.stream().filter(indexManager::validIndex).findFirst().orElse(-1L);
+        segments.forEach((segment, version) -> renameFileIfNecessary(segment));
+        long firstValidIndex = segments.entrySet().stream().filter(entry -> indexManager.validIndex(entry.getKey()))
+                                       .map(Map.Entry::getKey)
+                                       .findFirst().orElse(-1L);
         logger.debug("First valid index: {}", firstValidIndex);
-        SortedSet<Long> recreate = new TreeSet<>();
-        recreate.addAll(segments.headSet(firstValidIndex));
+        SortedSet<FileVersion> recreate = new TreeSet<>();
+        recreate.addAll(segments.headMap(firstValidIndex).entrySet().stream().map(e -> new FileVersion(e.getKey(), e.getValue())).collect(Collectors.toSet()));
         recreate.forEach(this::recreateIndex);
         return segments;
     }
 
-    protected abstract void recreateIndex(long segment);
+    protected abstract void recreateIndex(FileVersion segment);
 
-    private int retrieveEventsForAnAggregate(long segment, List<Integer> indexEntries, long minSequenceNumber,
+    private int retrieveEventsForAnAggregate(FileVersion segment, List<Integer> indexEntries, long minSequenceNumber,
                                              long maxSequenceNumber,
                                              Consumer<SerializedEvent> onEvent, long maxResults, long minToken) {
         Optional<EventSource> buffer = getEventSource(segment);
@@ -558,7 +576,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return "Could not rename " + from.getAbsolutePath() + " to " + to.getAbsolutePath();
     }
 
-    protected void recreateIndexFromIterator(long segment, EventIterator iterator) {
+    protected void recreateIndexFromIterator(FileVersion segment, EventIterator iterator) {
         Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
         while (iterator.hasNext()) {
             EventInformation event = iterator.next();
@@ -571,7 +589,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                              .add(indexEntry);
             }
         }
-        indexManager.addToActiveSegment(segment, loadedEntries);
+        indexManager.addToActiveSegment(segment.segment(), loadedEntries);
         indexManager.complete(segment);
     }
 
@@ -579,10 +597,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
      * @param segment gets an EventSource for the segment
      * @return the event source or Optional.empty() if segment not managed by this handler
      */
-    public abstract Optional<EventSource> getEventSource(long segment);
+    public abstract Optional<EventSource> getEventSource(FileVersion segment);
 
     //Retrieves event source from first available layer that is responsible for given segment
-    private Optional<EventSource> eventSource(long segment) {
+    private Optional<EventSource> eventSource(FileVersion segment) {
         Optional<EventSource> eventSource = getEventSource(segment);
         if (eventSource.isPresent()) {
             return eventSource;

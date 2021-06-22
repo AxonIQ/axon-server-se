@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**
@@ -244,5 +245,7 @@ public interface EventStorageEngine {
      */
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
+
+    void transformContents(UnaryOperator<Event> transformationFunction);
 
 }

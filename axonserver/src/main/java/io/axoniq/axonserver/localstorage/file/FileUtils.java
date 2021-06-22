@@ -48,6 +48,15 @@ public class FileUtils {
         return eventFiles;
     }
 
+    public static FileVersion process(String name) {
+        String baseName = name.substring(0, name.indexOf('.'));
+        int separator = baseName.indexOf('_');
+        if( separator < 0) {
+            return new FileVersion(Long.parseLong(baseName), 0);
+        }
+        return new FileVersion(Long.parseLong(baseName.substring(0, separator)), Integer.parseInt(baseName.substring(separator+1)));
+    }
+
     public static boolean delete(File file) {
         if( ! file.exists()) return true;
         logger.debug("Delete file {}", file.getAbsolutePath());

@@ -32,6 +32,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 import static org.junit.Assert.assertEquals;
 
@@ -135,6 +136,10 @@ public class HttpStreamingQueryTest {
 
             }
 
+            @Override
+            public void transformContents(UnaryOperator<Event> transformationFunction) {
+
+            }
         };
 
         LocalEventStore localEventStore = new LocalEventStore(new EventStoreFactory() {

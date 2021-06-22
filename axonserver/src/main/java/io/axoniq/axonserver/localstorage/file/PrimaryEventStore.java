@@ -177,7 +177,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
 
         return Arrays.stream(eventFiles)
-                     .map(name -> Long.valueOf(name.substring(0, name.indexOf('.'))))
+                     .map(name -> FileUtils.process(name).segment())
                      .filter(segment -> segment < lastInitialized)
                      .max(Long::compareTo)
                      .orElse(defaultFirstIndex);
@@ -235,7 +235,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void handover(Long segment, Runnable callback) {
+    public void handover(FileVersion segment, Runnable callback) {
         callback.run();
     }
 
@@ -270,7 +270,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public Optional<EventSource> getEventSource(long segment) {
+    public Optional<EventSource> getEventSource(FileVersion segment) {
+        return getEventSource(segment.segment());
+    }
+
+    @Override
+    protected Optional<EventSource> getEventSource(long segment) {
         if (readBuffers.containsKey(segment)) {
             return Optional.of(readBuffers.get(segment).duplicate());
         }
@@ -361,7 +366,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected void recreateIndex(long segment) {
+    protected void recreateIndex(FileVersion segment) {
         // No implementation as for primary segment store there are no index files, index is kept in memory
     }
 
@@ -377,7 +382,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected void completeSegment(WritePosition writePosition) {
         indexManager.complete(writePosition.segment);
         if (next != null) {
-            next.handover(writePosition.segment, () -> {
+            next.handover(new FileVersion(writePosition.segment, 0), () -> {
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
                 logger.debug("Handed over {}, remaining segments: {}",
                              writePosition.segment,

@@ -17,6 +17,7 @@ import reactor.core.publisher.Flux;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 /**
  * @author Marc Gathier
@@ -105,6 +106,11 @@ public class FakeEventStore implements EventStorageEngine {
     //Not implemented for FakeEventStore
     @Override
     public void deleteAllEventData() {
+    }
+
+    @Override
+    public void transformContents(UnaryOperator<Event> transformationFunction) {
+
     }
 
     @Override

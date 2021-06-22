@@ -21,6 +21,7 @@ public class StorageProperties implements Cloneable {
 
     private static final String PATH_FORMAT = "%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
+    private static final String PATH_WITH_VERSION_FORMAT = "%s/%020d_%05d%s";
     private static final String OLD_PATH_FORMAT = "%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
     /**
@@ -198,9 +199,17 @@ public class StorageProperties implements Cloneable {
     public File bloomFilter(String context, long segment) {
         return new File(String.format(PATH_FORMAT, getStorage(context), segment, bloomIndexSuffix));
     }
+    public File bloomFilter(String context, FileVersion segment) {
+        if( segment.version() == 0) return bloomFilter(context, segment.segment());
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), bloomIndexSuffix));
+    }
 
     public File index(String context, long segment) {
         return new File(String.format(PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    }
+    public File index(String context, FileVersion segment) {
+        if( segment.version() == 0) return index(context, segment.segment());
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), indexSuffix));
     }
 
     public File indexTemp(String context, long segment) {
@@ -209,6 +218,11 @@ public class StorageProperties implements Cloneable {
 
     public File newIndex(String context, long segment) {
         return new File(String.format(PATH_FORMAT, getStorage(context), segment, newIndexSuffix));
+    }
+    public File newIndex(String context, FileVersion segment) {
+        if( segment.version() == 0) return newIndex(context, segment.segment());
+
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), newIndexSuffix));
     }
 
     public File newIndexTemp(String context, long segment) {
@@ -225,6 +239,11 @@ public class StorageProperties implements Cloneable {
 
     public File dataFile(String context, long segment) {
         return new File(String.format(PATH_FORMAT, getStorage(context), segment, eventsSuffix));
+    }
+
+    public File dataFile(String context, FileVersion segment) {
+        if( segment.version() == 0) return dataFile(context, segment.segment());
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), eventsSuffix));
     }
 
     public long getForceInterval() {

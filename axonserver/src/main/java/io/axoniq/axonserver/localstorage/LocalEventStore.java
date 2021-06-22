@@ -69,6 +69,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -216,6 +217,37 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Missing worker for context: " + context);
         }
         return workers;
+    }
+
+    public CompletableFuture<Long> deleteOldSnapshots(String context, long minSequenceOffset) {
+        CompletableFuture<Long> result = new CompletableFuture<>();
+        runInDataFetcherPool(() -> {
+            Workers workers = workersMap.get(context);
+            AtomicLong deletedCount = new AtomicLong();
+            if (workers == null) {
+                result.complete(null);
+                return;
+            }
+
+            workers.snapshotStorageEngine
+                    .transformContents(snapshot -> {
+                                           Optional<Long> optionalLastSequenceNumber = workers.snapshotStorageEngine
+                                                   .getLastSequenceNumber(snapshot.getAggregateIdentifier())
+                                                   .filter(lastSequenceNumber ->
+                                                                   snapshot.getAggregateSequenceNumber()
+                                                                           <
+                                                                           lastSequenceNumber
+                                                                                   - minSequenceOffset);
+                                           if (optionalLastSequenceNumber.isPresent()) {
+                                               deletedCount.incrementAndGet();
+                                               return null;
+                                           }
+                                           return snapshot;
+                                       }
+                    );
+            result.complete(deletedCount.get());
+        }, result::completeExceptionally);
+        return result;
     }
 
     @Override
@@ -371,7 +403,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         getMaxSequence(request),
                         request.getMinToken())
                 .map(activeEventDecorator::decorateEvent)
-                .subscribeOn(Schedulers.fromExecutorService(dataFetcher),false)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher), false)
                 .transform(f -> count(f, counter -> {
                     if (counter == 0) {
                         logger.debug("Aggregate not found: {}", request);
@@ -753,8 +785,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private volatile boolean initialized;
 
 
-
-
         public Workers(String context) {
             this.eventStorageEngine = eventStoreFactory.createEventStorageEngine(context);
             this.snapshotStorageEngine = eventStoreFactory.createSnapshotStorageEngine(context);
@@ -801,8 +831,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     snapshotStorageEngine.close(false);
                     throw runtimeException;
                 }
-
-
             }
         }
 
@@ -853,7 +881,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventWriteStorage.deleteAllEventData();
             snapshotWriteStorage.deleteAllEventData();
         }
-
     }
 
     private class InterceptorAwareEventDecorator implements EventDecorator {
