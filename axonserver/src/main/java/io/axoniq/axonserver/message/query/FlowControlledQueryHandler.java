@@ -45,7 +45,7 @@ public class FlowControlledQueryHandler extends QueryHandler{
         WrappedQuery wrappedQuery = new WrappedQuery(getClientStreamIdentification(),
                                               getClientId(),
                                               request, timeout);
-        flowControlQueues.put(getClientStreamIdentification().toString(), wrappedQuery, wrappedQuery.priority()< 0);
+        flowControlQueues.put(getClientStreamIdentification().toString(), wrappedQuery, wrappedQuery.priority() > 0);
     }
 
     @Override
