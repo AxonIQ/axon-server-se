@@ -192,11 +192,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     @Override
     public void deleteAllEventData(String context) {
-        Workers workers = workersMap.get(context);
+        Workers workers = workersMap.remove(context);
         if (workers == null) {
             return;
         }
-        workers.deleteAllEventData();
+        workers.close(true);
+        initContext(context, false);
     }
 
     public void cancel(String context) {
@@ -844,15 +845,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
             trackingEventManager.validateActiveConnections(minLastPermits);
         }
-
-        /**
-         * Deletes all event and snapshot data for this context.
-         */
-        public void deleteAllEventData() {
-            eventWriteStorage.deleteAllEventData();
-            snapshotWriteStorage.deleteAllEventData();
-        }
-
     }
 
     private class InterceptorAwareEventDecorator implements EventDecorator {

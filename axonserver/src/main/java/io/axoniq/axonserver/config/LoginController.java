@@ -58,7 +58,7 @@ public class LoginController {
         if (logout != null) {
             model.addObject("logout", "You've been logged out successfully.");
         }
-        model.addObject("version", versionInfoProvider.get().getVersion());
+        model.addObject("asVersion", versionInfoProvider.get().getVersion());
         model.addObject("product", versionInfoProvider.get().getProductName());
         model.addObject("externalLogins",
                         ObjectUtils.getOrDefault(externalLoginProvider.get(), Collections.emptyList()));

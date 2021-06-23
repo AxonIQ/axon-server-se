@@ -32,9 +32,4 @@ public interface StorageTransactionManager {
     default void cancelPendingTransactions() {
 
     }
-
-    /**
-     * Deletes all events/snapshots related to the event storage engine managed by this transaction manager.
-     */
-    void deleteAllEventData();
 }
