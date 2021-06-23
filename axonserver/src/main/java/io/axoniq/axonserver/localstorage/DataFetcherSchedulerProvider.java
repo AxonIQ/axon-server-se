@@ -23,7 +23,10 @@ public class DataFetcherSchedulerProvider implements Supplier<ExecutorService> {
     @Override
     public ExecutorService get() {
         if (dataFetcher == null) {
-            return Executors.newFixedThreadPool(24, new CustomizableThreadFactory("data-fetcher-"));
-        } else return dataFetcher;
+            DataFetcherSchedulerProvider.setDataFetcher(Executors.newFixedThreadPool(24,
+                                                                                     new CustomizableThreadFactory(
+                                                                                             "data-fetcher-")));
+        }
+        return dataFetcher;
     }
 }
