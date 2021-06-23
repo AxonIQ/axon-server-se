@@ -102,11 +102,6 @@ public class FakeEventStore implements EventStorageEngine {
         return 10001;
     }
 
-    //Not implemented for FakeEventStore
-    @Override
-    public void deleteAllEventData() {
-    }
-
     @Override
     public long getTokenAt(long instant) {
         return 0;

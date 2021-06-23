@@ -98,12 +98,4 @@ public class EventWriteStorage {
     public void cancelPendingTransactions() {
         storageTransactionManager.cancelPendingTransactions();
     }
-
-    /**
-     * Deletes all events from the event store for this context. Delegates to the transaction manager, so it can clean
-     * up its data.
-     */
-    public void deleteAllEventData() {
-        storageTransactionManager.deleteAllEventData();
-    }
 }
