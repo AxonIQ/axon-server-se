@@ -39,11 +39,11 @@ public class WrappedQuery {
         this.subscriptionQueryRequest = null;
     }
     public WrappedQuery(ClientStreamIdentification targetClientStreamIdentification,
-                        String targetClientId, SubscriptionQueryRequest subscriptionQueryRequest, long timeout) {
+                        String targetClientId, SubscriptionQueryRequest subscriptionQueryRequest) {
         this.targetClientStreamIdentification = targetClientStreamIdentification;
         this.targetClientId = targetClientId;
         this.queryRequest = null;
-        this.timeout = timeout;
+        this.timeout = Long.MAX_VALUE;
         this.priority = 0;
         this.subscriptionQueryRequest = subscriptionQueryRequest;
     }
