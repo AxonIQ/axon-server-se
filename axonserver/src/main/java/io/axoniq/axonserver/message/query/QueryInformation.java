@@ -82,7 +82,6 @@ public class QueryInformation {
         try {
             if(hasError(queryResponse)) {
                 failedResponse.set(queryResponse);
-                completed(clientStreamId);
             } else {
                 remaining = remainingReplies.decrementAndGet();
                 if( remaining >= 0) {

@@ -65,6 +65,8 @@ class QueryInformationTest {
                                                             s -> completed[0] = s);
         testSubject.forward("client1", QueryResponse.newBuilder().setErrorCode("Error1").build());
         testSubject.forward("client2", QueryResponse.newBuilder().setErrorCode("Error2").build());
+        testSubject.completed("client1");
+        testSubject.completed("client2");
         assertEquals(1, responseList.size());
         assertNotNull(completed[0]);
         assertEquals("Error2", responseList.get(0).getErrorCode());
