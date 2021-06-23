@@ -17,8 +17,9 @@ import io.axoniq.axonserver.message.FlowControlQueues;
 
 /**
  * @author Marc Gathier
+ * @since 4.5.3
  */
-public class FlowControlledQueryHandler extends QueryHandler{
+public class FlowControlledQueryHandler extends QueryHandler {
 
     private final FlowControlQueues<WrappedQuery> flowControlQueues;
     private final QueryCache queryCache;
@@ -36,7 +37,7 @@ public class FlowControlledQueryHandler extends QueryHandler{
     public void dispatch(SubscriptionQueryRequest query) {
         WrappedQuery wrappedQuery = new WrappedQuery(getClientStreamIdentification(),
                                                      getClientId(),
-                                                     query, 1000000);
+                                                     query);
         flowControlQueues.put(getClientStreamIdentification().toString(), wrappedQuery);
     }
 
