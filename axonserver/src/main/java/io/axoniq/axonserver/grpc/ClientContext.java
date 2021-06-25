@@ -1,7 +1,21 @@
+/*
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
 package io.axoniq.axonserver.grpc;
 
 import java.util.Objects;
 
+/**
+ * Value object containing a client and a context.
+ *
+ * @author Marc Gathier
+ * @since 4.5.3
+ */
 public class ClientContext {
     private final String clientId;
     private final String context;
