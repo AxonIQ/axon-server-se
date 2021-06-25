@@ -14,10 +14,10 @@ public interface ClientIdRegistry extends Printable {
      * Registers the relation between a stream and a client id
      *
      * @param clientStreamId the unique stream identifier of the stream
-     * @param clientId       the client identifier
+     * @param client       the client identifier
      * @return true if new registration
      */
-    boolean register(String clientStreamId, String clientId, ConnectionType type);
+    boolean register(String clientStreamId, ClientContext client, ConnectionType type);
 
     /**
      * Unregisters the relation between a stream and a client id
@@ -28,27 +28,27 @@ public interface ClientIdRegistry extends Printable {
     boolean unregister(String clientStreamId, ConnectionType type);
 
     /**
-     * Returns the unique identifier of the client that opened the specified stream.
+     * Returns the unique identifier and context of the client that opened the specified stream.
      *
      * @param clientStreamId the unique identifier of the stream opened by the client
      * @return the unique identifier of the client that opened the specified stream
      *
      * @throws IllegalStateException if the registry doesn't contain the specified stream id
      */
-    String clientId(String clientStreamId);
+    ClientContext clientId(String clientStreamId);
 
     /**
      * Returns the identifiers of the set of platform streams opened by the specified client.
      *
-     * @param clientId the unique identifier of the client
+     * @param clientContext the unique identifier of the client
      * @return the identifiers of the set of platform streams opened by the specific client
      */
-    Set<String> streamIdsFor(String clientId, ConnectionType type);
+    Set<String> streamIdsFor(ClientContext clientContext, ConnectionType type);
 
-    default String streamIdFor(String clientId, ConnectionType type) {
-        Set<String> streamIds = streamIdsFor(clientId, type);
+    default String streamIdFor(ClientContext client, ConnectionType type) {
+        Set<String> streamIds = streamIdsFor(client, type);
         if (streamIds.isEmpty()) {
-            throw new IllegalStateException("No " + type + " stream found for client " + clientId);
+            throw new IllegalStateException("No " + type + " stream found for client " + client);
         }
         return streamIds.iterator().next();
     }

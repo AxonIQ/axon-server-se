@@ -12,10 +12,11 @@ package io.axoniq.axonserver.message.event;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.topology.Topology;
-import org.springframework.boot.actuate.autoconfigure.system.DiskSpaceHealthIndicatorProperties;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.stereotype.Component;
+
+import java.util.TreeSet;
 
 /**
  * @author Marc Gathier
@@ -35,7 +36,10 @@ public class LocalEventStoreHealthIndicator extends AbstractHealthIndicator {
     @Override
     protected void doHealthCheck(Health.Builder builder)  {
         builder.up();
-        clusterController.getMyContextNames().forEach(context -> {
+        TreeSet<String> contextNames = new TreeSet<>();
+        clusterController.getMyContextNames().forEach(contextNames::add);
+
+        contextNames.forEach(context -> {
             try {
                 builder.withDetail(String.format("%s.lastEvent", context), localEventStore.getLastEvent(context));
                 builder.withDetail(String.format("%s.lastSnapshot", context), localEventStore.getLastSnapshot(context));

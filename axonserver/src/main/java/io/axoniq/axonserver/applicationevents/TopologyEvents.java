@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.applicationevents;
 
+import io.axoniq.axonserver.grpc.ClientContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 /**
@@ -312,20 +313,20 @@ public class TopologyEvents {
 
         private final String componentName;
 
-        private final String clientId;
+        private final ClientContext client;
 
         /**
          * Creates an {@link ApplicationInactivityTimeout} event.
          *
          * @param clientStreamIdentification the client identifier
          * @param componentName              the client component name
-         * @param clientId
+         * @param client                     the client id and context
          */
         public ApplicationInactivityTimeout(ClientStreamIdentification clientStreamIdentification,
-                                            String componentName, String clientId) {
+                                            String componentName, ClientContext client) {
             this.clientStreamIdentification = clientStreamIdentification;
             this.componentName = componentName;
-            this.clientId = clientId;
+            this.client = client;
         }
 
         /**
@@ -351,8 +352,8 @@ public class TopologyEvents {
          *
          * @return the unique identifier of the client
          */
-        public String clientId() {
-            return clientId;
+        public ClientContext client() {
+            return client;
         }
     }
 }

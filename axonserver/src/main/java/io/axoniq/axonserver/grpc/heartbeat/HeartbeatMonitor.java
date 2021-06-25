@@ -3,6 +3,7 @@ package io.axoniq.axonserver.grpc.heartbeat;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
+import io.axoniq.axonserver.grpc.ClientContext;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.Heartbeat;
@@ -59,7 +60,7 @@ public class HeartbeatMonitor {
     public void on(ApplicationConnected evt) {
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(evt.getContext(),
                                                                                          evt.getClientStreamId());
-        clientInfos.put(clientIdentification, new ClientInformation(evt.getComponentName(), evt.getClientId()));
+        clientInfos.put(clientIdentification, new ClientInformation(evt.getComponentName(), evt.getClientId(), evt.getContext()));
     }
 
     /**
@@ -122,10 +123,12 @@ public class HeartbeatMonitor {
         Instant timeout = Instant.now(clock).minus(heartbeatTimeout, ChronoUnit.MILLIS);
         lastReceivedHeartBeats.forEach((clientStreamIdentification, instant) -> {
             if (instant.isBefore(timeout) && clientInfos.containsKey(clientStreamIdentification)) {
-                String component = clientInfos.get(clientStreamIdentification).component;
-                String clientId = clientInfos.get(clientStreamIdentification).clientId;
+
+                ClientInformation clientInformation = clientInfos.get(clientStreamIdentification);
+                String component = clientInformation.component;
+                String clientId = clientInformation.clientId;
                 eventPublisher.publishEvent(new ApplicationInactivityTimeout(clientStreamIdentification, component,
-                                                                             clientId));
+                                                                             new ClientContext(clientId, clientInformation.context)));
             }
         });
     }
@@ -160,10 +163,12 @@ public class HeartbeatMonitor {
 
         private final String component;
         private final String clientId;
+        private final String context;
 
-        private ClientInformation(String component, String clientId) {
+        private ClientInformation(String component, String clientId, String context) {
             this.component = component;
             this.clientId = clientId;
+            this.context = context;
         }
     }
 }

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.grpc.ClientContext;
 import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.grpc.ClientIdRegistry.ConnectionType;
 import io.axoniq.axonserver.grpc.DefaultClientIdRegistry;
@@ -23,7 +24,7 @@ public class ApplicationInactivityListenerTest {
 
     private final String context = "context";
     private final String component = "component";
-    private final String clientId = "myClient";
+    private final ClientContext client = new ClientContext("clientId", context);
     private final String commandStream = "commandStream";
     private final String queryStream = "queryStream";
     private final String platformStream = "platformStream";
@@ -31,8 +32,8 @@ public class ApplicationInactivityListenerTest {
     @Test
     public void testCloseStreams() {
         ClientIdRegistry registry = new DefaultClientIdRegistry();
-        registry.register(commandStream, clientId, COMMAND);
-        registry.register(queryStream, clientId, QUERY);
+        registry.register(commandStream, client, COMMAND);
+        registry.register(queryStream, client, QUERY);
         AtomicBoolean commandStreamClosed = new AtomicBoolean();
         AtomicBoolean queryStreamClosed = new AtomicBoolean();
         Map<ConnectionType, StreamCloser> streamClosers = new HashMap<>();
@@ -40,7 +41,7 @@ public class ApplicationInactivityListenerTest {
         streamClosers.put(QUERY, ((client, streamIdentification) -> queryStreamClosed.set(true)));
         ApplicationInactivityListener testSubject = new ApplicationInactivityListener(streamClosers, registry);
         ClientStreamIdentification platformStream = new ClientStreamIdentification(context, this.platformStream);
-        testSubject.on(new TopologyEvents.ApplicationInactivityTimeout(platformStream, component, clientId));
+        testSubject.on(new TopologyEvents.ApplicationInactivityTimeout(platformStream, component, client));
         assertTrue(commandStreamClosed.get());
         assertTrue(queryStreamClosed.get());
     }
@@ -48,7 +49,7 @@ public class ApplicationInactivityListenerTest {
     @Test
     public void testCloseCommandStream() {
         ClientIdRegistry registry = new DefaultClientIdRegistry();
-        registry.register(commandStream, clientId, COMMAND);
+        registry.register(commandStream, client, COMMAND);
         AtomicBoolean commandStreamClosed = new AtomicBoolean();
         AtomicBoolean queryStreamClosed = new AtomicBoolean();
         Map<ConnectionType, StreamCloser> streamClosers = new HashMap<>();
@@ -56,7 +57,7 @@ public class ApplicationInactivityListenerTest {
         streamClosers.put(QUERY, ((client, streamIdentification) -> queryStreamClosed.set(true)));
         ApplicationInactivityListener testSubject = new ApplicationInactivityListener(streamClosers, registry);
         ClientStreamIdentification platformStream = new ClientStreamIdentification(context, this.platformStream);
-        testSubject.on(new TopologyEvents.ApplicationInactivityTimeout(platformStream, component, clientId));
+        testSubject.on(new TopologyEvents.ApplicationInactivityTimeout(platformStream, component, client));
         assertTrue(commandStreamClosed.get());
         assertFalse(queryStreamClosed.get());
     }
@@ -71,7 +72,7 @@ public class ApplicationInactivityListenerTest {
         streamClosers.put(QUERY, ((client, streamIdentification) -> queryStreamClosed.set(true)));
         ApplicationInactivityListener testSubject = new ApplicationInactivityListener(streamClosers, registry);
         ClientStreamIdentification platformStream = new ClientStreamIdentification(context, this.platformStream);
-        testSubject.on(new TopologyEvents.ApplicationInactivityTimeout(platformStream, component, clientId));
+        testSubject.on(new TopologyEvents.ApplicationInactivityTimeout(platformStream, component, client));
         assertFalse(commandStreamClosed.get());
         assertFalse(queryStreamClosed.get());
     }

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.component.tags;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
+import io.axoniq.axonserver.grpc.ClientContext;
 import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.springframework.context.event.EventListener;
@@ -36,14 +37,14 @@ public class ClientTagsCache implements Function<ClientStreamIdentification, Map
     @Override
     public Map<String, String> apply(ClientStreamIdentification client) {
         try {
-            String clientId = clientIdRegistry.clientId(client.getClientStreamId());
-            if (clientId != null) {
+            ClientContext clientContext = clientIdRegistry.clientId(client.getClientStreamId());
+            if (clientContext != null) {
                 client = new ClientStreamIdentification(client.getContext(),
-                                                        clientIdRegistry.streamIdFor(clientId,
+                                                        clientIdRegistry.streamIdFor(clientContext,
                                                                                      ClientIdRegistry.ConnectionType.PLATFORM));
             }
         } catch (IllegalStateException illegalStateException) {
-
+            // ignore this exception
         }
         return Collections.unmodifiableMap(
                 tags.getOrDefault(client, Collections.emptyMap()));
