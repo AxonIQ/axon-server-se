@@ -119,7 +119,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),
                            PREFETCH_SEGMENT_FILES,
                            storageProperties.getEventsPerSegmentPrefetch())
-                   .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence)
+                   .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence) //todo for safe guard, remove in 4.6
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
                    .name("event_stream")
                    .tag("context", context)
