@@ -52,6 +52,7 @@ import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanCreationNotAllowedException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -72,6 +73,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
+import javax.annotation.Nonnull;
 
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 
@@ -276,9 +278,11 @@ public class AxonServerStandardConfiguration {
     public ApplicationEventMulticaster applicationEventMulticaster() {
         return new SimpleApplicationEventMulticaster() {
             @Override
-            protected void invokeListener(ApplicationListener<?> listener, ApplicationEvent event) {
+            protected void invokeListener(@Nonnull ApplicationListener<?> listener, @Nonnull ApplicationEvent event) {
                 try {
                     super.invokeListener(listener, event);
+                } catch (BeanCreationNotAllowedException ex) {
+                    // shutdown in progress
                 } catch (RuntimeException ex) {
                     logger.warn("Invoking listener {} failed", listener, ex);
                 }
