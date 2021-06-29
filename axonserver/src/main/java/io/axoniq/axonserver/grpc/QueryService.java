@@ -234,9 +234,9 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             }
 
             private void initClientReference(String clientId) {
-                String clientStreamId = clientId + "." + UUID.randomUUID().toString();
+                String clientStreamId = clientId + "." + UUID.randomUUID();
                 if (clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
-                    clientIdRegistry.register(clientStreamId, clientId, ClientIdRegistry.ConnectionType.QUERY);
+                    clientIdRegistry.register(clientStreamId, new ClientContext(clientId, context), ClientIdRegistry.ConnectionType.QUERY);
                 }
                 clientIdRef.compareAndSet(null, clientId);
             }

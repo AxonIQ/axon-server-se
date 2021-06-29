@@ -97,10 +97,6 @@ public class LocalEventStoreTest {
                 };
             }
 
-            @Override
-            public void deleteAllEventData() {
-
-            }
         };
 
         testSubject = new LocalEventStore(eventStoreFactory,

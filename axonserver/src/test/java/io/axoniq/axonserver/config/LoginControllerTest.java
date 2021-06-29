@@ -56,7 +56,7 @@ public class LoginControllerTest {
         ModelAndView modelAndView = testSubject.login(null, null, null);
         assertNull(modelAndView.getModel().get("error"));
         assertNull(modelAndView.getModel().get("logout"));
-        assertEquals("theVersion", modelAndView.getModel().get("version"));
+        assertEquals("theVersion", modelAndView.getModel().get("asVersion"));
         assertEquals("theProduct", modelAndView.getModel().get("product"));
         assertNotNull(modelAndView.getModel().get("externalLogins"));
         Collection<ExternalLogin> externalLogins = (Collection<ExternalLogin>) modelAndView.getModel().get(

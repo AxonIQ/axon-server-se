@@ -143,6 +143,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
+        DataFetcherSchedulerProvider.setDataFetcher(dataFetcher);
         this.dataWriter = Executors.newFixedThreadPool(writerThreads, new CustomizableThreadFactory("data-writer-"));
         this.eventDecorator = eventDecorator;
     }
@@ -192,11 +193,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     @Override
     public void deleteAllEventData(String context) {
-        Workers workers = workersMap.get(context);
+        Workers workers = workersMap.remove(context);
         if (workers == null) {
             return;
         }
-        workers.deleteAllEventData();
+        workers.close(true);
+        initContext(context, false);
     }
 
     public void cancel(String context) {
@@ -371,7 +373,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         getMaxSequence(request),
                         request.getMinToken())
                 .map(activeEventDecorator::decorateEvent)
-                .subscribeOn(Schedulers.fromExecutorService(dataFetcher), false)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher))
                 .transform(f -> count(f, counter -> {
                     if (counter == 0) {
                         logger.debug("Aggregate not found: {}", request);
@@ -840,14 +842,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private void validateActiveConnections() {
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
             trackingEventManager.validateActiveConnections(minLastPermits);
-        }
-
-        /**
-         * Deletes all event and snapshot data for this context.
-         */
-        public void deleteAllEventData() {
-            eventWriteStorage.deleteAllEventData();
-            snapshotWriteStorage.deleteAllEventData();
         }
     }
 

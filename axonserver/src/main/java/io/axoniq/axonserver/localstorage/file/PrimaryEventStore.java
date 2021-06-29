@@ -288,35 +288,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void rollback(long token) {
-        if (token >= getLastToken()) {
-            return;
-        }
-        synchronizer.shutdown(false);
-        NavigableSet<Long> segments = getSegments();
-
-        if (segments.first() < token) {
-            int currentPosition = writePositionRef.get().position;
-            initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)), 0L);
-            writePositionRef.get().buffer.clearTo(currentPosition);
-        } else {
-
-            for (long segment : getSegments()) {
-                if (segment > token && segment > 0) {
-                    removeSegment(segment);
-                }
-            }
-
-            if (segments.isEmpty() && next != null) {
-                next.rollback(token);
-            }
-
-            initLatestSegment(Long.MAX_VALUE, token + 1, new File(storageProperties.getStorage(context)), 0L);
-            writePositionRef.get().buffer.clearTo(writePositionRef.get().buffer.capacity());
-        }
-    }
-
-    @Override
     public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
 
         return new CloseableIterator<SerializedEventWithToken>() {
@@ -448,11 +419,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public long nextToken() {
         return writePositionRef.get().sequence;
-    }
-
-    @Override
-    public void deleteAllEventData() {
-        rollback(-1);
     }
 
     protected WritableEventSource getOrOpenDatafile(long segment) {
