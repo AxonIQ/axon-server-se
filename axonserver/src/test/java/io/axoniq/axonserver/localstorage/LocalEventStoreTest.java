@@ -143,10 +143,9 @@ public class LocalEventStoreTest {
         eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
         eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
         eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
-        assertEquals(3, eventInterceptors.appendEvent);
-        assertEquals(0, eventInterceptors.eventsPreCommit);
         eventStream.onCompleted();
         result.get();
+        assertEquals(3, eventInterceptors.appendEvent);
         assertEquals(1, eventInterceptors.eventsPreCommit);
         assertEquals(1, eventInterceptors.eventsPostCommit);
     }
