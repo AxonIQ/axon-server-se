@@ -6,6 +6,7 @@ visit https://docs.axoniq.io.
 Release Notes for version 4.5.3
 -------------------------------
 * Fix: Reset event store with multiple segments
+* Fix: Regression in loading aggregate events performance
 * Fix: Handle queries with same request type but different response type
 * New metrics added:
   - file.bloom.open: counts the number of bloom filter segments opened since start
