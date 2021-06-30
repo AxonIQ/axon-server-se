@@ -95,6 +95,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
             return null;
         }
 
+        fileOpenMeter.increment();
         return new InputStreamEventSource(storageProperties.dataFile(context, segment),
                                           eventTransformerFactory);
     }

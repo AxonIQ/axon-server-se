@@ -23,6 +23,7 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -78,6 +79,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private final Timer lastSequenceReadTimer;
     protected final SegmentBasedEventStore next;
     private static final int PREFETCH_SEGMENT_FILES = 2;
+    protected final Counter fileOpenMeter;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
                                   StorageProperties storageProperties, MeterFactory meterFactory) {
@@ -93,6 +95,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
         this.next = nextSegmentsHandler;
+        Tags tags = Tags.of(MeterFactory.CONTEXT, context, "type", eventTypeContext.getEventType().name());
+        this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
+
         this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME,
                 Tags.of(MeterFactory.CONTEXT,
                         eventTypeContext.getContext(),
