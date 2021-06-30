@@ -97,12 +97,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.next = nextSegmentsHandler;
         Tags tags = Tags.of(MeterFactory.CONTEXT, context, "type", eventTypeContext.getEventType().name());
         this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
-
-        this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME,
-                Tags.of(MeterFactory.CONTEXT,
-                        eventTypeContext.getContext(),
-                        "type",
-                        eventTypeContext.getEventType().toString()));
+        this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
     }
 
     public abstract void handover(Long segment, Runnable callback);
