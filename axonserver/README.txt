@@ -1,7 +1,21 @@
-This is the Axon Server Standard Edition, version 4.4
+This is the Axon Server Standard Edition, version 4.5
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.5.3
+-------------------------------
+* Fix: Reset event store with multiple segments
+* Fix: Handle queries with same request type but different response type
+* New metrics added:
+  - file.bloom.open: counts the number of bloom filter segments opened since start
+  - file.bloom.close: counts the number of bloom filter segments closed since start
+  - file.bloom.open: counts the number of bloom filter segments opened since start
+  - file.segment.open: counts the number of event store segments opened since start
+  - local.aggregate.segments: monitors the number of segments that were accessed for reading aggregate event requests
+
+Notes:
+ - Default value for configuration property axoniq.axonserver.event.events-per-segment-prefetch is decreased from 50 to 10.
 
 Release Notes for version 4.5.2
 -------------------------------
