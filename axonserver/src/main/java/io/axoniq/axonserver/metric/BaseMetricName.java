@@ -85,6 +85,7 @@ public enum BaseMetricName implements MetricName {
     AXON_BLOOM_CLOSE("file.bloom.close", "Number of bloom filter files closed"),
     AXON_SEGMENT_OPEN("file.segment.open", "Number of event store segment files opened"),
     AXON_AGGREGATE_READTIME("local.aggregate.readtime", "Elapsed time for reading events from the event store"),
+    AXON_AGGREGATE_SEGMENT_COUNT("local.aggregate.segments", "Number of segments where aggregate is found"),
     AXON_LAST_SEQUENCE_READTIME("local.lastsequence.readtime",
                                 "Elapsed time for retrieving the last sequence number for an aggregate"),
     LOCAL_QUERY_RESPONSE_TIME("local.query.responsetime",
