@@ -23,6 +23,8 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -78,6 +80,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private final Timer lastSequenceReadTimer;
     protected final SegmentBasedEventStore next;
     private static final int PREFETCH_SEGMENT_FILES = 2;
+    protected final Counter fileOpenMeter;
+    private final DistributionSummary aggregateSegmentsCount;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
                                   StorageProperties storageProperties, MeterFactory meterFactory) {
@@ -93,11 +97,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.indexManager = indexManager;
         this.storageProperties = storageProperties;
         this.next = nextSegmentsHandler;
-        this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME,
-                Tags.of(MeterFactory.CONTEXT,
-                        eventTypeContext.getContext(),
-                        "type",
-                        eventTypeContext.getEventType().toString()));
+        Tags tags = Tags.of(MeterFactory.CONTEXT, context, "type", eventTypeContext.getEventType().name());
+        this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
+        this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
+        this.aggregateSegmentsCount = meterFactory.distributionSummary
+                (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
+
     }
 
     public abstract void handover(Long segment, Runnable callback);
@@ -114,6 +119,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                    Long.MAX_VALUE,
                                                                                    minToken);
         logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
+        aggregateSegmentsCount.record(positionInfos.size());
 
         return Flux.fromIterable(positionInfos.entrySet())
                    .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),
