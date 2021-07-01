@@ -194,9 +194,9 @@ public class CommandService implements AxonServerClientService {
             }
 
             private void initClientReference(String clientId) {
-                String clientStreamId = clientId + "." + UUID.randomUUID().toString();
+                String clientStreamId = clientId + "." + UUID.randomUUID();
                 if (clientRef.compareAndSet(null, new ClientStreamIdentification(context, clientStreamId))) {
-                    clientIdRegistry.register(clientStreamId, clientId, ClientIdRegistry.ConnectionType.COMMAND);
+                    clientIdRegistry.register(clientStreamId, new ClientContext(clientId, context), ClientIdRegistry.ConnectionType.COMMAND);
                 }
                 clientIdRef.compareAndSet(null, clientId);
             }

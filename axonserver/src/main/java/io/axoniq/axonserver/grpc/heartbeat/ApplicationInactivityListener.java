@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.grpc.ClientContext;
 import io.axoniq.axonserver.grpc.ClientIdRegistry;
 import io.axoniq.axonserver.grpc.ClientIdRegistry.ConnectionType;
 import io.axoniq.axonserver.grpc.CommandService;
@@ -31,7 +32,7 @@ public class ApplicationInactivityListener {
     public ApplicationInactivityListener(ClientIdRegistry clientIdRegistry,
                                          CommandService commandService,
                                          QueryService queryService) {
-        this(Collections.EMPTY_MAP, clientIdRegistry);
+        this(Collections.emptyMap(), clientIdRegistry);
         streamClosers.put(ConnectionType.COMMAND, commandService::completeStreamForInactivity);
         streamClosers.put(ConnectionType.QUERY, queryService::completeStreamForInactivity);
     }
@@ -49,13 +50,13 @@ public class ApplicationInactivityListener {
      */
     @EventListener
     public void on(TopologyEvents.ApplicationInactivityTimeout evt) {
-        String clientId = evt.clientId();
+        ClientContext client = evt.client();
         String context = evt.clientStreamIdentification().getContext();
         streamClosers.forEach((connectionType, streamCloser) -> {
-            Set<String> streamIds = clientIdRegistry.streamIdsFor(clientId, connectionType);
+            Set<String> streamIds = clientIdRegistry.streamIdsFor(client, connectionType);
             for (String streamId : streamIds) {
                 ClientStreamIdentification streamIdentification = new ClientStreamIdentification(context, streamId);
-                streamCloser.forceDisconnection(clientId, streamIdentification);
+                streamCloser.forceDisconnection(client.clientId(), streamIdentification);
             }
         });
     }

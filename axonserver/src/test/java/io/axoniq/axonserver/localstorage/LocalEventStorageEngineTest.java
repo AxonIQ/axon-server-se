@@ -67,10 +67,6 @@ public class LocalEventStorageEngineTest {
                         .completeExceptionally(new RuntimeException("Transaction cancelled")));
             }
 
-            @Override
-            public void deleteAllEventData() {
-
-            }
         };
         testSubject = new LocalEventStore(new EventStoreFactory() {
             @Override
