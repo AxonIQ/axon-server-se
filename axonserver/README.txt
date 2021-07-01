@@ -11,7 +11,6 @@ Release Notes for version 4.5.3
 * New metrics added:
   - file.bloom.open: counts the number of bloom filter segments opened since start
   - file.bloom.close: counts the number of bloom filter segments closed since start
-  - file.bloom.open: counts the number of bloom filter segments opened since start
   - file.segment.open: counts the number of event store segments opened since start
   - local.aggregate.segments: monitors the number of segments that were accessed for reading aggregate event requests
 
