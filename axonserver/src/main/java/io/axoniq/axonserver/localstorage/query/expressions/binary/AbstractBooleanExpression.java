@@ -62,4 +62,9 @@ public abstract class AbstractBooleanExpression implements PipeExpression, Expre
     private Set<ExpressionResult> sentIdentifiers(ExpressionContext context) {
         return context.scoped(this).computeIfAbsent("results", () -> new ConcurrentHashMap<ExpressionResult, Object>().keySet(new Object()));
     }
+
+    @Override
+    public boolean isFilter() {
+        return true;
+    }
 }

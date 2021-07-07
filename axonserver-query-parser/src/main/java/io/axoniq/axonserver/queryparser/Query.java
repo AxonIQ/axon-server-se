@@ -21,7 +21,7 @@ public class Query extends BaseQueryElement {
 
     @Override
     public String toString() {
-        return String.join(" | ", children.stream().map(PipelineEntry::toString).collect(Collectors.toList()));
+        return children.stream().map(PipelineEntry::toString).collect(Collectors.joining(" | "));
     }
 
     @Override
@@ -42,7 +42,7 @@ public class Query extends BaseQueryElement {
     public long getStartTime() {
         return children.stream().filter(pipelineEntry -> pipelineEntry instanceof TimeConstraint)
                                                                  .map(TimeConstraint.class::cast)
-                                                                 .map(tc -> tc.getStart())
+                                                                 .map(TimeConstraint::getStart)
                                                                  .max(Long::compareTo)
                                                                  .orElse(0L);
     }
@@ -62,6 +62,5 @@ public class Query extends BaseQueryElement {
         }
         return false;
     }
-
 
 }

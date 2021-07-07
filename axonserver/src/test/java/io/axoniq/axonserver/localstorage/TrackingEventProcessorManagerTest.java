@@ -33,8 +33,8 @@ import static org.junit.Assert.*;
 public class TrackingEventProcessorManagerTest {
 
     private TrackingEventProcessorManager testSubject;
-    private AtomicInteger eventsLeft = new AtomicInteger(10);
-    private AtomicBoolean iteratorClosed = new AtomicBoolean();
+    private final AtomicInteger eventsLeft = new AtomicInteger(10);
+    private final AtomicBoolean iteratorClosed = new AtomicBoolean();
 
     @Before
     public void setup() {
@@ -58,8 +58,9 @@ public class TrackingEventProcessorManagerTest {
                     return new SerializedEventWithToken(nextToken.getAndIncrement(),
                                                         Event.newBuilder()
                                                              .setPayload(SerializedObject.newBuilder()
-                                                             .setType("DemoType")
-                                                             .setRevision("1.0"))
+                                                                                         .setType("DemoType")
+                                                                                         .setRevision("1.0"))
+                                                             .setAggregateSequenceNumber(0)
                                                              .build());
                 }
             };
@@ -85,14 +86,14 @@ public class TrackingEventProcessorManagerTest {
 
                                                 @Override
                                                 public void onError(Throwable t) {
-                                                       failed.set(true);
-                                                   }
+                                                    failed.set(true);
+                                                }
 
-                                                   @Override
-                                                   public void onCompleted() {
-                                                       completed.set(true);
-                                                   }
-                                               });
+                                                @Override
+                                                public void onCompleted() {
+                                                    completed.set(true);
+                                                }
+                                            });
         tracker.addPermits(5);
         tracker.start();
 
@@ -103,6 +104,49 @@ public class TrackingEventProcessorManagerTest {
         eventsLeft.set(10);
         testSubject.reschedule();
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(15, messagesReceived.get()));
+
+        tracker.stop();
+        assertTrue(completed.get());
+        assertWithin(10, TimeUnit.MILLISECONDS, () -> assertTrue(iteratorClosed.get()));
+    }
+
+    @Test
+    public void createEventTrackerWithFilter() throws InterruptedException {
+        AtomicInteger messagesReceived = new AtomicInteger();
+        AtomicBoolean completed = new AtomicBoolean();
+        AtomicBoolean failed = new AtomicBoolean();
+        TrackingEventProcessorManager.EventTracker tracker =
+                testSubject
+                        .createEventTracker(100L,
+                                            "",
+                                            true,
+                                            "token < 103",
+                                            new StreamObserver<InputStream>() {
+                                                @Override
+                                                public void onNext(InputStream value) {
+                                                    messagesReceived.incrementAndGet();
+                                                }
+
+                                                @Override
+                                                public void onError(Throwable t) {
+                                                    failed.set(true);
+                                                }
+
+                                                @Override
+                                                public void onCompleted() {
+                                                    completed.set(true);
+                                                }
+                                            });
+        tracker.addPermits(5);
+        tracker.start();
+
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(3, messagesReceived.get()));
+        tracker.addPermits(10);
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(3, messagesReceived.get()));
+
+        eventsLeft.set(10);
+        testSubject.reschedule();
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(3, messagesReceived.get()));
 
         tracker.stop();
         assertTrue(completed.get());

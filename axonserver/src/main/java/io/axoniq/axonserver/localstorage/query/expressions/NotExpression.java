@@ -48,4 +48,9 @@ public class NotExpression implements Expression, PipeExpression {
         }
         return true;
     }
+
+    @Override
+    public boolean isFilter() {
+        return true;
+    }
 }

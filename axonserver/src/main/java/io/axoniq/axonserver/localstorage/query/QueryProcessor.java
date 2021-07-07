@@ -28,7 +28,17 @@ public class QueryProcessor {
     public Pipeline buildPipeline(Query query, Function<QueryResult, Boolean> terminal) {
         List<? extends QueryElement> queryElements = query == null ? Collections.emptyList() : query.getParameters();
         if (queryElements.isEmpty()) {
-            return terminal::apply;
+            return new Pipeline() {
+                @Override
+                public boolean process(QueryResult value) {
+                    return terminal.apply(value);
+                }
+
+                @Override
+                public boolean isFilter() {
+                    return true;
+                }
+            };
         }
 
         Queue<PipeExpression> pipeExpressions = new LinkedList<>();
@@ -48,7 +58,17 @@ public class QueryProcessor {
         public ChainedPipeExpression(Queue<PipeExpression> pipeExpressions, Function<QueryResult, Boolean> terminal) {
             expression = pipeExpressions.poll();
             if (pipeExpressions.isEmpty()) {
-                next = terminal::apply;
+                next = new Pipeline() {
+                    @Override
+                    public boolean process(QueryResult value) {
+                        return terminal.apply(value);
+                    }
+
+                    @Override
+                    public boolean isFilter() {
+                        return true;
+                    }
+                };
             } else {
                 next = new ChainedPipeExpression(pipeExpressions, terminal);
             }
@@ -64,6 +84,11 @@ public class QueryProcessor {
         public List<String> columnNames(List<String> inputColumns) {
             if( next == null) return expression.getColumnNames(inputColumns);
             return next.columnNames(expression.getColumnNames(inputColumns));
+        }
+
+        @Override
+        public boolean isFilter() {
+            return expression.isFilter() && next.isFilter();
         }
     }
 }

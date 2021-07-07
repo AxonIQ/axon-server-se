@@ -52,4 +52,9 @@ public class AndExpression implements Expression, PipeExpression {
         }
         return true;
     }
+
+    @Override
+    public boolean isFilter() {
+        return true;
+    }
 }

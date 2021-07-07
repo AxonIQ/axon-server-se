@@ -18,4 +18,6 @@ public interface Pipeline {
     default List<String> columnNames(List<String> inputColumnNames) {
         return inputColumnNames;
     }
+
+    boolean isFilter();
 }

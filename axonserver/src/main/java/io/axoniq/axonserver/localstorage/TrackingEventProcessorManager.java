@@ -11,7 +11,16 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.PayloadDescription;
+import io.axoniq.axonserver.localstorage.query.ExpressionResult;
+import io.axoniq.axonserver.localstorage.query.Pipeline;
+import io.axoniq.axonserver.localstorage.query.QueryProcessor;
+import io.axoniq.axonserver.localstorage.query.QueryResult;
+import io.axoniq.axonserver.localstorage.query.result.DefaultQueryResult;
+import io.axoniq.axonserver.localstorage.query.result.EventExpressionResult;
+import io.axoniq.axonserver.queryparser.EventStoreQueryParser;
+import io.axoniq.axonserver.queryparser.Query;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -20,6 +29,7 @@ import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.io.InputStream;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -104,7 +114,7 @@ public class TrackingEventProcessorManager {
                     logger.debug("{}: removing {} replicators",
                                 context,
                                 failedReplicators.size());
-                    eventTrackerSet.removeAll(failedReplicators);
+                    failedReplicators.forEach(eventTrackerSet::remove);
                     logger.debug("{}: {} replicators remaining",
                                 context,
                                 eventTrackerSet.size());
@@ -138,7 +148,31 @@ public class TrackingEventProcessorManager {
      */
     EventTracker createEventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
                                     StreamObserver<InputStream> eventStream) {
-        return new EventTracker(trackingToken, clientId, forceReadingFromLeader, eventStream);
+        return createEventTracker(trackingToken, clientId, forceReadingFromLeader, null, eventStream);
+    }
+
+    EventTracker createEventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
+                                    String filterString,
+                                    StreamObserver<InputStream> eventStream) {
+        return new EventTracker(trackingToken, clientId, forceReadingFromLeader, eventStream,
+                                validateFilter(filterString));
+    }
+
+    private Query validateFilter(String filterString) {
+        Query filter = null;
+        if (filterString != null && !filterString.isEmpty()) {
+            try {
+                filter = new EventStoreQueryParser().parse(filterString);
+                Pipeline pipeline = new QueryProcessor().buildPipeline(filter, e -> true);
+                if (!pipeline.isFilter()) {
+                    throw new MessagingPlatformException(ErrorCode.INVALID_QUERY, "Expression is not a filter expression");
+                }
+            } catch (ParseException | IllegalArgumentException e) {
+                throw new MessagingPlatformException(ErrorCode.INVALID_QUERY, "Error parsing filter: " + e.getMessage());
+            }
+
+        }
+        return filter;
     }
 
     /**
@@ -199,19 +233,30 @@ public class TrackingEventProcessorManager {
         private final AtomicLong lastPermitTimestamp;
         private final StreamObserver<InputStream> eventStream;
         private final String client;
+        private final Pipeline pipeLine;
         private volatile CloseableIterator<SerializedEventWithToken> eventIterator;
         private volatile boolean running = true;
         private final Set<PayloadDescription> blacklistedTypes = new CopyOnWriteArraySet<>();
-        private volatile int force = blacklistedSendAfter;
+        private final AtomicInteger force = new AtomicInteger(blacklistedSendAfter);
         private final boolean forceReadingFromLeader;
 
         private EventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
-                             StreamObserver<InputStream> eventStream) {
+                             StreamObserver<InputStream> eventStream, Query query) {
             client = clientId;
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(trackingToken);
             this.eventStream = eventStream;
             this.forceReadingFromLeader = forceReadingFromLeader;
+            this.pipeLine = query == null ? null : new QueryProcessor().buildPipeline(query, this::send);
+        }
+
+        private boolean send(QueryResult queryResult) {
+            ExpressionResult value = queryResult.getValue();
+            if (value instanceof EventExpressionResult) {
+                EventWithToken eventWithToken = (EventWithToken) value.getValue();
+                send(new SerializedEventWithToken(eventWithToken.getToken(), eventWithToken.getEvent()));
+            }
+            return true;
         }
 
         private int sendNext() {
@@ -232,13 +277,10 @@ public class TrackingEventProcessorManager {
                 ) {
                     SerializedEventWithToken next = eventIterator.next();
                     if( !blacklisted(next)) {
-                        eventStream.onNext(next.asInputStream());
-                        if (permits.decrementAndGet() == 0) {
-                            lastPermitTimestamp.set(System.currentTimeMillis());
-                        }
-                        force = blacklistedSendAfter;
+                        filterAndSend(next);
+                        force.set(blacklistedSendAfter);
                     } else {
-                        force--;
+                        force.decrementAndGet();
                     }
                     count++;
                 }
@@ -250,8 +292,23 @@ public class TrackingEventProcessorManager {
             return count;
         }
 
+        private void filterAndSend(SerializedEventWithToken next) {
+            if (pipeLine != null) {
+                pipeLine.process(new DefaultQueryResult(new EventExpressionResult(next.asEventWithToken())));
+            } else {
+                send(next);
+            }
+        }
+
+        private void send(SerializedEventWithToken next) {
+            eventStream.onNext(next.asInputStream());
+            if (permits.decrementAndGet() == 0) {
+                lastPermitTimestamp.set(System.currentTimeMillis());
+            }
+        }
+
         private boolean blacklisted(SerializedEventWithToken next) {
-            return force > 1 && !blacklistedTypes.isEmpty() && blacklistedTypes.contains(payloadType(next));
+            return force.get() > 1 && !blacklistedTypes.isEmpty() && blacklistedTypes.contains(payloadType(next));
         }
 
         private PayloadDescription payloadType(SerializedEventWithToken next) {

@@ -46,4 +46,9 @@ public abstract class AbstractAggregationFunction implements Expression, PipeExp
     public List<String> getColumnNames(List<String> inputColumns) {
         return Collections.singletonList(alias);
     }
+
+    @Override
+    public boolean isFilter() {
+        return false;
+    }
 }

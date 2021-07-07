@@ -19,5 +19,7 @@ public interface PipeExpression {
         return inputColumns;
     }
 
-
+    default boolean isFilter() {
+        return false;
+    }
 }
