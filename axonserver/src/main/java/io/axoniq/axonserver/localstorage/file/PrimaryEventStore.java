@@ -105,7 +105,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         if (next != null) {
             next.initSegments(first);
         }
-        WritableEventSource buffer = getOrOpenDatafile(first);
+        WritableEventSource buffer = getOrOpenDatafile(first, storageProperties.getSegmentSize(), false);
         indexManager.remove(first);
         long sequence = first;
         Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
@@ -159,7 +159,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         if (!indexManager.validIndex(latestSegment)) {
             return latestSegment;
         }
-        WritableEventSource buffer = getOrOpenDatafile(latestSegment);
+        WritableEventSource buffer = getOrOpenDatafile(latestSegment, storageProperties.getSegmentSize(), false);
         long token = latestSegment;
         try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, latestSegment, latestSegment)) {
             while (iterator.hasNext()) {
@@ -391,11 +391,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
         int totalSize = HEADER_BYTES + eventBlockSize + TX_CHECKSUM_BYTES;
-        if (totalSize > storageProperties.getSegmentSize() - 9) {
-            throw new MessagingPlatformException(ErrorCode.PAYLOAD_TOO_LARGE,
-                                                 "Size of transaction too large, max size = " + (
-                                                         storageProperties.getSegmentSize() - 9));
-        }
         WritePosition writePosition;
         do {
             writePosition = writePositionRef.getAndAccumulate(
@@ -408,7 +403,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 writePosition.buffer.putInt(writePosition.position, -1);
 
-                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence);
+                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, totalSize + 9,
+                                                               true);
                 writePositionRef.set(writePosition.reset(buffer));
             }
         } while (!writePosition.isWritable(totalSize));
@@ -421,11 +417,19 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return writePositionRef.get().sequence;
     }
 
-    protected WritableEventSource getOrOpenDatafile(long segment) {
+    protected WritableEventSource getOrOpenDatafile(long segment, long minSize, boolean canReplaceFile) {
         File file = storageProperties.dataFile(context, segment);
-        long size = storageProperties.getSegmentSize();
+        long size = Math.max(storageProperties.getSegmentSize(), minSize);
         if (file.exists()) {
-            size = file.length();
+            if (canReplaceFile && file.length() < minSize) {
+                ByteBufferEventSource s = readBuffers.remove(segment);
+                if (s != null) {
+                    s.clean(0);
+                }
+                FileUtils.delete(file);
+            } else {
+                size = file.length();
+            }
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             logger.info("Opening file {}", file);

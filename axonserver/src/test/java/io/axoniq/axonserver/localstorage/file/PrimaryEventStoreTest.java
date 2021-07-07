@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
@@ -30,6 +31,7 @@ import reactor.test.StepVerifier;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -149,6 +151,21 @@ public class PrimaryEventStoreTest {
     }
 
     @Test
+    public void testLargeEvent() {
+        PrimaryEventStore testSubject = primaryEventStore();
+        storeEvent(testSubject, embeddedDBProperties.getEvent().getSegmentSize()+1);
+        storeEvent(testSubject, 10);
+        long counter = 0;
+        try (CloseableIterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0, Long.MAX_VALUE)) {
+            while (transactionWithTokenIterator.hasNext()) {
+                counter++;
+                transactionWithTokenIterator.next();
+            }
+        }
+        assertEquals(2, counter);
+    }
+
+    @Test
     public void transactionsIterator() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
         setupEvents(testSubject, 1000, 2);
@@ -181,10 +198,14 @@ public class PrimaryEventStoreTest {
         latch.await(5, TimeUnit.SECONDS);
     }
 
-    private void storeEvent(PrimaryEventStore testSubject) {
+    private void storeEvent(PrimaryEventStore testSubject, long payloadSize) {
         CountDownLatch latch = new CountDownLatch(1);
+        byte[] buffer = new byte[(int)payloadSize];
+        Arrays.fill(buffer, (byte)'a');
         Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
-                              .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build();
+                              .setAggregateType("Demo").setPayload(SerializedObject.newBuilder()
+                                                                                   .setData(ByteString.copyFrom(buffer))
+                                                                                   .build()).build();
         testSubject.store(singletonList(newEvent)).thenAccept(t -> latch.countDown());
     }
 
