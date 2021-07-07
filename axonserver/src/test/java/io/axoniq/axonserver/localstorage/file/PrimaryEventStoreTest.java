@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.util.Collections.singletonList;
@@ -47,6 +48,7 @@ import static org.mockito.Mockito.*;
  * @author Marc Gathier
  */
 public class PrimaryEventStoreTest {
+
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
     private final String context = "junit";
@@ -86,11 +88,12 @@ public class PrimaryEventStoreTest {
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
         PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
-                                            indexManager,
-                                            eventTransformerFactory,
-                                            embeddedDBProperties.getEvent(),
-                                            second,
-                                            meterFactory, fileSystemMonitor);
+                                                              indexManager,
+                                                              eventTransformerFactory,
+                                                              embeddedDBProperties.getEvent(),
+                                                              second,
+                                                              meterFactory, fileSystemMonitor,
+                                                              (short)10);
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));
         return testSubject;
@@ -164,10 +167,43 @@ public class PrimaryEventStoreTest {
         assertEquals(1000, counter);
     }
 
-    private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents) throws InterruptedException {
+    @Test
+    public void largeTransactions() throws InterruptedException {
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 10, 23);
+        Iterator<SerializedTransactionWithToken> transactionWithTokenIterator =
+                testSubject.transactionIterator(0, Long.MAX_VALUE);
+
+        long counter = 0;
+        while (transactionWithTokenIterator.hasNext()) {
+            counter++;
+            transactionWithTokenIterator.next();
+        }
+
+        assertEquals(30, counter);
+        try (EventIterator iterator = testSubject.getEvents(0, 0)) {
+            counter = 0;
+            while (iterator.hasNext()) {
+                counter++;
+                iterator.next();
+            }
+            assertEquals(230, counter);
+        }
+
+        List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-4",
+                                                                            0,
+                                                                            Long.MAX_VALUE,
+                                                                            0)
+                                                        .collect(Collectors.toList())
+                .block();
+        assertEquals(23, events.size());
+    }
+
+    private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents)
+            throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
-            String aggId = UUID.randomUUID().toString();
+            String aggId = "Aggregate-" + j;
             List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, numOfEvents).forEach(i -> {
                 newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId)
@@ -207,13 +243,12 @@ public class PrimaryEventStoreTest {
         try (CloseableIterator<SerializedEventWithToken> iterator = testSubject
                 .getGlobalIterator(0)) {
             SerializedEventWithToken serializedEventWithToken = null;
-            while(iterator.hasNext()) {
+            while (iterator.hasNext()) {
                 serializedEventWithToken = iterator.next();
             }
 
             assertNotNull(serializedEventWithToken);
             assertEquals(9999, serializedEventWithToken.getToken());
-
         }
     }
 }

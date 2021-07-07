@@ -297,7 +297,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             private boolean checkMaxEventCount() {
-                if (eventList.size() < maxEventCount) {
+                if (eventList.size() < Integer.MAX_VALUE) {
                     return true;
                 }
                 responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
