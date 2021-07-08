@@ -11,7 +11,6 @@ import reactor.core.scheduler.Schedulers;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
-import javax.annotation.Nonnull;
 
 /**
  * This class is able to provide a {@link Flux<SerializedEvent>} that is possible to use in order to read the events in
@@ -66,20 +65,17 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      */
     @Override
     public Flux<SerializedEvent> get() {
-        return Flux.using(this::openEventSource, Mono::just, EventSource::close)
-                   .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
-                   .flatMap(es -> Flux.fromIterable(indexEntries.positions())
-                                      .map(es::readEvent));
-    }
-
-    @Nonnull
-    private EventSource openEventSource() throws EventSourceNotFoundException {
-        Optional<EventSource> optional = eventSourceFactory.create();
-        if (!optional.isPresent()) {
-            logger.warn("Event source not found for segment {}", segment);
-           throw new EventSourceNotFoundException();
-        }
-        return optional.get();
+        return Mono.defer(() -> {
+            Optional<EventSource> optional = eventSourceFactory.create();
+            if (!optional.isPresent()) {
+                logger.warn("Event source not found for segment {}", segment);
+                return Mono.error((new EventSourceNotFoundException()));
+            }
+            return Mono.just(optional.get());
+        })
+                .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
+                .flatMapMany(es -> Flux.fromIterable(indexEntries.positions())
+                        .map(es::readEvent).doFinally(s->es.close()));
     }
 
 }
