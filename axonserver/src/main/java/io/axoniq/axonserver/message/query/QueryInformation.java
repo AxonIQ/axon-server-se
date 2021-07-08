@@ -18,6 +18,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
@@ -127,6 +128,17 @@ public class QueryInformation {
         return key;
     }
 
+    /**
+     * Cancel a query with a specific error, defined by a code and a message.
+     *
+     * @param errorCode the error code of the cause for canceling
+     * @param message   the error message
+     */
+    public void cancelWithError(ErrorCode errorCode, String message) {
+        responseConsumer.accept(buildErrorResponse(errorCode, message));
+        cancel();
+    }
+
     public void cancel() {
         try {
             clientStreamIds.clear();
@@ -152,13 +164,17 @@ public class QueryInformation {
     }
 
     public boolean completeWithError(String clientStreamId, ErrorCode errorCode, String message) {
-        responseConsumer.accept(QueryResponse.newBuilder()
-                                             .setErrorCode(errorCode.getCode())
-                                             .setErrorMessage(ErrorMessage.newBuilder().setMessage(message))
-                                             .setRequestIdentifier(key)
-                                             .build());
-
+        responseConsumer.accept(buildErrorResponse(errorCode, message));
         return completed(clientStreamId);
+    }
+
+    @Nonnull
+    private QueryResponse buildErrorResponse(ErrorCode errorCode, String message) {
+        return QueryResponse.newBuilder()
+                            .setErrorCode(errorCode.getCode())
+                            .setErrorMessage(ErrorMessage.newBuilder().setMessage(message))
+                            .setRequestIdentifier(key)
+                            .build();
     }
 
     /**
