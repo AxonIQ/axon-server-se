@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.message.query;
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.query.QueryResponse;
 import org.junit.jupiter.api.*;
 
@@ -86,6 +87,28 @@ class QueryInformationTest {
         testSubject.forward("client1", QueryResponse.getDefaultInstance());
         testSubject.forward("client2", QueryResponse.getDefaultInstance());
         assertEquals(1, responseList.size());
+        assertNotNull(completed[0]);
+    }
+
+    @Test
+    void cancelWithError() {
+        List<QueryResponse> responseList = new ArrayList<>();
+        String[] completed = new String[1];
+        Set<String> clientStreamIds = new HashSet<>();
+        clientStreamIds.add("client1");
+        clientStreamIds.add("client2");
+        QueryInformation testSubject = new QueryInformation("myKey", "mySource",
+                                                            new QueryDefinition("context", "queryName"),
+                                                            clientStreamIds, 1, responseList::add,
+                                                            s -> completed[0] = s);
+
+        String myErrorDescription = "My error description";
+        testSubject.cancelWithError(ErrorCode.OTHER, myErrorDescription);
+        assertEquals(1, responseList.size());
+        QueryResponse queryResponse = responseList.get(0);
+        assertTrue(queryResponse.hasErrorMessage());
+        assertEquals(ErrorCode.OTHER.getCode(), queryResponse.getErrorCode());
+        assertEquals(myErrorDescription, queryResponse.getErrorMessage().getMessage());
         assertNotNull(completed[0]);
     }
 }

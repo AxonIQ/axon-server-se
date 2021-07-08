@@ -5,6 +5,7 @@ visit https://docs.axoniq.io.
 
 Release Notes for version 4.5.4
 -------------------------------
+* Fix: In case of timeout during query execution, AS sends a timeout error to the client before canceling the query.
 * Fix: Close event store segment file when reading is complete
 
 Release Notes for version 4.5.3
