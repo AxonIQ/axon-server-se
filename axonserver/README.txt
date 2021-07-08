@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.5.4
+-------------------------------
+* Fix: Close event store segment file when reading is complete
+
 Release Notes for version 4.5.3
 -------------------------------
 * Fix: Reset event store with multiple segments
