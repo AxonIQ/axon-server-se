@@ -66,7 +66,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      */
     @Override
     public Flux<SerializedEvent> get() {
-        return Flux.defer(() -> Flux.using(this::openEventSource, Mono::just, EventSource::close))
+        return Flux.using(this::openEventSource, Mono::just, EventSource::close)
                    .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
                    .flatMap(es -> Flux.fromIterable(indexEntries.positions())
                                       .map(es::readEvent));
