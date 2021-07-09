@@ -12,12 +12,14 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.junit.jupiter.api.*;
+import reactor.test.StepVerifier;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -26,21 +28,26 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class EventSourceFluxTest {
 
+    public static final int READ_ITERATIONS = 10;
+
     @Test
-    void get() {
-        AtomicBoolean closed = new AtomicBoolean();
+    void get() throws InterruptedException {
+
+        AtomicInteger closedCount = new AtomicInteger();
+
         EventSourceFactory eventSourceFactory = new EventSourceFactory() {
-            final AtomicBoolean first = new AtomicBoolean(true);
+
             @Override
             public Optional<EventSource> create() {
-                if (first.compareAndSet(true, false)) {
-                    return Optional.empty();
-                }
-
                 return Optional.of(new EventSource() {
+
+                    final AtomicBoolean closed = new AtomicBoolean();
 
                     @Override
                     public SerializedEvent readEvent(int position) {
+                        if (closed.get()) {
+                            throw new IllegalStateException("Attempting to read from closed stream");
+                        }
                         return new SerializedEvent(Event.getDefaultInstance());
                     }
 
@@ -57,15 +64,36 @@ class EventSourceFluxTest {
                     @Override
                     public void close() {
                         closed.set(true);
+                        closedCount.incrementAndGet();
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 });
             }
         };
-        EventSourceFlux eventSourceFlux = new EventSourceFlux(new StandardIndexEntries(0, new Integer[] {1,2,3}),
-                                                              eventSourceFactory,
-                                                              100);
-        List<SerializedEvent> events = eventSourceFlux.get().retry(1).collect(Collectors.toList()).block();
-        assertEquals(3, events.size());
-        assertTrue(closed.get());
+
+        for (int i = 0; i < READ_ITERATIONS; i++) {
+            EventSourceFlux eventSourceFlux = new EventSourceFlux(new StandardIndexEntries(0, createIntArray(100)),
+                                                                  eventSourceFactory,
+                                                                  100, 5);
+
+            StepVerifier.create(eventSourceFlux.get())
+                        .expectNextCount(100)
+                        .verifyComplete();
+        }
+
+        // the close is called asynchronously, so we will
+        assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(READ_ITERATIONS, closedCount.get()));
+    }
+
+    private Integer[] createIntArray(int i) {
+        Integer[] ints = new Integer[i];
+        for (int j = 0; j < i; j++) {
+            ints[j] = i;
+        }
+        return ints;
     }
 }
