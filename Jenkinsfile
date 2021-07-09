@@ -118,12 +118,12 @@ podTemplate(label: label,
             if (gitBranch.startsWith("PR-") && env.CHANGE_ID) {
                 sonarOptions = "-Dsonar.pullrequest.branch=" + gitBranch + " -Dsonar.pullrequest.key=" + env.CHANGE_ID
             }
-            stage ('Run SonarQube') {
-                container("maven-jdk11") {
-                    sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
-                    slackReport = slackReport + "\nSources analyzed in SonarQube."
-                }
-            }
+//             stage ('Run SonarQube') {
+//                 container("maven-jdk11") {
+//                     sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
+//                     slackReport = slackReport + "\nSources analyzed in SonarQube."
+//                 }
+//             }
 
             stage('Performance test') {
                 container("kubectl") {
