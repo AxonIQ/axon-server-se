@@ -62,10 +62,7 @@ podTemplate(label: label,
             envVars: [
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
             ]),
-        containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11',
-            envVars: [
-                envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ],
+        containerTemplate(name: 'kubectl', image: 'eu.gcr.io/axoniq-devops/kubectl-axoniq:latest',
             command: 'cat', ttyEnabled: true)
     ],
     volumes: [
@@ -125,6 +122,33 @@ podTemplate(label: label,
                 container("maven-jdk11") {
                     sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
                     slackReport = slackReport + "\nSources analyzed in SonarQube."
+                }
+            }
+
+            stage('Performance test') {
+                container("kubectl") {
+
+                    sh """
+                    kubectl create ns se-performance-test-${shortGitCommit}
+                    cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n  se-performance-test-${shortGitCommit} -f -
+
+                    //todo wait for axon server to starts
+
+                    //run test
+                    kubectl run test --rm --image=blazemeter/taurus:latest -it -- bash
+
+                    //kubectl run axonserver-quicktest --image=repo/quicktest:running --env AXON_AXONSERVER_SERVERS=axonserver-0.axonserver --attach stdout -n running-axon-server --rm --generator=run-pod/v1
+
+                    """
+
+
+
+
+                    //todo delete kubectl namespace
+
+                    //delete name space
+                    bzt "examples/jmeter/stepping.yml -report -o settings.artifacts-dir=artifacts"
+                    slackReport = slackReport + "\nResults from load testing"
                 }
             }
 
