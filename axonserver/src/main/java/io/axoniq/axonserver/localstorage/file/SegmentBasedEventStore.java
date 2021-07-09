@@ -137,7 +137,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries) {
         return (!containsSegment(segment) && next != null) ?
                 next.eventsForPositions(segment, indexEntries) :
-                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment).get()
+                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment, storageProperties.getEventsPerSegmentPrefetch()).get()
                         .name("event_stream")
                         .tag("context", context)
                         .tag("stream", "aggregate_events")

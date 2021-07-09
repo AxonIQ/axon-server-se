@@ -5,7 +5,6 @@ import io.axoniq.axonserver.localstorage.SerializedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.Optional;
@@ -28,6 +27,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
     private final EventSourceFactory eventSourceFactory;
     private final long segment;
     private final Supplier<ExecutorService> dataFetcherSchedulerProvider;
+    private final int prefetch;
 
     /**
      * Creates a new instance able to read events from the specified position using the provided {@link
@@ -36,8 +36,8 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      * @param indexEntries       the list of the positions of the interesting events in the segment.
      * @param eventSourceFactory the factory used to open a new {@link EventSource} to access the segment file.
      */
-    public EventSourceFlux(IndexEntries indexEntries, EventSourceFactory eventSourceFactory, long segment) {
-        this(indexEntries, eventSourceFactory, segment, new DataFetcherSchedulerProvider());
+    public EventSourceFlux(IndexEntries indexEntries, EventSourceFactory eventSourceFactory, long segment, int prefetch) {
+        this(indexEntries, eventSourceFactory, segment, new DataFetcherSchedulerProvider(), prefetch);
     }
 
 
@@ -51,11 +51,12 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
     public EventSourceFlux(IndexEntries indexEntries,
                            EventSourceFactory eventSourceFactory,
                            long segment,
-                           Supplier<ExecutorService> dataFetcherScheduler) {
+                           Supplier<ExecutorService> dataFetcherScheduler, int prefetch) {
         this.indexEntries = indexEntries;
         this.eventSourceFactory = eventSourceFactory;
         this.segment = segment;
         this.dataFetcherSchedulerProvider = dataFetcherScheduler;
+        this.prefetch = prefetch;
     }
 
 
@@ -66,10 +67,13 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
      */
     @Override
     public Flux<SerializedEvent> get() {
-        return Flux.using(this::openEventSource, Mono::just, EventSource::close)
-                   .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
-                   .flatMap(es -> Flux.fromIterable(indexEntries.positions())
-                                      .map(es::readEvent));
+        return Flux.using(this::openEventSource,
+                          eventSource -> Flux.just(eventSource)
+                                             .flatMap(es -> Flux.fromIterable(indexEntries.positions())
+                                                                .limitRate(prefetch, prefetch / 2)
+                                                                .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
+                                                                .map(es::readEvent))
+                , EventSource::close);
     }
 
     @Nonnull
