@@ -35,6 +35,7 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -191,6 +192,7 @@ public class QueryDispatcher {
                 interceptedCallback.accept(QueryResponse.newBuilder()
                                                         .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
                                                         .setRequestIdentifier(query.getMessageIdentifier())
+                                                        .setMessageIdentifier(UUID.randomUUID().toString())
                                                         .setErrorMessage(ErrorMessageFactory
                                                                                  .build("No handler for query: " + query
                                                                                          .getQuery()))
@@ -220,6 +222,7 @@ public class QueryDispatcher {
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
                                                     .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setMessageIdentifier(UUID.randomUUID().toString())
                                                     .setErrorMessage(ErrorMessageFactory
                                                                              .build(insufficientBufferCapacityException
                                                                                             .getMessage()))
@@ -231,6 +234,7 @@ public class QueryDispatcher {
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(messagingPlatformException.getErrorCode().getCode())
                                                     .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setMessageIdentifier(UUID.randomUUID().toString())
                                                     .setErrorMessage(ErrorMessageFactory
                                                                              .build(messagingPlatformException
                                                                                             .getMessage()))
@@ -243,6 +247,7 @@ public class QueryDispatcher {
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(ErrorCode.OTHER.getCode())
                                                     .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setMessageIdentifier(UUID.randomUUID().toString())
                                                     .setErrorMessage(ErrorMessageFactory
                                                                              .build(getOrDefault(otherException
                                                                                                          .getMessage(),
@@ -264,6 +269,7 @@ public class QueryDispatcher {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode())
                                          .setRequestIdentifier(response.getMessageIdentifier())
+                                         .setMessageIdentifier(UUID.randomUUID().toString())
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))
                                          .build());
@@ -289,6 +295,7 @@ public class QueryDispatcher {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
                                          .setRequestIdentifier(query.getMessageIdentifier())
+                                         .setMessageIdentifier(UUID.randomUUID().toString())
                                          .setErrorMessage(
                                                  ErrorMessageFactory
                                                          .build(String.format("Client %s not found while processing: %s"
