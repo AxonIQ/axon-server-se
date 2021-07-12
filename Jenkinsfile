@@ -62,7 +62,7 @@ podTemplate(label: label,
             envVars: [
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
             ]),
-        containerTemplate(name: 'kubectl', image: 'eu.gcr.io/axoniq-devops/kubectl-axoniq:latest',
+        containerTemplate(name: 'kubectl', image: 'eu.gcr.io/axoniq-devops/gcloud-axoniq:latest',
             command: 'cat', ttyEnabled: true)
     ],
     volumes: [
@@ -128,7 +128,9 @@ podTemplate(label: label,
             stage('Performance test') {
                 container("kubectl") {
 
+
                     sh """
+                    gcloud container clusters get-credentials devops-cluster --zone=europe-west4-a
                     kubectl create ns se-performance-test-${shortGitCommit}
                     cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n  se-performance-test-${shortGitCommit} -f -
 
