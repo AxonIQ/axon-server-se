@@ -9,20 +9,17 @@
 
 package io.axoniq.axonserver.component.processor.balancing.strategy;
 
-import io.axoniq.axonserver.component.processor.balancing.jpa.LoadBalancingStrategy;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.serializer.Printable;
-
-import java.util.Set;
 
 /**
  * @author Marc Gathier
  * @since 4.1
  */
-public interface LoadBalanceStrategyHolder {
+public interface LoadBalanceStrategyRepository {
 
     LoadBalancingStrategy findByName(String strategyName);
 
-    Iterable<? extends Printable> findAll();
+    Iterable<LoadBalancingStrategy> findAll();
 
-    Set<String> getFactoryBeans();
 }

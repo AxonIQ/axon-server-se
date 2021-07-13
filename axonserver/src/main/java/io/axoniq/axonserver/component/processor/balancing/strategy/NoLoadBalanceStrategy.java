@@ -20,18 +20,20 @@ import org.springframework.stereotype.Component;
  */
 public class NoLoadBalanceStrategy implements LoadBalancingStrategy {
 
+    public static final NoLoadBalanceStrategy INSTANCE = new NoLoadBalanceStrategy();
+
     @Override
     public LoadBalancingOperation balance(TrackingEventProcessor processor) {
         return () -> {};
     }
 
-    @Component("NoLoadBalance")
-    public static final class Factory implements LoadBalancingStrategy.Factory {
+    @Override
+    public String getLabel() {
+        return "Disabled";
+    }
 
-
-        @Override
-        public LoadBalancingStrategy create() {
-            return new NoLoadBalanceStrategy();
-        }
+    @Override
+    public String getName() {
+        return "disabled";
     }
 }

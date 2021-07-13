@@ -12,8 +12,8 @@ package io.axoniq.axonserver.component.processor.balancing.strategy;
 import io.axoniq.axonserver.component.processor.balancing.FakeOperationFactory;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.strategy.ThreadNumberBalancing.Application;
-import io.axoniq.axonserver.component.processor.balancing.strategy.ThreadNumberBalancing.InstancesRepo;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static java.lang.Math.max;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Unit tests for {@link ThreadNumberBalancing}
@@ -36,13 +36,12 @@ public class ThreadNumberBalancingTest {
     private final TrackingEventProcessor eventProcessor = new TrackingEventProcessor("name",
                                                                                      "context",
                                                                                      "tokenStoreId");
-    private final InstancesRepo instances = processor -> () -> segments.entrySet().stream().map(e -> {
+    private final ThreadNumberBalancing.InstancesRepo instances = processor -> () -> segments.entrySet().stream().map(e -> {
         int maxThreads = max(threadPoolSize.getOrDefault(e.getKey(), 1), e.getValue().size());
         return new Application(e.getKey(), maxThreads, e.getValue());
     }).iterator();
 
-    private final ThreadNumberBalancing testSubject = new ThreadNumberBalancing(instances,
-                                                                                new FakeOperationFactory(segments));
+    private final ThreadNumberBalancing testSubject = new ThreadNumberBalancing(new FakeOperationFactory(segments), instances);
 
     @Before
     public void setUp() {
@@ -127,8 +126,8 @@ public class ThreadNumberBalancingTest {
 
     @Test
     public void testTwoEqualsNodes() {
-        segments.put("instanceOne", of(0,1,2));
-        segments.put("instanceTwo", of(3,4,5));
+        segments.put("instanceOne", of(0, 1, 2));
+        segments.put("instanceTwo", of(3, 4, 5));
         segments.put("instanceThree", of());
         threadPoolSize.put("instanceOne", 4);
         threadPoolSize.put("instanceTwo", 4);
