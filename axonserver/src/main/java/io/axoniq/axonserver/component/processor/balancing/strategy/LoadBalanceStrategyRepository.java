@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.component.processor.balancing.strategy;
 
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
-import io.axoniq.axonserver.serializer.Printable;
 
 /**
  * @author Marc Gathier
