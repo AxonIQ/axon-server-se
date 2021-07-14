@@ -268,7 +268,7 @@ public class QueryDispatcher {
             logger.warn("{}: Exception in response interceptor", executionContext.contextName(), ex);
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode())
-                                         .setRequestIdentifier(response.getMessageIdentifier())
+                                         .setRequestIdentifier(response.getRequestIdentifier())
                                          .setMessageIdentifier(UUID.randomUUID().toString())
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))
