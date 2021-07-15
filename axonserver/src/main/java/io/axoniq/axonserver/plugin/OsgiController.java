@@ -241,7 +241,13 @@ public class OsgiController implements PluginServiceProvider {
             if (!current.isPresent()) {
                 try (InputStream is = new FileInputStream(packageFile)) {
                     Bundle bundle = bundleContext.installBundle(packageFile.getAbsolutePath(), is);
-                    bundle.start();
+                    try {
+                        bundle.start();
+                    } catch(BundleException bundleException) {
+                        bundle.uninstall();
+                        throw bundleException;
+                    }
+
                 }
                 logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
             } else {
