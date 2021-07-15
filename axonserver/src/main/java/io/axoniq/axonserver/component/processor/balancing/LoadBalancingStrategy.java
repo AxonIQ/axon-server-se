@@ -9,18 +9,24 @@
 
 package io.axoniq.axonserver.component.processor.balancing;
 
+import io.axoniq.axonserver.serializer.Media;
+import io.axoniq.axonserver.serializer.Printable;
+
 /**
- * Created by Sara Pellegrini on 07/08/2018.
- * sara.pellegrini@gmail.com
+ * Interface describing a strategy usable for balancing the load on Streaming Event Processor instances across
+ * applications.
  */
-public interface LoadBalancingStrategy {
+public interface LoadBalancingStrategy extends Printable {
+
+    String getLabel();
+
+    String getName();
 
     LoadBalancingOperation balance(TrackingEventProcessor processor);
 
-    interface Factory {
-
-        LoadBalancingStrategy create();
-
+    @Override
+    default void printOn(Media media) {
+        media.with("name", getName())
+             .with("label", getLabel());
     }
-
 }
