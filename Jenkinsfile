@@ -161,13 +161,11 @@ podTemplate(label: label,
 
                  sh "echo checkout axon-server-api"
 
-                            dir("axon-server-api") {
-                                git url: 'https://github.com/AxonIQ/axon-server-api',
-                                    branch: "master",
-                                    credentialsId: '0f7e7ffb-5d79-42fb-afee-e3289c978440'
-                            }
-
-
+                dir("axon-server-api") {
+                    git url: 'https://github.com/AxonIQ/axon-server-api',
+                        branch: "master",
+                        credentialsId: '0f7e7ffb-5d79-42fb-afee-e3289c978440'
+                }
 
                 sh """
                   echo Edit axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
@@ -177,6 +175,8 @@ podTemplate(label: label,
                   sed -e "s/localhost/axonserver.${ns}.svc.cluster.local/g" < performance-tests/axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
 
                   echo Starting tests
+                  mkdir -p /root/.bzt/jmeter-taurus/lib
+                  ln -s /root/.bzt/jmeter-taurus/lib/cmdrunner-2.2.1.jar /root/.bzt/jmeter-taurus/lib/cmdrunner-2.2.jar
                   bzt "performance-tests/taurus.yaml"
                 """
 
