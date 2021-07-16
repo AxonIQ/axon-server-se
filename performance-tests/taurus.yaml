@@ -18,4 +18,4 @@ execution:
 
 scenarios:
   axonserver-se-simple:
-    script: axon-server-se-simple-template.jmx
+    script: axon-server-se-simple.jmx
