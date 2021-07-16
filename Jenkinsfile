@@ -170,7 +170,7 @@ podTemplate(label: label,
 
 
                 sh """
-                  pwd axon-server-api
+                  ls /home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto
 
                   echo Edit axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
 
