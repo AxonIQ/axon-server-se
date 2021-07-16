@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.4
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.4.13
+--------------------------------
+* Change in internal event handling required for Axon Server Enterprise Edition
+
 Release Notes for version 4.4.12
 -------------------------------
 * Fix: Load balancing operations for processors should ignore stopped instances
