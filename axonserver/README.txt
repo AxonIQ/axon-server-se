@@ -69,6 +69,10 @@ Notes:
 
 - For the Docker image, plugins are stored in the /data/plugins directory.
 
+Release Notes for version 4.4.13
+--------------------------------
+* Change in internal event handling required for Axon Server Enterprise Edition
+
 Release Notes for version 4.4.12
 -------------------------------
 * Fix: Load balancing operations for processors should ignore stopped instances
