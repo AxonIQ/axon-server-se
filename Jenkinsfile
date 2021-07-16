@@ -178,6 +178,12 @@ podTemplate(label: label,
 
                   echo Starting tests
                   mkdir -p /root/.bzt/jmeter-taurus/lib
+                  mkdir -p /root/.bzt/jmeter-taurus/lib/ext
+
+                 cp performance-tests/jmeter-grpc-request-1.1.2-axon.jar /root/.bzt/jmeter-taurus/lib/ext/jmeter-grpc-request-1.1.2.jar
+
+                 ls /root/.bzt/jmeter-taurus/lib/ext/
+
                   ln -s /root/.bzt/jmeter-taurus/lib/cmdrunner-2.2.1.jar /root/.bzt/jmeter-taurus/lib/cmdrunner-2.2.jar
                   bzt "performance-tests/taurus.yaml" -report
                 """
