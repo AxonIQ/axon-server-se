@@ -143,10 +143,13 @@ podTemplate(label: label,
                     cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n ${ns} -f -
 
                     echo Waiting for Axon Server to start
-                    until [[ "\$(curl -sm 1  axonserver.${ns}.svc.cluster.local:8024/actuator/health | jq -r .status)"  == "UP" ]]
-                    do
+                    status=\$(curl -sm 1  axonserver.${ns}.svc.cluster.local:8024/actuator/health | jq -r .status)
+                    count=10
+                    while [ "x\${status}" != "xUP" -a "\${count}" != "0" ] ; do
+                    count=\$(expr \${count} - 1)
                         echo Not ready yet - trying again in 15s
                         sleep 15
+                        status=\$(curl -sm 1  axonserver.${ns}.svc.cluster.local:8024/actuator/health | jq -r .status)
                     done
                     echo Axon server node is ready
 
