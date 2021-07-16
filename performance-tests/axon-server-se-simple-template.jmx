@@ -31,7 +31,7 @@
         </CriticalSectionController>
         <hashTree>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="CreateAggregate" enabled="true">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -53,7 +53,7 @@
           </vn.zalopay.benchmark.GRPCSampler>
           <hashTree/>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="ListAggregateEvents-Initial" enabled="true">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -90,7 +90,7 @@
               </CounterConfig>
               <hashTree/>
               <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="AddToAggregate" enabled="true">
-                <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+                <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
                 <stringProp name="GRPCSampler.libFolder"></stringProp>
                 <stringProp name="GRPCSampler.metadata"></stringProp>
                 <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -115,7 +115,7 @@
             </hashTree>
           </hashTree>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="ListAggregateEvents-All" enabled="true">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -134,7 +134,7 @@
           </vn.zalopay.benchmark.GRPCSampler>
           <hashTree/>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="ListAggregateEvents-All" enabled="true">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -153,7 +153,7 @@
           </vn.zalopay.benchmark.GRPCSampler>
           <hashTree/>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="ListAggregateEvents-All" enabled="true">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -172,7 +172,7 @@
           </vn.zalopay.benchmark.GRPCSampler>
           <hashTree/>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="ListAggregateEvents-All" enabled="true">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -191,7 +191,7 @@
           </vn.zalopay.benchmark.GRPCSampler>
           <hashTree/>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="ListAggregateEvents-All" enabled="true">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
@@ -210,7 +210,7 @@
           </vn.zalopay.benchmark.GRPCSampler>
           <hashTree/>
           <vn.zalopay.benchmark.GRPCSampler guiclass="vn.zalopay.benchmark.GRPCSamplerGui" testclass="vn.zalopay.benchmark.GRPCSampler" testname="ListAggregateEvents-All" enabled="false">
-            <stringProp name="GRPCSampler.protoFolder">../axon-server-api/src/main/proto</stringProp>
+            <stringProp name="GRPCSampler.protoFolder">/home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto  </stringProp>
             <stringProp name="GRPCSampler.libFolder"></stringProp>
             <stringProp name="GRPCSampler.metadata"></stringProp>
             <stringProp name="GRPCSampler.host">localhost</stringProp>
