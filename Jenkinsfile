@@ -133,7 +133,7 @@ podTemplate(label: label,
                 container("kubectl") {
 
 
-                    sh '''
+                    sh """
                     echo Starting Axon Server container
 
                     gcloud container clusters get-credentials devops-cluster --zone=europe-west4-a
@@ -143,14 +143,14 @@ podTemplate(label: label,
                     cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n ${ns} -f -
 
                     echo Waiting for Axon Server to start
-                    until [[ "$(curl -sm 1  axonserver.${ns}.svc.cluster.local:8024/actuator/health | jq -r .status)"  == "UP" ]]
+                    until [[ "\$(curl -sm 1  axonserver.${ns}.svc.cluster.local:8024/actuator/health | jq -r .status)"  == "UP" ]]
                     do
-                        echo "Not ready yet - trying again in 15s"
+                        echo Not ready yet - trying again in 15s
                         sleep 15
                     done
                     echo Axon server node is ready
 
-                   '''
+                    """
                 }
 
                 container("taurus") {
