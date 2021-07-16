@@ -159,7 +159,8 @@ podTemplate(label: label,
                 container("taurus") {
                 sh "echo Starting taurus"
 
-                 sh "checkout axon-server-api"
+                 sh "echo checkout axon-server-api"
+
                             dir("axon-server-api") {
                                 git url: 'https://github.com/AxonIQ/axon-server-api',
                                     branch: "master",
