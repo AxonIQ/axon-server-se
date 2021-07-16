@@ -170,6 +170,8 @@ podTemplate(label: label,
 
 
                 sh """
+                  pwd axon-server-api
+
                   echo Edit axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
 
                   ls
