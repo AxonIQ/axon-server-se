@@ -125,7 +125,7 @@ podTemplate(label: label,
 //                     sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
 //                     slackReport = slackReport + "\nSources analyzed in SonarQube."
 //                 }
-//             }
+             }
 
             def ns = "se-performance-test-" + shortGitCommit
 
