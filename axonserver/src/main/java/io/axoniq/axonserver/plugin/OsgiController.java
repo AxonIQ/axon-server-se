@@ -241,13 +241,7 @@ public class OsgiController implements PluginServiceProvider {
             if (!current.isPresent()) {
                 try (InputStream is = new FileInputStream(packageFile)) {
                     Bundle bundle = bundleContext.installBundle(packageFile.getAbsolutePath(), is);
-                    try {
-                        bundle.start();
-                    } catch(BundleException bundleException) {
-                        bundle.uninstall();
-                        throw bundleException;
-                    }
-
+                    tryStart(bundle);
                 }
                 logger.info("adding bundle {}/{}", bundleInfo.getSymbolicName(), bundleInfo.getVersion());
             } else {
@@ -270,6 +264,15 @@ public class OsgiController implements PluginServiceProvider {
             throw new MessagingPlatformException(ErrorCode.OTHER,
                                                  "Could not open plugin " + packageFile.getAbsolutePath(),
                                                  ioException);
+        }
+    }
+
+    private void tryStart(Bundle bundle) throws BundleException {
+        try {
+            bundle.start();
+        } catch(BundleException bundleException) {
+            bundle.uninstall();
+            throw bundleException;
         }
     }
 
