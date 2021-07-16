@@ -133,8 +133,8 @@ podTemplate(label: label,
                 container("kubectl") {
 
 
-                    sh """
-                    echo 'Starting Axon Server container'
+                    sh '''
+                    echo Starting Axon Server container
 
                     gcloud container clusters get-credentials devops-cluster --zone=europe-west4-a
 
@@ -148,9 +148,9 @@ podTemplate(label: label,
                         echo "Not ready yet - trying again in 15s"
                         sleep 15
                     done
-                    echo "Axon server node is ready"
+                    echo Axon server node is ready
 
-                    """
+                   '''
                 }
 
                 container("taurus") {
