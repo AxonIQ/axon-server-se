@@ -138,7 +138,7 @@ podTemplate(label: label,
 
                     gcloud container clusters get-credentials devops-cluster --zone=europe-west4-a
                     kubectl create ns ${ns}
-                    cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n  ${ns} -f -
+                    cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n ${ns} -f -
 
                     echo Waiting for Axon Server to start
                     until [[ "$(curl -sm 1  axonserver.${ns}.svc.cluster.local:8024/actuator/health | jq -r .status)"  == "UP" ]]
