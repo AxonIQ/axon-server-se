@@ -63,6 +63,8 @@ podTemplate(label: label,
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
             ]),
         containerTemplate(name: 'kubectl', image: 'eu.gcr.io/axoniq-devops/gcloud-axoniq:latest',
+            command: 'cat', ttyEnabled: true),
+        containerTemplate(name: 'taurus', image: 'blazemeter/taurus:latest',
             command: 'cat', ttyEnabled: true)
     ],
     volumes: [
@@ -125,52 +127,92 @@ podTemplate(label: label,
 //                 }
 //             }
 
+            dev ns = "se-performance-test-" + shortGitCommit
+
             stage('Performance test') {
                 container("kubectl") {
 
 
                     sh """
+                    echo Starting Axon Server container
+
                     gcloud container clusters get-credentials devops-cluster --zone=europe-west4-a
-                    kubectl create ns se-performance-test-${shortGitCommit}
-                    cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n  se-performance-test-${shortGitCommit} -f -
+                    kubectl create ns ${ns}
+                    cat performance-tests/axonserver-se.yaml | sed "s/{{version}}/${pomVersion}/g" | kubectl apply -n  ${ns} -f -
 
-                    //todo wait for axon server to starts
-
-                    //run test
-                    kubectl run test --rm --image=blazemeter/taurus:latest -it -- bash
-
-                    //kubectl run axonserver-quicktest --image=repo/quicktest:running --env AXON_AXONSERVER_SERVERS=axonserver-0.axonserver --attach stdout -n running-axon-server --rm --generator=run-pod/v1
+                    echo Waiting for Axon Server to start
+                    until [[ "$(curl -sm 1  axonserver.${ns}.svc.cluster.local:8024/actuator/health | jq -r .status)"  == "UP" ]]
+                    do
+                        echo "Not ready yet - trying again in 15s"
+                        sleep 15
+                    done
+                    echo "Axon server node is ready"
 
                     """
+                }
+
+                container("taurus") {
+                sh "echo Starting taurus"
+
+                 sh "checkout axon-server-api"
+                            dir("axon-server-api") {
+                                git url: 'https://github.com/AxonIQ/axon-server-api',
+                                    branch: "master",
+                                    credentialsId: '0f7e7ffb-5d79-42fb-afee-e3289c978440'
+                            }
 
 
 
+                sh """
+                  echo Edit axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
+                  sed -e "s/localhost/axonserver.${ns}.svc.cluster.local/g" < axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
 
-                    //todo delete kubectl namespace
+                  echo Starting tests
+                  bzt "performance-tests/taurus.yaml -report -o settings.artifacts-dir=artifacts"
+                """
 
-                    //delete name space
-                    bzt "examples/jmeter/stepping.yml -report -o settings.artifacts-dir=artifacts"
-                    slackReport = slackReport + "\nResults from load testing"
+
+//                  try {
+//                                                     archiveArtifacts artifacts: '**/target/server-logs/**/*.log', allowEmptyArchive: true
+//                                                 }
+//                                                 catch (err) {
+//                                                     slackReport = slackReport + "\nFailed to retrieve test logs"
+//                                                 }
+
                 }
             }
 
             stage('Trigger followup') {
-                /*
-                 * If we have Docker images and artifacts in Nexus, we can run Canary tests on them.
-                 */
-                if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
-                    def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
-                        parameters: [
-                            string(name: 'serverEdition', value: 'se'),
-                            string(name: 'projectVersion', value: pomVersion),
-                            string(name: 'cliVersion', value: pomVersion)
-                        ]
-                    if (canaryTests.result == "FAILURE") {
-                        slackReport = slackReport + "\nCanary Tests FAILED!"
-                    }
-                }
-            }
-            // Tell the team what happened.
-            slackSend(message: slackReport)
+
+                            /*
+                             * If we have Docker images and artifacts in Nexus, we can run Canary tests on them.
+                             */
+                            if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
+                                def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
+                                    parameters: [
+                                        string(name: 'serverEdition', value: 'se'),
+                                        string(name: 'projectVersion', value: pomVersion),
+                                        string(name: 'cliVersion', value: pomVersion)
+                                    ]
+                                if (canaryTests.result == "FAILURE") {
+                                    slackReport = slackReport + "\nCanary Tests FAILED!"
+                                }
+                            }
+                        }
+                        // Tell the team what happened.
+                        slackSend(message: slackReport)
+
+
+                //todo something with xml report
+
+                 container("kubectl") {
+                                    sh """
+                                    echo deleting name space
+                                         kubectl delete ns ${ns}
+                                    """
+
+                                }
         }
+
+
     }
