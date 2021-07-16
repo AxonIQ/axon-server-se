@@ -171,7 +171,10 @@ podTemplate(label: label,
 
                 sh """
                   echo Edit axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
-                  sed -e "s/localhost/axonserver.${ns}.svc.cluster.local/g" < axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
+
+                  ls
+
+                  sed -e "s/localhost/axonserver.${ns}.svc.cluster.local/g" < performance-tests/axon-server-se-simple-template.jmx > axon-server-se-simple.jmx
 
                   echo Starting tests
                   bzt "performance-tests/taurus.yaml -report -o settings.artifacts-dir=artifacts"
