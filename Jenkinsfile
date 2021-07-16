@@ -127,7 +127,7 @@ podTemplate(label: label,
 //                 }
 //             }
 
-            dev ns = "se-performance-test-" + shortGitCommit
+            def ns = "se-performance-test-" + shortGitCommit
 
             stage('Performance test') {
                 container("kubectl") {
