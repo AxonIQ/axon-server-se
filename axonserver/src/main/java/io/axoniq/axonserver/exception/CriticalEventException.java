@@ -10,12 +10,18 @@
 package io.axoniq.axonserver.exception;
 
 /**
+ * Exception to be thrown when there is a critical error while handling an application event.
+ *
  * @author Marc Gathier
  * @since 4.4.13
  */
-public class PropagatingEventException extends RuntimeException {
+public class CriticalEventException extends RuntimeException {
 
-    public PropagatingEventException(String message, Throwable cause) {
+    /**
+     * @param message describes the exception
+     * @param cause a wrapped cause
+     */
+    public CriticalEventException(String message, Throwable cause) {
         super(message, cause);
     }
 }
