@@ -24,8 +24,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.invocation.*;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.stubbing.*;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoSink;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -101,11 +105,9 @@ public class EventDispatcherTest {
     @Test
     public void appendSnapshot() {
         FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
-        CompletableFuture<Confirmation> appendFuture = new CompletableFuture<>();
-        when(eventStoreClient.appendSnapshot(any(), any(), any(Event.class))).thenReturn(appendFuture);
+        when(eventStoreClient.appendSnapshot(any(), any(Event.class), any())).thenReturn(Mono.empty());
         testSubject.appendSnapshot(Event.newBuilder().build(), responseObserver);
-        appendFuture.complete(Confirmation.newBuilder().build());
-        verify(eventStoreClient).appendSnapshot(any(), any(), any(Event.class));
+        verify(eventStoreClient).appendSnapshot(any(), any(Event.class), any());
         assertEquals(1, responseObserver.values().size());
     }
 

@@ -109,28 +109,22 @@ public class LocalEventStoreTest {
 
     @Test
     public void appendSnapshot() throws ExecutionException, InterruptedException {
-        Confirmation result = testSubject.appendSnapshot("demo",
-                                                         null,
-                                                         Event.newBuilder().build())
-                                         .get();
+        StepVerifier.create(testSubject.appendSnapshot("demo", Event.newBuilder().build(), null))
+                    .verifyComplete();
         assertEquals(1, eventInterceptors.appendSnapshot);
         assertEquals(1, eventInterceptors.snapshotPostCommit);
     }
 
     @Test
     public void appendSnapshotCompensate() throws InterruptedException {
-        try {
-            testSubject.appendSnapshot("demo",
-                                       null,
-                                       Event.newBuilder().setMessageIdentifier("FAIL").build())
-                       .get();
-            fail("Expecting exception");
-        } catch (ExecutionException executionException) {
-            assertEquals(1, eventInterceptors.appendSnapshot);
-            assertEquals(0, eventInterceptors.snapshotPostCommit);
-            assertEquals(1, eventInterceptors.compensations.size());
-            assertEquals("Compensate Append Snapshot", eventInterceptors.compensations.get(0));
-        }
+        StepVerifier.create(testSubject.appendSnapshot("demo",
+                                                       Event.newBuilder().setMessageIdentifier("FAIL").build(),
+                                                       null))
+                    .verifyError();
+        assertEquals(1, eventInterceptors.appendSnapshot);
+        assertEquals(0, eventInterceptors.snapshotPostCommit);
+        assertEquals(1, eventInterceptors.compensations.size());
+        assertEquals("Compensate Append Snapshot", eventInterceptors.compensations.get(0));
     }
 
     @Test

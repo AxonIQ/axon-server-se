@@ -51,6 +51,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SignalType;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
@@ -215,15 +216,19 @@ public class EventDispatcher implements AxonServerClientService {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-                eventStore.appendSnapshot(context, authentication, snapshot).whenComplete((c, t) -> {
-                    if (t != null) {
-                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                        responseObserver.onError(t);
-                    } else {
-                        responseObserver.onNext(c);
-                        responseObserver.onCompleted();
-                    }
-                });
+                eventStore.appendSnapshot(context, snapshot, authentication)
+                          .doOnEach(signal -> {
+                              if (signal.isOnError()) {
+                                  Throwable t = signal.getThrowable();
+                                  logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
+                                  responseObserver.onError(t);
+                              } else if (signal.isOnComplete()) {
+                                  responseObserver.onNext(Confirmation.newBuilder()
+                                                                      .setSuccess(true)
+                                                                      .build());
+                                  responseObserver.onCompleted();
+                              }
+                          }).subscribe();
             } catch (Exception ex) {
                 responseObserver.onError(ex);
             }

@@ -31,6 +31,7 @@ import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -52,6 +53,7 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
@@ -220,6 +222,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication) {
+        return Mono.fromCompletionStage(appendSnapshot(context, authentication, snapshot))
+                   .then();
+    }
+
     public CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication,
                                                           Event snapshot) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();

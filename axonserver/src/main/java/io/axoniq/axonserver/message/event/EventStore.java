@@ -26,6 +26,7 @@ import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.grpc.stub.StreamObserver;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
@@ -41,11 +42,12 @@ public interface EventStore {
     /**
      * Stores a snapshot in the event store.
      *
-     * @param context  the context where the snapshot are stored
-     * @param snapshot the snapshot
+     * @param context        the context where the snapshot are stored
+     * @param snapshot       the snapshot
+     * @param authentication the authentication
      * @return completable future that completes when snapshot is stored
      */
-    CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication, Event snapshot);
+    Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication);
 
     /**
      * Creates a connection that receives events to be stored in a single transaction.

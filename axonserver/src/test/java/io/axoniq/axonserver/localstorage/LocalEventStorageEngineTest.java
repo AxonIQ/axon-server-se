@@ -23,6 +23,8 @@ import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -107,35 +109,32 @@ public class LocalEventStorageEngineTest {
 
     @Test
     public void appendSnapshot() throws InterruptedException, TimeoutException, ExecutionException {
-        CompletableFuture<Confirmation> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT, null,
-                                                                              Event.newBuilder()
-                                                                                   .setAggregateIdentifier(
-                                                                                           "AGGREGATE_WITH_ONE_EVENT")
-                                                                                   .setAggregateSequenceNumber(0)
-                                                                                   .build());
+        Mono<Void> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT,
+                                                         Event.newBuilder()
+                                                              .setAggregateIdentifier(
+                                                                      "AGGREGATE_WITH_ONE_EVENT")
+                                                              .setAggregateSequenceNumber(0)
+                                                              .build(),
+                                                         null);
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, pendingTransactions.size()));
-        pendingTransactions.get(0).complete(100L);
-        Confirmation confirmation = snapshot.get(100, TimeUnit.MILLISECONDS);
-        assertTrue(confirmation.getSuccess());
+        StepVerifier.create(snapshot.doOnSubscribe(s -> pendingTransactions.get(0).complete(100L)))
+                    .verifyComplete();
     }
 
     @Test
     public void appendSnapshotFailsWhenNoEventsFound() throws InterruptedException, TimeoutException {
-        CompletableFuture<Confirmation> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT, null,
-                                                                              Event.newBuilder()
-                                                                                   .setAggregateIdentifier(
-                                                                                           "AGGREGATE_WITH_NO_EVENTS")
-                                                                                   .setAggregateSequenceNumber(0)
-                                                                                   .build());
-        try {
-            Thread.sleep(100);
-            assertEquals(0, pendingTransactions.size());
-            snapshot.get(100, TimeUnit.MILLISECONDS);
-            fail("Expected execution exception");
-        } catch (ExecutionException e) {
-            assertEquals(MessagingPlatformException.class, e.getCause().getClass());
-            assertEquals(ErrorCode.INVALID_SEQUENCE, ((MessagingPlatformException) e.getCause()).getErrorCode());
-        }
+        Mono<Void> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT,
+                                                         Event.newBuilder()
+                                                              .setAggregateIdentifier(
+                                                                      "AGGREGATE_WITH_NO_EVENTS")
+                                                              .setAggregateSequenceNumber(0)
+                                                              .build(),
+                                                         null);
+        Thread.sleep(100);
+        assertEquals(0, pendingTransactions.size());
+        StepVerifier.create(snapshot)
+                    .verifyErrorMatches(e -> MessagingPlatformException.class == e.getClass()
+                            && ErrorCode.INVALID_SEQUENCE == ((MessagingPlatformException) e).getErrorCode());
     }
 
     @Test
