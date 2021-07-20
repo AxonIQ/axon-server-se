@@ -21,6 +21,11 @@ spring:
       enabled: true
       path: /h2-console
 
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+
 logging:
   level:
     root: WARN
