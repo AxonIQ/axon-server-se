@@ -227,7 +227,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         break;
                     default:
                         instructionAckSource.sendUnsupportedInstruction(queryProviderOutbound.getInstructionId(),
-                                                                        topology.getMe().getName(),
+                                                                        topology.getName(),
                                                                         wrappedQueryProviderInboundObserver);
                         break;
                 }

@@ -85,7 +85,7 @@ public class CommandService implements AxonServerClientService {
     private final ClientIdRegistry clientIdRegistry;
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
-    private final Map<ClientStreamIdentification, GrpcFlowControlledDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
+    private final Map<ClientStreamIdentification, GrpcCommandDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
     private final FlowControlQueues<WrappedCommand> commandQueues;
 
@@ -121,7 +121,7 @@ public class CommandService implements AxonServerClientService {
         dispatcherListeners.clear();
     }
 
-    public Set<GrpcFlowControlledDispatcherListener> listeners() {
+    public Set<GrpcCommandDispatcherListener> listeners() {
         return new HashSet<>(dispatcherListeners.values());
     }
 
@@ -198,7 +198,7 @@ public class CommandService implements AxonServerClientService {
                         break;
                     default:
                         instructionAckSource.sendUnsupportedInstruction(commandFromSubscriber.getInstructionId(),
-                                                                        topology.getMe().getName(),
+                                                                        topology.getName(),
                                                                         wrappedResponseObserver);
                         break;
                 }
