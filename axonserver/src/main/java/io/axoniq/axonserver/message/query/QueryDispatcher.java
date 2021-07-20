@@ -35,6 +35,7 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -147,8 +148,9 @@ public class QueryDispatcher {
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected event) {
         registrationCache.remove(event.clientIdentification());
-        if( ! event.isProxied()) {
-            queryQueue.move(new ClientStreamIdentification(event.getContext(), event.getClientStreamId()).toString(), query -> null);
+        if (!event.isProxied()) {
+            queryQueue.move(new ClientStreamIdentification(event.getContext(), event.getClientStreamId()).toString(),
+                            query -> null);
         }
     }
 
@@ -179,7 +181,7 @@ public class QueryDispatcher {
         Consumer<QueryResponse> interceptedCallback = r -> intercept(executionContext, r, callback);
         try {
             SerializedQuery serializedQuery2 = queryInterceptors.queryRequest(serializedQuery, executionContext);
-            ;
+
             QueryRequest query = serializedQuery2.query();
 
             long timeout =
@@ -189,7 +191,8 @@ public class QueryDispatcher {
             if (handlers.isEmpty()) {
                 interceptedCallback.accept(QueryResponse.newBuilder()
                                                         .setErrorCode(ErrorCode.NO_HANDLER_FOR_QUERY.getCode())
-                                                        .setMessageIdentifier(query.getMessageIdentifier())
+                                                        .setRequestIdentifier(query.getMessageIdentifier())
+                                                        .setMessageIdentifier(UUID.randomUUID().toString())
                                                         .setErrorMessage(ErrorMessageFactory
                                                                                  .build("No handler for query: " + query
                                                                                          .getQuery()))
@@ -218,7 +221,8 @@ public class QueryDispatcher {
                         serializedQuery.query().getQuery(), insufficientBufferCapacityException);
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(ErrorCode.TOO_MANY_REQUESTS.getCode())
-                                                    .setMessageIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setMessageIdentifier(UUID.randomUUID().toString())
                                                     .setErrorMessage(ErrorMessageFactory
                                                                              .build(insufficientBufferCapacityException
                                                                                             .getMessage()))
@@ -229,7 +233,8 @@ public class QueryDispatcher {
                         serializedQuery.query().getQuery(), messagingPlatformException);
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(messagingPlatformException.getErrorCode().getCode())
-                                                    .setMessageIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setMessageIdentifier(UUID.randomUUID().toString())
                                                     .setErrorMessage(ErrorMessageFactory
                                                                              .build(messagingPlatformException
                                                                                             .getMessage()))
@@ -241,7 +246,8 @@ public class QueryDispatcher {
                         serializedQuery.query().getQuery(), otherException);
             interceptedCallback.accept(QueryResponse.newBuilder()
                                                     .setErrorCode(ErrorCode.OTHER.getCode())
-                                                    .setMessageIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                    .setMessageIdentifier(UUID.randomUUID().toString())
                                                     .setErrorMessage(ErrorMessageFactory
                                                                              .build(getOrDefault(otherException
                                                                                                          .getMessage(),
@@ -262,7 +268,8 @@ public class QueryDispatcher {
             logger.warn("{}: Exception in response interceptor", executionContext.contextName(), ex);
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode())
-                                         .setMessageIdentifier(response.getRequestIdentifier())
+                                         .setRequestIdentifier(response.getRequestIdentifier())
+                                         .setMessageIdentifier(UUID.randomUUID().toString())
                                          .setErrorMessage(ErrorMessageFactory
                                                                   .build(ex.getMessage()))
                                          .build());
@@ -287,7 +294,8 @@ public class QueryDispatcher {
         if (queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
-                                         .setMessageIdentifier(query.getMessageIdentifier())
+                                         .setRequestIdentifier(query.getMessageIdentifier())
+                                         .setMessageIdentifier(UUID.randomUUID().toString())
                                          .setErrorMessage(
                                                  ErrorMessageFactory
                                                          .build(String.format("Client %s not found while processing: %s"

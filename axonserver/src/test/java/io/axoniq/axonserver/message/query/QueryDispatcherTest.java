@@ -35,6 +35,8 @@ import org.mockito.junit.*;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -42,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -101,17 +104,19 @@ public class QueryDispatcherTest {
 
     @Test
     public void queryNotFound() {
+        String requestIdentifier = "1234";
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")
-                                           .setMessageIdentifier("1234")
+                                           .setMessageIdentifier(requestIdentifier)
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
+        assertEquals(1, responseObserver.values().size());
         assertEquals(1, responseObserver.completedCount());
-        assertEquals(1, responseObserver.completedCount());
-        assertNotEquals("", responseObserver.values().get(0).getErrorCode());
+        assertEquals(requestIdentifier, responseObserver.values().get(0).getRequestIdentifier());
+        assertEquals(ErrorCode.NO_HANDLER_FOR_QUERY.getCode(), responseObserver.values().get(0).getErrorCode());
     }
 
     @Test
@@ -122,9 +127,10 @@ public class QueryDispatcherTest {
                                           new NoOpQueryInterceptors(),
                                           meterFactory,
                                           0);
+        String requestId = "1234";
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")
-                                           .setMessageIdentifier("1234")
+                                           .setMessageIdentifier(requestId)
                                            .setClientId("sampleClient")
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
@@ -142,6 +148,7 @@ public class QueryDispatcherTest {
         assertTrue(queryCache.isEmpty());
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
+        assertEquals(requestId, responseObserver.values().get(0).getRequestIdentifier());
     }
 
     @Test
@@ -173,8 +180,9 @@ public class QueryDispatcherTest {
                                           new MyQueryInterceptors(),
                                           meterFactory,
                                           10_000);
+        String requestId = "REJECT";
         QueryRequest request = QueryRequest.newBuilder()
-                                           .setMessageIdentifier("REJECT")
+                                           .setMessageIdentifier(requestId)
                                            .setQuery("test")
                                            .build();
 
@@ -187,6 +195,7 @@ public class QueryDispatcherTest {
         QueryResponse response = futureResponse.get();
         assertEquals(ErrorCode.QUERY_REJECTED_BY_INTERCEPTOR.getCode(), response.getErrorCode());
         assertTrue(futureCompleted.get());
+        assertEquals(requestId, response.getRequestIdentifier());
     }
 
     @Test
@@ -197,8 +206,9 @@ public class QueryDispatcherTest {
                                           new MyQueryInterceptors(),
                                           meterFactory,
                                           10_000);
+        String requestId = "FAIL";
         QueryRequest request = QueryRequest.newBuilder()
-                                           .setMessageIdentifier("FAIL")
+                                           .setMessageIdentifier(requestId)
                                            .setQuery("test")
                                            .build();
 
@@ -211,6 +221,7 @@ public class QueryDispatcherTest {
         QueryResponse response = futureResponse.get(1, TimeUnit.SECONDS);
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
         assertTrue(futureCompleted.get(1, TimeUnit.SECONDS));
+        assertEquals(requestId, response.getRequestIdentifier());
     }
 
     @Test
@@ -296,7 +307,25 @@ public class QueryDispatcherTest {
 //        verify(queryCache, times(0)).put(any(), any());
     }
 
-    //@Test
+    @Test
+    public void clientDisconnectedError(){
+        String requestId = "1234";
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setQuery("test")
+                                           .setMessageIdentifier(requestId)
+                                           .build();
+        SerializedQuery forwardedQuery = new SerializedQuery(Topology.DEFAULT_CONTEXT, "client", request);
+        when(registrationCache.find(any(), any(), any())).thenReturn(null);
+        List<QueryResponse> responses = new LinkedList<>();
+        AtomicReference<String> complete = new AtomicReference<>();
+        testSubject.dispatchProxied(forwardedQuery, responses::add, complete::set);
+
+        assertEquals(1, responses.size());
+        assertEquals(requestId, responses.get(0).getRequestIdentifier());
+        assertEquals(ErrorCode.CLIENT_DISCONNECTED.getCode(), responses.get(0).getErrorCode());
+    }
+
+//    @Test
     public void dispatchProxiedWithError() throws Exception {
         QueryRequest request = QueryRequest.newBuilder()
                                            .setQuery("test")
@@ -313,7 +342,6 @@ public class QueryDispatcherTest {
         });
         assertEquals(1, testSubject.getQueryQueue().getSegments().get("client").size());
     }
-
 
     private static class MyQueryInterceptors implements QueryInterceptors {
 
@@ -338,4 +366,7 @@ public class QueryDispatcherTest {
             return response;
         }
     }
+        // TODO
+    //ErrorCode.TOO_MANY_REQUESTS
+    //ErrorCode.OTHER
 }
