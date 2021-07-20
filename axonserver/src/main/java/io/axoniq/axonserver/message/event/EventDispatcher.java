@@ -217,18 +217,18 @@ public class EventDispatcher implements AxonServerClientService {
             try {
                 eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
                 eventStore.appendSnapshot(context, snapshot, authentication)
-                          .doOnEach(signal -> {
-                              if (signal.isOnError()) {
-                                  Throwable t = signal.getThrowable();
-                                  logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                                  responseObserver.onError(t);
-                              } else if (signal.isOnComplete()) {
-                                  responseObserver.onNext(Confirmation.newBuilder()
-                                                                      .setSuccess(true)
-                                                                      .build());
-                                  responseObserver.onCompleted();
-                              }
-                          }).subscribe();
+                          .doOnSuccess(v -> {
+                              responseObserver.onNext(Confirmation.newBuilder()
+                                                                  .setSuccess(true)
+                                                                  .build());
+                              responseObserver.onCompleted();
+                          })
+                          .doOnError(t -> {
+                              logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
+                              responseObserver.onError(t);
+                          })
+                          .doOnCancel(() -> responseObserver.onError(new RuntimeException("Appending snapshot cancelled")))
+                          .subscribe();
             } catch (Exception ex) {
                 responseObserver.onError(ex);
             }
