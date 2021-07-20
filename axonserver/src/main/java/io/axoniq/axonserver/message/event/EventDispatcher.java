@@ -227,7 +227,9 @@ public class EventDispatcher implements AxonServerClientService {
                               logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
                               responseObserver.onError(t);
                           })
-                          .doOnCancel(() -> responseObserver.onError(new RuntimeException("Appending snapshot cancelled")))
+                          .doOnCancel(() -> responseObserver.onError(MessagingPlatformException
+                                                                             .create(new RuntimeException(
+                                                                                     "Appending snapshot cancelled"))))
                           .subscribe();
             } catch (Exception ex) {
                 responseObserver.onError(ex);
