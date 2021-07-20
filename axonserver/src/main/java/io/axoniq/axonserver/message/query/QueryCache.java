@@ -76,7 +76,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
                             e.getValue().getSourceClientId(),
                             e.getValue().waitingFor());
                 remove(e.getKey());
-                e.getValue().cancel();
+                e.getValue().cancelWithError(ErrorCode.QUERY_TIMEOUT, "Query cancelled due to timeout");
             });
         }
     }

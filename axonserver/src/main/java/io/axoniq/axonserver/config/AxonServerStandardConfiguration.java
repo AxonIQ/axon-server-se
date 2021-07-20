@@ -16,6 +16,7 @@ import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -283,6 +284,8 @@ public class AxonServerStandardConfiguration {
                     super.invokeListener(listener, event);
                 } catch (BeanCreationNotAllowedException ex) {
                     // shutdown in progress
+                } catch (CriticalEventException ex) {
+                    throw ex;
                 } catch (RuntimeException ex) {
                     logger.warn("Invoking listener {} failed", listener, ex);
                 }
