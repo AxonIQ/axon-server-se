@@ -10,6 +10,7 @@ import io.axoniq.axonserver.serializer.Media;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -30,21 +31,21 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
     private final Logger logger = LoggerFactory.getLogger(DefaultClientIdRegistry.class);
 
     //Map<ConnectionType, Map<streamId, clientId>>>
-    private final Map<ConnectionType, Map<String, String>> clientIdMapPerType = new ConcurrentHashMap<>();
+    private final Map<ConnectionType, Map<String, ClientContext>> clientIdMapPerType = new ConcurrentHashMap<>();
 
     @Override
-    public boolean register(String clientStreamId, String clientId, ConnectionType type) {
-        Map<String, String> connectionTypeMap = clientIdMapPerType.computeIfAbsent(type,
+    public boolean register(String clientStreamId, ClientContext client, ConnectionType type) {
+        Map<String, ClientContext> connectionTypeMap = clientIdMapPerType.computeIfAbsent(type,
                                                                                    t -> new ConcurrentHashMap<>());
-        String prev = connectionTypeMap.put(clientStreamId, clientId);
+        ClientContext prev = connectionTypeMap.put(clientStreamId, client);
         if (logger.isInfoEnabled()) {
             Set<String> streamSet = connectionTypeMap.entrySet()
                                                      .stream()
-                                                     .filter(e -> e.getValue().equals(clientId))
+                                                     .filter(e -> e.getValue().equals(client))
                                                      .map(Map.Entry::getKey)
                                                      .collect(Collectors.toSet());
             if (streamSet.size() != 1) {
-                logger.info("Multiple mappings for {} stream for clientId {}: {}", type, clientId, streamSet);
+                logger.info("Multiple mappings for {} stream for clientId {}: {}", type, client, streamSet);
             }
         }
         return prev == null;
@@ -52,15 +53,15 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
 
     @Override
     public boolean unregister(String clientStreamId, ConnectionType type) {
-        Map<String, String> connectionTypeMap = clientIdMapPerType.getOrDefault(type, Collections.emptyMap());
-        String clientId = connectionTypeMap.remove(clientStreamId);
+        Map<String, ClientContext> connectionTypeMap = clientIdMapPerType.getOrDefault(type, Collections.emptyMap());
+        ClientContext clientId = connectionTypeMap.remove(clientStreamId);
         return clientId != null;
     }
 
     @Override
-    public String clientId(String clientStreamId) {
+    public ClientContext clientId(String clientStreamId) {
         for (ConnectionType connectionType : values()) {
-            String clientId = clientIdMapPerType.getOrDefault(connectionType, Collections.emptyMap())
+            ClientContext clientId = clientIdMapPerType.getOrDefault(connectionType, Collections.emptyMap())
                                                 .get(clientStreamId);
             if (clientId != null) {
                 return clientId;
@@ -70,11 +71,11 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
     }
 
     @Override
-    public Set<String> streamIdsFor(String clientId, ConnectionType type) {
-        Map<String, String> connectionTypeMap = clientIdMapPerType.getOrDefault(type, Collections.emptyMap());
+    public Set<String> streamIdsFor(ClientContext clientContext, ConnectionType type) {
+        Map<String, ClientContext> connectionTypeMap = clientIdMapPerType.getOrDefault(type, Collections.emptyMap());
         Set<String> current = connectionTypeMap.entrySet()
                                                .stream()
-                                               .filter(e -> e.getValue().equals(clientId))
+                                               .filter(e -> e.getValue().equals(clientContext))
                                                .map(Map.Entry::getKey)
                                                .collect(Collectors.toSet());
         return Collections.unmodifiableSet(current);
@@ -83,16 +84,17 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
 
     @Override
     public void printOn(Media media) {
-        clientIdMapPerType.forEach((type, map) -> media.with(type.toString(), m -> map.forEach(m::with)));
+        clientIdMapPerType.forEach((type, map) -> media.with(type.toString(), m -> map.forEach((k, v) -> m.with(k, v.toString()))));
     }
 
 
+    @Order(0)
     @EventListener
     public void on(ApplicationConnected event) {
         logger.info("Platform stream connected: {} [stream id -> {}]",
                     event.getClientId(),
                     event.getClientStreamId());
-        register(event.getClientStreamId(), event.getClientId(), PLATFORM);
+        register(event.getClientStreamId(), new ClientContext(event.getClientId(), event.getContext()), PLATFORM);
     }
 
     @EventListener
@@ -110,7 +112,7 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
         if (!clientIdMapPerType.getOrDefault(COMMAND, Collections.emptyMap()).containsKey(clientStreamId)) {
             logger.info("Command stream connected: {} [stream id -> {}]", clientId, clientStreamId);
         }
-        register(clientStreamId, clientId, COMMAND);
+        register(clientStreamId, new ClientContext(clientId, event.getContext()), COMMAND);
     }
 
     @EventListener
@@ -128,7 +130,7 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
         if (!clientIdMapPerType.getOrDefault(QUERY, Collections.emptyMap()).containsKey(clientStreamId)) {
             logger.info("Query stream connected: {} [stream id -> {}]", clientId, clientStreamId);
         }
-        register(clientStreamId, clientId, QUERY);
+        register(clientStreamId, new ClientContext(clientId, event.getContext()), QUERY);
     }
 
     @EventListener

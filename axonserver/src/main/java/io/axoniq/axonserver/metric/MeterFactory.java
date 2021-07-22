@@ -13,6 +13,7 @@ import com.google.common.util.concurrent.AtomicDouble;
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -26,8 +27,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 
 /**
- * Service to create rate based meters.
- * Rate meters are implemented using dropwizard meters, and exposed by defining micrometer gauges.
+ * Service to create rate based meters. Rate meters are implemented using dropwizard meters, and exposed by defining
+ * micrometer gauges.
+ *
  * @author Marc Gathier
  * @since 4.2
  */
@@ -71,6 +73,15 @@ public class MeterFactory {
                     .register(meterRegistry);
     }
 
+    public DistributionSummary distributionSummary(MetricName metric, Tags tags) {
+        return DistributionSummary.builder(metric.metric())
+                                  .description(metric.description())
+                                  .baseUnit("count")
+                                  .publishPercentiles(0.5, 0.9, 0.95, 0.99)
+                                  .tags(tags)
+                                  .register(meterRegistry);
+    }
+
     public <T> Gauge gauge(MetricName metric, Tags tags, T objectToWatch, ToDoubleFunction<T> gaugeFunction) {
         return Gauge.builder(metric.metric(), objectToWatch, gaugeFunction)
                     .tags(tags)
@@ -111,8 +122,7 @@ public class MeterFactory {
 
     /**
      * Meter to keep rates of events. These are implemented using an IntervalCounter (that counts number of events in a
-     * specific timebucket), and
-     * exposed to the actuator/metrics endpoints by {@link Gauge}s.
+     * specific timebucket), and exposed to the actuator/metrics endpoints by {@link Gauge}s.
      */
     public class RateMeter implements Printable {
 

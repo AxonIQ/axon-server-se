@@ -49,7 +49,7 @@ public class PlatformServiceTest {
         MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         platformService = new PlatformService(new DefaultTopology(configuration),
-                                              () -> Topology.DEFAULT_CONTEXT,
+                                              () -> context,
                                               clientIdRegistry, eventPublisher,
                                               new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction
                                                       .newBuilder().setAck(ack).build()));
@@ -143,7 +143,7 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest(Topology.DEFAULT_CONTEXT,
+        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest(context,
                                                                                "Release",
                                                                                "processor",
                                                                                false));
@@ -162,7 +162,7 @@ public class PlatformServiceTest {
                                                                                                              "component")
         ).build());
 
-        platformService.on(new EventProcessorEvents.StartEventProcessorRequest(Topology.DEFAULT_CONTEXT,
+        platformService.on(new EventProcessorEvents.StartEventProcessorRequest(context,
                                                                                "Release",
                                                                                "processor",
                                                                                false));
@@ -202,10 +202,10 @@ public class PlatformServiceTest {
                                                        ).build());
         assertEquals(1, platformService.getConnectedClients().size());
         String clientStreamId = platformService.getConnectedClients().iterator().next().getClientStreamId();
-        platformService.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
+        platformService.on(new TopologyEvents.ApplicationDisconnected(context,
                                                                       component, clientStreamId));
         assertEquals(0, platformService.getConnectedClients().size());
-        assertTrue(responseObserver.completedCount() == 1);
+        assertEquals(1, responseObserver.completedCount());
     }
 
     @Test
@@ -253,7 +253,7 @@ public class PlatformServiceTest {
         assertEquals(1, platformService.getConnectedClients().size());
         String clientStreamId = platformService.getConnectedClients().iterator().next().getClientStreamId();
         ClientStreamIdentification client = new ClientStreamIdentification("default", clientStreamId);
-        platformService.on(new TopologyEvents.ApplicationInactivityTimeout(client, component, clientId));
+        platformService.on(new TopologyEvents.ApplicationInactivityTimeout(client, component, new ClientContext(clientId, context)));
         assertEquals(1, responseObserver.errors().size());
         assertTrue(responseObserver.errors().get(0).getMessage().contains("Platform stream inactivity"));
     }

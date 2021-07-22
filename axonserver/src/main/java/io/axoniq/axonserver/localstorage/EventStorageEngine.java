@@ -201,13 +201,6 @@ public interface EventStorageEngine {
     long getTokenAt(long instant);
 
     /**
-     * Rolls back storage engine to token. Implementations may keep more when token is not at a transaction boundary.
-     * @param token the last token to keep.
-     */
-    default void rollback(long token) {
-    }
-
-    /**
      * Return a closeable iterator to iterate over all events starting at token start.
      * @param start first token to return
      * @return closeable iterator of SerializedEventWithToken
@@ -228,12 +221,6 @@ public interface EventStorageEngine {
      * @return the next token
      */
     long nextToken();
-
-    /**
-     * Deletes all event data in the Event Store (Only intended for development environments).
-     */
-    void deleteAllEventData();
-
 
     /**
      * Validates that the transaction that is stored at the given {@code token} is the same as the

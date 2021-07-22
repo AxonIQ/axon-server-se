@@ -59,7 +59,7 @@ public class WebConfiguration implements WebMvcConfigurer {
             public Map<String, Object> getErrorAttributes(WebRequest webRequest, boolean includeStackTrace) {
                 Map<String, Object> errorAttributes = super.getErrorAttributes(webRequest, includeStackTrace);
                 addMessageField(errorAttributes);
-                errorAttributes.put("version", versionInfoProvider.get().getVersion());
+                errorAttributes.put("asVersion", versionInfoProvider.get().getVersion());
                 errorAttributes.put("product", versionInfoProvider.get().getProductName());
                 errorAttributes.remove("exception");
                 errorAttributes.remove("errors");

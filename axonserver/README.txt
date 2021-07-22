@@ -1,7 +1,31 @@
-This is the Axon Server Standard Edition, version 4.4
+This is the Axon Server Standard Edition, version 4.5
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.5.5
+---------------------------------
+* Fix: Improved error handling and feedback when uploading invalid plugins
+* Fix: Increase default settings for spring.servlet.multipart.max-request-size and spring.servlet.multipart.max-file-size to 25MB
+
+Release Notes for version 4.5.4.1
+---------------------------------
+* Fix: In case of timeout during query execution, AS sends a timeout error to the client before canceling the query.
+* Fix: Close event store segment file when reading is complete
+
+Release Notes for version 4.5.3
+-------------------------------
+* Fix: Reset event store with multiple segments
+* Fix: Regression in loading aggregate events performance
+* Fix: Handle queries with same request type but different response type
+* New metrics added:
+  - file.bloom.open: counts the number of bloom filter segments opened since start
+  - file.bloom.close: counts the number of bloom filter segments closed since start
+  - file.segment.open: counts the number of event store segments opened since start
+  - local.aggregate.segments: monitors the number of segments that were accessed for reading aggregate event requests
+
+Notes:
+ - Default value for configuration property axoniq.axonserver.event.events-per-segment-prefetch is decreased from 50 to 10.
 
 Release Notes for version 4.5.2
 -------------------------------
@@ -49,6 +73,10 @@ Notes:
   details from unauthenticated users, set the property "management.endpoint.health.show-details" to "when-authorized".
 
 - For the Docker image, plugins are stored in the /data/plugins directory.
+
+Release Notes for version 4.4.13
+--------------------------------
+* Change in internal event handling required for Axon Server Enterprise Edition
 
 Release Notes for version 4.4.12
 -------------------------------

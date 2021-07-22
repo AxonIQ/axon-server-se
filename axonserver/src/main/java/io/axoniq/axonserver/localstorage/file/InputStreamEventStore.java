@@ -106,7 +106,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
                 context,
                 new FileVersion(segment, currentVersion + 1));
         try (TransactionIterator transactionIterator = getTransactions(segment, segment);
-             // TODO: 5/19/2021 write to temp file first 
+             // TODO: 5/19/2021 write to temp file first
              DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(dataFile))) {
             dataOutputStream.write(PrimaryEventStore.VERSION);
             dataOutputStream.writeInt(storageProperties.getFlags());
@@ -199,16 +199,12 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         return segments.navigableKeySet();
     }
 
-    @Override
-    public void deleteAllEventData() {
-        throw new UnsupportedOperationException("Development mode deletion is not supported in InputStreamEventStore");
-    }
-
     private InputStreamEventSource get(FileVersion segment, boolean force) {
         if (!force && !segments.containsKey(segment.segment())) {
             return null;
         }
 
+        fileOpenMeter.increment();
         return new InputStreamEventSource(storageProperties.dataFile(context, segment),
                                           eventTransformerFactory);
     }

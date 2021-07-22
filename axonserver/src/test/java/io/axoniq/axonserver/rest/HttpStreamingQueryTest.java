@@ -131,15 +131,6 @@ public class HttpStreamingQueryTest {
                 return 0;
             }
 
-            @Override
-            public void deleteAllEventData() {
-
-            }
-
-            @Override
-            public void transformContents(UnaryOperator<Event> transformationFunction) {
-
-            }
         };
 
         LocalEventStore localEventStore = new LocalEventStore(new EventStoreFactory() {

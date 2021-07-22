@@ -105,7 +105,7 @@ public class StorageProperties implements Cloneable {
     /**
      * Define how many events to prefetch from disk when streaming events to the client
      */
-    private int eventsPerSegmentPrefetch = 50;
+    private int eventsPerSegmentPrefetch = 10;
 
     /**
      * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.

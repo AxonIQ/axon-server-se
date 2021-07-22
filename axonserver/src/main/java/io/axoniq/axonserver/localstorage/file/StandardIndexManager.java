@@ -14,6 +14,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -70,6 +71,8 @@ public class StandardIndexManager implements IndexManager {
     private final MeterFactory.RateMeter indexCloseMeter;
     private final RemoteAggregateSequenceNumberResolver remoteIndexManager;
     private final AtomicLong useMmapAfterIndex = new AtomicLong();
+    private final Counter bloomFilterOpenMeter;
+    private final Counter bloomFilterCloseMeter;
     private ScheduledFuture<?> cleanupTask;
 
     /**
@@ -97,10 +100,11 @@ public class StandardIndexManager implements IndexManager {
         this.context = context;
         this.eventType = eventType;
         this.remoteIndexManager = remoteIndexManager;
-        this.indexOpenMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_OPEN,
-                                                     Tags.of(MeterFactory.CONTEXT, context));
-        this.indexCloseMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_CLOSE,
-                                                      Tags.of(MeterFactory.CONTEXT, context));
+        Tags tags = Tags.of(MeterFactory.CONTEXT, context, "type", eventType.name());
+        this.indexOpenMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_OPEN, tags);
+        this.indexCloseMeter = meterFactory.rateMeter(BaseMetricName.AXON_INDEX_CLOSE, tags);
+        this.bloomFilterOpenMeter = meterFactory.counter(BaseMetricName.AXON_BLOOM_OPEN, tags);
+        this.bloomFilterCloseMeter = meterFactory.counter(BaseMetricName.AXON_BLOOM_CLOSE, tags);
         scheduledExecutorService.scheduleAtFixedRate(this::indexCleanup, 10, 10, TimeUnit.SECONDS);
     }
 
@@ -209,7 +213,8 @@ public class StandardIndexManager implements IndexManager {
 
         while (bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
             Map.Entry<FileVersion, PersistedBloomFilter> removed = bloomFilterPerSegment.pollFirstEntry();
-            logger.debug("{}: Removed bloomfilter for {} from memory", context, removed.getKey());
+            logger.debug("{}: Removed bloom filter for {} from memory", context, removed.getKey());
+            bloomFilterCloseMeter.increment();
         }
     }
 
@@ -226,6 +231,7 @@ public class StandardIndexManager implements IndexManager {
         if (!filter.fileExists()) {
             return null;
         }
+        bloomFilterOpenMeter.increment();
         filter.load();
         return filter;
     }
