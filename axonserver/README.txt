@@ -441,5 +441,5 @@ these in the settings as described above.
 
 The HTTP server has in its root context a management Web GUI, a health
 indicator is available at "/actuator/health", and the REST API at "/v1'. The
-API's Swagger endpoint finally, is available at "/swagger-ui.html", and gives
+API's Swagger endpoint finally, is available at "/swagger-ui/", and gives
 the documentation on the REST API.
