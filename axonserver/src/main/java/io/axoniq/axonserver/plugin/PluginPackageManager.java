@@ -122,27 +122,33 @@ public class PluginPackageManager implements SmartLifecycle {
     public PluginPackage addPlugin(String fileName, InputStream inputStream) {
         File target = new File(bundleDirectory + File.separatorChar + fileName);
         writeToFile(inputStream, target);
-        PluginKey pluginKey = osgiController.addPlugin(target);
-        Optional<PluginPackage> pluginPackage = pluginPackageRepository.findByNameAndVersion(
-                pluginKey.getSymbolicName(),
-                pluginKey.getVersion());
-        PluginPackage pack;
-        if (pluginPackage.isPresent()) {
-            pack = pluginPackage.get();
-            if (!fileName.equals(pack.getFilename())) {
-                FileUtils.delete(new File(bundleDirectory + File.separatorChar + pack.getFilename()));
+        try {
+            PluginKey pluginKey = osgiController.addPlugin(target);
+            Optional<PluginPackage> pluginPackage = pluginPackageRepository.findByNameAndVersion(
+                    pluginKey.getSymbolicName(),
+                    pluginKey.getVersion());
+            PluginPackage pack;
+            if (pluginPackage.isPresent()) {
+                pack = pluginPackage.get();
+                if (!fileName.equals(pack.getFilename())) {
+                    FileUtils.delete(new File(bundleDirectory + File.separatorChar + pack.getFilename()));
+                    pack.setFilename(fileName);
+                    pluginPackageRepository.save(pack);
+                }
+            } else {
+                pack = new PluginPackage();
+                pack.setName(pluginKey.getSymbolicName());
+                pack.setVersion(pluginKey.getVersion());
                 pack.setFilename(fileName);
-                pluginPackageRepository.save(pack);
+                pack = pluginPackageRepository.save(pack);
             }
-        } else {
-            pack = new PluginPackage();
-            pack.setName(pluginKey.getSymbolicName());
-            pack.setVersion(pluginKey.getVersion());
-            pack.setFilename(fileName);
-            pack = pluginPackageRepository.save(pack);
+            pluginContextManager.publishConfiguration(pack);
+            return pack;
+        } catch (RuntimeException runtimeException) {
+            FileUtils.delete(target);
+            throw runtimeException;
         }
-        pluginContextManager.publishConfiguration(pack);
-        return pack;
+
     }
 
     private void writeToFile(InputStream bundleInputStream, File target) {
