@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
@@ -29,7 +28,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.InputStream;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Provides a facade to the event store.
@@ -52,13 +50,12 @@ public interface EventStore {
     /**
      * Creates a connection that receives events to be stored in a single transaction.
      *
-     * @param context          the context where the events are stored
-     * @param responseObserver response stream where the event store can confirm completion of the transaction
+     * @param context        the context where the events are stored
+     * @param events         stream of events to be appended
+     * @param authentication the authentication
      * @return stream to send events to
      */
-    StreamObserver<InputStream> createAppendEventConnection(String context,
-                                                            Authentication authentication,
-                                                            StreamObserver<Confirmation> responseObserver);
+    Mono<Void> appendEvents(String context, Flux<Event> events, Authentication authentication);
 
     /**
      * Returns a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.

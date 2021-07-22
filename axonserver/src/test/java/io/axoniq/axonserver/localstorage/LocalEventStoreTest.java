@@ -39,10 +39,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
@@ -129,16 +129,11 @@ public class LocalEventStoreTest {
 
     @Test
     public void createAppendEventConnection() throws ExecutionException, InterruptedException {
-        CompletableFuture<Confirmation> result = new CompletableFuture<>();
-        StreamObserver<InputStream> eventStream =
-                testSubject.createAppendEventConnection("demo",
-                                                        null,
-                                                        new FutureStreamObserver(result));
-        eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
-        eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
-        eventStream.onNext(Event.getDefaultInstance().toByteString().newInput());
-        eventStream.onCompleted();
-        result.get();
+        Flux<Event> events = Flux.fromStream(IntStream.range(0, 3)
+                                                      .mapToObj(i -> Event.getDefaultInstance()));
+        StepVerifier.create(testSubject.appendEvents("demo", events, null))
+                    .verifyComplete();
+
         assertEquals(3, eventInterceptors.appendEvent);
         assertEquals(1, eventInterceptors.eventsPreCommit);
         assertEquals(1, eventInterceptors.eventsPostCommit);
@@ -146,45 +141,29 @@ public class LocalEventStoreTest {
 
     @Test
     public void createAppendEventConnectionCompensateAppendEntries() throws InterruptedException {
-        CompletableFuture<Confirmation> result = new CompletableFuture<>();
         eventInterceptors.failPreCommit = true;
-        StreamObserver<InputStream> eventStream =
-                testSubject.createAppendEventConnection("demo",
-                                                        null,
-                                                        new FutureStreamObserver(result));
-        eventStream.onNext(Event.newBuilder().setMessageIdentifier("FAIL").build().toByteString().newInput());
-        eventStream.onNext(Event.newBuilder().setMessageIdentifier("FAIL").build().toByteString().newInput());
-        eventStream.onCompleted();
-        try {
-            result.get();
-            fail("Empty transaction should fail");
-        } catch (ExecutionException executionException) {
-            assertEquals(2, eventInterceptors.appendEvent);
-            assertEquals(0, eventInterceptors.eventsPreCommit);
-            assertEquals(2, eventInterceptors.compensations.size());
-            assertEquals("Compensate Append Event", eventInterceptors.compensations.get(0));
-            assertEquals("Compensate Append Event", eventInterceptors.compensations.get(1));
-        }
+        Flux<Event> events = Flux.fromStream(IntStream.range(0, 2)
+                                                      .mapToObj(i -> Event.newBuilder()
+                                                                          .setMessageIdentifier("FAIL")
+                                                                          .build()));
+        StepVerifier.create(testSubject.appendEvents("demo", events, null))
+                    .verifyError();
+        assertEquals(2, eventInterceptors.appendEvent);
+        assertEquals(0, eventInterceptors.eventsPreCommit);
+        assertEquals(2, eventInterceptors.compensations.size());
+        assertEquals("Compensate Append Event", eventInterceptors.compensations.get(0));
+        assertEquals("Compensate Append Event", eventInterceptors.compensations.get(1));
     }
 
     @Test
     public void createAppendEventConnectionCompensatePreCommitAndAppendEntry() throws InterruptedException {
-        CompletableFuture<Confirmation> result = new CompletableFuture<>();
-        StreamObserver<InputStream> eventStream =
-                testSubject.createAppendEventConnection("demo",
-                                                        null,
-                                                        new FutureStreamObserver(result));
-        eventStream.onNext(Event.newBuilder().setMessageIdentifier("FAIL").build().toByteString().newInput());
-        eventStream.onCompleted();
-        try {
-            result.get();
-            fail("Empty transaction should fail");
-        } catch (ExecutionException executionException) {
-            assertEquals(1, eventInterceptors.eventsPreCommit);
-            assertEquals(2, eventInterceptors.compensations.size());
-            assertEquals("Compensate Events Pre Commit", eventInterceptors.compensations.get(0));
-            assertEquals("Compensate Append Event", eventInterceptors.compensations.get(1));
-        }
+        Flux<Event> events = Flux.just(Event.newBuilder().setMessageIdentifier("FAIL").build());
+        StepVerifier.create(testSubject.appendEvents("demo", events, null))
+                    .verifyError();
+        assertEquals(1, eventInterceptors.eventsPreCommit);
+        assertEquals(2, eventInterceptors.compensations.size());
+        assertEquals("Compensate Events Pre Commit", eventInterceptors.compensations.get(0));
+        assertEquals("Compensate Append Event", eventInterceptors.compensations.get(1));
     }
 
     @Test

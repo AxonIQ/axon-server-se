@@ -12,7 +12,6 @@ package io.axoniq.axonserver.localstorage;
 import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
@@ -23,15 +22,16 @@ import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
@@ -94,16 +94,22 @@ public class LocalEventStorageEngineTest {
     }
 
     @Test
-    public void cancel() throws InterruptedException {
-        FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
-        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT, null,
-                                                                                         fakeStreamObserver);
-        connection.onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray()));
-        connection.onCompleted();
+    public void cancel() {
+        Event event = Event.getDefaultInstance();
+        Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, Flux.just(event), null);
 
-        assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
-        testSubject.cancel(SAMPLE_CONTEXT);
-        assertFalse(fakeStreamObserver.errors().isEmpty());
+        Executors.newSingleThreadScheduledExecutor()
+                 .schedule(() -> {
+                     try {
+                         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
+                         testSubject.cancel(SAMPLE_CONTEXT);
+                     } catch (InterruptedException e) {
+                         fail("No pending transactions created.");
+                     }
+                 }, 100, TimeUnit.MILLISECONDS);
+
+        StepVerifier.create(result)
+                    .verifyErrorMessage("Transaction cancelled");
         assertTrue(pendingTransactions.get(0).isDone());
     }
 
@@ -138,32 +144,32 @@ public class LocalEventStorageEngineTest {
     }
 
     @Test
-    public void createAppendEventConnection() throws InterruptedException {
-        FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
-        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT, null,
-                                                                                         fakeStreamObserver);
-        connection.onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray()));
-        connection.onCompleted();
+    public void createAppendEventConnection() {
+        Flux<Event> events = Flux.just(Event.getDefaultInstance());
+        Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
 
-        assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
-        pendingTransactions.get(0).complete(100L);
-        assertTrue(fakeStreamObserver.errors().isEmpty());
-        assertEquals(1, fakeStreamObserver.values().size());
+        Executors.newSingleThreadScheduledExecutor()
+                 .schedule(() -> {
+                     try {
+                         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
+                         pendingTransactions.get(0).complete(100L);
+                     } catch (InterruptedException e) {
+                         fail("No pending transactions created.");
+                     }
+                 }, 100, TimeUnit.MILLISECONDS);
+        StepVerifier.create(result)
+                    .verifyComplete();
         assertTrue(pendingTransactions.get(0).isDone());
     }
 
     @Test
     public void createAppendEventConnectionWithTooManyEvents() {
-        FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
-        StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT,
-                                                                                         null,
-                                                                                         fakeStreamObserver);
-        IntStream.range(0, 10).forEach(i -> connection
-                .onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray())));
-        connection.onCompleted();
+        Flux<Event> events = Flux.fromStream(IntStream.range(0, 10)
+                                                      .mapToObj(i -> Event.getDefaultInstance()));
+        Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
 
-        assertEquals(0, pendingTransactions.size());
-        assertFalse(fakeStreamObserver.errors().isEmpty());
+        StepVerifier.create(result)
+                    .verifyErrorMessage("INVALID_ARGUMENT: Maximum number of events in transaction exceeded: 5");
     }
 
     @Test

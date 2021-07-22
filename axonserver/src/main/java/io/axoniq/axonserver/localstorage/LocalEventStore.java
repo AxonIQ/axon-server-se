@@ -31,7 +31,6 @@ import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -56,6 +55,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -283,6 +283,31 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Void> appendEvents(String context, Flux<Event> events, Authentication authentication) {
+        return Mono.create(sink -> sink.onRequest(l -> {
+            StreamObserver<InputStream> inputStream =
+                    createAppendEventConnection(context, authentication, new StreamObserver<Confirmation>() {
+                        @Override
+                        public void onNext(Confirmation confirmation) {
+                            sink.success();
+                        }
+
+                        @Override
+                        public void onError(Throwable throwable) {
+                            sink.error(throwable);
+                        }
+
+                        @Override
+                        public void onCompleted() {
+                            // nothing to do, already completed on onNext
+                        }
+                    });
+            events.doOnComplete(inputStream::onCompleted)
+                  .doOnError(inputStream::onError)
+                  .subscribe(event -> inputStream.onNext(new ByteArrayInputStream(event.toByteArray())));
+        }));
+    }
+
     public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    Authentication authentication,
                                                                    StreamObserver<Confirmation> responseObserver) {
