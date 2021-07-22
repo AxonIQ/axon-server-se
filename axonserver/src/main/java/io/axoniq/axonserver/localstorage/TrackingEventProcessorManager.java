@@ -93,11 +93,11 @@ public class TrackingEventProcessorManager {
             while (runsWithoutChanges < 3) {
                 int sent = 0;
                 failedReplicators.clear();
-                for (EventTracker raftPeer : eventTrackerSet) {
+                for (EventTracker eventTracker : eventTrackerSet) {
                     try {
-                        sent += raftPeer.sendNext();
+                        sent += eventTracker.sendNext();
                     } catch (Throwable ex) {
-                        failedReplicators.add(raftPeer);
+                        failedReplicators.add(eventTracker);
                     }
                 }
                 if (!failedReplicators.isEmpty()) {
@@ -136,7 +136,7 @@ public class TrackingEventProcessorManager {
      * @param eventStream            the output stream
      * @return an EventTracker
      */
-    EventTracker createEventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
+    public EventTracker createEventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
                                     StreamObserver<InputStream> eventStream) {
         return new EventTracker(trackingToken, clientId, forceReadingFromLeader, eventStream);
     }
@@ -232,9 +232,11 @@ public class TrackingEventProcessorManager {
                 ) {
                     SerializedEventWithToken next = eventIterator.next();
                     if( !blacklisted(next)) {
-                        eventStream.onNext(next.asInputStream());
-                        if (permits.decrementAndGet() == 0) {
-                            lastPermitTimestamp.set(System.currentTimeMillis());
+                        if (!next.asEvent().getMessageIdentifier().isEmpty()) {
+                            eventStream.onNext(next.asInputStream());
+                            if (permits.decrementAndGet() == 0) {
+                                lastPermitTimestamp.set(System.currentTimeMillis());
+                            }
                         }
                         force = blacklistedSendAfter;
                     } else {

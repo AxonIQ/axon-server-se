@@ -121,4 +121,6 @@ public interface IndexManager {
     void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
 
     void createNewVersion(long segment, int version, Map<String, List<IndexEntry>> indexEntriesMap);
+
+    boolean remove(FileVersion fileVersion);
 }

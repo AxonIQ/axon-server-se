@@ -12,12 +12,12 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -40,12 +40,14 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -283,6 +285,56 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
+    protected void removeSegment(long segment, int currentVersion) {
+    }
+
+    @Override
+    public void transformContents(UnaryOperator<Event> transformationFunction) {
+        forceNextSegment();
+        if ( next != null) {
+            next.transformContents(transformationFunction);
+        }
+    }
+
+    private void forceNextSegment() {
+        WritePosition writePosition = writePositionRef.getAndAccumulate(
+                new WritePosition(0, (int)storageProperties.getSegmentSize()),
+                (prev, x) -> prev.incrementedWith(x.sequence, x.position));
+
+        if (writePosition.isOverflow((int)storageProperties.getSegmentSize())) {
+            // only one thread can be here
+            logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
+
+            writePosition.buffer.putInt(writePosition.position, -1);
+
+            WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence);
+            writePositionRef.set(writePosition.reset(buffer));
+            synchronizer.register(new WritePosition(writePosition.sequence, 0, buffer, writePosition.sequence),
+                                  new StorageCallback() {
+                                      @Override
+                                      public boolean onCompleted(long firstToken) {
+                                          logger.warn("Ready for transformation");
+                                          return true;
+                                      }
+
+                                      @Override
+                                      public void onError(Throwable cause) {
+
+                                      }
+                                  });
+            synchronizer.notifyWritePositions();
+            while ( readBuffers.size() != 1) {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    @Override
     public long getLastToken() {
         return lastToken.get();
     }
@@ -460,5 +512,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     private String storeName() {
         return context + "-" + type.getEventType().name().toLowerCase();
+    }
+
+    public Set<Long> activeSegments() {
+        return readBuffers.keySet();
     }
 }

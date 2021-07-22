@@ -450,6 +450,17 @@ public class StandardIndexManager implements IndexManager {
                 FileUtils.delete(storageProperties.bloomFilter(context, segment));
     }
 
+    @Override
+    public boolean remove(FileVersion fileVersion) {
+        Index index = indexMap.remove(fileVersion);
+        if (index != null) {
+            index.close();
+        }
+        bloomFilterPerSegment.remove(fileVersion);
+        return FileUtils.delete(storageProperties.index(context, fileVersion)) &&
+                FileUtils.delete(storageProperties.bloomFilter(context, fileVersion));
+    }
+
     /**
      * Finds all positions for an aggregate within the specified sequence number range.
      *

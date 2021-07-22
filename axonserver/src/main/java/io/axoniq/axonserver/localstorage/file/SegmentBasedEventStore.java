@@ -50,6 +50,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -266,6 +267,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             next.transformContents(transformationFunction);
         }
     }
+
+    protected void scheduleForDeletion(long segment, int currentVersion) {
+        Executors.newSingleThreadScheduledExecutor().schedule(() -> removeSegment(segment, currentVersion),
+                                                              storageProperties.getSecondaryCleanupDelay(),
+                                                              TimeUnit.MILLISECONDS);
+    }
+
+    protected abstract void removeSegment(long segment, int currentVersion);
 
     private <T> boolean contains(T[] values, T value) {
         for (T t : values) {

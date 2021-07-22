@@ -106,8 +106,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
                 context,
                 new FileVersion(segment, currentVersion + 1));
         try (TransactionIterator transactionIterator = getTransactions(segment, segment);
-             // TODO: 5/19/2021 write to temp file first
-             DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(dataFile))) {
+            DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(dataFile))) {
             dataOutputStream.write(PrimaryEventStore.VERSION);
             dataOutputStream.writeInt(storageProperties.getFlags());
             int pos = 5;
@@ -158,11 +157,13 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
             dataOutputStream.writeInt(0);
 
         } catch (Exception e) {
+            FileUtils.delete(dataFile);
             throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
         }
         if( changed.get()) {
             indexManager.createNewVersion(segment, currentVersion + 1, indexEntriesMap);
             segments.put(segment, currentVersion + 1);
+            scheduleForDeletion(segment, currentVersion);
         } else {
             FileUtils.delete(dataFile);
         }
@@ -177,6 +178,16 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         Integer version = segments.remove(segment);
         if (version != null && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
                 !indexManager.remove(segment))) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+                                                 "Failed to rollback " + getType().getEventType()
+                                                         + ", could not remove segment: " + segment);
+        }
+    }
+
+    @Override
+    protected void removeSegment(long segment, int currentVersion) {
+        if ( !FileUtils.delete(storageProperties.dataFile(context, new FileVersion(segment, currentVersion))) ||
+                !indexManager.remove(new FileVersion(segment, currentVersion))) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
                                                  "Failed to rollback " + getType().getEventType()
                                                          + ", could not remove segment: " + segment);
