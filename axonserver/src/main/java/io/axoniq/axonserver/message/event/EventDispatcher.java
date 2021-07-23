@@ -541,10 +541,12 @@ public class EventDispatcher implements AxonServerClientService {
                                        StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                eventStore.listAggregateSnapshots(context,
-                        authentication,
-                        request,
-                        responseObserver);
+                eventStore.aggregateSnapshots(context, authentication, request)
+                          .doOnCancel(() -> responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
+                                  "Listing aggregate snapshots cancelled."))))
+                          .subscribe(responseObserver::onNext,
+                                     responseObserver::onError,
+                                     responseObserver::onCompleted);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateSnapshots", t.getMessage(), t);
                 responseObserver.onError(GrpcExceptionBuilder.build(t));

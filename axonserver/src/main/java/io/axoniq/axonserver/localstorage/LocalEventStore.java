@@ -466,8 +466,28 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return Long.MAX_VALUE;
     }
 
-
     @Override
+    public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
+                                                    GetAggregateSnapshotsRequest request) {
+        return Flux.create(
+                sink -> listAggregateSnapshots(context, authentication, request, new StreamObserver<SerializedEvent>() {
+                    @Override
+                    public void onNext(SerializedEvent serializedEvent) {
+                        sink.next(serializedEvent);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        sink.error(throwable);
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        sink.complete();
+                    }
+                }));
+    }
+
     public void listAggregateSnapshots(String context,
                                        Authentication authentication,
                                        GetAggregateSnapshotsRequest request,

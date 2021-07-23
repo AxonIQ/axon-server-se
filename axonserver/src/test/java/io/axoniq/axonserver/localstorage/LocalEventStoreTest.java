@@ -197,14 +197,13 @@ public class LocalEventStoreTest {
     }
 
     @Test
-    public void listAggregateSnapshots() throws InterruptedException {
-        FakeStreamObserver<SerializedEvent> events = new FakeStreamObserver<>();
-        testSubject.listAggregateSnapshots("demo", null,
-                                           GetAggregateSnapshotsRequest.newBuilder()
-                                                                       .build(),
-                                           events);
+    public void aggregateSnapshots() {
+        StepVerifier.create(testSubject.aggregateSnapshots("demo",
+                                       null,
+                                       GetAggregateSnapshotsRequest.getDefaultInstance()))
+                    .expectNextCount(4)
+                    .verifyComplete();
 
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, events.completedCount()));
         assertEquals(4, eventInterceptors.readSnapshot);
         assertEquals(0, eventInterceptors.readEvent);
     }
