@@ -80,27 +80,9 @@ public interface EventStore {
      * @param request        the request containing the aggregate identifier and read options
      * @return a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
      */
-    default Flux<SerializedEvent> aggregateSnapshots(String context,
-                                                     Authentication authentication,
-                                                     GetAggregateSnapshotsRequest request) {
-        return Flux.create(
-                sink -> listAggregateSnapshots(context, authentication, request, new StreamObserver<SerializedEvent>() {
-                    @Override
-                    public void onNext(SerializedEvent serializedEvent) {
-                        sink.next(serializedEvent);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                        sink.error(throwable);
-                    }
-
-                    @Override
-                    public void onCompleted() {
-                        sink.complete();
-                    }
-                }));
-    }
+    Flux<SerializedEvent> aggregateSnapshots(String context,
+                                             Authentication authentication,
+                                             GetAggregateSnapshotsRequest request);
 
     /**
      * Retrieves the Events from a given tracking token. Results are streamed rather than returned at once. Caller gets
@@ -125,9 +107,6 @@ public interface EventStore {
 
     StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
                                                    StreamObserver<QueryEventsResponse> responseObserver);
-
-    void listAggregateSnapshots(String context, Authentication authentication, GetAggregateSnapshotsRequest request,
-                                StreamObserver<SerializedEvent> responseObserver);
 
     /**
      * Deletes all event data in a given context (Only intended for development environments).
