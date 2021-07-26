@@ -232,7 +232,7 @@ public class TrackingEventProcessorManager {
                 ) {
                     SerializedEventWithToken next = eventIterator.next();
                     if( !blacklisted(next)) {
-                        if (!next.asEvent().getMessageIdentifier().isEmpty()) {
+                        if (!next.isSoftDeleted()) {
                             eventStream.onNext(next.asInputStream());
                             if (permits.decrementAndGet() == 0) {
                                 lastPermitTimestamp.set(System.currentTimeMillis());

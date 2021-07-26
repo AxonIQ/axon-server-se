@@ -73,7 +73,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
                                                                 .limitRate(prefetch, prefetch / 2)
                                                                 .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
                                                                 .map(es::readEvent)
-                                             .filter(s -> !s.getIdentifier().isEmpty()))
+                                             .filter(s -> !s.isSoftDeleted()))
                 , EventSource::close);
     }
 

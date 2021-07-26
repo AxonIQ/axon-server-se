@@ -119,7 +119,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
                                    .stream()
                                    .map(serializedEvent -> {
                                        Event original = serializedEvent.asEvent();
-                                       if (isSoftDeleted(original)) return original;
+                                       if (serializedEvent.isSoftDeleted()) return original;
                                        Event transformed = transformationFunction.apply(original);
                                        if (transformed == null) transformed = Event.getDefaultInstance();
                                        if (!original.equals(transformed)) {
@@ -168,10 +168,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
             FileUtils.delete(dataFile);
         }
 
-    }
-
-    private boolean isSoftDeleted(Event original) {
-        return original.getMessageIdentifier().isEmpty();
     }
 
     private void removeSegment(long segment) {

@@ -71,4 +71,8 @@ public class SerializedEventWithToken {
     public SerializedEvent getSerializedEvent() {
         return serializedEvent;
     }
+
+    public boolean isSoftDeleted() {
+        return serializedEvent.isSoftDeleted();
+    }
 }
