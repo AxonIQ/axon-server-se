@@ -28,6 +28,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -96,7 +97,9 @@ public class LocalEventStorageEngineTest {
         FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
         StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT, null,
                                                                                          fakeStreamObserver);
-        connection.onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray()));
+        connection.onNext(new ByteArrayInputStream(Event.newBuilder()
+                                                        .setMessageIdentifier(UUID.randomUUID().toString())
+                                                        .build().toByteArray()));
         connection.onCompleted();
 
         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
@@ -143,7 +146,7 @@ public class LocalEventStorageEngineTest {
         FakeStreamObserver<Confirmation> fakeStreamObserver = new FakeStreamObserver<>();
         StreamObserver<InputStream> connection = testSubject.createAppendEventConnection(SAMPLE_CONTEXT, null,
                                                                                          fakeStreamObserver);
-        connection.onNext(new ByteArrayInputStream(Event.newBuilder().build().toByteArray()));
+        connection.onNext(new ByteArrayInputStream(Event.newBuilder().setMessageIdentifier(UUID.randomUUID().toString()).build().toByteArray()));
         connection.onCompleted();
 
         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));

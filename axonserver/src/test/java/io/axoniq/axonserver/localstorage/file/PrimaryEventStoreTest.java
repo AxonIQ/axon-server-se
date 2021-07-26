@@ -122,19 +122,19 @@ public class PrimaryEventStoreTest {
                                      .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build());
         PrimaryEventStore testSubject = primaryEventStore(EventType.SNAPSHOT);
 
-        testSubject.store(singletonList(builder.setAggregateSequenceNumber(5).build())).thenAccept(t -> latch
+        testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(5).build())).thenAccept(t -> latch
                 .countDown());
-        testSubject.store(singletonList(builder.setAggregateSequenceNumber(6).build())).thenAccept(t -> latch
+        testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(6).build())).thenAccept(t -> latch
                 .countDown());
-        testSubject.store(singletonList(builder.setAggregateSequenceNumber(8).build())).thenAccept(t -> latch
+        testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(8).build())).thenAccept(t -> latch
                 .countDown());
-        testSubject.store(singletonList(builder.setAggregateSequenceNumber(11).build())).thenAccept(t -> latch
+        testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(11).build())).thenAccept(t -> latch
                 .countDown());
-        testSubject.store(singletonList(builder.setAggregateSequenceNumber(30).build())).thenAccept(t -> latch
+        testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(30).build())).thenAccept(t -> latch
                 .countDown());
-        testSubject.store(singletonList(builder.setAggregateSequenceNumber(32).build())).thenAccept(t -> latch
+        testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(32).build())).thenAccept(t -> latch
                 .countDown());
-        testSubject.store(singletonList(builder.setAggregateSequenceNumber(44).build())).thenAccept(t -> latch
+        testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(44).build())).thenAccept(t -> latch
                 .countDown());
 
         latch.await();

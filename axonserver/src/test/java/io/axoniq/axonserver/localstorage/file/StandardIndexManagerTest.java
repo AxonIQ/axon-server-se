@@ -104,7 +104,7 @@ public class StandardIndexManagerTest {
 
         SortedMap<FileVersion, IndexEntries> position = indexManager.lookupAggregate(aggregateId, 0, 5, 100, 0);
         assertEquals(1, position.size());
-        assertNotNull(position.get(0L));
+        assertNotNull(position.get(new FileVersion(0L, 0)));
     }
 
     @Test

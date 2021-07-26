@@ -15,6 +15,7 @@ import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
@@ -134,6 +135,8 @@ public class FakeEventStore implements EventStorageEngine {
                 try {
                     SerializedEventWithToken serializedEventWithToken = new SerializedEventWithToken(sequence,
                                                                                                      Event.newBuilder()
+                                                                                                          .setMessageIdentifier(
+                                                                                                                  UUID.randomUUID().toString())
                                                                                                           .setAggregateIdentifier(
                                                                                                                   "aaaa")
                                                                                                           .build());
