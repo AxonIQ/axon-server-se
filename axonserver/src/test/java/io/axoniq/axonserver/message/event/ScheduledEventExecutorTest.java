@@ -12,15 +12,12 @@ package io.axoniq.axonserver.message.event;
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.command.Command;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.topology.Topology;
-import io.grpc.stub.StreamObserver;
 import org.junit.*;
-import org.mockito.stubbing.*;
+import reactor.core.publisher.Mono;
 
-import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -39,27 +36,7 @@ public class ScheduledEventExecutorTest {
 
     @Before
     public void setUp() {
-        when(localEventStore.createAppendEventConnection(anyString(), any(), any()))
-                .then((Answer<StreamObserver<InputStream>>) invocation -> {
-                    StreamObserver<Confirmation> responseStream = invocation.getArgument(2);
-                    return new StreamObserver<InputStream>() {
-                        @Override
-                        public void onNext(InputStream inputStream) {
-                            responseStream.onNext(Confirmation.newBuilder().setSuccess(true).build());
-                            responseStream.onCompleted();
-                        }
-
-                        @Override
-                        public void onError(Throwable throwable) {
-
-                        }
-
-                        @Override
-                        public void onCompleted() {
-
-                        }
-                    };
-                });
+        when(localEventStore.appendEvents(anyString(), any(), any())).thenReturn(Mono.just("whatever").then());
         testSubject = new ScheduledEventExecutor(localEventStore);
     }
 
