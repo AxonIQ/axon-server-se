@@ -55,23 +55,23 @@ public class LocalEventStoreTest {
     @Before
     public void setUp() throws Exception {
         Event[] events = {
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(0)
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(0)
                      .setTimestamp(System.currentTimeMillis())
                         .build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(1).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(2).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(3).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(4).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(5).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(6).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(7).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(1).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(2).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(3).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(4).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(5).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(6).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(7).build(),
         };
 
         Event[] snapshots = {
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(1).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(2).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(4).build(),
-                Event.newBuilder().setAggregateIdentifier("123").setAggregateSequenceNumber(6).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(1).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(2).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(4).build(),
+                Event.newBuilder().setMessageIdentifier("1").setAggregateIdentifier("123").setAggregateSequenceNumber(6).build(),
         };
         EventStoreFactory eventStoreFactory = new EventStoreFactory() {
             @Override
