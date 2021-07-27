@@ -369,10 +369,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
      * @param clientStreamIdentification the unique identifier of the query stream
      */
     public void completeStreamForInactivity(String clientId, ClientStreamIdentification clientStreamIdentification) {
-        if (dispatcherListeners.containsKey(clientStreamIdentification)) {
+        GrpcQueryDispatcherListener dispatcherListener = dispatcherListeners.remove(clientStreamIdentification);
+        if (dispatcherListener != null) {
             String message = "Query stream inactivity for " + clientStreamIdentification.getClientStreamId();
             ApplicationInactivityException exception = new ApplicationInactivityException(message);
-            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStreamExceptionally(exception);
+            dispatcherListener.cancelAndCompleteStreamExceptionally(exception);
             logger.debug("Query Stream closed for client: {}", clientStreamIdentification);
             eventPublisher.publishEvent(new QueryHandlerDisconnected(clientStreamIdentification.getContext(),
                                                                      clientId,

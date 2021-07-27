@@ -313,10 +313,11 @@ public class CommandService implements AxonServerClientService {
      * @param clientStreamIdentification the unique identifier of the command stream
      */
     public void completeStreamForInactivity(String clientId, ClientStreamIdentification clientStreamIdentification) {
-        if (dispatcherListeners.containsKey(clientStreamIdentification)) {
+        GrpcCommandDispatcherListener dispatcherListener = dispatcherListeners.remove(clientStreamIdentification);
+        if (dispatcherListener != null) {
             String message = "Command stream inactivity for " + clientStreamIdentification.getClientStreamId();
             ApplicationInactivityException exception = new ApplicationInactivityException(message);
-            dispatcherListeners.remove(clientStreamIdentification).cancelAndCompleteStreamExceptionally(exception);
+            dispatcherListener.cancelAndCompleteStreamExceptionally(exception);
             logger.debug("Command Stream closed for client: {}", clientStreamIdentification);
             eventPublisher.publishEvent(new CommandHandlerDisconnected(clientStreamIdentification.getContext(),
                                                                        clientId,
