@@ -68,6 +68,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -120,7 +121,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
              storageTransactionManagerFactory,
              eventInterceptors,
              new DefaultEventDecorator(),
-             Short.MAX_VALUE,
+             Integer.MAX_VALUE,
              1000,
              24,
              8);
@@ -283,6 +284,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return new StreamObserver<InputStream>() {
             private final List<Event> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
+            private final AtomicLong eventCount = new AtomicLong();
 
             @Override
             public void onNext(InputStream inputStream) {
@@ -297,7 +299,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             private boolean checkMaxEventCount() {
-                if (eventList.size() < Integer.MAX_VALUE) {
+                if (eventCount.incrementAndGet() < maxEventCount) {
                     return true;
                 }
                 responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
