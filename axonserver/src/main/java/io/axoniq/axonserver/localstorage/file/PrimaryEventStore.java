@@ -390,6 +390,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
+        if (eventBlockSize > MAX_TRANSACTION_SIZE || eventBlockSize <= 0) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+                                                 String.format("Illegal transaction size: %d", eventBlockSize));
+        }
         int totalSize = HEADER_BYTES + eventBlockSize + TX_CHECKSUM_BYTES;
         WritePosition writePosition;
         do {
@@ -403,7 +407,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 writePosition.buffer.putInt(writePosition.position, -1);
 
-                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, totalSize + 9,
+                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
                                                                true);
                 writePositionRef.set(writePosition.reset(buffer));
             }
@@ -450,11 +454,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private int eventBlockSize(List<ProcessedEvent> eventList) {
-        int size = 0;
+        long size = 0;
         for (ProcessedEvent event : eventList) {
             size += 4 + event.getSerializedSize();
         }
-        return size;
+        if (size > Integer.MAX_VALUE) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Transaction size exceeds maximum size");
+        }
+        return (int) size;
     }
 
     private String storeName() {
