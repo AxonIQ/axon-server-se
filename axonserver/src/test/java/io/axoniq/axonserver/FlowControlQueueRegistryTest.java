@@ -89,7 +89,7 @@ public class FlowControlQueueRegistryTest {
         testSubject.put("one", new QueueElement("C"));
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
-        testSubject.put("one", new QueueElement("F"), true);
+        testSubject.put("one", new QueueElement("F"), false);
     }
 
     @Test(expected = MessagingPlatformException.class)
@@ -99,8 +99,8 @@ public class FlowControlQueueRegistryTest {
         testSubject.put("one", new QueueElement("C"));
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
-        testSubject.put("one", new QueueElement("F"), false);
-        testSubject.put("one", new QueueElement("G"), false);
+        testSubject.put("one", new QueueElement("F"), true);
+        testSubject.put("one", new QueueElement("G"), true);
     }
 
     public static class QueueElement {
