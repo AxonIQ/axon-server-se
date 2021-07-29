@@ -131,7 +131,7 @@ podTemplate(label: label,
 
             stage('Performance test') {
                 container("kubectl") {
-
+                     try {
 
                     sh """
                     echo Starting Axon Server container
@@ -199,6 +199,15 @@ podTemplate(label: label,
 //                                                 }
 
                 }
+                } catch (err) {
+                         echo "Failed: ${err}"
+                         throw err
+                     } finally {
+                          sh """
+                                                            echo deleting name space
+                                                                 kubectl delete ns ${ns}
+                                                            """
+                     }
 
 
             }
@@ -226,13 +235,13 @@ podTemplate(label: label,
 
                 //todo something with xml report
 
-                 container("kubectl") {
-                                    sh """
-                                    echo deleting name space
-                                         kubectl delete ns ${ns}
-                                    """
-
-                                }
+//                  container("kubectl") {
+//                                     sh """
+//                                     echo deleting name space
+//                                          kubectl delete ns ${ns}
+//                                     """
+//
+//                                 }
         }
 
 
