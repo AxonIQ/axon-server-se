@@ -13,7 +13,6 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
@@ -96,7 +95,13 @@ public interface EventStore {
                                           Authentication authentication,
                                           Flux<GetEventsRequest> requestFlux);
 
-    void getFirstToken(String context, GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of first event in event store.
+     *
+     * @param context the context in which the token will be searched for
+     * @return a mono of the token
+     */
+    Mono<Long> firstEventToken(String context);
 
     void getLastToken(String context, GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver);
 

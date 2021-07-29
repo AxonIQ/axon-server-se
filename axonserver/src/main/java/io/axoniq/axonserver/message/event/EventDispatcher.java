@@ -432,13 +432,12 @@ public class EventDispatcher implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getFirstToken",
                 callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                client.getFirstToken(
-                        contextProvider
-                                .getContext(),
-                        request,
-                        responseObserver)
-        );
+        checkConnection(contextProvider.getContext(), responseObserver)
+                .ifPresent(client -> client.firstEventToken(contextProvider.getContext())
+                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                                           .subscribe(responseObserver::onNext,
+                                                      responseObserver::onError,
+                                                      responseObserver::onCompleted));
     }
 
     private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
