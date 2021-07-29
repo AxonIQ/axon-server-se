@@ -3,7 +3,9 @@ modules:
     path: ~/.bzt/jmeter-taurus/bin/jmeter
     download-link: https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.4.1.zip
     version: 5.4.1
-    detect-plugins: true
+    detect-plugins: false
+    properties:
+      protoFolder: /home/jenkins/agent/workspace/n-server-se_feature_jmeter-tests/axon-server-api/src/main/proto
 #    plugins:
 #    - jmeter-grpc-request
     plugins-manager:
@@ -11,6 +13,7 @@ modules:
       version: 1.6   # minimum 0.16
     command-runner:
       download-link: https://search.maven.org/remotecontent?filepath=kg/apc/cmdrunner/{version}/cmdrunner-2.2.1.jar
+      path: ~/.bzt/jmeter-taurus/bin/../lib/cmdrunner-2.2.jar
       version: 2.2.1
 
 execution:
