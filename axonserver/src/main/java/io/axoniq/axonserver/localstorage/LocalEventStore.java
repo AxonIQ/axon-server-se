@@ -56,6 +56,7 @@ import reactor.core.scheduler.Schedulers;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -624,6 +625,29 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Long> eventTokenAt(String context, Instant timestamp) {
+        return Mono.create(sink -> sink.onRequest(requested -> {
+            getTokenAt(context,
+                       GetTokenAtRequest.newBuilder().setInstant(timestamp.toEpochMilli()).build(),
+                       new StreamObserver<TrackingToken>() {
+                           @Override
+                           public void onNext(TrackingToken trackingToken) {
+                               sink.success(trackingToken.getToken());
+                           }
+
+                           @Override
+                           public void onError(Throwable throwable) {
+                               sink.error(throwable);
+                           }
+
+                           @Override
+                           public void onCompleted() {
+                               //nothing to do, already completed
+                           }
+                       });
+        }));
+    }
+
     public void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
         runInDataFetcherPool(() -> {
             long token = workers(context).eventStreamReader.getTokenAt(request.getInstant());
