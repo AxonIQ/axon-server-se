@@ -61,7 +61,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
@@ -346,37 +345,10 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public long getNrOfEvents(String context) {
-        CompletableFuture<Long> lastTokenFuture = new CompletableFuture<>();
-        try {
-            eventStoreLocator.getEventStore(context).getLastToken(context,
-                    GetLastTokenRequest.newBuilder().build(),
-                    new StreamObserver<TrackingToken>() {
-                        @Override
-                        public void onNext(TrackingToken trackingToken) {
-                            lastTokenFuture.complete(trackingToken
-                                    .getToken());
-                        }
-
-                        @Override
-                        public void onError(Throwable throwable) {
-                            lastTokenFuture.completeExceptionally(
-                                    throwable);
-                        }
-
-                        @Override
-                        public void onCompleted() {
-                            // no action needed
-                        }
-                    });
-
-
-            return lastTokenFuture.get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return -1;
-        } catch (Exception e) {
-            return -1;
-        }
+        Long lastEventToken = eventStoreLocator.getEventStore(context)
+                                               .lastEventToken(context)
+                                               .block();
+        return lastEventToken != null ? lastEventToken : -1;
     }
 
     public Map<String, Iterable<Long>> eventTrackerStatus(String context) {
@@ -455,13 +427,13 @@ public class EventDispatcher implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getLastToken",
                 callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                client.getLastToken(
-                        contextProvider
-                                .getContext(),
-                        request,
-                        responseObserver)
-        );
+        checkConnection(contextProvider.getContext(), responseObserver)
+                .ifPresent(client -> client.lastEventToken(contextProvider.getContext())
+                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                                           .subscribe(responseObserver::onNext,
+                                                      responseObserver::onError,
+                                                      responseObserver::onCompleted)
+                );
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> streamObserver) {

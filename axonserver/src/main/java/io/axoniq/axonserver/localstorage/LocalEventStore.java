@@ -19,7 +19,6 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
@@ -613,11 +612,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void getLastToken(String context, GetLastTokenRequest request,
-                             StreamObserver<TrackingToken> responseObserver) {
-        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventStorageEngine.getLastToken())
-                                             .build());
-        responseObserver.onCompleted();
+    public Mono<Long> lastEventToken(String context) {
+        return Mono.just(workers(context).eventStorageEngine.getLastToken());
     }
 
     public void getLastSnapshotToken(String context,

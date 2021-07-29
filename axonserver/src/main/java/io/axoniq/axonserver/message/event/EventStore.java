@@ -96,14 +96,20 @@ public interface EventStore {
                                           Flux<GetEventsRequest> requestFlux);
 
     /**
-     * Gets the token of first event in event store.
+     * Gets the token of the first event in event store.
      *
      * @param context the context in which the token will be searched for
      * @return a mono of the token
      */
     Mono<Long> firstEventToken(String context);
 
-    void getLastToken(String context, GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of the last event in event store.
+     *
+     * @param context the context in which the token will be searched for
+     * @return a mono of the token
+     */
+    Mono<Long> lastEventToken(String context);
 
     void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver);
 
