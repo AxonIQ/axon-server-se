@@ -31,6 +31,7 @@ import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -514,6 +515,40 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Flux<SerializedEventWithToken> events(String context, Authentication authentication,
+                                                 Flux<GetEventsRequest> requestFlux) {
+        return Flux.create(sink -> sink.onRequest(requested -> {
+            StreamObserver<GetEventsRequest> requestStreamObserver =
+                    listEvents(context,
+                               authentication,
+                               new StreamObserver<InputStream>() {
+                                   @Override
+                                   public void onNext(InputStream inputStream) {
+                                       try {
+                                           SerializedEventWithToken event = new SerializedEventWithToken(EventWithToken.parseFrom(
+                                                   inputStream));
+                                           sink.next(event);
+                                       } catch (IOException e) {
+                                           sink.error(e);
+                                       }
+                                   }
+
+                                   @Override
+                                   public void onError(Throwable throwable) {
+                                       sink.error(throwable);
+                                   }
+
+                                   @Override
+                                   public void onCompleted() {
+                                       sink.complete();
+                                   }
+                               });
+            requestFlux.subscribe(requestStreamObserver::onNext,
+                                  requestStreamObserver::onError,
+                                  requestStreamObserver::onCompleted);
+        }));
+    }
+
     public StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {

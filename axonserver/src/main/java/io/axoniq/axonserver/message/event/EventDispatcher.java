@@ -619,7 +619,7 @@ public class EventDispatcher implements AxonServerClientService {
         private final StreamObserver<InputStream> responseObserver;
         private final Authentication principal;
         private final String context;
-        volatile StreamObserver<GetEventsRequest> eventStoreRequestObserver;
+        private final AtomicReference<Sinks.Many<GetEventsRequest>> requestSink = new AtomicReference<>();
         volatile EventTrackerInfo trackerInfo;
 
         GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, String context,
@@ -636,18 +636,18 @@ public class EventDispatcher implements AxonServerClientService {
             }
 
             try {
-                eventStoreRequestObserver.onNext(getEventsRequest);
+                requestSink.get().tryEmitNext(getEventsRequest);
             } catch (Exception reason) {
                 logger.warn("Error on connection sending event to client: {}", reason.getMessage());
-                if (eventStoreRequestObserver != null) {
-                    eventStoreRequestObserver.onCompleted();
-                }
+                requestSink.get().tryEmitComplete();
                 removeTrackerInfo();
             }
         }
 
         private boolean registerEventTracker(GetEventsRequest getEventsRequest) {
-            if (eventStoreRequestObserver == null) {
+            if (requestSink.compareAndSet(null, Sinks.many()
+                                                     .unicast()
+                                                     .onBackpressureBuffer())) {
                 trackerInfo = new EventTrackerInfo(responseObserver,
                         getEventsRequest.getClientId(),
                         context,
@@ -661,34 +661,29 @@ public class EventDispatcher implements AxonServerClientService {
                                 NO_EVENT_STORE_CONFIGURED + context));
                         return false;
                     }
-                    eventStoreRequestObserver =
-                            eventStore.listEvents(context, principal, new StreamObserver<InputStream>() {
-                                @Override
-                                public void onNext(InputStream eventWithToken) {
-                                    responseObserver.onNext(eventWithToken);
-                                    trackerInfo.incrementLastToken();
-                                }
 
-                                @Override
-                                public void onError(Throwable throwable) {
-                                    if (throwable instanceof IllegalStateException) {
-                                        logger.debug(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                throwable.getMessage());
-                                    } else {
-                                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                throwable.getMessage());
-                                    }
-                                    StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
-                                    removeTrackerInfo();
-                                }
-
-                                @Override
-                                public void onCompleted() {
-                                    logger.info("{}: Tracking event processor closed", trackerInfo.context);
-                                    removeTrackerInfo();
-                                    StreamObserverUtils.complete(responseObserver);
-                                }
-                            });
+                    eventStore.events(context, principal, requestSink.get().asFlux())
+                              .doOnCancel(() -> StreamObserverUtils.error(responseObserver,
+                                                                          GrpcExceptionBuilder.build(
+                                                                                  new RuntimeException("Listing events canceled."))))
+                              .subscribe(eventWithToken -> {
+                                  responseObserver.onNext(eventWithToken.asInputStream());
+                                  trackerInfo.incrementLastToken();
+                              }, throwable -> {
+                                  if (throwable instanceof IllegalStateException) {
+                                      logger.debug(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                   throwable.getMessage());
+                                  } else {
+                                      logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                  throwable.getMessage());
+                                  }
+                                  StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
+                                  removeTrackerInfo();
+                              }, () -> {
+                                  logger.info("{}: Tracking event processor closed", trackerInfo.context);
+                                  removeTrackerInfo();
+                                  StreamObserverUtils.complete(responseObserver);
+                              });
                 } catch (RuntimeException cause) {
                     responseObserver.onError(GrpcExceptionBuilder.build(cause));
                     return false;
@@ -735,7 +730,7 @@ public class EventDispatcher implements AxonServerClientService {
         }
 
         private void cleanup() {
-            StreamObserverUtils.complete(eventStoreRequestObserver);
+            requestSink.get().tryEmitComplete();
             removeTrackerInfo();
         }
     }

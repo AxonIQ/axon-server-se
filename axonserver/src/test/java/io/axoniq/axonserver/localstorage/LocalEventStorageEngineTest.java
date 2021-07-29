@@ -24,14 +24,15 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
@@ -173,22 +174,23 @@ public class LocalEventStorageEngineTest {
     }
 
     @Test
-    public void listEvents() throws InterruptedException {
-        FakeStreamObserver<InputStream> fakeStreamObserver = new FakeStreamObserver<>();
-        StreamObserver<GetEventsRequest> requestStreamObserver = testSubject.listEvents(
-                SAMPLE_CONTEXT,
-                null,
-                fakeStreamObserver);
-        requestStreamObserver.onNext(GetEventsRequest.newBuilder()
-                                                     .setTrackingToken(100)
-                                                     .setNumberOfPermits(10)
-                                                     .build());
-        assertWithin(2000, TimeUnit.MILLISECONDS, () -> assertEquals(10, fakeStreamObserver.values().size()));
-        requestStreamObserver.onNext(GetEventsRequest.newBuilder()
-                                                     .setNumberOfPermits(10)
-                                                     .build());
-        assertWithin(2000, TimeUnit.MILLISECONDS, () -> assertEquals(20, fakeStreamObserver.values().size()));
-
-        requestStreamObserver.onCompleted();
+    public void events() {
+        GetEventsRequest request1 = GetEventsRequest.newBuilder()
+                                                    .setTrackingToken(100)
+                                                    .setNumberOfPermits(10)
+                                                    .build();
+        GetEventsRequest request2 = GetEventsRequest.newBuilder()
+                                                    .setNumberOfPermits(10)
+                                                    .build();
+        Sinks.Many<GetEventsRequest> sink = Sinks.many()
+                                                 .unicast()
+                                                 .onBackpressureBuffer();
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.schedule(() -> sink.tryEmitNext(request1), 100, TimeUnit.MILLISECONDS);
+        scheduler.schedule(() -> sink.tryEmitNext(request2), 1, TimeUnit.SECONDS);
+        scheduler.schedule(sink::tryEmitComplete, 2, TimeUnit.SECONDS);
+        StepVerifier.create(testSubject.events(SAMPLE_CONTEXT, null, sink.asFlux()))
+                    .expectNextCount(20)
+                    .verifyComplete();
     }
 }
