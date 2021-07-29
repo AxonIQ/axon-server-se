@@ -130,8 +130,9 @@ podTemplate(label: label,
             def ns = "se-performance-test-" + shortGitCommit
 
             stage('Performance test') {
+            try {
                 container("kubectl") {
-                     try {
+
 
                     sh """
                     echo Starting Axon Server container
@@ -199,16 +200,18 @@ podTemplate(label: label,
 //                                                 }
 
                 }
-                } catch (err) {
-                         echo "Failed: ${err}"
-                         throw err
-                     } finally {
-                          sh """
-                                                            echo deleting name space
-                                                                 kubectl delete ns ${ns}
-                                                            """
-                     }
 
+            } catch (err) {
+                throw err
+            } finally {
+                 container("kubectl") {
+                                    sh """
+                                    echo deleting name space
+                                         kubectl delete ns ${ns}
+                                    """
+
+                                }
+            }
 
             }
 
