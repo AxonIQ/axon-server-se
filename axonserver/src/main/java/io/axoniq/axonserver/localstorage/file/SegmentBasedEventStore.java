@@ -74,7 +74,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
     protected static final int FILE_HEADER_SIZE = VERSION_BYTES + FILE_OPTIONS_BYTES;
     protected static final int FILE_FOOTER_SIZE = 4;
-    protected static final int MAX_TRANSACTION_SIZE = Integer.MAX_VALUE - FILE_HEADER_SIZE - HEADER_BYTES - TX_CHECKSUM_BYTES - FILE_FOOTER_SIZE;
+    protected static final int MAX_TRANSACTION_SIZE = Integer.MAX_VALUE - FILE_HEADER_SIZE - FILE_FOOTER_SIZE;
     protected final String context;
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;

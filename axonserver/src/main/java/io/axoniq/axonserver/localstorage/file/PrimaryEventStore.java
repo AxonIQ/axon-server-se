@@ -427,7 +427,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
         int blocks = (int)Math.ceil(nrOfEvents/(double)maxEventsPerTransaction);
         int totalSize = eventBlockSize + blocks * (HEADER_BYTES + TX_CHECKSUM_BYTES);
-        if (eventBlockSize > MAX_TRANSACTION_SIZE || eventBlockSize <= 0) {
+        if (totalSize > MAX_TRANSACTION_SIZE || eventBlockSize <= 0) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
                                                  String.format("Illegal transaction size: %d", eventBlockSize));
         }
