@@ -57,6 +57,7 @@ import reactor.util.retry.RetryBackoffSpec;
 
 import java.io.InputStream;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -442,8 +443,12 @@ public class EventDispatcher implements AxonServerClientService {
                 "getTokenAt",
                 callStreamObserver);
         checkConnection(contextProvider.getContext(), responseObserver)
-                .ifPresent(client -> client.getTokenAt(contextProvider.getContext(), request, responseObserver)
-                );
+                .ifPresent(client -> client.eventTokenAt(contextProvider.getContext(),
+                                                         Instant.ofEpochMilli(request.getInstant()))
+                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                                           .subscribe(responseObserver::onNext,
+                                                      responseObserver::onError,
+                                                      responseObserver::onCompleted));
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
