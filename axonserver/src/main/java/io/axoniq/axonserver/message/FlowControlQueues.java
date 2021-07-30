@@ -156,6 +156,11 @@ public class FlowControlQueues<T> {
         return segments;
     }
 
+    public BlockingQueue<DestinationNode> get(String queue) {
+        return segments.computeIfAbsent(queue,
+                                                                                     this::newQueueWithMetrics);
+    }
+
     public class DestinationNode implements Comparable<DestinationNode> {
 
         private final T value;
@@ -164,6 +169,10 @@ public class FlowControlQueues<T> {
         public DestinationNode(T value) {
             this.value = value;
             this.id = requestId.getAndIncrement();
+        }
+
+        public T value() {
+            return value;
         }
 
         @Override

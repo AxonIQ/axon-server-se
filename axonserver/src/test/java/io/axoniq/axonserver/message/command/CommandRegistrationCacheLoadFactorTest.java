@@ -1,10 +1,9 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
-import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.component.command.FakeCommandHandler;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.junit.*;
 
 import java.util.HashMap;
@@ -92,25 +91,6 @@ public class CommandRegistrationCacheLoadFactorTest {
                                                      .setCommand(command)
                                                      .setLoadFactor(loadFactor)
                                                      .build(),
-                new FakeCommandHandler(client));
-    }
-
-
-    private static class FakeCommandHandler extends CommandHandler {
-
-        public FakeCommandHandler(String clientId) {
-            super(new ClientStreamIdentification("context", clientId),
-                  clientId, "componentName");
-        }
-
-        @Override
-        public void dispatch(SerializedCommand request) {
-
-        }
-
-        @Override
-        public String getMessagingServerName() {
-            return null;
-        }
+                new FakeCommandHandler(null, client, "componentName"));
     }
 }

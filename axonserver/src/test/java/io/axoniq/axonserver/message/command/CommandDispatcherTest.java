@@ -22,7 +22,6 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.interceptor.CommandInterceptors;
 import io.axoniq.axonserver.interceptor.NoOpCommandInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.plugin.ExecutionContext;
@@ -55,21 +54,34 @@ public class CommandDispatcherTest {
     private CommandCache commandCache;
     @Mock
     private CommandRegistrationCache registrations;
+    private final AtomicBoolean tooManyRequests = new AtomicBoolean();
+    private final CapacityValidator sampleCapacityValidator = new CapacityValidator() {
+        @Override
+        public void checkCapacity(String context, SerializedCommand command) {
+            if(tooManyRequests.get()) {
+                throw new InsufficientBufferCapacityException("Too many requests");
+            }
+        }
 
+        @Override
+        public void requestDone(String context, SerializedCommand command) {
+
+        }
+    };
     @Before
     public void setup() {
         metricsRegistry = new CommandMetricsRegistry(meterFactory);
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry,
-                                                  new NoOpCommandInterceptors());
+                                                  new NoOpCommandInterceptors(), sampleCapacityValidator);
     }
 
     @Test
-    public void unregisterCommandHandler()  {
+    public void unregisterCommandHandler() {
         commandDispatcher.on(new CommandHandlerDisconnected(null, "clientId", "client", false));
     }
 
     @Test
-    public void dispatch()  {
+    public void dispatch() {
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
@@ -78,19 +90,19 @@ public class CommandDispatcherTest {
                                  .build();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         FakeCommandHandler result = new FakeCommandHandler(
-                                                                     client, "client", "component");
+                client, "client", "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
                                    GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                                   new SerializedCommand(request),
-                                   response -> {
-                                       responseObserver.onNext(response);
-                                       responseObserver.onCompleted();
-                                   });
+                                   new SerializedCommand(request))
+        .subscribe(response -> {
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        });
         assertEquals(1, result.requests());
         assertEquals(0, responseObserver.values().size());
-        Mockito.verify(commandCache, times(1)).put(eq("12"), any());
+//        Mockito.verify(commandCache, times(1)).put(eq("12"), any());
     }
 
     @Test
@@ -105,7 +117,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
                                    GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                                   new SerializedCommand(request),
+                                   new SerializedCommand(request)).subscribe(
                                    response -> {
                                        responseObserver.onNext(response);
                                        responseObserver.onCompleted();
@@ -117,10 +129,11 @@ public class CommandDispatcherTest {
 
     @Test
     public void dispatchQueueFull() {
+        tooManyRequests.set(true);
         commandDispatcher = new CommandDispatcher(registrations,
                                                   commandCache,
                                                   metricsRegistry,
-                                                  new NoOpCommandInterceptors());
+                                                  new NoOpCommandInterceptors(), sampleCapacityValidator);
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
@@ -128,13 +141,11 @@ public class CommandDispatcherTest {
                                  .setMessageIdentifier("12")
                                  .build();
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
-        FlowControlledCommandHandler result = new FlowControlledCommandHandler( new FlowControlQueues<>(null, 0, null, null, ErrorCode.OTHER),
-                                                                               client, "client",
-                                                                                "component", null);
+        CommandHandler result = new FakeCommandHandler( client, "client","component");
         when(registrations.getHandlerForCommand(any(), any(), any())).thenReturn(result);
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT,
                                    GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                                   new SerializedCommand(request),
+                                   new SerializedCommand(request)).subscribe(
                                    response -> {
                                        responseObserver.onNext(response);
                                        responseObserver.onCompleted();
@@ -155,7 +166,7 @@ public class CommandDispatcherTest {
 
         commandDispatcher.dispatch("UnknownContext",
                                    GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                                   new SerializedCommand(request),
+                                   new SerializedCommand(request)).subscribe(
                                    response -> {
                                        responseObserver.onNext(response);
                                        responseObserver.onCompleted();
@@ -172,25 +183,26 @@ public class CommandDispatcherTest {
                                  .setName("Command")
                                  .setMessageIdentifier("12")
                                  .build();
-        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
+        ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
+                                                                                         "client");
         FakeCommandHandler result = new FakeCommandHandler(
-                                                                               clientIdentification,
-                                                                               "client",
-                                                                               "component");
+                clientIdentification,
+                "client",
+                "component");
         when(registrations.findByClientAndCommand(eq(clientIdentification), any())).thenReturn(result);
 
         commandDispatcher.dispatchProxied(Topology.DEFAULT_CONTEXT,
                                           new SerializedCommand(request.toByteArray(),
                                                                 "client",
-                                                                request.getMessageIdentifier()),
+                                                                request.getMessageIdentifier())).subscribe(
                                           responseObserver::onNext);
         assertEquals(1, result.requests());
         assertEquals(0, responseObserver.values().size());
-        Mockito.verify(commandCache, times(1)).put(eq("12"), any());
+//        Mockito.verify(commandCache, times(1)).put(eq("12"), any());
     }
 
     @Test
-    public void dispatchProxiedClientNotFound()  {
+    public void dispatchProxiedClientNotFound() {
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
@@ -199,10 +211,10 @@ public class CommandDispatcherTest {
                                  .build();
 
         commandDispatcher.dispatchProxied(Topology.DEFAULT_CONTEXT,
-                                          new SerializedCommand(request),
+                                          new SerializedCommand(request)).subscribe(
                                           responseObserver::onNext);
         assertEquals(1, responseObserver.values().size());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
+//        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
     }
 
     @Test
@@ -238,11 +250,11 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  });
+                                                  }, sampleCapacityValidator);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
-                                   new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
+                                   new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build())).subscribe(
                                    futureResponse::complete);
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.COMMAND_REJECTED_BY_INTERCEPTOR.getCode(), response.getErrorCode());
@@ -267,11 +279,11 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  });
+                                                  }, sampleCapacityValidator);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
-                                   new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build()),
+                                   new SerializedCommand(Command.newBuilder().setMessageIdentifier("1234").build())).subscribe(
                                    futureResponse::complete);
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
@@ -282,7 +294,7 @@ public class CommandDispatcherTest {
     public void handleResponseInterceptorException() throws ExecutionException, InterruptedException {
         commandCache = new CommandCache(10000, Clock.systemUTC(), 100000);
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
-        FakeCommandHandler result = new FakeCommandHandler( client, "client", "component");
+        FakeCommandHandler result = new FakeCommandHandler(client, "client", "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry,
                                                   new CommandInterceptors() {
@@ -300,18 +312,19 @@ public class CommandDispatcherTest {
                                                           throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                                                                "failed");
                                                       }
-                                                  });
+                                                  }, sampleCapacityValidator);
 
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, null,
                                    new SerializedCommand(Command.newBuilder()
                                                                 .setMessageIdentifier("TheCommand")
-                                                                .build()), futureResponse::complete);
+                                                                .build()))
+                        .subscribe(futureResponse::complete);
 
 
-        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
+        result.commandResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
                                                                                       .setRequestIdentifier("TheCommand")
-                                                                                      .build()), false);
+                                                                                      .build()));
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
     }

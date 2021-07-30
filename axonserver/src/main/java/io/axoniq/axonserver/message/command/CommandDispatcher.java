@@ -27,12 +27,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
@@ -52,81 +53,86 @@ public class CommandDispatcher {
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
     private final CommandInterceptors commandInterceptors;
+    private final CapacityValidator capacityValidator;
 
     public CommandDispatcher(CommandRegistrationCache registrations,
                              ConstraintCache<String, CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
-                             CommandInterceptors commandInterceptors) {
+                             CommandInterceptors commandInterceptors,
+                             CapacityValidator capacityValidator) {
         this.registrations = registrations;
         this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
         this.commandInterceptors = commandInterceptors;
+        this.capacityValidator = capacityValidator;
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
     }
 
 
-    public void dispatchProxied(String context, SerializedCommand request,
-                                Consumer<SerializedCommandResponse> responseObserver) {
+    public Mono<SerializedCommandResponse> dispatchProxied(String context, SerializedCommand request) {
         String clientStreamId = request.getClientStreamId();
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(context, clientStreamId);
         CommandHandler handler = registrations.findByClientAndCommand(clientIdentification,
                                                                          request.getCommand());
-        dispatchToCommandHandler(request, handler, responseObserver,
+        return dispatchToCommandHandler(request, handler,
+                                 context,
                                  ErrorCode.CLIENT_DISCONNECTED,
                                  String.format("Client %s not found while processing: %s"
                                          , clientStreamId, request.getCommand()));
     }
 
-    public void dispatch(String context, Authentication authentication, SerializedCommand request,
-                         Consumer<SerializedCommandResponse> responseObserver) {
+    public Mono<SerializedCommandResponse> dispatch(String context, Authentication authentication, SerializedCommand request) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
-        Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(executionContext,
-                                                                                         r,
-                                                                                         responseObserver);
+        long time = System.currentTimeMillis();
         try {
-            request = commandInterceptors.commandRequest(request, executionContext);
+            SerializedCommand interceptedRequest = commandInterceptors.commandRequest(request, executionContext);
             commandRate(context).mark();
             CommandHandler commandHandler = registrations.getHandlerForCommand(context,
-                                                                                  request.wrapped(),
-                                                                                  request.getRoutingKey());
-            dispatchToCommandHandler(request,
+                                                                               interceptedRequest.wrapped(),
+                                                                               interceptedRequest.getRoutingKey());
+            return dispatchToCommandHandler(interceptedRequest,
                                      commandHandler,
-                                     interceptedResponseObserver,
+                                     context,
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
                                      "No Handler for command: " + request.getCommand()
-            );
+            ).map(r -> intercept(executionContext, r))
+                    .doOnSuccess(response -> metricRegistry.add(request.getCommand(),
+                                                            request.wrapped().getClientId(),
+                                                            commandHandler == null ? "NOT_FOUND" : commandHandler.getClientId(),
+                                                            context,
+                                                            System.currentTimeMillis() - time)
+            ).timeout(Duration.ofSeconds(500));
         } catch (MessagingPlatformException other) {
             logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
-            interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
+            executionContext.compensate(other);
+            return Mono.just(errorCommandResponse(request.getMessageIdentifier(),
                                                                     other.getErrorCode(),
                                                                     other.getMessage()));
-            executionContext.compensate(other);
         } catch (Exception other) {
             logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
-            interceptedResponseObserver.accept(errorCommandResponse(request.getMessageIdentifier(),
+            executionContext.compensate(other);
+            return Mono.just(errorCommandResponse(request.getMessageIdentifier(),
                                                                     ErrorCode.OTHER,
                                                                     other.getMessage()));
-            executionContext.compensate(other);
         }
     }
 
-    private void intercept(DefaultExecutionContext executionContext,
-                           SerializedCommandResponse response,
-                           Consumer<SerializedCommandResponse> responseObserver) {
+    private SerializedCommandResponse intercept(DefaultExecutionContext executionContext,
+                           SerializedCommandResponse response) {
         try {
-            responseObserver.accept(commandInterceptors.commandResponse(response, executionContext));
+            return commandInterceptors.commandResponse(response, executionContext);
         } catch (MessagingPlatformException ex) {
             logger.warn("{}: Exception in response interceptor", executionContext.contextName(), ex);
-            responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
-                                                         ex.getErrorCode(),
-                                                         ex.getMessage()));
             executionContext.compensate(ex);
+            return errorCommandResponse(response.getRequestIdentifier(),
+                                                         ex.getErrorCode(),
+                                                         ex.getMessage());
         } catch (Exception other) {
             logger.warn("{}: Exception in response interceptor", executionContext.contextName(), other);
-            responseObserver.accept(errorCommandResponse(response.getRequestIdentifier(),
-                                                         ErrorCode.OTHER,
-                                                         other.getMessage()));
             executionContext.compensate(other);
+            return errorCommandResponse(response.getRequestIdentifier(),
+                                                         ErrorCode.OTHER,
+                                                         other.getMessage());
         }
     }
 
@@ -143,36 +149,28 @@ public class CommandDispatcher {
         handlePendingCommands(event.clientIdentification());
     }
 
-    private void dispatchToCommandHandler(SerializedCommand command, CommandHandler commandHandler,
-                                          Consumer<SerializedCommandResponse> responseObserver,
-                                          ErrorCode noHandlerErrorCode, String noHandlerMessage) {
+    private Mono<SerializedCommandResponse> dispatchToCommandHandler(SerializedCommand command,
+                                                                     CommandHandler commandHandler,
+                                                                     String context,
+                                                                     ErrorCode noHandlerErrorCode, String noHandlerMessage) {
         if (commandHandler == null) {
             logger.warn("No Handler for command: {}", command.getName());
-            responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
+            return Mono.just(errorCommandResponse(command.getMessageIdentifier(),
                                                          noHandlerErrorCode,
                                                          noHandlerMessage));
-            return;
         }
 
         try {
+            capacityValidator.checkCapacity(context,command);
             logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
-            CommandInformation commandInformation = new CommandInformation(command.getName(),
-                                                                           command.wrapped().getClientId(),
-                                                                           commandHandler.getClientId(),
-                                                                           responseObserver,
-                                                                           commandHandler
-                                                                                   .getClientStreamIdentification(),
-                                                                           commandHandler.getComponentName());
-            commandCache.put(command.getMessageIdentifier(), commandInformation);
-            commandHandler.dispatch(command);
+            return commandHandler.dispatch(command).doOnTerminate(() -> capacityValidator.requestDone(context,command));
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
-            responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
+            return Mono.just(errorCommandResponse(command.getMessageIdentifier(),
                                                          ErrorCode.TOO_MANY_REQUESTS,
                                                          insufficientBufferCapacityException
                                                                  .getMessage()));
         } catch (MessagingPlatformException mpe) {
-            commandCache.remove(command.getMessageIdentifier());
-            responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
+            return Mono.just(errorCommandResponse(command.getMessageIdentifier(),
                                                          mpe.getErrorCode(),
                                                          mpe.getMessage()));
         }

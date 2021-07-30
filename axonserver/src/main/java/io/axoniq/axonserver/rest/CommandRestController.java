@@ -112,7 +112,7 @@ public class CommandRestController {
         CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
         commandDispatcher.dispatch(context,
                                    getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                   new SerializedCommand(command.asCommand()),
+                                   new SerializedCommand(command.asCommand())).subscribe(
                                    r -> result.complete(new CommandResponseJson(r.wrapped())));
         return result;
     }

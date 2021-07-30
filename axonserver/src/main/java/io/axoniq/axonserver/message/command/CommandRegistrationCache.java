@@ -101,10 +101,7 @@ public class CommandRegistrationCache {
      */
     public void remove(ClientStreamIdentification client) {
         logger.trace("Remove {}", client);
-        CommandHandler currentHandlers = commandHandlersPerClientContext.remove(client);
-        if (currentHandlers != null) {
-            currentHandlers.close();
-        }
+        commandHandlersPerClientContext.remove(client);
         Map<String, Integer> remove = registrationsPerClient.remove(client);
         if (remove != null) {
             Set<String> commands = remove.keySet();

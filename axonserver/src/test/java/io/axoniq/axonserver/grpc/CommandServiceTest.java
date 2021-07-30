@@ -93,9 +93,10 @@ public class CommandServiceTest {
         String clientStreamId = key.substring(0, key.lastIndexOf("."));
 
         ClientStreamIdentification clientIdentification = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                             clientStreamId);
+                                                                                         clientStreamId);
         commandQueue.put(clientIdentification.toString(), new WrappedCommand(clientIdentification,
-                                                                             clientIdentification.getClientStreamId(),new SerializedCommand(Command.newBuilder()
+                                                                             clientIdentification.getClientStreamId(),
+                                                                             new SerializedCommand(Command.newBuilder()
                                                                                                           .build())));
         Thread.sleep(50);
         assertEquals(1, fakeStreamObserver.values().size());
@@ -143,19 +144,26 @@ public class CommandServiceTest {
     public void unsubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setUnsubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
-                .build());
+                                                    .setUnsubscribe(CommandSubscription.newBuilder().setClientId("name")
+                                                                                       .setComponentName("component")
+                                                                                       .setCommand("command"))
+                                                    .build());
         verify(eventPublisher, times(0)).publishEvent(isA(SubscriptionEvents.UnsubscribeCommand.class));
     }
+
     @Test
     public void unsubscribeAfterSubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
-                .build());
+                                                    .setSubscribe(CommandSubscription.newBuilder().setClientId("name")
+                                                                                     .setComponentName("component")
+                                                                                     .setCommand("command"))
+                                                    .build());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setUnsubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
-                .build());
+                                                    .setUnsubscribe(CommandSubscription.newBuilder().setClientId("name")
+                                                                                       .setComponentName("component")
+                                                                                       .setCommand("command"))
+                                                    .build());
         verify(eventPublisher).publishEvent(isA(SubscriptionEvents.UnsubscribeCommand.class));
     }
 
@@ -163,8 +171,10 @@ public class CommandServiceTest {
     public void cancelAfterSubscribe() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
         requestStream.onNext(CommandProviderOutbound.newBuilder()
-                .setSubscribe(CommandSubscription.newBuilder().setClientId("name").setComponentName("component").setCommand("command"))
-                .build());
+                                                    .setSubscribe(CommandSubscription.newBuilder().setClientId("name")
+                                                                                     .setComponentName("component")
+                                                                                     .setCommand("command"))
+                                                    .build());
         requestStream.onError(new RuntimeException("failed"));
     }
 
@@ -177,18 +187,20 @@ public class CommandServiceTest {
     @Test
     public void close() {
         StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(new FakeStreamObserver<>());
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1).setClientId("name").build()).build());
+        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(1)
+                                                                                            .setClientId("name")
+                                                                                            .build()).build());
         requestStream.onCompleted();
     }
 
     @Test
     public void dispatch() {
-        doAnswer(invocationOnMock -> {
+        when(commandDispatcher.dispatch(any(), any(), any())).then(invocationOnMock -> {
             Consumer<SerializedCommandResponse> responseConsumer = (Consumer<SerializedCommandResponse>) invocationOnMock
                     .getArguments()[3];
             responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
             return null;
-        }).when(commandDispatcher).dispatch(any(), any(), any(), any());
+        });
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build().toByteArray(), responseObserver);
         assertEquals(1, responseObserver.values().size());

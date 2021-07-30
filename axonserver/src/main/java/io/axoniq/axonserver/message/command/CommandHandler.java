@@ -10,7 +10,9 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 
@@ -64,8 +66,9 @@ public abstract class CommandHandler implements Comparable<CommandHandler> {
      * Dispatches the specified command to the handler.
      *
      * @param request the command request to be dispatched.
+     * @return
      */
-    public abstract void dispatch(SerializedCommand request);
+    public abstract Mono<SerializedCommandResponse> dispatch(SerializedCommand request);
 
     public String getClientId() {
         return clientId;
@@ -77,6 +80,6 @@ public abstract class CommandHandler implements Comparable<CommandHandler> {
         return true;
     }
 
-    public void close() {
-    }
+    public abstract void commandResponse(SerializedCommandResponse theCommand);
+
 }

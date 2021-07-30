@@ -9,9 +9,8 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.grpc.SerializedCommand;
+import io.axoniq.axonserver.component.command.FakeCommandHandler;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.CommandHandler;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.query.FakeQueryHandler;
@@ -47,19 +46,9 @@ public class MetricsRestControllerTest {
     public void setUp() {
         CommandRegistrationCache commandRegistrationCache = new CommandRegistrationCache();
         testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
-        commandRegistrationCache.add("Sample", new CommandHandler(
+        commandRegistrationCache.add("Sample", new FakeCommandHandler(
                                                                           testclient, "Target",
-                                                                          "testcomponent") {
-            @Override
-            public void dispatch(SerializedCommand request) {
-
-            }
-
-            @Override
-            public String getMessagingServerName() {
-                return null;
-            }
-        });
+                                                                          "testcomponent"));
         commandMetricsRegistry = new CommandMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
 
         QueryRegistrationCache queryRegistrationCache = new QueryRegistrationCache(new RoundRobinQueryHandlerSelector());
