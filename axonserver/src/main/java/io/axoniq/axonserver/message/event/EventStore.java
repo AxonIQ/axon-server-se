@@ -119,8 +119,14 @@ public interface EventStore {
      */
     Mono<Long> eventTokenAt(String context, Instant timestamp);
 
-    void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
-                               StreamObserver<ReadHighestSequenceNrResponse> responseObserver);
+    /**
+     * Gets the highest sequence number of an aggregate for a given {@code aggregateId}.
+     *
+     * @param context     the context in which to search for the aggregate
+     * @param aggregateId aggregate identifier
+     * @return the highest sequence number of an aggregate or -1 if aggregate does not exist in given context
+     */
+    Mono<Long> highestSequenceNumber(String context, String aggregateId);
 
     StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
                                                    StreamObserver<QueryEventsResponse> responseObserver);

@@ -458,7 +458,11 @@ public class EventDispatcher implements AxonServerClientService {
                 new ForwardingStreamObserver<>(logger, "readHighestSequenceNr", callStreamObserver);
         checkConnection(contextProvider.getContext(), responseObserver)
                 .ifPresent(client -> client
-                        .readHighestSequenceNr(contextProvider.getContext(), request, responseObserver)
+                        .highestSequenceNumber(contextProvider.getContext(), request.getAggregateId())
+                        .map(l -> ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(l).build())
+                        .subscribe(responseObserver::onNext,
+                                   responseObserver::onError,
+                                   responseObserver::onCompleted)
                 );
     }
 

@@ -659,6 +659,29 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Long> highestSequenceNumber(String context, String aggregateId) {
+        return Mono.create(sink -> sink.onRequest(requested -> {
+            readHighestSequenceNr(context,
+                                  ReadHighestSequenceNrRequest.newBuilder().setAggregateId(aggregateId).build(),
+                                  new StreamObserver<ReadHighestSequenceNrResponse>() {
+                                      @Override
+                                      public void onNext(ReadHighestSequenceNrResponse readHighestSequenceNrResponse) {
+                                          sink.success(readHighestSequenceNrResponse.getToSequenceNr());
+                                      }
+
+                                      @Override
+                                      public void onError(Throwable throwable) {
+                                          sink.error(throwable);
+                                      }
+
+                                      @Override
+                                      public void onCompleted() {
+                                          //nothing to do, already completed
+                                      }
+                                  });
+        }));
+    }
+
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
         runInDataFetcherPool(() -> {
