@@ -9,11 +9,11 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
