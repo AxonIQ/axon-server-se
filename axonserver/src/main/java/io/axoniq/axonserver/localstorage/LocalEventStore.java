@@ -52,8 +52,10 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -221,6 +223,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication) {
+        return Mono.fromCompletionStage(appendSnapshot(context, authentication, snapshot))
+                   .then();
+    }
+
     public CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication,
                                                           Event snapshot) {
         CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
@@ -277,6 +284,31 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Void> appendEvents(String context, Flux<Event> events, Authentication authentication) {
+        return Mono.create(sink -> sink.onRequest(l -> {
+            StreamObserver<InputStream> inputStream =
+                    createAppendEventConnection(context, authentication, new StreamObserver<Confirmation>() {
+                        @Override
+                        public void onNext(Confirmation confirmation) {
+                            sink.success();
+                        }
+
+                        @Override
+                        public void onError(Throwable throwable) {
+                            sink.error(throwable);
+                        }
+
+                        @Override
+                        public void onCompleted() {
+                            // nothing to do, already completed on onNext
+                        }
+                    });
+            events.doOnComplete(inputStream::onCompleted)
+                  .doOnError(inputStream::onError)
+                  .subscribe(event -> inputStream.onNext(new ByteArrayInputStream(event.toByteArray())));
+        }));
+    }
+
     public StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    Authentication authentication,
                                                                    StreamObserver<Confirmation> responseObserver) {
@@ -436,8 +468,28 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return Long.MAX_VALUE;
     }
 
-
     @Override
+    public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
+                                                    GetAggregateSnapshotsRequest request) {
+        return Flux.create(
+                sink -> listAggregateSnapshots(context, authentication, request, new StreamObserver<SerializedEvent>() {
+                    @Override
+                    public void onNext(SerializedEvent serializedEvent) {
+                        sink.next(serializedEvent);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        sink.error(throwable);
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        sink.complete();
+                    }
+                }));
+    }
+
     public void listAggregateSnapshots(String context,
                                        Authentication authentication,
                                        GetAggregateSnapshotsRequest request,

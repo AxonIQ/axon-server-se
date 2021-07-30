@@ -51,6 +51,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
@@ -148,35 +149,19 @@ public class EventDispatcher implements AxonServerClientService {
                     NO_EVENT_STORE_CONFIGURED + context));
             return new NoOpStreamObserver<>();
         }
-        StreamObserver<InputStream> appendEventConnection =
-                eventStore.createAppendEventConnection(context, authentication,
-                        new StreamObserver<Confirmation>() {
-                            @Override
-                            public void onNext(Confirmation confirmation) {
-                                responseObserver.onNext(confirmation);
-                            }
 
-                            @Override
-                            public void onError(Throwable throwable) {
-                                StreamObserverUtils.error(responseObserver,
-                                        MessagingPlatformException
-                                                .create(throwable));
-                            }
+        Sinks.Many<Event> sink = Sinks.many()
+                                      .unicast()
+                                      .onBackpressureBuffer();
 
-                            @Override
-                            public void onCompleted() {
-
-                                responseObserver.onCompleted();
-                            }
-                        });
-        return new StreamObserver<InputStream>() {
+        StreamObserver<InputStream> inputStreamObserver = new StreamObserver<InputStream>() {
             @Override
             public void onNext(InputStream inputStream) {
                 try {
-                    appendEventConnection.onNext(inputStream);
+                    sink.tryEmitNext(Event.parseFrom(inputStream));
                     eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
                 } catch (Exception exception) {
-                    StreamObserverUtils.error(appendEventConnection, exception);
+                    sink.tryEmitError(exception);
                     StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
                 }
             }
@@ -184,14 +169,30 @@ public class EventDispatcher implements AxonServerClientService {
             @Override
             public void onError(Throwable throwable) {
                 logger.warn("Error on connection from client: {}", throwable.getMessage());
-                StreamObserverUtils.error(appendEventConnection, throwable);
+                sink.tryEmitError(throwable);
             }
 
             @Override
             public void onCompleted() {
-                appendEventConnection.onCompleted();
+                sink.tryEmitComplete();
             }
         };
+
+        eventStore.appendEvents(context, sink.asFlux(), authentication)
+                  .doOnSuccess(v -> {
+                      responseObserver.onNext(Confirmation.newBuilder()
+                                                          .setSuccess(true)
+                                                          .build());
+                      responseObserver.onCompleted();
+                  })
+                  .doOnError(throwable -> StreamObserverUtils
+                          .error(responseObserver, MessagingPlatformException.create(throwable)))
+                  .doOnCancel(() -> StreamObserverUtils.error(responseObserver,
+                                                              MessagingPlatformException.create(new RuntimeException(
+                                                                      "Appending events cancelled."))))
+                  .subscribe();
+
+        return inputStreamObserver;
     }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
@@ -215,15 +216,21 @@ public class EventDispatcher implements AxonServerClientService {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-                eventStore.appendSnapshot(context, authentication, snapshot).whenComplete((c, t) -> {
-                    if (t != null) {
-                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                        responseObserver.onError(t);
-                    } else {
-                        responseObserver.onNext(c);
-                        responseObserver.onCompleted();
-                    }
-                });
+                eventStore.appendSnapshot(context, snapshot, authentication)
+                          .doOnSuccess(v -> {
+                              responseObserver.onNext(Confirmation.newBuilder()
+                                                                  .setSuccess(true)
+                                                                  .build());
+                              responseObserver.onCompleted();
+                          })
+                          .doOnError(t -> {
+                              logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
+                              responseObserver.onError(t);
+                          })
+                          .doOnCancel(() -> responseObserver.onError(MessagingPlatformException
+                                                                             .create(new RuntimeException(
+                                                                                     "Appending snapshot cancelled"))))
+                          .subscribe();
             } catch (Exception ex) {
                 responseObserver.onError(ex);
             }
@@ -534,10 +541,12 @@ public class EventDispatcher implements AxonServerClientService {
                                        StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                eventStore.listAggregateSnapshots(context,
-                        authentication,
-                        request,
-                        responseObserver);
+                eventStore.aggregateSnapshots(context, authentication, request)
+                          .doOnCancel(() -> responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
+                                  "Listing aggregate snapshots cancelled."))))
+                          .subscribe(responseObserver::onNext,
+                                     responseObserver::onError,
+                                     responseObserver::onCompleted);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateSnapshots", t.getMessage(), t);
                 responseObserver.onError(GrpcExceptionBuilder.build(t));

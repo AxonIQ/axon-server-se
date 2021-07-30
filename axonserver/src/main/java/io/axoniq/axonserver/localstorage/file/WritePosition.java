@@ -45,8 +45,8 @@ public class WritePosition implements Comparable<WritePosition> {
 
     boolean isOverflow(int transactionLength) {
         return buffer != null
-                && position + 4 < buffer.limit()
-                && position + transactionLength + 4 >= buffer.limit();
+                && position + 4 <= buffer.capacity()
+                && position + transactionLength + 4 > buffer.capacity();
     }
 
     Long getSegment() {
@@ -58,7 +58,7 @@ public class WritePosition implements Comparable<WritePosition> {
     }
 
     boolean isWritable(int transactionLength) {
-        return this != INVALID && buffer != null && position + transactionLength + 4 < buffer.capacity();
+        return this != INVALID && buffer != null && position + transactionLength + 4 <= buffer.capacity();
     }
 
     WritePosition incrementedWith(long sequence, int position) {

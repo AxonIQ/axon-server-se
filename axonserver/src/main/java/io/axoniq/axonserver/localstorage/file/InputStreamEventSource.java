@@ -27,11 +27,13 @@ public class InputStreamEventSource implements EventSource {
     private static final Logger logger = LoggerFactory.getLogger(InputStreamEventSource.class);
     private final PositionKeepingDataInputStream dataInputStream;
     private final EventTransformer eventTransformer;
+    private final File dataFile;
     private volatile boolean closed;
 
 
     public InputStreamEventSource(File dataFile,
                                   EventTransformerFactory eventTransformerFactory) {
+        this.dataFile = dataFile;
         try {
             logger.debug("Open file {}", dataFile);
             dataInputStream = new PositionKeepingDataInputStream(dataFile);
@@ -75,6 +77,7 @@ public class InputStreamEventSource implements EventSource {
     @Override
     public void close()  {
         try {
+            logger.debug("Close file {} - {}", dataFile, closed);
             if( ! closed) {
                 dataInputStream.close();
                 closed = true;

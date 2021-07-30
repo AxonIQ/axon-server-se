@@ -72,6 +72,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private static final int TRANSACTION_LENGTH_BYTES = 4;
     private static final int NUMBER_OF_EVENTS_BYTES = 2;
     protected static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
+    protected static final int FILE_HEADER_SIZE = VERSION_BYTES + FILE_OPTIONS_BYTES;
+    protected static final int FILE_FOOTER_SIZE = 4;
+    protected static final int MAX_TRANSACTION_SIZE = Integer.MAX_VALUE - FILE_HEADER_SIZE - HEADER_BYTES - TX_CHECKSUM_BYTES - FILE_FOOTER_SIZE;
     protected final String context;
     protected final IndexManager indexManager;
     protected final StorageProperties storageProperties;
@@ -137,7 +140,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries) {
         return (!containsSegment(segment) && next != null) ?
                 next.eventsForPositions(segment, indexEntries) :
-                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment).get()
+                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment, storageProperties.getEventsPerSegmentPrefetch()).get()
                         .name("event_stream")
                         .tag("context", context)
                         .tag("stream", "aggregate_events")
