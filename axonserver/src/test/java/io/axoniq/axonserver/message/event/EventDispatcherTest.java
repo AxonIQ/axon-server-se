@@ -19,6 +19,7 @@ import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
@@ -159,29 +160,8 @@ public class EventDispatcherTest {
     @Test
     public void listEvents() {
         FakeStreamObserver<InputStream> responseObserver = new FakeStreamObserver<>();
-        AtomicReference<StreamObserver<InputStream>> eventStoreOutputStreamRef = new AtomicReference<>();
-        StreamObserver<GetEventsRequest> eventStoreResponseStream = new StreamObserver<GetEventsRequest>() {
-            @Override
-            public void onNext(GetEventsRequest o) {
-                StreamObserver<InputStream> responseStream = eventStoreOutputStreamRef.get();
-                responseStream.onNext(new ByteArrayInputStream(EventWithToken.newBuilder().build().toByteArray()));
-                responseStream.onCompleted();
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-
-            }
-
-            @Override
-            public void onCompleted() {
-
-            }
-        };
-        when(eventStoreClient.listEvents(any(), any(), any(StreamObserver.class))).then(a -> {
-            eventStoreOutputStreamRef.set((StreamObserver<InputStream>) a.getArguments()[2]);
-            return eventStoreResponseStream;
-        });
+        when(eventStoreClient.events(any(), any(), any(Flux.class)))
+                .thenReturn(Flux.just(new SerializedEventWithToken(EventWithToken.getDefaultInstance())));
         StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(responseObserver);
         inputStream.onNext(GetEventsRequest.newBuilder()
                                            .setClientId("sampleClient")

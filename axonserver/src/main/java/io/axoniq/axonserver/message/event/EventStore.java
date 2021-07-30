@@ -13,21 +13,18 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.grpc.stub.StreamObserver;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.io.InputStream;
+import java.time.Instant;
 
 /**
  * Provides a facade to the event store.
@@ -85,22 +82,42 @@ public interface EventStore {
                                              GetAggregateSnapshotsRequest request);
 
     /**
-     * Retrieves the Events from a given tracking token. Results are streamed rather than returned at once. Caller gets
-     * a stream where it first should send the base request to (including the first token and a number of permits) and
-     * subsequently send additional permits or blacklist messages to.
+     * Retrieves the Events from a given tracking token. Results are streamed rather than returned at once. Results are
+     * streamed using {@link Flux}.
      *
-     * @param context                the context to read from
-     * @param responseStreamObserver {@link StreamObserver} where the events will be published
-     * @return stream to send initial request and additional control messages to
+     * @param context        the context to read from
+     * @param authentication the authentication
+     * @param requestFlux    an input flux of request - meaning that request may change during events streaming
+     * @return serialized events with their corresponding tokens
      */
-    StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
-                                                StreamObserver<InputStream> responseStreamObserver);
+    Flux<SerializedEventWithToken> events(String context,
+                                          Authentication authentication,
+                                          Flux<GetEventsRequest> requestFlux);
 
-    void getFirstToken(String context, GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of the first event in event store.
+     *
+     * @param context the context in which the token will be searched for
+     * @return a mono of the token
+     */
+    Mono<Long> firstEventToken(String context);
 
-    void getLastToken(String context, GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of the last event in event store.
+     *
+     * @param context the context in which the token will be searched for
+     * @return a mono of the token
+     */
+    Mono<Long> lastEventToken(String context);
 
-    void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of the event at specific position in time.
+     *
+     * @param context   the context in which the token will be searched for
+     * @param timestamp the timestamp to search the tracking token
+     * @return a mono of the token
+     */
+    Mono<Long> eventTokenAt(String context, Instant timestamp);
 
     void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                StreamObserver<ReadHighestSequenceNrResponse> responseObserver);
