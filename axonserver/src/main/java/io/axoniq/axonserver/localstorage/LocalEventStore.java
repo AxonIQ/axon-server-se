@@ -19,8 +19,6 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
 import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
@@ -31,7 +29,6 @@ import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -59,6 +56,7 @@ import reactor.core.scheduler.Schedulers;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -610,19 +608,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void getFirstToken(String context, GetFirstTokenRequest request,
-                              StreamObserver<TrackingToken> responseObserver) {
-        long token = workers(context).eventStreamReader.getFirstToken();
-        responseObserver.onNext(TrackingToken.newBuilder().setToken(token).build());
-        responseObserver.onCompleted();
+    public Mono<Long> firstEventToken(String context) {
+        return Mono.just(workers(context).eventStreamReader.getFirstToken());
     }
 
     @Override
-    public void getLastToken(String context, GetLastTokenRequest request,
-                             StreamObserver<TrackingToken> responseObserver) {
-        responseObserver.onNext(TrackingToken.newBuilder().setToken(workers(context).eventStorageEngine.getLastToken())
-                                             .build());
-        responseObserver.onCompleted();
+    public Mono<Long> lastEventToken(String context) {
+        return Mono.just(workers(context).eventStorageEngine.getLastToken());
     }
 
     public void getLastSnapshotToken(String context,
@@ -633,6 +625,29 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Long> eventTokenAt(String context, Instant timestamp) {
+        return Mono.create(sink -> sink.onRequest(requested -> {
+            getTokenAt(context,
+                       GetTokenAtRequest.newBuilder().setInstant(timestamp.toEpochMilli()).build(),
+                       new StreamObserver<TrackingToken>() {
+                           @Override
+                           public void onNext(TrackingToken trackingToken) {
+                               sink.success(trackingToken.getToken());
+                           }
+
+                           @Override
+                           public void onError(Throwable throwable) {
+                               sink.error(throwable);
+                           }
+
+                           @Override
+                           public void onCompleted() {
+                               //nothing to do, already completed
+                           }
+                       });
+        }));
+    }
+
     public void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
         runInDataFetcherPool(() -> {
             long token = workers(context).eventStreamReader.getTokenAt(request.getInstant());
