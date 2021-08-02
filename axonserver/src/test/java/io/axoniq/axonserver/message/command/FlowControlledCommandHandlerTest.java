@@ -9,7 +9,11 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.CommandStream;
+import io.axoniq.axonserver.grpc.MetaDataValue;
+import io.axoniq.axonserver.grpc.ProcessingInstruction;
+import io.axoniq.axonserver.grpc.ProcessingKey;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -18,7 +22,9 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import org.junit.*;
+import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -32,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FlowControlledCommandHandlerTest {
 
     private final FakeStreamObserver<SerializedCommandProviderInbound> responseObserver = new FakeStreamObserver<>();
-    private final CommandStream commandStream = new CommandStream(responseObserver);
+    private final CommandStream commandStream = new CommandStream(responseObserver, 10);
     private final FlowControlledCommandHandler testSubject = new FlowControlledCommandHandler(
                                                                                               new ClientStreamIdentification("context", "streamId"),
                                                                                               "clientId",
@@ -63,11 +69,55 @@ public class FlowControlledCommandHandlerTest {
 
     @Test
     public void cancel()  {
-        testSubject.dispatch(new SerializedCommand(newCommand("1")));
+        testSubject.dispatch(new SerializedCommand(newCommand("1"))).subscribe(System.out::println);
         testSubject.close();
         assertEquals(0, testSubject.waiting());
-        testSubject.dispatch(new SerializedCommand(newCommand("2")));
+        testSubject.dispatch(new SerializedCommand(newCommand("2"))).subscribe(r -> System.out.println(r));
         assertEquals(0, testSubject.waiting());
+    }
+
+    @Test
+    public void overflowHardLimit() throws InterruptedException {
+        for (int i = 0; i < 10; i++) {
+            testSubject.dispatch(new SerializedCommand(
+                    newCommand("1" + i))).subscribe(System.out::println);
+        }
+        Command command = Command.newBuilder()
+                                 .setMessageIdentifier("3")
+                                 .setName("command")
+                .addProcessingInstructions(ProcessingInstruction.newBuilder()
+                                                   .setKey(ProcessingKey.PRIORITY)
+                                                   .setValue(MetaDataValue.newBuilder().setNumberValue(10).build())
+                                                                .build())
+                                 .build();
+        Mono<SerializedCommandResponse> responseMono3 = testSubject.dispatch(new SerializedCommand(command));
+        try {
+            SerializedCommandResponse response = responseMono3.block(Duration.ofMillis(200));
+            fail("Expecting illegal state exception for timeout");
+        } catch (IllegalStateException illegalStateException) {
+
+        }
+        assertEquals(11, commandStream.waiting());
+        command = Command.newBuilder(command).setMessageIdentifier("4").build();
+        Mono<SerializedCommandResponse> responseMono4 = testSubject.dispatch(new SerializedCommand(command));
+        SerializedCommandResponse response = responseMono4.block(Duration.ofMillis(200));
+        assertNotNull(response);
+        assertEquals(ErrorCode.COMMAND_DISPATCH_ERROR.getCode(), response.getErrorCode());
+        assertEquals(11, commandStream.waiting());
+    }
+
+    @Test
+    public void overflowSoftLimit() throws InterruptedException {
+        for (int i = 0; i < 10; i++) {
+            testSubject.dispatch(new SerializedCommand(
+                    newCommand("1" + i))).subscribe(System.out::println);
+        }
+        assertEquals(10, commandStream.waiting());
+        Mono<SerializedCommandResponse> responseMono3 = testSubject.dispatch(new SerializedCommand(newCommand("3")));
+        SerializedCommandResponse response = responseMono3.block(Duration.ofMillis(200));
+        assertNotNull(response);
+        assertEquals(ErrorCode.COMMAND_DISPATCH_ERROR.getCode(), response.getErrorCode());
+        assertEquals(10, commandStream.waiting());
     }
 
     private Command newCommand(String id) {

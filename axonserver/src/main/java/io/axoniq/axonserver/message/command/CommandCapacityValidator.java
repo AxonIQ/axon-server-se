@@ -12,12 +12,9 @@ package io.axoniq.axonserver.message.command;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.unit.DataSize;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
 
 /**
  * @author Marc Gathier
@@ -26,40 +23,32 @@ import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
 @Component
 public class CommandCapacityValidator implements CapacityValidator {
 
-    private final Map<String, Integer> limitPerContext = new ConcurrentHashMap<>();
-    private final Map<String, AtomicInteger> remainingMessagesPerContext = new ConcurrentHashMap<>();
-    private final int defaultLimitPerContext;
-    private final ContextLimitProvider contextLimitProvider;
+    private final AtomicInteger pendingCommands = new AtomicInteger();
+    private final long cacheCapacity;
+    private static final int COMMANDS_PER_GB = 25000;
 
-    public CommandCapacityValidator(@Value("${axoniq.axonserver.messages.context-buffer-limit:-1}") int defaultLimitPerContext,
-                                    ContextLimitProvider contextLimitProvider ) {
-        this.defaultLimitPerContext = defaultLimitPerContext;
-        this.contextLimitProvider = contextLimitProvider;
+    public CommandCapacityValidator(@Value("${axoniq.axonserver.command-cache-capacity:0}") long cacheCapacity ) {
+        if (cacheCapacity > 0) {
+            this.cacheCapacity = cacheCapacity;
+        } else {
+            long totalMemory = DataSize.ofBytes(Runtime.getRuntime().maxMemory()).toGigabytes();
+            this.cacheCapacity = (totalMemory > 0) ? (COMMANDS_PER_GB * totalMemory) : COMMANDS_PER_GB;
+        }
     }
 
     @Override
     public void checkCapacity(String context, SerializedCommand command) {
-        int bufferLimit = limitPerContext.computeIfAbsent(context, this::getLimitForContext);
-        if (bufferLimit != -1) {
-            remainingMessagesPerContext.computeIfAbsent(context, k -> new AtomicInteger(bufferLimit)).getAndUpdate(s -> {
-                if (s <= 0) {
-                    throw new InsufficientBufferCapacityException("Buffer is full, slow down.");
-                } else {
-                    return s - 1;
-                }
-            });
-        }
-    }
-
-    private int getLimitForContext(String context) {
-        return getOrDefault(contextLimitProvider.maxPendingCommands(context), defaultLimitPerContext);
+        pendingCommands.updateAndGet(current -> {
+            if (current >= cacheCapacity) {
+                throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
+                                                                      + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
+            }
+            return current+1;
+        });
     }
 
     @Override
     public void requestDone(String context, SerializedCommand command) {
-        AtomicInteger current = remainingMessagesPerContext.get(context);
-        if (current != null) {
-            current.incrementAndGet();
-        }
+        pendingCommands.decrementAndGet();
     }
 }

@@ -41,9 +41,22 @@ public class CommandStream {
     private final PriorityBlockingQueue<WrappedCommand> queue;
     private final AtomicReference<Subscription> subscription = new AtomicReference<>();
     private final AtomicLong permits = new AtomicLong();
+    private final int hardLimit;
 
-    public CommandStream(StreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver) {
-        this.queue = new PriorityBlockingQueue<>(10, Comparator.comparing(WrappedCommand::priority));
+    public CommandStream(StreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver, int softLimit) {
+        this.hardLimit = (int)Math.floor(softLimit*1.1d);
+        this.queue = new PriorityBlockingQueue<WrappedCommand>(10, Comparator.comparing(WrappedCommand::priority)) {
+            @Override
+            public boolean offer(WrappedCommand o) {
+                int size = size();
+                if( size >= softLimit) {
+                    if (size >= hardLimit || o.priority() <=  0) {
+                        return false;
+                    }
+                }
+                return super.offer(o);
+            }
+        };
         this.listener = Sinks.many().unicast().onBackpressureBuffer(queue);
         this.listener.asFlux().publishOn(Schedulers.fromExecutorService(executors))
                      .doOnCancel(() -> {

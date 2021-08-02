@@ -21,8 +21,6 @@ import io.axoniq.axonserver.grpc.command.CommandSubscription;
 import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ByteArrayMarshaller;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.FlowControlQueueRegistry;
-import io.axoniq.axonserver.message.command.CommandCache;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.FlowControlledCommandHandler;
 import io.axoniq.axonserver.topology.Topology;
@@ -34,6 +32,7 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -42,7 +41,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.PreDestroy;
 
@@ -83,6 +81,7 @@ public class CommandService implements AxonServerClientService {
     private final ApplicationEventPublisher eventPublisher;
     private final Logger logger = LoggerFactory.getLogger(CommandService.class);
     private final Map<ClientStreamIdentification, FlowControlledCommandHandler> dispatcherListeners = new ConcurrentHashMap<>();
+    private final int commandQueueCapacity;
     private final InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource;
 
 
@@ -92,8 +91,7 @@ public class CommandService implements AxonServerClientService {
                           AuthenticationProvider authenticationProvider,
                           ClientIdRegistry clientIdRegistry,
                           ApplicationEventPublisher eventPublisher,
-                          FlowControlQueueRegistry flowControlQueueRegistry,
-                          CommandCache commandCache,
+                          @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int commandQueueCapacity,
                           @Qualifier("commandInstructionAckSource")
                                   InstructionAckSource<SerializedCommandProviderInbound> instructionAckSource) {
         this.topology = topology;
@@ -102,6 +100,7 @@ public class CommandService implements AxonServerClientService {
         this.authenticationProvider = authenticationProvider;
         this.clientIdRegistry = clientIdRegistry;
         this.eventPublisher = eventPublisher;
+        this.commandQueueCapacity = commandQueueCapacity;
         this.instructionAckSource = instructionAckSource;
 
     }
@@ -138,8 +137,7 @@ public class CommandService implements AxonServerClientService {
             private final AtomicReference<String> clientIdRef = new AtomicReference<>();
             private final AtomicReference<ClientStreamIdentification> clientRef = new AtomicReference<>();
             private final AtomicReference<FlowControlledCommandHandler> commandHandlerRef = new AtomicReference<>();
-            private final AtomicLong initialPermits = new AtomicLong(0);
-            private final CommandStream commandStream = new CommandStream(wrappedResponseObserver);
+            private final CommandStream commandStream = new CommandStream(wrappedResponseObserver, commandQueueCapacity);
 
             @Override
             protected void consume(CommandProviderOutbound commandFromSubscriber) {
@@ -209,11 +207,13 @@ public class CommandService implements AxonServerClientService {
 
             private void checkInitClient(String clientId, String component) {
                 initClientReference(clientId);
-                commandHandlerRef.compareAndSet(null,
+                if (commandHandlerRef.compareAndSet(null,
                                                 new FlowControlledCommandHandler(clientRef.get(),
                                                                                  clientId,
                                                                                  component,
-                                                                                 commandStream));
+                                                                                 commandStream))) {
+                    dispatcherListeners.put(clientRef.get(), commandHandlerRef.get());
+                }
             }
 
             @Override
