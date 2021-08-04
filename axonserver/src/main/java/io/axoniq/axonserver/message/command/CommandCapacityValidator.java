@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.grpc.SerializedCommand;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
@@ -37,7 +36,7 @@ public class CommandCapacityValidator implements CapacityValidator {
     }
 
     @Override
-    public void checkCapacity(String context, SerializedCommand command) {
+    public Ticket ticket(String context) {
         pendingCommands.updateAndGet(current -> {
             if (current >= cacheCapacity) {
                 throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
@@ -45,10 +44,6 @@ public class CommandCapacityValidator implements CapacityValidator {
             }
             return current+1;
         });
-    }
-
-    @Override
-    public void requestDone(String context, SerializedCommand command) {
-        pendingCommands.decrementAndGet();
+        return pendingCommands::decrementAndGet;
     }
 }

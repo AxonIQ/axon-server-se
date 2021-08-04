@@ -13,7 +13,7 @@ package io.axoniq.axonserver.message.command;
  * @author Marc Gathier
  * @since
  */
-public interface CapacityValidator {
-
-    Ticket ticket(String context);
+@FunctionalInterface
+public interface Ticket {
+    void release();
 }

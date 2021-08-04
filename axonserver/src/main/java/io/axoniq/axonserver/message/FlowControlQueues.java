@@ -171,10 +171,6 @@ public class FlowControlQueues<T> {
             this.id = requestId.getAndIncrement();
         }
 
-        public T value() {
-            return value;
-        }
-
         @Override
         public boolean equals(Object o) {
             if (this == o) {

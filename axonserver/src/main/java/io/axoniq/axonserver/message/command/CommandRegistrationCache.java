@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.UnsubscribeCommand;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
@@ -267,6 +268,12 @@ public class CommandRegistrationCache {
         CommandSubscription request = event.getRequest();
         remove(event.clientIdentification(), request.getCommand());
     }
+
+    @EventListener
+    public void on(TopologyEvents.CommandHandlerDisconnected event) {
+        remove(event.clientIdentification());
+    }
+
 
 
     public static class RegistrationEntry {

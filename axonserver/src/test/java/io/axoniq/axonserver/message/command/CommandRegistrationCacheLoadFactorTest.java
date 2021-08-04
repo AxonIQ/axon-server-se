@@ -4,6 +4,7 @@ import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeComman
 import io.axoniq.axonserver.component.command.FakeCommandHandler;
 import io.axoniq.axonserver.grpc.command.Command;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
+import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.junit.*;
 
 import java.util.HashMap;
@@ -85,12 +86,12 @@ public class CommandRegistrationCacheLoadFactorTest {
             String client, String command, int loadFactor) {
         return new SubscribeCommand(
                 "context",
-                "clientStreamId", CommandSubscription.newBuilder()
+                client, CommandSubscription.newBuilder()
                                                      .setClientId(client)
                                                      .setComponentName("componentName")
                                                      .setCommand(command)
                                                      .setLoadFactor(loadFactor)
                                                      .build(),
-                new FakeCommandHandler(null, client, "componentName"));
+                new FakeCommandHandler(new ClientStreamIdentification("context", client), client, "componentName"));
     }
 }

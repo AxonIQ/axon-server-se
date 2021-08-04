@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -21,20 +20,18 @@ import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 
 /**
@@ -48,24 +45,25 @@ import javax.annotation.Nonnull;
 public class CommandDispatcher {
 
     private final CommandRegistrationCache registrations;
-    private final ConstraintCache<String, CommandInformation> commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final Map<String, MeterFactory.RateMeter> commandRatePerContext = new ConcurrentHashMap<>();
     private final CommandInterceptors commandInterceptors;
     private final CapacityValidator capacityValidator;
+    private final Duration commandTimeout;
+    private final AtomicInteger activeCommands = new AtomicInteger();
 
     public CommandDispatcher(CommandRegistrationCache registrations,
-                             ConstraintCache<String, CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
                              CommandInterceptors commandInterceptors,
-                             CapacityValidator capacityValidator) {
+                             CapacityValidator capacityValidator,
+                             @Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout) {
         this.registrations = registrations;
-        this.commandCache = commandCache;
         this.metricRegistry = metricRegistry;
         this.commandInterceptors = commandInterceptors;
         this.capacityValidator = capacityValidator;
-        metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
+        this.commandTimeout = Duration.ofMillis(defaultCommandTimeout);
+        metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, activeCommands, AtomicInteger::get);
     }
 
 
@@ -101,7 +99,7 @@ public class CommandDispatcher {
                                                             commandHandler == null ? "NOT_FOUND" : commandHandler.getClientId(),
                                                             context,
                                                             System.currentTimeMillis() - time)
-            ).timeout(Duration.ofSeconds(500));
+            );
         } catch (MessagingPlatformException other) {
             logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
             executionContext.compensate(other);
@@ -143,12 +141,6 @@ public class CommandDispatcher {
                                                              .rateMeter(c, BaseMetricName.AXON_COMMAND_RATE));
     }
 
-    @EventListener
-    public void on(TopologyEvents.CommandHandlerDisconnected event) {
-        cleanupRegistrations(event.clientIdentification());
-        handlePendingCommands(event.clientIdentification());
-    }
-
     private Mono<SerializedCommandResponse> dispatchToCommandHandler(SerializedCommand command,
                                                                      CommandHandler commandHandler,
                                                                      String context,
@@ -161,9 +153,15 @@ public class CommandDispatcher {
         }
 
         try {
-            capacityValidator.checkCapacity(context,command);
+            Ticket ticket = capacityValidator.ticket(context);
             logger.debug("Dispatch {} to: {}", command.getName(), commandHandler.getClientStreamIdentification());
-            return commandHandler.dispatch(command).doOnTerminate(() -> capacityValidator.requestDone(context,command));
+            activeCommands.incrementAndGet();
+            return commandHandler.dispatch(command)
+                                 .timeout(commandTimeout)
+                                 .doOnTerminate(() -> {
+                                     ticket.release();
+                                     activeCommands.decrementAndGet();
+                                 });
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             return Mono.just(errorCommandResponse(command.getMessageIdentifier(),
                                                          ErrorCode.TOO_MANY_REQUESTS,
@@ -178,45 +176,8 @@ public class CommandDispatcher {
 
 
 
-    public void handleResponse(SerializedCommandResponse commandResponse, boolean proxied) {
-        CommandInformation toPublisher = commandCache.remove(commandResponse.getRequestIdentifier());
-        if (toPublisher != null) {
-            logger.debug("Sending response to: {}", toPublisher);
-            if (!proxied) {
-                metricRegistry.add(toPublisher.getRequestIdentifier(),
-                                   toPublisher.getSourceClientId(),
-                                   toPublisher.getTargetClientId(),
-                                   toPublisher.getClientStreamIdentification().getContext(),
-                                   System.currentTimeMillis() - toPublisher.getTimestamp());
-            }
-            toPublisher.getResponseConsumer().accept(commandResponse);
-        } else {
-            logger.info("Could not find command request: {}", commandResponse.getRequestIdentifier());
-        }
-    }
-
-    private void cleanupRegistrations(ClientStreamIdentification client) {
-        registrations.remove(client);
-    }
-
-    private void handlePendingCommands(ClientStreamIdentification client) {
-        List<String> messageIds = commandCache.entrySet().stream().filter(e -> e.getValue().checkClient(client))
-                                              .map(Map.Entry::getKey).collect(Collectors.toList());
-
-        messageIds.forEach(m -> {
-            CommandInformation ci = commandCache.remove(m);
-            if (ci != null) {
-                ci.getResponseConsumer()
-                  .accept(errorCommandResponse(m,
-                                               ErrorCode.CONNECTION_TO_HANDLER_LOST,
-                                               "Connection lost while executing command on: " + ci
-                                                       .getTargetClientId()));
-            }
-        });
-    }
-
     public int activeCommandCount() {
-        return commandCache.size();
+        return activeCommands.get();
     }
 
     @Nonnull

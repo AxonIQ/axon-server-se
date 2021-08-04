@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.component.command.FakeCommandHandler;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -33,7 +32,6 @@ import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.junit.*;
 
-import java.time.Clock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,6 +45,7 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class CommandDispatcherTest {
 
+    public static final int COMMAND_TIMEOUT = 10000;
     private CommandDispatcher commandDispatcher;
     MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
     private CommandMetricsRegistry metricsRegistry;
@@ -55,29 +54,18 @@ public class CommandDispatcherTest {
     @Mock
     private CommandRegistrationCache registrations;
     private final AtomicBoolean tooManyRequests = new AtomicBoolean();
-    private final CapacityValidator sampleCapacityValidator = new CapacityValidator() {
-        @Override
-        public void checkCapacity(String context, SerializedCommand command) {
-            if(tooManyRequests.get()) {
-                throw new InsufficientBufferCapacityException("Too many requests");
-            }
+    private final CapacityValidator sampleCapacityValidator = context -> {
+        if(tooManyRequests.get()) {
+            throw new InsufficientBufferCapacityException("Too many requests");
         }
-
-        @Override
-        public void requestDone(String context, SerializedCommand command) {
-
-        }
+        return () -> {};
     };
+
     @Before
     public void setup() {
         metricsRegistry = new CommandMetricsRegistry(meterFactory);
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry,
-                                                  new NoOpCommandInterceptors(), sampleCapacityValidator);
-    }
-
-    @Test
-    public void unregisterCommandHandler() {
-        commandDispatcher.on(new CommandHandlerDisconnected(null, "clientId", "client", false));
+        commandDispatcher = new CommandDispatcher(registrations, metricsRegistry,
+                                                  new NoOpCommandInterceptors(), sampleCapacityValidator, COMMAND_TIMEOUT);
     }
 
     @Test
@@ -131,9 +119,8 @@ public class CommandDispatcherTest {
     public void dispatchQueueFull() {
         tooManyRequests.set(true);
         commandDispatcher = new CommandDispatcher(registrations,
-                                                  commandCache,
                                                   metricsRegistry,
-                                                  new NoOpCommandInterceptors(), sampleCapacityValidator);
+                                                  new NoOpCommandInterceptors(), sampleCapacityValidator, COMMAND_TIMEOUT);
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         Command request = Command.newBuilder()
                                  .addProcessingInstructions(ProcessingInstructionHelper.routingKey("1234"))
@@ -218,23 +205,8 @@ public class CommandDispatcherTest {
     }
 
     @Test
-    public void handleResponse() {
-        AtomicBoolean responseHandled = new AtomicBoolean(false);
-        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "Client");
-        CommandInformation commandInformation = new CommandInformation("TheCommand",
-                                                                       "Source",
-                                                                       "Target",
-                                                                       (r) -> responseHandled.set(true),
-                                                                       client, "Component");
-        when(commandCache.remove(any(String.class))).thenReturn(commandInformation);
-
-        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder().build()), false);
-        assertTrue(responseHandled.get());
-    }
-
-    @Test
     public void dispatchRequestRejected() throws ExecutionException, InterruptedException {
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry,
+        commandDispatcher = new CommandDispatcher(registrations, metricsRegistry,
                                                   new CommandInterceptors() {
                                                       @Override
                                                       public SerializedCommand commandRequest(
@@ -250,7 +222,7 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  }, sampleCapacityValidator);
+                                                  }, sampleCapacityValidator, 10000);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
@@ -263,7 +235,7 @@ public class CommandDispatcherTest {
 
     @Test
     public void dispatchRequestInterceptorException() throws ExecutionException, InterruptedException {
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry,
+        commandDispatcher = new CommandDispatcher(registrations, metricsRegistry,
                                                   new CommandInterceptors() {
                                                       @Override
                                                       public SerializedCommand commandRequest(
@@ -279,7 +251,7 @@ public class CommandDispatcherTest {
                                                               ExecutionContext executionContext) {
                                                           return serializedResponse;
                                                       }
-                                                  }, sampleCapacityValidator);
+                                                  }, sampleCapacityValidator, COMMAND_TIMEOUT);
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch("demo",
                                    null,
@@ -292,11 +264,10 @@ public class CommandDispatcherTest {
 
     @Test
     public void handleResponseInterceptorException() throws ExecutionException, InterruptedException {
-        commandCache = new CommandCache(10000, Clock.systemUTC(), 100000);
         ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
         FakeCommandHandler result = new FakeCommandHandler(client, "client", "component");
         when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
-        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry,
+        commandDispatcher = new CommandDispatcher(registrations, metricsRegistry,
                                                   new CommandInterceptors() {
                                                       @Override
                                                       public SerializedCommand commandRequest(
@@ -312,7 +283,7 @@ public class CommandDispatcherTest {
                                                           throw new MessagingPlatformException(ErrorCode.EXCEPTION_IN_INTERCEPTOR,
                                                                                                "failed");
                                                       }
-                                                  }, sampleCapacityValidator);
+                                                  }, sampleCapacityValidator, COMMAND_TIMEOUT);
 
         CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
         commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, null,
