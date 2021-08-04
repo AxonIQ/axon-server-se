@@ -21,8 +21,6 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.command.CommandProviderOutbound;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandSubscription;
-import io.axoniq.axonserver.message.ClientStreamIdentification;
-import io.axoniq.axonserver.message.command.CommandCache;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -32,10 +30,8 @@ import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
-import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
-
-import java.util.function.Consumer;
+import reactor.core.publisher.Mono;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -54,7 +50,6 @@ public class CommandServiceTest {
     @Before
     public void setUp() {
         commandDispatcher = mock(CommandDispatcher.class);
-        CommandCache commandCache = mock(CommandCache.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
@@ -186,12 +181,7 @@ public class CommandServiceTest {
 
     @Test
     public void dispatch() {
-        when(commandDispatcher.dispatch(any(), any(), any())).then(invocationOnMock -> {
-            Consumer<SerializedCommandResponse> responseConsumer = (Consumer<SerializedCommandResponse>) invocationOnMock
-                    .getArguments()[3];
-            responseConsumer.accept(new SerializedCommandResponse(CommandResponse.newBuilder().build()));
-            return null;
-        });
+        when(commandDispatcher.dispatch(any(), any(),any())).thenReturn(Mono.just(new SerializedCommandResponse(CommandResponse.newBuilder().build())));
         FakeStreamObserver<SerializedCommandResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.dispatch(Command.newBuilder().build().toByteArray(), responseObserver);
         assertEquals(1, responseObserver.values().size());
@@ -207,29 +197,5 @@ public class CommandServiceTest {
                                                     .build());
         requestStream.onError(new RuntimeException("failed"));
         verify(eventPublisher).publishEvent(isA(TopologyEvents.CommandHandlerDisconnected.class));
-    }
-
-    @Test
-    public void disconnectClientStream() {
-        FakeStreamObserver<SerializedCommandProviderInbound> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<CommandProviderOutbound> requestStream = testSubject.openStream(responseObserver);
-        requestStream.onNext(CommandProviderOutbound.newBuilder()
-                                                    .setSubscribe(CommandSubscription.newBuilder()
-                                                                                     .setClientId(clientId)
-                                                                                     .setComponentName("component")
-                                                                                     .setCommand("command"))
-                                                    .build());
-        requestStream.onNext(CommandProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder()
-                                                                                            .setPermits(100)
-                                                                                            .setClientId(clientId)
-                                                                                            .build()).build());
-        ArgumentCaptor<SubscribeCommand> subscribe = ArgumentCaptor.forClass(SubscribeCommand.class);
-        verify(eventPublisher).publishEvent(subscribe.capture());
-        SubscribeCommand subscribeCommand = subscribe.getValue();
-        ClientStreamIdentification streamIdentification = subscribeCommand.getHandler().getClientStreamIdentification();
-        testSubject.completeStreamForInactivity(clientId, streamIdentification);
-        verify(eventPublisher).publishEvent(isA(TopologyEvents.CommandHandlerDisconnected.class));
-        assertEquals(1, responseObserver.errors().size());
-        assertTrue(responseObserver.errors().get(0).getMessage().contains("Command stream inactivity"));
     }
 }
