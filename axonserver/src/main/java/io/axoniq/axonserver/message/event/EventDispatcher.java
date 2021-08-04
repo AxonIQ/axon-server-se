@@ -51,16 +51,17 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
 import java.io.InputStream;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
@@ -148,35 +149,19 @@ public class EventDispatcher implements AxonServerClientService {
                     NO_EVENT_STORE_CONFIGURED + context));
             return new NoOpStreamObserver<>();
         }
-        StreamObserver<InputStream> appendEventConnection =
-                eventStore.createAppendEventConnection(context, authentication,
-                        new StreamObserver<Confirmation>() {
-                            @Override
-                            public void onNext(Confirmation confirmation) {
-                                responseObserver.onNext(confirmation);
-                            }
 
-                            @Override
-                            public void onError(Throwable throwable) {
-                                StreamObserverUtils.error(responseObserver,
-                                        MessagingPlatformException
-                                                .create(throwable));
-                            }
+        Sinks.Many<Event> sink = Sinks.many()
+                                      .unicast()
+                                      .onBackpressureBuffer();
 
-                            @Override
-                            public void onCompleted() {
-
-                                responseObserver.onCompleted();
-                            }
-                        });
-        return new StreamObserver<InputStream>() {
+        StreamObserver<InputStream> inputStreamObserver = new StreamObserver<InputStream>() {
             @Override
             public void onNext(InputStream inputStream) {
                 try {
-                    appendEventConnection.onNext(inputStream);
+                    sink.tryEmitNext(Event.parseFrom(inputStream));
                     eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
                 } catch (Exception exception) {
-                    StreamObserverUtils.error(appendEventConnection, exception);
+                    sink.tryEmitError(exception);
                     StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
                 }
             }
@@ -184,14 +169,30 @@ public class EventDispatcher implements AxonServerClientService {
             @Override
             public void onError(Throwable throwable) {
                 logger.warn("Error on connection from client: {}", throwable.getMessage());
-                StreamObserverUtils.error(appendEventConnection, throwable);
+                sink.tryEmitError(throwable);
             }
 
             @Override
             public void onCompleted() {
-                appendEventConnection.onCompleted();
+                sink.tryEmitComplete();
             }
         };
+
+        eventStore.appendEvents(context, sink.asFlux(), authentication)
+                  .doOnSuccess(v -> {
+                      responseObserver.onNext(Confirmation.newBuilder()
+                                                          .setSuccess(true)
+                                                          .build());
+                      responseObserver.onCompleted();
+                  })
+                  .doOnError(throwable -> StreamObserverUtils
+                          .error(responseObserver, MessagingPlatformException.create(throwable)))
+                  .doOnCancel(() -> StreamObserverUtils.error(responseObserver,
+                                                              MessagingPlatformException.create(new RuntimeException(
+                                                                      "Appending events cancelled."))))
+                  .subscribe();
+
+        return inputStreamObserver;
     }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
@@ -215,15 +216,21 @@ public class EventDispatcher implements AxonServerClientService {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
                 eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-                eventStore.appendSnapshot(context, authentication, snapshot).whenComplete((c, t) -> {
-                    if (t != null) {
-                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                        responseObserver.onError(t);
-                    } else {
-                        responseObserver.onNext(c);
-                        responseObserver.onCompleted();
-                    }
-                });
+                eventStore.appendSnapshot(context, snapshot, authentication)
+                          .doOnSuccess(v -> {
+                              responseObserver.onNext(Confirmation.newBuilder()
+                                                                  .setSuccess(true)
+                                                                  .build());
+                              responseObserver.onCompleted();
+                          })
+                          .doOnError(t -> {
+                              logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
+                              responseObserver.onError(t);
+                          })
+                          .doOnCancel(() -> responseObserver.onError(MessagingPlatformException
+                                                                             .create(new RuntimeException(
+                                                                                     "Appending snapshot cancelled"))))
+                          .subscribe();
             } catch (Exception ex) {
                 responseObserver.onError(ex);
             }
@@ -339,37 +346,10 @@ public class EventDispatcher implements AxonServerClientService {
 
 
     public long getNrOfEvents(String context) {
-        CompletableFuture<Long> lastTokenFuture = new CompletableFuture<>();
-        try {
-            eventStoreLocator.getEventStore(context).getLastToken(context,
-                    GetLastTokenRequest.newBuilder().build(),
-                    new StreamObserver<TrackingToken>() {
-                        @Override
-                        public void onNext(TrackingToken trackingToken) {
-                            lastTokenFuture.complete(trackingToken
-                                    .getToken());
-                        }
-
-                        @Override
-                        public void onError(Throwable throwable) {
-                            lastTokenFuture.completeExceptionally(
-                                    throwable);
-                        }
-
-                        @Override
-                        public void onCompleted() {
-                            // no action needed
-                        }
-                    });
-
-
-            return lastTokenFuture.get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return -1;
-        } catch (Exception e) {
-            return -1;
-        }
+        Long lastEventToken = eventStoreLocator.getEventStore(context)
+                                               .lastEventToken(context)
+                                               .block();
+        return lastEventToken != null ? lastEventToken : -1;
     }
 
     public Map<String, Iterable<Long>> eventTrackerStatus(String context) {
@@ -425,13 +405,12 @@ public class EventDispatcher implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getFirstToken",
                 callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                client.getFirstToken(
-                        contextProvider
-                                .getContext(),
-                        request,
-                        responseObserver)
-        );
+        checkConnection(contextProvider.getContext(), responseObserver)
+                .ifPresent(client -> client.firstEventToken(contextProvider.getContext())
+                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                                           .subscribe(responseObserver::onNext,
+                                                      responseObserver::onError,
+                                                      responseObserver::onCompleted));
     }
 
     private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
@@ -449,13 +428,13 @@ public class EventDispatcher implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getLastToken",
                 callStreamObserver);
-        checkConnection(contextProvider.getContext(), responseObserver).ifPresent(client ->
-                client.getLastToken(
-                        contextProvider
-                                .getContext(),
-                        request,
-                        responseObserver)
-        );
+        checkConnection(contextProvider.getContext(), responseObserver)
+                .ifPresent(client -> client.lastEventToken(contextProvider.getContext())
+                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                                           .subscribe(responseObserver::onNext,
+                                                      responseObserver::onError,
+                                                      responseObserver::onCompleted)
+                );
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> streamObserver) {
@@ -464,8 +443,12 @@ public class EventDispatcher implements AxonServerClientService {
                 "getTokenAt",
                 callStreamObserver);
         checkConnection(contextProvider.getContext(), responseObserver)
-                .ifPresent(client -> client.getTokenAt(contextProvider.getContext(), request, responseObserver)
-                );
+                .ifPresent(client -> client.eventTokenAt(contextProvider.getContext(),
+                                                         Instant.ofEpochMilli(request.getInstant()))
+                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                                           .subscribe(responseObserver::onNext,
+                                                      responseObserver::onError,
+                                                      responseObserver::onCompleted));
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
@@ -534,10 +517,12 @@ public class EventDispatcher implements AxonServerClientService {
                                        StreamObserver<SerializedEvent> responseObserver) {
         checkConnection(context, responseObserver).ifPresent(eventStore -> {
             try {
-                eventStore.listAggregateSnapshots(context,
-                        authentication,
-                        request,
-                        responseObserver);
+                eventStore.aggregateSnapshots(context, authentication, request)
+                          .doOnCancel(() -> responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
+                                  "Listing aggregate snapshots cancelled."))))
+                          .subscribe(responseObserver::onNext,
+                                     responseObserver::onError,
+                                     responseObserver::onCompleted);
             } catch (RuntimeException t) {
                 logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateSnapshots", t.getMessage(), t);
                 responseObserver.onError(GrpcExceptionBuilder.build(t));
@@ -610,7 +595,7 @@ public class EventDispatcher implements AxonServerClientService {
         private final StreamObserver<InputStream> responseObserver;
         private final Authentication principal;
         private final String context;
-        volatile StreamObserver<GetEventsRequest> eventStoreRequestObserver;
+        private final AtomicReference<Sinks.Many<GetEventsRequest>> requestSink = new AtomicReference<>();
         volatile EventTrackerInfo trackerInfo;
 
         GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, String context,
@@ -627,18 +612,18 @@ public class EventDispatcher implements AxonServerClientService {
             }
 
             try {
-                eventStoreRequestObserver.onNext(getEventsRequest);
+                requestSink.get().tryEmitNext(getEventsRequest);
             } catch (Exception reason) {
                 logger.warn("Error on connection sending event to client: {}", reason.getMessage());
-                if (eventStoreRequestObserver != null) {
-                    eventStoreRequestObserver.onCompleted();
-                }
+                requestSink.get().tryEmitComplete();
                 removeTrackerInfo();
             }
         }
 
         private boolean registerEventTracker(GetEventsRequest getEventsRequest) {
-            if (eventStoreRequestObserver == null) {
+            if (requestSink.compareAndSet(null, Sinks.many()
+                                                     .unicast()
+                                                     .onBackpressureBuffer())) {
                 trackerInfo = new EventTrackerInfo(responseObserver,
                         getEventsRequest.getClientId(),
                         context,
@@ -652,34 +637,29 @@ public class EventDispatcher implements AxonServerClientService {
                                 NO_EVENT_STORE_CONFIGURED + context));
                         return false;
                     }
-                    eventStoreRequestObserver =
-                            eventStore.listEvents(context, principal, new StreamObserver<InputStream>() {
-                                @Override
-                                public void onNext(InputStream eventWithToken) {
-                                    responseObserver.onNext(eventWithToken);
-                                    trackerInfo.incrementLastToken();
-                                }
 
-                                @Override
-                                public void onError(Throwable throwable) {
-                                    if (throwable instanceof IllegalStateException) {
-                                        logger.debug(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                throwable.getMessage());
-                                    } else {
-                                        logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                throwable.getMessage());
-                                    }
-                                    StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
-                                    removeTrackerInfo();
-                                }
-
-                                @Override
-                                public void onCompleted() {
-                                    logger.info("{}: Tracking event processor closed", trackerInfo.context);
-                                    removeTrackerInfo();
-                                    StreamObserverUtils.complete(responseObserver);
-                                }
-                            });
+                    eventStore.events(context, principal, requestSink.get().asFlux())
+                              .doOnCancel(() -> StreamObserverUtils.error(responseObserver,
+                                                                          GrpcExceptionBuilder.build(
+                                                                                  new RuntimeException("Listing events canceled."))))
+                              .subscribe(eventWithToken -> {
+                                  responseObserver.onNext(eventWithToken.asInputStream());
+                                  trackerInfo.incrementLastToken();
+                              }, throwable -> {
+                                  if (throwable instanceof IllegalStateException) {
+                                      logger.debug(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                   throwable.getMessage());
+                                  } else {
+                                      logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
+                                                  throwable.getMessage());
+                                  }
+                                  StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
+                                  removeTrackerInfo();
+                              }, () -> {
+                                  logger.info("{}: Tracking event processor closed", trackerInfo.context);
+                                  removeTrackerInfo();
+                                  StreamObserverUtils.complete(responseObserver);
+                              });
                 } catch (RuntimeException cause) {
                     responseObserver.onError(GrpcExceptionBuilder.build(cause));
                     return false;
@@ -726,7 +706,7 @@ public class EventDispatcher implements AxonServerClientService {
         }
 
         private void cleanup() {
-            StreamObserverUtils.complete(eventStoreRequestObserver);
+            requestSink.get().tryEmitComplete();
             removeTrackerInfo();
         }
     }
