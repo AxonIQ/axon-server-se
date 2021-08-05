@@ -10,12 +10,10 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.message.command.WrappedCommand;
-import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Sinks;
 
 import java.util.Comparator;
@@ -23,7 +21,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nonnull;
 
 /**
@@ -34,11 +31,11 @@ public class CommandStream {
 
     private static final Logger logger = LoggerFactory.getLogger(CommandStream.class);
 
-    private final Sinks.Many<WrappedCommand> listener;
+    private final Sinks.Many<WrappedCommand> sink;
     private final PriorityBlockingQueue<WrappedCommand> queue;
-    private final AtomicReference<Subscription> subscription = new AtomicReference<>();
     private final AtomicLong permits = new AtomicLong();
     private final int hardLimit;
+    private final BaseSubscriber<WrappedCommand> subscriber;
 
     public CommandStream(StreamObserver<SerializedCommandProviderInbound> wrappedResponseObserver, int softLimit) {
         this.hardLimit = (int)Math.floor(softLimit*1.1d);
@@ -55,60 +52,60 @@ public class CommandStream {
                 return super.offer(command);
             }
         };
-        this.listener = Sinks.many().unicast().onBackpressureBuffer(queue);
-        this.listener.asFlux()
-                     .doOnCancel(() -> StreamObserverUtils.complete(wrappedResponseObserver))
-                     .subscribe(new Subscriber<WrappedCommand>() {
+        this.sink = Sinks.many().unicast().onBackpressureBuffer(queue);
+        this.subscriber = new BaseSubscriber<WrappedCommand>() {
 
-                         @Override
-                         public void onSubscribe(Subscription subscription) {
-                             CommandStream.this.subscription.set(subscription);
-                         }
+            @Override
+            protected void hookOnNext(@Nonnull WrappedCommand wrappedCommand) {
+                SerializedCommandProviderInbound request =
+                        SerializedCommandProviderInbound.newBuilder()
+                                                        .setCommand(wrappedCommand.command())
+                                                        .build();
+                wrappedResponseObserver.onNext(request);
+                permits.decrementAndGet();
+            }
 
-                         @Override
-                         public void onNext(WrappedCommand wrappedCommand) {
-                             SerializedCommandProviderInbound request =
-                                     SerializedCommandProviderInbound.newBuilder()
-                                                                     .setCommand(wrappedCommand.command())
-                                                                     .build();
-                             wrappedResponseObserver.onNext(request);
-                             permits.decrementAndGet();
-                         }
+            @Override
+            protected void hookOnComplete() {
+                wrappedResponseObserver.onCompleted();
+            }
 
-                         @Override
-                         public void onError(Throwable throwable) {
-                             wrappedResponseObserver.onError(throwable);
-                         }
+            @Override
+            protected void hookOnError(@Nonnull Throwable throwable) {
+                wrappedResponseObserver.onError(throwable);
+            }
 
-                         @Override
-                         public void onComplete() {
-                             wrappedResponseObserver.onCompleted();
-                         }
-                     });
+            @Override
+            protected void hookOnCancel() {
+                wrappedResponseObserver.onCompleted();
+            }
+        };
+        this.sink.asFlux()
+                 .subscribe(subscriber);
     }
 
 
     public List<WrappedCommand> cancel() {
         List<WrappedCommand> queued = new LinkedList<>();
         queue.drainTo(queued);
-        subscription.get().cancel();
+        subscriber.cancel();
         return queued;
     }
 
     public void addPermits(long permits) {
         this.permits.addAndGet(permits);
-        subscription.get().request(permits);
+        subscriber.request(permits);
     }
 
     public List<WrappedCommand> emitError(Exception exception) {
-        listener.tryEmitError(exception);
+        sink.tryEmitError(exception);
         List<WrappedCommand> queued = new LinkedList<>();
         queue.drainTo(queued);
         return queued;
     }
 
     public void emitNext(WrappedCommand wrappedCommand, Sinks.EmitFailureHandler failureHandler) {
-        listener.emitNext(wrappedCommand, failureHandler);
+        sink.emitNext(wrappedCommand, failureHandler);
     }
 
     public int waiting() {
