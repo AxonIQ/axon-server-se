@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
 public class FlowControlledCommandHandlerTest {
 
@@ -48,9 +48,9 @@ public class FlowControlledCommandHandlerTest {
     @Test
     public void dispatch() throws InterruptedException {
         commandStream.addPermits(1);
-        testSubject.dispatch(new SerializedCommand(newCommand("1"))).subscribe(r -> System.out.println(r));
+        testSubject.dispatch(new SerializedCommand(newCommand("1"))).subscribe(System.out::println);
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, responseObserver.values().size()));
-        testSubject.dispatch(new SerializedCommand(newCommand("2"))).subscribe(r -> System.out.println(r));
+        testSubject.dispatch(new SerializedCommand(newCommand("2"))).subscribe(System.out::println);
         Thread.sleep(100);
         assertEquals(1, testSubject.waiting());
         assertEquals(1, responseObserver.values().size());
@@ -72,12 +72,12 @@ public class FlowControlledCommandHandlerTest {
         testSubject.dispatch(new SerializedCommand(newCommand("1"))).subscribe(System.out::println);
         testSubject.close();
         assertEquals(0, testSubject.waiting());
-        testSubject.dispatch(new SerializedCommand(newCommand("2"))).subscribe(r -> System.out.println(r));
+        testSubject.dispatch(new SerializedCommand(newCommand("2"))).subscribe(System.out::println);
         assertEquals(0, testSubject.waiting());
     }
 
     @Test
-    public void overflowHardLimit() throws InterruptedException {
+    public void overflowHardLimit()  {
         for (int i = 0; i < 10; i++) {
             testSubject.dispatch(new SerializedCommand(
                     newCommand("1" + i))).subscribe(System.out::println);
@@ -92,9 +92,9 @@ public class FlowControlledCommandHandlerTest {
                                  .build();
         Mono<SerializedCommandResponse> responseMono3 = testSubject.dispatch(new SerializedCommand(command));
         try {
-            SerializedCommandResponse response = responseMono3.block(Duration.ofMillis(200));
+            responseMono3.block(Duration.ofMillis(200));
             fail("Expecting illegal state exception for timeout");
-        } catch (IllegalStateException illegalStateException) {
+        } catch (IllegalStateException ignore) {
 
         }
         assertEquals(11, commandStream.waiting());
@@ -107,7 +107,7 @@ public class FlowControlledCommandHandlerTest {
     }
 
     @Test
-    public void overflowSoftLimit() throws InterruptedException {
+    public void overflowSoftLimit() {
         for (int i = 0; i < 10; i++) {
             testSubject.dispatch(new SerializedCommand(
                     newCommand("1" + i))).subscribe(System.out::println);

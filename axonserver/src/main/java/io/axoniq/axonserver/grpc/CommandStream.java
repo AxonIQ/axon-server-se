@@ -9,24 +9,22 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.command.WrappedCommand;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
@@ -34,7 +32,6 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class CommandStream {
 
-    private static final ExecutorService executors = Executors.newCachedThreadPool();
     private static final Logger logger = LoggerFactory.getLogger(CommandStream.class);
 
     private final Sinks.Many<WrappedCommand> listener;
@@ -47,37 +44,29 @@ public class CommandStream {
         this.hardLimit = (int)Math.floor(softLimit*1.1d);
         this.queue = new PriorityBlockingQueue<WrappedCommand>(10, Comparator.comparing(WrappedCommand::priority)) {
             @Override
-            public boolean offer(WrappedCommand o) {
+            public boolean offer(@Nonnull WrappedCommand command) {
+                logger.warn("Offer: {}", command.command().getMessageIdentifier());
                 int size = size();
                 if( size >= softLimit) {
-                    if (size >= hardLimit || o.priority() <=  0) {
+                    if (size >= hardLimit || command.priority() <=  0) {
                         return false;
                     }
                 }
-                return super.offer(o);
+                return super.offer(command);
             }
         };
         this.listener = Sinks.many().unicast().onBackpressureBuffer(queue);
-        this.listener.asFlux().publishOn(Schedulers.fromExecutorService(executors))
-                     .doOnCancel(() -> {
-                         logger.warn("onCancel");
-                         wrappedResponseObserver.onCompleted();
-                     })
-                     .doOnError(throwable -> {
-                         logger.warn("doOnError");
-                         wrappedResponseObserver.onError(throwable);
-                     })
+        this.listener.asFlux()
+                     .doOnCancel(() -> StreamObserverUtils.complete(wrappedResponseObserver))
                      .subscribe(new Subscriber<WrappedCommand>() {
 
                          @Override
                          public void onSubscribe(Subscription subscription) {
-                             logger.warn("Subscription received");
                              CommandStream.this.subscription.set(subscription);
                          }
 
                          @Override
                          public void onNext(WrappedCommand wrappedCommand) {
-                             logger.debug("onNext");
                              SerializedCommandProviderInbound request =
                                      SerializedCommandProviderInbound.newBuilder()
                                                                      .setCommand(wrappedCommand.command())
@@ -88,13 +77,11 @@ public class CommandStream {
 
                          @Override
                          public void onError(Throwable throwable) {
-                             logger.warn("onError", throwable);
                              wrappedResponseObserver.onError(throwable);
                          }
 
                          @Override
                          public void onComplete() {
-                             logger.info("onComplete");
                              wrappedResponseObserver.onCompleted();
                          }
                      });
@@ -102,9 +89,9 @@ public class CommandStream {
 
 
     public List<WrappedCommand> cancel() {
-        subscription.get().cancel();
         List<WrappedCommand> queued = new LinkedList<>();
         queue.drainTo(queued);
+        subscription.get().cancel();
         return queued;
     }
 
@@ -113,7 +100,7 @@ public class CommandStream {
         subscription.get().request(permits);
     }
 
-    public List<WrappedCommand> tryEmitError(ApplicationInactivityException exception) {
+    public List<WrappedCommand> emitError(Exception exception) {
         listener.tryEmitError(exception);
         List<WrappedCommand> queued = new LinkedList<>();
         queue.drainTo(queued);

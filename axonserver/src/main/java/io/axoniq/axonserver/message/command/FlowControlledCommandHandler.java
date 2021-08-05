@@ -15,7 +15,6 @@ import io.axoniq.axonserver.grpc.ErrorMessage;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
-import io.axoniq.axonserver.grpc.heartbeat.ApplicationInactivityException;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FlowControlledCommandHandler extends CommandHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(FlowControlledCommandHandler.class);
-    private final Map<String, MonoSink<SerializedCommandResponse>> commandCache = new ConcurrentHashMap<String, reactor.core.publisher.MonoSink<SerializedCommandResponse>>();
+    private final Map<String, MonoSink<SerializedCommandResponse>> commandCache = new ConcurrentHashMap<>();
     private final CommandStream listener;
     private final String queueName;
 
@@ -54,18 +53,18 @@ public class FlowControlledCommandHandler extends CommandHandler {
 
             commandCache.put(request.getMessageIdentifier(), sink);
             listener.emitNext(wrappedCommand, (signalType, emitResult) -> {
-                if( emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED)) {
+                if( Sinks.EmitResult.FAIL_NON_SERIALIZED.equals(emitResult)) {
                     return true;
                 }
-                logger.warn("Failed to dispatch. Signal {}, result {}", signalType, emitResult);
-                commandResponse(cannotEmit(request.getMessageIdentifier()));
+                logger.debug("Failed to dispatch. Signal {}, result {}", signalType, emitResult);
+                commandResponse(cannotEmit(request.getMessageIdentifier(), emitResult.name()));
                 return false;
             });
         });
     }
 
-    private SerializedCommandResponse cannotEmit(String messageIdentifier) {
-        return error(messageIdentifier, ErrorCode.COMMAND_DISPATCH_ERROR);
+    private SerializedCommandResponse cannotEmit(String messageIdentifier, String cause) {
+        return error(messageIdentifier, ErrorCode.COMMAND_DISPATCH_ERROR, cause);
     }
 
     public void commandResponse(SerializedCommandResponse commandResponse) {
@@ -86,24 +85,25 @@ public class FlowControlledCommandHandler extends CommandHandler {
     }
 
     private void cancelPending(List<WrappedCommand> queued) {
-        queued.forEach(command -> commandResponse(error(command.command().getMessageIdentifier(), ErrorCode.CONNECTION_TO_HANDLER_LOST)));
-        commandCache.forEach((request, sink) -> sink.success(error(request, ErrorCode.CONNECTION_TO_HANDLER_LOST)));
+        queued.forEach(command -> commandResponse(error(command.command().getMessageIdentifier(), ErrorCode.CONNECTION_TO_HANDLER_LOST, "Connection lost before command was sent to handler")));
+        commandCache.forEach((request, sink) -> sink.success(error(request, ErrorCode.CONNECTION_TO_HANDLER_LOST, "Connection lost after command was sent to handler")));
     }
 
-    private SerializedCommandResponse error(String messageIdentifier, ErrorCode connectionToHandlerLost) {
+    private SerializedCommandResponse error(String messageIdentifier, ErrorCode errorCode, String message) {
         return new SerializedCommandResponse(CommandResponse.newBuilder()
                                                             .setMessageIdentifier(UUID.randomUUID().toString())
                                                             .setRequestIdentifier(messageIdentifier)
-                                                            .setErrorCode(connectionToHandlerLost.getCode())
+                                                            .setErrorCode(errorCode.getCode())
                                                             .setErrorMessage(ErrorMessage.newBuilder()
-                                                                                         .setErrorCode(connectionToHandlerLost.getCode())
-                                                                                         .setMessage("TODO")
+                                                                                         .setErrorCode(errorCode.getCode())
+                                                                                         .setMessage(message)
+                                                                                     .setLocation("AxonServer")
                                                                                          .build())
                                                             .build());
     }
 
-    public void cancelAndCompleteStreamExceptionally(ApplicationInactivityException exception) {
-        List<WrappedCommand> queued = listener.tryEmitError(exception);
+    public void cancelAndCompleteStreamExceptionally(Exception exception) {
+        List<WrappedCommand> queued = listener.emitError(exception);
         cancelPending(queued);
     }
 

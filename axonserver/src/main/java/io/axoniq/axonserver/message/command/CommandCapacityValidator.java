@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
 @Component
 public class CommandCapacityValidator implements CapacityValidator {
@@ -39,7 +39,7 @@ public class CommandCapacityValidator implements CapacityValidator {
     public Ticket ticket(String context) {
         pendingCommands.updateAndGet(current -> {
             if (current >= cacheCapacity) {
-                throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
+                throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ current + "/" + cacheCapacity + ") "
                                                                       + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
             }
             return current+1;
