@@ -128,8 +128,16 @@ public interface EventStore {
      */
     Mono<Long> highestSequenceNumber(String context, String aggregateId);
 
-    StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
-                                                   StreamObserver<QueryEventsResponse> responseObserver);
+    /**
+     * Queries this event store based on the provided {@code query}.
+     *
+     * @param context        the context in which to query
+     * @param query          the flux of queries
+     * @param authentication the authentication
+     * @return a flux of results of the query
+     */
+    Flux<QueryEventsResponse> queryEvents(String context, Flux<QueryEventsRequest> query,
+                                          Authentication authentication);
 
     /**
      * Deletes all event data in a given context (Only intended for development environments).
