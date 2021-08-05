@@ -11,6 +11,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.message.command.WrappedCommand;
 import io.grpc.stub.StreamObserver;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.BaseSubscriber;
@@ -54,6 +55,11 @@ public class CommandStream {
         };
         this.sink = Sinks.many().unicast().onBackpressureBuffer(queue);
         this.subscriber = new BaseSubscriber<WrappedCommand>() {
+
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                // no-op, prevent default request action
+            }
 
             @Override
             protected void hookOnNext(@Nonnull WrappedCommand wrappedCommand) {
