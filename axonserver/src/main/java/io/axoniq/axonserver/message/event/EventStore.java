@@ -15,11 +15,8 @@ import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import io.grpc.stub.StreamObserver;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -143,6 +140,7 @@ public interface EventStore {
      * Deletes all event data in a given context (Only intended for development environments).
      *
      * @param context the context to be deleted
+     * @return a Mono indicating when deletion is done
      */
-    void deleteAllEventData(String context);
+    Mono<Void> deleteAllEventData(String context);
 }

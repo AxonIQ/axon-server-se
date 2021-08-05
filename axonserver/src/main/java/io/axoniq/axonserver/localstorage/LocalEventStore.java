@@ -194,13 +194,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      * @param context the context to be cleared
      */
     @Override
-    public void deleteAllEventData(String context) {
-        Workers workers = workersMap.remove(context);
-        if (workers == null) {
-            return;
-        }
-        workers.close(true);
-        initContext(context, false);
+    public Mono<Void> deleteAllEventData(String context) {
+        return Mono.create(sink -> {
+            try {
+                Workers workers = workersMap.remove(context);
+                if (workers != null) {
+                    workers.close(true);
+                    initContext(context, false);
+                }
+                sink.success();
+            } catch (Exception e) {
+                sink.error(e);
+            }
+        });
     }
 
     public void cancel(String context) {
