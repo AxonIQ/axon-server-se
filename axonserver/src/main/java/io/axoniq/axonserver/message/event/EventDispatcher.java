@@ -158,7 +158,8 @@ public class EventDispatcher implements AxonServerClientService {
             @Override
             public void onNext(InputStream inputStream) {
                 try {
-                    sink.tryEmitNext(Event.parseFrom(inputStream));
+                    sink.tryEmitNext(Event.parseFrom(inputStream))
+                        .orThrow();
                     eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
                 } catch (Exception exception) {
                     sink.tryEmitError(exception);
@@ -624,7 +625,9 @@ public class EventDispatcher implements AxonServerClientService {
             }
 
             try {
-                requestSink.get().tryEmitNext(getEventsRequest);
+                requestSink.get()
+                           .tryEmitNext(getEventsRequest)
+                           .orThrow();
             } catch (Exception reason) {
                 logger.warn("Error on connection sending event to client: {}", reason.getMessage());
                 requestSink.get().tryEmitComplete();

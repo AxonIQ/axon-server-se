@@ -314,7 +314,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         });
     }
 
-    public StreamObserver<InputStream> createAppendEventConnection(String context,
+    private StreamObserver<InputStream> createAppendEventConnection(String context,
                                                                    Authentication authentication,
                                                                    StreamObserver<Confirmation> responseObserver) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
@@ -495,7 +495,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 }));
     }
 
-    public void listAggregateSnapshots(String context,
+    private void listAggregateSnapshots(String context,
                                        Authentication authentication,
                                        GetAggregateSnapshotsRequest request,
                                        StreamObserver<SerializedEvent> responseStreamObserver) {
@@ -555,7 +555,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         });
     }
 
-    public StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
+    private StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
             private final AtomicReference<TrackingEventProcessorManager.EventTracker> controllerRef = new AtomicReference<>();
@@ -625,13 +625,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return Mono.just(workers(context).eventStorageEngine.getLastToken());
     }
 
-    public void getLastSnapshotToken(String context,
-                                     StreamObserver<TrackingToken> responseObserver) {
-        responseObserver.onNext(TrackingToken.newBuilder()
-                                             .setToken(workers(context).snapshotStorageEngine.getLastToken()).build());
-        responseObserver.onCompleted();
-    }
-
     @Override
     public Mono<Long> eventTokenAt(String context, Instant timestamp) {
         return Mono.create(sink ->
@@ -655,7 +648,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                        }));
     }
 
-    public void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
+    private void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
         runInDataFetcherPool(() -> {
             long token = workers(context).eventStreamReader.getTokenAt(request.getInstant());
             responseObserver.onNext(TrackingToken.newBuilder().setToken(token).build());
@@ -686,7 +679,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                   }));
     }
 
-    public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
+    private void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
         runInDataFetcherPool(() -> {
             long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
@@ -733,7 +726,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         });
     }
 
-    public StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
+    private StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
         EventDecorator activeEventDecorator = eventInterceptors
