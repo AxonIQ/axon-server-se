@@ -15,11 +15,8 @@ import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import io.grpc.stub.StreamObserver;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -119,16 +116,31 @@ public interface EventStore {
      */
     Mono<Long> eventTokenAt(String context, Instant timestamp);
 
-    void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
-                               StreamObserver<ReadHighestSequenceNrResponse> responseObserver);
+    /**
+     * Gets the highest sequence number of an aggregate for a given {@code aggregateId}.
+     *
+     * @param context     the context in which to search for the aggregate
+     * @param aggregateId aggregate identifier
+     * @return the highest sequence number of an aggregate or -1 if aggregate does not exist in given context
+     */
+    Mono<Long> highestSequenceNumber(String context, String aggregateId);
 
-    StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
-                                                   StreamObserver<QueryEventsResponse> responseObserver);
+    /**
+     * Queries this event store based on the provided {@code query}.
+     *
+     * @param context        the context in which to query
+     * @param query          the flux of queries
+     * @param authentication the authentication
+     * @return a flux of results of the query
+     */
+    Flux<QueryEventsResponse> queryEvents(String context, Flux<QueryEventsRequest> query,
+                                          Authentication authentication);
 
     /**
      * Deletes all event data in a given context (Only intended for development environments).
      *
      * @param context the context to be deleted
+     * @return a Mono indicating when deletion is done
      */
-    void deleteAllEventData(String context);
+    Mono<Void> deleteAllEventData(String context);
 }

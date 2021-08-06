@@ -13,12 +13,10 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.UnknownFieldSet;
 import io.axoniq.axonserver.grpc.event.ColumnsResponse;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
-import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.QueryValue;
 import io.axoniq.axonserver.grpc.event.RowResponse;
 import io.axoniq.axonserver.message.event.EventStore;
 import io.axoniq.axonserver.topology.EventStoreLocator;
-import io.grpc.stub.StreamObserver;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -28,6 +26,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Sinks;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -88,80 +87,77 @@ public class HttpStreamingQuery {
     private class Sender {
 
         private final SseEmitter sseEmitter;
-        private final StreamObserver<QueryEventsRequest> querySender;
+        private final Sinks.Many<QueryEventsRequest> querySender;
         private volatile boolean closed;
 
         public Sender(SseEmitter sseEmitter, EventStore eventStore, String context, Authentication authentication,
                       String query, String timeWindow,
                       boolean liveUpdates, boolean querySnapshots) {
             this.sseEmitter = sseEmitter;
-            this.querySender = eventStore.queryEvents(context,
-                                                      authentication,
-                                                      new StreamObserver<QueryEventsResponse>() {
-                                                          @Override
-                                                          public void onNext(QueryEventsResponse queryEventsResponse) {
-                                                              try {
-                                                                  if (closed) {
-                                                                      return;
-                                                                  }
-                                                                  switch (queryEventsResponse.getDataCase()) {
-                                                                      case COLUMNS:
-                                                                          emitColumns(queryEventsResponse.getColumns());
-                                                                          break;
-                            case ROW:
-                                emitRows(queryEventsResponse.getRow());
-                                break;
-                            case FILES_COMPLETED:
-                                emitCompleted();
-                                if (!liveUpdates) {
-                                    sseEmitter.complete();
-                                    stop();
-                                }
-                                break;
-                            case DATA_NOT_SET:
-                                break;
-                        }
-                    } catch (Exception exception) {
-                        logger.debug("Failed to write to emitter", exception);
-                        closed = true;
-                        stop();
-                    }
-                }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    try {
-                        logger.warn("Error while processing query {} - {}", query, throwable.getMessage(), throwable);
-                        sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
-                        sseEmitter.complete();
-                    } catch (Exception ignore) {
-                        // ignore exception on sending error to client
-                    }
-                }
+            querySender = Sinks.many()
+                               .unicast()
+                               .onBackpressureBuffer();
+            eventStore.queryEvents(context, querySender.asFlux(), authentication)
+                      .subscribe(queryEventsResponse -> {
+                                     try {
+                                         if (closed) {
+                                             return;
+                                         }
+                                         switch (queryEventsResponse.getDataCase()) {
+                                             case COLUMNS:
+                                                 emitColumns(queryEventsResponse.getColumns());
+                                                 break;
+                                             case ROW:
+                                                 emitRows(queryEventsResponse.getRow());
+                                                 break;
+                                             case FILES_COMPLETED:
+                                                 emitCompleted();
+                                                 if (!liveUpdates) {
+                                                     sseEmitter.complete();
+                                                     stop();
+                                                 }
+                                                 break;
+                                             case DATA_NOT_SET:
+                                                 break;
+                                         }
+                                     } catch (Exception exception) {
+                                         logger.debug("Failed to write to emitter", exception);
+                                         closed = true;
+                                         stop();
+                                     }
+                                 },
+                                 throwable -> {
+                                     try {
+                                         logger.warn("Error while processing query {} - {}",
+                                                     query,
+                                                     throwable.getMessage(),
+                                                     throwable);
+                                         sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
+                                         sseEmitter.complete();
+                                     } catch (Exception ignore) {
+                                         // ignore exception on sending error to client
+                                     }
+                                 },
+                                 sseEmitter::complete);
 
-                @Override
-                public void onCompleted() {
-                    sseEmitter.complete();
-                }
-            });
-
-            querySender.onNext(QueryEventsRequest.newBuilder()
-                                                 .setLiveEvents(liveUpdates)
-                                                 .setNumberOfPermits(Long.MAX_VALUE)
-                                                 .setForceReadFromLeader(liveUpdates)
-                                                 .setQuery(query)
-                                                 .setQuerySnapshots(querySnapshots)
-                                                 .setUnknownFields(UnknownFieldSet.newBuilder()
-                                                                                  .addField(TIME_WINDOW_FIELD,
-                                                                                            UnknownFieldSet.Field
-                                                                                                    .newBuilder()
-                                                                                                    .addLengthDelimited(
-                                                                                                            ByteString
-                                                                                                                    .copyFromUtf8(
-                                                                                                                            timeWindow))
-                                                                                                    .build())
-                                                                                  .build())
-                                                 .build());
+            querySender.tryEmitNext(QueryEventsRequest.newBuilder()
+                                                      .setLiveEvents(liveUpdates)
+                                                      .setNumberOfPermits(Long.MAX_VALUE)
+                                                      .setForceReadFromLeader(liveUpdates)
+                                                      .setQuery(query)
+                                                      .setQuerySnapshots(querySnapshots)
+                                                      .setUnknownFields(UnknownFieldSet.newBuilder()
+                                                                                       .addField(TIME_WINDOW_FIELD,
+                                                                                                 UnknownFieldSet.Field
+                                                                                                         .newBuilder()
+                                                                                                         .addLengthDelimited(
+                                                                                                                 ByteString
+                                                                                                                         .copyFromUtf8(
+                                                                                                                                 timeWindow))
+                                                                                                         .build())
+                                                                                       .build())
+                                                      .build());
         }
 
         private void emitCompleted() throws IOException {
@@ -182,7 +178,7 @@ public class HttpStreamingQuery {
                 jsonObject.put("sortValues", array);
             }
 
-            if( row.getValuesCount() > 0 ) {
+            if (row.getValuesCount() > 0) {
                 JSONObject values = new JSONObject();
                 row.getValuesMap().forEach((key, qv) -> addToObject(values, key, qv));
                 jsonObject.put("value", values);
@@ -196,28 +192,28 @@ public class HttpStreamingQuery {
 
         private void addToObject(JSONObject values, String key, QueryValue qv) {
             try {
-            switch (qv.getDataCase()) {
-                case TEXT_VALUE:
-                    values.put(key, qv.getTextValue());
-                    break;
-                case NUMBER_VALUE:
-                    values.put(key, qv.getNumberValue());
-                    break;
-                case BOOLEAN_VALUE:
-                    values.put(key, qv.getBooleanValue());
-                    break;
-                case DOUBLE_VALUE:
-                    values.put(key, qv.getDoubleValue());
-                    break;
-                case DATA_NOT_SET:
-                    break;
-            }
+                switch (qv.getDataCase()) {
+                    case TEXT_VALUE:
+                        values.put(key, qv.getTextValue());
+                        break;
+                    case NUMBER_VALUE:
+                        values.put(key, qv.getNumberValue());
+                        break;
+                    case BOOLEAN_VALUE:
+                        values.put(key, qv.getBooleanValue());
+                        break;
+                    case DOUBLE_VALUE:
+                        values.put(key, qv.getDoubleValue());
+                        break;
+                    case DATA_NOT_SET:
+                        break;
+                }
             } catch (JSONException e) {
                 logger.debug("Failed to add value to JSON object", e);
             }
         }
 
-        private void addToArray(QueryValue qv, JSONArray array)  {
+        private void addToArray(QueryValue qv, JSONArray array) {
             switch (qv.getDataCase()) {
                 case TEXT_VALUE:
                     array.put(qv.getTextValue());
@@ -246,11 +242,7 @@ public class HttpStreamingQuery {
         }
 
         public synchronized void stop() {
-            try {
-                querySender.onCompleted();
-            } catch (Exception ignore) {
-
-            }
+            querySender.tryEmitComplete();
         }
     }
 }

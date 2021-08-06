@@ -194,13 +194,19 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      * @param context the context to be cleared
      */
     @Override
-    public void deleteAllEventData(String context) {
-        Workers workers = workersMap.remove(context);
-        if (workers == null) {
-            return;
-        }
-        workers.close(true);
-        initContext(context, false);
+    public Mono<Void> deleteAllEventData(String context) {
+        return Mono.create(sink -> {
+            try {
+                Workers workers = workersMap.remove(context);
+                if (workers != null) {
+                    workers.close(true);
+                    initContext(context, false);
+                }
+                sink.success();
+            } catch (Exception e) {
+                sink.error(e);
+            }
+        });
     }
 
     public void cancel(String context) {
@@ -284,7 +290,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public Mono<Void> appendEvents(String context, Flux<Event> events, Authentication authentication) {
-        return Mono.create(sink -> sink.onRequest(l -> {
+        return Mono.create(sink -> {
             StreamObserver<InputStream> inputStream =
                     createAppendEventConnection(context, authentication, new StreamObserver<Confirmation>() {
                         @Override
@@ -305,7 +311,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             events.doOnComplete(inputStream::onCompleted)
                   .doOnError(inputStream::onError)
                   .subscribe(event -> inputStream.onNext(new ByteArrayInputStream(event.toByteArray())));
-        }));
+        });
     }
 
     public StreamObserver<InputStream> createAppendEventConnection(String context,
@@ -517,7 +523,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public Flux<SerializedEventWithToken> events(String context, Authentication authentication,
                                                  Flux<GetEventsRequest> requestFlux) {
-        return Flux.create(sink -> sink.onRequest(requested -> {
+        return Flux.create(sink -> {
             StreamObserver<GetEventsRequest> requestStreamObserver =
                     listEvents(context,
                                authentication,
@@ -546,7 +552,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             requestFlux.subscribe(requestStreamObserver::onNext,
                                   requestStreamObserver::onError,
                                   requestStreamObserver::onCompleted);
-        }));
+        });
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
@@ -628,7 +634,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public Mono<Long> eventTokenAt(String context, Instant timestamp) {
-        return Mono.create(sink -> sink.onRequest(requested -> {
+        return Mono.create(sink ->
             getTokenAt(context,
                        GetTokenAtRequest.newBuilder().setInstant(timestamp.toEpochMilli()).build(),
                        new StreamObserver<TrackingToken>() {
@@ -646,8 +652,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                            public void onCompleted() {
                                //nothing to do, already completed
                            }
-                       });
-        }));
+                       }));
     }
 
     public void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
@@ -659,6 +664,28 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Mono<Long> highestSequenceNumber(String context, String aggregateId) {
+        return Mono.create(sink ->
+            readHighestSequenceNr(context,
+                                  ReadHighestSequenceNrRequest.newBuilder().setAggregateId(aggregateId).build(),
+                                  new StreamObserver<ReadHighestSequenceNrResponse>() {
+                                      @Override
+                                      public void onNext(ReadHighestSequenceNrResponse readHighestSequenceNrResponse) {
+                                          sink.success(readHighestSequenceNrResponse.getToSequenceNr());
+                                      }
+
+                                      @Override
+                                      public void onError(Throwable throwable) {
+                                          sink.error(throwable);
+                                      }
+
+                                      @Override
+                                      public void onCompleted() {
+                                          //nothing to do, already completed
+                                      }
+                                  }));
+    }
+
     public void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
         runInDataFetcherPool(() -> {
@@ -680,6 +707,32 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
+    public Flux<QueryEventsResponse> queryEvents(String context, Flux<QueryEventsRequest> query,
+                                                 Authentication authentication) {
+        return Flux.create(sink -> {
+            StreamObserver<QueryEventsRequest> requestStream =
+                    queryEvents(context,
+                                authentication,
+                                new StreamObserver<QueryEventsResponse>() {
+                                    @Override
+                                    public void onNext(QueryEventsResponse queryEventsResponse) {
+                                        sink.next(queryEventsResponse);
+                                    }
+
+                                    @Override
+                                    public void onError(Throwable throwable) {
+                                        sink.error(throwable);
+                                    }
+
+                                    @Override
+                                    public void onCompleted() {
+                                        sink.complete();
+                                    }
+                                });
+            query.subscribe(requestStream::onNext, requestStream::onError, requestStream::onCompleted);
+        });
+    }
+
     public StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
