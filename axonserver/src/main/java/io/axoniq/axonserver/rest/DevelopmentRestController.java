@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 import java.security.Principal;
 
@@ -36,9 +37,9 @@ public class DevelopmentRestController {
      */
     @DeleteMapping("purge-events")
     @ApiOperation(value="Clears all event and snapshot data from Axon Server", notes = "Only for development/test environments.")
-    public void resetEventStore(Principal principal) {
+    public Mono<Void> resetEventStore(Principal principal) {
         auditLog.warn("[{}] Request to delete all events in context \"default\".", AuditLog.username(principal));
 
-        eventStoreLocator.getEventStore("default").deleteAllEventData("default");
+        return eventStoreLocator.getEventStore("default").deleteAllEventData("default");
     }
 }
