@@ -187,28 +187,8 @@ public class EventDispatcherTest {
     public void queryEvents() {
         FakeStreamObserver<QueryEventsResponse> responseObserver = new FakeStreamObserver<>();
         AtomicReference<StreamObserver<QueryEventsResponse>> eventStoreOutputStreamRef = new AtomicReference<>();
-        StreamObserver<QueryEventsRequest> eventStoreResponseStream = new StreamObserver<QueryEventsRequest>() {
-            @Override
-            public void onNext(QueryEventsRequest value) {
-                StreamObserver<QueryEventsResponse> responseStream = eventStoreOutputStreamRef.get();
-                responseStream.onNext(QueryEventsResponse.newBuilder().build());
-                responseStream.onCompleted();
-            }
-
-            @Override
-            public void onError(Throwable t) {
-
-            }
-
-            @Override
-            public void onCompleted() {
-
-            }
-        };
-        when(eventStoreClient.queryEvents(any(), any(), any(StreamObserver.class))).then(a -> {
-            eventStoreOutputStreamRef.set((StreamObserver<QueryEventsResponse>) a.getArguments()[2]);
-            return eventStoreResponseStream;
-        });
+        when(eventStoreClient.queryEvents(any(), any(Flux.class), any()))
+                .thenReturn(Flux.just(QueryEventsResponse.getDefaultInstance()));
         StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(responseObserver);
         inputStream.onNext(QueryEventsRequest.newBuilder().build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);

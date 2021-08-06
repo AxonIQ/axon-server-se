@@ -474,11 +474,13 @@ public class EventDispatcher implements AxonServerClientService {
                 new ForwardingStreamObserver<>(logger, "queryEvents", callStreamObserver);
         return new StreamObserver<QueryEventsRequest>() {
 
-            private final AtomicReference<StreamObserver<QueryEventsRequest>> requestObserver = new AtomicReference<>();
+            private final AtomicReference<Sinks.Many<QueryEventsRequest>> requestSinkRef = new AtomicReference<>();
 
             @Override
             public void onNext(QueryEventsRequest request) {
-                if (requestObserver.get() == null) {
+                if (requestSinkRef.compareAndSet(null, Sinks.many()
+                                                            .unicast()
+                                                            .onBackpressureBuffer())) {
                     EventStore eventStore = eventStoreLocator.getEventStore(context,
                             request.getForceReadFromLeader());
                     if (eventStore == null) {
@@ -486,14 +488,17 @@ public class EventDispatcher implements AxonServerClientService {
                                 NO_EVENT_STORE_CONFIGURED + context));
                         return;
                     }
-                    requestObserver.set(eventStore.queryEvents(context, authentication, responseObserver));
+                    eventStore.queryEvents(context, requestSinkRef.get().asFlux(), authentication)
+                              .subscribe(responseObserver::onNext,
+                                         responseObserver::onError,
+                                         responseObserver::onCompleted);
                 }
-                try {
-                    requestObserver.get().onNext(request);
-                } catch (Exception reason) {
-                    logger.warn("{}: Error forwarding request to event store: {}", context, reason.getMessage());
-                    StreamObserverUtils.complete(requestObserver.get());
-                }
+                    Sinks.EmitResult emitResult = requestSinkRef.get().tryEmitNext(request);
+                    if (emitResult.isFailure()) {
+                        String message = String.format("%s: Error forwarding request to event store.", context);
+                        logger.warn(message);
+                        requestSinkRef.get().tryEmitError(new RuntimeException(message));
+                    }
             }
 
             @Override
@@ -511,7 +516,10 @@ public class EventDispatcher implements AxonServerClientService {
             }
 
             private void cleanup() {
-                StreamObserverUtils.complete(requestObserver.get());
+                Sinks.Many<QueryEventsRequest> sink = requestSinkRef.get();
+                if (sink != null) {
+                    sink.tryEmitComplete();
+                }
             }
         };
     }
