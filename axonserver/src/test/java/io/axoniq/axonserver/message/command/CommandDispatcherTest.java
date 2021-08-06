@@ -50,8 +50,6 @@ public class CommandDispatcherTest {
     MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
     private CommandMetricsRegistry metricsRegistry;
     @Mock
-    private CommandCache commandCache;
-    @Mock
     private CommandRegistrationCache registrations;
     private final AtomicBoolean tooManyRequests = new AtomicBoolean();
     private final CapacityValidator sampleCapacityValidator = context -> {
@@ -112,7 +110,6 @@ public class CommandDispatcherTest {
                                    });
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
     }
 
     @Test
@@ -160,7 +157,6 @@ public class CommandDispatcherTest {
                                    });
         assertEquals(1, responseObserver.values().size());
         assertEquals("AXONIQ-4000", responseObserver.values().get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
     }
 
     @Test
