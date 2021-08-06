@@ -13,6 +13,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.serializer.PrintableSerializer;
 import io.axoniq.axonserver.version.VersionInfoProvider;
+import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.servlet.error.DefaultErrorAttributes;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.context.annotation.Bean;
@@ -56,8 +57,8 @@ public class WebConfiguration implements WebMvcConfigurer {
     public ErrorAttributes errorAttributes(VersionInfoProvider versionInfoProvider) {
         return new DefaultErrorAttributes() {
             @Override
-            public Map<String, Object> getErrorAttributes(WebRequest webRequest, boolean includeStackTrace) {
-                Map<String, Object> errorAttributes = super.getErrorAttributes(webRequest, includeStackTrace);
+            public Map<String, Object> getErrorAttributes(WebRequest webRequest, ErrorAttributeOptions options) {
+                Map<String, Object> errorAttributes = super.getErrorAttributes(webRequest, options);
                 addMessageField(errorAttributes);
                 errorAttributes.put("asVersion", versionInfoProvider.get().getVersion());
                 errorAttributes.put("product", versionInfoProvider.get().getProductName());
