@@ -40,7 +40,7 @@
         <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
 
-        <jacoco-maven-plugin.version>0.8.5</jacoco-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
 
         <!--
             Please note that there are dependencies between the gRPC and Netty TcNative versions.
