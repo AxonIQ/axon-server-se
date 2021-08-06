@@ -30,6 +30,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -105,7 +106,11 @@ public class SubscriptionQueryDispatcher {
                                                                         .build();
         Collection<QueryHandler> handlers = registrationCache.findAll(evt.context(),
                                                                       evt.unsubscribe().getQueryRequest());
-        handlers.forEach(handler -> safeDispatch(handler, queryRequest));
+        handlers.forEach(handler -> {
+            safeDispatch(handler, queryRequest);
+            subscriptionsSent.getOrDefault(handler.getClientStreamIdentification(), Collections.emptySet())
+                    .remove(evt.subscriptionId());
+        });
     }
 
     private void safeDispatch(QueryHandler handler,
