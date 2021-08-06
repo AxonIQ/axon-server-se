@@ -3,8 +3,12 @@ This is the Axon Server Standard Edition, version 4.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.5.6
+-------------------------------
+* Fix: Memory leak in subscription query registrations
+
 Release Notes for version 4.5.5
----------------------------------
+-------------------------------
 * Fix: Improved error handling and feedback when uploading invalid plugins
 * Fix: Increase default settings for spring.servlet.multipart.max-request-size and spring.servlet.multipart.max-file-size to 25MB
 
