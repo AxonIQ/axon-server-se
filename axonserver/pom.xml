@@ -380,6 +380,7 @@
                             <goal>start</goal>
                         </goals>
                         <configuration>
+                            <skip>${skip.integration.tests}</skip>
                             <wait>5000</wait>
                             <workingDirectory>target/integration</workingDirectory>
                         </configuration>
@@ -389,6 +390,9 @@
                         <goals>
                             <goal>stop</goal>
                         </goals>
+                        <configuration>
+                            <skip>${skip.integration.tests}</skip>
+                        </configuration>
                     </execution>
                     <execution>
                         <goals>
