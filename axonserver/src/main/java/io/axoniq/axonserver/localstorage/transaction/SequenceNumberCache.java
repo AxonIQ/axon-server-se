@@ -13,7 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
+import io.axoniq.axonserver.util.DaemonThreadFactory;
 import org.springframework.util.StringUtils;
 
 import java.time.Clock;
@@ -39,7 +39,7 @@ import java.util.function.BiFunction;
 public class SequenceNumberCache {
 
     private static final ScheduledExecutorService SCHEDULED_EXECUTOR_SERVICE = Executors.newScheduledThreadPool(1,
-                                                                                                                new CustomizableThreadFactory(
+                                                                                                                new DaemonThreadFactory(
                                                                                                                         "cache-cleanup"));
     private static final EventStorageEngine.SearchHint[] NO_HINTS = {};
     private static final EventStorageEngine.SearchHint[] SEARCH_RECENT = {EventStorageEngine.SearchHint.RECENT_ONLY};

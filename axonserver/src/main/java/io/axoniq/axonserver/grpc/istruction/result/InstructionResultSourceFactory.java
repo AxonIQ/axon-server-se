@@ -3,9 +3,9 @@ package io.axoniq.axonserver.grpc.istruction.result;
 import io.axoniq.axonserver.grpc.InstructionResult;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.istruction.result.InstructionResultSource.ResultSubscriber;
+import io.axoniq.axonserver.util.DaemonThreadFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -35,7 +35,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class InstructionResultSourceFactory implements InstructionResultSource.Factory {
 
     private static final ScheduledExecutorService scheduledExecutorService = Executors
-            .newSingleThreadScheduledExecutor(new CustomizableThreadFactory("instruction-result"));
+            .newSingleThreadScheduledExecutor(new DaemonThreadFactory("instruction-result"));
     /*Timeout for instruction result in seconds*/
     private int resultTimeout = 10;
     private final ConcurrentMap<String, List<ResultSubscriber>> subscribersMap = new ConcurrentHashMap<>();

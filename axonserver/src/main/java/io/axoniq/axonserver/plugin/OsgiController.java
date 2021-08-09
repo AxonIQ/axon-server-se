@@ -62,7 +62,8 @@ public class OsgiController implements PluginServiceProvider {
     private final String cacheCleanPolicy;
     private final boolean pluginsEnabled;
     private final SystemPackagesProvider systemPackagesProvider;
-    private BundleContext bundleContext;
+    private volatile BundleContext bundleContext;
+    private volatile Framework framework;
 
     @Autowired
     public OsgiController(MessagingPlatformConfiguration configuration) {
@@ -100,7 +101,7 @@ public class OsgiController implements PluginServiceProvider {
         try {
             FrameworkFactory frameworkFactory = ServiceLoader.load(FrameworkFactory.class)
                                                              .iterator().next();
-            Framework framework = frameworkFactory.newFramework(osgiConfig);
+            framework = frameworkFactory.newFramework(osgiConfig);
             framework.start();
 
             bundleContext = framework.getBundleContext();
@@ -223,6 +224,14 @@ public class OsgiController implements PluginServiceProvider {
             } catch (Exception e) {
                 logger.warn("{}: uninstall failed", bundle.getSymbolicName(), e);
             }
+        }
+
+        try {
+            if (framework != null) {
+                framework.stop();
+            }
+        } catch (BundleException e) {
+            e.printStackTrace();
         }
     }
 
