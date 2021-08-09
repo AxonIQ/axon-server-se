@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -24,7 +23,6 @@ import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.EventStoreLocator;
-import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
@@ -42,7 +40,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.config.GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
+import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -68,10 +68,9 @@ public class EventDispatcherTest {
     public void setUp() {
         when(eventStoreClient.appendEvents(any(), any(), any())).thenReturn(Mono.create(appendEventsResult::set));
         when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
-        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
-        when(eventStoreLocator.getEventStore(eq(Topology.DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
-        testSubject = new EventDispatcher(eventStoreLocator, () -> Topology.DEFAULT_CONTEXT,
-                                          () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+        when(eventStoreLocator.getEventStore(eq(DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
+        when(eventStoreLocator.getEventStore(eq(DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
+        testSubject = new EventDispatcher(eventStoreLocator,
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()),
                 Executors::newCachedThreadPool,
@@ -81,7 +80,8 @@ public class EventDispatcherTest {
     @Test
     public void appendEvent() {
         FakeStreamObserver<Confirmation> responseObserver = spy(new FakeStreamObserver<>());
-        StreamObserver<InputStream> inputStream = testSubject.appendEvent(responseObserver);
+        StreamObserver<InputStream> inputStream = testSubject.appendEvent(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL,
+                                                                          responseObserver);
         inputStream.onNext(dummyEvent());
         assertTrue(responseObserver.values().isEmpty());
         inputStream.onCompleted();
@@ -96,7 +96,7 @@ public class EventDispatcherTest {
     @Test
     public void appendEventRollback() {
         FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<InputStream> inputStream = testSubject.appendEvent(responseObserver);
+        StreamObserver<InputStream> inputStream = testSubject.appendEvent(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
         inputStream.onNext(dummyEvent());
         assertTrue(responseObserver.values().isEmpty());
         Throwable error = new Throwable();
@@ -108,14 +108,14 @@ public class EventDispatcherTest {
     public void appendSnapshot() {
         FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
         when(eventStoreClient.appendSnapshot(any(), any(Event.class), any())).thenReturn(Mono.empty());
-        testSubject.appendSnapshot(Event.newBuilder().build(), responseObserver);
+        testSubject.appendSnapshot(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, Event.newBuilder().build(), responseObserver);
         verify(eventStoreClient).appendSnapshot(any(), any(Event.class), any());
         assertEquals(1, responseObserver.values().size());
     }
 
     @Test
     public void listAggregateEventsNoEventStore() {
-        testSubject.listAggregateEvents("OtherContext", GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+        testSubject.listAggregateEvents("OtherContext", DEFAULT_PRINCIPAL,
                                         GetAggregateEventsRequest.newBuilder().build(),
                                         new FakeStreamObserver<>());
     }
@@ -145,7 +145,7 @@ public class EventDispatcherTest {
         FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<SerializedEvent>();
         responseObserver.setIsReady(true);
 
-        testSubject.listAggregateEvents("retryContext", GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+        testSubject.listAggregateEvents("retryContext", DEFAULT_PRINCIPAL,
                 GetAggregateEventsRequest.newBuilder().setAggregateId("retryAggregateId").build(),
                 responseObserver);
 
@@ -162,24 +162,24 @@ public class EventDispatcherTest {
         FakeStreamObserver<InputStream> responseObserver = new FakeStreamObserver<>();
         when(eventStoreClient.events(any(), any(), any(Flux.class)))
                 .thenReturn(Flux.just(new SerializedEventWithToken(EventWithToken.getDefaultInstance())));
-        StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(responseObserver);
+        StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
         inputStream.onNext(GetEventsRequest.newBuilder()
                                            .setClientId("sampleClient")
                                            .build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
+        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.values().size());
         responseObserver = new FakeStreamObserver<>();
-        inputStream = testSubject.listEvents(responseObserver);
+        inputStream = testSubject.listEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
         inputStream.onNext(GetEventsRequest.newBuilder()
                                            .setForceReadFromLeader(true)
                                            .setClientId("sampleClient")
                                            .build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
+        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, true);
         assertEquals(1, responseObserver.completedCount());
-        testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
+        testSubject.on(new TopologyEvents.ApplicationDisconnected(DEFAULT_CONTEXT,
                                                                   "myComponent",
                                                                   "sampleClient"));
-        assertTrue(testSubject.eventTrackerStatus(Topology.DEFAULT_CONTEXT).isEmpty());
+        assertTrue(testSubject.eventTrackerStatus(DEFAULT_CONTEXT).isEmpty());
     }
 
 
@@ -189,17 +189,19 @@ public class EventDispatcherTest {
         AtomicReference<StreamObserver<QueryEventsResponse>> eventStoreOutputStreamRef = new AtomicReference<>();
         when(eventStoreClient.queryEvents(any(), any(Flux.class), any()))
                 .thenReturn(Flux.just(QueryEventsResponse.getDefaultInstance()));
-        StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(responseObserver);
+        StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(DEFAULT_CONTEXT,
+                                                                                 DEFAULT_PRINCIPAL,
+                                                                                 responseObserver);
         inputStream.onNext(QueryEventsRequest.newBuilder().build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, false);
+        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, false);
         assertEquals(1, responseObserver.values().size());
 
         responseObserver = new FakeStreamObserver<>();
-        inputStream = testSubject.queryEvents(responseObserver);
+        inputStream = testSubject.queryEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
         inputStream.onNext(QueryEventsRequest.newBuilder()
                                              .setForceReadFromLeader(true)
                                              .build());
-        verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
+        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, true);
         assertEquals(1, responseObserver.completedCount());
     }
 }

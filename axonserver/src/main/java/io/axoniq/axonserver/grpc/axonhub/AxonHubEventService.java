@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc.axonhub;
 
 import io.axoniq.axonserver.grpc.AxonServerClientService;
+import io.axoniq.axonserver.grpc.EventStoreService;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.*;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -101,9 +102,9 @@ public class AxonHubEventService implements AxonServerClientService {
                             .build();
 
 
-    private final EventDispatcher eventDispatcher;
+    private final EventStoreService eventDispatcher;
 
-    public AxonHubEventService(EventDispatcher eventDispatcher) {
+    public AxonHubEventService(EventStoreService eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
     }
 
