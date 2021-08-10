@@ -21,10 +21,9 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Sinks;
 
-import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nonnull;
 
 /**
@@ -71,24 +70,14 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
     public StreamObserver<TransformEventsRequest> transformEvents(StreamObserver<Confirmation> responseObserver) {
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
-//        auditLog.info("{}@{}: Request to start transformation", authentication.getName(), context);
+        auditLog.info("{}@{}: Request to transformEvents", authentication.getName(), context);
         Sinks.Many<TransformEventsRequest> many = Sinks.many().unicast().onBackpressureBuffer();
-        return new StreamObserver<TransformEventsRequest>() {
-            final AtomicReference<Flux<TransformEventsRequest>> flux = new AtomicReference<>();
+        eventStoreTransformationService.transformEvents(context, many.asFlux())
+                                       .subscribe(new ConfirmationSubscriber(responseObserver));
 
+        return new StreamObserver<TransformEventsRequest>() {
             @Override
             public void onNext(TransformEventsRequest transformEventsRequest) {
-                if (flux.compareAndSet(null, many.asFlux())) {
-                    eventStoreTransformationService.transformEvents(context, flux.get())
-                                                   .subscribe(unused -> {
-                                                              },
-                                                              throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
-                                                                      throwable)),
-                                                              () -> {
-                                                                  responseObserver.onNext(confirmation());
-                                                                  responseObserver.onCompleted();
-                                                              });
-                }
                 many.emitNext(transformEventsRequest, ((signalType, emitResult) -> {
                     responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
                             "Emit error: " + emitResult)));
@@ -108,9 +97,6 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         };
     }
 
-    private Confirmation confirmation() {
-        return Confirmation.newBuilder().setSuccess(true).build();
-    }
 
     @Override
     public void cancelTransformation(TransformationId request, StreamObserver<Confirmation> responseObserver) {
@@ -118,14 +104,32 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         Authentication authentication = authenticationProvider.get();
         auditLog.info("{}@{}: Request to cancel transformation {}", authentication.getName(), context, request.getId());
         eventStoreTransformationService.cancelTransformation(context, request.getId())
-                                       .subscribe(id -> {
-                                                  },
-                                                  throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
-                                                          throwable)),
-                                                  () -> {
-                                                      responseObserver.onNext(confirmation());
-                                                      responseObserver.onCompleted();
-                                                  });
+                                       .subscribe(new ConfirmationSubscriber(responseObserver));
+    }
+
+    private static class ConfirmationSubscriber extends BaseSubscriber<Void> {
+        private final StreamObserver<Confirmation> responseObserver;
+
+        ConfirmationSubscriber(StreamObserver<Confirmation> responseObserver) {
+
+            this.responseObserver = responseObserver;
+        }
+
+        @Override
+        protected void hookOnComplete() {
+            responseObserver.onNext(confirmation());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        protected void hookOnError(@Nonnull Throwable throwable) {
+            responseObserver.onError(GrpcExceptionBuilder.build(
+                    throwable));
+        }
+
+        private Confirmation confirmation() {
+            return Confirmation.newBuilder().setSuccess(true).build();
+        }
     }
 
     @Override
@@ -134,13 +138,6 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         Authentication authentication = authenticationProvider.get();
         auditLog.info("{}@{}: Request to apply transformation {}", authentication.getName(), context, request.getId());
         eventStoreTransformationService.applyTransformation(context, request.getId())
-                                       .subscribe(id -> {
-                                                  },
-                                                  throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
-                                                          throwable)),
-                                                  () -> {
-                                                      responseObserver.onNext(confirmation());
-                                                      responseObserver.onCompleted();
-                                                  });
+                                       .subscribe(new ConfirmationSubscriber(responseObserver));
     }
 }
