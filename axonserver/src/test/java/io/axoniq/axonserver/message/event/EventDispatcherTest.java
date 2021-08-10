@@ -39,7 +39,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -75,8 +74,7 @@ public class EventDispatcherTest {
         testSubject = new EventDispatcher(eventStoreLocator,
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()),
-                Executors::newCachedThreadPool,
-                3,100, 50);
+                                          3,100, 50);
     }
 
     @Test

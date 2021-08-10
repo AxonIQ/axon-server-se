@@ -13,7 +13,6 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.GrpcFlowControlExecutorProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -77,19 +76,16 @@ public class EventDispatcher  {
     private final Map<String, MeterFactory.RateMeter> snapshotCounter = new ConcurrentHashMap<>();
     @Value("${axoniq.axonserver.read-sequence-validation-strategy:LOG}")
     private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
-    private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
     private final RetryBackoffSpec retrySpec;
     private final int aggregateEventsPrefetch;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            MeterFactory meterFactory,
-                           GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
                            @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
                            @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch) {
         this.eventStoreLocator = eventStoreLocator;
         this.meterFactory = meterFactory;
-        this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
         this.aggregateEventsPrefetch = aggregateEventsPrefetch;
     }
