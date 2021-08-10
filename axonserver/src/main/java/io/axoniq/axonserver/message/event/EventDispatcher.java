@@ -24,14 +24,12 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.util.StreamObserverUtils;
-import io.axoniq.flowcontrol.OutgoingStream;
-import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
-import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
@@ -54,7 +52,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -72,6 +69,7 @@ public class EventDispatcher  {
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
+    private final Logger auditLog = AuditLog.getLogger();
     private final EventStoreLocator eventStoreLocator;
     private final MeterFactory meterFactory;
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
@@ -186,69 +184,58 @@ public class EventDispatcher  {
         });
     }
 
-
-    public void listAggregateEvents(String context, Authentication principal, GetAggregateEventsRequest request,
-                                    CallStreamObserver<SerializedEvent> responseObserver) {
-        final String LAST_SEQ_KEY = "__LAST_SEQ";
-        checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            try {
-                Executor executor = grpcFlowControlExecutorProvider.provide();
-                OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(responseObserver,
-                        executor);
-                Flux<SerializedEvent> publisher;
-                publisher = Flux.deferContextual(contextView -> {
-                    AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
-                            boolean allowedSnapshot =
-                                    request.getAllowSnapshots()
-                                            && lastSeq.get() == -1;
-
-                            GetAggregateEventsRequest newRequest = request
-                                    .toBuilder()
-                                    .setAllowSnapshots(
-                                            allowedSnapshot)
-                                    .setInitialSequence(lastSeq.get()+1)
-                                    .build();
-
-                            logger.debug("Reading events from seq#{} for aggregate {}",lastSeq.get()+1, request.getAggregateId());
-                    return eventStore
-                            .aggregateEvents(context, principal, newRequest);
-                        }
-                )
-                        .limitRate(aggregateEventsPrefetch*5,aggregateEventsPrefetch)
-                        .doOnEach(signal -> {
-                            if (signal.hasValue()) {
-                                ((AtomicLong)signal.getContextView().get(LAST_SEQ_KEY))
-                                        .set(signal.get().getAggregateSequenceNumber());
-                            }
-                        })
-                        .retryWhen(retrySpec
-                                .doBeforeRetry(t ->logger.warn("Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
-                                        t.failure().getClass().getName() ,t.failure().getMessage(), request.getAggregateId())))
-                        .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
-                        .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
-                        .contextWrite(c -> c.put(LAST_SEQ_KEY, new AtomicLong(request.getInitialSequence()-1)))
-                        .name("event_stream")
-                        .tag("context", context)
-                        .tag("stream", "aggregate_events")
-                        .tag("origin", "client_request")
-                        .metrics();
-
-                outgoingStream.accept(publisher);
-            } catch (RuntimeException t) {
-                logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateEvents", t.getMessage(), t);
-                responseObserver.onError(GrpcExceptionBuilder.build(t));
-            }
-        });
-    }
-
-    public Flux<SerializedEvent> aggregateEvents(String context,
-                                                 Authentication principal,
-                                                 GetAggregateEventsRequest request) {
+    public Flux<SerializedEvent> aggregateEvents(String context, Authentication authentication, GetAggregateEventsRequest request) {
+        if( auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}@{}] Request to list events for {}.", AuditLog.username(authentication), context, request.getAggregateId());
+        }
         EventStore eventStore = eventStoreLocator.getEventStore(context);
         if (eventStore == null) {
-            return Flux.error(new MessagingPlatformException(NO_EVENTSTORE, NO_EVENT_STORE_CONFIGURED + context));
+            return Flux.error(new MessagingPlatformException(NO_EVENTSTORE,
+                                                             NO_EVENT_STORE_CONFIGURED + context));
         }
-        return eventStore.aggregateEvents(context, principal, request);
+        final String LAST_SEQ_KEY = "__LAST_SEQ";
+        return Flux.deferContextual(contextView -> {
+                                 AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
+                                 boolean allowedSnapshot =
+                                         request.getAllowSnapshots()
+                                                 && lastSeq.get() == -1;
+
+                                 GetAggregateEventsRequest newRequest = request
+                                         .toBuilder()
+                                         .setAllowSnapshots(
+                                                 allowedSnapshot)
+                                         .setInitialSequence(lastSeq.get() + 1)
+                                         .build();
+
+                                 logger.debug("Reading events from seq#{} for aggregate {}",
+                                              lastSeq.get() + 1,
+                                              request.getAggregateId());
+                                 return eventStore
+                                         .aggregateEvents(context, authentication, newRequest);
+                             }
+            )
+            .limitRate(aggregateEventsPrefetch * 5, aggregateEventsPrefetch)
+            .doOnEach(signal -> {
+                if (signal.hasValue()) {
+                    ((AtomicLong) signal.getContextView().get(LAST_SEQ_KEY))
+                            .set(signal.get().getAggregateSequenceNumber());
+                }
+            })
+            .retryWhen(retrySpec
+                               .doBeforeRetry(t -> logger.warn(
+                                       "Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
+                                       t.failure().getClass().getName(),
+                                       t.failure().getMessage(),
+                                       request.getAggregateId())))
+            .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
+            .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
+            .contextWrite(c -> c.put(LAST_SEQ_KEY,
+                                     new AtomicLong(request.getInitialSequence() - 1)))
+            .name("event_stream")
+            .tag("context", context)
+            .tag("stream", "aggregate_events")
+            .tag("origin", "client_request")
+            .metrics();
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, Authentication principal,

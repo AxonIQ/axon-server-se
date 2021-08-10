@@ -31,6 +31,8 @@ import io.axoniq.axonserver.message.event.InputStreamMarshaller;
 import io.axoniq.axonserver.message.event.SequenceValidationStrategy;
 import io.axoniq.axonserver.message.event.SequenceValidationStreamObserver;
 import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
+import io.axoniq.flowcontrol.OutgoingStream;
+import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
 import io.grpc.MethodDescriptor;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.CallStreamObserver;
@@ -42,13 +44,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
+import java.util.concurrent.Executor;
 
 import static io.grpc.stub.ServerCalls.*;
 
 /**
  * @author Marc Gathier
- * @author Sara Pellegrini
- * @author Stefan Dragisic
+ * @since 4.6.0
  */
 @Component
 public class EventStoreService implements AxonServerClientService {
@@ -79,13 +81,16 @@ public class EventStoreService implements AxonServerClientService {
     private final AuthenticationProvider authenticationProvider;
     private final ContextProvider contextProvider;
     private final EventDispatcher eventDispatcher;
+    private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
 
     public EventStoreService(ContextProvider contextProvider,
                              AuthenticationProvider authenticationProvider,
-                             EventDispatcher eventDispatcher) {
+                             EventDispatcher eventDispatcher,
+                             GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider) {
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
         this.eventDispatcher = eventDispatcher;
+        this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
     }
 
 
@@ -106,13 +111,15 @@ public class EventStoreService implements AxonServerClientService {
 
     public void listAggregateEvents(GetAggregateEventsRequest request,
                                     StreamObserver<SerializedEvent> responseObserver) {
-        CallStreamObserver<SerializedEvent> streamObserver = (CallStreamObserver<SerializedEvent>) responseObserver;
         String context = contextProvider.getContext();
         CallStreamObserver<SerializedEvent> validateStreamObserver =
-                new SequenceValidationStreamObserver(streamObserver, sequenceValidationStrategy, context);
-        eventDispatcher.listAggregateEvents(context, authenticationProvider.get(),
-                            request,
-                            new ForwardingStreamObserver<>(logger, "listAggregateEvents", validateStreamObserver));
+                new SequenceValidationStreamObserver((CallStreamObserver<SerializedEvent>) responseObserver,
+                                                     sequenceValidationStrategy,
+                                                     context);
+        Executor executor = grpcFlowControlExecutorProvider.provide();
+        OutgoingStream<SerializedEvent> outgoingStream = new FlowControlledOutgoingStream<>(validateStreamObserver,
+                                                                                            executor);
+        outgoingStream.accept(eventDispatcher.aggregateEvents(context, authenticationProvider.get(), request));
     }
 
 

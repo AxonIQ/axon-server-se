@@ -35,15 +35,17 @@ import reactor.core.publisher.MonoSink;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.config.GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
-import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -114,14 +116,17 @@ public class EventDispatcherTest {
     }
 
     @Test
-    public void listAggregateEventsNoEventStore() {
-        testSubject.listAggregateEvents("OtherContext", DEFAULT_PRINCIPAL,
-                                        GetAggregateEventsRequest.newBuilder().build(),
-                                        new FakeStreamObserver<>());
+    public void listAggregateEventsNoEventStore() throws ExecutionException, InterruptedException {
+        CompletableFuture<Throwable> completableFuture = new CompletableFuture<>();
+        testSubject.aggregateEvents("OtherContext", DEFAULT_PRINCIPAL,
+                                        GetAggregateEventsRequest.newBuilder().build()).subscribe(e -> {},
+                                                                                                  completableFuture::complete,
+                                                                                                  () -> completableFuture.completeExceptionally(new RuntimeException("Unexpected success")));
+        completableFuture.get();
     }
 
     @Test
-    public void listAggregateEventsWithRetry() throws InterruptedException {
+    public void listAggregateEventsWithRetry() throws InterruptedException, ExecutionException, TimeoutException {
         EventStore eventStore = mock(EventStore.class);
 
         when(eventStore.aggregateEvents(anyString(),any(),any()))
@@ -145,13 +150,13 @@ public class EventDispatcherTest {
         FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<SerializedEvent>();
         responseObserver.setIsReady(true);
 
-        testSubject.listAggregateEvents("retryContext", DEFAULT_PRINCIPAL,
-                GetAggregateEventsRequest.newBuilder().setAggregateId("retryAggregateId").build(),
-                responseObserver);
+        List<Long> actualSeqNumbers = new ArrayList<>(1000);
+        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        testSubject.aggregateEvents("retryContext", DEFAULT_PRINCIPAL,
+                GetAggregateEventsRequest.newBuilder().setAggregateId("retryAggregateId").build())
+                .subscribe(event -> actualSeqNumbers.add(event.getAggregateSequenceNumber()), completableFuture::completeExceptionally, () -> completableFuture.complete(null));
 
-        assertWithin(1000, MILLISECONDS, () -> assertEquals(1,responseObserver.completedCount()));
-
-        List<Long> actualSeqNumbers = responseObserver.values().stream().map(SerializedEvent::getAggregateSequenceNumber).collect(Collectors.toList());
+        completableFuture.get(1, TimeUnit.SECONDS);
         List<Long> expectedSeqNumbers = Flux.range(0, 100).map(Long::new).collectList().block();
 
         assertEquals(expectedSeqNumbers,actualSeqNumbers);
