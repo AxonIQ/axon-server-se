@@ -36,8 +36,8 @@ import static io.grpc.stub.ServerCalls.*;
 public class AxonHubEventService implements AxonServerClientService {
     public static final String SERVICE_NAME = "io.axoniq.axondb.grpc.EventStore";
 
-    public static final MethodDescriptor<InputStream, Confirmation> METHOD_APPEND_EVENT =
-            MethodDescriptor.newBuilder(InputStreamMarshaller.inputStreamMarshaller(),
+    public static final MethodDescriptor<SerializedEvent, Confirmation> METHOD_APPEND_EVENT =
+            MethodDescriptor.newBuilder(new SerializedEventMarshaller(),
                                         ProtoUtils.marshaller(Confirmation.getDefaultInstance()))
                             .setFullMethodName(generateFullMethodName(SERVICE_NAME, "AppendEvent"))
                             .setType(MethodDescriptor.MethodType.CLIENT_STREAMING)

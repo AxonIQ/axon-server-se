@@ -49,7 +49,7 @@ public interface EventStore {
      * @param authentication the authentication
      * @return stream to send events to
      */
-    Mono<Void> appendEvents(String context, Flux<Event> events, Authentication authentication);
+    Mono<Void> appendEvents(String context, Flux<SerializedEvent> events, Authentication authentication);
 
     /**
      * Returns a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
