@@ -37,6 +37,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
@@ -184,54 +185,60 @@ public class EventDispatcher  {
         if( auditLog.isDebugEnabled()) {
             auditLog.debug("[{}@{}] Request to list events for {}.", AuditLog.username(authentication), context, request.getAggregateId());
         }
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-        if (eventStore == null) {
-            return Flux.error(new MessagingPlatformException(NO_EVENTSTORE,
-                                                             NO_EVENT_STORE_CONFIGURED + context));
-        }
-        final String LAST_SEQ_KEY = "__LAST_SEQ";
-        return Flux.deferContextual(contextView -> {
-                                 AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
-                                 boolean allowedSnapshot =
-                                         request.getAllowSnapshots()
-                                                 && lastSeq.get() == -1;
+        return eventStoreLocator.eventStore(context)
+                         .flatMapMany(eventStore -> {
+                             final String LAST_SEQ_KEY = "__LAST_SEQ";
+                             return Flux.deferContextual(contextView -> {
+                                                             AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
+                                                             boolean allowedSnapshot =
+                                                                     request.getAllowSnapshots()
+                                                                             && lastSeq.get() == -1;
 
-                                 GetAggregateEventsRequest newRequest = request
-                                         .toBuilder()
-                                         .setAllowSnapshots(
-                                                 allowedSnapshot)
-                                         .setInitialSequence(lastSeq.get() + 1)
-                                         .build();
+                                                             GetAggregateEventsRequest newRequest = request
+                                                                     .toBuilder()
+                                                                     .setAllowSnapshots(
+                                                                             allowedSnapshot)
+                                                                     .setInitialSequence(lastSeq.get() + 1)
+                                                                     .build();
 
-                                 logger.debug("Reading events from seq#{} for aggregate {}",
-                                              lastSeq.get() + 1,
-                                              request.getAggregateId());
-                                 return eventStore
-                                         .aggregateEvents(context, authentication, newRequest);
-                             }
-            )
-            .limitRate(aggregateEventsPrefetch * 5, aggregateEventsPrefetch)
-            .doOnEach(signal -> {
-                if (signal.hasValue()) {
-                    ((AtomicLong) signal.getContextView().get(LAST_SEQ_KEY))
-                            .set(signal.get().getAggregateSequenceNumber());
-                }
-            })
-            .retryWhen(retrySpec
-                               .doBeforeRetry(t -> logger.warn(
-                                       "Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
-                                       t.failure().getClass().getName(),
-                                       t.failure().getMessage(),
-                                       request.getAggregateId())))
-            .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
-            .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
-            .contextWrite(c -> c.put(LAST_SEQ_KEY,
-                                     new AtomicLong(request.getInitialSequence() - 1)))
-            .name("event_stream")
-            .tag("context", context)
-            .tag("stream", "aggregate_events")
-            .tag("origin", "client_request")
-            .metrics();
+                                                             logger.debug("Reading events from seq#{} for aggregate {}",
+                                                                          lastSeq.get() + 1,
+                                                                          request.getAggregateId());
+                                                             return eventStore
+                                                                     .aggregateEvents(context, authentication, newRequest);
+                                                         }
+                                        )
+                                        .limitRate(aggregateEventsPrefetch * 5, aggregateEventsPrefetch)
+                                        .doOnEach(signal -> {
+                                            if (signal.hasValue()) {
+                                                ((AtomicLong) signal.getContextView().get(LAST_SEQ_KEY))
+                                                        .set(signal.get().getAggregateSequenceNumber());
+                                            }
+                                        })
+                                        .retryWhen(retrySpec
+                                                           .doBeforeRetry(t -> logger.warn(
+                                                                   "Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
+                                                                   t.failure().getClass().getName(),
+                                                                   t.failure().getMessage(),
+                                                                   request.getAggregateId())))
+                                     .onErrorMap(ex -> {
+                                         if (Exceptions.isRetryExhausted(ex)) {
+                                             return ex.getCause();
+                                         }
+                                         return ex;
+                                     })
+                                        .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
+                                        .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
+                                        .contextWrite(c -> c.put(LAST_SEQ_KEY,
+                                                                 new AtomicLong(request.getInitialSequence() - 1)))
+                                        .name("event_stream")
+                                        .tag("context", context)
+                                        .tag("stream", "aggregate_events")
+                                        .tag("origin", "client_request")
+                                        .metrics();
+                         })
+                .onErrorResume(Flux::error);
+
     }
 
     public StreamObserver<GetEventsRequest> listEvents(String context, Authentication principal,

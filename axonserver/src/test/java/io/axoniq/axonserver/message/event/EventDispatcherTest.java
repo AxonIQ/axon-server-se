@@ -36,11 +36,14 @@ import reactor.core.publisher.MonoSink;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.axoniq.axonserver.config.GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
@@ -60,21 +63,36 @@ public class EventDispatcherTest {
     @Mock
     private EventStore eventStoreClient;
 
-    @Mock
-    private EventStoreLocator eventStoreLocator;
+    private final AtomicInteger eventStoreWithoutLeaderCalls = new AtomicInteger();
+    private final Map<String, EventStore> otherContexts = new HashMap<>();
+
+    private final EventStoreLocator eventStoreLocator = new EventStoreLocator() {
+        @Override
+        public EventStore getEventStore(String context) {
+            if (DEFAULT_CONTEXT.equals(context)) {
+                return eventStoreClient;
+            }
+            return otherContexts.get(context);
+        }
+
+        @Override
+        public EventStore getEventStore(String context, boolean forceLeader) {
+            if (!forceLeader) {
+                eventStoreWithoutLeaderCalls.incrementAndGet();
+            }
+            return getEventStore(context);
+        }
+    };
 
     private final AtomicReference<MonoSink<Void>> appendEventsResult = new AtomicReference<>();
 
     @Before
     public void setUp() {
         when(eventStoreClient.appendEvents(any(), any(), any())).thenReturn(Mono.create(appendEventsResult::set));
-        when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
-        when(eventStoreLocator.getEventStore(eq(DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
-        when(eventStoreLocator.getEventStore(eq(DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
         testSubject = new EventDispatcher(eventStoreLocator,
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()),
-                                          3,100, 50);
+                                          3, 100, 50);
     }
 
     @Test
@@ -96,7 +114,9 @@ public class EventDispatcherTest {
     @Test
     public void appendEventRollback() {
         FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<InputStream> inputStream = testSubject.appendEvent(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
+        StreamObserver<InputStream> inputStream = testSubject.appendEvent(DEFAULT_CONTEXT,
+                                                                          DEFAULT_PRINCIPAL,
+                                                                          responseObserver);
         inputStream.onNext(dummyEvent());
         assertTrue(responseObserver.values().isEmpty());
         Throwable error = new Throwable();
@@ -117,9 +137,12 @@ public class EventDispatcherTest {
     public void listAggregateEventsNoEventStore() throws ExecutionException, InterruptedException {
         CompletableFuture<Throwable> completableFuture = new CompletableFuture<>();
         testSubject.aggregateEvents("OtherContext", DEFAULT_PRINCIPAL,
-                                        GetAggregateEventsRequest.newBuilder().build()).subscribe(e -> {},
-                                                                                                  completableFuture::complete,
-                                                                                                  () -> completableFuture.completeExceptionally(new RuntimeException("Unexpected success")));
+                                    GetAggregateEventsRequest.newBuilder().build()).subscribe(e -> {
+                                                                                              },
+                                                                                              completableFuture::complete,
+                                                                                              () -> completableFuture.completeExceptionally(
+                                                                                                      new RuntimeException(
+                                                                                                              "Unexpected success")));
         completableFuture.get();
     }
 
@@ -127,37 +150,69 @@ public class EventDispatcherTest {
     public void listAggregateEventsWithRetry() throws InterruptedException, ExecutionException, TimeoutException {
         EventStore eventStore = mock(EventStore.class);
 
-        when(eventStore.aggregateEvents(anyString(),any(),any()))
-                .thenAnswer(s->{
+        when(eventStore.aggregateEvents(anyString(), any(), any()))
+                .thenAnswer(s -> {
                     GetAggregateEventsRequest request = s.getArgument(2);
                     long initialSequence = request.getInitialSequence();
 
-                    if(initialSequence == 0) {
-                       return  Flux.concat(Flux.range(0,10)
-                                .map(i->new SerializedEvent(Event.newBuilder().setAggregateSequenceNumber(i).build())),
-                                Flux.error(new RuntimeException("Ups!")));
+                    if (initialSequence == 0) {
+                        return Flux.concat(Flux.range(0, 10)
+                                               .map(i -> new SerializedEvent(Event.newBuilder()
+                                                                                  .setAggregateSequenceNumber(i)
+                                                                                  .build())),
+                                           Flux.error(new RuntimeException("Ups!")));
                     } else {
-                        assertEquals ( 10, initialSequence);
-                        return Flux.range(Long.valueOf(initialSequence).intValue(),90)
-                                .map(i->new SerializedEvent(Event.newBuilder().setAggregateSequenceNumber(i).build()));
+                        assertEquals(10, initialSequence);
+                        return Flux.range(Long.valueOf(initialSequence).intValue(), 90)
+                                   .map(i -> new SerializedEvent(Event.newBuilder().setAggregateSequenceNumber(i)
+                                                                      .build()));
                     }
-        });
+                });
 
-        when(eventStoreLocator.getEventStore(eq("retryContext"))).thenReturn(eventStore);
+        otherContexts.put("retryContext", eventStore);
 
-        FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<SerializedEvent>();
+        FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<>();
         responseObserver.setIsReady(true);
 
         List<Long> actualSeqNumbers = new ArrayList<>(1000);
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         testSubject.aggregateEvents("retryContext", DEFAULT_PRINCIPAL,
-                GetAggregateEventsRequest.newBuilder().setAggregateId("retryAggregateId").build())
-                .subscribe(event -> actualSeqNumbers.add(event.getAggregateSequenceNumber()), completableFuture::completeExceptionally, () -> completableFuture.complete(null));
+                                    GetAggregateEventsRequest.newBuilder().setAggregateId("retryAggregateId").build())
+                   .subscribe(event -> actualSeqNumbers.add(event.getAggregateSequenceNumber()),
+                              completableFuture::completeExceptionally,
+                              () -> completableFuture.complete(null));
 
         completableFuture.get(1, TimeUnit.SECONDS);
         List<Long> expectedSeqNumbers = Flux.range(0, 100).map(Long::new).collectList().block();
 
-        assertEquals(expectedSeqNumbers,actualSeqNumbers);
+        assertEquals(expectedSeqNumbers, actualSeqNumbers);
+    }
+
+    @Test
+    public void listAggregateEventsWithFailedRetry() throws InterruptedException, TimeoutException {
+        EventStore eventStore = mock(EventStore.class);
+
+        when(eventStore.aggregateEvents(anyString(), any(), any()))
+                .thenAnswer(s -> Flux.error(new IllegalStateException("Ups!")));
+
+        otherContexts.put("retryContext", eventStore);
+
+        FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<>();
+        responseObserver.setIsReady(true);
+
+        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        testSubject.aggregateEvents("retryContext", DEFAULT_PRINCIPAL,
+                                    GetAggregateEventsRequest.newBuilder().setAggregateId("retryAggregateId").build())
+                   .subscribe(event -> {},
+                              completableFuture::completeExceptionally,
+                              () -> completableFuture.complete(null));
+
+        try {
+            completableFuture.get(1, TimeUnit.SECONDS);
+            fail("Expecting exception after max retries");
+        } catch (ExecutionException executionException) {
+            assertTrue( executionException.getCause() instanceof IllegalStateException);
+        }
     }
 
     @Test
@@ -165,11 +220,13 @@ public class EventDispatcherTest {
         FakeStreamObserver<InputStream> responseObserver = new FakeStreamObserver<>();
         when(eventStoreClient.events(any(), any(), any(Flux.class)))
                 .thenReturn(Flux.just(new SerializedEventWithToken(EventWithToken.getDefaultInstance())));
-        StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
+        StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(DEFAULT_CONTEXT,
+                                                                              DEFAULT_PRINCIPAL,
+                                                                              responseObserver);
         inputStream.onNext(GetEventsRequest.newBuilder()
                                            .setClientId("sampleClient")
                                            .build());
-        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, false);
+        assertEquals(1, eventStoreWithoutLeaderCalls.get());
         assertEquals(1, responseObserver.values().size());
         responseObserver = new FakeStreamObserver<>();
         inputStream = testSubject.listEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
@@ -177,7 +234,7 @@ public class EventDispatcherTest {
                                            .setForceReadFromLeader(true)
                                            .setClientId("sampleClient")
                                            .build());
-        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, true);
+        assertEquals(1, eventStoreWithoutLeaderCalls.get());
         assertEquals(1, responseObserver.completedCount());
         testSubject.on(new TopologyEvents.ApplicationDisconnected(DEFAULT_CONTEXT,
                                                                   "myComponent",
@@ -196,7 +253,7 @@ public class EventDispatcherTest {
                                                                                  DEFAULT_PRINCIPAL,
                                                                                  responseObserver);
         inputStream.onNext(QueryEventsRequest.newBuilder().build());
-        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, false);
+        assertEquals(1, eventStoreWithoutLeaderCalls.get());
         assertEquals(1, responseObserver.values().size());
 
         responseObserver = new FakeStreamObserver<>();
@@ -204,7 +261,7 @@ public class EventDispatcherTest {
         inputStream.onNext(QueryEventsRequest.newBuilder()
                                              .setForceReadFromLeader(true)
                                              .build());
-        verify(eventStoreLocator).getEventStore(DEFAULT_CONTEXT, true);
+        assertEquals(1, eventStoreWithoutLeaderCalls.get());
         assertEquals(1, responseObserver.completedCount());
     }
 }
