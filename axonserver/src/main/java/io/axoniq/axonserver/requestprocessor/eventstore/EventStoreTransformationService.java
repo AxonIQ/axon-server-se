@@ -7,10 +7,9 @@
  *
  */
 
-package io.axoniq.axonserver.message.event;
+package io.axoniq.axonserver.requestprocessor.eventstore;
 
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
-import reactor.core.publisher.Flux;
+import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;
 
 /**
@@ -21,9 +20,11 @@ public interface EventStoreTransformationService {
 
     Mono<String> startTransformation(String context);
 
-    Mono<Void> transformEvents(String context, Flux<TransformEventsRequest> flux);
+    Mono<Void> deleteEvent(String context, String transformationId, long token);
+
+    Mono<Void> replaceEvent(String context, String transformationId, long token, Event event);
 
     Mono<Void> cancelTransformation(String context, String id);
 
-    Mono<Void> applyTransformation(String context, String id);
+    Mono<Void> applyTransformation(String context, String id, long lastEventToken, long lastSnapshotToken);
 }

@@ -13,17 +13,18 @@ import com.google.protobuf.Empty;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
-import io.axoniq.axonserver.message.event.EventStoreTransformationService;
+import io.axoniq.axonserver.requestprocessor.eventstore.EventStoreTransformationService;
+import io.axoniq.axonserver.transport.grpc.EventTransformationService;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.security.core.Authentication;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
@@ -70,20 +71,23 @@ public class EventTransformationServiceTest {
             }
 
             @Override
-            public Mono<Void> transformEvents(String context, Flux<TransformEventsRequest> flux) {
-                return Mono.create(sink ->
-                                           flux.subscribe(request -> {
-                                               if (request.hasTransformationId() && !request.getTransformationId()
-                                                                                            .getId().equals(
-                                                               activeTransformations.get(context))) {
-                                                   sink.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                                                             "Transformation not found"));
-                                               }
-                                           }, error -> {
-                                               sink.error(error);
-                                           }, () -> {
-                                               sink.success(null);
-                                           }));
+            public Mono<Void> deleteEvent(String context, String transformationId, long token) {
+                if (transformationId != null  && !transformationId.equals(
+                        activeTransformations.get(context))) {
+                    return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
+                                                              "Transformation not found"));
+                }
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event) {
+                if (transformationId != null  && !transformationId.equals(
+                        activeTransformations.get(context))) {
+                    return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
+                                                                     "Transformation not found"));
+                }
+                return Mono.empty();
             }
 
             @Override
@@ -98,7 +102,8 @@ public class EventTransformationServiceTest {
             }
 
             @Override
-            public Mono<Void> applyTransformation(String context, String id) {
+            public Mono<Void> applyTransformation(String context, String id, long lastEventToken,
+                                                  long lastSnapshotToken) {
                 return Mono.create(sink -> {
                     if (id.equals(activeTransformations.get(context))) {
                         sink.success();
@@ -199,7 +204,7 @@ public class EventTransformationServiceTest {
     public void applyTransformation() throws ExecutionException, InterruptedException {
         TransformationId transformationId = doStartTransformation();
         CompletableFuture<Confirmation> futureConfirmation = new CompletableFuture<>();
-        testSubject.applyTransformation(transformationId, new CompletableFutureStreamObserver<>(futureConfirmation));
+        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId).build(), new CompletableFutureStreamObserver<>(futureConfirmation));
         assertTrue(futureConfirmation.get().getSuccess());
     }
 
@@ -207,7 +212,7 @@ public class EventTransformationServiceTest {
     public void applyTransformationError() throws InterruptedException {
         TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
         CompletableFuture<Confirmation> futureConfirmation = new CompletableFuture<>();
-        testSubject.applyTransformation(transformationId, new CompletableFutureStreamObserver<>(futureConfirmation));
+        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId).build(), new CompletableFutureStreamObserver<>(futureConfirmation));
         try {
             futureConfirmation.get();
             fail("Expected exception");

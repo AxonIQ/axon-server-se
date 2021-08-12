@@ -7,11 +7,10 @@
  *
  */
 
-package io.axoniq.axonserver.message.event;
+package io.axoniq.axonserver.requestprocessor.eventstore;
 
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.Event;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -27,7 +26,12 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     }
 
     @Override
-    public Mono<Void> transformEvents(String context, Flux<TransformEventsRequest> flux) {
+    public Mono<Void> deleteEvent(String context, String transformationId, long token) {
+        return Mono.error(new RuntimeException("Not implemented yet"));
+    }
+
+    @Override
+    public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event) {
         return Mono.error(new RuntimeException("Not implemented yet"));
     }
 
@@ -37,7 +41,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     }
 
     @Override
-    public Mono<Void> applyTransformation(String context, String id) {
+    public Mono<Void> applyTransformation(String context, String id, long lastEventToken, long lastSnapshotToken) {
         return Mono.error(new RuntimeException("Not implemented yet"));
     }
 }
