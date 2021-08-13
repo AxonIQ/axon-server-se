@@ -41,7 +41,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         if (setWebSocketAllowedOrigins) {
             registry.addEndpoint("/axonserver-platform-websocket")
-                    .setAllowedOrigins(webSocketAllowedOrigins)
+                    .setAllowedOriginPatterns(webSocketAllowedOrigins)
                     .withSockJS();
         } else {
             registry.addEndpoint("/axonserver-platform-websocket")
