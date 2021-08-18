@@ -40,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Mono;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.ByteArrayInputStream;
@@ -293,7 +294,7 @@ public class EventsRestController {
                     required = false, dataTypeClass = String.class, paramType = "header")
     })
     @Deprecated
-    public Future<Void> appendSnapshotOld(
+    public Mono<Void> appendSnapshotOld(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
             @ApiIgnore final Authentication principal) {
@@ -314,36 +315,16 @@ public class EventsRestController {
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataTypeClass = String.class, paramType = "header")
     })
-    public Future<Void> appendSnapshot(
+    public Mono<Void> appendSnapshot(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
             @ApiIgnore final Authentication principal) {
         auditLog.info("[{}@{}] Request to append event(s)", AuditLog.username(principal), context);
 
-        Event event = jsonEvent.asEvent();
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
-                                        ObjectUtils.getOrDefault(principal,
-                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                        event,
-                                        new StreamObserver<Confirmation>() {
-                                            @Override
-                                            public void onNext(Confirmation confirmation) {
-                                                result.complete(null);
-                                            }
-
-                                            @Override
-                                            public void onError(Throwable throwable) {
-                                                result.completeExceptionally(throwable);
-                                            }
-
-                                            @Override
-                                            public void onCompleted() {
-                                                // no action needed
-
-                                            }
-                                        });
-        return result;
+        return eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+                                               jsonEvent.asEvent(),
+                                               ObjectUtils.getOrDefault(principal,
+                                                                        GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL));
     }
 
     @JsonPropertyOrder({"messageIdentifier",

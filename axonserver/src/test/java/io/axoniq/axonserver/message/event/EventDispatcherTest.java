@@ -32,6 +32,7 @@ import org.mockito.junit.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
+import reactor.test.StepVerifier;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -106,11 +107,10 @@ public class EventDispatcherTest {
 
     @Test
     public void appendSnapshot() {
-        FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
         when(eventStoreClient.appendSnapshot(any(), any(Event.class), any())).thenReturn(Mono.empty());
-        testSubject.appendSnapshot(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, Event.newBuilder().build(), responseObserver);
+        StepVerifier.create(testSubject.appendSnapshot(DEFAULT_CONTEXT, Event.getDefaultInstance(), DEFAULT_PRINCIPAL))
+                    .verifyComplete();
         verify(eventStoreClient).appendSnapshot(any(), any(Event.class), any());
-        assertEquals(1, responseObserver.values().size());
     }
 
     @Test

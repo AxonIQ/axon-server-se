@@ -24,6 +24,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -41,6 +42,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
@@ -72,6 +74,7 @@ public class EventDispatcher  {
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
+    private final Logger auditLog = AuditLog.getLogger();
     private final EventStoreLocator eventStoreLocator;
     private final MeterFactory meterFactory;
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
@@ -159,33 +162,26 @@ public class EventDispatcher  {
                         context)));
     }
 
-
-    public void appendSnapshot(String context, Authentication authentication, Event snapshot,
-                               StreamObserver<Confirmation> responseObserver) {
-        checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            try {
-                eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-                eventStore.appendSnapshot(context, snapshot, authentication)
-                          .doOnSuccess(v -> {
-                              responseObserver.onNext(Confirmation.newBuilder()
-                                                                  .setSuccess(true)
-                                                                  .build());
-                              responseObserver.onCompleted();
-                          })
-                          .doOnError(t -> {
-                              logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                              responseObserver.onError(t);
-                          })
-                          .doOnCancel(() -> responseObserver.onError(MessagingPlatformException
-                                                                             .create(new RuntimeException(
-                                                                                     "Appending snapshot cancelled"))))
-                          .subscribe();
-            } catch (Exception ex) {
-                responseObserver.onError(ex);
-            }
-        });
+    public Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication) {
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}@{}] Request to list events for {}.",
+                           AuditLog.username(authentication),
+                           context,
+                           snapshot.getAggregateIdentifier());
+        }
+        EventStore eventStore = eventStoreLocator.getEventStore(context);
+        if (eventStore == null) {
+            return Mono.error(new MessagingPlatformException(NO_EVENTSTORE,
+                                                             NO_EVENT_STORE_CONFIGURED + context));
+        }
+        return eventStore.appendSnapshot(context, snapshot, authentication)
+                         .doOnSuccess(v -> eventsCounter(context,
+                                                         snapshotCounter,
+                                                         BaseMetricName.AXON_SNAPSHOTS).mark())
+                         .doOnError(t -> logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE,
+                                                     "appendSnapshot",
+                                                     t.getMessage()));
     }
-
 
     public void listAggregateEvents(String context, Authentication principal, GetAggregateEventsRequest request,
                                     CallStreamObserver<SerializedEvent> responseObserver) {
