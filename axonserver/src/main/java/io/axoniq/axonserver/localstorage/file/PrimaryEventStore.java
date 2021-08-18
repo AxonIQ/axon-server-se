@@ -323,7 +323,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
             writePosition.buffer.putInt(writePosition.position, -1);
 
-            WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence);
+            WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, storageProperties.getSegmentSize(), false);
             writePositionRef.set(writePosition.reset(buffer));
             synchronizer.register(new WritePosition(writePosition.sequence, 0, buffer, writePosition.sequence),
                                   new StorageCallback() {

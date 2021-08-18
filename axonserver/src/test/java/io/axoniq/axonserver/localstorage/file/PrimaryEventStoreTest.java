@@ -47,6 +47,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -358,7 +360,7 @@ public class PrimaryEventStoreTest {
     }
 
     @Test
-    public void testTransformationCurrentSegment() throws InterruptedException, ExecutionException, TimeoutException {
+    public void testTransformationCurrentSegment() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
         try {
             CountDownLatch latch = new CountDownLatch(10);
