@@ -29,6 +29,7 @@
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
+        <module>filestore</module>
     </modules>
 
     <properties>

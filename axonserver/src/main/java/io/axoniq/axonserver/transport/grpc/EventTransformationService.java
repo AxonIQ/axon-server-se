@@ -17,6 +17,7 @@ import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
+import io.axoniq.axonserver.grpc.event.StorageType;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -80,14 +81,34 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         many.asFlux().subscribe(request -> {
             switch (request.getRequestCase()) {
                 case EVENT:
-                    eventStoreTransformationService.replaceEvent(context, transformationId(request),
-                                                                 request.getEvent().getToken(), request.getEvent().getEvent())
-                            .block();
+                    if (request.getEvent().getEvent().getSnapshot()) {
+                        eventStoreTransformationService.replaceSnapshot(context, transformationId(request),
+                                                                     request.getEvent().getToken(),
+                                                                     request.getEvent().getEvent(),
+                                                                     request.getEvent().getPreviousToken())
+                                                       .block();
+
+                    } else {
+                        eventStoreTransformationService.replaceEvent(context, transformationId(request),
+                                                                     request.getEvent().getToken(),
+                                                                     request.getEvent().getEvent(),
+                                                                     request.getEvent().getPreviousToken())
+                                                       .block();
+                    }
                     break;
                 case DELETE_EVENT:
-                    eventStoreTransformationService.deleteEvent(context, transformationId(request),
-                                                                 request.getDeleteEvent().getToken())
-                            .block();
+                    if( StorageType.SnapshotType.equals(request.getDeleteEvent().getType())) {
+                        eventStoreTransformationService.deleteSnapshot(context, transformationId(request),
+                                                                    request.getDeleteEvent().getToken(),
+                                                                    request.getDeleteEvent().getPreviousToken())
+                                                       .block();
+
+                    } else {
+                        eventStoreTransformationService.deleteEvent(context, transformationId(request),
+                                                                    request.getDeleteEvent().getToken(),
+                                                                    request.getDeleteEvent().getPreviousToken())
+                                                       .block();
+                    }
                     break;
                 case REQUEST_NOT_SET:
                     break;

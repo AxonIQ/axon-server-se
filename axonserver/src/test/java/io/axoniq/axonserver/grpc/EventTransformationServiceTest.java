@@ -71,7 +71,7 @@ public class EventTransformationServiceTest {
             }
 
             @Override
-            public Mono<Void> deleteEvent(String context, String transformationId, long token) {
+            public Mono<Void> deleteEvent(String context, String transformationId, long token, long previousToken) {
                 if (transformationId != null  && !transformationId.equals(
                         activeTransformations.get(context))) {
                     return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
@@ -81,7 +81,19 @@ public class EventTransformationServiceTest {
             }
 
             @Override
-            public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event) {
+            public Mono<Void> replaceSnapshot(String context, String transformationId, long token, Event event,
+                                              long previousToken) {
+                return null;
+            }
+
+            @Override
+            public Mono<Void> deleteSnapshot(String context, String transformationId, long token, long previousToken) {
+                return null;
+            }
+
+            @Override
+            public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
+                                           long previousToken) {
                 if (transformationId != null  && !transformationId.equals(
                         activeTransformations.get(context))) {
                     return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,

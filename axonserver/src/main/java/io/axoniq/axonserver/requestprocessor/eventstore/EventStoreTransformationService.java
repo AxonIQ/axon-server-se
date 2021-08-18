@@ -20,11 +20,15 @@ public interface EventStoreTransformationService {
 
     Mono<String> startTransformation(String context);
 
-    Mono<Void> deleteEvent(String context, String transformationId, long token);
+    Mono<Void> deleteEvent(String context, String transformationId, long token, long previousToken);
 
-    Mono<Void> replaceEvent(String context, String transformationId, long token, Event event);
+    Mono<Void> replaceEvent(String context, String transformationId, long token, Event event, long previousToken);
 
     Mono<Void> cancelTransformation(String context, String id);
 
     Mono<Void> applyTransformation(String context, String id, long lastEventToken, long lastSnapshotToken);
+
+    Mono<Void> replaceSnapshot(String context, String transformationId, long token, Event event, long previousToken);
+
+    Mono<Void> deleteSnapshot(String context, String transformationId, long token, long previousToken);
 }
