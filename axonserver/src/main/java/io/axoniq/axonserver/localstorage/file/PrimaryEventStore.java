@@ -70,6 +70,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>();
     protected EventTransformer eventTransformer;
     protected final FileSystemMonitor fileSystemMonitor;
+    private final short maxEventsPerTransaction;
 
     /**
      * @param context                 the context and the content type (events or snapshots)
@@ -80,12 +81,27 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
      * @param fileSystemMonitor
      */
     public PrimaryEventStore(EventTypeContext context, IndexManager indexManager,
-                             EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties,
+                             EventTransformerFactory eventTransformerFactory,
+                             StorageProperties storageProperties,
                              SegmentBasedEventStore completedSegmentsHandler,
-                             MeterFactory meterFactory, FileSystemMonitor fileSystemMonitor) {
+                             MeterFactory meterFactory,
+                             FileSystemMonitor fileSystemMonitor) {
+        this(context, indexManager, eventTransformerFactory, storageProperties, completedSegmentsHandler, meterFactory,
+             fileSystemMonitor, Short.MAX_VALUE);
+    }
+
+    public PrimaryEventStore(EventTypeContext context,
+                             IndexManager indexManager,
+                             EventTransformerFactory eventTransformerFactory,
+                             StorageProperties storageProperties,
+                             SegmentBasedEventStore completedSegmentsHandler,
+                             MeterFactory meterFactory,
+                             FileSystemMonitor fileSystemMonitor,
+                             short maxEventsPerTransaction) {
         super(context, indexManager, storageProperties, completedSegmentsHandler, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
         this.fileSystemMonitor = fileSystemMonitor;
+        this.maxEventsPerTransaction = maxEventsPerTransaction;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }
 
@@ -107,7 +123,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         if (next != null) {
             next.initSegments(first);
         }
-        WritableEventSource buffer = getOrOpenDatafile(first);
+        WritableEventSource buffer = getOrOpenDatafile(first, storageProperties.getSegmentSize(), false);
         indexManager.remove(first);
         long sequence = first;
         Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
@@ -161,7 +177,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         if (!indexManager.validIndex(latestSegment)) {
             return latestSegment;
         }
-        WritableEventSource buffer = getOrOpenDatafile(latestSegment);
+        WritableEventSource buffer = getOrOpenDatafile(latestSegment, storageProperties.getSegmentSize(), false);
         long token = latestSegment;
         try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, latestSegment, latestSegment)) {
             while (iterator.hasNext()) {
@@ -227,7 +243,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     completableFuture.completeExceptionally(cause);
                 }
             });
-            write(writePosition, preparedTransaction.getEventSize(), preparedTransaction.getEventList(), indexEntries);
+            write(writePosition, preparedTransaction.getEventList(), indexEntries);
             synchronizer.notifyWritePositions();
         } catch (RuntimeException cause) {
             completableFuture.completeExceptionally(cause);
@@ -417,18 +433,38 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    private void write(WritePosition writePosition, int eventSize, List<ProcessedEvent> eventList,
+    private void write(WritePosition writePosition, List<ProcessedEvent> eventList,
                        Map<String, List<IndexEntry>> indexEntries) {
         ByteBufferEventSource source = writePosition.buffer.duplicate();
         ByteBuffer writeBuffer = source.getBuffer();
         writeBuffer.position(writePosition.position);
+        int count = eventList.size();
+        int from = 0;
+        int to = Math.min(count, from + maxEventsPerTransaction);
+        int firstSize = writeBlock(writeBuffer, eventList, 0, to, indexEntries, writePosition.sequence);
+        while (to < count) {
+            from = to;
+            to = Math.min(count, from + maxEventsPerTransaction);
+            int positionBefore = writeBuffer.position();
+            int blockSize = writeBlock(writeBuffer, eventList, from, to, indexEntries, writePosition.sequence + from);
+            int positionAfter = writeBuffer.position();
+            writeBuffer.putInt(positionBefore, blockSize);
+            writeBuffer.position(positionAfter);
+        }
+        writeBuffer.putInt(writePosition.position, firstSize);
+        source.close();
+    }
+
+    private int writeBlock(ByteBuffer writeBuffer, List<ProcessedEvent> eventList, int from, int to,
+                           Map<String, List<IndexEntry>> indexEntries, long token) {
         writeBuffer.putInt(0);
         writeBuffer.put(TRANSACTION_VERSION);
-        writeBuffer.putShort((short) eventList.size());
-        long token = writePosition.sequence;
+        writeBuffer.putShort((short) (to - from));
         Checksum checksum = new Checksum();
         int eventsPosition = writeBuffer.position();
-        for (ProcessedEvent event : eventList) {
+        int eventsSize = 0;
+        for (int i = from; i < to; i++) {
+            ProcessedEvent event = eventList.get(i);
             int position = writeBuffer.position();
             writeBuffer.putInt(event.getSerializedSize());
             writeBuffer.put(event.toByteArray());
@@ -437,21 +473,20 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                                              k -> new ArrayList<>())
                             .add(new IndexEntry(event.getAggregateSequenceNumber(), position, token));
             }
+            eventsSize += event.getSerializedSize() + 4;
             token++;
         }
 
         writeBuffer.putInt(checksum.update(writeBuffer, eventsPosition, writeBuffer.position() - eventsPosition).get());
-        writeBuffer.position(writePosition.position);
-        writeBuffer.putInt(eventSize);
-        source.close();
+        return eventsSize;
     }
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
-        int totalSize = HEADER_BYTES + eventBlockSize + TX_CHECKSUM_BYTES;
-        if (totalSize > storageProperties.getSegmentSize() - 9) {
-            throw new MessagingPlatformException(ErrorCode.PAYLOAD_TOO_LARGE,
-                                                 "Size of transaction too large, max size = " + (
-                                                         storageProperties.getSegmentSize() - 9));
+        int blocks = (int)Math.ceil(nrOfEvents/(double)maxEventsPerTransaction);
+        int totalSize = eventBlockSize + blocks * (HEADER_BYTES + TX_CHECKSUM_BYTES);
+        if (totalSize > MAX_TRANSACTION_SIZE || eventBlockSize <= 0) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+                                                 String.format("Illegal transaction size: %d", eventBlockSize));
         }
         WritePosition writePosition;
         do {
@@ -465,7 +500,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 writePosition.buffer.putInt(writePosition.position, -1);
 
-                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence);
+                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, (long)totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
+                                                               true);
                 writePositionRef.set(writePosition.reset(buffer));
             }
         } while (!writePosition.isWritable(totalSize));
@@ -478,11 +514,19 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return writePositionRef.get().sequence;
     }
 
-    protected WritableEventSource getOrOpenDatafile(long segment) {
+    protected WritableEventSource getOrOpenDatafile(long segment, long minSize, boolean canReplaceFile) {
         File file = storageProperties.dataFile(context, segment);
-        long size = storageProperties.getSegmentSize();
+        long size = Math.max(storageProperties.getSegmentSize(), minSize);
         if (file.exists()) {
-            size = file.length();
+            if (canReplaceFile && file.length() < minSize) {
+                ByteBufferEventSource s = readBuffers.remove(segment);
+                if (s != null) {
+                    s.clean(0);
+                }
+                FileUtils.delete(file);
+            } else {
+                size = file.length();
+            }
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             logger.info("Opening file {}", file);
@@ -503,11 +547,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private int eventBlockSize(List<ProcessedEvent> eventList) {
-        int size = 0;
+        long size = 0;
         for (ProcessedEvent event : eventList) {
             size += 4 + event.getSerializedSize();
         }
-        return size;
+        if (size > Integer.MAX_VALUE) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Transaction size exceeds maximum size");
+        }
+        return (int) size;
     }
 
     private String storeName() {

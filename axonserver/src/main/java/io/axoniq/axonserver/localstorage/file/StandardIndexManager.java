@@ -14,6 +14,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.util.DaemonThreadFactory;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tags;
 import org.mapdb.DB;
@@ -22,7 +23,6 @@ import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.io.Closeable;
 import java.io.File;
@@ -59,7 +59,7 @@ public class StandardIndexManager implements IndexManager {
     private static final Logger logger = LoggerFactory.getLogger(StandardIndexManager.class);
     private static final String AGGREGATE_MAP = "aggregateMap";
     private static final ScheduledExecutorService scheduledExecutorService =
-            Executors.newScheduledThreadPool(1, new CustomizableThreadFactory("index-manager-"));
+            Executors.newScheduledThreadPool(1, new DaemonThreadFactory("index-manager-"));
     protected final StorageProperties storageProperties;
     protected final String context;
     private final EventType eventType;

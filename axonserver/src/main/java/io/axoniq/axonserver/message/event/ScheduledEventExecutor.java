@@ -9,15 +9,12 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
-import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
-import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -52,32 +49,9 @@ public class ScheduledEventExecutor implements ScheduledTask {
             ScheduledEventWrapper scheduledEventWrapper = (ScheduledEventWrapper) payload;
             Event event = Event.newBuilder(Event.parseFrom(scheduledEventWrapper.getBytes()))
                                .setTimestamp(System.currentTimeMillis()).build();
-            StreamObserver<InputStream> inputStream = localEventStore.createAppendEventConnection(scheduledEventWrapper
-                                                                                                          .getContext(),
-                                                                                                  null,
-                                                                                                  new StreamObserver<Confirmation>() {
-                                                                                                      @Override
-                                                                                                      public void onNext(
-                                                                                                              Confirmation confirmation) {
-                                                                                                          result.complete(
-                                                                                                                  null);
-                                                                                                      }
-
-                                                                                                      @Override
-                                                                                                      public void onError(
-                                                                                                              Throwable throwable) {
-                                                                                                          result.completeExceptionally(
-                                                                                                                  throwable);
-                                                                                                      }
-
-                                                                                                      @Override
-                                                                                                      public void onCompleted() {
-
-                                                                                                      }
-                                                                                                  });
-
-            inputStream.onNext(new SerializedEvent(event).asInputStream());
-            inputStream.onCompleted();
+            Flux<Event> events = Flux.just(event);
+            return localEventStore.appendEvents(scheduledEventWrapper.getContext(), events, null)
+                                  .toFuture();
         } catch (Exception e) {
             result.completeExceptionally(e);
         }

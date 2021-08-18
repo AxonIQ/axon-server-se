@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -39,6 +40,8 @@ public class Gateway implements SmartLifecycle {
     private Server server;
     private final MessagingPlatformConfiguration routingConfiguration;
     private final LicenseAccessController licenseAccessController;
+    private final ExecutorService executorService;
+
 
     public Gateway(MessagingPlatformConfiguration messagingPlatformConfiguration, List<AxonServerClientService> axonServerClientServices,
                    AxonServerAccessController axonServerAccessController, LicenseAccessController licenseAccessController) {
@@ -46,6 +49,8 @@ public class Gateway implements SmartLifecycle {
         this.axonServerClientServices = axonServerClientServices;
         this.axonServerAccessController = axonServerAccessController;
         this.licenseAccessController = licenseAccessController;
+        this.executorService = Executors.newFixedThreadPool(routingConfiguration.getExecutorThreadCount(),
+                                                            new CustomizableThreadFactory("grpc-executor-"));
     }
 
     @Override
@@ -54,10 +59,14 @@ public class Gateway implements SmartLifecycle {
     }
 
     @Override
-    public void stop(Runnable callback) {
+    public void stop() {
+        executorService.shutdown();
         if(started) {
             try {
-                server.shutdown().awaitTermination(1, TimeUnit.SECONDS);
+                if (!server.shutdown().awaitTermination(1, TimeUnit.SECONDS)) {
+                    logger.debug("Forcefully stopping Cluster Server");
+                    server.shutdownNow();
+                }
             } catch (InterruptedException e) {
                 logger.debug("Interrupted during shutdown of GRPC server", e);
                 Thread.currentThread().interrupt();
@@ -66,8 +75,6 @@ public class Gateway implements SmartLifecycle {
 
         started = false;
         logger.info("Axon Server Gateway stopped");
-
-        callback.run();
     }
 
     @Override
@@ -109,8 +116,7 @@ public class Gateway implements SmartLifecycle {
             serverBuilder.keepAliveTime(routingConfiguration.getKeepAliveTime(), TimeUnit.MILLISECONDS)
                          .keepAliveTimeout(routingConfiguration.getKeepAliveTimeout(), TimeUnit.MILLISECONDS);
         }
-        serverBuilder.executor(Executors.newFixedThreadPool(routingConfiguration.getExecutorThreadCount(),
-                                                            new CustomizableThreadFactory("grpc-executor-")));
+        serverBuilder.executor(executorService);
 
         server = serverBuilder.build();
 
@@ -123,11 +129,6 @@ public class Gateway implements SmartLifecycle {
         } catch (IOException e) {
             logger.error("Starting Axon Server Gateway failed - {}", e.getMessage(), e);
         }
-    }
-
-    @Override
-    public void stop() {
-        stop(()-> {});
     }
 
     @Override

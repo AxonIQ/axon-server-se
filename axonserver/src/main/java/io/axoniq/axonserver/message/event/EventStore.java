@@ -9,26 +9,19 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.grpc.event.GetFirstTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetLastTokenRequest;
-import io.axoniq.axonserver.grpc.event.GetTokenAtRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.grpc.stub.StreamObserver;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.io.InputStream;
-import java.util.concurrent.CompletableFuture;
+import java.time.Instant;
 
 /**
  * Provides a facade to the event store.
@@ -41,22 +34,22 @@ public interface EventStore {
     /**
      * Stores a snapshot in the event store.
      *
-     * @param context  the context where the snapshot are stored
-     * @param snapshot the snapshot
+     * @param context        the context where the snapshot are stored
+     * @param snapshot       the snapshot
+     * @param authentication the authentication
      * @return completable future that completes when snapshot is stored
      */
-    CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication, Event snapshot);
+    Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication);
 
     /**
      * Creates a connection that receives events to be stored in a single transaction.
      *
-     * @param context          the context where the events are stored
-     * @param responseObserver response stream where the event store can confirm completion of the transaction
+     * @param context        the context where the events are stored
+     * @param events         stream of events to be appended
+     * @param authentication the authentication
      * @return stream to send events to
      */
-    StreamObserver<InputStream> createAppendEventConnection(String context,
-                                                            Authentication authentication,
-                                                            StreamObserver<Confirmation> responseObserver);
+    Mono<Void> appendEvents(String context, Flux<Event> events, Authentication authentication);
 
     /**
      * Returns a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
@@ -81,59 +74,73 @@ public interface EventStore {
      * @param request        the request containing the aggregate identifier and read options
      * @return a {@link Flux} of all {@link SerializedEvent}s for an aggregate according whit the specified request.
      */
-    default Flux<SerializedEvent> aggregateSnapshots(String context,
-                                                     Authentication authentication,
-                                                     GetAggregateSnapshotsRequest request) {
-        return Flux.create(
-                sink -> listAggregateSnapshots(context, authentication, request, new StreamObserver<SerializedEvent>() {
-                    @Override
-                    public void onNext(SerializedEvent serializedEvent) {
-                        sink.next(serializedEvent);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                        sink.error(throwable);
-                    }
-
-                    @Override
-                    public void onCompleted() {
-                        sink.complete();
-                    }
-                }));
-    }
+    Flux<SerializedEvent> aggregateSnapshots(String context,
+                                             Authentication authentication,
+                                             GetAggregateSnapshotsRequest request);
 
     /**
-     * Retrieves the Events from a given tracking token. Results are streamed rather than returned at once. Caller gets
-     * a stream where it first should send the base request to (including the first token and a number of permits) and
-     * subsequently send additional permits or blacklist messages to.
+     * Retrieves the Events from a given tracking token. Results are streamed rather than returned at once. Results are
+     * streamed using {@link Flux}.
      *
-     * @param context                the context to read from
-     * @param responseStreamObserver {@link StreamObserver} where the events will be published
-     * @return stream to send initial request and additional control messages to
+     * @param context        the context to read from
+     * @param authentication the authentication
+     * @param requestFlux    an input flux of request - meaning that request may change during events streaming
+     * @return serialized events with their corresponding tokens
      */
-    StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
-                                                StreamObserver<InputStream> responseStreamObserver);
+    Flux<SerializedEventWithToken> events(String context,
+                                          Authentication authentication,
+                                          Flux<GetEventsRequest> requestFlux);
 
-    void getFirstToken(String context, GetFirstTokenRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of the first event in event store.
+     *
+     * @param context the context in which the token will be searched for
+     * @return a mono of the token
+     */
+    Mono<Long> firstEventToken(String context);
 
-    void getLastToken(String context, GetLastTokenRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of the last event in event store.
+     *
+     * @param context the context in which the token will be searched for
+     * @return a mono of the token
+     */
+    Mono<Long> lastEventToken(String context);
 
-    void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver);
+    /**
+     * Gets the token of the event at specific position in time.
+     *
+     * @param context   the context in which the token will be searched for
+     * @param timestamp the timestamp to search the tracking token
+     * @return a mono of the token
+     */
+    Mono<Long> eventTokenAt(String context, Instant timestamp);
 
-    void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
-                               StreamObserver<ReadHighestSequenceNrResponse> responseObserver);
+    /**
+     * Gets the highest sequence number of an aggregate for a given {@code aggregateId}.
+     *
+     * @param context     the context in which to search for the aggregate
+     * @param aggregateId aggregate identifier
+     * @return the highest sequence number of an aggregate or -1 if aggregate does not exist in given context
+     */
+    Mono<Long> highestSequenceNumber(String context, String aggregateId);
 
-    StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
-                                                   StreamObserver<QueryEventsResponse> responseObserver);
-
-    void listAggregateSnapshots(String context, Authentication authentication, GetAggregateSnapshotsRequest request,
-                                StreamObserver<SerializedEvent> responseObserver);
+    /**
+     * Queries this event store based on the provided {@code query}.
+     *
+     * @param context        the context in which to query
+     * @param query          the flux of queries
+     * @param authentication the authentication
+     * @return a flux of results of the query
+     */
+    Flux<QueryEventsResponse> queryEvents(String context, Flux<QueryEventsRequest> query,
+                                          Authentication authentication);
 
     /**
      * Deletes all event data in a given context (Only intended for development environments).
      *
      * @param context the context to be deleted
+     * @return a Mono indicating when deletion is done
      */
-    void deleteAllEventData(String context);
+    Mono<Void> deleteAllEventData(String context);
 }

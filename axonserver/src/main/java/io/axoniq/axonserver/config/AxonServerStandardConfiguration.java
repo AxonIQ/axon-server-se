@@ -14,9 +14,9 @@ import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -49,6 +49,7 @@ import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.DaemonThreadFactory;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.version.VersionInfoProvider;
 import org.slf4j.Logger;
@@ -64,7 +65,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -173,7 +173,7 @@ public class AxonServerStandardConfiguration {
     @Bean
     @Qualifier("taskScheduler")
     public ScheduledExecutorService scheduler() {
-        return newScheduledThreadPool(10, new CustomizableThreadFactory("task-scheduler"));
+        return newScheduledThreadPool(10, new DaemonThreadFactory("task-scheduler"));
     }
 
     @Bean

@@ -38,6 +38,15 @@ public class SerializedEventWithToken {
         this(token, new SerializedEvent(event));
     }
 
+    /**
+     * Instantiates Serialized Event with Token based on given {@code eventWithToken}.
+     *
+     * @param eventWithToken event with token
+     */
+    public SerializedEventWithToken(EventWithToken eventWithToken) {
+        this(eventWithToken.getToken(), eventWithToken.getEvent());
+    }
+
     public InputStream asInputStream() {
         byte[] bytes = new byte[serializedEvent.size() + 32]; // extra space for tags, token and some to spare(see sizes below)
         CodedOutputStream cos = CodedOutputStream.newInstance(bytes);
