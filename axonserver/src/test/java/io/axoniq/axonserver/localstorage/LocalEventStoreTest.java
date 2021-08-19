@@ -129,8 +129,8 @@ public class LocalEventStoreTest {
 
     @Test
     public void createAppendEventConnection() throws ExecutionException, InterruptedException {
-        Flux<Event> events = Flux.fromStream(IntStream.range(0, 3)
-                                                      .mapToObj(i -> Event.getDefaultInstance()));
+        Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 3)
+                                                      .mapToObj(i -> new SerializedEvent(Event.getDefaultInstance())));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))
                     .verifyComplete();
 
@@ -142,10 +142,10 @@ public class LocalEventStoreTest {
     @Test
     public void createAppendEventConnectionCompensateAppendEntries() throws InterruptedException {
         eventInterceptors.failPreCommit = true;
-        Flux<Event> events = Flux.fromStream(IntStream.range(0, 2)
-                                                      .mapToObj(i -> Event.newBuilder()
+        Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 2)
+                                                      .mapToObj(i -> new SerializedEvent(Event.newBuilder()
                                                                           .setMessageIdentifier("FAIL")
-                                                                          .build()));
+                                                                          .build())));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))
                     .verifyError();
         assertEquals(2, eventInterceptors.appendEvent);
@@ -157,7 +157,7 @@ public class LocalEventStoreTest {
 
     @Test
     public void createAppendEventConnectionCompensatePreCommitAndAppendEntry() throws InterruptedException {
-        Flux<Event> events = Flux.just(Event.newBuilder().setMessageIdentifier("FAIL").build());
+        Flux<SerializedEvent> events = Flux.just(new SerializedEvent(Event.newBuilder().setMessageIdentifier("FAIL").build()));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))
                     .verifyError();
         assertEquals(1, eventInterceptors.eventsPreCommit);

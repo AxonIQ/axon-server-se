@@ -29,13 +29,16 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.junit.*;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
+import reactor.core.publisher.Sinks;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -66,7 +69,15 @@ public class EventDispatcherTest {
 
     @Before
     public void setUp() {
-        when(eventStoreClient.appendEvents(any(), any(), any())).thenReturn(Mono.create(appendEventsResult::set));
+        when(eventStoreClient.appendEvents(any(), any(), any())).then(invocationOnMock -> {
+            return Mono.create(sink -> {
+                Flux<SerializedEvent> flux = invocationOnMock.getArgument(1);
+                flux.subscribe(event -> {}, error -> {
+                    System.out.println("Cancelled by client");
+                    sink.success();
+                }, () -> sink.success());
+            });
+        });
         when(eventStoreLocator.getEventStore(eq("OtherContext"))).thenReturn(null);
         when(eventStoreLocator.getEventStore(eq(DEFAULT_CONTEXT), anyBoolean())).thenReturn(eventStoreClient);
         when(eventStoreLocator.getEventStore(eq(DEFAULT_CONTEXT))).thenReturn(eventStoreClient);
@@ -79,29 +90,42 @@ public class EventDispatcherTest {
 
     @Test
     public void appendEvent() {
-        FakeStreamObserver<Confirmation> responseObserver = spy(new FakeStreamObserver<>());
-        StreamObserver<InputStream> inputStream = testSubject.appendEvent(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL,
-                                                                          responseObserver);
-        inputStream.onNext(dummyEvent());
-        assertTrue(responseObserver.values().isEmpty());
-        inputStream.onCompleted();
-        appendEventsResult.get().success();
-        verify(responseObserver).onCompleted();
+        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        Sinks.Many<SerializedEvent> sink = Sinks.many().unicast().onBackpressureBuffer();
+        testSubject.appendEvent(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL,
+                                                      sink.asFlux())
+                .subscribe(r -> {}, e -> completableFuture.completeExceptionally(e), () -> completableFuture.complete(null));
+        sink.tryEmitNext(dummyEvent()).orThrow();
+        assertFalse(completableFuture.isDone());
+        sink.tryEmitComplete().orThrow();
+        assertTrue(completableFuture.isDone());
     }
 
-    private InputStream dummyEvent() {
-        return new ByteArrayInputStream(Event.newBuilder().build().toByteArray());
+    private SerializedEvent dummyEvent() {
+        return new SerializedEvent(Event.newBuilder().build());
     }
 
     @Test
-    public void appendEventRollback() {
-        FakeStreamObserver<Confirmation> responseObserver = new FakeStreamObserver<>();
-        StreamObserver<InputStream> inputStream = testSubject.appendEvent(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
-        inputStream.onNext(dummyEvent());
-        assertTrue(responseObserver.values().isEmpty());
-        Throwable error = new Throwable();
-        inputStream.onError(error);
-        assertTrue(responseObserver.errors().isEmpty());
+    public void appendEventRollback() throws ExecutionException, InterruptedException {
+        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        Sinks.Many<SerializedEvent> sink = Sinks.many().unicast().onBackpressureBuffer();
+        BaseSubscriber<Void> subscriber = new BaseSubscriber<Void>() {
+            @Override
+            protected void hookOnComplete() {
+                completableFuture.complete(null);
+            }
+
+            @Override
+            protected void hookOnError(Throwable throwable) {
+                completableFuture.completeExceptionally(throwable);
+            }
+        };
+        testSubject.appendEvent(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL,
+                                sink.asFlux())
+                   .subscribe(subscriber);
+        sink.tryEmitNext(dummyEvent()).orThrow();
+        sink.tryEmitError(new Throwable("stop"));
+        completableFuture.get();
     }
 
     @Test

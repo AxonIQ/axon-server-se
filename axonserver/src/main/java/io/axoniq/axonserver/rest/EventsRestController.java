@@ -11,6 +11,7 @@ package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -19,7 +20,6 @@ import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.rest.json.MetaDataJson;
 import io.axoniq.axonserver.rest.json.SerializedObjectJson;
@@ -40,9 +40,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import springfox.documentation.annotations.ApiIgnore;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -164,9 +165,9 @@ public class EventsRestController {
 
             ObjectMapper objectMapper = new ObjectMapper();
             eventStoreClient.aggregateEvents(context,
-                                                 getOrDefault(principal,
-                                                              GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                                 request)
+                                             getOrDefault(principal,
+                                                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                             request)
                             .doOnError(sseEmitter::completeWithError)
                             .doOnComplete(() -> completeEmitter(sseEmitter))
                             .subscribe(event -> send(sseEmitter, objectMapper, event));
@@ -188,19 +189,19 @@ public class EventsRestController {
                                         } catch (IOException e) {
                                             logger.debug("Exception on sending event - {}", e.getMessage(), e);
                                             throw new RuntimeException(e);
-                            }
-                        }
+                                        }
+                                    }
 
-                        @Override
-                        public void onError(Throwable throwable) {
-                            sseEmitter.completeWithError(throwable);
-                        }
+                                    @Override
+                                    public void onError(Throwable throwable) {
+                                        sseEmitter.completeWithError(throwable);
+                                    }
 
-                        @Override
-                        public void onCompleted() {
-                            sseEmitter.complete();
-                        }
-                    });
+                                    @Override
+                                    public void onCompleted() {
+                                        sseEmitter.complete();
+                                    }
+                                });
             requestStream.onNext(GetEventsRequest.newBuilder()
                                                  .setTrackingToken(trackingToken)
                                                  .setNumberOfPermits(10000)
@@ -238,44 +239,19 @@ public class EventsRestController {
             @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
                     required = false, dataTypeClass = String.class, paramType = "header")
     })
-    public Future<Void> submitEvents(
+    public Mono<Void> submitEvents(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @Valid @RequestBody JsonEventList jsonEvents,
             @ApiIgnore final Authentication principal) {
-        auditLog.info("[{}@{}] Request to submit events.", AuditLog.username(principal), context);
-
         if (jsonEvents.messages.isEmpty()) {
             throw new IllegalArgumentException("Missing messages");
         }
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        StreamObserver<InputStream> eventInputStream = eventStoreClient.appendEvent(context,
-                                                                                    getOrDefault(principal,
-                                                                                                 GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                                                                    new StreamObserver<Confirmation>() {
-                                                                                        @Override
-                                                                                        public void onNext(
-                                                                                                Confirmation confirmation) {
-                                                                                            result.complete(null);
-                                                                                        }
 
-                                                                                        @Override
-                                                                                        public void onError(
-                                                                                                Throwable throwable) {
-                                                                                            result.completeExceptionally(
-                                                                                                    throwable);
-                                                                                        }
-
-                                                                                        @Override
-                                                                                        public void onCompleted() {
-                                                                                            // no action needed
-                                                                                        }
-                                                                                    });
-        if (eventInputStream != null) {
-            jsonEvents.messages.forEach(jsonEvent -> eventInputStream
-                    .onNext(new ByteArrayInputStream(jsonEvent.asEvent().toByteArray())));
-            eventInputStream.onCompleted();
-        }
-        return result;
+        Flux<SerializedEvent> events = Flux.fromStream(
+                jsonEvents.messages
+                        .stream()
+                        .map(jsonEvent -> new SerializedEvent(jsonEvent.asEvent())));
+        return eventStoreClient.appendEvent(context, principal, events);
     }
 
     /**
@@ -284,7 +260,6 @@ public class EventsRestController {
      * @param context   the context where to add the snapshot
      * @param jsonEvent the snapshot data
      * @return completable future that completes when snapshot is stored.
-     *
      * @deprecated Use /v1/snapshots instead.
      */
     @PostMapping("snapshot")
