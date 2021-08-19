@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.config.AuthenticationProvider;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
@@ -31,6 +32,7 @@ import io.axoniq.axonserver.message.event.InputStreamMarshaller;
 import io.axoniq.axonserver.message.event.SequenceValidationStrategy;
 import io.axoniq.axonserver.message.event.SequenceValidationStreamObserver;
 import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.axoniq.flowcontrol.OutgoingStream;
 import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
 import io.grpc.MethodDescriptor;
@@ -42,6 +44,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.BaseSubscriber;
+import reactor.core.publisher.Sinks;
 
 import java.io.InputStream;
 import java.util.concurrent.Executor;
@@ -70,9 +74,9 @@ public class EventStoreService implements AxonServerClientService {
                     ProtoUtils.marshaller(GetAggregateSnapshotsRequest.getDefaultInstance()),
                     SerializedEventMarshaller.serializedEventMarshaller())
                     .build();
-    public static final MethodDescriptor<InputStream, Confirmation> METHOD_APPEND_EVENT =
+    public static final MethodDescriptor<SerializedEvent, Confirmation> METHOD_APPEND_EVENT =
             EventStoreGrpc.getAppendEventMethod().toBuilder(
-                    InputStreamMarshaller.inputStreamMarshaller(),
+                                  SerializedEventMarshaller.serializedEventMarshaller(),
                     ProtoUtils.marshaller(Confirmation.getDefaultInstance()))
                     .build();
     private final Logger logger = LoggerFactory.getLogger(EventStoreService.class);
@@ -94,10 +98,51 @@ public class EventStoreService implements AxonServerClientService {
     }
 
 
-    public StreamObserver<InputStream> appendEvent(StreamObserver<Confirmation> responseObserver) {
-        CallStreamObserver<Confirmation> callStreamObserver = (CallStreamObserver<Confirmation>) responseObserver;
-        return eventDispatcher.appendEvent(contextProvider.getContext(), authenticationProvider.get(),
-                new ForwardingStreamObserver<>(logger, "appendEvent", callStreamObserver));
+    public StreamObserver<SerializedEvent> appendEvent(StreamObserver<Confirmation> responseObserver) {
+        Sinks.Many<SerializedEvent> sink = Sinks.many()
+                                                .unicast()
+                                                .onBackpressureBuffer();
+
+        StreamObserver<SerializedEvent> inputStreamObserver = new StreamObserver<SerializedEvent>() {
+            @Override
+            public void onNext(SerializedEvent inputStream) {
+                try {
+                    sink.tryEmitNext(inputStream).orThrow();
+                } catch (Exception exception) {
+                    sink.tryEmitError(exception);
+                    StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                logger.warn("Error on connection from client: {}", throwable.getMessage());
+                sink.tryEmitError(throwable);
+            }
+
+            @Override
+            public void onCompleted() {
+                sink.tryEmitComplete();
+            }
+        };
+
+        eventDispatcher.appendEvent(contextProvider.getContext(), authenticationProvider.get(),
+                                    sink.asFlux()).subscribe(new BaseSubscriber<Void>() {
+            @Override
+            protected void hookOnComplete() {
+                responseObserver.onNext(Confirmation.newBuilder()
+                                                    .setSuccess(true)
+                                                    .build());
+                responseObserver.onCompleted();
+            }
+
+            @Override
+            protected void hookOnError(Throwable throwable) {
+                responseObserver.onError(GrpcExceptionBuilder.build(throwable));
+            }
+        });
+
+        return inputStreamObserver;
     }
 
 

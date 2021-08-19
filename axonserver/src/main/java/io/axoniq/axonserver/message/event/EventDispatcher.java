@@ -39,6 +39,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
@@ -64,7 +65,9 @@ import static io.axoniq.axonserver.exception.ErrorCode.NO_EVENTSTORE;
  * @author Stefan Dragisic
  */
 @Component
-public class EventDispatcher  {
+public class EventDispatcher {
+
+    private static final Logger auditLog = AuditLog.getLogger();
 
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
@@ -92,66 +95,31 @@ public class EventDispatcher  {
     }
 
 
-    public StreamObserver<InputStream> appendEvent(String context, Authentication authentication,
-                                                   StreamObserver<Confirmation> responseObserver) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-
-        if (eventStore == null) {
-            responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                    NO_EVENT_STORE_CONFIGURED + context));
-            return new NoOpStreamObserver<>();
+    public Mono<Void> appendEvent(String context,
+                                  Authentication authentication,
+                                  Flux<SerializedEvent> eventFlux) {
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}@{}] Request to append events.", AuditLog.username(authentication), context);
         }
 
-        Sinks.Many<Event> sink = Sinks.many()
-                                      .unicast()
-                                      .onBackpressureBuffer();
+        EventStore eventStore = eventStoreLocator.getEventStore(context);
+        if (eventStore == null) {
+            return Mono.error(new MessagingPlatformException(NO_EVENTSTORE,
+                                                             NO_EVENT_STORE_CONFIGURED + context));
+        }
 
-        StreamObserver<InputStream> inputStreamObserver = new StreamObserver<InputStream>() {
-            @Override
-            public void onNext(InputStream inputStream) {
-                try {
-                    sink.tryEmitNext(Event.parseFrom(inputStream));
-                    eventsCounter(context, eventsCounter, BaseMetricName.AXON_EVENTS).mark();
-                } catch (Exception exception) {
-                    sink.tryEmitError(exception);
-                    StreamObserverUtils.error(responseObserver, MessagingPlatformException.create(exception));
-                }
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-                logger.warn("Error on connection from client: {}", throwable.getMessage());
-                sink.tryEmitError(throwable);
-            }
-
-            @Override
-            public void onCompleted() {
-                sink.tryEmitComplete();
-            }
-        };
-
-        eventStore.appendEvents(context, sink.asFlux(), authentication)
-                  .doOnSuccess(v -> {
-                      responseObserver.onNext(Confirmation.newBuilder()
-                                                          .setSuccess(true)
-                                                          .build());
-                      responseObserver.onCompleted();
-                  })
-                  .doOnError(throwable -> StreamObserverUtils
-                          .error(responseObserver, MessagingPlatformException.create(throwable)))
-                  .doOnCancel(() -> StreamObserverUtils.error(responseObserver,
-                                                              MessagingPlatformException.create(new RuntimeException(
-                                                                      "Appending events cancelled."))))
-                  .subscribe();
-
-        return inputStreamObserver;
+        return eventStore.appendEvents(context,
+                                       eventFlux.doOnNext(event -> eventsCounter(context,
+                                                                                 eventsCounter,
+                                                                                 BaseMetricName.AXON_EVENTS).mark()),
+                                       authentication);
     }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
                                                  BaseMetricName eventsMetricName) {
         return eventsCounter.computeIfAbsent(context, c -> meterFactory.rateMeter(eventsMetricName,
-                Tags.of(MeterFactory.CONTEXT,
-                        context)));
+                                                                                  Tags.of(MeterFactory.CONTEXT,
+                                                                                          context)));
     }
 
 
@@ -251,10 +219,10 @@ public class EventDispatcher  {
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected
-                .clientIdentification());
+                                                                                      .clientIdentification());
         logger.debug("application disconnected: {}, eventsStreams: {}",
-                applicationDisconnected.getClientStreamId(),
-                eventsStreams);
+                     applicationDisconnected.getClientStreamId(),
+                     eventsStreams);
 
         if (eventsStreams != null) {
             eventsStreams.forEach(streamObserver -> {
@@ -262,8 +230,8 @@ public class EventDispatcher  {
                     streamObserver.responseObserver.onCompleted();
                 } catch (Exception ex) {
                     logger.debug("Error while closing tracking event processor connection from {} - {}",
-                            applicationDisconnected.getClientStreamId(),
-                            ex.getMessage());
+                                 applicationDisconnected.getClientStreamId(),
+                                 ex.getMessage());
                 }
             });
         }
@@ -302,7 +270,7 @@ public class EventDispatcher  {
         EventStore eventStore = eventStoreLocator.getEventStore(context);
         if (eventStore == null) {
             responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                    NO_EVENT_STORE_CONFIGURED + context));
+                                                                    NO_EVENT_STORE_CONFIGURED + context));
             return Optional.empty();
         }
         return Optional.of(eventStore);
@@ -353,10 +321,10 @@ public class EventDispatcher  {
                                                             .unicast()
                                                             .onBackpressureBuffer())) {
                     EventStore eventStore = eventStoreLocator.getEventStore(context,
-                            request.getForceReadFromLeader());
+                                                                            request.getForceReadFromLeader());
                     if (eventStore == null) {
                         responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                NO_EVENT_STORE_CONFIGURED + context));
+                                                                                NO_EVENT_STORE_CONFIGURED + context));
                         return;
                     }
                     eventStore.queryEvents(context, requestSinkRef.get().asFlux(), authentication)
@@ -364,12 +332,12 @@ public class EventDispatcher  {
                                          responseObserver::onError,
                                          responseObserver::onCompleted);
                 }
-                    Sinks.EmitResult emitResult = requestSinkRef.get().tryEmitNext(request);
-                    if (emitResult.isFailure()) {
-                        String message = String.format("%s: Error forwarding request to event store.", context);
-                        logger.warn(message);
-                        requestSinkRef.get().tryEmitError(new RuntimeException(message));
-                    }
+                Sinks.EmitResult emitResult = requestSinkRef.get().tryEmitNext(request);
+                if (emitResult.isFailure()) {
+                    String message = String.format("%s: Error forwarding request to event store.", context);
+                    logger.warn(message);
+                    requestSinkRef.get().tryEmitError(new RuntimeException(message));
+                }
             }
 
             @Override
@@ -502,23 +470,24 @@ public class EventDispatcher  {
                                                      .unicast()
                                                      .onBackpressureBuffer())) {
                 trackerInfo = new EventTrackerInfo(responseObserver,
-                        getEventsRequest.getClientId(),
-                        context,
-                        getEventsRequest.getTrackingToken() - 1);
+                                                   getEventsRequest.getClientId(),
+                                                   context,
+                                                   getEventsRequest.getTrackingToken() - 1);
                 try {
                     EventStore eventStore = eventStoreLocator
                             .getEventStore(context,
-                                    getEventsRequest.getForceReadFromLeader());
+                                           getEventsRequest.getForceReadFromLeader());
                     if (eventStore == null) {
                         responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                NO_EVENT_STORE_CONFIGURED + context));
+                                                                                NO_EVENT_STORE_CONFIGURED + context));
                         return false;
                     }
 
                     eventStore.events(context, principal, requestSink.get().asFlux())
                               .doOnCancel(() -> StreamObserverUtils.error(responseObserver,
                                                                           GrpcExceptionBuilder.build(
-                                                                                  new RuntimeException("Listing events canceled."))))
+                                                                                  new RuntimeException(
+                                                                                          "Listing events canceled."))))
                               .subscribe(eventWithToken -> {
                                   responseObserver.onNext(eventWithToken.asInputStream());
                                   trackerInfo.incrementLastToken();
@@ -543,12 +512,12 @@ public class EventDispatcher  {
                 }
 
                 trackingEventProcessors.computeIfAbsent(new ClientStreamIdentification(trackerInfo.context,
-                                trackerInfo.client),
-                        key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
+                                                                                       trackerInfo.client),
+                                                        key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
                 logger.info("Starting tracking event processor for {}:{} - {}",
-                        getEventsRequest.getClientId(),
-                        getEventsRequest.getComponentName(),
-                        getEventsRequest.getTrackingToken());
+                            getEventsRequest.getClientId(),
+                            getEventsRequest.getComponentName(),
+                            getEventsRequest.getTrackingToken());
             }
             return true;
         }
@@ -565,14 +534,14 @@ public class EventDispatcher  {
             logger.info("Removed tracker info {}", trackerInfo);
             if (trackerInfo != null) {
                 trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
-                                trackerInfo.client),
-                        (c, streams) -> {
-                            logger.debug("{}: {} streams",
-                                    trackerInfo.client,
-                                    streams.size());
-                            streams.remove(trackerInfo);
-                            return streams.isEmpty() ? null : streams;
-                        });
+                                                                                        trackerInfo.client),
+                                                         (c, streams) -> {
+                                                             logger.debug("{}: {} streams",
+                                                                          trackerInfo.client,
+                                                                          streams.size());
+                                                             streams.remove(trackerInfo);
+                                                             return streams.isEmpty() ? null : streams;
+                                                         });
             }
         }
 
