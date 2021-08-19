@@ -76,11 +76,28 @@ public class EventDispatcherTest {
         }
 
         @Override
+        public Mono<EventStore> eventStore(String context) {
+            if (DEFAULT_CONTEXT.equals(context)) {
+                return Mono.just(eventStoreClient);
+            }
+            EventStore other = otherContexts.get(context);
+            return other == null ? Mono.error(new RuntimeException("Not found")) : Mono.just(other);
+        }
+
+        @Override
         public EventStore getEventStore(String context, boolean forceLeader) {
             if (!forceLeader) {
                 eventStoreWithoutLeaderCalls.incrementAndGet();
             }
             return getEventStore(context);
+        }
+
+        @Override
+        public Mono<EventStore> eventStore(String context, boolean forceLeader) {
+            if (!forceLeader) {
+                eventStoreWithoutLeaderCalls.incrementAndGet();
+            }
+            return eventStore(context);
         }
     };
 

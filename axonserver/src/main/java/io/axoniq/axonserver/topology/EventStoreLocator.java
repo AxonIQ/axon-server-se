@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.topology;
 
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.message.event.EventStore;
 import reactor.core.publisher.Mono;
 
@@ -30,11 +28,30 @@ public interface EventStoreLocator {
      * @param context the context to get the eventstore for
      * @return an EventStore
      */
+    @Deprecated
     EventStore getEventStore(String context);
 
-    default Mono<EventStore> eventStore(String context) {
-        EventStore eventStore = getEventStore(context);
-        return eventStore == null ? Mono.error(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Event store not found")) : Mono.just(eventStore);
+    /**
+     * Retrieve an EventStore instance which can be used to store and retrieve events. Returns null when there is no
+     * leader for the specified context.
+     *
+     * @param context the context to get the eventstore for
+     * @return an EventStore
+     */
+    Mono<EventStore> eventStore(String context);
+
+    /**
+     * Retrieve an EventStore instance which can be used to store and retrieve events. Returns null when there is no
+     * leader for the specified context.
+     *
+     * @param context     the context to get the local EventStore for
+     * @param forceLeader use local event store (if possible - if current node has event store for this context,
+     *                    otherwise opens a remote connection)
+     * @return an EventStore
+     */
+    @Deprecated
+    default EventStore getEventStore(String context, boolean forceLeader) {
+        return getEventStore(context);
     }
 
     /**
@@ -46,13 +63,8 @@ public interface EventStoreLocator {
      *                    otherwise opens a remote connection)
      * @return an EventStore
      */
-    default EventStore getEventStore(String context, boolean forceLeader) {
-        return getEventStore(context);
-    }
-
     default Mono<EventStore> eventStore(String context, boolean forceLeader) {
-        EventStore eventStore = getEventStore(context, forceLeader);
-        return eventStore == null ? Mono.error(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "Event store not found")) : Mono.just(eventStore);
+        return eventStore(context);
     }
 
 }

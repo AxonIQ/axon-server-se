@@ -181,10 +181,13 @@ public class EventDispatcher  {
         });
     }
 
-    public Flux<SerializedEvent> aggregateEvents(String context, Authentication authentication, GetAggregateEventsRequest request) {
+    public Flux<SerializedEvent> aggregateEvents(String context,
+                                                 Authentication authentication,
+                                                 GetAggregateEventsRequest request) {
         if( auditLog.isDebugEnabled()) {
             auditLog.debug("[{}@{}] Request to list events for {}.", AuditLog.username(authentication), context, request.getAggregateId());
         }
+
         return eventStoreLocator.eventStore(context)
                          .flatMapMany(eventStore -> {
                              final String LAST_SEQ_KEY = "__LAST_SEQ";
@@ -196,8 +199,7 @@ public class EventDispatcher  {
 
                                                              GetAggregateEventsRequest newRequest = request
                                                                      .toBuilder()
-                                                                     .setAllowSnapshots(
-                                                                             allowedSnapshot)
+                                                                     .setAllowSnapshots(allowedSnapshot)
                                                                      .setInitialSequence(lastSeq.get() + 1)
                                                                      .build();
 
