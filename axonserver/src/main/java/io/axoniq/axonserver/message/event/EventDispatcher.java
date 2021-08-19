@@ -72,7 +72,6 @@ public class EventDispatcher {
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
     private static final String NO_EVENT_STORE_CONFIGURED = "No event store available for: ";
     private final Logger logger = LoggerFactory.getLogger(EventDispatcher.class);
-    private final Logger auditLog = AuditLog.getLogger();
     private final EventStoreLocator eventStoreLocator;
     private final MeterFactory meterFactory;
     private final Map<ClientStreamIdentification, List<EventTrackerInfo>> trackingEventProcessors = new ConcurrentHashMap<>();
