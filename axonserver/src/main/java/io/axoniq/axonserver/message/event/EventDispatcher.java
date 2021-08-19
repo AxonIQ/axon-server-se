@@ -128,18 +128,15 @@ public class EventDispatcher {
                            context,
                            snapshot.getAggregateIdentifier());
         }
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-        if (eventStore == null) {
-            return Mono.error(new MessagingPlatformException(NO_EVENTSTORE,
-                                                             NO_EVENT_STORE_CONFIGURED + context));
-        }
-        return eventStore.appendSnapshot(context, snapshot, authentication)
-                         .doOnSuccess(v -> eventsCounter(context,
-                                                         snapshotCounter,
-                                                         BaseMetricName.AXON_SNAPSHOTS).mark())
-                         .doOnError(t -> logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE,
-                                                     "appendSnapshot",
-                                                     t.getMessage()));
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.appendSnapshot(context, snapshot, authentication)
+                                                                 .doOnSuccess(v -> eventsCounter(context,
+                                                                                                 snapshotCounter,
+                                                                                                 BaseMetricName.AXON_SNAPSHOTS).mark())
+                                                                 .doOnError(t -> logger.warn(
+                                                                         ERROR_ON_CONNECTION_FROM_EVENT_STORE,
+                                                                         "appendSnapshot",
+                                                                         t.getMessage())));
     }
 
     public Flux<SerializedEvent> aggregateEvents(String context,
