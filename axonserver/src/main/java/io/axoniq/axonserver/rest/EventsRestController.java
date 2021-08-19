@@ -165,9 +165,9 @@ public class EventsRestController {
 
             ObjectMapper objectMapper = new ObjectMapper();
             eventStoreClient.aggregateEvents(context,
-                                                 getOrDefault(principal,
-                                                              GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                                 request)
+                                             getOrDefault(principal,
+                                                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                             request)
                             .doOnError(sseEmitter::completeWithError)
                             .doOnComplete(() -> completeEmitter(sseEmitter))
                             .subscribe(event -> send(sseEmitter, objectMapper, event));
@@ -189,19 +189,19 @@ public class EventsRestController {
                                         } catch (IOException e) {
                                             logger.debug("Exception on sending event - {}", e.getMessage(), e);
                                             throw new RuntimeException(e);
-                            }
-                        }
+                                        }
+                                    }
 
-                        @Override
-                        public void onError(Throwable throwable) {
-                            sseEmitter.completeWithError(throwable);
-                        }
+                                    @Override
+                                    public void onError(Throwable throwable) {
+                                        sseEmitter.completeWithError(throwable);
+                                    }
 
-                        @Override
-                        public void onCompleted() {
-                            sseEmitter.complete();
-                        }
-                    });
+                                    @Override
+                                    public void onCompleted() {
+                                        sseEmitter.complete();
+                                    }
+                                });
             requestStream.onNext(GetEventsRequest.newBuilder()
                                                  .setTrackingToken(trackingToken)
                                                  .setNumberOfPermits(10000)
@@ -247,7 +247,10 @@ public class EventsRestController {
             throw new IllegalArgumentException("Missing messages");
         }
 
-        Flux<SerializedEvent> events = Flux.fromStream(jsonEvents.messages.stream().map(jsonEvent -> new SerializedEvent(jsonEvent.asEvent())));
+        Flux<SerializedEvent> events = Flux.fromStream(
+                jsonEvents.messages
+                        .stream()
+                        .map(jsonEvent -> new SerializedEvent(jsonEvent.asEvent())));
         return eventStoreClient.appendEvent(context, principal, events);
     }
 
@@ -257,7 +260,6 @@ public class EventsRestController {
      * @param context   the context where to add the snapshot
      * @param jsonEvent the snapshot data
      * @return completable future that completes when snapshot is stored.
-     *
      * @deprecated Use /v1/snapshots instead.
      */
     @PostMapping("snapshot")

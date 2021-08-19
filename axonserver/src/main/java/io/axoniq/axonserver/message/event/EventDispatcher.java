@@ -70,6 +70,7 @@ import static io.axoniq.axonserver.exception.ErrorCode.NO_EVENTSTORE;
  */
 @Component
 public class EventDispatcher {
+
     private static final Logger auditLog = AuditLog.getLogger();
 
     static final String ERROR_ON_CONNECTION_FROM_EVENT_STORE = "{}:  Error on connection from event store: {}";
@@ -100,12 +101,14 @@ public class EventDispatcher {
     }
 
 
-    public Mono<Void> appendEvent(String context, Authentication authentication, Flux<SerializedEvent> eventFlux) {
-        if( auditLog.isDebugEnabled()) {
+    public Mono<Void> appendEvent(String context,
+                                  Authentication authentication,
+                                  Flux<SerializedEvent> eventFlux) {
+        if (auditLog.isDebugEnabled()) {
             auditLog.debug("[{}@{}] Request to append events.", AuditLog.username(authentication), context);
         }
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
 
+        EventStore eventStore = eventStoreLocator.getEventStore(context);
         if (eventStore == null) {
             return Mono.error(new MessagingPlatformException(NO_EVENTSTORE,
                                                              NO_EVENT_STORE_CONFIGURED + context));
