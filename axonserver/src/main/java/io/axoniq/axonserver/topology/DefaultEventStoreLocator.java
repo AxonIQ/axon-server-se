@@ -13,6 +13,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.message.event.EventStore;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
 
@@ -41,5 +42,12 @@ public class DefaultEventStoreLocator implements EventStoreLocator {
             return localEventStore;
         }
         throw new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "No eventstore found");
+    }
+
+    @Override
+    public Mono<EventStore> eventStore(String context) {
+        return Topology.DEFAULT_CONTEXT.equals(context) ?
+                Mono.just(localEventStore) :
+                Mono.error(new MessagingPlatformException(ErrorCode.NO_EVENTSTORE, "No eventstore found"));
     }
 }

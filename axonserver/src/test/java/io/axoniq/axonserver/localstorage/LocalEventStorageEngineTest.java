@@ -95,7 +95,7 @@ public class LocalEventStorageEngineTest {
     @Test
     public void cancel() {
         Event event = Event.getDefaultInstance();
-        Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, Flux.just(event), null);
+        Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, Flux.just(new SerializedEvent(event)), null);
 
         Executors.newSingleThreadScheduledExecutor()
                  .schedule(() -> {
@@ -144,7 +144,7 @@ public class LocalEventStorageEngineTest {
 
     @Test
     public void createAppendEventConnection() {
-        Flux<Event> events = Flux.just(Event.getDefaultInstance());
+        Flux<SerializedEvent> events = Flux.just(new SerializedEvent(Event.getDefaultInstance()));
         Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
 
         Executors.newSingleThreadScheduledExecutor()
@@ -163,8 +163,8 @@ public class LocalEventStorageEngineTest {
 
     @Test
     public void createAppendEventConnectionWithTooManyEvents() {
-        Flux<Event> events = Flux.fromStream(IntStream.range(0, 10)
-                                                      .mapToObj(i -> Event.getDefaultInstance()));
+        Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 10)
+                                                      .mapToObj(i -> new SerializedEvent(Event.getDefaultInstance())));
         Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
 
         StepVerifier.create(result)
