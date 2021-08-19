@@ -101,17 +101,13 @@ public class EventDispatcher {
             auditLog.debug("[{}@{}] Request to append events.", AuditLog.username(authentication), context);
         }
 
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-        if (eventStore == null) {
-            return Mono.error(new MessagingPlatformException(NO_EVENTSTORE,
-                                                             NO_EVENT_STORE_CONFIGURED + context));
-        }
-
-        return eventStore.appendEvents(context,
-                                       eventFlux.doOnNext(event -> eventsCounter(context,
-                                                                                 eventsCounter,
-                                                                                 BaseMetricName.AXON_EVENTS).mark()),
-                                       authentication);
+        return eventStoreLocator.eventStore(context).flatMap(eventStore ->  {
+                                                                Flux<SerializedEvent> countingFlux =
+                                                                        eventFlux.doOnNext(event ->  eventsCounter(context,
+                                                                                                                   eventsCounter,
+                                                                                                                   BaseMetricName.AXON_EVENTS).mark());
+                                                                return eventStore.appendEvents(context,countingFlux,authentication);
+                                                         });
     }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
