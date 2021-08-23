@@ -117,31 +117,22 @@ public class EventDispatcher {
                                                                                           context)));
     }
 
-
-    public void appendSnapshot(String context, Authentication authentication, Event snapshot,
-                               StreamObserver<Confirmation> responseObserver) {
-        checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            try {
-                eventsCounter(context, snapshotCounter, BaseMetricName.AXON_SNAPSHOTS).mark();
-                eventStore.appendSnapshot(context, snapshot, authentication)
-                          .doOnSuccess(v -> {
-                              responseObserver.onNext(Confirmation.newBuilder()
-                                                                  .setSuccess(true)
-                                                                  .build());
-                              responseObserver.onCompleted();
-                          })
-                          .doOnError(t -> {
-                              logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "appendSnapshot", t.getMessage());
-                              responseObserver.onError(t);
-                          })
-                          .doOnCancel(() -> responseObserver.onError(MessagingPlatformException
-                                                                             .create(new RuntimeException(
-                                                                                     "Appending snapshot cancelled"))))
-                          .subscribe();
-            } catch (Exception ex) {
-                responseObserver.onError(ex);
-            }
-        });
+    public Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication) {
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}@{}] Request to list events for {}.",
+                           AuditLog.username(authentication),
+                           context,
+                           snapshot.getAggregateIdentifier());
+        }
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.appendSnapshot(context, snapshot, authentication)
+                                                                 .doOnSuccess(v -> eventsCounter(context,
+                                                                                                 snapshotCounter,
+                                                                                                 BaseMetricName.AXON_SNAPSHOTS).mark())
+                                                                 .doOnError(t -> logger.warn(
+                                                                         ERROR_ON_CONNECTION_FROM_EVENT_STORE,
+                                                                         "appendSnapshot",
+                                                                         t.getMessage())));
     }
 
     public Flux<SerializedEvent> aggregateEvents(String context,

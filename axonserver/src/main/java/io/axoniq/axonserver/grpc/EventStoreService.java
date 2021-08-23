@@ -146,12 +146,24 @@ public class EventStoreService implements AxonServerClientService {
     }
 
 
-    public void appendSnapshot(Event event, StreamObserver<Confirmation> streamObserver) {
-        CallStreamObserver<Confirmation> callStreamObserver = (CallStreamObserver<Confirmation>) streamObserver;
-        eventDispatcher.appendSnapshot(contextProvider.getContext(),
-                authenticationProvider.get(),
-                event,
-                new ForwardingStreamObserver<>(logger, "appendSnapshot", callStreamObserver));
+    public void appendSnapshot(Event snapshot, StreamObserver<Confirmation> streamObserver) {
+        ForwardingStreamObserver<Confirmation> responseObserver =
+                new ForwardingStreamObserver<>(logger,
+                                               "appendSnapshot",
+                                               (CallStreamObserver<Confirmation>) streamObserver);
+        eventDispatcher.appendSnapshot(contextProvider.getContext(), snapshot, authenticationProvider.get())
+                       .doOnSuccess(v -> {
+                           responseObserver.onNext(Confirmation.newBuilder()
+                                                               .setSuccess(true)
+                                                               .build());
+                           responseObserver.onCompleted();
+                       })
+                       .doOnError(responseObserver::onError)
+                       .doOnCancel(() -> responseObserver.onError(MessagingPlatformException
+                                                                          .create(new RuntimeException(
+                                                                                  "Appending snapshot cancelled"))))
+                       .subscribe();
+
     }
 
     public void listAggregateEvents(GetAggregateEventsRequest request,
