@@ -26,12 +26,13 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.event.ForwardingStreamObserver;
-import io.axoniq.axonserver.message.event.InputStreamMarshaller;
 import io.axoniq.axonserver.message.event.SequenceValidationStrategy;
 import io.axoniq.axonserver.message.event.SequenceValidationStreamObserver;
 import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
+import io.axoniq.axonserver.message.event.SerializedEventWithTokenMarshaller;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.axoniq.flowcontrol.OutgoingStream;
 import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
@@ -59,10 +60,10 @@ import static io.grpc.stub.ServerCalls.*;
 @Component
 public class EventStoreService implements AxonServerClientService {
 
-    public static final MethodDescriptor<GetEventsRequest, InputStream> METHOD_LIST_EVENTS =
+    public static final MethodDescriptor<GetEventsRequest, SerializedEventWithToken> METHOD_LIST_EVENTS =
             EventStoreGrpc.getListEventsMethod().toBuilder(
                                   ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
-                                  InputStreamMarshaller.inputStreamMarshaller())
+                                  new SerializedEventWithTokenMarshaller())
                     .build();
     public static final MethodDescriptor<GetAggregateEventsRequest, SerializedEvent> METHOD_LIST_AGGREGATE_EVENTS =
             EventStoreGrpc.getListAggregateEventsMethod().toBuilder(
@@ -180,8 +181,31 @@ public class EventStoreService implements AxonServerClientService {
     }
 
 
-    public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        return eventDispatcher.listEvents(contextProvider.getContext(), authenticationProvider.get(), responseObserver);
+    public StreamObserver<GetEventsRequest> listEvents(StreamObserver<SerializedEventWithToken> responseObserver) {
+        String context = contextProvider.getContext();
+        Executor executor = grpcFlowControlExecutorProvider.provide();
+        OutgoingStream<SerializedEventWithToken> outgoingStream = new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEventWithToken>) responseObserver,
+                                                                                                     executor);
+        Sinks.Many<GetEventsRequest> requestFlux = Sinks.many()
+                                                        .unicast()
+                                                        .onBackpressureBuffer();
+        outgoingStream.accept(eventDispatcher.events(context, authenticationProvider.get(), requestFlux.asFlux()));
+        return new StreamObserver<GetEventsRequest>() {
+            @Override
+            public void onNext(GetEventsRequest getEventsRequest) {
+                requestFlux.tryEmitNext(getEventsRequest);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                requestFlux.tryEmitError(throwable);
+            }
+
+            @Override
+            public void onCompleted() {
+                requestFlux.tryEmitComplete();
+            }
+        };
     }
 
     @Override

@@ -14,9 +14,10 @@ import io.axoniq.axonserver.grpc.EventStoreService;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.*;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
-import io.axoniq.axonserver.message.event.InputStreamMarshaller;
 import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
+import io.axoniq.axonserver.message.event.SerializedEventWithTokenMarshaller;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -58,9 +59,9 @@ public class AxonHubEventService implements AxonServerClientService {
                             .setType(MethodDescriptor.MethodType.SERVER_STREAMING)
                             .build();
     
-    public static final MethodDescriptor<GetEventsRequest,InputStream> METHOD_LIST_EVENTS =
+    public static final MethodDescriptor<GetEventsRequest, SerializedEventWithToken> METHOD_LIST_EVENTS =
             MethodDescriptor.newBuilder(ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
-                                        InputStreamMarshaller.inputStreamMarshaller())
+                                        new SerializedEventWithTokenMarshaller())
                             .setFullMethodName(generateFullMethodName(SERVICE_NAME, "ListEvents"))
                             .setType(MethodDescriptor.MethodType.BIDI_STREAMING)
                             .build();

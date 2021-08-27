@@ -13,7 +13,6 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
@@ -23,6 +22,7 @@ import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -44,7 +44,6 @@ import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
-import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -197,23 +196,93 @@ public class EventDispatcher {
 
     }
 
-    public StreamObserver<GetEventsRequest> listEvents(String context, Authentication principal,
-                                                       StreamObserver<InputStream> responseObserver) {
-        return new GetEventsRequestStreamObserver(responseObserver, context, principal);
+    public Flux<SerializedEventWithToken> events(String context, Authentication principal,
+                                                 Flux<GetEventsRequest> requestFlux) {
+        AtomicReference<Sinks.Many<GetEventsRequest>> eventStoreRequestFluxRef = new AtomicReference<>();
+        AtomicReference<EventTrackerInfo> eventTrackerInfoRef = new AtomicReference<>();
+        return Flux.create(sink -> requestFlux
+                .subscribe(request -> {
+                    if (eventStoreRequestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
+                        EventTrackerInfo trackerInfo = new EventTrackerInfo(request.getClientId(),
+                                                                            context,
+                                                                            request.getTrackingToken() - 1,
+                                                                            () -> {
+                                                                                Sinks.Many<GetEventsRequest> esSink = eventStoreRequestFluxRef.get();
+                                                                                if (esSink != null) {
+                                                                                    esSink.tryEmitComplete();
+                                                                                }
+                                                                            });
+                        eventTrackerInfoRef.set(trackerInfo);
+                        eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
+                                         .flatMapMany(eventStore -> eventStore.events(context,
+                                                                                      principal,
+                                                                                      eventStoreRequestFluxRef.get()
+                                                                                                              .asFlux()))
+                                         .onErrorResume(Flux::error)
+                                         .subscribe(serializedEventWithToken -> {
+                                                        sink.next(serializedEventWithToken);
+                                                        trackerInfo.incrementLastToken();
+                                                    },
+                                                    t -> {
+                                                        sink.error(t);
+                                                        removeTrackerInfo(trackerInfo);
+                                                    },
+                                                    () -> {
+                                                        sink.complete();
+                                                        removeTrackerInfo(trackerInfo);
+                                                    });
+
+                        trackingEventProcessors.computeIfAbsent(new ClientStreamIdentification(trackerInfo.context,
+                                                                                               trackerInfo.client),
+                                                                key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
+                        logger.info("Starting tracking event processor for {}:{} - {}",
+                                    request.getClientId(),
+                                    request.getComponentName(),
+                                    request.getTrackingToken());
+                    }
+                    eventStoreRequestFluxRef.get().tryEmitNext(request);
+                }, t -> {
+                    Sinks.Many<GetEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
+                    if (eventStoreRequestFlux != null) {
+                        eventStoreRequestFlux.tryEmitError(t);
+                    }
+                    removeTrackerInfo(eventTrackerInfoRef.get());
+                }, () -> {
+                    Sinks.Many<GetEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
+                    if (eventStoreRequestFlux != null) {
+                        eventStoreRequestFlux.tryEmitComplete();
+                    }
+                    removeTrackerInfo(eventTrackerInfoRef.get());
+                }));
+    }
+
+    private void removeTrackerInfo(EventTrackerInfo trackerInfo) {
+        logger.info("Removed tracker info {}", trackerInfo);
+        if (trackerInfo != null) {
+            trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
+                                                                                    trackerInfo.client),
+                                                     (c, streams) -> {
+                                                         logger.debug("{}: {} streams",
+                                                                      trackerInfo.client,
+                                                                      streams.size());
+                                                         streams.remove(trackerInfo);
+                                                         return streams.isEmpty() ? null : streams;
+                                                     });
+        }
     }
 
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
-        List<EventTrackerInfo> eventsStreams = trackingEventProcessors.remove(applicationDisconnected
+        List<EventTrackerInfo> trackers = trackingEventProcessors.remove(applicationDisconnected
                                                                                       .clientIdentification());
         logger.debug("application disconnected: {}, eventsStreams: {}",
                      applicationDisconnected.getClientStreamId(),
-                     eventsStreams);
+                     trackers);
 
-        if (eventsStreams != null) {
-            eventsStreams.forEach(streamObserver -> {
+        if (trackers != null) {
+            trackers.forEach(tracker -> {
                 try {
-                    streamObserver.responseObserver.onCompleted();
+                    tracker.complete();
                 } catch (Exception ex) {
                     logger.debug("Error while closing tracking event processor connection from {} - {}",
                                  applicationDisconnected.getClientStreamId(),
@@ -377,21 +446,16 @@ public class EventDispatcher {
 
     private static class EventTrackerInfo {
 
-        private final StreamObserver<InputStream> responseObserver;
         private final String client;
         private final String context;
         private final AtomicLong lastToken;
+        private final Runnable completeHandler;
 
-        public EventTrackerInfo(StreamObserver<InputStream> responseObserver, String client, String context,
-                                long lastToken) {
-            this.responseObserver = responseObserver;
+        public EventTrackerInfo(String client, String context, long lastToken, Runnable completeHandler) {
             this.client = client;
             this.context = context;
             this.lastToken = new AtomicLong(lastToken);
-        }
-
-        public StreamObserver<InputStream> getResponseObserver() {
-            return responseObserver;
+            this.completeHandler = completeHandler;
         }
 
         public String getClient() {
@@ -410,136 +474,17 @@ public class EventDispatcher {
             lastToken.incrementAndGet();
         }
 
+        public void complete() {
+            completeHandler.run();
+        }
+
         @Override
         public String toString() {
             return "EventTrackerInfo{" +
-                    "responseObserver=" + responseObserver +
-                    ", client='" + client + '\'' +
+                    "client='" + client + '\'' +
                     ", context='" + context + '\'' +
                     ", lastToken=" + lastToken +
                     '}';
-        }
-    }
-
-    private class GetEventsRequestStreamObserver implements StreamObserver<GetEventsRequest> {
-
-        private final StreamObserver<InputStream> responseObserver;
-        private final Authentication principal;
-        private final String context;
-        private final AtomicReference<Sinks.Many<GetEventsRequest>> requestSink = new AtomicReference<>();
-        volatile EventTrackerInfo trackerInfo;
-
-        GetEventsRequestStreamObserver(StreamObserver<InputStream> responseObserver, String context,
-                                       Authentication principal) {
-            this.context = context;
-            this.responseObserver = responseObserver;
-            this.principal = principal;
-        }
-
-        @Override
-        public void onNext(GetEventsRequest getEventsRequest) {
-            if (!registerEventTracker(getEventsRequest)) {
-                return;
-            }
-
-            try {
-                requestSink.get().tryEmitNext(getEventsRequest);
-            } catch (Exception reason) {
-                logger.warn("Error on connection sending event to client: {}", reason.getMessage());
-                requestSink.get().tryEmitComplete();
-                removeTrackerInfo();
-            }
-        }
-
-        private boolean registerEventTracker(GetEventsRequest getEventsRequest) {
-            if (requestSink.compareAndSet(null, Sinks.many()
-                                                     .unicast()
-                                                     .onBackpressureBuffer())) {
-                trackerInfo = new EventTrackerInfo(responseObserver,
-                                                   getEventsRequest.getClientId(),
-                                                   context,
-                                                   getEventsRequest.getTrackingToken() - 1);
-                try {
-                    EventStore eventStore = eventStoreLocator
-                            .getEventStore(context,
-                                           getEventsRequest.getForceReadFromLeader());
-                    if (eventStore == null) {
-                        responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                                                                NO_EVENT_STORE_CONFIGURED + context));
-                        return false;
-                    }
-
-                    eventStore.events(context, principal, requestSink.get().asFlux())
-                              .doOnCancel(() -> StreamObserverUtils.error(responseObserver,
-                                                                          GrpcExceptionBuilder.build(
-                                                                                  new RuntimeException(
-                                                                                          "Listing events canceled."))))
-                              .subscribe(eventWithToken -> {
-                                  responseObserver.onNext(eventWithToken.asInputStream());
-                                  trackerInfo.incrementLastToken();
-                              }, throwable -> {
-                                  if (throwable instanceof IllegalStateException) {
-                                      logger.debug(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                   throwable.getMessage());
-                                  } else {
-                                      logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listEvents",
-                                                  throwable.getMessage());
-                                  }
-                                  StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
-                                  removeTrackerInfo();
-                              }, () -> {
-                                  logger.info("{}: Tracking event processor closed", trackerInfo.context);
-                                  removeTrackerInfo();
-                                  StreamObserverUtils.complete(responseObserver);
-                              });
-                } catch (RuntimeException cause) {
-                    responseObserver.onError(GrpcExceptionBuilder.build(cause));
-                    return false;
-                }
-
-                trackingEventProcessors.computeIfAbsent(new ClientStreamIdentification(trackerInfo.context,
-                                                                                       trackerInfo.client),
-                                                        key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
-                logger.info("Starting tracking event processor for {}:{} - {}",
-                            getEventsRequest.getClientId(),
-                            getEventsRequest.getComponentName(),
-                            getEventsRequest.getTrackingToken());
-            }
-            return true;
-        }
-
-        @Override
-        public void onError(Throwable reason) {
-            if (!ExceptionUtils.isCancelled(reason)) {
-                logger.warn("Error on connection from client: {}", reason.getMessage());
-            }
-            cleanup();
-        }
-
-        private void removeTrackerInfo() {
-            logger.info("Removed tracker info {}", trackerInfo);
-            if (trackerInfo != null) {
-                trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
-                                                                                        trackerInfo.client),
-                                                         (c, streams) -> {
-                                                             logger.debug("{}: {} streams",
-                                                                          trackerInfo.client,
-                                                                          streams.size());
-                                                             streams.remove(trackerInfo);
-                                                             return streams.isEmpty() ? null : streams;
-                                                         });
-            }
-        }
-
-        @Override
-        public void onCompleted() {
-            cleanup();
-            StreamObserverUtils.complete(responseObserver);
-        }
-
-        private void cleanup() {
-            requestSink.get().tryEmitComplete();
-            removeTrackerInfo();
         }
     }
 }

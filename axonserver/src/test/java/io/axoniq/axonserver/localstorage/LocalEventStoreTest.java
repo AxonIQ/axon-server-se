@@ -19,13 +19,12 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.test.FakeStreamObserver;
-import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.io.InputStream;
@@ -209,15 +208,18 @@ public class LocalEventStoreTest {
     }
 
     @Test
-    public void listEvents() throws InterruptedException {
-        FakeStreamObserver<InputStream> events = new FakeStreamObserver<>();
-        StreamObserver<GetEventsRequest> requestStream = testSubject.listEvents("demo",
-                                                                                null,
-                                                                                events);
-        requestStream.onNext(GetEventsRequest.newBuilder()
-                                             .setNumberOfPermits(100)
-                                             .build());
+    public void events() throws InterruptedException {
+        GetEventsRequest request = GetEventsRequest.newBuilder()
+                                                   .setNumberOfPermits(100)
+                                                   .build();
+        Sinks.Many<GetEventsRequest> manyReq = Sinks.many().unicast().onBackpressureBuffer();
+
+        testSubject.events("demo", null, manyReq.asFlux())
+                   .subscribe();
+
+        assertEquals(Sinks.EmitResult.OK, manyReq.tryEmitNext(request));
         assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(8, eventInterceptors.readEvent));
+        assertEquals(Sinks.EmitResult.OK, manyReq.tryEmitComplete());
     }
 
     @Test

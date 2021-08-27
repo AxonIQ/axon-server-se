@@ -552,7 +552,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         });
     }
 
-    public StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
+    private StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
                                                        StreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
             private final AtomicReference<TrackingEventProcessorManager.EventTracker> controllerRef = new AtomicReference<>();
