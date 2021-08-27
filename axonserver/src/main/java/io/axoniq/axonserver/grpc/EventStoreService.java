@@ -48,7 +48,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Sinks;
 
-import java.io.InputStream;
+import java.time.Instant;
 import java.util.concurrent.Executor;
 
 import static io.grpc.stub.ServerCalls.*;
@@ -249,7 +249,12 @@ public class EventStoreService implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getFirstToken",
                 callStreamObserver);
-        eventDispatcher.getFirstToken(contextProvider.getContext(), responseObserver);
+
+        eventDispatcher.firstEventToken(contextProvider.getContext())
+                       .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> streamObserver) {
@@ -257,7 +262,12 @@ public class EventStoreService implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getLastToken",
                 callStreamObserver);
-        eventDispatcher.getLastToken(contextProvider.getContext(), responseObserver);
+
+        eventDispatcher.lastEventToken(contextProvider.getContext())
+                       .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> streamObserver) {
@@ -265,7 +275,12 @@ public class EventStoreService implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getTokenAt",
                 callStreamObserver);
-        eventDispatcher.getTokenAt(contextProvider.getContext(), request.getInstant(), responseObserver);
+
+        eventDispatcher.eventTokenAt(contextProvider.getContext(), Instant.ofEpochMilli(request.getInstant()))
+                       .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
@@ -273,7 +288,12 @@ public class EventStoreService implements AxonServerClientService {
         CallStreamObserver<ReadHighestSequenceNrResponse> callStreamObserver = (CallStreamObserver<ReadHighestSequenceNrResponse>) streamObserver;
         ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver =
                 new ForwardingStreamObserver<>(logger, "readHighestSequenceNr", callStreamObserver);
-        eventDispatcher.readHighestSequenceNr(contextProvider.getContext(), request.getAggregateId(), responseObserver);
+
+        eventDispatcher.highestSequenceNumber(contextProvider.getContext(), request.getAggregateId())
+                       .map(l -> ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(l).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> streamObserver) {

@@ -19,8 +19,6 @@ import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -311,14 +309,9 @@ public class EventDispatcher {
         return trackers;
     }
 
-
-    public void getFirstToken(String context, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client.firstEventToken(context)
-                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
-                                           .subscribe(responseObserver::onNext,
-                                                      responseObserver::onError,
-                                                      responseObserver::onCompleted));
+    public Mono<Long> firstEventToken(String context) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.firstEventToken(context));
     }
 
     private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
@@ -331,36 +324,19 @@ public class EventDispatcher {
         return Optional.of(eventStore);
     }
 
-    public void getLastToken(String context, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client.lastEventToken(context)
-                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
-                                           .subscribe(responseObserver::onNext,
-                                                      responseObserver::onError,
-                                                      responseObserver::onCompleted)
-                );
+    public Mono<Long> lastEventToken(String context) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.lastEventToken(context));
     }
 
-    public void getTokenAt(String context, long instant, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client.eventTokenAt(context,
-                                                         Instant.ofEpochMilli(instant))
-                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
-                                           .subscribe(responseObserver::onNext,
-                                                      responseObserver::onError,
-                                                      responseObserver::onCompleted));
+    public Mono<Long> eventTokenAt(String context, Instant timestamp) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.eventTokenAt(context, timestamp));
     }
 
-    public void readHighestSequenceNr(String context, String aggregateId,
-                                      StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client
-                        .highestSequenceNumber(context, aggregateId)
-                        .map(l -> ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(l).build())
-                        .subscribe(responseObserver::onNext,
-                                   responseObserver::onError,
-                                   responseObserver::onCompleted)
-                );
+    public Mono<Long> highestSequenceNumber(String context, String aggregateId) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.highestSequenceNumber(context, aggregateId));
     }
 
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
