@@ -193,7 +193,9 @@ public class EventStoreService implements AxonServerClientService {
         return new StreamObserver<GetEventsRequest>() {
             @Override
             public void onNext(GetEventsRequest getEventsRequest) {
-                requestFlux.tryEmitNext(getEventsRequest);
+                if (requestFlux.tryEmitNext(getEventsRequest).isFailure()) {
+                    onError(new RuntimeException("Unable to emit request for events."));
+                }
             }
 
             @Override

@@ -240,7 +240,13 @@ public class EventDispatcher {
                                     request.getComponentName(),
                                     request.getTrackingToken());
                     }
-                    eventStoreRequestFluxRef.get().tryEmitNext(request);
+                    Sinks.Many<GetEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
+                    if (eventStoreRequestFlux != null) {
+                        if (eventStoreRequestFlux.tryEmitNext(request).isFailure()) {
+                            eventStoreRequestFlux.tryEmitError(new RuntimeException("Unable to send the request for events."));
+                            removeTrackerInfo(eventTrackerInfoRef.get());
+                        }
+                    }
                 }, t -> {
                     Sinks.Many<GetEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
                     if (eventStoreRequestFlux != null) {
