@@ -25,7 +25,15 @@ public class BaseFileStore implements FileStore {
 
     @Override
     public Mono<Long> append(FileStoreEntry entry) {
-        return Mono.fromCompletionStage(primary.write(entry));
+        return Mono.create(sink -> {
+            primary.write(entry).whenComplete((token, ex) -> {
+                if (ex != null) {
+                    sink.error(ex);
+                } else {
+                    sink.success(token);
+                }
+            });
+        });
     }
 
     @Override
@@ -82,6 +90,10 @@ public class BaseFileStore implements FileStore {
     }
 
     public void delete() {
-       primary.close(true);
+        primary.close(true);
+    }
+
+    public CloseableIterator<FileStoreEntry> iterator(int fromIndex) {
+        return primary.getEntryIterator(fromIndex);
     }
 }

@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 
 import static org.junit.Assert.assertEquals;
 
@@ -132,7 +132,7 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public void transformContents(UnaryOperator<Event> transformationFunction) {
+            public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction) {
 
             }
         };

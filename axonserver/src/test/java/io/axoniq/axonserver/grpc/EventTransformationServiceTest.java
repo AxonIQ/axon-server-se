@@ -81,17 +81,6 @@ public class EventTransformationServiceTest {
             }
 
             @Override
-            public Mono<Void> replaceSnapshot(String context, String transformationId, long token, Event event,
-                                              long previousToken) {
-                return null;
-            }
-
-            @Override
-            public Mono<Void> deleteSnapshot(String context, String transformationId, long token, long previousToken) {
-                return null;
-            }
-
-            @Override
             public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
                                            long previousToken) {
                 if (transformationId != null  && !transformationId.equals(

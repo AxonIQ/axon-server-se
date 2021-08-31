@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.filestorage;
 
+import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -18,4 +19,10 @@ public interface FileStore {
     Flux<FileStoreEntry> stream(long fromIndex);
 
     Flux<FileStoreEntry> stream(long fromIndex, long toIndex);
+
+    CloseableIterator<FileStoreEntry> iterator(int i);
+
+    void delete();
+
+    void open(boolean validate);
 }

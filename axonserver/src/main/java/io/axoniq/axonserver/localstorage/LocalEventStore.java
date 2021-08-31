@@ -71,6 +71,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
@@ -227,6 +228,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers;
     }
 
+    public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken, BiFunction<Event,Long,Event> transformationFunction) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        runInDataFetcherPool(() -> {
+            Workers workers = workersMap.get(context);
+            workers.eventStorageEngine.transformContents(firstToken, lastToken, transformationFunction);
+            result.complete(null);
+        }, result::completeExceptionally);
+        return result;
+    }
+
     public CompletableFuture<Long> deleteOldSnapshots(String context, long minSequenceOffset) {
         CompletableFuture<Long> result = new CompletableFuture<>();
         runInDataFetcherPool(() -> {
@@ -238,7 +249,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             workers.snapshotStorageEngine
-                    .transformContents(snapshot -> {
+                    .transformContents(0, Long.MAX_VALUE, (snapshot, token) -> {
                                            Optional<Long> optionalLastSequenceNumber = workers.snapshotStorageEngine
                                                    .getLastSequenceNumber(snapshot.getAggregateIdentifier())
                                                    .filter(lastSequenceNumber ->
@@ -837,6 +848,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public CloseableIterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken,
                                                                                        long toToken) {
         return workersMap.get(context).eventStorageEngine.transactionIterator(fromToken, toToken);
+    }
+
+    public CloseableIterator<SerializedEventWithToken> eventIterator(String context, long fromToken) {
+        return workersMap.get(context).eventStorageEngine.getGlobalIterator(fromToken);
     }
 
     /**

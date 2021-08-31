@@ -336,7 +336,7 @@ public class PrimaryEventStoreTest {
             assertTrue(latch.await(5, TimeUnit.SECONDS));
             assertWithin( 30, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegments().size()));
 
-            testSubject.transformContents(e -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, (e, token) -> {
                 if (!"Aggregate-1".equals(e.getAggregateIdentifier())) {
                     return e;
                 }
@@ -385,7 +385,7 @@ public class PrimaryEventStoreTest {
             assertWithin( 30, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegments().size()));
 
 
-            testSubject.transformContents(e -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, (e, token)  -> {
                 if (!"Aggregate-9".equals(e.getAggregateIdentifier())) {
                     return e;
                 }
@@ -434,7 +434,7 @@ public class PrimaryEventStoreTest {
             assertWithin( 30, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegments().size()));
 
 
-            testSubject.transformContents(e -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, (e, token)  -> {
                 if (e.getAggregateSequenceNumber() == 0) {
                     return e;
                 }
@@ -548,7 +548,7 @@ public class PrimaryEventStoreTest {
             });
 
 
-            testSubject.transformContents(e -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, (e, token)  -> {
                 if (!"Aggregate-1".equals(e.getAggregateIdentifier())) {
                     return e;
                 }

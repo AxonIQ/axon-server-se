@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.UnaryOperator;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -305,11 +305,21 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void transformContents(UnaryOperator<Event> transformationFunction) {
+    public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction) {
         forceNextSegment();
         if ( next != null) {
-            next.transformContents(transformationFunction);
+            next.transformContents(firstToken, lastToken,transformationFunction);
         }
+    }
+
+    @Override
+    protected Integer currentSegmentVersion(Long segment) {
+        return 0;
+    }
+
+    @Override
+    protected void segmentActiveVersion(long segment, int version) {
+        // no-op, no versioning for primary segments
     }
 
     private void forceNextSegment() {

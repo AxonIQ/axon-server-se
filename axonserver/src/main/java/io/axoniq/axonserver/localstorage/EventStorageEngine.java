@@ -17,9 +17,9 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**
@@ -233,6 +233,6 @@ public interface EventStorageEngine {
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
 
-    void transformContents(UnaryOperator<Event> transformationFunction);
+    void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction);
 
 }

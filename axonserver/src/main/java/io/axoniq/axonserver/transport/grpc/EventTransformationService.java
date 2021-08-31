@@ -17,7 +17,6 @@ import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
-import io.axoniq.axonserver.grpc.event.StorageType;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -29,6 +28,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Sinks;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nonnull;
 
 /**
@@ -78,42 +78,29 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         auditLog.info("{}@{}: Request to transformEvents", authentication.getName(), context);
         Sinks.Many<TransformEventsRequest> many = Sinks.many().unicast().onBackpressureBuffer();
 
+        AtomicBoolean closed = new AtomicBoolean();
         many.asFlux().subscribe(request -> {
             switch (request.getRequestCase()) {
                 case EVENT:
-                    if (request.getEvent().getEvent().getSnapshot()) {
-                        eventStoreTransformationService.replaceSnapshot(context, transformationId(request),
-                                                                     request.getEvent().getToken(),
-                                                                     request.getEvent().getEvent(),
-                                                                     request.getEvent().getPreviousToken())
-                                                       .block();
-
-                    } else {
-                        eventStoreTransformationService.replaceEvent(context, transformationId(request),
-                                                                     request.getEvent().getToken(),
-                                                                     request.getEvent().getEvent(),
-                                                                     request.getEvent().getPreviousToken())
-                                                       .block();
-                    }
+                    eventStoreTransformationService.replaceEvent(context, transformationId(request),
+                                                                 request.getEvent().getToken(),
+                                                                 request.getEvent().getEvent(),
+                                                                 request.getEvent().getPreviousToken())
+                                                   .block();
                     break;
                 case DELETE_EVENT:
-                    if( StorageType.SnapshotType.equals(request.getDeleteEvent().getType())) {
-                        eventStoreTransformationService.deleteSnapshot(context, transformationId(request),
-                                                                    request.getDeleteEvent().getToken(),
-                                                                    request.getDeleteEvent().getPreviousToken())
-                                                       .block();
-
-                    } else {
-                        eventStoreTransformationService.deleteEvent(context, transformationId(request),
-                                                                    request.getDeleteEvent().getToken(),
-                                                                    request.getDeleteEvent().getPreviousToken())
-                                                       .block();
-                    }
+                    eventStoreTransformationService.deleteEvent(context, transformationId(request),
+                                                                request.getDeleteEvent().getToken(),
+                                                                request.getDeleteEvent().getPreviousToken())
+                                                   .block();
                     break;
                 case REQUEST_NOT_SET:
                     break;
             }
-        }, error -> responseObserver.onError(GrpcExceptionBuilder.build(error)), () -> {
+        }, error -> {
+            closed.set(true);
+            responseObserver.onError(GrpcExceptionBuilder.build(error));
+        }, () -> {
             responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
             responseObserver.onCompleted();
         });
@@ -121,6 +108,7 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         return new StreamObserver<TransformEventsRequest>() {
             @Override
             public void onNext(TransformEventsRequest transformEventsRequest) {
+                if( closed.get()) return;
 
                 many.emitNext(transformEventsRequest, ((signalType, emitResult) -> {
                     responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
@@ -156,6 +144,7 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
     }
 
     private static class ConfirmationSubscriber extends BaseSubscriber<Void> {
+
         private final StreamObserver<Confirmation> responseObserver;
 
         ConfirmationSubscriber(StreamObserver<Confirmation> responseObserver) {
@@ -184,8 +173,14 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
     public void applyTransformation(ApplyTransformationRequest request, StreamObserver<Confirmation> responseObserver) {
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to apply transformation {}", authentication.getName(), context, request.getTransformationId().getId());
-        eventStoreTransformationService.applyTransformation(context, request.getTransformationId().getId(), request.getLastEventToken(), request.getLastSnapshotToken())
+        auditLog.info("{}@{}: Request to apply transformation {}",
+                      authentication.getName(),
+                      context,
+                      request.getTransformationId().getId());
+        eventStoreTransformationService.applyTransformation(context,
+                                                            request.getTransformationId().getId(),
+                                                            request.getLastEventToken(),
+                                                            request.getLastSnapshotToken())
                                        .subscribe(new ConfirmationSubscriber(responseObserver));
     }
 }

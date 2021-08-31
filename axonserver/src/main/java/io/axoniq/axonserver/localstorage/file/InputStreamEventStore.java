@@ -11,30 +11,15 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.NavigableMap;
-import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 /**
  * Manages the completed segments for the event store.
@@ -89,85 +74,14 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         }
     }
 
-    public void transformContents(UnaryOperator<Event> transformationFunction) {
-        NavigableSet<Long> segmentsToTransform = new TreeSet<>(segments.keySet());
-        for (Long segment : segmentsToTransform) {
-            Integer version = segments.get(segment);
-            if (version != null) {
-                transformSegment(segment, version, transformationFunction);
-            }
-        }
+    @Override
+    protected Integer currentSegmentVersion(Long segment) {
+        return segments.get(segment);
     }
 
-    private void transformSegment(long segment, int currentVersion, UnaryOperator<Event> transformationFunction) {
-        Map<String, List<IndexEntry>> indexEntriesMap = new HashMap<>();
-        AtomicBoolean changed = new AtomicBoolean();
-        File dataFile = storageProperties.dataFile(
-                context,
-                new FileVersion(segment, currentVersion + 1));
-        try (TransactionIterator transactionIterator = getTransactions(segment, segment);
-            DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(dataFile))) {
-            dataOutputStream.write(PrimaryEventStore.VERSION);
-            dataOutputStream.writeInt(storageProperties.getFlags());
-            int pos = 5;
-            long token = segment;
-            while (transactionIterator.hasNext()) {
-                SerializedTransactionWithToken transaction = transactionIterator
-                        .next();
-                List<Event> updatedEvents =
-                        transaction.getEvents()
-                                   .stream()
-                                   .map(serializedEvent -> {
-                                       Event original = serializedEvent.asEvent();
-                                       if (serializedEvent.isSoftDeleted()) return original;
-                                       Event transformed = transformationFunction.apply(original);
-                                       if (transformed == null) transformed = Event.getDefaultInstance();
-                                       if (!original.equals(transformed)) {
-                                           changed.set(true);
-                                       }
-                                       return transformed;
-                                   })
-                                   .collect(Collectors.toList());
-
-                int eventPosition = pos + 7;
-                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-                DataOutputStream eventsBlock = new DataOutputStream(bytes);
-                for (Event updatedEvent : updatedEvents) {
-                    int size = updatedEvent.getSerializedSize();
-                    eventsBlock.writeInt(size);
-                    eventsBlock.write(updatedEvent.toByteArray());
-                    if (!updatedEvent.getAggregateType().isEmpty()) {
-                        indexEntriesMap.computeIfAbsent(updatedEvent.getAggregateIdentifier(), id -> new ArrayList<>())
-                                       .add(new IndexEntry(updatedEvent.getAggregateSequenceNumber(), eventPosition, token));
-                    }
-                    eventPosition += size + 4;
-                    token++;
-                }
-
-                byte[] eventBytes = bytes.toByteArray();
-                dataOutputStream.writeInt(eventBytes.length);
-                dataOutputStream.write(TRANSACTION_VERSION);
-                dataOutputStream.writeShort(updatedEvents.size());
-                dataOutputStream.write(eventBytes);
-                Checksum checksum = new Checksum();
-                pos += eventBytes.length + 4 + 7;
-                dataOutputStream.writeInt(checksum.update(eventBytes).get());
-            }
-            dataOutputStream.writeInt(0);
-            dataOutputStream.writeInt(0);
-
-        } catch (Exception e) {
-            FileUtils.delete(dataFile);
-            throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
-        }
-        if( changed.get()) {
-            indexManager.createNewVersion(segment, currentVersion + 1, indexEntriesMap);
-            segments.put(segment, currentVersion + 1);
-            scheduleForDeletion(segment, currentVersion);
-        } else {
-            FileUtils.delete(dataFile);
-        }
-
+    @Override
+    protected void segmentActiveVersion(long segment, int version) {
+        segments.put(segment, version);
     }
 
     private void removeSegment(long segment) {

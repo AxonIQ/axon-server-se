@@ -27,8 +27,4 @@ public interface EventStoreTransformationService {
     Mono<Void> cancelTransformation(String context, String id);
 
     Mono<Void> applyTransformation(String context, String id, long lastEventToken, long lastSnapshotToken);
-
-    Mono<Void> replaceSnapshot(String context, String transformationId, long token, Event event, long previousToken);
-
-    Mono<Void> deleteSnapshot(String context, String transformationId, long token, long previousToken);
 }

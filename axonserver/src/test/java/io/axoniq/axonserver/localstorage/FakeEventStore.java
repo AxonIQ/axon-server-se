@@ -16,9 +16,9 @@ import reactor.core.publisher.Flux;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 
 /**
  * @author Marc Gathier
@@ -105,7 +105,7 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void transformContents(UnaryOperator<Event> transformationFunction) {
+    public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction) {
 
     }
 
