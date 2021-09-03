@@ -19,8 +19,6 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.test.FakeStreamObserver;
-import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
@@ -28,12 +26,12 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.test.StepVerifier;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,6 +41,7 @@ import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
@@ -209,15 +208,17 @@ public class LocalEventStoreTest {
     }
 
     @Test
-    public void listEvents() throws InterruptedException {
-        FakeStreamObserver<InputStream> events = new FakeStreamObserver<>();
-        StreamObserver<GetEventsRequest> requestStream = testSubject.listEvents("demo",
-                                                                                null,
-                                                                                events);
-        requestStream.onNext(GetEventsRequest.newBuilder()
-                                             .setNumberOfPermits(100)
-                                             .build());
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(8, eventInterceptors.readEvent));
+    public void events() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(8);
+        AtomicReference<FluxSink<GetEventsRequest>> sink = new AtomicReference<>();
+        testSubject.events("demo", null, Flux.create(sink::set))
+                   .subscribe(e -> latch.countDown());
+
+        sink.get().next(GetEventsRequest.newBuilder()
+                                        .setNumberOfPermits(100)
+                                        .build());
+        assertTrue(latch.await(1, TimeUnit.SECONDS));
+        assertEquals(8, eventInterceptors.readEvent);
     }
 
     @Test
