@@ -11,6 +11,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * Validates event store transformation requests.
+ * There can only be one transformation per context.
+ * Each entry should provide a valid previous token.
+ * When an event is replaced, the aggregate id and sequence number must remain the same.
  * @author Marc Gathier
  * @since 4.6.0
  */
@@ -37,7 +41,7 @@ public class TransformationValidator {
     }
 
 
-    public void registerDeleteEvent(String context, String transformationId, long token, long previousToken) {
+    public void validateDeleteEvent(String context, String transformationId, long token, long previousToken) {
         EventStoreTransformation transformation = activeTransformations.get(context);
         validateTransformationId(transformationId, transformation);
         validatePreviousToken(previousToken, transformation);
@@ -45,7 +49,7 @@ public class TransformationValidator {
         transformation.setPreviousToken(token);
     }
 
-    public void registerReplaceEvent(String context, String transformationId, long token, long previousToken,
+    public void validateReplaceEvent(String context, String transformationId, long token, long previousToken,
                                      Event event) {
         EventStoreTransformation transformation = activeTransformations.get(context);
         validateTransformationId(transformationId, transformation);
@@ -54,9 +58,10 @@ public class TransformationValidator {
         transformation.setPreviousToken(token);
     }
 
-    public void apply(String context, String transformationId) {
+    public void apply(String context, String transformationId, long lastEventToken) {
         activeTransformations.compute(context, (c, old) -> {
             validateTransformationId(transformationId, old);
+            validatePreviousToken(lastEventToken, old);
 
             if (old.isApplying()) {
                 throw new RuntimeException("Transformation in progress");

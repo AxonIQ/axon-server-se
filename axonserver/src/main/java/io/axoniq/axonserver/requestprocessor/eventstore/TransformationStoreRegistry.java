@@ -40,4 +40,11 @@ public class TransformationStoreRegistry {
     public FileStore get(String transformationId) {
         return fileStoreMap.get(transformationId);
     }
+
+    public void delete(String transformationId) {
+        FileStore fileStore = fileStoreMap.remove(transformationId);
+        if (fileStore != null) {
+            fileStore.delete();
+        }
+    }
 }

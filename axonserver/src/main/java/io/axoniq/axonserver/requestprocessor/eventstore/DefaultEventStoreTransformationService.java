@@ -39,25 +39,10 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
         });
     }
 
-    public void cancelTransformation(String context) {
-//        transformationValidator.get(context);
-//        TransformationDescription transformation = activeTransformations.remove(context);
-//        if (transformation != null) {
-//            transformation.cancel();
-//        }
-    }
-
-    public void applyTransformation(String context) {
-//        TransformationDescription transformation = activeTransformations.get(context);
-//        if (transformation != null) {
-//            transformation.apply(context);
-//        }
-    }
-
     @Override
     public Mono<Void> deleteEvent(String context, String transformationId, long token, long previousToken) {
         return Mono.create(sink -> {
-            transformationValidator.registerDeleteEvent(context, transformationId, token, previousToken);
+            transformationValidator.validateDeleteEvent(context, transformationId, token, previousToken);
             transformationProcessor.deleteEvent(transformationId, token);
         });
     }
@@ -66,24 +51,23 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
                                    long previousToken) {
         return Mono.create(sink -> {
-            transformationValidator.registerReplaceEvent(context, transformationId, token, previousToken, event);
+            transformationValidator.validateReplaceEvent(context, transformationId, token, previousToken, event);
             transformationProcessor.replaceEvent(transformationId, token, event);
         });
     }
 
     @Override
     public Mono<Void> cancelTransformation(String context, String id) {
-        return Mono.empty();
-//        return transformation(context, id).mapNotNull(t -> {
-//            t.cancel();
-//            activeTransformations.remove(context);
-//            return null;
-//        });
+        return Mono.create(sink -> {
+            transformationValidator.cancel(context, id);
+            transformationProcessor.cancel(id);
+        });
     }
 
     @Override
-    public Mono<Void> applyTransformation(String context, String transformationId, long lastEventToken, long lastSnapshotToken) {
+    public Mono<Void> applyTransformation(String context, String transformationId, long lastEventToken) {
         return Mono.create(sink -> {
+            transformationValidator.apply(context, transformationId, lastEventToken);
             transformationProcessor.apply(transformationId);
         });
     }

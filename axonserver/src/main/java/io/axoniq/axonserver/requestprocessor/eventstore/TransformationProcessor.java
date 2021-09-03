@@ -80,6 +80,11 @@ public class TransformationProcessor {
         eventStoreTransformationRepository.save(transformation);
     }
 
+    public void cancel(String transformationId) {
+        transformationStoreRegistry.delete(transformationId);
+        eventStoreTransformationRepository.deleteById(transformationId);
+    }
+
     public void apply(String transformationId) {
         EventStoreTransformationJpa transformation = eventStoreTransformationRepository.getById(transformationId);
         logger.warn("{}: Start apply transformation from {} to {}", transformation.getContext(), transformation.getFirstToken(), transformation.getLastToken());
