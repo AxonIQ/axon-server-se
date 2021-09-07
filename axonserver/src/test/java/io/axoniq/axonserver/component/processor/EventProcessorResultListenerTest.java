@@ -21,8 +21,8 @@ public class EventProcessorResultListenerTest {
     private final List<EventProcessorIdentifier> refreshed = new ArrayList<>();
 
     private final EventProcessorResultListener testSubject =
-            new EventProcessorResultListener((context, processor) -> refreshed.add(processor),
-                                             (context, client, processor) -> new EventProcessorIdentifier(processor, ""));
+            new EventProcessorResultListener(refreshed::add,
+                                             (client, processor) -> new EventProcessorIdentifier(processor, ""));
 
     @Before
     public void setUp() throws Exception {
@@ -32,14 +32,14 @@ public class EventProcessorResultListenerTest {
     @Test
     public void onSplit() {
         assertTrue(refreshed.isEmpty());
-        testSubject.on(new EventProcessorEvents.SplitSegmentsSucceeded(context, "clientA", "ProcessorA"));
+        testSubject.on(new EventProcessorEvents.SplitSegmentsSucceeded("clientA", "ProcessorA"));
         assertEquals(refreshed, singletonList(new EventProcessorIdentifier("ProcessorA", "")));
     }
 
     @Test
     public void onMerge() {
         assertTrue(refreshed.isEmpty());
-        testSubject.on(new EventProcessorEvents.MergeSegmentsSucceeded(context, "clientB", "ProcessorB"));
+        testSubject.on(new EventProcessorEvents.MergeSegmentsSucceeded("clientB", "ProcessorB"));
         assertEquals(refreshed, singletonList(new EventProcessorIdentifier("ProcessorB", "")));
     }
 }

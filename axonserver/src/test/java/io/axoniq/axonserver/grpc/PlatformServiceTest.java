@@ -143,8 +143,7 @@ public class PlatformServiceTest {
                                                                                                      .setComponentName(
                                                                                                              "component")
         ).build());
-        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest(context,
-                                                                               "Release",
+        platformService.on(new EventProcessorEvents.PauseEventProcessorRequest("Release",
                                                                                "processor",
                                                                                false));
 
@@ -162,8 +161,7 @@ public class PlatformServiceTest {
                                                                                                              "component")
         ).build());
 
-        platformService.on(new EventProcessorEvents.StartEventProcessorRequest(context,
-                                                                               "Release",
+        platformService.on(new EventProcessorEvents.StartEventProcessorRequest("Release",
                                                                                "processor",
                                                                                false));
         assertEquals(1, responseObserver.values().size());
@@ -218,7 +216,7 @@ public class PlatformServiceTest {
                                             .setRegister(ClientIdentification.newBuilder()
                                                                              .setClientId("MyClient")
                                                                              .setComponentName("component")).build());
-        platformService.sendToClient("default", "MyClient", i);
+        platformService.sendToClient("MyClient", i);
         assertEquals(1, responseObserver.values().size());
         assertEquals(i, responseObserver.values().get(0));
     }
@@ -233,7 +231,7 @@ public class PlatformServiceTest {
                                             .setRegister(ClientIdentification.newBuilder()
                                                                              .setClientId("MyClient")
                                                                              .setComponentName("component")).build());
-        platformService.sendToClient("wrong-context", "MyClient", i);
+        platformService.sendToClient("MyClient", i);
         assertEquals(0, responseObserver.values().size());
     }
 

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.List;
@@ -19,7 +20,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -81,13 +81,16 @@ public class EventProcessorStatusRefresh {
      * @param processorId the identifier of the processor for which an update is requested
      * @return a {@link CompletableFuture} that completes as soon as the status has been updated
      */
-    public CompletableFuture<Void> run(String context, EventProcessorIdentifier processorId) {
+    public CompletableFuture<Void> run(EventProcessorIdentifier processorId) {
         return CompletableFuture.runAsync(() -> {
 
-            ClientProcessorsByIdentifier matchingClients = new ClientProcessorsByIdentifier(all, context, processorId);
-            Set<String> clientIds = StreamSupport.stream(matchingClients.spliterator(), false)
-                                                 .map(ClientProcessor::clientId)
-                                                 .collect(Collectors.toSet());
+            //TODO return mono i.o. completable future
+            Set<String> clientIds = Flux.fromIterable(all)
+                                        .filter(clientProcessor -> processorId.equals(new EventProcessorIdentifier(
+                                                clientProcessor)))
+                                        .map(ClientProcessor::clientId)
+                                        .collect(Collectors.toSet())
+                                        .block();
             CountDownLatch clientProcessorStatusUpdateLatch = new CountDownLatch(clientIds.size());
 
             Consumer<EventProcessorStatusUpdated> statusUpdateListener = statusEvent -> {
@@ -100,9 +103,8 @@ public class EventProcessorStatusRefresh {
             };
 
             updateListeners.add(statusUpdateListener);
-            matchingClients.forEach(client -> eventPublisher.publishEvent(
-                    new EventProcessorEvents.ProcessorStatusRequest(context,
-                                                                    client.clientId(), processorId.name(), false)
+            clientIds.forEach(client -> eventPublisher.publishEvent(
+                    new EventProcessorEvents.ProcessorStatusRequest(client, processorId.name(), false)
             ));
             try {
                 boolean updated = clientProcessorStatusUpdateLatch.await(timeout.toMillis(), MILLISECONDS);

@@ -13,9 +13,8 @@ public interface InstructionPublisher {
     /**
      * Publishes an {@link PlatformOutboundInstruction} to the specified client
      *
-     * @param context     the context of the client application
-     * @param client      the name of the client application
+     * @param clientId    the id of the client application
      * @param instruction the instruction to be sent to the client
      */
-    void publish(String context, String client, PlatformOutboundInstruction instruction);
+    void publish(String clientId, PlatformOutboundInstruction instruction);
 }

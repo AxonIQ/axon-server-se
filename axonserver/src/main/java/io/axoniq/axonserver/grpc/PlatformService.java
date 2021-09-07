@@ -262,15 +262,13 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
     /**
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
-     * @param context     the context of the connected client
      * @param clientId    the unique identifier of the client
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
-    public void sendToClient(String context, String clientId, PlatformOutboundInstruction instruction) {
+    public void sendToClient(String clientId, PlatformOutboundInstruction instruction) {
         List<SendingStreamObserver<PlatformOutboundInstruction>> stream =
                 connectionMap.entrySet().stream()
                              .filter(e -> e.getKey().clientId.equals(clientId))
-                             .filter(e -> e.getKey().context.equals(context))
                              .map(Map.Entry::getValue)
                              .collect(Collectors.toList());
         stream.forEach(s -> s.onNext(instruction));
@@ -283,7 +281,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
                                                                .setProcessorName(evt.processorName()))
                 .build();
-        sendToClient(evt.context(), evt.clientId(), instruction);
+        sendToClient(evt.clientId(), instruction);
     }
 
     @EventListener
@@ -292,7 +290,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 .newBuilder()
                 .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
                 .build();
-        sendToClient(evt.context(), evt.clientId(), instruction);
+        sendToClient(evt.clientId(), instruction);
     }
 
     @EventListener
@@ -330,7 +328,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 PlatformOutboundInstruction.newBuilder()
                                            .setRequestEventProcessorInfo(eventProcessorInfoRequest)
                                            .build();
-        sendToClient(event.context(), event.clientId(), outboundInstruction);
+        sendToClient(event.clientId(), outboundInstruction);
     }
 
     private void registerClient(ClientComponent clientComponent,

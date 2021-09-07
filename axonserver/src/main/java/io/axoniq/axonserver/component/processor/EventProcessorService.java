@@ -92,8 +92,7 @@ public class EventProcessorService {
                                            .setSplitEventProcessorSegment(splitSegmentRequest)
                                            .setInstructionId(UUID.randomUUID().toString())
                                            .build();
-        SplitSegmentsSucceeded success = new SplitSegmentsSucceeded(event.context(),
-                                                                    event.getClientId(),
+        SplitSegmentsSucceeded success = new SplitSegmentsSucceeded(event.getClientId(),
                                                                     event.getProcessorName());
         instructionResultSource
                 .onInstructionResultFor(instruction.getInstructionId())
@@ -101,7 +100,7 @@ public class EventProcessorService {
                            error -> LOGGER.warn("Error during segment split: {}, {}", error, instruction),
                            timeout -> LOGGER.warn("The following operation is taking to long: {}", instruction));
 
-        instructionPublisher.publish(event.context(), event.getClientId(), instruction);
+        instructionPublisher.publish(event.getClientId(), instruction);
     }
 
 
@@ -124,8 +123,7 @@ public class EventProcessorService {
                                            .setInstructionId(UUID.randomUUID().toString())
                                            .setMergeEventProcessorSegment(mergeSegmentRequest)
                                            .build();
-        MergeSegmentsSucceeded success = new MergeSegmentsSucceeded(event.context(),
-                                                                    event.getClientId(),
+        MergeSegmentsSucceeded success = new MergeSegmentsSucceeded(event.getClientId(),
                                                                     event.getProcessorName());
 
         instructionResultSource
@@ -134,7 +132,7 @@ public class EventProcessorService {
                            error -> LOGGER.warn("Error during segment merge: {}, {}", error, instruction),
                            timeout -> LOGGER.warn("The following operation is taking to long: {}", instruction));
 
-        instructionPublisher.publish(event.context(), event.getClientId(), instruction);
+        instructionPublisher.publish(event.getClientId(), instruction);
     }
 
     /**
@@ -155,6 +153,6 @@ public class EventProcessorService {
                                            .setInstructionId(UUID.randomUUID().toString())
                                            .setReleaseSegment(releaseSegmentRequest)
                                            .build();
-        instructionPublisher.publish(event.context(), event.getClientId(), outboundInstruction);
+        instructionPublisher.publish(event.getClientId(), outboundInstruction);
     }
 }

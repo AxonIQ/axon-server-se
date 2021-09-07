@@ -35,7 +35,7 @@ public class EventProcessorServiceTest {
     private List<Object> publishedInternalEvents = new CopyOnWriteArrayList<>();
 
     private EventProcessorService testSubject = new EventProcessorService(
-            (context, client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>()).add(i),
+            (client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>()).add(i),
             instructionId -> (subscriber, timeout) -> resultSubscribers.computeIfAbsent(instructionId,
                                                                                         k -> new CopyOnWriteArrayList<>())
                                                                        .add(subscriber),
@@ -51,7 +51,6 @@ public class EventProcessorServiceTest {
     @Test
     public void onMergeSegmentRequestExecuted() {
         MergeSegmentRequest mergeSegmentRequest = new MergeSegmentRequest(false,
-                                                                          context,
                                                                           "MergeClient",
                                                                           "Processor",
                                                                           1);
@@ -75,7 +74,6 @@ public class EventProcessorServiceTest {
     @Test
     public void onMergeSegmentRequestNotExecuted() {
         MergeSegmentRequest mergeSegmentRequest = new MergeSegmentRequest(false,
-                                                                          context,
                                                                           "MergeClient",
                                                                           "Processor",
                                                                           1);
@@ -95,7 +93,6 @@ public class EventProcessorServiceTest {
     @Test
     public void onSplitSegmentRequestExecuted() {
         SplitSegmentRequest splitSegmentRequest = new SplitSegmentRequest(false,
-                                                                          context,
                                                                           "SplitClient",
                                                                           "processor",
                                                                           1);
@@ -119,7 +116,6 @@ public class EventProcessorServiceTest {
     @Test
     public void onSplitSegmentRequestNotExecuted() {
         SplitSegmentRequest splitSegmentRequest = new SplitSegmentRequest(false,
-                                                                          context,
                                                                           "SplitClient",
                                                                           "processor",
                                                                           1);
@@ -139,8 +135,7 @@ public class EventProcessorServiceTest {
 
     @Test
     public void onReleaseSegmentRequest() {
-        ReleaseSegmentRequest releaseSegmentRequest = new ReleaseSegmentRequest(context,
-                                                                                "Release",
+        ReleaseSegmentRequest releaseSegmentRequest = new ReleaseSegmentRequest("Release",
                                                                                 "processor",
                                                                                 1,
                                                                                 false);

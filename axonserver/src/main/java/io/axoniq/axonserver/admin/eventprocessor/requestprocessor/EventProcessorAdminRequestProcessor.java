@@ -5,20 +5,25 @@ import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorState;
 import io.axoniq.axonserver.api.Authentication;
-import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.GroupedFlux;
+import reactor.core.publisher.Mono;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Supplier;
 import javax.annotation.Nonnull;
 
 /**
+ * @author Stefan Dragisic
  * @author Sara Pellegrini
  * @since 4.6
  */
@@ -39,45 +44,116 @@ public class EventProcessorAdminRequestProcessor implements EventProcessorAdminS
 
 
     @Override
-    public void pause(@Nonnull EventProcessorId identifier, Authentication authentication) {
-        String context = identifier.getContext();
-        String processor = identifier.getName();
-        String tokenStoreIdentifier = identifier.getTokenStoreIdentifier();
-        auditLog.info("[{}@{}] Request to pause Event processor \"{}@{}\" in context \"{}\".",
-                      authentication.getName(),
-                      context,
-                      processor,
-                      tokenStoreIdentifier,
-                      context);
-        clientsByEventProcessor(context, processor, tokenStoreIdentifier)
-                .forEach(clientId -> processorEventsSource
-                        .pauseProcessorRequest(context, clientId, processor));
-    }
+    public void pause(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+        String processor = identifier.name();
+        String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to pause Event processor \"{}@{}\".",
+                          authentication.name(),
+                          processor,
+                          tokenStoreIdentifier);
+        }
 
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        Flux.fromIterable(eventProcessors)
+            .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+            .map(ClientProcessor::clientId)
+            .distinct()
+            .subscribe(clientId -> processorEventsSource.pauseProcessorRequest(clientId, processor));
+    }
 
     @Nonnull
     @Override
-    public Flux<EventProcessorState> eventProcessorsForContext(@Nonnull String context, Authentication authentication) {
-        auditLog.debug("[{}@{}] Request to list Event processors for context \"{}\".",
-                       authentication.getName(), context, context);
-
+    public Flux<EventProcessorState> eventProcessors(@Nonnull Authentication authentication) {
+        if (auditLog.isInfoEnabled()) {
+            auditLog.debug("[{}] Request to list Event processors.", authentication.name());
+        }
         return Flux.fromIterable(eventProcessors)
-                   .filter(eventProcessor -> eventProcessor.belongsToContext(context))
-                   .map(eventProcessor -> {
-                       String tokenStoreIdentifier = eventProcessor.eventProcessorInfo().getTokenStoreIdentifier();
-                       String name = eventProcessor.eventProcessorInfo().getProcessorName();
-                       EventProcessorId eventProcessorId = new EventProcessorId(name, context, tokenStoreIdentifier);
-                       List<ClaimedSegmentState> claimedSegmentStates = new LinkedList<>(); //TODO populate the list
-                       return new EventProcessorState(eventProcessorId, claimedSegmentStates);
-                   });
+                   .groupBy(EventProcessorIdentifier::new)
+                   .flatMap(this::eventProcessorState);
     }
 
+    private Mono<EventProcessorState> eventProcessorState(
+            GroupedFlux<EventProcessorIdentifier, ClientProcessor> clientProcessor) {
+        return clientProcessor
+                .reduce(new LinkedList<ClaimedSegmentState>(), (list, processor) -> {
+                    processor.forEach(segment -> list.add(new SegmentState(segment, processor::clientId)));
+                    return list;
+                })
+                .map(segments -> new EventProcessor(clientProcessor.key(), segments));
+    }
+}
 
-    private ClientsByEventProcessor clientsByEventProcessor(String context,
-                                                            String processorName,
-                                                            String tokenStoreIdentifier) {
-        return new ClientsByEventProcessor(new EventProcessorIdentifier(processorName, tokenStoreIdentifier),
-                                           context,
-                                           eventProcessors);
+
+class SegmentState implements ClaimedSegmentState {
+
+    private final SegmentStatus segment;
+    private final Supplier<String> clientId;
+
+    public SegmentState(SegmentStatus segment, Supplier<String> clientId) {
+        this.segment = segment;
+        this.clientId = clientId;
+    }
+
+    @Nonnull
+    @Override
+    public String clientId() {
+        return clientId.get();
+    }
+
+    @Override
+    public int segmentId() {
+        return segment.getSegmentId();
+    }
+
+    @Override
+    public int onePartOf() {
+        return segment.getOnePartOf();
+    }
+}
+
+
+class Id implements EventProcessorId {
+
+    private final EventProcessorIdentifier eventProcessorIdentifier;
+
+    Id(EventProcessorIdentifier eventProcessorIdentifier) {
+        this.eventProcessorIdentifier = eventProcessorIdentifier;
+    }
+
+    @Nonnull
+    @Override
+    public String name() {
+        return eventProcessorIdentifier.name();
+    }
+
+    @Nonnull
+    @Override
+    public String tokenStoreIdentifier() {
+        return eventProcessorIdentifier.tokenStoreIdentifier();
+    }
+}
+
+class EventProcessor implements EventProcessorState {
+
+    private final EventProcessorIdentifier eventProcessorIdentifier;
+    private final List<ClaimedSegmentState> segments;
+
+    EventProcessor(EventProcessorIdentifier eventProcessorIdentifier,
+                   List<ClaimedSegmentState> segments) {
+        this.eventProcessorIdentifier = eventProcessorIdentifier;
+        this.segments = segments;
+    }
+
+    @Nonnull
+    @Override
+    public EventProcessorId identifier() {
+        return new Id(eventProcessorIdentifier);
+    }
+
+    @Nonnull
+    @Override
+    public List<ClaimedSegmentState> segments() {
+        return segments;
     }
 }
