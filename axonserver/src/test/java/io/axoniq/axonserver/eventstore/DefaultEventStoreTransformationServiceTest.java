@@ -7,8 +7,9 @@
  *
  */
 
-package io.axoniq.axonserver.requestprocessor.eventstore;
+package io.axoniq.axonserver.eventstore;
 
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
 import org.junit.*;
 
 /**

@@ -20,7 +20,7 @@ import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.requestprocessor.eventstore.EventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.springframework.security.core.Authentication;
@@ -179,8 +179,7 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
                       request.getTransformationId().getId());
         eventStoreTransformationService.applyTransformation(context,
                                                             request.getTransformationId().getId(),
-                                                            request.getLastEventToken(),
-                                                            request.getLastSnapshotToken())
+                                                            request.getLastEventToken())
                                        .subscribe(new ConfirmationSubscriber(responseObserver));
     }
 }

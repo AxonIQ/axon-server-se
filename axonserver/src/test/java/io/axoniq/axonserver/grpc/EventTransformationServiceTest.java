@@ -19,7 +19,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
-import io.axoniq.axonserver.requestprocessor.eventstore.EventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.transport.grpc.EventTransformationService;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;

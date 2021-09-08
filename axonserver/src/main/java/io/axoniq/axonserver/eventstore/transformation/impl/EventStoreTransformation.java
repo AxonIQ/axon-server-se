@@ -1,4 +1,13 @@
-package io.axoniq.axonserver.requestprocessor.eventstore;
+/*
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
+package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import org.springframework.data.util.CloseableIterator;
@@ -11,26 +20,23 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class EventStoreTransformation {
 
-    private String id;
-    private String name;
+    private final EventStoreTransformationJpa wrapped;
     private long previousToken = -1;
     private boolean applying;
-    private AtomicReference<CloseableIterator<SerializedEventWithToken>> iterator = new AtomicReference<>();
+    private final AtomicReference<CloseableIterator<SerializedEventWithToken>> iterator = new AtomicReference<>();
+
+    public EventStoreTransformation(
+            EventStoreTransformationJpa wrapped) {
+        this.wrapped = wrapped;
+    }
 
     public String getId() {
-        return id;
+        return wrapped.getTransformationId();
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
 
     public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
+        return wrapped.getContext();
     }
 
     public long getPreviousToken() {

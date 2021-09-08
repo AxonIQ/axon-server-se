@@ -9,13 +9,10 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.requestprocessor.eventstore.DefaultEventStoreTransformationService;
-import io.axoniq.axonserver.requestprocessor.eventstore.EventStoreTransformationJpa;
-import io.axoniq.axonserver.requestprocessor.eventstore.EventStoreTransformationRepository;
-import io.axoniq.axonserver.topology.Topology;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.impl.EventStoreTransformationJpa;
+import io.axoniq.axonserver.eventstore.transformation.impl.EventStoreTransformationRepository;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collection;
@@ -37,15 +34,15 @@ public class TransformationAdminRestController {
         this.eventStoreTransformationRepository = eventStoreTransformationRepository;
     }
 
-    @DeleteMapping("v1/transformations")
-    public void cancelTransformation() {
-        eventStoreTransformationService.cancelTransformation(Topology.DEFAULT_CONTEXT);
-    }
-
-    @PostMapping("v1/transformations")
-    public void applyTransformation() {
-        eventStoreTransformationService.applyTransformation(Topology.DEFAULT_CONTEXT);
-    }
+//    @DeleteMapping("v1/transformations")
+//    public void cancelTransformation() {
+//        eventStoreTransformationService.cancelTransformation(Topology.DEFAULT_CONTEXT);
+//    }
+//
+//    @PostMapping("v1/transformations")
+//    public void applyTransformation() {
+//        eventStoreTransformationService.applyTransformation(Topology.DEFAULT_CONTEXT);
+//    }
 
     @GetMapping("v1/transformations")
     public Collection<EventStoreTransformationJpa> get() {

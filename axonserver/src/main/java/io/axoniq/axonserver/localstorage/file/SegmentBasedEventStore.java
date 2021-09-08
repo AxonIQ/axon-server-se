@@ -37,6 +37,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -288,8 +289,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         File dataFile = storageProperties.dataFile(
                 context,
                 new FileVersion(segment, currentVersion + 1));
+        File tempFile = new File(dataFile.getAbsolutePath() + ".temp");
         try (TransactionIterator transactionIterator = getTransactions(segment, segment);
-             DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(dataFile))) {
+             DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(tempFile))) {
             dataOutputStream.write(PrimaryEventStore.VERSION);
             dataOutputStream.writeInt(storageProperties.getFlags());
             int pos = 5;
@@ -340,15 +342,20 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             dataOutputStream.writeInt(0);
 
         } catch (Exception e) {
-            FileUtils.delete(dataFile);
+            FileUtils.delete(tempFile);
             throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
         }
         if( changed.get()) {
             indexManager.createNewVersion(segment, currentVersion + 1, indexEntriesMap);
-            segmentActiveVersion(segment, currentVersion + 1);
-            scheduleForDeletion(segment, currentVersion);
+            try {
+                FileUtils.rename(dataFile, tempFile);
+                segmentActiveVersion(segment, currentVersion + 1);
+                scheduleForDeletion(segment, currentVersion);
+            } catch (IOException e) {
+                throw new RuntimeException(String.format("%s: rename segment %s failed", context, tempFile), e);
+            }
         } else {
-            FileUtils.delete(dataFile);
+            FileUtils.delete(tempFile);
         }
 
     }

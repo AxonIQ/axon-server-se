@@ -306,7 +306,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction) {
-        forceNextSegment();
+        forceNextSegment(); // TODO: 06/09/2021 check lastToken in active segment
         if ( next != null) {
             next.transformContents(firstToken, lastToken,transformationFunction);
         }

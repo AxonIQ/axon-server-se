@@ -89,6 +89,11 @@ public class BaseFileStore implements FileStore {
         primary.init(validate);
     }
 
+    @Override
+    public FileStoreEntry lastEntry() {
+        return primary.lastEntry();
+    }
+
     public void delete() {
         primary.close(true);
     }

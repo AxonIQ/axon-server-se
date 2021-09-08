@@ -51,6 +51,7 @@ public class WritableSegment extends AbstractSegment {
     private final AtomicLong lastIndex = new AtomicLong(0);
     private final ConcurrentNavigableMap<Long, Map<Long, Integer>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
     private final Map<Long, ByteBufferEntrySource> readBuffers = new ConcurrentHashMap<>();
+    private final AtomicReference<FileStoreEntry> lastEntry = new AtomicReference<>();
 
     public WritableSegment(String context,
                            StorageProperties storageProperties,
@@ -126,7 +127,7 @@ public class WritableSegment extends AbstractSegment {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
             while (iterator.hasNext()) {
-                iterator.next();
+                lastEntry.set(iterator.next());
                 sequence++;
             }
 
@@ -164,6 +165,7 @@ public class WritableSegment extends AbstractSegment {
                                                                   claim.position);
 
                     lastIndex.set(index);
+                    lastEntry.set(entries.get(entries.size()-1));
                     completableFuture.complete(index);
                 } else {
                     completableFuture.completeExceptionally(ex);
@@ -450,5 +452,9 @@ public class WritableSegment extends AbstractSegment {
         if (deleteData) {
             delete();
         }
+    }
+
+    public FileStoreEntry lastEntry() {
+        return lastEntry.get();
     }
 }

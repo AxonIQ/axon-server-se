@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.requestprocessor.eventstore;
+package io.axoniq.axonserver.eventstore.transformation.api;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;

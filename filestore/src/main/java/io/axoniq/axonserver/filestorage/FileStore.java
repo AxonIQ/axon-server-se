@@ -25,4 +25,6 @@ public interface FileStore {
     void delete();
 
     void open(boolean validate);
+
+    FileStoreEntry lastEntry();
 }

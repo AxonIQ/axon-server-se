@@ -1,4 +1,13 @@
-package io.axoniq.axonserver.requestprocessor.eventstore;
+/*
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
+package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -6,86 +15,53 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.stereotype.Controller;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
- * Validates event store transformation requests.
- * There can only be one transformation per context.
- * Each entry should provide a valid previous token.
- * When an event is replaced, the aggregate id and sequence number must remain the same.
+ * Validates event store transformation requests. There can only be one transformation per context. Each entry should
+ * provide a valid previous token. When an event is replaced, the aggregate id and sequence number must remain the
+ * same.
+ *
  * @author Marc Gathier
  * @since 4.6.0
  */
 @Controller
 public class TransformationValidator {
 
-    private final Map<String, EventStoreTransformation> activeTransformations = new ConcurrentHashMap<>();
     private final LocalEventStore localEventStore;
+    private final TransformationCache transformationCache;
 
-    public TransformationValidator(LocalEventStore localEventStore) {
+    public TransformationValidator(
+            TransformationCache transformationCache,
+            LocalEventStore localEventStore) {
+        this.transformationCache = transformationCache;
         this.localEventStore = localEventStore;
     }
 
-    public String register(String context) {
-        return activeTransformations.compute(context, (c, current) -> {
-            if (current != null) {
-                throw new RuntimeException("Transformation in progress");
-            }
-            EventStoreTransformation eventStoreTransformation = new EventStoreTransformation();
-            eventStoreTransformation.setId(UUID.randomUUID().toString());
-            eventStoreTransformation.setName(context);
-            return eventStoreTransformation;
-        }).getId();
-    }
-
-
     public void validateDeleteEvent(String context, String transformationId, long token, long previousToken) {
-        EventStoreTransformation transformation = activeTransformations.get(context);
-        validateTransformationId(transformationId, transformation);
+        EventStoreTransformation transformation = transformationCache.get(transformationId);
+        validateContext(context, transformation);
         validatePreviousToken(previousToken, transformation);
-
-        transformation.setPreviousToken(token);
     }
 
     public void validateReplaceEvent(String context, String transformationId, long token, long previousToken,
                                      Event event) {
-        EventStoreTransformation transformation = activeTransformations.get(context);
-        validateTransformationId(transformationId, transformation);
+        EventStoreTransformation transformation = transformationCache.get(transformationId);
+        validateContext(context, transformation);
         validatePreviousToken(previousToken, transformation);
         validateEventToReplace(token, event, context, transformation);
-        transformation.setPreviousToken(token);
     }
 
     public void apply(String context, String transformationId, long lastEventToken) {
-        activeTransformations.compute(context, (c, old) -> {
-            validateTransformationId(transformationId, old);
-            validatePreviousToken(lastEventToken, old);
-
-            if (old.isApplying()) {
-                throw new RuntimeException("Transformation in progress");
-            }
-
-            old.setApplying(true);
-            old.closeIterator();
-            return old;
-        });
+        EventStoreTransformation transformation = transformationCache.get(transformationId);
+        validateContext(context, transformation);
+        validatePreviousToken(lastEventToken, transformation);
     }
 
     public void cancel(String context, String transformationId) {
-        activeTransformations.compute(context, (c, old) -> {
-            if( old == null) {
-                return null;
-            }
-            validateTransformationId(transformationId, old);
-
-            if (old.isApplying()) {
-                throw new RuntimeException("Transformation in progress");
-            }
-            old.closeIterator();
-            return null;
-        });
+        EventStoreTransformation transformation = transformationCache.get(transformationId);
+        validateContext(context, transformation);
+        if (transformation.isApplying()) {
+            throw new RuntimeException("Transformation in progress");
+        }
     }
 
     private void validatePreviousToken(long previousToken, EventStoreTransformation transformation) {
@@ -94,13 +70,13 @@ public class TransformationValidator {
         }
     }
 
-    private void validateTransformationId(String transformationId, EventStoreTransformation transformation) {
+    private void validateContext(String context, EventStoreTransformation transformation) {
         if (transformation == null) {
             throw new RuntimeException("Transformation not found");
         }
 
-        if (!transformation.getId().equals(transformationId)) {
-            throw new RuntimeException("Transformation id not valid");
+        if (!transformation.getName().equals(context)) {
+            throw new RuntimeException("Transformation id not valid for context");
         }
     }
 

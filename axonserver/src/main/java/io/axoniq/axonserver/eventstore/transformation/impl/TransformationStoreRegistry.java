@@ -1,7 +1,14 @@
-package io.axoniq.axonserver.requestprocessor.eventstore;
+/*
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
 
-import io.axoniq.axonserver.filestorage.FileStore;
-import io.axoniq.axonserver.filestorage.impl.BaseFileStore;
+package io.axoniq.axonserver.eventstore.transformation.impl;
+
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import org.slf4j.Logger;
@@ -19,30 +26,33 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class TransformationStoreRegistry {
     private final Logger logger = LoggerFactory.getLogger(TransformationStoreRegistry.class);
-    private final Map<String, FileStore> fileStoreMap = new ConcurrentHashMap<>();
+    private final Map<String, TransformationEntryStore> fileStoreMap = new ConcurrentHashMap<>();
     private final EmbeddedDBProperties embeddedDBProperties;
 
     public TransformationStoreRegistry(EmbeddedDBProperties embeddedDBProperties) {
         this.embeddedDBProperties = embeddedDBProperties;
     }
 
-    public void register(String context, String transformationId) {
-        fileStoreMap.computeIfAbsent(transformationId, t -> {
+    public TransformationEntryStore register(String context, String transformationId) {
+        TransformationEntryStore store = fileStoreMap.computeIfAbsent(transformationId, t -> {
             String baseDirectory = embeddedDBProperties.getEvent().getStorage(context);
             StorageProperties storageProperties = new StorageProperties();
             storageProperties.setStorage(Paths.get(baseDirectory, transformationId).toFile());
             storageProperties.setSuffix(".events");
             logger.warn("{}: creating transformation store for {}", context, transformationId);
-            return new BaseFileStore(storageProperties, context + "/" + transformationId);
-        }).open(false);
+            return new TransformationEntryStore(storageProperties, context + "/" + transformationId);
+        });
+        store.open(false);
+        return store;
     }
 
-    public FileStore get(String transformationId) {
+
+    public TransformationEntryStore get(String transformationId) {
         return fileStoreMap.get(transformationId);
     }
 
     public void delete(String transformationId) {
-        FileStore fileStore = fileStoreMap.remove(transformationId);
+        TransformationEntryStore fileStore = fileStoreMap.remove(transformationId);
         if (fileStore != null) {
             fileStore.delete();
         }
