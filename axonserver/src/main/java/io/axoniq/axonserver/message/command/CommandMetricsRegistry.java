@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.ClusterMetric;
 import io.axoniq.axonserver.metric.CompositeMetric;
@@ -19,6 +20,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -48,6 +50,12 @@ public class CommandMetricsRegistry {
      */
     public CommandMetricsRegistry(MeterFactory meterFactory) {
         this.meterFactory = meterFactory;
+    }
+
+    @EventListener
+    public void on(TopologyEvents.ApplicationDisconnected event) {
+        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.SOURCE, event.getClientId());
+        meterFactory.remove(BaseMetricName.AXON_COMMAND, MeterFactory.TARGET, event.getClientId());
     }
 
 
