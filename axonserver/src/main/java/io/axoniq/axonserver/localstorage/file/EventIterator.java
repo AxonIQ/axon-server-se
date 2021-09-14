@@ -9,10 +9,13 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.exception.MessagingPlatformException;
+
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Marc Gathier
@@ -20,13 +23,30 @@ import java.util.NoSuchElementException;
 public abstract class EventIterator implements Iterator<EventInformation>, AutoCloseable {
     protected long currentSequenceNumber;
     protected final List<EventInformation> eventsInTransaction = new LinkedList<>();
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     public void close() {
-
+        closed.set(true);
+        doClose();
     }
+
+    protected abstract void doClose();
+
     @Override
     public boolean hasNext() {
-        return !eventsInTransaction.isEmpty() || readTransaction();
+        if (closed.get()) throw new IllegalStateException("Iterator is closed");
+        return !closed.get() && (!eventsInTransaction.isEmpty() || tryReadTransaction());
+    }
+
+    private boolean tryReadTransaction() {
+        try {
+            return readTransaction();
+        } catch (MessagingPlatformException readException) {
+            if( closed.get()) {
+                throw new IllegalStateException("Iterator is closed");
+            }
+            throw readException;
+        }
     }
 
     protected abstract boolean readTransaction();

@@ -93,7 +93,7 @@ public class EventByteBufferIterator extends EventIterator {
     }
 
     @Override
-    public void close() {
+    protected void doClose() {
         eventSource.close();
     }
 }
