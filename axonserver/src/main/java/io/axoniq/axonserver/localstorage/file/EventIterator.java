@@ -35,7 +35,7 @@ public abstract class EventIterator implements Iterator<EventInformation>, AutoC
     @Override
     public boolean hasNext() {
         if (closed.get()) throw new IllegalStateException("Iterator is closed");
-        return !closed.get() && (!eventsInTransaction.isEmpty() || tryReadTransaction());
+        return !eventsInTransaction.isEmpty() || tryReadTransaction();
     }
 
     private boolean tryReadTransaction() {
