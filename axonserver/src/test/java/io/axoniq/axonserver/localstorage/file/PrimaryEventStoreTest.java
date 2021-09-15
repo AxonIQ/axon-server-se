@@ -343,7 +343,7 @@ public class PrimaryEventStoreTest {
 
                 return Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
                         setType("Transformed")).build();
-            });
+            }, progress -> {});
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-1",
                                                                                 0,
@@ -392,7 +392,7 @@ public class PrimaryEventStoreTest {
 
                 return Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
                         setType("Transformed")).build();
-            });
+            }, progress -> {});
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-9",
                                                                           0,
@@ -442,7 +442,7 @@ public class PrimaryEventStoreTest {
                 return Event.newBuilder(e)
                             .setMessageIdentifier("")
                             .build();
-            });
+            }, progress -> {});
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-9",
                                                                           0,
@@ -555,7 +555,7 @@ public class PrimaryEventStoreTest {
 
                 return Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
                         setType("Transformed")).build();
-            });
+            }, progress -> {});
 
             subscriptionRef.get().request(1000);
             completed.get(5, TimeUnit.SECONDS);

@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.localstorage.file.NewSegmentVersion;
+import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -81,14 +83,34 @@ public class TransformationCache {
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void setTransactionStatus(String transformationId, EventStoreTransformationJpa.Status status) {
-
+        EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
+                                                                                      .orElseThrow(() -> new RuntimeException(
+                                                                                              "Transformation not found"));
+        transformationJpa.setStatus(status);
+        eventStoreTransformationRepository.save(transformationJpa);
     }
 
     public Mono<Void> add(String transformationId, TransformEventsRequest transformEventsRequest) {
         EventStoreTransformation transformation = activeTransformations.get(transformationId);
         return transformationStoreRegistry.get(transformationId).append(transformEventsRequest)
-                .doOnNext(index -> {
+                .doOnSuccess(result -> {
+                    System.out.printf("Added entry #%d, token = %d%n", 0, token(transformEventsRequest));
                     transformation.setPreviousToken(token(transformEventsRequest));
                 });
+    }
+
+
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public void setProgress(String transformationId, TransformationProgress transformationProgress) {
+        EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
+                                                                                          .orElseThrow(() -> new RuntimeException(
+                                                                                                  "Transformation not found"));
+        transformationJpa.setNextToken(transformationProgress.nextToken());
+        if (transformationProgress instanceof NewSegmentVersion) {
+            NewSegmentVersion newSegmentVersion = (NewSegmentVersion)transformationProgress;
+            transformationJpa.add(new EventStoreTransformationLogJpa(newSegmentVersion.segment(), newSegmentVersion.version()));
+        }
+
+        eventStoreTransformationRepository.save(transformationJpa);
     }
 }

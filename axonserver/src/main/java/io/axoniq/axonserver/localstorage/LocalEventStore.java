@@ -27,6 +27,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
+import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.metric.BaseMetricName;
@@ -228,11 +229,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers;
     }
 
-    public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken, BiFunction<Event,Long,Event> transformationFunction) {
+    public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
+                                                   BiFunction<Event,Long,Event> transformationFunction,
+                                                   Consumer<TransformationProgress> transformationProgressConsumer) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         runInDataFetcherPool(() -> {
             Workers workers = workersMap.get(context);
-            workers.eventStorageEngine.transformContents(firstToken, lastToken, transformationFunction);
+            workers.eventStorageEngine.transformContents(firstToken, lastToken, transformationFunction, transformationProgressConsumer);
             result.complete(null);
         }, result::completeExceptionally);
         return result;
@@ -262,7 +265,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                return null;
                                            }
                                            return snapshot;
-                                       }
+                                       }, transformationProgress -> {}
                     );
             result.complete(deletedCount.get());
         }, result::completeExceptionally);

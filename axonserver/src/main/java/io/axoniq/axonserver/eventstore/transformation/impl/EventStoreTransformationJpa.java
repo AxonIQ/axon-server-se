@@ -9,10 +9,14 @@
 
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
+import java.util.HashSet;
+import java.util.Set;
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 /**
@@ -33,8 +37,13 @@ public class EventStoreTransformationJpa {
     private String transformationId;
     private String context;
 
+    private long nextToken;
+
     @Enumerated(EnumType.ORDINAL)
     private Status status;
+
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "transformation")
+    private Set<EventStoreTransformationLogJpa> segmentUpdates = new HashSet<>();
 
     public EventStoreTransformationJpa(String transformationId, String context) {
         this.transformationId = transformationId;
@@ -69,5 +78,16 @@ public class EventStoreTransformationJpa {
         this.status = status;
     }
 
+    public void add(EventStoreTransformationLogJpa log) {
+        segmentUpdates.add(log);
+        log.setTransformation(this);
+    }
 
+    public long getNextToken() {
+        return nextToken;
+    }
+
+    public void setNextToken(long nextToken) {
+        this.nextToken = nextToken;
+    }
 }

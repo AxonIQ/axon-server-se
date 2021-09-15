@@ -13,6 +13,7 @@ import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.*;
+import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.topology.DefaultEventStoreLocator;
 import io.axoniq.axonserver.topology.EventStoreLocator;
@@ -132,7 +133,8 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction) {
+            public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction,
+                                          Consumer<TransformationProgress> transformationProgressConsumer) {
 
             }
         };

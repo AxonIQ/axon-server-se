@@ -54,6 +54,7 @@ public class TransformationValidator {
         EventStoreTransformation transformation = transformationCache.get(transformationId);
         validateContext(context, transformation);
         validatePreviousToken(lastEventToken, transformation);
+        transformation.closeIterator();
     }
 
     public void cancel(String context, String transformationId) {

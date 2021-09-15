@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
@@ -71,33 +72,45 @@ public class TransformationProcessor {
         long firstToken = token(first);
         long lastToken = transformation.getPreviousToken();
 
-        logger.warn("{}: Start apply transformation from {} to {}", transformation.getName(), first, lastToken);
+        logger.info("{}: Start apply transformation from {} to {}", transformation.getName(), first, lastToken);
         CloseableIterator<TransformEventsRequest> iterator = transformationFileStore.iterator(0);
         if (iterator.hasNext()) {
             transformationCache.setTransactionStatus(transformationId, EventStoreTransformationJpa.Status.APPLYING);
             TransformEventsRequest transformationEntry = iterator.next();
             AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
-            logger.warn("Next token {}", token(request.get()));
+            logger.debug("Next token {}", token(request.get()));
             localEventStore.transformEvents(transformation.getName(),
                                             firstToken,
                                             lastToken,
                                             (event, token) -> {
-                                                logger.warn("Found token {}", token);
+                                                logger.debug("Found token {}", token);
                                                 Event result = event;
                                                 TransformEventsRequest nextRequest = request.get();
                                                 if (token(nextRequest) == token) {
                                                     result = applyTransformation(event, nextRequest);
                                                     if (iterator.hasNext()) {
                                                         request.set(iterator.next());
-                                                        logger.warn("Next token {}", token(request.get()));
+                                                        logger.debug("Next token {}", token(request.get()));
                                                     }
                                                 }
                                                 return result;
-                                            }).thenAccept(r -> {
+                                            },
+                                            transformationProgress -> handleTransformationProgress( transformation,
+                                                    transformationProgress)).thenAccept(r -> {
                 iterator.close();
                 transformationCache.setTransactionStatus(transformationId, EventStoreTransformationJpa.Status.APPLIED);
+            }).exceptionally(ex -> {
+                ex.printStackTrace();
+                transformationCache.setTransactionStatus(transformationId, EventStoreTransformationJpa.Status.FAILED);
+                return null;
             });
         }
+    }
+
+    private void handleTransformationProgress(EventStoreTransformation transformation,
+                                              TransformationProgress transformationProgress) {
+        logger.info("{}: Transformation {} Progress {}", transformation.getName(), transformation.getId(), transformationProgress);
+        transformationCache.setProgress(transformation.getId(), transformationProgress);
     }
 
     private TransformEventsRequest deleteEventEntry(long token) {

@@ -70,7 +70,7 @@ public class FileUtils {
         return true;
     }
 
-    public static void rename(File target, File currentLocation) throws IOException {
-        Files.move(target.toPath(), currentLocation.toPath(), StandardCopyOption.REPLACE_EXISTING);
+    public static void rename(File source, File target) throws IOException {
+        Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 }

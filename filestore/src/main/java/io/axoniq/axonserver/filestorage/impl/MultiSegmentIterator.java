@@ -59,7 +59,6 @@ public class MultiSegmentIterator implements CloseableIterator<FileStoreEntry> {
 
     @Override
     public void close() {
-        System.out.println("Closing iterator");
         if (iterator != null) {
             iterator.close();
         }

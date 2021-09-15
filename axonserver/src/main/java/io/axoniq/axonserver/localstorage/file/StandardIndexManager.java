@@ -416,11 +416,10 @@ public class StandardIndexManager implements IndexManager {
      * @return true if the index for this segment is valid
      */
     @Override
-    public boolean validIndex(long segment) {
+    public boolean validIndex(FileVersion segment) {
         try {
-            if (indexesDescending.containsKey(segment)) {
-                FileVersion segmentVersion = new FileVersion(segment, indexesDescending.get(segment));
-                return loadBloomFilter(segmentVersion) != null && getIndex(segmentVersion) != null;
+            if (indexesDescending.containsKey(segment.segment()) && indexesDescending.get(segment.segment()) == segment.version()) {
+                return loadBloomFilter(segment) != null && getIndex(segment) != null;
             }
         } catch (Exception ex) {
             logger.warn("Failed to validate index for segment: {}", segment, ex);

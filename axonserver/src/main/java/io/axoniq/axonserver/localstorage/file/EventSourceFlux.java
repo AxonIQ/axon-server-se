@@ -72,8 +72,7 @@ public class EventSourceFlux implements Supplier<Flux<SerializedEvent>> {
                                              .flatMap(es -> Flux.fromIterable(indexEntries.positions())
                                                                 .limitRate(prefetch, prefetch / 2)
                                                                 .publishOn(Schedulers.fromExecutorService(dataFetcherSchedulerProvider.get()))
-                                                                .map(es::readEvent)
-                                             .filter(s -> !s.isSoftDeleted()))
+                                                                .map(es::readEvent))
                 , EventSource::close);
     }
 

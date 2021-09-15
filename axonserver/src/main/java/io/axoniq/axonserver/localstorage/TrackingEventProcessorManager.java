@@ -54,7 +54,8 @@ public class TrackingEventProcessorManager {
 
     /**
      * Constructor for {@link TrackingEventProcessorManager}.
-     * @param eventStorageEngine the event storage engine
+     *
+     * @param eventStorageEngine   the event storage engine
      * @param blacklistedSendAfter max number of ignored events before sending next event
      */
     public TrackingEventProcessorManager(EventStorageEngine eventStorageEngine, int blacklistedSendAfter) {
@@ -63,11 +64,14 @@ public class TrackingEventProcessorManager {
 
     /**
      * Constructor for {@link TrackingEventProcessorManager} for easier testing.
-     * @param context the context for the storage engine
-     * @param iteratorBuilder function that creates an event iterator
+     *
+     * @param context              the context for the storage engine
+     * @param iteratorBuilder      function that creates an event iterator
      * @param blacklistedSendAfter max number of ignored events before sending next event
      */
-    TrackingEventProcessorManager(String context, Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder, int blacklistedSendAfter) {
+    TrackingEventProcessorManager(String context,
+                                  Function<Long, CloseableIterator<SerializedEventWithToken>> iteratorBuilder,
+                                  int blacklistedSendAfter) {
         this.context = context;
         this.iteratorBuilder = iteratorBuilder;
         // Use 2 threads (one to send events and one to avoid queuing of reschedules.
@@ -77,10 +81,9 @@ public class TrackingEventProcessorManager {
     }
 
     /**
-     * Send events to all tracking event processors until there are no new events or no tracking event processors ready to
-     * receive events. If there are tracking event processors left after processing one run, it reschedules to try again
-     * after 100ms.
-     * Only one instance of this operation will run.
+     * Send events to all tracking event processors until there are no new events or no tracking event processors ready
+     * to receive events. If there are tracking event processors left after processing one run, it reschedules to try
+     * again after 100ms. Only one instance of this operation will run.
      */
     private void sendEvents() {
         if (!replicationRunning.compareAndSet(false, true)) {
@@ -102,12 +105,12 @@ public class TrackingEventProcessorManager {
                 }
                 if (!failedReplicators.isEmpty()) {
                     logger.debug("{}: removing {} replicators",
-                                context,
-                                failedReplicators.size());
+                                 context,
+                                 failedReplicators.size());
                     eventTrackerSet.removeAll(failedReplicators);
                     logger.debug("{}: {} replicators remaining",
-                                context,
-                                eventTrackerSet.size());
+                                 context,
+                                 eventTrackerSet.size());
                 }
 
                 if (sent == 0) {
@@ -137,7 +140,7 @@ public class TrackingEventProcessorManager {
      * @return an EventTracker
      */
     public EventTracker createEventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
-                                    StreamObserver<InputStream> eventStream) {
+                                           StreamObserver<InputStream> eventStream) {
         return new EventTracker(trackingToken, clientId, forceReadingFromLeader, eventStream);
     }
 
@@ -165,7 +168,9 @@ public class TrackingEventProcessorManager {
     }
 
     /**
-     * Kills all tracking event processors that are waiting for permits and not received any permits since minLastPermits.
+     * Kills all tracking event processors that are waiting for permits and not received any permits since
+     * minLastPermits.
+     *
      * @param minLastPermits expected minimum timestamp for new permits request
      */
     public void validateActiveConnections(long minLastPermits) {
@@ -231,12 +236,10 @@ public class TrackingEventProcessorManager {
                         && eventIterator.hasNext()
                 ) {
                     SerializedEventWithToken next = eventIterator.next();
-                    if( !blacklisted(next)) {
-                        if (!next.isSoftDeleted()) {
-                            eventStream.onNext(next.asInputStream());
-                            if (permits.decrementAndGet() == 0) {
-                                lastPermitTimestamp.set(System.currentTimeMillis());
-                            }
+                    if (!blacklisted(next)) {
+                        eventStream.onNext(next.asInputStream());
+                        if (permits.decrementAndGet() == 0) {
+                            lastPermitTimestamp.set(System.currentTimeMillis());
                         }
                         force = blacklistedSendAfter;
                     } else {
@@ -258,8 +261,10 @@ public class TrackingEventProcessorManager {
 
         private PayloadDescription payloadType(SerializedEventWithToken next) {
             return PayloadDescription.newBuilder().
-                    setRevision(next.asEvent().getPayload().getRevision()).setType(next.asEvent().getPayload().getType()).
-                    build();
+                                     setRevision(next.asEvent().getPayload().getRevision()).setType(next.asEvent()
+                                                                                                        .getPayload()
+                                                                                                        .getType()).
+                                     build();
         }
 
         private void sendError(Exception ex) {

@@ -63,7 +63,7 @@ public interface IndexManager {
      *
      * @param segment the segment number
      */
-    boolean validIndex(long segment);
+    boolean validIndex(FileVersion segment);
 
     /**
      * Removes index entries for a specific segment.

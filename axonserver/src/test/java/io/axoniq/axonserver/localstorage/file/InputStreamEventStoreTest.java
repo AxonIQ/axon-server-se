@@ -114,7 +114,7 @@ public class InputStreamEventStoreTest {
                 return Event.getDefaultInstance();
             }
             return event;
-        });
+        }, transformationProgress -> {});
 
         SerializedEvent event = testSubject.eventsPerAggregate(
                 "abb070e9-943f-4947-8def-c50481b968c7",

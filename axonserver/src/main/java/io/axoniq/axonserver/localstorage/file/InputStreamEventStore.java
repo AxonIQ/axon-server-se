@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -85,23 +83,13 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     private void removeSegment(long segment) {
-        Integer version = segments.remove(segment);
-        if (version != null && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
-                !indexManager.remove(segment))) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
-                                                 "Failed to rollback " + getType().getEventType()
-                                                         + ", could not remove segment: " + segment);
-        }
+        removeSegment(segment, segments.remove(segment));
     }
 
     @Override
-    protected void removeSegment(long segment, int currentVersion) {
-        if ( !FileUtils.delete(storageProperties.dataFile(context, new FileVersion(segment, currentVersion))) ||
-                !indexManager.remove(new FileVersion(segment, currentVersion))) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
-                                                 "Failed to rollback " + getType().getEventType()
-                                                         + ", could not remove segment: " + segment);
-        }
+    protected boolean removeSegment(long segment, int version) {
+        return indexManager.remove(new FileVersion(segment, version)) &&
+                FileUtils.delete(storageProperties.dataFile(context, new FileVersion(segment, version)));
     }
 
     @Override

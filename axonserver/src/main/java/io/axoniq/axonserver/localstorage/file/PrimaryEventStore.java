@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -174,7 +175,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private long firstSegmentIfLatestCompleted(long latestSegment) {
-        if (!indexManager.validIndex(latestSegment)) {
+        if (!indexManager.validIndex(new FileVersion(latestSegment, 0))) {
             return latestSegment;
         }
         WritableEventSource buffer = getOrOpenDatafile(latestSegment, storageProperties.getSegmentSize(), false);
@@ -301,14 +302,24 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected void removeSegment(long segment, int currentVersion) {
+    protected boolean removeSegment(long segment, int version) {
+        return true;
     }
 
     @Override
-    public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction) {
-        forceNextSegment(); // TODO: 06/09/2021 check lastToken in active segment
+    public void transformContents(long firstToken, long lastToken,
+                                  BiFunction<Event, Long, Event> transformationFunction,
+                                  Consumer<TransformationProgress> transformationProgressConsumer) {
+        if(readBuffers.firstKey() > lastToken) {
+            if( readBuffers.lastKey() <= lastToken) {
+                // event store is closing a completed segment, wait until it is completed
+                waitForPendingFileCompletions();
+            }
+        } else {
+            forceNextSegment();
+        }
         if ( next != null) {
-            next.transformContents(firstToken, lastToken,transformationFunction);
+            next.transformContents(firstToken, lastToken,transformationFunction, transformationProgressConsumer);
         }
     }
 
@@ -349,13 +360,17 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                                       }
                                   });
             synchronizer.notifyWritePositions();
-            while ( readBuffers.size() != 1) {
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                }
+            waitForPendingFileCompletions();
+        }
+    }
+
+    private void waitForPendingFileCompletions() {
+        while ( readBuffers.size() != 1) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
             }
         }
     }

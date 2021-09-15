@@ -1,0 +1,34 @@
+/*
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
+package io.axoniq.axonserver.localstorage.file;
+
+/**
+ * @author Marc Gathier
+ * @since
+ */
+public class TransformationProgressUpdate implements TransformationProgress {
+
+    private final long nextToken;
+
+    public TransformationProgressUpdate(long nextToken) {
+        this.nextToken = nextToken;
+    }
+
+    public long nextToken() {
+        return nextToken;
+    }
+
+    @Override
+    public String toString() {
+        return "TransformationProgressUpdate{" +
+                "nextToken=" + nextToken +
+                '}';
+    }
+}
