@@ -39,18 +39,28 @@
         props:['component', 'context'],
         data(){
             return {
+              webSocketInfo: globals.webSocketInfo,
                 queries: []
             }
         }, mounted() {
             this.loadComponentQueries();
+        let me = this;
+        this.webSocketInfo.subscribe('/topic/cluster', me.loadComponentQueries, function (sub) {
+          me.subscription = sub;
+        });
+      }, beforeDestroy() {
+        if (this.subscription) {
+          this.subscription.unsubscribe();
+        }
         }, methods: {
             loadComponentQueries(){
-                var baseUrl = "v1/components/"+encodeURI(this.component);
+                var baseUrl = "v1/components/"+encodeURIComponent(this.component);
                 let self = this;
+              this.queries = []
                 axios.get(baseUrl+"/queries?context=" + this.context).then(response => {
                     var queries = response.data;
                     queries.forEach(function (query, index) {
-                        axios.get(baseUrl+"/subscription-query-metric/query/"+encodeURI(query.name)+"?context=" + self.context)
+                        axios.get(baseUrl+"/subscription-query-metric/query/"+encodeURIComponent(query.name)+"?context=" + self.context)
                                 .then(metric => {
                                     query.metrics = metric.data;
                                     self.queries.push(query);
