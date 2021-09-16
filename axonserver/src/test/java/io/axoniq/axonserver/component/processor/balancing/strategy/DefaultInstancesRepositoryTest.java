@@ -1,26 +1,36 @@
 package io.axoniq.axonserver.component.processor.balancing.strategy;
 
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
+import io.axoniq.axonserver.component.processor.balancing.strategy.ThreadNumberBalancing.Application;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
+import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
-import io.axoniq.axonserver.topology.Topology;
-import org.junit.Test;
+import org.junit.*;
 
-import java.util.Arrays;
 import java.util.Iterator;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class DefaultInstancesRepositoryTest {
 
     @Test
     public void testRepositoryFiltersOutStoppedProcessorInstances() {
-        DefaultInstancesRepository testSubject = new DefaultInstancesRepository(() -> Arrays.<ClientProcessor>asList(new FakeClientProcessor("runningClientId", true, "processorName", true),
-                                                                                                                     new FakeClientProcessor("stoppedClientId", true, "processorName", false)).iterator());
+        ClientProcessor runningClientProcessor = new FakeClientProcessor("runningClientId",
+                                                                         true,
+                                                                         "processorName",
+                                                                         true);
+        ClientProcessor stoppedClientProcessor = new FakeClientProcessor("stoppedClientId",
+                                                                         true,
+                                                                         "processorName",
+                                                                         false);
+        ClientProcessors clientProcessors = () -> asList(runningClientProcessor, stoppedClientProcessor).iterator();
+        DefaultInstancesRepository testSubject = new DefaultInstancesRepository(clientProcessors);
 
-        Iterator<ThreadNumberBalancing.Application> actual = testSubject.findFor(new TrackingEventProcessor("processorName", Topology.DEFAULT_CONTEXT)).iterator();
-        assertTrue(actual.hasNext());
-        assertTrue(actual.next().toString().contains("runningClientId"));
-        assertFalse(actual.hasNext());
+        TrackingEventProcessor eventProcessor = new TrackingEventProcessor("processorName");
+        Iterator<Application> iterator = testSubject.findFor(eventProcessor).iterator();
+        assertTrue(iterator.hasNext());
+        assertTrue(iterator.next().toString().contains("runningClientId"));
+        assertFalse(iterator.hasNext());
     }
 }

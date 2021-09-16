@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nonnull;
 
 /**
+ * Collects information about the event processors' status.
+ *
  * @author Sara Pellegrini
  * @since 4.0
  */
@@ -63,7 +65,6 @@ public class ProcessorsInfoTarget implements ClientProcessors {
         EventProcessorInfo eventProcessorInfo = processorStatus.getEventProcessorInfo();
         ClientProcessor clientProcessor = mapping.map(clientId,
                                                       clients.get(clientStreamId),
-                                                      processorStatus.getContext(),
                                                       eventProcessorInfo);
         clientData.put(eventProcessorInfo.getProcessorName(), clientProcessor);
         return new EventProcessorStatusUpdated(processorStatus, false);

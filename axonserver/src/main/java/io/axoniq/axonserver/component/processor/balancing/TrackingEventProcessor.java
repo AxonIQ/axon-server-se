@@ -25,8 +25,6 @@ public final class TrackingEventProcessor implements Serializable {
 
     private String name;
 
-    private String context;
-
     private String tokenStoreIdentifier;
 
     @SuppressWarnings("unused")
@@ -36,26 +34,21 @@ public final class TrackingEventProcessor implements Serializable {
     /**
      * Creates an instance with the specified name and context
      *
-     * @param name    the name of the tracking event processor
-     * @param context the principal context of the tracking event processor
+     * @param name the name of the tracking event processor
      */
-    public TrackingEventProcessor(@Nonnull String name,
-                                  @Nonnull String context) {
-        this(name, context, "");
+    public TrackingEventProcessor(@Nonnull String name) {
+        this(name, "");
     }
 
     /**
      * Creates an instance with the specified name, context and token store identifier
      *
      * @param name                 the name of the tracking event processor
-     * @param context              the principal context of the tracking event processor
      * @param tokenStoreIdentifier the token store identifier of the tracking event processor
      */
     public TrackingEventProcessor(@Nonnull String name,
-                                  @Nonnull String context,
                                   @Nonnull String tokenStoreIdentifier) {
         this.name = name;
-        this.context = context;
         this.tokenStoreIdentifier = tokenStoreIdentifier;
     }
 
@@ -66,15 +59,6 @@ public final class TrackingEventProcessor implements Serializable {
      */
     public String name() {
         return name;
-    }
-
-    /**
-     * Returns the principal context of the tracking event processor
-     *
-     * @return the principal context of the tracking event processor
-     */
-    public String context() {
-        return context;
     }
 
     /**
@@ -105,20 +89,18 @@ public final class TrackingEventProcessor implements Serializable {
         }
         TrackingEventProcessor that = (TrackingEventProcessor) o;
         return Objects.equals(name, that.name) &&
-                Objects.equals(context, that.context) &&
                 Objects.equals(tokenStoreIdentifier, that.tokenStoreIdentifier);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, context, tokenStoreIdentifier);
+        return Objects.hash(name, tokenStoreIdentifier);
     }
 
     @Override
     public String toString() {
         return "TrackingEventProcessor{" +
                 "name='" + name + '\'' +
-                ", context='" + context + '\'' +
                 ", tokenStoreIdentifier='" + tokenStoreIdentifier + '\'' +
                 '}';
     }

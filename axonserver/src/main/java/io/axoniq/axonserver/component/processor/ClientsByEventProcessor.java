@@ -24,20 +24,17 @@ public class ClientsByEventProcessor implements Iterable<String> {
      * {@link EventProcessorIdentifier}.
      *
      * @param processorId         the identifier of the event processor we are interested in
-     * @param context             the context we are interested in
      * @param allClientProcessors all the {@link ClientProcessor}s instances of connected clients
      */
     public ClientsByEventProcessor(EventProcessorIdentifier processorId,
-                                   String context,
                                    ClientProcessors allClientProcessors) {
-        this.eventProcessors = new ClientProcessorsByIdentifier(allClientProcessors, context, processorId);
+        this(new ClientProcessorsByIdentifier(allClientProcessors, processorId));
     }
 
 
     /**
-     * Creates an instance of {@link ClientsByEventProcessor} based on
-     * the iterable of all registered {@link ClientProcessor}s belonging to the event processor we are interested in and
-     * the specified context.
+     * Creates an instance of {@link ClientsByEventProcessor} based on the iterable of all registered
+     * {@link ClientProcessor}s belonging to the event processor we are interested in.
      *
      * @param eventProcessors all the {@link ClientProcessor}s belonging to the event processor we are interested in
      */

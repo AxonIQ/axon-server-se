@@ -52,14 +52,18 @@ public class LoadBalancingRestController {
 
     @GetMapping("processors/loadbalance/strategies")
     public Iterable<? extends Printable> getStrategies(@ApiIgnore final Principal principal) {
-        auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(principal));
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(principal));
+        }
 
         return strategyController.findAll();
     }
 
     @GetMapping("processors/loadbalance/strategies/factories")
     public Set<String> getLoadBalancingStrategyFactoryBean(@ApiIgnore final Principal principal) {
-        auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));
+        }
 
         return strategyController.getFactoryBeans();
     }
@@ -68,21 +72,23 @@ public class LoadBalancingRestController {
      * Balance the load for the specified event processor among the connected client.
      *
      * @param processor            the event processor name
-     * @param context              the principal context of the event processor
      * @param tokenStoreIdentifier the token store identifier of the event processor
      * @param strategyName         the strategy to be used to balance the load
      */
     @PatchMapping("processors/{processor}/loadbalance")
     public void balanceProcessorLoad(@PathVariable("processor") String processor,
-                                     @RequestParam("context") String context,
                                      @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                      @RequestParam("strategy") String strategyName,
                                      @ApiIgnore final Principal principal) {
-        auditLog.debug("[{}@{}] Request to set load-balancing strategy for processor \"{}\" to \"{}\".",
-                       AuditLog.username(principal), context,
-                       processor, strategyName);
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}] Request to set load-balancing strategy for processor \"{}@{}\" to \"{}\".",
+                           AuditLog.username(principal),
+                           processor,
+                           tokenStoreIdentifier,
+                           strategyName);
+        }
 
-        TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context, tokenStoreIdentifier);
+        TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, tokenStoreIdentifier);
         processorLoadBalanceStrategy.balance(trackingProcessor, strategyName).perform();
     }
 }

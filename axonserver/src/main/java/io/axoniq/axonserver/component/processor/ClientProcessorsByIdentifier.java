@@ -31,9 +31,8 @@ public class ClientProcessorsByIdentifier implements ClientProcessors {
      */
     public ClientProcessorsByIdentifier(
             ClientProcessors allClientProcessors,
-            String context,
             EventProcessorIdentifier eventProcessorIdentifier) {
-        this(allClientProcessors, new SameProcessor(context, eventProcessorIdentifier));
+        this(allClientProcessors, new SameProcessor(eventProcessorIdentifier));
     }
 
     /**

@@ -3,7 +3,6 @@ package io.axoniq.axonserver.component.processor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.util.ArrayList;
@@ -28,16 +27,16 @@ public class ProcessorNamesTest {
         EventProcessorInfo yellow = EventProcessorInfo.newBuilder().setProcessorName("Yellow").build();
         EventProcessorInfo black = EventProcessorInfo.newBuilder().setProcessorName("Black").build();
 
-        delegate.add(new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT, blue));
-        delegate.add(new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT, green));
-        delegate.add(new FakeClientProcessor("clientA", true, Topology.DEFAULT_CONTEXT, red));
-        delegate.add(new FakeClientProcessor("clientB", true, Topology.DEFAULT_CONTEXT, blue));
-        delegate.add(new FakeClientProcessor("clientB", true, Topology.DEFAULT_CONTEXT, yellow));
-        delegate.add(new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT, green));
-        delegate.add(new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT, yellow));
-        delegate.add(new FakeClientProcessor("clientC", false, Topology.DEFAULT_CONTEXT, black));
-        delegate.add(new FakeClientProcessor("clientD", false, Topology.DEFAULT_CONTEXT, green));
-        delegate.add(new FakeClientProcessor("clientD", false, Topology.DEFAULT_CONTEXT, blue));
+        delegate.add(new FakeClientProcessor("clientA", true, blue));
+        delegate.add(new FakeClientProcessor("clientA", true, green));
+        delegate.add(new FakeClientProcessor("clientA", true, red));
+        delegate.add(new FakeClientProcessor("clientB", true, blue));
+        delegate.add(new FakeClientProcessor("clientB", true, yellow));
+        delegate.add(new FakeClientProcessor("clientC", false, green));
+        delegate.add(new FakeClientProcessor("clientC", false, yellow));
+        delegate.add(new FakeClientProcessor("clientC", false, black));
+        delegate.add(new FakeClientProcessor("clientD", false, green));
+        delegate.add(new FakeClientProcessor("clientD", false, blue));
 
         ProcessorNames testSubject = new ProcessorNames(delegate);
 

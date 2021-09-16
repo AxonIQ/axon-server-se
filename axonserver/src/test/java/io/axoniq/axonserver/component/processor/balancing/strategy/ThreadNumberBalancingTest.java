@@ -34,7 +34,6 @@ public class ThreadNumberBalancingTest {
     private final Map<String, Collection<Integer>> segments = new HashMap<>();
     private final Map<String, Integer> threadPoolSize = new HashMap<>();
     private final TrackingEventProcessor eventProcessor = new TrackingEventProcessor("name",
-                                                                                     "context",
                                                                                      "tokenStoreId");
     private final InstancesRepo instances = processor -> () -> segments.entrySet().stream().map(e -> {
         int maxThreads = max(threadPoolSize.getOrDefault(e.getKey(), 1), e.getValue().size());

@@ -13,36 +13,46 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 /**
  * Holder for event processor information for a client.
- * author Marc Gathier
+ *
+ * @author Marc Gathier
  */
 public class ClientEventProcessorInfo {
 
     private final String clientId;
     private final String clientStreamId;
-    private final String context;
     private final EventProcessorInfo eventProcessorInfo;
 
-    public ClientEventProcessorInfo(String clientId, String clientStreamId, String context,
+    public ClientEventProcessorInfo(String clientId, String clientStreamId,
                                     EventProcessorInfo eventProcessorInfo) {
 
         this.clientId = clientId;
         this.clientStreamId = clientStreamId;
-        this.context = context;
         this.eventProcessorInfo = eventProcessorInfo;
     }
 
+    /**
+     * Returns the identifier of the client instance.
+     *
+     * @return the identifier of the client instance.
+     */
     public String getClientId() {
         return clientId;
     }
 
+    /**
+     * Returns the identifier of the instruction stream used by the client to connect to the server.
+     *
+     * @return the identifier of the instruction stream used by the client to connect to the server.
+     */
     public String getClientStreamId() {
         return clientStreamId;
     }
 
-    public String getContext() {
-        return context;
-    }
-
+    /**
+     * Returns the information about the event processor.
+     *
+     * @return the information about the event processor.
+     */
     public EventProcessorInfo getEventProcessorInfo() {
         return eventProcessorInfo;
     }

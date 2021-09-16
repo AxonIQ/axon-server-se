@@ -23,8 +23,6 @@ import java.util.function.Predicate;
  */
 public class SameProcessor implements Predicate<ClientProcessor> {
 
-    private final String context;
-
     private final EventProcessorIdentifier eventProcessorIdentifier;
 
     /**
@@ -33,29 +31,26 @@ public class SameProcessor implements Predicate<ClientProcessor> {
      * @param processor the tracking event processor
      */
     public SameProcessor(TrackingEventProcessor processor) {
-        this(processor.context(), new EventProcessorIdentifier(processor.name(), processor.tokenStoreIdentifier()));
+        this(new EventProcessorIdentifier(processor.name(), processor.tokenStoreIdentifier()));
     }
 
     /**
      * Creates an instance for the specified context and {@link ClientProcessor}.
      *
-     * @param context         the context of the client processor
      * @param clientProcessor the event processor instance
      */
-    public SameProcessor(String context, ClientProcessor clientProcessor) {
-        this(context, new EventProcessorIdentifier(clientProcessor.eventProcessorInfo().getProcessorName(),
-                                                   clientProcessor.eventProcessorInfo().getTokenStoreIdentifier()));
+    public SameProcessor(ClientProcessor clientProcessor) {
+        this(new EventProcessorIdentifier(clientProcessor.eventProcessorInfo().getProcessorName(),
+                                          clientProcessor.eventProcessorInfo().getTokenStoreIdentifier()));
     }
 
 
     /**
      * Creates an instance for the specified context and {@link EventProcessorIdentifier}
      *
-     * @param context                  the context of the event processor
      * @param eventProcessorIdentifier the identifier of the event processor
      */
-    public SameProcessor(String context, EventProcessorIdentifier eventProcessorIdentifier) {
-        this.context = context;
+    public SameProcessor(EventProcessorIdentifier eventProcessorIdentifier) {
         this.eventProcessorIdentifier = eventProcessorIdentifier;
     }
 
@@ -70,6 +65,6 @@ public class SameProcessor implements Predicate<ClientProcessor> {
     public boolean test(ClientProcessor processor) {
         EventProcessorInfo i = processor.eventProcessorInfo();
         EventProcessorIdentifier id = new EventProcessorIdentifier(i.getProcessorName(), i.getTokenStoreIdentifier());
-        return processor.belongsToContext(context) && id.equals(eventProcessorIdentifier);
+        return id.equals(eventProcessorIdentifier);
     }
 }

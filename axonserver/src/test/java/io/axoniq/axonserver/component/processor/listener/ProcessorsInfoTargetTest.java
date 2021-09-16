@@ -22,6 +22,8 @@ import java.util.stream.StreamSupport;
 import static org.junit.Assert.*;
 
 /**
+ * Unit tests for {@link ProcessorsInfoTarget}
+ *
  * @author Marc Gathier
  */
 public class ProcessorsInfoTargetTest {
@@ -37,13 +39,11 @@ public class ProcessorsInfoTargetTest {
                                                              .setProcessorName("Name")
                                                              .build();
         ClientEventProcessorInfo clientEventProcessorInfo = new ClientEventProcessorInfo("client", "client",
-                                                                                         "context",
                                                                                          processorInfo);
         EventProcessorStatusUpdate event = new EventProcessorStatusUpdate(clientEventProcessorInfo);
         EventProcessorEvents.EventProcessorStatusUpdated updatedEvent = testSubject
                 .onEventProcessorStatusChange(event);
         assertEquals("client", updatedEvent.eventProcessorStatus().getClientId());
-        assertEquals("context", updatedEvent.eventProcessorStatus().getContext());
         ClientProcessor clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0),
                                                                false).
                                                                filter(cp -> cp.clientId().equals("client"))

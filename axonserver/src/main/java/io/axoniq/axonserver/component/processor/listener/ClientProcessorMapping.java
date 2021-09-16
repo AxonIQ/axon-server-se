@@ -12,13 +12,13 @@ package io.axoniq.axonserver.component.processor.listener;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Maps the specified parameters to the corresponding {@link ClientProcessor}s instance.
+ *
+ * @author Sara Pellegrini
  */
 public interface ClientProcessorMapping {
 
-    default ClientProcessor map(String clientId, String component, String context,
-                                EventProcessorInfo eventProcessorInfo) {
+    default ClientProcessor map(String clientId, String component, EventProcessorInfo eventProcessorInfo) {
         return new ClientProcessor() {
 
             @Override
@@ -35,12 +35,6 @@ public interface ClientProcessorMapping {
             public Boolean belongsToComponent(String c) {
                 return c.equals(component);
             }
-
-            @Override
-            public boolean belongsToContext(String c) {
-                return c.equals(context);
-            }
         };
     }
-
 }

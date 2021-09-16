@@ -32,15 +32,14 @@ public class ComponentEventProcessors implements Iterable<EventProcessor> {
     private final EventProcessorMapping mapping;
 
     /**
-     * Creates an instance defined by the component, the context and the full list of all {@link ClientProcessor}s
+     * Creates an instance defined by the component and the full list of all {@link ClientProcessor}s
      *
      * @param component       the component name of the client application
-     * @param context         the context of the client application
      * @param eventProcessors all known {@link ClientProcessor}s
      */
-    public ComponentEventProcessors(String component, String context,
+    public ComponentEventProcessors(String component,
                                     ClientProcessors eventProcessors) {
-        this(new ClientProcessorsByComponent(eventProcessors, component, context), new EventProcessorMapping());
+        this(new ClientProcessorsByComponent(eventProcessors, component), new EventProcessorMapping());
     }
 
     /**
@@ -48,12 +47,11 @@ public class ComponentEventProcessors implements Iterable<EventProcessor> {
      *
      * @param componentClientProcessors {@link ClientProcessors} defined for a component
      * @param mapping                   the mapping function to get an {@link EventProcessor} from the processorName
-     *                                  and
-     *                                  the collection of all active {@link ClientProcessor}s instances for that
+     *                                  and the collection of all active {@link ClientProcessor}s instances for that
      *                                  processor
      */
-    ComponentEventProcessors(ClientProcessors componentClientProcessors,
-                             EventProcessorMapping mapping) {
+    private ComponentEventProcessors(ClientProcessors componentClientProcessors,
+                                     EventProcessorMapping mapping) {
         this.componentClientProcessors = componentClientProcessors;
         this.mapping = mapping;
     }

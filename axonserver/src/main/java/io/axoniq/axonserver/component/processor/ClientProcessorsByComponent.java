@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.component.processor;
 
-import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.processor.balancing.SameProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
@@ -23,34 +22,34 @@ import static java.util.stream.StreamSupport.stream;
 /**
  * {@link ClientProcessors} implementation responsible to provide all known {@link ClientProcessor}s that are defined
  * in a specific client application. Please note that it provides not only the {@link ClientProcessor}s active in the
- * specified client application, but also the {@link ClientProcessor}s active in any client that have the same context
- * and name of {@link ClientProcessor} active in the specified client application.
+ * specified client application, but also the {@link ClientProcessor}s active in any client that have the same name and
+ * token identifier of {@link ClientProcessor} active in the specified client application.
  *
  * <p>
  * To explain better what <i> a {@link ClientProcessor} defined in the correct client application</i> means,
- * see the following example related to the <b>componentA</b> in <b>context1</b>.
+ * see the following example related to the <b>componentA</b>.
  * </p>
  * If these are all known client event processor instances:
  * <ul>
- * <li> componentA - context1 - processorBlue
- * <li> componentB - context1 - processorWhite
- * <li> componentA - context1 - processorWhite
- * <li> componentC - context2 - processorRed
- * <li> componentA - context1 - processorRed
- * <li> componentB - context1 - processorGreen
+ * <li> componentA - processorBlue - tokenStore1
+ * <li> componentB - processorWhite - tokenStore1
+ * <li> componentA - processorWhite - tokenStore1
+ * <li> componentC - processorRed - tokenStore2
+ * <li> componentA - processorRed - tokenStore1
+ * <li> componentB - processorGreen - tokenStore1
  * </ul>
  * this implementation will provide the only following items:
  * <ul>
- * <li> componentA - context1 - processorBlue
- * <li> componentB - context1 - processorWhite
- * <li> componentA - context1 - processorWhite
- * <li> componentA - context1 - processorRed
+ * <li> componentA - processorBlue - tokenStore1
+ * <li> componentB - processorWhite - tokenStore1
+ * <li> componentA - processorWhite - tokenStore1
+ * <li> componentA - processorRed - tokenStore1
  * </ul>
  * In other words, it provides all instances in the componentA plus
  * <ul>
- * <li> componentB - context1 - processorWhite
+ * <li> componentB - processorWhite - tokenStore1
  * </ul>
- * that is the only one not part of <b>componentA</b> that has same context/name of one of the processors defined
+ * that is the only one not part of <b>componentA</b> that has same name/tokenStore of one of the processors defined
  * from <b>componentA</b>.
  *
  * @author Sara Pellegrini
@@ -63,16 +62,14 @@ public class ClientProcessorsByComponent implements ClientProcessors {
     private final Predicate<ClientProcessor> existInComponent;
 
     /**
-     * Creates an instance defined by the full list of all {@link ClientProcessor}s, component and context
+     * Creates an instance defined by the full list of all {@link ClientProcessor}s and the component name
      *
      * @param allEventProcessors all known {@link ClientProcessor}s
      * @param component          the component name of the client application
-     * @param context            the context of the client application
      */
     ClientProcessorsByComponent(ClientProcessors allEventProcessors,
-                                String component,
-                                String context) {
-        this(allEventProcessors, new ExistsInComponent(context, component, allEventProcessors));
+                                String component) {
+        this(allEventProcessors, new ExistsInComponent(component, allEventProcessors));
     }
 
     /**
@@ -82,7 +79,8 @@ public class ClientProcessorsByComponent implements ClientProcessors {
      * @param allEventProcessors all known {@link ClientProcessor}s
      * @param existInComponent   the predicate to test if a {@link ClientProcessor} is defined in the client application
      */
-    ClientProcessorsByComponent(ClientProcessors allEventProcessors, Predicate<ClientProcessor> existInComponent) {
+    private ClientProcessorsByComponent(ClientProcessors allEventProcessors,
+                                        Predicate<ClientProcessor> existInComponent) {
         this.allEventProcessors = allEventProcessors;
         this.existInComponent = existInComponent;
     }
@@ -97,24 +95,20 @@ public class ClientProcessorsByComponent implements ClientProcessors {
 
     private static final class ExistsInComponent implements Predicate<ClientProcessor> {
 
-        private final String context;
-
         /* Iterable of all Client Processors defined directly in the specified component*/
-        private final Iterable<ClientProcessor> directComponentProcessors;
+        private final Iterable<ClientProcessor> allEventProcessors;
+        private final String component;
 
-        ExistsInComponent(String context, String component, ClientProcessors allEventProcessors) {
-            this(context, new ComponentItems<>(component, context, allEventProcessors));
-        }
-
-        ExistsInComponent(String context, Iterable<ClientProcessor> directComponentProcessors) {
-            this.context = context;
-            this.directComponentProcessors = directComponentProcessors;
+        ExistsInComponent(String component, ClientProcessors allEventProcessors) {
+            this.allEventProcessors = allEventProcessors;
+            this.component = component;
         }
 
         @Override
         public boolean test(ClientProcessor processor) {
-            return stream(directComponentProcessors.spliterator(), false)
-                    .anyMatch(p -> new SameProcessor(context, p).test(processor));
+            return stream(allEventProcessors.spliterator(), false)
+                    .filter(p -> p.belongsToComponent(component))
+                    .anyMatch(p -> new SameProcessor(p).test(processor));
         }
     }
 }

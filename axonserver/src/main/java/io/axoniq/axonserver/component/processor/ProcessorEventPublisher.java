@@ -87,7 +87,7 @@ public class ProcessorEventPublisher {
         ClientEventProcessorInfo processorStatus =
                 new ClientEventProcessorInfo(clientComponent.getClientId(),
                                              clientComponent.getClientStreamId(),
-                                             clientComponent.getContext(), inboundInstruction.getEventProcessorInfo());
+                                             inboundInstruction.getEventProcessorInfo());
         applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus));
     }
 
@@ -158,12 +158,11 @@ public class ProcessorEventPublisher {
         Optional<String> clientIdOwningSegmentToMerge = getClientIdForSegment(clientToTracker, segmentToMerge);
 
         clientIdOwningSegmentToMerge.ifPresent(
-                clientId -> {
-                    clientIds.stream()
-                             .filter(client -> !client.equals(clientId))
-                             .forEach(client -> releaseSegment(client, processorName, smallestSegment.getSegmentId()));
-
-                }
+                clientId -> clientIds.stream()
+                                     .filter(client -> !client.equals(clientId))
+                                     .forEach(client -> releaseSegment(client,
+                                                                       processorName,
+                                                                       smallestSegment.getSegmentId()))
         );
 
         if (clientIdOwningSegmentToMerge.isPresent()) {

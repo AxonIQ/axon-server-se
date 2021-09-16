@@ -25,23 +25,22 @@ import static org.junit.Assert.*;
 public class EventProcessorStatusRefreshTest {
 
     private final Duration timeout = Duration.ofMillis(200);
-    private EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA", "");
-    private EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB", "");
-    private EventProcessorIdentifier processorC = new EventProcessorIdentifier("processorC", "");
-    private ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA", true);
-    private ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB", true);
-    private ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB", true);
-    private ClientProcessor clientProcessor4 = new FakeClientProcessor("blueClient", false, "processorB", true);
-    private ClientProcessor clientProcessor5 = new FakeClientProcessor("blueClient", false, "processorC", true);
-    private List<ClientProcessor> clientProcessors = asList(clientProcessor1,
-                                                            clientProcessor2,
-                                                            clientProcessor3,
-                                                            clientProcessor4,
-                                                            clientProcessor5);
-    private List<Object> publishedInternalEvents = new LinkedList<>();
-    private EventProcessorStatusRefresh testSubject = new EventProcessorStatusRefresh(timeout,
-                                                                                      () -> clientProcessors.iterator(),
-                                                                                      publishedInternalEvents::add);
+    private final EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA", "");
+    private final EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB", "");
+    private final ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA", true);
+    private final ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB", true);
+    private final ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB", true);
+    private final ClientProcessor clientProcessor4 = new FakeClientProcessor("blueClient", false, "processorB", true);
+    private final ClientProcessor clientProcessor5 = new FakeClientProcessor("blueClient", false, "processorC", true);
+    private final List<ClientProcessor> clientProcessors = asList(clientProcessor1,
+                                                                  clientProcessor2,
+                                                                  clientProcessor3,
+                                                                  clientProcessor4,
+                                                                  clientProcessor5);
+    private final EventProcessorStatusRefresh testSubject = new EventProcessorStatusRefresh(timeout,
+                                                                                            clientProcessors::iterator,
+                                                                                            publishedInternalEvents::add);
+    private final List<Object> publishedInternalEvents = new LinkedList<>();
 
     @Before
     public void setUp() throws Exception {
@@ -106,7 +105,6 @@ public class EventProcessorStatusRefreshTest {
                 new ClientEventProcessorInfo(
                         client,
                         client,
-                        "context",
                         EventProcessorInfo.newBuilder().setProcessorName(processorName).build()),
                 false);
     }

@@ -13,7 +13,6 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import io.axoniq.axonserver.topology.Topology;
 import org.junit.*;
 
 import java.util.Iterator;
@@ -22,8 +21,9 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Unit tests for {@link ComponentEventProcessors}
+ *
+ * @author Sara Pellegrini
  */
 public class ComponentProcessorsTest {
 
@@ -36,9 +36,7 @@ public class ComponentProcessorsTest {
                                                          new FakeClientProcessor("clientId", false, EventProcessorInfo.getDefaultInstance()))
                 .iterator();
 
-        ComponentEventProcessors processors = new ComponentEventProcessors("component",
-                                                                           Topology.DEFAULT_CONTEXT,
-                                                                           clientProcessors);
+        ComponentEventProcessors processors = new ComponentEventProcessors("component", clientProcessors);
         Iterator<EventProcessor> iterator = processors.iterator();
         assertTrue(iterator.hasNext());
         iterator.next();
