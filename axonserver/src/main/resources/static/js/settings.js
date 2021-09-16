@@ -42,7 +42,7 @@ globals.pageView = new Vue({
         }
     }, methods: {
         downloadTemplate: function () {
-                axios.get("/v1/cluster/download-template").then(response => {
+                axios.get("v1/cluster/download-template").then(response => {
                     let blob = new Blob([response.data], { type: 'application/text' });
                     let link = document.createElement('a');
                     link.href = window.URL.createObjectURL(blob);
