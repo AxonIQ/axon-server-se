@@ -252,7 +252,6 @@
                 }
             },
             loadComponentProcessors() {
-              this.selected = {}
                 axios.get("v1/components/" + encodeURIComponent(this.component) + "/processors?context=" + this.context).then(response => {
                     this.processors = response.data;
                     if (this.selected.name) {
