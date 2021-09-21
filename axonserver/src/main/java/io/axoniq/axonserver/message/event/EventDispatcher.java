@@ -12,15 +12,12 @@ package io.axoniq.axonserver.message.event;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
-import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
-import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -49,7 +46,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -317,56 +313,24 @@ public class EventDispatcher {
         return trackers;
     }
 
-
-    public void getFirstToken(String context, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client.firstEventToken(context)
-                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
-                                           .subscribe(responseObserver::onNext,
-                                                      responseObserver::onError,
-                                                      responseObserver::onCompleted));
+    public Mono<Long> firstEventToken(String context) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.firstEventToken(context));
     }
 
-    private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-        if (eventStore == null) {
-            responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                                                    NO_EVENT_STORE_CONFIGURED + context));
-            return Optional.empty();
-        }
-        return Optional.of(eventStore);
+    public Mono<Long> lastEventToken(String context) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.lastEventToken(context));
     }
 
-    public void getLastToken(String context, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client.lastEventToken(context)
-                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
-                                           .subscribe(responseObserver::onNext,
-                                                      responseObserver::onError,
-                                                      responseObserver::onCompleted)
-                );
+    public Mono<Long> eventTokenAt(String context, Instant timestamp) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.eventTokenAt(context, timestamp));
     }
 
-    public void getTokenAt(String context, long instant, StreamObserver<TrackingToken> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client.eventTokenAt(context,
-                                                         Instant.ofEpochMilli(instant))
-                                           .map(token -> TrackingToken.newBuilder().setToken(token).build())
-                                           .subscribe(responseObserver::onNext,
-                                                      responseObserver::onError,
-                                                      responseObserver::onCompleted));
-    }
-
-    public void readHighestSequenceNr(String context, String aggregateId,
-                                      StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
-        checkConnection(context, responseObserver)
-                .ifPresent(client -> client
-                        .highestSequenceNumber(context, aggregateId)
-                        .map(l -> ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(l).build())
-                        .subscribe(responseObserver::onNext,
-                                   responseObserver::onError,
-                                   responseObserver::onCompleted)
-                );
+    public Mono<Long> highestSequenceNumber(String context, String aggregateId) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMap(eventStore -> eventStore.highestSequenceNumber(context, aggregateId));
     }
 
     public StreamObserver<QueryEventsRequest> queryEvents(String context,
@@ -424,22 +388,12 @@ public class EventDispatcher {
         };
     }
 
-    public void listAggregateSnapshots(String context, Authentication authentication,
-                                       GetAggregateSnapshotsRequest request,
-                                       StreamObserver<SerializedEvent> responseObserver) {
-        checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            try {
-                eventStore.aggregateSnapshots(context, authentication, request)
-                          .doOnCancel(() -> responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
-                                  "Listing aggregate snapshots cancelled."))))
-                          .subscribe(responseObserver::onNext,
-                                     responseObserver::onError,
-                                     responseObserver::onCompleted);
-            } catch (RuntimeException t) {
-                logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateSnapshots", t.getMessage(), t);
-                responseObserver.onError(GrpcExceptionBuilder.build(t));
-            }
-        });
+    public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
+                                                    GetAggregateSnapshotsRequest request) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMapMany(eventStore -> eventStore.aggregateSnapshots(context,
+                                                                                         authentication,
+                                                                                         request));
     }
 
     public MeterFactory.RateMeter eventRate(String context) {

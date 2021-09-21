@@ -12,9 +12,7 @@ package io.axoniq.axonserver.rest;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
@@ -27,7 +25,6 @@ import io.axoniq.axonserver.rest.json.SerializedObjectJson;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.ObjectUtils;
 import io.axoniq.axonserver.util.StringUtils;
-import io.grpc.stub.StreamObserver;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
@@ -46,12 +43,9 @@ import reactor.core.publisher.Mono;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -101,40 +95,22 @@ public class EventsRestController {
                                                                            .setMaxSequence(maxSequence
                                                                                                    >= 0 ? maxSequence : Long.MAX_VALUE)
                                                                            .build();
-        eventStoreClient.listAggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
-                                                getOrDefault(principal,
-                                                             GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                                request,
-                                                new StreamObserver<SerializedEvent>() {
-                                                    @Override
-                                                    public void onNext(SerializedEvent event) {
-                                                        try {
-                                                            sseEmitter.send(SseEmitter.event()
-                                                                                      .data(new JsonEvent(event.asEvent())));
-                                                        } catch (Exception e) {
-                                                            logger.debug("Exception on sending event - {}",
-                                                                         e.getMessage(),
-                                                                         e);
-                                                        }
-                                                    }
-
-                                                    @Override
-                                                    public void onError(Throwable throwable) {
-                                                        sseEmitter.completeWithError(throwable);
-                                                    }
-
-                                                    @Override
-                                                    public void onCompleted() {
-                                                        try {
-                                                            sseEmitter.send(SseEmitter.event()
-                                                                                      .comment("End of stream"));
-                                                        } catch (IOException e) {
-                                                            logger.debug("Error on sending completed", e);
-                                                        }
-                                                        sseEmitter.complete();
-                                                    }
-                                                });
-
+        eventStoreClient.aggregateSnapshots(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
+                                            getOrDefault(principal,
+                                                         GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                            request)
+                                .doOnError(sseEmitter::completeWithError)
+                                .doOnComplete(() -> completeEmitter(sseEmitter))
+                                .subscribe(event -> {
+                                    try {
+                                        sseEmitter.send(SseEmitter.event()
+                                                                  .data(new JsonEvent(event.asEvent())));
+                                    } catch (Exception e) {
+                                        logger.debug("Exception on sending event - {}",
+                                                     e.getMessage(),
+                                                     e);
+                                    }
+                                });
         return sseEmitter;
     }
 
