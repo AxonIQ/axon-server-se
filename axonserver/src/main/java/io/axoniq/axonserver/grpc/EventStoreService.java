@@ -50,6 +50,7 @@ import reactor.core.publisher.Sinks;
 
 import java.time.Instant;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.grpc.stub.ServerCalls.*;
 
@@ -182,30 +183,44 @@ public class EventStoreService implements AxonServerClientService {
 
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<SerializedEventWithToken> responseObserver) {
-        String context = contextProvider.getContext();
-        Executor executor = grpcFlowControlExecutorProvider.provide();
-        OutgoingStream<SerializedEventWithToken> outgoingStream = new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEventWithToken>) responseObserver,
-                                                                                                     executor);
-        Sinks.Many<GetEventsRequest> requestFlux = Sinks.many()
-                                                        .unicast()
-                                                        .onBackpressureBuffer();
-        outgoingStream.accept(eventDispatcher.events(context, authenticationProvider.get(), requestFlux.asFlux()));
         return new StreamObserver<GetEventsRequest>() {
+
+            private final AtomicReference<Sinks.Many<GetEventsRequest>> requestFluxRef = new AtomicReference<>();
+
             @Override
             public void onNext(GetEventsRequest getEventsRequest) {
-                if (requestFlux.tryEmitNext(getEventsRequest).isFailure()) {
+                if (requestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
+                    String context = contextProvider.getContext();
+                    Executor executor = grpcFlowControlExecutorProvider.provide();
+                    OutgoingStream<SerializedEventWithToken> outgoingStream = new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEventWithToken>) responseObserver,
+                                                                                                                 executor);
+                    Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                    if (requestFlux != null) {
+                        outgoingStream.accept(eventDispatcher.events(context,
+                                                                     authenticationProvider.get(),
+                                                                     requestFlux.asFlux()));
+                    }
+                }
+                Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                if (requestFlux != null && requestFlux.tryEmitNext(getEventsRequest).isFailure()) {
                     onError(new RuntimeException("Unable to emit request for events."));
                 }
             }
 
             @Override
             public void onError(Throwable throwable) {
-                requestFlux.tryEmitError(throwable);
+                Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                if (requestFlux != null) {
+                    requestFlux.tryEmitError(throwable);
+                }
             }
 
             @Override
             public void onCompleted() {
-                requestFlux.tryEmitComplete();
+                Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                if (requestFlux != null) {
+                    requestFlux.tryEmitComplete();
+                }
             }
         };
     }
