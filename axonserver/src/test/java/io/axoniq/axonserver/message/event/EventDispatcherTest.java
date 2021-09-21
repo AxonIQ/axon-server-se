@@ -103,8 +103,6 @@ public class EventDispatcherTest {
         }
     };
 
-    private final AtomicReference<MonoSink<Void>> appendEventsResult = new AtomicReference<>();
-
     @Before
     public void setUp() {
         when(eventStoreClient.appendEvents(any(), any(), any())).then(invocationOnMock -> {
@@ -113,7 +111,7 @@ public class EventDispatcherTest {
                 flux.subscribe(event -> {}, error -> {
                     System.out.println("Cancelled by client");
                     sink.success();
-                }, () -> sink.success());
+                }, sink::success);
             });
         });
         testSubject = new EventDispatcher(eventStoreLocator,
@@ -254,26 +252,27 @@ public class EventDispatcherTest {
     }
 
     @Test
-    public void listEvents() {
-        FakeStreamObserver<InputStream> responseObserver = new FakeStreamObserver<>();
+    public void events() {
         when(eventStoreClient.events(any(), any(), any(Flux.class)))
                 .thenReturn(Flux.just(new SerializedEventWithToken(EventWithToken.getDefaultInstance())));
-        StreamObserver<GetEventsRequest> inputStream = testSubject.listEvents(DEFAULT_CONTEXT,
-                                                                              DEFAULT_PRINCIPAL,
-                                                                              responseObserver);
-        inputStream.onNext(GetEventsRequest.newBuilder()
-                                           .setClientId("sampleClient")
-                                           .build());
+
+        Flux<GetEventsRequest> requestFlux = Flux.just(GetEventsRequest.newBuilder()
+                                                                        .setClientId("sampleClient")
+                                                                        .build());
+        StepVerifier.create(testSubject.events(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, requestFlux))
+                    .expectNextCount(1L)
+                    .verifyComplete();
         assertEquals(1, eventStoreWithoutLeaderCalls.get());
-        assertEquals(1, responseObserver.values().size());
-        responseObserver = new FakeStreamObserver<>();
-        inputStream = testSubject.listEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
-        inputStream.onNext(GetEventsRequest.newBuilder()
-                                           .setForceReadFromLeader(true)
-                                           .setClientId("sampleClient")
-                                           .build());
+
+        requestFlux = Flux.just(GetEventsRequest.newBuilder()
+                                                .setForceReadFromLeader(true)
+                                                .setClientId("sampleClient")
+                                                .build());
+        StepVerifier.create(testSubject.events(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, requestFlux))
+                    .expectNextCount(1L)
+                    .verifyComplete();
         assertEquals(1, eventStoreWithoutLeaderCalls.get());
-        assertEquals(1, responseObserver.completedCount());
+
         testSubject.on(new TopologyEvents.ApplicationDisconnected(DEFAULT_CONTEXT,
                                                                   "myComponent",
                                                                   "sampleClient"));

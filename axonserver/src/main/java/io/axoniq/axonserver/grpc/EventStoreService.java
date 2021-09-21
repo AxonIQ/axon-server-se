@@ -26,12 +26,13 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrRequest;
 import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.event.ForwardingStreamObserver;
-import io.axoniq.axonserver.message.event.InputStreamMarshaller;
 import io.axoniq.axonserver.message.event.SequenceValidationStrategy;
 import io.axoniq.axonserver.message.event.SequenceValidationStreamObserver;
 import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
+import io.axoniq.axonserver.message.event.SerializedEventWithTokenMarshaller;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.axoniq.flowcontrol.OutgoingStream;
 import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
@@ -47,8 +48,9 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Sinks;
 
-import java.io.InputStream;
+import java.time.Instant;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.grpc.stub.ServerCalls.*;
 
@@ -59,10 +61,10 @@ import static io.grpc.stub.ServerCalls.*;
 @Component
 public class EventStoreService implements AxonServerClientService {
 
-    public static final MethodDescriptor<GetEventsRequest, InputStream> METHOD_LIST_EVENTS =
+    public static final MethodDescriptor<GetEventsRequest, SerializedEventWithToken> METHOD_LIST_EVENTS =
             EventStoreGrpc.getListEventsMethod().toBuilder(
                                   ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
-                                  InputStreamMarshaller.inputStreamMarshaller())
+                                  new SerializedEventWithTokenMarshaller())
                     .build();
     public static final MethodDescriptor<GetAggregateEventsRequest, SerializedEvent> METHOD_LIST_AGGREGATE_EVENTS =
             EventStoreGrpc.getListAggregateEventsMethod().toBuilder(
@@ -180,8 +182,47 @@ public class EventStoreService implements AxonServerClientService {
     }
 
 
-    public StreamObserver<GetEventsRequest> listEvents(StreamObserver<InputStream> responseObserver) {
-        return eventDispatcher.listEvents(contextProvider.getContext(), authenticationProvider.get(), responseObserver);
+    public StreamObserver<GetEventsRequest> listEvents(StreamObserver<SerializedEventWithToken> responseObserver) {
+        return new StreamObserver<GetEventsRequest>() {
+
+            private final AtomicReference<Sinks.Many<GetEventsRequest>> requestFluxRef = new AtomicReference<>();
+
+            @Override
+            public void onNext(GetEventsRequest getEventsRequest) {
+                if (requestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
+                    String context = contextProvider.getContext();
+                    Executor executor = grpcFlowControlExecutorProvider.provide();
+                    OutgoingStream<SerializedEventWithToken> outgoingStream = new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEventWithToken>) responseObserver,
+                                                                                                                 executor);
+                    Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                    if (requestFlux != null) {
+                        outgoingStream.accept(eventDispatcher.events(context,
+                                                                     authenticationProvider.get(),
+                                                                     requestFlux.asFlux()));
+                    }
+                }
+                Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                if (requestFlux != null && requestFlux.tryEmitNext(getEventsRequest).isFailure()) {
+                    onError(new RuntimeException("Unable to emit request for events."));
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                if (requestFlux != null) {
+                    requestFlux.tryEmitError(throwable);
+                }
+            }
+
+            @Override
+            public void onCompleted() {
+                Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
+                if (requestFlux != null) {
+                    requestFlux.tryEmitComplete();
+                }
+            }
+        };
     }
 
     @Override
@@ -225,7 +266,12 @@ public class EventStoreService implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getFirstToken",
                 callStreamObserver);
-        eventDispatcher.getFirstToken(contextProvider.getContext(), responseObserver);
+
+        eventDispatcher.firstEventToken(contextProvider.getContext())
+                       .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public void getLastToken(GetLastTokenRequest request, StreamObserver<TrackingToken> streamObserver) {
@@ -233,7 +279,12 @@ public class EventStoreService implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getLastToken",
                 callStreamObserver);
-        eventDispatcher.getLastToken(contextProvider.getContext(), responseObserver);
+
+        eventDispatcher.lastEventToken(contextProvider.getContext())
+                       .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public void getTokenAt(GetTokenAtRequest request, StreamObserver<TrackingToken> streamObserver) {
@@ -241,7 +292,12 @@ public class EventStoreService implements AxonServerClientService {
         ForwardingStreamObserver<TrackingToken> responseObserver = new ForwardingStreamObserver<>(logger,
                 "getTokenAt",
                 callStreamObserver);
-        eventDispatcher.getTokenAt(contextProvider.getContext(), request.getInstant(), responseObserver);
+
+        eventDispatcher.eventTokenAt(contextProvider.getContext(), Instant.ofEpochMilli(request.getInstant()))
+                       .map(token -> TrackingToken.newBuilder().setToken(token).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public void readHighestSequenceNr(ReadHighestSequenceNrRequest request,
@@ -249,7 +305,12 @@ public class EventStoreService implements AxonServerClientService {
         CallStreamObserver<ReadHighestSequenceNrResponse> callStreamObserver = (CallStreamObserver<ReadHighestSequenceNrResponse>) streamObserver;
         ForwardingStreamObserver<ReadHighestSequenceNrResponse> responseObserver =
                 new ForwardingStreamObserver<>(logger, "readHighestSequenceNr", callStreamObserver);
-        eventDispatcher.readHighestSequenceNr(contextProvider.getContext(), request.getAggregateId(), responseObserver);
+
+        eventDispatcher.highestSequenceNumber(contextProvider.getContext(), request.getAggregateId())
+                       .map(l -> ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(l).build())
+                       .subscribe(responseObserver::onNext,
+                                  responseObserver::onError,
+                                  responseObserver::onCompleted);
     }
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> streamObserver) {
@@ -263,7 +324,12 @@ public class EventStoreService implements AxonServerClientService {
 
     public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
                                        StreamObserver<SerializedEvent> responseObserver) {
-        eventDispatcher.listAggregateSnapshots(contextProvider.getContext(), authenticationProvider.get(), request, responseObserver);
+        String context = contextProvider.getContext();
+        Executor executor = grpcFlowControlExecutorProvider.provide();
+        OutgoingStream<SerializedEvent> outgoingStream =
+                new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEvent>) responseObserver,
+                                                   executor);
+        outgoingStream.accept(eventDispatcher.aggregateSnapshots(context, authenticationProvider.get(), request));
     }
 
 }
