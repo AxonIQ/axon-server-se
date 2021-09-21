@@ -12,7 +12,6 @@ package io.axoniq.axonserver.message.event;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
@@ -47,7 +46,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -314,16 +312,6 @@ public class EventDispatcher {
                                 .flatMap(eventStore -> eventStore.firstEventToken(context));
     }
 
-    private Optional<EventStore> checkConnection(String context, StreamObserver<?> responseObserver) {
-        EventStore eventStore = eventStoreLocator.getEventStore(context);
-        if (eventStore == null) {
-            responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                                                    NO_EVENT_STORE_CONFIGURED + context));
-            return Optional.empty();
-        }
-        return Optional.of(eventStore);
-    }
-
     public Mono<Long> lastEventToken(String context) {
         return eventStoreLocator.eventStore(context)
                                 .flatMap(eventStore -> eventStore.lastEventToken(context));
@@ -394,22 +382,12 @@ public class EventDispatcher {
         };
     }
 
-    public void listAggregateSnapshots(String context, Authentication authentication,
-                                       GetAggregateSnapshotsRequest request,
-                                       StreamObserver<SerializedEvent> responseObserver) {
-        checkConnection(context, responseObserver).ifPresent(eventStore -> {
-            try {
-                eventStore.aggregateSnapshots(context, authentication, request)
-                          .doOnCancel(() -> responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
-                                  "Listing aggregate snapshots cancelled."))))
-                          .subscribe(responseObserver::onNext,
-                                     responseObserver::onError,
-                                     responseObserver::onCompleted);
-            } catch (RuntimeException t) {
-                logger.warn(ERROR_ON_CONNECTION_FROM_EVENT_STORE, "listAggregateSnapshots", t.getMessage(), t);
-                responseObserver.onError(GrpcExceptionBuilder.build(t));
-            }
-        });
+    public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
+                                                    GetAggregateSnapshotsRequest request) {
+        return eventStoreLocator.eventStore(context)
+                                .flatMapMany(eventStore -> eventStore.aggregateSnapshots(context,
+                                                                                         authentication,
+                                                                                         request));
     }
 
     public MeterFactory.RateMeter eventRate(String context) {

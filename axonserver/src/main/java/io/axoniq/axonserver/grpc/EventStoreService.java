@@ -307,7 +307,12 @@ public class EventStoreService implements AxonServerClientService {
 
     public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,
                                        StreamObserver<SerializedEvent> responseObserver) {
-        eventDispatcher.listAggregateSnapshots(contextProvider.getContext(), authenticationProvider.get(), request, responseObserver);
+        String context = contextProvider.getContext();
+        Executor executor = grpcFlowControlExecutorProvider.provide();
+        OutgoingStream<SerializedEvent> outgoingStream =
+                new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEvent>) responseObserver,
+                                                   executor);
+        outgoingStream.accept(eventDispatcher.aggregateSnapshots(context, authenticationProvider.get(), request));
     }
 
 }
