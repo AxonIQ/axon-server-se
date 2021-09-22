@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -23,7 +22,6 @@ import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.EventStoreLocator;
-import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Metrics;
 import org.junit.*;
 import org.junit.runner.*;
@@ -32,11 +30,9 @@ import org.mockito.junit.*;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,7 +42,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static io.axoniq.axonserver.config.GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
 import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
@@ -282,23 +277,23 @@ public class EventDispatcherTest {
 
     @Test
     public void queryEvents() {
-        FakeStreamObserver<QueryEventsResponse> responseObserver = new FakeStreamObserver<>();
-        AtomicReference<StreamObserver<QueryEventsResponse>> eventStoreOutputStreamRef = new AtomicReference<>();
         when(eventStoreClient.queryEvents(any(), any(Flux.class), any()))
                 .thenReturn(Flux.just(QueryEventsResponse.getDefaultInstance()));
-        StreamObserver<QueryEventsRequest> inputStream = testSubject.queryEvents(DEFAULT_CONTEXT,
-                                                                                 DEFAULT_PRINCIPAL,
-                                                                                 responseObserver);
-        inputStream.onNext(QueryEventsRequest.newBuilder().build());
+        StepVerifier.create(testSubject.queryEvents(DEFAULT_CONTEXT,
+                                                    DEFAULT_PRINCIPAL,
+                                                    Flux.just(QueryEventsRequest.newBuilder()
+                                                                                .build())))
+                .expectNextCount(1L)
+                .verifyComplete();
         assertEquals(1, eventStoreWithoutLeaderCalls.get());
-        assertEquals(1, responseObserver.values().size());
 
-        responseObserver = new FakeStreamObserver<>();
-        inputStream = testSubject.queryEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL, responseObserver);
-        inputStream.onNext(QueryEventsRequest.newBuilder()
-                                             .setForceReadFromLeader(true)
-                                             .build());
+        StepVerifier.create(testSubject.queryEvents(DEFAULT_CONTEXT,
+                                                    DEFAULT_PRINCIPAL,
+                                                    Flux.just(QueryEventsRequest.newBuilder()
+                                                                      .setForceReadFromLeader(true)
+                                                                                .build())))
+                    .expectNextCount(1L)
+                    .verifyComplete();
         assertEquals(1, eventStoreWithoutLeaderCalls.get());
-        assertEquals(1, responseObserver.completedCount());
     }
 }
