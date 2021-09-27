@@ -94,7 +94,7 @@ public class InputStreamEventIterator extends EventIterator {
     }
 
     @Override
-    public void close() {
+    protected void doClose() {
         eventSource.close();
     }
 

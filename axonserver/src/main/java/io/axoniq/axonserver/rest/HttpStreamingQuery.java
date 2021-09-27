@@ -127,41 +127,46 @@ public class HttpStreamingQuery {
                                          stop();
                                      }
                                  },
-                                 throwable -> {
-                                     try {
-                                         logger.warn("Error while processing query {} - {}",
-                                                     query,
-                                                     throwable.getMessage(),
-                                                     throwable);
-                                         sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
-                                         sseEmitter.complete();
-                                     } catch (Exception ignore) {
-                                         // ignore exception on sending error to client
-                                     }
-                                 },
+                                 throwable -> emitError(query, throwable),
                                  sseEmitter::complete);
 
-            querySender.tryEmitNext(QueryEventsRequest.newBuilder()
-                                                      .setLiveEvents(liveUpdates)
-                                                      .setNumberOfPermits(Long.MAX_VALUE)
-                                                      .setForceReadFromLeader(liveUpdates)
-                                                      .setQuery(query)
-                                                      .setQuerySnapshots(querySnapshots)
-                                                      .setUnknownFields(UnknownFieldSet.newBuilder()
-                                                                                       .addField(TIME_WINDOW_FIELD,
-                                                                                                 UnknownFieldSet.Field
-                                                                                                         .newBuilder()
-                                                                                                         .addLengthDelimited(
-                                                                                                                 ByteString
-                                                                                                                         .copyFromUtf8(
-                                                                                                                                 timeWindow))
-                                                                                                         .build())
-                                                                                       .build())
-                                                      .build());
+            querySender.emitNext(QueryEventsRequest.newBuilder()
+                                                   .setLiveEvents(liveUpdates)
+                                                   .setNumberOfPermits(Long.MAX_VALUE)
+                                                   .setForceReadFromLeader(liveUpdates)
+                                                   .setQuery(query)
+                                                   .setQuerySnapshots(querySnapshots)
+                                                   .setUnknownFields(UnknownFieldSet.newBuilder()
+                                                                                    .addField(TIME_WINDOW_FIELD,
+                                                                                              UnknownFieldSet.Field
+                                                                                                      .newBuilder()
+                                                                                                      .addLengthDelimited(
+                                                                                                              ByteString
+                                                                                                                      .copyFromUtf8(
+                                                                                                                              timeWindow))
+                                                                                                      .build())
+                                                                                    .build())
+                                                   .build(),
+                                 (signalType, emitResult) -> emitError(query, new RuntimeException("Unable to emit result.")));
         }
 
         private void emitCompleted() throws IOException {
             sseEmitter.send(SseEmitter.event().name("done").data("Done"));
+        }
+
+        private boolean emitError(String query, Throwable throwable) {
+            try {
+                logger.warn("Error while processing query {} - {}",
+                            query,
+                            throwable.getMessage(),
+                            throwable);
+                sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
+                sseEmitter.complete();
+                return true;
+            } catch (Exception ignore) {
+                // ignore exception on sending error to client
+                return false;
+            }
         }
 
         private void emitRows(RowResponse row) throws IOException {

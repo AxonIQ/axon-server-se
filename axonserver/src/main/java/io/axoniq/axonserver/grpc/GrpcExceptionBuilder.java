@@ -64,7 +64,8 @@ public class GrpcExceptionBuilder {
                                                   cleanupDescription(standardErrorCode,
                                                                      statusRuntimeException.getStatus()
                                                                                            .getDescription(),
-                                                                     throwable));
+                                                                     throwable),
+                                                  throwable);
         }
         return new MessagingPlatformException(standardErrorCode, createMessage(throwable));
     }

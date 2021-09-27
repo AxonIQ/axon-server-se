@@ -3,6 +3,14 @@ This is the Axon Server Standard Edition, version 4.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.5.7
+-------------------------------
+* Fix: UI issues when running with another context root
+* Fix: UI does not refresh the icons for event processor streams
+* Fix: Balancing processors for a processing group containing special characters does not work from the UI
+* Fix: Warning logged when a client closes an  event stream while it is reading from old segments
+* Remove timing metrics for commands/queries for clients no longer connected
+
 Release Notes for version 4.5.6
 -------------------------------
 * Fix: Memory leak in subscription query registrations

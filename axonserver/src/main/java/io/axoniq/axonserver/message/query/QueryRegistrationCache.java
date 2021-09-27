@@ -14,7 +14,6 @@ import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.grpc.query.QuerySubscription;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
-import org.eclipse.collections.impl.factory.Sets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -178,12 +177,18 @@ public class QueryRegistrationCache {
         }
         ClientStreamIdentification client = queryHandlerSelector.select(queryDefinition,
                                                                         componentName,
-                                                                        new TreeSet<>(Sets.intersect(queryHandlers,
+                                                                        new TreeSet<>(intersect(queryHandlers,
                                                                                                      filteredCandidates)));
         if (client == null) {
             return null;
         }
         return registrationsPerQuery.get(queryDefinition).getHandler(client);
+    }
+
+    private Set<ClientStreamIdentification>  intersect(Set<ClientStreamIdentification> first, Set<ClientStreamIdentification> second) {
+        Set<ClientStreamIdentification> result = new HashSet<>(first);
+        result.removeIf(item -> !second.contains(item));
+        return result;
     }
 
     public Map<QueryDefinition, Map<String, Set<QueryHandler<?>>>> getAll() {

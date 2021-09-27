@@ -23,6 +23,8 @@ import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 
@@ -118,6 +120,16 @@ public class MeterFactory {
 
     public void remove(Meter meter) {
         meterRegistry.remove(meter);
+    }
+
+    public void remove(BaseMetricName axonQuery, String tagName, String tagValue) {
+        List<Meter> toDelete = new LinkedList<>();
+        meterRegistry.find(axonQuery.metric()).meters().forEach(m -> {
+            if (tagValue.equals(m.getId().getTag(tagName))) {
+               toDelete.add(m);
+            }
+        });
+        toDelete.forEach(meterRegistry::remove);
     }
 
     /**

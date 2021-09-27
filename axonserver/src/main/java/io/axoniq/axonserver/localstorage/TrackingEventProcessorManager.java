@@ -242,6 +242,8 @@ public class TrackingEventProcessorManager {
                     }
                     count++;
                 }
+            } catch (IllegalStateException ex) {
+                // closed during iterating events
             } catch (Exception ex) {
                 running = false;
                 sendError(ex);
