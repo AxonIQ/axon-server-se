@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.config.AuthenticationProvider;
+import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -314,12 +315,50 @@ public class EventStoreService implements AxonServerClientService {
     }
 
     public StreamObserver<QueryEventsRequest> queryEvents(StreamObserver<QueryEventsResponse> streamObserver) {
-        CallStreamObserver<QueryEventsResponse> callStreamObserver = (CallStreamObserver<QueryEventsResponse>) streamObserver;
-        String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        ForwardingStreamObserver<QueryEventsResponse> responseObserver =
-                new ForwardingStreamObserver<>(logger, "queryEvents", callStreamObserver);
-        return eventDispatcher.queryEvents(context, authentication, streamObserver);
+        return new StreamObserver<QueryEventsRequest>() {
+
+            private final AtomicReference<Sinks.Many<QueryEventsRequest>> requestSinkRef = new AtomicReference<>();
+
+            @Override
+            public void onNext(QueryEventsRequest queryEventsRequest) {
+                CallStreamObserver<QueryEventsResponse> callStreamObserver = (CallStreamObserver<QueryEventsResponse>) streamObserver;
+                ForwardingStreamObserver<QueryEventsResponse> responseObserver =
+                        new ForwardingStreamObserver<>(logger, "queryEvents", callStreamObserver);
+                String context = contextProvider.getContext();
+                Authentication authentication = authenticationProvider.get();
+                if (requestSinkRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
+                    eventDispatcher.queryEvents(context, authentication, requestSinkRef.get().asFlux())
+                                   .subscribe(responseObserver::onNext,
+                                              responseObserver::onError,
+                                              responseObserver::onCompleted);
+                }
+                Sinks.EmitResult emitResult = requestSinkRef.get().tryEmitNext(queryEventsRequest);
+                if (emitResult.isFailure()) {
+                    String message = String.format("%s: Error forwarding request to event store.", context);
+                    logger.warn(message);
+                    requestSinkRef.get().tryEmitError(new RuntimeException(message));
+                }
+            }
+
+            @Override
+            public void onError(Throwable reason) {
+                if (!ExceptionUtils.isCancelled(reason)) {
+                    logger.warn("Error on connection from client: {}", reason.getMessage());
+                }
+                Sinks.Many<QueryEventsRequest> sink = requestSinkRef.get();
+                if (sink != null) {
+                    sink.tryEmitError(reason);
+                }
+            }
+
+            @Override
+            public void onCompleted() {
+                Sinks.Many<QueryEventsRequest> sink = requestSinkRef.get();
+                if (sink != null) {
+                    sink.tryEmitComplete();
+                }
+            }
+        };
     }
 
     public void listAggregateSnapshots(GetAggregateSnapshotsRequest request,

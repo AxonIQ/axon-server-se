@@ -10,8 +10,6 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
-import io.axoniq.axonserver.exception.ExceptionUtils;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
@@ -25,8 +23,6 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.topology.EventStoreLocator;
-import io.axoniq.axonserver.util.StreamObserverUtils;
-import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +47,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import static io.axoniq.axonserver.exception.ErrorCode.NO_EVENTSTORE;
 
 /**
  * @author Marc Gathier
@@ -333,59 +327,32 @@ public class EventDispatcher {
                                 .flatMap(eventStore -> eventStore.highestSequenceNumber(context, aggregateId));
     }
 
-    public StreamObserver<QueryEventsRequest> queryEvents(String context,
-                                                          Authentication authentication,
-                                                          StreamObserver<QueryEventsResponse> responseObserver) {
-        return new StreamObserver<QueryEventsRequest>() {
-
-            private final AtomicReference<Sinks.Many<QueryEventsRequest>> requestSinkRef = new AtomicReference<>();
-
-            @Override
-            public void onNext(QueryEventsRequest request) {
-                if (requestSinkRef.compareAndSet(null, Sinks.many()
-                                                            .unicast()
-                                                            .onBackpressureBuffer())) {
-                    EventStore eventStore = eventStoreLocator.getEventStore(context,
-                                                                            request.getForceReadFromLeader());
-                    if (eventStore == null) {
-                        responseObserver.onError(new MessagingPlatformException(NO_EVENTSTORE,
-                                                                                NO_EVENT_STORE_CONFIGURED + context));
-                        return;
-                    }
-                    eventStore.queryEvents(context, requestSinkRef.get().asFlux(), authentication)
-                              .subscribe(responseObserver::onNext,
-                                         responseObserver::onError,
-                                         responseObserver::onCompleted);
-                }
-                Sinks.EmitResult emitResult = requestSinkRef.get().tryEmitNext(request);
-                if (emitResult.isFailure()) {
-                    String message = String.format("%s: Error forwarding request to event store.", context);
-                    logger.warn(message);
-                    requestSinkRef.get().tryEmitError(new RuntimeException(message));
-                }
+    public Flux<QueryEventsResponse> queryEvents(String context, Authentication authentication,
+                                                 Flux<QueryEventsRequest> requestFlux) {
+        AtomicReference<Sinks.Many<QueryEventsRequest>> eventStoreRequestFluxRef = new AtomicReference<>();
+        return Flux.create(sink -> requestFlux.subscribe(request -> {
+            if (eventStoreRequestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
+                eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
+                                 .flatMapMany(es -> es.queryEvents(context,
+                                                                   eventStoreRequestFluxRef.get().asFlux(),
+                                                                   authentication))
+                                 .subscribe(sink::next, sink::error, sink::complete);
             }
-
-            @Override
-            public void onError(Throwable reason) {
-                if (!ExceptionUtils.isCancelled(reason)) {
-                    logger.warn("Error on connection from client: {}", reason.getMessage());
-                }
-                cleanup();
+            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
+            if (eventStoreRequestFlux != null && eventStoreRequestFlux.tryEmitNext(request).isFailure()) {
+                eventStoreRequestFlux.tryEmitError(new RuntimeException("Unable to send the request for querying events."));
             }
-
-            @Override
-            public void onCompleted() {
-                cleanup();
-                StreamObserverUtils.complete(responseObserver);
+        }, t -> {
+            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
+            if (eventStoreRequestFlux != null) {
+                eventStoreRequestFlux.tryEmitError(t);
             }
-
-            private void cleanup() {
-                Sinks.Many<QueryEventsRequest> sink = requestSinkRef.get();
-                if (sink != null) {
-                    sink.tryEmitComplete();
-                }
+        }, () -> {
+            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
+            if (eventStoreRequestFlux != null) {
+                eventStoreRequestFlux.tryEmitComplete();
             }
-        };
+        }));
     }
 
     public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
