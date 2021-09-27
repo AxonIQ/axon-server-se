@@ -10,12 +10,14 @@
 package io.axoniq.axonserver.grpc.axonhub;
 
 import io.axoniq.axonserver.grpc.AxonServerClientService;
+import io.axoniq.axonserver.grpc.EventStoreService;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.*;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.message.event.EventDispatcher;
-import io.axoniq.axonserver.message.event.InputStreamMarshaller;
 import io.axoniq.axonserver.message.event.SerializedEventMarshaller;
+import io.axoniq.axonserver.message.event.SerializedEventWithTokenMarshaller;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.protobuf.ProtoUtils;
@@ -35,8 +37,8 @@ import static io.grpc.stub.ServerCalls.*;
 public class AxonHubEventService implements AxonServerClientService {
     public static final String SERVICE_NAME = "io.axoniq.axondb.grpc.EventStore";
 
-    public static final MethodDescriptor<InputStream, Confirmation> METHOD_APPEND_EVENT =
-            MethodDescriptor.newBuilder(InputStreamMarshaller.inputStreamMarshaller(),
+    public static final MethodDescriptor<SerializedEvent, Confirmation> METHOD_APPEND_EVENT =
+            MethodDescriptor.newBuilder(new SerializedEventMarshaller(),
                                         ProtoUtils.marshaller(Confirmation.getDefaultInstance()))
                             .setFullMethodName(generateFullMethodName(SERVICE_NAME, "AppendEvent"))
                             .setType(MethodDescriptor.MethodType.CLIENT_STREAMING)
@@ -57,9 +59,9 @@ public class AxonHubEventService implements AxonServerClientService {
                             .setType(MethodDescriptor.MethodType.SERVER_STREAMING)
                             .build();
     
-    public static final MethodDescriptor<GetEventsRequest,InputStream> METHOD_LIST_EVENTS =
+    public static final MethodDescriptor<GetEventsRequest, SerializedEventWithToken> METHOD_LIST_EVENTS =
             MethodDescriptor.newBuilder(ProtoUtils.marshaller(GetEventsRequest.getDefaultInstance()),
-                                        InputStreamMarshaller.inputStreamMarshaller())
+                                        new SerializedEventWithTokenMarshaller())
                             .setFullMethodName(generateFullMethodName(SERVICE_NAME, "ListEvents"))
                             .setType(MethodDescriptor.MethodType.BIDI_STREAMING)
                             .build();
@@ -101,9 +103,9 @@ public class AxonHubEventService implements AxonServerClientService {
                             .build();
 
 
-    private final EventDispatcher eventDispatcher;
+    private final EventStoreService eventDispatcher;
 
-    public AxonHubEventService(EventDispatcher eventDispatcher) {
+    public AxonHubEventService(EventStoreService eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
     }
 

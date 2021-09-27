@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.taskscheduler.ScheduledTask;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -49,7 +50,7 @@ public class ScheduledEventExecutor implements ScheduledTask {
             ScheduledEventWrapper scheduledEventWrapper = (ScheduledEventWrapper) payload;
             Event event = Event.newBuilder(Event.parseFrom(scheduledEventWrapper.getBytes()))
                                .setTimestamp(System.currentTimeMillis()).build();
-            Flux<Event> events = Flux.just(event);
+            Flux<SerializedEvent> events = Flux.just(event).map(SerializedEvent::new);
             return localEventStore.appendEvents(scheduledEventWrapper.getContext(), events, null)
                                   .toFuture();
         } catch (Exception e) {

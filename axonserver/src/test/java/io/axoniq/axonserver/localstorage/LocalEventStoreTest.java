@@ -24,6 +24,7 @@ import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.util.ArrayList;
@@ -31,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,7 +41,6 @@ import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
@@ -128,8 +127,8 @@ public class LocalEventStoreTest {
 
     @Test
     public void createAppendEventConnection() throws ExecutionException, InterruptedException {
-        Flux<Event> events = Flux.fromStream(IntStream.range(0, 3)
-                                                      .mapToObj(i -> Event.getDefaultInstance()));
+        Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 3)
+                                                      .mapToObj(i -> new SerializedEvent(Event.getDefaultInstance())));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))
                     .verifyComplete();
 
@@ -141,10 +140,10 @@ public class LocalEventStoreTest {
     @Test
     public void createAppendEventConnectionCompensateAppendEntries() throws InterruptedException {
         eventInterceptors.failPreCommit = true;
-        Flux<Event> events = Flux.fromStream(IntStream.range(0, 2)
-                                                      .mapToObj(i -> Event.newBuilder()
+        Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 2)
+                                                      .mapToObj(i -> new SerializedEvent(Event.newBuilder()
                                                                           .setMessageIdentifier("FAIL")
-                                                                          .build()));
+                                                                          .build())));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))
                     .verifyError();
         assertEquals(2, eventInterceptors.appendEvent);
@@ -156,7 +155,7 @@ public class LocalEventStoreTest {
 
     @Test
     public void createAppendEventConnectionCompensatePreCommitAndAppendEntry() throws InterruptedException {
-        Flux<Event> events = Flux.just(Event.newBuilder().setMessageIdentifier("FAIL").build());
+        Flux<SerializedEvent> events = Flux.just(new SerializedEvent(Event.newBuilder().setMessageIdentifier("FAIL").build()));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))
                     .verifyError();
         assertEquals(1, eventInterceptors.eventsPreCommit);
@@ -209,16 +208,17 @@ public class LocalEventStoreTest {
 
     @Test
     public void events() throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(8);
-        AtomicReference<FluxSink<GetEventsRequest>> sink = new AtomicReference<>();
-        testSubject.events("demo", null, Flux.create(sink::set))
-                   .subscribe(e -> latch.countDown());
+        GetEventsRequest request = GetEventsRequest.newBuilder()
+                                                   .setNumberOfPermits(100)
+                                                   .build();
+        Sinks.Many<GetEventsRequest> manyReq = Sinks.many().unicast().onBackpressureBuffer();
 
-        sink.get().next(GetEventsRequest.newBuilder()
-                                        .setNumberOfPermits(100)
-                                        .build());
-        assertTrue(latch.await(1, TimeUnit.SECONDS));
-        assertEquals(8, eventInterceptors.readEvent);
+        testSubject.events("demo", null, manyReq.asFlux())
+                   .subscribe();
+
+        assertEquals(Sinks.EmitResult.OK, manyReq.tryEmitNext(request));
+        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(8, eventInterceptors.readEvent));
+        assertEquals(Sinks.EmitResult.OK, manyReq.tryEmitComplete());
     }
 
     @Test

@@ -53,7 +53,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
@@ -289,9 +288,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public Mono<Void> appendEvents(String context, Flux<Event> events, Authentication authentication) {
+    public Mono<Void> appendEvents(String context, Flux<SerializedEvent> events, Authentication authentication) {
         return Mono.create(sink -> {
-            StreamObserver<InputStream> inputStream =
+            StreamObserver<SerializedEvent> inputStream =
                     createAppendEventConnection(context, authentication, new StreamObserver<Confirmation>() {
                         @Override
                         public void onNext(Confirmation confirmation) {
@@ -308,26 +307,24 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                             // nothing to do, already completed on onNext
                         }
                     });
-            events.doOnComplete(inputStream::onCompleted)
-                  .doOnError(inputStream::onError)
-                  .subscribe(event -> inputStream.onNext(new ByteArrayInputStream(event.toByteArray())));
+            events.subscribe(inputStream::onNext, inputStream::onError, inputStream::onCompleted);
         });
     }
 
-    private StreamObserver<InputStream> createAppendEventConnection(String context,
+    private StreamObserver<SerializedEvent> createAppendEventConnection(String context,
                                                                    Authentication authentication,
                                                                    StreamObserver<Confirmation> responseObserver) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
-        return new StreamObserver<InputStream>() {
+        return new StreamObserver<SerializedEvent>() {
             private final List<Event> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
             private final AtomicLong eventCount = new AtomicLong();
 
             @Override
-            public void onNext(InputStream inputStream) {
+            public void onNext(SerializedEvent inputStream) {
                 if (checkMaxEventCount()) {
                     try {
-                        eventList.add(Event.parseFrom(inputStream));
+                        eventList.add(inputStream.asEvent());
                     } catch (Exception e) {
                         closed.set(true);
                         responseObserver.onError(GrpcExceptionBuilder.build(e));
