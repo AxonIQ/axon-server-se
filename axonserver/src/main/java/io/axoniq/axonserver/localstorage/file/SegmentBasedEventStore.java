@@ -276,7 +276,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public void transformContents(long firstToken,
                                   long lastToken,
-                                  BiFunction<Event, Long, Event> transformationFunction,
+                                  boolean keepOldVersions, BiFunction<Event, Long, Event> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {
         SortedSet<Long> segments = getSegments();
         NavigableSet<Long> segmentsToTransform = new TreeSet<>(Comparators.comparable());
@@ -286,13 +286,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             if (segment >= firstSegment && segment <= lastToken) {
                 Integer version = currentSegmentVersion(segment);
                 if (version != null) {
-                    transformSegment(segment, version, transformationFunction, transformationProgressConsumer);
+                    transformSegment(segment, version, keepOldVersions, transformationFunction, transformationProgressConsumer);
                 }
             }
         }
     }
 
-    private void transformSegment(long segment, int currentVersion,
+    private void transformSegment(long segment, int currentVersion, boolean keepOldVersion,
                                   BiFunction<Event, Long, Event> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {
         Map<String, List<IndexEntry>> indexEntriesMap = new HashMap<>();
@@ -362,7 +362,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             try {
                 FileUtils.rename(tempFile, dataFile);
                 segmentActiveVersion(segment, currentVersion + 1);
-                scheduleForDeletion(segment, currentVersion);
+                if( !keepOldVersion) {
+                    scheduleForDeletion(segment, currentVersion);
+                }
             } catch (IOException e) {
                 throw new RuntimeException(String.format("%s: rename segment %s failed", context, tempFile), e);
             }

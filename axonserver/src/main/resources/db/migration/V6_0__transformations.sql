@@ -11,7 +11,8 @@ create table event_store_transformations (
     transformation_id varchar(255) not null primary key,
     context varchar(255) not null,
     next_token bigint,
-    status int
+    status int,
+    keep_old_versions bool
 );
 
 create table event_store_transformation_logs (

@@ -103,7 +103,8 @@ public class EventTransformationServiceTest {
             }
 
             @Override
-            public Mono<Void> applyTransformation(String context, String id, long lastEventToken) {
+            public Mono<Void> applyTransformation(String context, String id, long lastEventToken,
+                                                  boolean keepOldVersions) {
                 return Mono.create(sink -> {
                     if (id.equals(activeTransformations.get(context))) {
                         sink.success();

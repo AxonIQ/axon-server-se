@@ -234,7 +234,8 @@ public interface EventStorageEngine {
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
 
-    void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction,
+    void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
+                           BiFunction<Event, Long, Event> transformationFunction,
                            Consumer<TransformationProgress> transformationProgressConsumer);
 
 }

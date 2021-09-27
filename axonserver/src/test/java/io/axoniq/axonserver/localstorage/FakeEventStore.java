@@ -106,7 +106,8 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void transformContents(long firstToken, long lastToken, BiFunction<Event, Long, Event> transformationFunction,
+    public void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
+                                  BiFunction<Event, Long, Event> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {
 
     }

@@ -27,11 +27,20 @@ import javax.persistence.Table;
 @Table(name = "event_store_transformations")
 public class EventStoreTransformationJpa {
 
+    public boolean isKeepOldVersions() {
+        return keepOldVersions;
+    }
+
+    public void setKeepOldVersions(boolean keepOldVersions) {
+        this.keepOldVersions = keepOldVersions;
+    }
+
     public enum Status {
         CREATED,
         APPLYING,
         APPLIED,
-        FAILED
+        FAILED,
+        DONE
     }
     @Id
     private String transformationId;
@@ -41,6 +50,8 @@ public class EventStoreTransformationJpa {
 
     @Enumerated(EnumType.ORDINAL)
     private Status status;
+
+    private boolean keepOldVersions;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "transformation")
     private Set<EventStoreTransformationLogJpa> segmentUpdates = new HashSet<>();

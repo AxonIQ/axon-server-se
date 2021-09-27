@@ -62,7 +62,7 @@ public class TransformationProcessor {
         transformationCache.delete(transformationId);
     }
 
-    public void apply(String transformationId) {
+    public void apply(String transformationId, boolean keepOldVersions) {
         TransformationEntryStore transformationFileStore = transformationStoreRegistry.get(transformationId);
         EventStoreTransformation transformation = transformationCache.get(transformationId);
         TransformEventsRequest first = transformationFileStore.firstEntry();
@@ -75,13 +75,14 @@ public class TransformationProcessor {
         logger.info("{}: Start apply transformation from {} to {}", transformation.getName(), first, lastToken);
         CloseableIterator<TransformEventsRequest> iterator = transformationFileStore.iterator(0);
         if (iterator.hasNext()) {
-            transformationCache.setTransactionStatus(transformationId, EventStoreTransformationJpa.Status.APPLYING);
+            transformationCache.startApply(transformationId, keepOldVersions);
             TransformEventsRequest transformationEntry = iterator.next();
             AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
             logger.debug("Next token {}", token(request.get()));
             localEventStore.transformEvents(transformation.getName(),
                                             firstToken,
                                             lastToken,
+                                            keepOldVersions,
                                             (event, token) -> {
                                                 logger.debug("Found token {}", token);
                                                 Event result = event;

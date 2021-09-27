@@ -230,12 +230,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
+                                                   boolean keepOldVersions,
                                                    BiFunction<Event,Long,Event> transformationFunction,
                                                    Consumer<TransformationProgress> transformationProgressConsumer) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         runInDataFetcherPool(() -> {
             Workers workers = workersMap.get(context);
-            workers.eventStorageEngine.transformContents(firstToken, lastToken, transformationFunction, transformationProgressConsumer);
+            workers.eventStorageEngine.transformContents(firstToken, lastToken, keepOldVersions, transformationFunction, transformationProgressConsumer);
             result.complete(null);
         }, result::completeExceptionally);
         return result;
@@ -252,7 +253,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             workers.snapshotStorageEngine
-                    .transformContents(0, Long.MAX_VALUE, (snapshot, token) -> {
+                    .transformContents(0, Long.MAX_VALUE, false, (snapshot, token) -> {
                                            Optional<Long> optionalLastSequenceNumber = workers.snapshotStorageEngine
                                                    .getLastSequenceNumber(snapshot.getAggregateIdentifier())
                                                    .filter(lastSequenceNumber ->

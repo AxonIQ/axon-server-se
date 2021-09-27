@@ -179,7 +179,8 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
                       request.getTransformationId().getId());
         eventStoreTransformationService.applyTransformation(context,
                                                             request.getTransformationId().getId(),
-                                                            request.getLastEventToken())
+                                                            request.getLastEventToken(),
+                                                            request.getKeepOldVersions())
                                        .subscribe(new ConfirmationSubscriber(responseObserver));
     }
 }

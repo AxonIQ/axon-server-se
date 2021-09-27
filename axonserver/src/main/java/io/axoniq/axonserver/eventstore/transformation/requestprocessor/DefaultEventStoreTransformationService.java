@@ -75,10 +75,11 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     }
 
     @Override
-    public Mono<Void> applyTransformation(String context, String transformationId, long lastEventToken) {
+    public Mono<Void> applyTransformation(String context, String transformationId, long lastEventToken,
+                                          boolean keepOldVersions) {
         return Mono.create(sink -> {
             transformationValidator.apply(context, transformationId, lastEventToken);
-            transformationProcessor.apply(transformationId);
+            transformationProcessor.apply(transformationId, keepOldVersions);
         });
     }
 }
