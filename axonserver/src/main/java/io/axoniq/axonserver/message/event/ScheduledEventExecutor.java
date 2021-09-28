@@ -38,12 +38,12 @@ public class ScheduledEventExecutor implements ScheduledTask {
 
     /**
      * Executes the scheduled task to store an event. The payload contains the protobuf serialized event message.
-     * @param context the context in which to store the event
+     * @param replicationGroup the context in which to store the event
      * @param payload the payload for the task
      * @return completable future that completes when event is successfully stored
      */
     @Override
-    public CompletableFuture<Void> executeAsync(String context, Object payload) {
+    public CompletableFuture<Void> executeAsync(String replicationGroup, Object payload) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         try {
             ScheduledEventWrapper scheduledEventWrapper = (ScheduledEventWrapper) payload;

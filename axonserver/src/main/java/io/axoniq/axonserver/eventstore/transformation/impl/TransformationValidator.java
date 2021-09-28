@@ -60,13 +60,13 @@ public class TransformationValidator {
     public void cancel(String context, String transformationId) {
         EventStoreTransformation transformation = transformationCache.get(transformationId);
         validateContext(context, transformation);
-        if (transformation.isApplying()) {
+        if (transformation.applying()) {
             throw new RuntimeException("Transformation in progress");
         }
     }
 
     private void validatePreviousToken(long previousToken, EventStoreTransformation transformation) {
-        if (previousToken != transformation.getPreviousToken()) {
+        if (previousToken != transformation.previousToken()) {
             throw new RuntimeException("Invalid previous token");
         }
     }
@@ -76,7 +76,7 @@ public class TransformationValidator {
             throw new RuntimeException("Transformation not found");
         }
 
-        if (!transformation.getName().equals(context)) {
+        if (!transformation.context().equals(context)) {
             throw new RuntimeException("Transformation id not valid for context");
         }
     }
@@ -87,10 +87,10 @@ public class TransformationValidator {
             return;
         }
 
-        CloseableIterator<SerializedEventWithToken> iterator = transformation.getIterator();
+        CloseableIterator<SerializedEventWithToken> iterator = transformation.iterator();
         if (iterator == null) {
             iterator = localEventStore.eventIterator(context, token);
-            transformation.setIterator(iterator);
+            transformation.iterator(iterator);
         }
 
         if (!iterator.hasNext()) {

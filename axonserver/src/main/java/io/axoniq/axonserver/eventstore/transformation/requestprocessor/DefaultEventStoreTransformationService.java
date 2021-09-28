@@ -80,6 +80,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
         return Mono.create(sink -> {
             transformationValidator.apply(context, transformationId, lastEventToken);
             transformationProcessor.apply(transformationId, keepOldVersions);
+            transformationProcessor.complete(transformationId);
         });
     }
 }

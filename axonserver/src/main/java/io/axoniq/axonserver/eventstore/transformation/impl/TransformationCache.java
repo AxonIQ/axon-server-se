@@ -40,12 +40,12 @@ public class TransformationCache {
     public void init(String context) {
         eventStoreTransformationRepository.findByContext(context)
                 .ifPresent(transformation -> {
-                    EventStoreTransformation eventStoreTransformation = new EventStoreTransformation(transformation);
+                    EventStoreTransformation eventStoreTransformation = new EventStoreTransformation(transformation.getTransformationId(), context);
                     TransformationEntryStore store = transformationStoreRegistry.register(context,
                                                                                                             transformation.getTransformationId());
                     TransformEventsRequest entry = store.lastEntry();
                     if (entry != null) {
-                        eventStoreTransformation.setPreviousToken(token(entry));
+                        eventStoreTransformation.previousToken(token(entry));
                     }
                     activeTransformations.put(transformation.getTransformationId(), eventStoreTransformation);
                 });
@@ -77,7 +77,7 @@ public class TransformationCache {
         EventStoreTransformationJpa transformationJpa = new EventStoreTransformationJpa(transformationId, context);
         eventStoreTransformationRepository.save(transformationJpa);
         transformationStoreRegistry.register(context, transformationId);
-        activeTransformations.put(transformationId,  new EventStoreTransformation(transformationJpa));
+        activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
     }
 
     private boolean isActive(EventStoreTransformationJpa.Status status) {
@@ -97,13 +97,12 @@ public class TransformationCache {
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public void setTransactionStatus(String transformationId, EventStoreTransformationJpa.Status status) {
+    public void setTransformationStatus(String transformationId, EventStoreTransformationJpa.Status status) {
         EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
                                                                                       .orElseThrow(() -> new RuntimeException(
                                                                                               "Transformation not found"));
         transformationJpa.setStatus(status);
         eventStoreTransformationRepository.save(transformationJpa);
-        activeTransformations.put(transformationId, new EventStoreTransformation(transformationJpa));
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
@@ -114,7 +113,6 @@ public class TransformationCache {
         transformationJpa.setStatus(EventStoreTransformationJpa.Status.APPLYING);
         transformationJpa.setKeepOldVersions(keepOldVersions);
         eventStoreTransformationRepository.save(transformationJpa);
-        activeTransformations.put(transformationId, new EventStoreTransformation(transformationJpa));
     }
 
     public Mono<Void> add(String transformationId, TransformEventsRequest transformEventsRequest) {
@@ -122,7 +120,7 @@ public class TransformationCache {
         return transformationStoreRegistry.get(transformationId).append(transformEventsRequest)
                 .doOnSuccess(result -> {
                     System.out.printf("Added entry #%d, token = %d%n", 0, token(transformEventsRequest));
-                    transformation.setPreviousToken(token(transformEventsRequest));
+                    transformation.previousToken(token(transformEventsRequest));
                 });
     }
 
@@ -139,5 +137,18 @@ public class TransformationCache {
         }
 
         eventStoreTransformationRepository.save(transformationJpa);
+    }
+
+    public EventStoreTransformationJpa.Status status(String transformationId) {
+        EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
+                                                                                          .orElseThrow(() -> new RuntimeException(
+                                                                                                  "Transformation not found"));
+        return transformationJpa.getStatus();
+    }
+
+    @Transactional
+    public void complete(String transformationId) {
+        activeTransformations.remove(transformationId);
+        setTransformationStatus(transformationId, EventStoreTransformationJpa.Status.DONE);
     }
 }

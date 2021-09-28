@@ -15,6 +15,7 @@ import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
@@ -53,7 +54,7 @@ public class EventStoreTransformationJpa {
 
     private boolean keepOldVersions;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "transformation")
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "transformation", fetch = FetchType.EAGER)
     private Set<EventStoreTransformationLogJpa> segmentUpdates = new HashSet<>();
 
     public EventStoreTransformationJpa(String transformationId, String context) {
@@ -92,6 +93,10 @@ public class EventStoreTransformationJpa {
     public void add(EventStoreTransformationLogJpa log) {
         segmentUpdates.add(log);
         log.setTransformation(this);
+    }
+
+    public Set<EventStoreTransformationLogJpa> getSegmentUpdates() {
+        return segmentUpdates;
     }
 
     public long getNextToken() {

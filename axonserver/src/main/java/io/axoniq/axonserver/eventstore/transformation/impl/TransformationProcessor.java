@@ -62,6 +62,11 @@ public class TransformationProcessor {
         transformationCache.delete(transformationId);
     }
 
+    public void complete(String transformationId) {
+        transformationStoreRegistry.delete(transformationId);
+        transformationCache.complete(transformationId);
+    }
+
     public void apply(String transformationId, boolean keepOldVersions) {
         TransformationEntryStore transformationFileStore = transformationStoreRegistry.get(transformationId);
         EventStoreTransformation transformation = transformationCache.get(transformationId);
@@ -70,16 +75,16 @@ public class TransformationProcessor {
             return;
         }
         long firstToken = token(first);
-        long lastToken = transformation.getPreviousToken();
+        long lastToken = transformation.previousToken();
 
-        logger.info("{}: Start apply transformation from {} to {}", transformation.getName(), first, lastToken);
+        logger.info("{}: Start apply transformation from {} to {}", transformation.context(), first, lastToken);
         CloseableIterator<TransformEventsRequest> iterator = transformationFileStore.iterator(0);
         if (iterator.hasNext()) {
             transformationCache.startApply(transformationId, keepOldVersions);
             TransformEventsRequest transformationEntry = iterator.next();
             AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
             logger.debug("Next token {}", token(request.get()));
-            localEventStore.transformEvents(transformation.getName(),
+            localEventStore.transformEvents(transformation.context(),
                                             firstToken,
                                             lastToken,
                                             keepOldVersions,
@@ -99,10 +104,10 @@ public class TransformationProcessor {
                                             transformationProgress -> handleTransformationProgress( transformation,
                                                     transformationProgress)).thenAccept(r -> {
                 iterator.close();
-                transformationCache.setTransactionStatus(transformationId, EventStoreTransformationJpa.Status.APPLIED);
+                transformationCache.setTransformationStatus(transformationId, EventStoreTransformationJpa.Status.APPLIED);
             }).exceptionally(ex -> {
                 ex.printStackTrace();
-                transformationCache.setTransactionStatus(transformationId, EventStoreTransformationJpa.Status.FAILED);
+                transformationCache.setTransformationStatus(transformationId, EventStoreTransformationJpa.Status.FAILED);
                 return null;
             });
         }
@@ -110,8 +115,8 @@ public class TransformationProcessor {
 
     private void handleTransformationProgress(EventStoreTransformation transformation,
                                               TransformationProgress transformationProgress) {
-        logger.info("{}: Transformation {} Progress {}", transformation.getName(), transformation.getId(), transformationProgress);
-        transformationCache.setProgress(transformation.getId(), transformationProgress);
+        logger.info("{}: Transformation {} Progress {}", transformation.context(), transformation.id(), transformationProgress);
+        transformationCache.setProgress(transformation.id(), transformationProgress);
     }
 
     private TransformEventsRequest deleteEventEntry(long token) {

@@ -20,46 +20,46 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class EventStoreTransformation {
 
-    private final EventStoreTransformationJpa wrapped;
+    private final String id;
+    private final String context;
     private long previousToken = -1;
     private boolean applying;
     private final AtomicReference<CloseableIterator<SerializedEventWithToken>> iterator = new AtomicReference<>();
 
-    public EventStoreTransformation(
-            EventStoreTransformationJpa wrapped) {
-        this.wrapped = wrapped;
+    public EventStoreTransformation(String id, String context) {
+        this.id = id;
+        this.context = context;
     }
 
-    public String getId() {
-        return wrapped.getTransformationId();
+    public String id() {
+        return id;
     }
 
-
-    public String getName() {
-        return wrapped.getContext();
+    public String context() {
+        return context;
     }
 
-    public long getPreviousToken() {
+    public long previousToken() {
         return previousToken;
     }
 
-    public void setPreviousToken(long previousToken) {
+    public void previousToken(long previousToken) {
         this.previousToken = previousToken;
     }
 
-    public boolean isApplying() {
+    public boolean applying() {
         return applying;
     }
 
-    public void setApplying(boolean applying) {
+    public void applying(boolean applying) {
         this.applying = applying;
     }
 
-    public CloseableIterator<SerializedEventWithToken> getIterator() {
+    public CloseableIterator<SerializedEventWithToken> iterator() {
         return iterator.get();
     }
 
-    public void setIterator(
+    public void iterator(
             CloseableIterator<SerializedEventWithToken> iterator) {
         this.iterator.set(iterator);
     }

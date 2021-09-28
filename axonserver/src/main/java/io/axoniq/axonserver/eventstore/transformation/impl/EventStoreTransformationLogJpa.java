@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -33,6 +35,7 @@ public class EventStoreTransformationLogJpa {
 
     @ManyToOne
     @JoinColumn(name = "transformation_id")
+    @JsonIgnore
     private EventStoreTransformationJpa transformation;
 
 
