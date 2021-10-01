@@ -3,6 +3,7 @@ package io.axoniq.axonserver.filestorage.impl;
 import io.axoniq.axonserver.filestorage.FileStoreEntry;
 import org.junit.*;
 import org.junit.rules.*;
+import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -76,6 +77,37 @@ public class BaseFileStoreTest {
         assertEquals(0, index.longValue());
         index = append("six", 2);
         assertEquals(5, index.longValue());
+    }
+    @Test
+    public void appendMultipleReopenAndRead() {
+        Sinks.Many<FileStoreEntry> publisher = Sinks.many().unicast().onBackpressureBuffer();
+        Mono<Long> result = baseFileStore.append(publisher.asFlux());
+        publisher.tryEmitNext(entry("one".getBytes(), 1)).orThrow();
+        publisher.tryEmitNext(entry("two".getBytes(), 1)).orThrow();
+        publisher.tryEmitNext(entry("three".getBytes(), 1)).orThrow();
+        publisher.tryEmitNext(entry("four".getBytes(), 1)).orThrow();
+        publisher.tryEmitNext(entry("five".getBytes(), 1)).orThrow();
+        publisher.tryEmitComplete().orThrow();
+        Long index = result.block(Duration.ofSeconds(1));
+        assertNotNull(index);
+        assertEquals(0, index.longValue());
+        index = append("six", 2);
+        assertEquals(5, index.longValue());
+//        try (CloseableIterator<FileStoreEntry> it = baseFileStore.iterator(0)) {
+//            while( it.hasNext()) {
+//                System.out.println(it.next());
+//            }
+//        }
+        baseFileStore.close();
+        baseFileStore = new BaseFileStore(storageProperties, "test");
+        baseFileStore.open(false);
+        try (CloseableIterator<FileStoreEntry> it = baseFileStore.iterator(0)) {
+            while( it.hasNext()) {
+                System.out.println(it.next());
+            }
+        }
+        FileStoreEntry entry = baseFileStore.read(0).block();
+        assertEquals("one", new String(entry.bytes()));
     }
 
     private long append(String text, int version) {

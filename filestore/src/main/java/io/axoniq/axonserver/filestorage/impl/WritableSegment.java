@@ -123,7 +123,7 @@ public class WritableSegment extends AbstractSegment {
         long first = getFirstFile(lastInitialized, storageDir);
         WritableEntrySource buffer = getOrOpenDatafile(first, storageProperties.getSegmentSize(), false);
         long sequence = first;
-        try (CloseableIterator<FileStoreEntry> iterator = buffer.createLogEntryIterator(first)) {
+        try (CloseableIterator<FileStoreEntry> iterator = new SegmentEntryIterator(buffer, first)) {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
             while (iterator.hasNext()) {
@@ -298,7 +298,6 @@ public class WritableSegment extends AbstractSegment {
             Checksum checksum = new Checksum();
             writeBuffer.put(entry.bytes());
             writeBuffer.putInt(checksum.update(entry.bytes()).get());
-            writeBuffer.position(writePosition.position);
         }
         writeBuffer.position(writePosition.position);
         writeBuffer.putInt(entries.get(0).bytes().length);

@@ -9,10 +9,14 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.impl.EventStoreTransformationJpa;
 import io.axoniq.axonserver.eventstore.transformation.impl.EventStoreTransformationRepository;
+import io.axoniq.axonserver.topology.Topology;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collection;
@@ -24,25 +28,26 @@ import java.util.Collection;
 @RestController
 public class TransformationAdminRestController {
 
-    private final DefaultEventStoreTransformationService eventStoreTransformationService;
+    private final EventStoreTransformationService eventStoreTransformationService;
     private final EventStoreTransformationRepository eventStoreTransformationRepository;
 
     public TransformationAdminRestController(
-            DefaultEventStoreTransformationService eventStoreTransformationService,
+            EventStoreTransformationService eventStoreTransformationService,
             EventStoreTransformationRepository eventStoreTransformationRepository) {
         this.eventStoreTransformationService = eventStoreTransformationService;
         this.eventStoreTransformationRepository = eventStoreTransformationRepository;
     }
 
-//    @DeleteMapping("v1/transformations")
-//    public void cancelTransformation() {
-//        eventStoreTransformationService.cancelTransformation(Topology.DEFAULT_CONTEXT);
-//    }
-//
-//    @PostMapping("v1/transformations")
-//    public void applyTransformation() {
-//        eventStoreTransformationService.applyTransformation(Topology.DEFAULT_CONTEXT);
-//    }
+    @DeleteMapping("v1/transformations")
+    public void cancelTransformation(@RequestParam("id") String id) {
+        eventStoreTransformationService.cancelTransformation(Topology.DEFAULT_CONTEXT, id).block();
+    }
+
+    @PostMapping("v1/transformations")
+    public void applyTransformation(@RequestParam("id") String id, @RequestParam("lastToken") long lastToken) {
+        eventStoreTransformationService.applyTransformation(Topology.DEFAULT_CONTEXT, id, lastToken, false)
+                .subscribe(v -> System.out.println("Done"), t -> t.printStackTrace());
+    }
 
     @GetMapping("v1/transformations")
     public Collection<EventStoreTransformationJpa> get() {

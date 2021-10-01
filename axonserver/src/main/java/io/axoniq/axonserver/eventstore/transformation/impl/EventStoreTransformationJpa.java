@@ -41,7 +41,8 @@ public class EventStoreTransformationJpa {
         APPLYING,
         APPLIED,
         FAILED,
-        DONE
+        DONE,
+        READY_FOR_APPLY
     }
     @Id
     private String transformationId;

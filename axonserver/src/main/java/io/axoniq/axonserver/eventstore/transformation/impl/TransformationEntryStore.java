@@ -16,6 +16,7 @@ import io.axoniq.axonserver.filestorage.impl.BaseFileStore;
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -62,6 +63,10 @@ public class TransformationEntryStore {
             }
         };
     }
+
+     public Flux<TransformEventsRequest> entries() {
+        return fileStore.stream(0).map(this::parse);
+     }
 
     public Mono<Void> append(TransformEventsRequest replaceEventEntry) {
         return fileStore.append(new FileStoreEntry() {

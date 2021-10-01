@@ -11,7 +11,7 @@ package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
+import java.util.List;
 
 /**
  * @author Marc Gathier
@@ -19,5 +19,5 @@ import java.util.Optional;
  */
 public interface EventStoreTransformationRepository extends JpaRepository<EventStoreTransformationJpa, String> {
 
-    Optional<EventStoreTransformationJpa> findByContext(String context);
+    List<EventStoreTransformationJpa> findByContext(String context);
 }

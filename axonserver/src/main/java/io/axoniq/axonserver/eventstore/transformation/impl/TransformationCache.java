@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.PostConstruct;
 import javax.transaction.Transactional;
 
 /**
@@ -37,17 +38,21 @@ public class TransformationCache {
         this.transformationStoreRegistry = transformationStoreRegistry;
     }
 
-    public void init(String context) {
-        eventStoreTransformationRepository.findByContext(context)
-                .ifPresent(transformation -> {
-                    EventStoreTransformation eventStoreTransformation = new EventStoreTransformation(transformation.getTransformationId(), context);
-                    TransformationEntryStore store = transformationStoreRegistry.register(context,
-                                                                                                            transformation.getTransformationId());
-                    TransformEventsRequest entry = store.lastEntry();
-                    if (entry != null) {
-                        eventStoreTransformation.previousToken(token(entry));
+    @PostConstruct
+    public void init() {
+        eventStoreTransformationRepository.findAll()
+                .forEach(transformation -> {
+                    if (isActive(transformation.getStatus())) {
+                        EventStoreTransformation eventStoreTransformation = new EventStoreTransformation(transformation.getTransformationId(),
+                                                                                                         transformation.getContext());
+                        TransformationEntryStore store = transformationStoreRegistry.register(transformation.getContext(),
+                                                                                              transformation.getTransformationId());
+                        TransformEventsRequest entry = store.lastEntry();
+                        if (entry != null) {
+                            eventStoreTransformation.previousToken(token(entry));
+                        }
+                        activeTransformations.put(transformation.getTransformationId(), eventStoreTransformation);
                     }
-                    activeTransformations.put(transformation.getTransformationId(), eventStoreTransformation);
                 });
     }
 
@@ -69,11 +74,6 @@ public class TransformationCache {
 
     @Transactional
     public void create(String context, String transformationId) {
-        eventStoreTransformationRepository.findByContext(context).ifPresent(eventStoreTransformationJpa -> {
-            if( !isActive(eventStoreTransformationJpa.getStatus())) {
-                throw new RuntimeException("Active transformation found for context " + context);
-            }
-        });
         EventStoreTransformationJpa transformationJpa = new EventStoreTransformationJpa(transformationId, context);
         eventStoreTransformationRepository.save(transformationJpa);
         transformationStoreRegistry.register(context, transformationId);
@@ -118,10 +118,7 @@ public class TransformationCache {
     public Mono<Void> add(String transformationId, TransformEventsRequest transformEventsRequest) {
         EventStoreTransformation transformation = activeTransformations.get(transformationId);
         return transformationStoreRegistry.get(transformationId).append(transformEventsRequest)
-                .doOnSuccess(result -> {
-                    System.out.printf("Added entry #%d, token = %d%n", 0, token(transformEventsRequest));
-                    transformation.previousToken(token(transformEventsRequest));
-                });
+                .doOnSuccess(result -> transformation.previousToken(token(transformEventsRequest)));
     }
 
 
@@ -150,5 +147,16 @@ public class TransformationCache {
     public void complete(String transformationId) {
         activeTransformations.remove(transformationId);
         setTransformationStatus(transformationId, EventStoreTransformationJpa.Status.DONE);
+    }
+
+    @Transactional
+    public void sync(String transformationId, String context, EventStoreTransformationJpa.Status status,
+                     boolean keepOldVersions) {
+        EventStoreTransformationJpa transformationJpa = new EventStoreTransformationJpa(transformationId, context);
+        transformationJpa.setStatus(status);
+        transformationJpa.setKeepOldVersions(keepOldVersions);
+        eventStoreTransformationRepository.save(transformationJpa);
+        transformationStoreRegistry.register(context, transformationId);
+        activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
     }
 }
