@@ -10,14 +10,16 @@
 package io.axoniq.axonserver.access.user;
 
 import io.axoniq.axonserver.access.jpa.User;
-import org.junit.*;
+import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static io.axoniq.axonserver.access.user.UserController.PWD_NOLOGON;
+import static io.axoniq.axonserver.admin.user.requestprocessor.UserController.PWD_NOLOGON;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.mockito.Matchers.any;

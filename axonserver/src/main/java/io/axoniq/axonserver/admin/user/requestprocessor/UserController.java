@@ -7,10 +7,11 @@
  *
  */
 
-package io.axoniq.axonserver.access.user;
+package io.axoniq.axonserver.admin.user.requestprocessor;
 
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
+import io.axoniq.axonserver.access.user.UserRepository;
 import io.axoniq.axonserver.util.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
