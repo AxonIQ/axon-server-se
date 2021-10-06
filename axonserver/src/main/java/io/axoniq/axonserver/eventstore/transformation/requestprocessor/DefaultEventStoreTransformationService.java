@@ -9,10 +9,10 @@
 
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationCache;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
-import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -43,7 +43,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     public Mono<String> startTransformation(String context) {
         return Mono.create(sink -> {
             String id = UUID.randomUUID().toString();
-            transformationCache.create(context, id);
+            transformationCache.reserve(context, id);
             transformationProcessor.startTransformation(context, id);
             sink.success(id);
         });
@@ -71,6 +71,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
         return Mono.create(sink -> {
             transformationValidator.cancel(context, id);
             transformationProcessor.cancel(id);
+            sink.success();
         });
     }
 
@@ -79,8 +80,27 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                                           boolean keepOldVersions) {
         return Mono.create(sink -> {
             transformationValidator.apply(context, transformationId, lastEventToken);
-            transformationProcessor.apply(transformationId, keepOldVersions);
-            transformationProcessor.complete(transformationId);
+            transformationProcessor.apply(transformationId, keepOldVersions)
+                                   .thenAccept(result -> transformationProcessor.complete(transformationId));
+            sink.success();
+        });
+    }
+
+    @Override
+    public Mono<Void> rollbackTransformation(String context, String id) {
+        return Mono.create(sink -> {
+            transformationValidator.rollback(context, id);
+            transformationProcessor.rollbackTransformation(context, id);
+            sink.success();
+        });
+    }
+
+    @Override
+    public Mono<Void> deleteOldVersions(String context, String id) {
+        return Mono.create(sink -> {
+            transformationValidator.deleteOldVersions(context, id);
+            transformationProcessor.deleteOldVersions(context, id);
+            sink.success();
         });
     }
 }

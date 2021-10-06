@@ -14,6 +14,7 @@ import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -133,8 +134,9 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventStoreLocator.class)
-    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore) {
-        return new DefaultEventStoreLocator(localEventStore);
+    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore,
+                                               TransformationProcessor transformationProcessor) {
+        return new DefaultEventStoreLocator(localEventStore, transformationProcessor);
     }
 
     @Bean

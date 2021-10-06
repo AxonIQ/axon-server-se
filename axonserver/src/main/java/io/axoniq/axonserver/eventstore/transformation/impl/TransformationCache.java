@@ -15,7 +15,9 @@ import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.PostConstruct;
 import javax.transaction.Transactional;
@@ -78,6 +80,15 @@ public class TransformationCache {
         eventStoreTransformationRepository.save(transformationJpa);
         transformationStoreRegistry.register(context, transformationId);
         activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
+    }
+
+    public void reserve(String context, String transformationId) {
+        synchronized (activeTransformations) {
+            if (activeTransformations.values().stream().anyMatch(tr -> context.equals(tr.context()))) {
+                throw new RuntimeException("Transformation already active for " + context);
+            }
+            activeTransformations.put(transformationId, new EventStoreTransformation(transformationId, context));
+        }
     }
 
     private boolean isActive(EventStoreTransformationJpa.Status status) {
@@ -158,5 +169,13 @@ public class TransformationCache {
         eventStoreTransformationRepository.save(transformationJpa);
         transformationStoreRegistry.register(context, transformationId);
         activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
+    }
+
+    public List<EventStoreTransformationJpa> findTransformation(String context) {
+        return eventStoreTransformationRepository.findByContext(context);
+    }
+
+    public Optional<EventStoreTransformationJpa> transformation(String transformationId) {
+        return eventStoreTransformationRepository.findById(transformationId);
     }
 }

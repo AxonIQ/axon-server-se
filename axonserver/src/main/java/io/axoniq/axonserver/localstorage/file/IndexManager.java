@@ -123,4 +123,6 @@ public interface IndexManager {
     void createNewVersion(long segment, int version, Map<String, List<IndexEntry>> indexEntriesMap);
 
     boolean remove(FileVersion fileVersion);
+
+    void activeVersion(long segment, int version);
 }

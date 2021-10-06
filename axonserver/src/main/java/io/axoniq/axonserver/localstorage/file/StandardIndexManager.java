@@ -274,6 +274,11 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
+    public void activeVersion(long segment, int version) {
+        indexesDescending.put(segment, version);
+    }
+
+    @Override
     public void createNewVersion(long segment, int version, Map<String, List<IndexEntry>> indexEntriesMap) {
         FileVersion newVersion = new FileVersion(segment, version);
         if (indexEntriesMap == null) {

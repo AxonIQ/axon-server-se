@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.interceptor.NoOpEventInterceptors;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -36,6 +37,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -152,7 +154,9 @@ public class HttpStreamingQueryTest {
             }
         }, new SimpleMeterRegistry(), eventStore -> null, new NoOpEventInterceptors());
         localEventStore.initContext(Topology.DEFAULT_CONTEXT, false);
-        EventStoreLocator eventStoreLocator = new DefaultEventStoreLocator(localEventStore);
+        TransformationProcessor transformationProcessor = mock(TransformationProcessor.class);
+        EventStoreLocator eventStoreLocator = new DefaultEventStoreLocator(localEventStore,
+                                                                           transformationProcessor);
         testSubject = new HttpStreamingQuery(eventStoreLocator);
     }
 

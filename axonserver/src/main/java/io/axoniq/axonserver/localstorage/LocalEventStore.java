@@ -27,6 +27,7 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
+import io.axoniq.axonserver.localstorage.file.FileVersion;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
@@ -851,11 +852,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
      */
     public CloseableIterator<SerializedTransactionWithToken> eventTransactionsIterator(String context, long fromToken,
                                                                                        long toToken) {
-        return workersMap.get(context).eventStorageEngine.transactionIterator(fromToken, toToken);
+        return workers(context).eventStorageEngine.transactionIterator(fromToken, toToken);
     }
 
     public CloseableIterator<SerializedEventWithToken> eventIterator(String context, long fromToken) {
-        return workersMap.get(context).eventStorageEngine.getGlobalIterator(fromToken);
+        return workers(context).eventStorageEngine.getGlobalIterator(fromToken);
     }
 
     /**
@@ -941,6 +942,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public boolean activeContext(String context) {
         return workersMap.containsKey(context) && workersMap.get(context).initialized;
+    }
+
+    public void deleteSegments(String context, List<FileVersion> segmentVersions) {
+        workers(context).deleteSegments(segmentVersions);
+    }
+
+    public void rollbackSegments(String context, List<FileVersion> segmentVersions) {
+        workers(context).rollbackSegments(segmentVersions);
     }
 
     private class Workers {
@@ -1049,6 +1058,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private void validateActiveConnections() {
             long minLastPermits = System.currentTimeMillis() - newPermitsTimeout;
             trackingEventManager.validateActiveConnections(minLastPermits);
+        }
+
+        public void deleteSegments(List<FileVersion> segmentVersions) {
+            eventStorageEngine.deleteSegments(segmentVersions);
+        }
+
+        public void rollbackSegments(List<FileVersion> segmentVersions) {
+            eventStorageEngine.rollbackSegments(segmentVersions);
         }
     }
 

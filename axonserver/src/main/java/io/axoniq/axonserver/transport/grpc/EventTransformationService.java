@@ -183,4 +183,28 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
                                                             request.getKeepOldVersions())
                                        .subscribe(new ConfirmationSubscriber(responseObserver));
     }
+
+    @Override
+    public void rollbackTransformation(TransformationId request, StreamObserver<Confirmation> responseObserver) {
+        String context = contextProvider.getContext();
+        Authentication authentication = authenticationProvider.get();
+        auditLog.info("{}@{}: Request to rollback transformation {}",
+                      authentication.getName(),
+                      context,
+                      request.getId());
+        eventStoreTransformationService.rollbackTransformation(context, request.getId())
+                .subscribe(new ConfirmationSubscriber(responseObserver));
+    }
+
+    @Override
+    public void deleteOldVersions(TransformationId request, StreamObserver<Confirmation> responseObserver) {
+        String context = contextProvider.getContext();
+        Authentication authentication = authenticationProvider.get();
+        auditLog.info("{}@{}: Request to delete old event store files from transformation {}",
+                      authentication.getName(),
+                      context,
+                      request.getId());
+        eventStoreTransformationService.deleteOldVersions(context, request.getId())
+                                       .subscribe(new ConfirmationSubscriber(responseObserver));
+    }
 }

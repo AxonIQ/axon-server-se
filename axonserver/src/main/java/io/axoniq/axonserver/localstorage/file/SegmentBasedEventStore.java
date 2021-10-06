@@ -292,6 +292,44 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
     }
 
+    @Override
+    public void deleteSegments(List<FileVersion> segmentVersions) {
+        SortedSet<Long> mySegments = getSegments();
+        List<FileVersion> remainingSegmentVersions = new ArrayList<>();
+        segmentVersions.forEach(s -> {
+            if (mySegments.contains(s.segment()) ) {
+                scheduleForDeletion(s.segment(), s.version());
+            } else {
+                remainingSegmentVersions.add(s);
+            }
+        });
+
+        if (next != null) {
+            next.deleteSegments(remainingSegmentVersions);
+        }
+    }
+
+    @Override
+    public void rollbackSegments(List<FileVersion> segmentVersions) {
+        SortedSet<Long> mySegments = getSegments();
+        List<FileVersion> remainingSegmentVersions = new ArrayList<>();
+        segmentVersions.forEach(s -> {
+            if (mySegments.contains(s.segment())) {
+                if (currentSegmentVersion(s.segment()) == s.version()) {
+                    indexManager.activeVersion(s.segment(), s.version()-1);
+                    segmentActiveVersion(s.segment(), s.version()-1);
+                    scheduleForDeletion(s.segment(), s.version());
+                }
+            } else {
+                remainingSegmentVersions.add(s);
+            }
+        });
+
+        if (next != null) {
+            next.rollbackSegments(remainingSegmentVersions);
+        }
+    }
+
     private void transformSegment(long segment, int currentVersion, boolean keepOldVersion,
                                   BiFunction<Event, Long, Event> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {

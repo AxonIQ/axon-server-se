@@ -191,6 +191,7 @@ public class WritableSegment extends AbstractSegment {
                                                                   claim.position);
 
                     lastIndex.set(index);
+                    lastEntry.set(entry);
                     completableFuture.complete(index);
                 } else {
                     completableFuture.completeExceptionally(ex);

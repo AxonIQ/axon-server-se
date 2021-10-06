@@ -48,6 +48,8 @@ public class BaseFileStoreTest {
     public void append() {
         long index = append("Hello, World!", 0);
         assertEquals(0, index);
+        FileStoreEntry entry = baseFileStore.lastEntry();
+        assertEquals("Hello, World!", new String(entry.bytes()));
     }
 
     @Test
@@ -75,8 +77,11 @@ public class BaseFileStoreTest {
         Long index = result.block(Duration.ofSeconds(1));
         assertNotNull(index);
         assertEquals(0, index.longValue());
+        FileStoreEntry entry = baseFileStore.lastEntry();
+        assertEquals("five", new String(entry.bytes()));
         index = append("six", 2);
         assertEquals(5, index.longValue());
+
     }
     @Test
     public void appendMultipleReopenAndRead() {

@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.localstorage.file.FileVersion;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
@@ -237,5 +238,14 @@ public interface EventStorageEngine {
     void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
                            BiFunction<Event, Long, Event> transformationFunction,
                            Consumer<TransformationProgress> transformationProgressConsumer);
+
+    default void deleteSegments(List<FileVersion> segmentVersions) {
+        throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
+    }
+
+    default void rollbackSegments(List<FileVersion> segmentVersions){
+        throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
+    }
+
 
 }

@@ -113,6 +113,16 @@ public class EventTransformationServiceTest {
                     sink.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, "Transformation not found"));
                 });
             }
+
+            @Override
+            public Mono<Void> rollbackTransformation(String context, String id) {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> deleteOldVersions(String context, String id) {
+                return Mono.empty();
+            }
         };
     }
 

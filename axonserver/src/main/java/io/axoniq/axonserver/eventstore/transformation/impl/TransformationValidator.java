@@ -113,4 +113,36 @@ public class TransformationValidator {
             throw new RuntimeException("Invalid aggregate sequence number for: " + token);
         }
     }
+
+    public void deleteOldVersions(String context, String transformationId) {
+        EventStoreTransformationJpa transformation = transformationCache.transformation(transformationId)
+                .orElseThrow(() -> new RuntimeException("Transformation not found"));
+        if (!transformation.getContext().equals(context)) {
+            throw new RuntimeException("Transformation id not valid for context");
+        }
+
+        if (!EventStoreTransformationJpa.Status.DONE.equals(transformation.getStatus())) {
+            throw new RuntimeException("Transformation is not completed yet");
+        }
+
+        if (!transformation.isKeepOldVersions()) {
+            throw new RuntimeException("Transformation started without keep old versions option");
+        }
+    }
+
+    public void rollback(String context, String transformationId) {
+        EventStoreTransformationJpa transformation = transformationCache.transformation(transformationId)
+                                                                        .orElseThrow(() -> new RuntimeException("Transformation not found"));
+        if (!transformation.getContext().equals(context)) {
+            throw new RuntimeException("Transformation id not valid for context");
+        }
+
+        if (!EventStoreTransformationJpa.Status.DONE.equals(transformation.getStatus())) {
+            throw new RuntimeException("Transformation is not completed yet");
+        }
+
+        if (!transformation.isKeepOldVersions()) {
+            throw new RuntimeException("Transformation started without keep old versions option");
+        }
+    }
 }
