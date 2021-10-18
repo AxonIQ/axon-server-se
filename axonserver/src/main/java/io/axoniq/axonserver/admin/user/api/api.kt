@@ -8,7 +8,7 @@ import io.axoniq.axonserver.access.jpa.User
  *
  * @author Marc Gathier
  * @author Stefan Dragisic
- * @since 4.6
+ * @since 4.6.0
  */
 interface UserAdminService {
     /**
