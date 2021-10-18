@@ -55,6 +55,7 @@
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <gson.version>2.8.7</gson.version>
         <axonserver-plugin-api.version>4.6.0-SNAPSHOT</axonserver-plugin-api.version>
+        <axonserver.api.version>4.6.0-SNAPSHOT</axonserver.api.version>
         <flow.control.version>1.0</flow.control.version>
         <spring-boot.version>2.5.3</spring-boot.version>
     </properties>
@@ -108,6 +109,11 @@
                 <groupId>com.google.code.findbugs</groupId>
                 <artifactId>jsr305</artifactId>
                 <version>3.0.2</version>
+            </dependency>
+            <dependency>
+                <groupId>io.axoniq</groupId>
+                <artifactId>axon-server-api</artifactId>
+                <version>${axonserver.api.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
