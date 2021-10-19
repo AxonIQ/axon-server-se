@@ -9,16 +9,14 @@
 
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
-import java.util.HashSet;
-import java.util.Set;
-import javax.persistence.CascadeType;
+import java.util.Date;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
 import javax.persistence.Id;
-import javax.persistence.OneToMany;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 
 /**
  * @author Marc Gathier
@@ -38,25 +36,28 @@ public class EventStoreTransformationJpa {
 
     public enum Status {
         CREATED,
-        APPLYING,
-        APPLIED,
-        FAILED,
+        CLOSED,
         DONE,
-        READY_FOR_APPLY
+        FAILED
     }
     @Id
     private String transformationId;
     private String context;
-
-    private long nextToken;
 
     @Enumerated(EnumType.ORDINAL)
     private Status status;
 
     private boolean keepOldVersions;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "transformation", fetch = FetchType.EAGER)
-    private Set<EventStoreTransformationLogJpa> segmentUpdates = new HashSet<>();
+    private int version;
+
+    private String description;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date dateApplied;
+
+    private String appliedBy;
+
 
     public EventStoreTransformationJpa(String transformationId, String context) {
         this.transformationId = transformationId;
@@ -91,20 +92,35 @@ public class EventStoreTransformationJpa {
         this.status = status;
     }
 
-    public void add(EventStoreTransformationLogJpa log) {
-        segmentUpdates.add(log);
-        log.setTransformation(this);
+    public int getVersion() {
+        return version;
     }
 
-    public Set<EventStoreTransformationLogJpa> getSegmentUpdates() {
-        return segmentUpdates;
+    public void setVersion(int version) {
+        this.version = version;
     }
 
-    public long getNextToken() {
-        return nextToken;
+    public String getDescription() {
+        return description;
     }
 
-    public void setNextToken(long nextToken) {
-        this.nextToken = nextToken;
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Date getDateApplied() {
+        return dateApplied;
+    }
+
+    public void setDateApplied(Date dateApplied) {
+        this.dateApplied = dateApplied;
+    }
+
+    public String getAppliedBy() {
+        return appliedBy;
+    }
+
+    public void setAppliedBy(String appliedBy) {
+        this.appliedBy = appliedBy;
     }
 }

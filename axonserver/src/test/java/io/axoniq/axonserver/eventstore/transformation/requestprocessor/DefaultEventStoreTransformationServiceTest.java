@@ -13,12 +13,13 @@ import io.axoniq.axonserver.eventstore.transformation.impl.TransformationCache;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.junit.*;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.util.Date;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.Mockito.*;
 
@@ -37,10 +38,13 @@ public class DefaultEventStoreTransformationServiceTest {
         TransformationCache transformationCache = mock(TransformationCache.class);
 
         when(transformationProcessor.apply(anyString(),
-                                           anyBoolean())).thenReturn(CompletableFuture.completedFuture(null));
+                                           anyBoolean(),
+                                           "TestUser",
+                                           new Date()));
         testSubject = new DefaultEventStoreTransformationService(transformationCache,
                                                                  transformationValidator,
-                                                                 transformationProcessor);
+                                                                 transformationProcessor,
+        mock(LocalEventStore.class));
     }
 
     @Test
@@ -86,7 +90,7 @@ public class DefaultEventStoreTransformationServiceTest {
         StepVerifier.create(testSubject.applyTransformation("demo",
                                                             "1234",
                                                             100,
-                                                            false))
+                                                            false, "user"))
                     .expectComplete()
                     .verify();
     }
@@ -99,7 +103,7 @@ public class DefaultEventStoreTransformationServiceTest {
         StepVerifier.create(testSubject.applyTransformation("demo",
                                                             "1234",
                                                             100,
-                                                            false))
+                                                            false, "user"))
                     .expectError(IllegalStateException.class)
                     .verify();
     }

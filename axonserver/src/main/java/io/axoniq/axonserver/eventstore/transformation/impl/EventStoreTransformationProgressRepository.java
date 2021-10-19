@@ -7,12 +7,14 @@
  *
  */
 
-package io.axoniq.axonserver.localstorage.file;
+package io.axoniq.axonserver.eventstore.transformation.impl;
+
+import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
-public interface TransformationProgress {
-    long lastTokenProcessed();
+public interface EventStoreTransformationProgressRepository extends JpaRepository<EventStoreTransformationProgress, String> {
+
 }

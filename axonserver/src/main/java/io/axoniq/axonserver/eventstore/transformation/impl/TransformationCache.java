@@ -10,15 +10,16 @@
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
-import io.axoniq.axonserver.localstorage.file.NewSegmentVersion;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.PostConstruct;
 import javax.transaction.Transactional;
 
@@ -32,12 +33,16 @@ public class TransformationCache {
     private final Map<String, EventStoreTransformation> activeTransformations = new ConcurrentHashMap<>();
     private final EventStoreTransformationRepository eventStoreTransformationRepository;
     private final TransformationStoreRegistry transformationStoreRegistry;
+    private final EventStoreTransformationProgressRepository eventStoreTransformationProgressRepository;
+
 
     public TransformationCache(
             EventStoreTransformationRepository eventStoreTransformationRepository,
-            TransformationStoreRegistry transformationStoreRegistry) {
+            TransformationStoreRegistry transformationStoreRegistry,
+            EventStoreTransformationProgressRepository eventStoreTransformationProgressRepository) {
         this.eventStoreTransformationRepository = eventStoreTransformationRepository;
         this.transformationStoreRegistry = transformationStoreRegistry;
+        this.eventStoreTransformationProgressRepository = eventStoreTransformationProgressRepository;
     }
 
     @PostConstruct
@@ -75,11 +80,15 @@ public class TransformationCache {
     }
 
     @Transactional
-    public void create(String context, String transformationId) {
-        EventStoreTransformationJpa transformationJpa = new EventStoreTransformationJpa(transformationId, context);
-        eventStoreTransformationRepository.save(transformationJpa);
-        transformationStoreRegistry.register(context, transformationId);
-        activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
+    public void create(String context, String transformationId, int version, String description) {
+        synchronized (eventStoreTransformationRepository) {
+            EventStoreTransformationJpa transformationJpa = new EventStoreTransformationJpa(transformationId, context);
+            transformationJpa.setVersion(version);
+            transformationJpa.setDescription(description);
+            eventStoreTransformationRepository.save(transformationJpa);
+            transformationStoreRegistry.register(context, transformationId);
+            activeTransformations.put(transformationId, new EventStoreTransformation(transformationId, context));
+        }
     }
 
     public void reserve(String context, String transformationId) {
@@ -92,18 +101,14 @@ public class TransformationCache {
     }
 
     private boolean isActive(EventStoreTransformationJpa.Status status) {
-        switch (status) {
-            case CREATED:
-            case APPLYING:
-                return true;
-            default:
-                return false;
-        }
+        return !status.equals(EventStoreTransformationJpa.Status.DONE);
     }
 
     @Transactional
     public void delete(String transformationId) {
         eventStoreTransformationRepository.deleteById(transformationId);
+        eventStoreTransformationProgressRepository.findById(transformationId)
+                                                          .ifPresent(eventStoreTransformationProgressRepository::delete);
         activeTransformations.remove(transformationId);
     }
 
@@ -117,14 +122,18 @@ public class TransformationCache {
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public void startApply(String transformationId, boolean keepOldVersions) {
+    public void startApply(String transformationId, boolean keepOldVersions, String appliedBy,
+                           Date appliedDate) {
         EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
                                                                                           .orElseThrow(() -> new RuntimeException(
                                                                                                   "Transformation not found"));
-        transformationJpa.setStatus(EventStoreTransformationJpa.Status.APPLYING);
+        transformationJpa.setStatus(EventStoreTransformationJpa.Status.CLOSED);
+        transformationJpa.setDateApplied(appliedDate);
+        transformationJpa.setAppliedBy(appliedBy);
         transformationJpa.setKeepOldVersions(keepOldVersions);
         eventStoreTransformationRepository.save(transformationJpa);
-    }
+        getOrCreateProgress(transformationId);
+   }
 
     public Mono<Void> add(String transformationId, TransformEventsRequest transformEventsRequest) {
         EventStoreTransformation transformation = activeTransformations.get(transformationId);
@@ -135,16 +144,11 @@ public class TransformationCache {
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void setProgress(String transformationId, TransformationProgress transformationProgress) {
-        EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
+        EventStoreTransformationProgress transformationJpa = eventStoreTransformationProgressRepository.findById(transformationId)
                                                                                           .orElseThrow(() -> new RuntimeException(
                                                                                                   "Transformation not found"));
-        transformationJpa.setNextToken(transformationProgress.nextToken());
-        if (transformationProgress instanceof NewSegmentVersion) {
-            NewSegmentVersion newSegmentVersion = (NewSegmentVersion)transformationProgress;
-            transformationJpa.add(new EventStoreTransformationLogJpa(newSegmentVersion.segment(), newSegmentVersion.version()));
-        }
-
-        eventStoreTransformationRepository.save(transformationJpa);
+        transformationJpa.setLastTokenApplied(transformationProgress.lastTokenProcessed());
+        eventStoreTransformationProgressRepository.save(transformationJpa);
     }
 
     public EventStoreTransformationJpa.Status status(String transformationId) {
@@ -162,13 +166,23 @@ public class TransformationCache {
 
     @Transactional
     public void sync(String transformationId, String context, EventStoreTransformationJpa.Status status,
-                     boolean keepOldVersions) {
+                     boolean keepOldVersions,
+                     int version,
+                     String description,
+                     String appliedBy,
+                     Date dateApplied) {
         EventStoreTransformationJpa transformationJpa = new EventStoreTransformationJpa(transformationId, context);
         transformationJpa.setStatus(status);
         transformationJpa.setKeepOldVersions(keepOldVersions);
+        transformationJpa.setVersion(version);
+        transformationJpa.setDescription(description);
+        transformationJpa.setAppliedBy(appliedBy);
+        transformationJpa.setDateApplied(dateApplied);
         eventStoreTransformationRepository.save(transformationJpa);
-        transformationStoreRegistry.register(context, transformationId);
-        activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
+        if (!EventStoreTransformationJpa.Status.DONE.equals(status)) {
+            transformationStoreRegistry.register(context, transformationId);
+            activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
+        }
     }
 
     public List<EventStoreTransformationJpa> findTransformation(String context) {
@@ -177,5 +191,33 @@ public class TransformationCache {
 
     public Optional<EventStoreTransformationJpa> transformation(String transformationId) {
         return eventStoreTransformationRepository.findById(transformationId);
+    }
+
+    public EventStoreTransformationProgress getOrCreateProgress(String transformationId) {
+        return eventStoreTransformationProgressRepository.findById(transformationId)
+                .orElseGet(() -> {
+                    EventStoreTransformationProgress progress = new EventStoreTransformationProgress();
+                    progress.setTransformationId(transformationId);
+                    return eventStoreTransformationProgressRepository.save(progress);
+                });
+    }
+
+    public Optional<EventStoreTransformationProgress> progress(String transformationId) {
+        return eventStoreTransformationProgressRepository.findById(transformationId);
+    }
+
+
+    public void completeTransformation(String transformationId) {
+        EventStoreTransformationProgress transformation = getOrCreateProgress(transformationId);
+        transformation.setCompleted(true);
+        eventStoreTransformationProgressRepository.save(transformation);
+    }
+
+    public int nextVersion(String context) {
+        AtomicInteger lastVersion = new AtomicInteger(0);
+        findTransformation(context).forEach(t -> {
+            lastVersion.updateAndGet(old -> Math.max(old, t.getVersion()));
+        });
+        return lastVersion.get()+1;
     }
 }

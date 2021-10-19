@@ -14,18 +14,15 @@ import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.TrackingEventProcessorManager;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
@@ -34,8 +31,6 @@ import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
 import reactor.test.StepVerifier;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -336,7 +331,7 @@ public class PrimaryEventStoreTest {
             assertTrue(latch.await(5, TimeUnit.SECONDS));
             assertWithin( 30, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegments().size()));
 
-            testSubject.transformContents(0, Long.MAX_VALUE, false, (e, token) -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token) -> {
                 if (!"Aggregate-1".equals(e.getAggregateIdentifier())) {
                     return e;
                 }
@@ -385,7 +380,7 @@ public class PrimaryEventStoreTest {
             assertWithin( 30, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegments().size()));
 
 
-            testSubject.transformContents(0, Long.MAX_VALUE, false, (e, token)  -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token)  -> {
                 if (!"Aggregate-9".equals(e.getAggregateIdentifier())) {
                     return e;
                 }
@@ -402,91 +397,6 @@ public class PrimaryEventStoreTest {
                                                       .block(Duration.ofSeconds(5));
             assertEquals(100, events.size());
             events.forEach(e -> assertEquals("Transformed", e.getPayloadType()));
-        } finally {
-            Thread.sleep(10);
-            testSubject.close(true);
-        }
-    }
-
-    @Test
-    public void testSoftDelete() throws InterruptedException, ExecutionException, TimeoutException {
-        PrimaryEventStore testSubject = primaryEventStore();
-        try {
-            CountDownLatch latch = new CountDownLatch(10);
-            SerializedObject payload = SerializedObject.newBuilder()
-                                                       .setData(randomData(500))
-                                                       .setType("ToBeTransformed")
-                                                       .build();
-            // setup with 1,000 events
-            IntStream.range(0, 10).forEach(j -> {
-                String aggId = "Aggregate-" + j;
-                List<Event> newEvents = new ArrayList<>();
-                IntStream.range(0, 100).forEach(i -> {
-                    newEvents.add(Event.newBuilder()
-                                       .setMessageIdentifier(UUID.randomUUID().toString())
-                                       .setAggregateIdentifier(aggId).setAggregateSequenceNumber(i)
-                                       .setAggregateType("Demo").setPayload(payload).build());
-                });
-                testSubject.store(newEvents).thenAccept(t -> latch.countDown());
-            });
-
-            assertTrue(latch.await(5, TimeUnit.SECONDS));
-            assertWithin( 30, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegments().size()));
-
-
-            testSubject.transformContents(0, Long.MAX_VALUE, false, (e, token)  -> {
-                if (e.getAggregateSequenceNumber() == 0) {
-                    return e;
-                }
-
-                return Event.newBuilder(e)
-                            .setMessageIdentifier("")
-                            .build();
-            }, progress -> {});
-
-            List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-9",
-                                                                          0,
-                                                                          Long.MAX_VALUE,
-                                                                          0)
-                                                      .collect(Collectors.toList())
-                                                      .block(Duration.ofSeconds(5));
-            assertEquals(1, events.size());
-            events.forEach(e -> assertEquals("ToBeTransformed", e.getPayloadType()));
-            List<EventWithToken> stream = new ArrayList<>();
-            TrackingEventProcessorManager trackingEventProcessorManager = new TrackingEventProcessorManager(testSubject, 10000);
-            TrackingEventProcessorManager.EventTracker tracker = trackingEventProcessorManager.createEventTracker(0,
-                                                                                                                  "clientId",
-                                                                                                                  false,
-                                                                                                                  new StreamObserver<InputStream>() {
-                                                                                                                      @Override
-                                                                                                                      public void onNext(
-                                                                                                                              InputStream inputStream) {
-                                                                                                                          try {
-                                                                                                                              stream.add(
-                                                                                                                                      EventWithToken
-                                                                                                                                              .parseFrom(
-                                                                                                                                                      inputStream));
-                                                                                                                          } catch (IOException e) {
-                                                                                                                              e.printStackTrace();
-                                                                                                                          }
-                                                                                                                      }
-
-                                                                                                                      @Override
-                                                                                                                      public void onError(
-                                                                                                                              Throwable throwable) {
-
-                                                                                                                      }
-
-                                                                                                                      @Override
-                                                                                                                      public void onCompleted() {
-
-                                                                                                                      }
-                                                                                                                  });
-            tracker.addPermits(5000);
-            tracker.start();
-            assertWithin(1, TimeUnit.HOURS, () -> assertEquals(10, stream.size()));
-            tracker.close();
-            stream.forEach(eventWithToken -> assertEquals(0, eventWithToken.getEvent().getAggregateSequenceNumber()));
         } finally {
             Thread.sleep(10);
             testSubject.close(true);
@@ -548,7 +458,7 @@ public class PrimaryEventStoreTest {
             });
 
 
-            testSubject.transformContents(0, Long.MAX_VALUE, false, (e, token)  -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token)  -> {
                 if (!"Aggregate-1".equals(e.getAggregateIdentifier())) {
                     return e;
                 }

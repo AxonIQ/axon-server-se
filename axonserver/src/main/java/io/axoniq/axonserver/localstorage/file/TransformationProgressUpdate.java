@@ -11,24 +11,24 @@ package io.axoniq.axonserver.localstorage.file;
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
 public class TransformationProgressUpdate implements TransformationProgress {
 
-    private final long nextToken;
+    private final long lastTokenProcessed;
 
-    public TransformationProgressUpdate(long nextToken) {
-        this.nextToken = nextToken;
+    public TransformationProgressUpdate(long lastTokenProcessed) {
+        this.lastTokenProcessed = lastTokenProcessed;
     }
 
-    public long nextToken() {
-        return nextToken;
+    public long lastTokenProcessed() {
+        return lastTokenProcessed;
     }
 
     @Override
     public String toString() {
         return "TransformationProgressUpdate{" +
-                "nextToken=" + nextToken +
+                "lastTokenProcessed=" + lastTokenProcessed +
                 '}';
     }
 }

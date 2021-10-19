@@ -108,7 +108,7 @@ public class InputStreamEventStoreTest {
 
     @Test
     public void transform() {
-        testSubject.transformContents(0, Long.MAX_VALUE, false, (event, token) -> {
+        testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (event, token) -> {
             System.out.println("id=" + event.getAggregateIdentifier());
             if (event.getAggregateIdentifier().equals("abb070e9-943f-4947-8def-c50481b968c7")) {
                 return Event.getDefaultInstance();

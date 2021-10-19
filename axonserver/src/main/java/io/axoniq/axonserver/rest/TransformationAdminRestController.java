@@ -13,11 +13,13 @@ import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformati
 import io.axoniq.axonserver.eventstore.transformation.impl.EventStoreTransformationJpa;
 import io.axoniq.axonserver.eventstore.transformation.impl.EventStoreTransformationRepository;
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.util.Collection;
 
@@ -39,13 +41,19 @@ public class TransformationAdminRestController {
     }
 
     @DeleteMapping("v1/transformations")
-    public void cancelTransformation(@RequestParam("id") String id) {
-        eventStoreTransformationService.cancelTransformation(Topology.DEFAULT_CONTEXT, id).block();
+    public void cancelTransformation(@RequestParam("id") String id,
+                                     @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context) {
+        eventStoreTransformationService.cancelTransformation(context, id).block();
     }
 
     @PostMapping("v1/transformations")
-    public void applyTransformation(@RequestParam("id") String id, @RequestParam("lastToken") long lastToken) {
-        eventStoreTransformationService.applyTransformation(Topology.DEFAULT_CONTEXT, id, lastToken, false)
+    public void applyTransformation(@RequestParam("id") String id,
+                                    @RequestParam("lastToken") long lastToken,
+                                    @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
+                                    @ApiIgnore final Authentication principal
+    ) {
+        eventStoreTransformationService.applyTransformation(context, id, lastToken, false,
+                                                            principal == null ? "": principal.getName())
                 .subscribe(v -> System.out.println("Done"), t -> t.printStackTrace());
     }
 

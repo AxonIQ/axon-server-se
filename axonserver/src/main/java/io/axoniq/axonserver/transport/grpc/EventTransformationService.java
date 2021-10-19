@@ -180,7 +180,8 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         eventStoreTransformationService.applyTransformation(context,
                                                             request.getTransformationId().getId(),
                                                             request.getLastEventToken(),
-                                                            request.getKeepOldVersions())
+                                                            request.getKeepOldVersions(),
+                                                            authentication.getName())
                                        .subscribe(new ConfirmationSubscriber(responseObserver));
     }
 

@@ -308,7 +308,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void transformContents(long firstToken, long lastToken,
-                                  boolean keepOldVersions, BiFunction<Event, Long, Event> transformationFunction,
+                                  boolean keepOldVersions, int version,
+                                  BiFunction<Event, Long, Event> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {
         if(readBuffers.firstKey() > lastToken) {
             if( readBuffers.lastKey() <= lastToken) {
@@ -321,7 +322,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         if ( next != null) {
             next.transformContents(firstToken, lastToken,
                                    keepOldVersions,
-                                   transformationFunction, transformationProgressConsumer);
+                                   version, transformationFunction, transformationProgressConsumer);
         }
     }
 

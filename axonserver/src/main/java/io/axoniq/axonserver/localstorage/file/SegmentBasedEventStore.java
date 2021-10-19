@@ -276,7 +276,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public void transformContents(long firstToken,
                                   long lastToken,
-                                  boolean keepOldVersions, BiFunction<Event, Long, Event> transformationFunction,
+                                  boolean keepOldVersions,
+                                  int newVersion,
+                                  BiFunction<Event, Long, Event> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {
         SortedSet<Long> segments = getSegments();
         NavigableSet<Long> segmentsToTransform = new TreeSet<>(Comparators.comparable());
@@ -286,58 +288,65 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             if (segment >= firstSegment && segment <= lastToken) {
                 Integer version = currentSegmentVersion(segment);
                 if (version != null) {
-                    transformSegment(segment, version, keepOldVersions, transformationFunction, transformationProgressConsumer);
+                    transformSegment(segment,
+                                     version,
+                                     keepOldVersions,
+                                     newVersion,
+                                     transformationFunction,
+                                     transformationProgressConsumer);
                 }
             }
         }
     }
 
     @Override
-    public void deleteSegments(List<FileVersion> segmentVersions) {
+    public void deleteSegments(int version) {
         SortedSet<Long> mySegments = getSegments();
-        List<FileVersion> remainingSegmentVersions = new ArrayList<>();
-        segmentVersions.forEach(s -> {
-            if (mySegments.contains(s.segment()) ) {
-                scheduleForDeletion(s.segment(), s.version());
-            } else {
-                remainingSegmentVersions.add(s);
-            }
+        mySegments.forEach(s -> {
+            scheduleForDeletion(s, version);
         });
-
         if (next != null) {
-            next.deleteSegments(remainingSegmentVersions);
+            next.deleteSegments(version);
         }
     }
 
     @Override
-    public void rollbackSegments(List<FileVersion> segmentVersions) {
+    public void rollbackSegments(int version) {
         SortedSet<Long> mySegments = getSegments();
-        List<FileVersion> remainingSegmentVersions = new ArrayList<>();
-        segmentVersions.forEach(s -> {
-            if (mySegments.contains(s.segment())) {
-                if (currentSegmentVersion(s.segment()) == s.version()) {
-                    indexManager.activeVersion(s.segment(), s.version()-1);
-                    segmentActiveVersion(s.segment(), s.version()-1);
-                    scheduleForDeletion(s.segment(), s.version());
-                }
-            } else {
-                remainingSegmentVersions.add(s);
+        mySegments.forEach(s -> {
+            if (currentSegmentVersion(s) == version) {
+                int previousVersion = previousVersion(s, version);
+                indexManager.activeVersion(s, previousVersion);
+                segmentActiveVersion(s, previousVersion);
+                scheduleForDeletion(s, version);
             }
         });
 
         if (next != null) {
-            next.rollbackSegments(remainingSegmentVersions);
+            next.rollbackSegments(version);
         }
+    }
+
+    private int previousVersion(Long segment, int version) {
+        int previous = version - 1;
+        while (previous >= 0) {
+            if (storageProperties.dataFile(context, new FileVersion(segment, previous)).exists()) {
+                return previous;
+            }
+            previous--;
+        }
+        throw new RuntimeException(context + ": No previous version found for segment: " + segment);
     }
 
     private void transformSegment(long segment, int currentVersion, boolean keepOldVersion,
+                                  int newVersion,
                                   BiFunction<Event, Long, Event> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {
         Map<String, List<IndexEntry>> indexEntriesMap = new HashMap<>();
         AtomicBoolean changed = new AtomicBoolean();
         File dataFile = storageProperties.dataFile(
                 context,
-                new FileVersion(segment, currentVersion + 1));
+                new FileVersion(segment, newVersion));
         File tempFile = new File(dataFile.getAbsolutePath() + ".temp");
         long token = segment;
         try (TransactionIterator transactionIterator = getTransactions(segment, segment);
@@ -352,13 +361,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 int i = 0;
                 for (SerializedEvent serializedEvent : transaction.getEvents()) {
                     Event event = serializedEvent.asEvent();
-                        event = transformationFunction.apply(event, transaction.getToken() + i);
-                        if (event == null) {
-                            event = Event.getDefaultInstance();
-                        }
-                        if (!serializedEvent.asEvent().equals(event)) {
-                            changed.set(true);
-                        }
+                    event = transformationFunction.apply(event, transaction.getToken() + i);
+                    if (event == null) {
+                        event = Event.getDefaultInstance();
+                    }
+                    if (!serializedEvent.asEvent().equals(event)) {
+                        changed.set(true);
+                    }
                     updatedEvents.add(event);
                     i++;
                 }
@@ -396,21 +405,20 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
         }
         if (changed.get()) {
-            indexManager.createNewVersion(segment, currentVersion + 1, indexEntriesMap);
+            indexManager.createNewVersion(segment, newVersion, indexEntriesMap);
             try {
                 FileUtils.rename(tempFile, dataFile);
-                segmentActiveVersion(segment, currentVersion + 1);
-                if( !keepOldVersion) {
+                segmentActiveVersion(segment, newVersion);
+                if (!keepOldVersion) {
                     scheduleForDeletion(segment, currentVersion);
                 }
             } catch (IOException e) {
                 throw new RuntimeException(String.format("%s: rename segment %s failed", context, tempFile), e);
             }
-            transformationProgressConsumer.accept(new NewSegmentVersion(segment, currentVersion + 1, token));
         } else {
             FileUtils.delete(tempFile);
-            transformationProgressConsumer.accept(new TransformationProgressUpdate(token));
         }
+        transformationProgressConsumer.accept(new TransformationProgressUpdate(token-1));
     }
 
     protected abstract Integer currentSegmentVersion(Long segment);
@@ -493,6 +501,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             return Optional.of(event);
         }
         return Optional.empty();
+    }
+
+    @Override
+    public boolean keepOldVersions() {
+        return storageProperties.isKeepOldVersions();
     }
 
     @Override

@@ -112,6 +112,8 @@ public class StorageProperties implements Cloneable {
      */
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
 
+    private boolean keepOldVersions = false;
+
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
     /**
@@ -430,6 +432,20 @@ public class StorageProperties implements Cloneable {
     public StorageProperties withRetentionTime(Duration[] retentionTime) {
         StorageProperties clone = cloneProperties();
         clone.retentionTime = retentionTime;
+        return clone;
+    }
+
+    public boolean isKeepOldVersions() {
+        return keepOldVersions;
+    }
+
+    public void setKeepOldVersions(boolean keepOldVersions) {
+        this.keepOldVersions = keepOldVersions;
+    }
+
+    public StorageProperties withKeepOldVersions(boolean keepOldVersions) {
+        StorageProperties clone = cloneProperties();
+        clone.keepOldVersions = keepOldVersions;
         return clone;
     }
 }

@@ -27,7 +27,6 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
-import io.axoniq.axonserver.localstorage.file.FileVersion;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
@@ -232,12 +231,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
                                                    boolean keepOldVersions,
+                                                   int version,
                                                    BiFunction<Event,Long,Event> transformationFunction,
                                                    Consumer<TransformationProgress> transformationProgressConsumer) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         runInDataFetcherPool(() -> {
             Workers workers = workersMap.get(context);
-            workers.eventStorageEngine.transformContents(firstToken, lastToken, keepOldVersions, transformationFunction, transformationProgressConsumer);
+            workers.eventStorageEngine.transformContents(firstToken, lastToken, keepOldVersions, version, transformationFunction, transformationProgressConsumer);
             result.complete(null);
         }, result::completeExceptionally);
         return result;
@@ -254,7 +254,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             workers.snapshotStorageEngine
-                    .transformContents(0, Long.MAX_VALUE, false, (snapshot, token) -> {
+                    .transformContents(0, Long.MAX_VALUE, false, workers.snapshotStorageEngine.nextVersion(), (snapshot, token) -> {
                                            Optional<Long> optionalLastSequenceNumber = workers.snapshotStorageEngine
                                                    .getLastSequenceNumber(snapshot.getAggregateIdentifier())
                                                    .filter(lastSequenceNumber ->
@@ -841,6 +841,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotStorageEngine.getLastToken();
     }
 
+    public boolean keepOldVersions(String context) {
+        return workers(context).keepOldVersions();
+    }
+
     /**
      * Creates an iterator to iterate over event transactions, starting at transaction with token fromToken and ending
      * before toToken
@@ -944,12 +948,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.containsKey(context) && workersMap.get(context).initialized;
     }
 
-    public void deleteSegments(String context, List<FileVersion> segmentVersions) {
-        workers(context).deleteSegments(segmentVersions);
+    public void deleteSegments(String context, int version) {
+        workers(context).deleteSegments(version);
     }
 
-    public void rollbackSegments(String context, List<FileVersion> segmentVersions) {
-        workers(context).rollbackSegments(segmentVersions);
+    public void rollbackSegments(String context, int version) {
+        workers(context).rollbackSegments(version);
     }
 
     private class Workers {
@@ -1060,12 +1064,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             trackingEventManager.validateActiveConnections(minLastPermits);
         }
 
-        public void deleteSegments(List<FileVersion> segmentVersions) {
-            eventStorageEngine.deleteSegments(segmentVersions);
+        public void deleteSegments(int version) {
+            eventStorageEngine.deleteSegments(version);
         }
 
-        public void rollbackSegments(List<FileVersion> segmentVersions) {
-            eventStorageEngine.rollbackSegments(segmentVersions);
+        public void rollbackSegments(int version) {
+            eventStorageEngine.rollbackSegments(version);
+        }
+
+        public boolean keepOldVersions() {
+            return eventStorageEngine.keepOldVersions();
         }
     }
 

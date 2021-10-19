@@ -39,7 +39,7 @@ public class TransformationStoreRegistry {
             StorageProperties storageProperties = new StorageProperties();
             storageProperties.setStorage(Paths.get(baseDirectory, transformationId).toFile());
             storageProperties.setSuffix(".events");
-            logger.warn("{}: creating transformation store for {}", context, transformationId);
+            logger.info("{}: creating transformation store for {}", context, transformationId);
             return new TransformationEntryStore(storageProperties, context + "/" + transformationId);
         });
         store.open(false);

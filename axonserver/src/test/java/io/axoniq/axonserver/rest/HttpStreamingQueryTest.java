@@ -136,7 +136,7 @@ public class HttpStreamingQueryTest {
 
             @Override
             public void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
-                                          BiFunction<Event, Long, Event> transformationFunction,
+                                          int version, BiFunction<Event, Long, Event> transformationFunction,
                                           Consumer<TransformationProgress> transformationProgressConsumer) {
 
             }

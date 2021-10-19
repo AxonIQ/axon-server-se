@@ -26,7 +26,8 @@ public interface EventStoreTransformationService {
 
     Mono<Void> cancelTransformation(String context, String id);
 
-    Mono<Void> applyTransformation(String context, String id, long lastEventToken, boolean keepOldVersions);
+    Mono<Void> applyTransformation(String context, String id, long lastEventToken, boolean keepOldVersions,
+                                   String appliedBy);
 
     Mono<Void> rollbackTransformation(String context, String id);
 

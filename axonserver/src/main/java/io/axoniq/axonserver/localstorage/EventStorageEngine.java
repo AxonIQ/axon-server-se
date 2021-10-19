@@ -11,7 +11,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.file.FileVersion;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
@@ -32,6 +31,14 @@ import java.util.stream.Stream;
  * @since 4.1
  */
 public interface EventStorageEngine {
+
+    default boolean keepOldVersions() {
+        return false;
+    }
+
+    default int nextVersion() {
+        return 1;
+    }
 
     enum SearchHint {
         RECENT_ONLY
@@ -236,14 +243,14 @@ public interface EventStorageEngine {
     }
 
     void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
-                           BiFunction<Event, Long, Event> transformationFunction,
+                           int version, BiFunction<Event, Long, Event> transformationFunction,
                            Consumer<TransformationProgress> transformationProgressConsumer);
 
-    default void deleteSegments(List<FileVersion> segmentVersions) {
+    default void deleteSegments(int version) {
         throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
     }
 
-    default void rollbackSegments(List<FileVersion> segmentVersions){
+    default void rollbackSegments(int version){
         throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
     }
 
