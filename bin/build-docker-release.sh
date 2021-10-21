@@ -152,7 +152,11 @@ if [[ "${MODE}" == "full" || "${MODE}" == "prod" ]] ; then
     echo "Building '${TAG}' from '${BASE}'."
     sed -e "s+__BASE_IMG__+${BASE}+g" ${SRC}/build/Dockerfile > ${TGT}/Dockerfile
     if [[ "${PUSH}" == "y" ]] ; then
-        docker buildx build --platform ${PLATFORMS} --push -t ${TAG} ${TGT}
+        if [[ "${LATEST}" == "y" ]] ; then
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG} -t ${LATEST_TAG} ${TGT}
+        else
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG} ${TGT}
+        fi
     else
         docker build -t ${TAG} ${TGT}
         if [[ "${LATEST}" == "y" ]] ; then
@@ -163,7 +167,11 @@ if [[ "${MODE}" == "full" || "${MODE}" == "prod" ]] ; then
     echo "Building '${TAG}-nonroot' from '${BASE_NONROOT}'."
     sed -e "s+__BASE_IMG__+${BASE_NONROOT}+g" ${SRC}/build-nonroot/Dockerfile > ${TGT}/Dockerfile
     if [[ "${PUSH}" == "y" ]] ; then
-        docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-nonroot ${TGT}
+        if [[ "${LATEST}" == "y" ]] ; then
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-nonroot -t ${LATEST_TAG}-nonroot ${TGT}
+        else
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-nonroot ${TGT}
+        fi
     else
         docker build -t ${TAG}-nonroot ${TGT}
         if [[ "${LATEST}" == "y" ]] ; then
@@ -178,7 +186,11 @@ if [[ "${MODE}" == "full" || "${MODE}" == "dev" ]] ; then
     echo "Building '${TAG}-dev' from '${BASE_DEV}'."
     sed -e "s+__BASE_IMG__+${BASE_DEV}+g" ${SRC}/build/Dockerfile > ${TGT}/Dockerfile
     if [[ "${PUSH}" == "y" ]] ; then
-        docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev ${TGT}
+        if [[ "${LATEST}" == "y" ]] ; then
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev -t ${LATEST_TAG}-dev ${TGT}
+        else
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev ${TGT}
+        fi
     else
         docker build -t ${TAG}-dev ${TGT}
         if [[ "${LATEST}" == "y" ]] ; then
@@ -187,7 +199,11 @@ if [[ "${MODE}" == "full" || "${MODE}" == "dev" ]] ; then
     fi
 
     if [[ "${PUSH}" == "y" ]] ; then
-        docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev-nonroot ${TGT}
+        if [[ "${LATEST}" == "y" ]] ; then
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev-nonroot -t ${LATEST_TAG}-dev-nonroot ${TGT}
+        else
+            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev-nonroot ${TGT}
+        fi
     else
         docker build -t ${TAG}-dev-nonroot ${TGT}
         if [[ "${LATEST}" == "y" ]] ; then
