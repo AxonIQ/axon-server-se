@@ -5,22 +5,32 @@ setOpenJDK() {
     BASE_DEV=openjdk:${JDK}-slim
     BASE_NONROOT=openjdk:${JDK}-slim
     BASE_DEV_NONROOT=openjdk:${JDK}-slim
+    PLATFORMS=linux/amd64,linux/arm64/v8
 }
 setDistroless() {
     BASE=distroless:${JDK}
     BASE_DEV=distroless:${JDK}-debug
     BASE_NONROOT=openjdk:${JDK}-nonroot
     BASE_DEV_NONROOT=openjdk:${JDK}-debug-nonroot
+    PLATFORMS=linux/amd64
 }
 setUbi8() {
     BASE=registry.access.redhat.com/ubi8/openjdk-${JDK}-runtime:latest
     BASE_DEV=registry.access.redhat.com/ubi8/openjdk-${JDK}-runtime:latest
     BASE_NONROOT=registry.access.redhat.com/ubi8/openjdk-${JDK}-runtime:latest
     BASE_DEV_NONROOT=registry.access.redhat.com/ubi8/openjdk-${JDK}-runtime:latest
+    PLATFORMS=linux/amd64,linux/arm64
+}
+setTemurin() {
+    BASE=eclipse-temurin:${JDK}-focal
+    BASE_DEV=eclipse-temurin:${JDK}-focal
+    BASE_NONROOT=eclipse-temurin:${JDK}-focal
+    BASE_DEV_NONROOT=eclipse-temurin:${JDK}-focal
+    PLATFORMS=linux/amd64,linux/arm/v7,linux/arm64/v8
 }
 
 JDK=11
-BASE_TYPE=openJDK
+BASE_TYPE=temorin
 IMG_BASE=eu.gcr.io/axoniq-devops/axonserver
 TAG=
 MODE=full
@@ -28,7 +38,9 @@ PUSH=n
 SETTINGS=
 LOCAL=n
 LATEST=n
-PLATFORMS=linux/amd64,linux/arm64
+PLATFORMS=
+PLATFORMS_OVR=
+PLATFORMS_DEF=linux/amd64,linux/arm64
 
 Usage() {
     echo "Usage: $0 [OPTIONS] <version> [<tag>]"
@@ -42,14 +54,14 @@ Usage() {
     echo "  --jdk <version>    Use the specified Java version."
     echo "  --openjdk          Use the OpenJDK base images."
     echo "  --distroless       Use the Distroless base images."
-    echo "  --openjdk          Use the OpenJDK base images."
+    echo "  --temurin          Use the Eclipse Temurin base images. (Ubuntu Focal Fossa)"
     echo "  --ubi8             Use the RedHat Ubi8 base images."
     echo "  --platforms <list> The platforms to build for, default 'linux/amd64,linux/arm64'."
     echo "  <version>          The Axon Server version."
     exit 1
 }
 
-options=$(getopt -l 'dev-only,no-dev,full,latest,push,settings:,local,jdk:,openjdk,distroless,ubi8,repo:,platforms:' -- 's:dn' "$@")
+options=$(getopt -l 'dev-only,no-dev,full,latest,push,settings:,local,jdk:,distroless,temurin,openjdk,ubi8,repo:,platforms:' -- 's:dn' "$@")
 [ $? -eq 0 ] || {
   Usage
 }
@@ -64,11 +76,12 @@ while true; do
     --settings|-s)     SETTINGS=$2 ; shift ;;
     --local)           LOCAL=y ;;
     --jdk)             JDK=$2 ; shift ;;
-    --openjdk)         BASE_TYPE=openJDK ;;
     --distroless)      BASE_TYPE=distroless ;;
+    --openjdk)         BASE_TYPE=openJDK ;;
+    --temurin)         BASE_TYPE=temurin ;;
     --ubi8)            BASE_TYPE=ubi8 ;;
     --repo)            IMG_BASE=$2 ; shift ;;
-    --platforms)       PLATFORMS=$2 ; shift ;;
+    --platforms)       PLATFORMS_OVR=$2 ; shift ;;
     --)
         shift
         break
@@ -84,6 +97,8 @@ VERSION=$1
 
 if [[ "${BASE_TYPE}" == "openJDK" ]] ; then
     setOpenJDK
+elif [[ "${BASE_TYPE}" == "temurin" ]] ; then
+    setTemurin
 elif [[ "${BASE_TYPE}" == "ubi8" ]] ; then
     setUbi8
 elif [[ "${BASE_TYPE}" == "distroless" ]] ; then
@@ -91,6 +106,13 @@ elif [[ "${BASE_TYPE}" == "distroless" ]] ; then
 else
     echo "Unknown base-type '${BASE_TYPE}'."
     Usage
+fi
+
+if [[ "${PLATFORMS}" == "" ]] ; then
+    PLATFORMS=${PLATFORMS_DEF}
+fi
+if [[ "${PLATFORMS_OVR}" != "" ]] ; then
+    PLATFORMS=${PLATFORMS_OVR}
 fi
 
 TAG="${IMG_BASE}:${VERSION}"

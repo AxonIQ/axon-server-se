@@ -7,7 +7,7 @@ RUN mkdir -p /axonserver/config /axonserver/data /axonserver/events /axonserver/
 FROM __BASE_IMG__
 
 COPY --from=source /axonserver /axonserver
-COPY axonserver.jar axonserver.properties "APACHE LICENSE v2.0.txt" /axonserver/
+COPY axonserver.jar axonserver.properties *.txt /axonserver/
 
 USER root
 WORKDIR /axonserver

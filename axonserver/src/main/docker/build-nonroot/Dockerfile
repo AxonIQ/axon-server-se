@@ -9,7 +9,7 @@ FROM __BASE_IMG__
 COPY --from=source /etc/passwd /etc/group /etc/
 COPY --from=source --chown=axonserver /axonserver /axonserver
 
-COPY --chown=axonserver axonserver.jar axonserver.properties "APACHE LICENSE v2.0.txt" /axonserver/
+COPY --chown=axonserver axonserver.jar axonserver.properties *.txt /axonserver/
 
 USER axonserver
 WORKDIR /axonserver
