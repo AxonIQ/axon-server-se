@@ -37,7 +37,10 @@ MODE=full
 PUSH=n
 SETTINGS=
 LOCAL=n
-LATEST=n
+TAG_LATEST=n
+TAG_LATEST_JDK=n
+TAG_JDK=n
+TAG_VERSION=y
 PLATFORMS=
 PLATFORMS_OVR=
 PLATFORMS_DEF=linux/amd64,linux/arm64
@@ -47,7 +50,10 @@ Usage() {
     echo "  --dev-only         Only generate 'dev' images. (including shell) Shorthand: '-d'."
     echo "  --no-dev           Only generate non-'dev' images. (without shell, if possible) Shorthand: '-n'."
     echo "  --full             Generate all image variants. This is the default mode."
-    echo "  --latest           Add image with 'latest' tags."
+    echo "  --tag-latest       Add 'latest' tags."
+    echo "  --tag-latest-jdk   Add 'latest' tags that specify the JDK version. Implies '--tag-jdk'."
+    echo "  --tag-jdk          Add tags that specify the JDK version."
+    echo "  --no-tag-version   Do NOT add a tag with only the version."
     echo "  --push             Push the image after building it."
     echo "  --settings <file>  Use the specified Maven 'settings.xml' to obtain credentials for Nexus. Shorthand: '-s'."
     echo "  --local            Use JAR file from the local build rather than a copy from Nexus."
@@ -61,7 +67,7 @@ Usage() {
     exit 1
 }
 
-options=$(getopt -l 'dev-only,no-dev,full,latest,push,settings:,local,jdk:,distroless,temurin,openjdk,ubi8,repo:,platforms:' -- 's:dn' "$@")
+options=$(getopt -l 'dev-only,no-dev,full,tag-latest,no-tag-latest,tag-jdk,no-tag-jdk,tag-latest-jdk,tag-version,no-tag-version,push,settings:,local,jdk:,distroless,temurin,openjdk,ubi8,repo:,platforms:' -- 's:dn' "$@")
 [ $? -eq 0 ] || {
   Usage
 }
@@ -71,7 +77,13 @@ while true; do
     --dev-only|-d)     MODE=dev ;;
     --no-dev|-n)       MODE=prod ;;
     --full)            MODE=full ;;
-    --latest)          LATEST=y ;;
+    --tag-latest)      TAG_LATEST=y ;;
+    --no-tag-latest)   TAG_LATEST=n ;;
+    --tag-latest-jdk)  TAG_LATEST_JDK=y; TAG_JDK=y; ;;
+    --tag-jdk)         TAG_JDK=y ;;
+    --no-tag-jdk)      TAG_JDK=n ;;
+    --tag-version)     TAG_VERSION=y ;;
+    --no-tag-version)  TAG_VERSION=n ;;
     --push)            PUSH=y ;;
     --settings|-s)     SETTINGS=$2 ; shift ;;
     --local)           LOCAL=y ;;
@@ -108,6 +120,10 @@ else
     Usage
 fi
 
+if [[ "${TAG_LATEST}" == "y" && "${TAG_JDK}" == "y" ]] ; then
+    TAG_LATEST_JDK=y
+fi
+
 if [[ "${PLATFORMS}" == "" ]] ; then
     PLATFORMS=${PLATFORMS_DEF}
 fi
@@ -116,6 +132,7 @@ if [[ "${PLATFORMS_OVR}" != "" ]] ; then
 fi
 
 TAG="${IMG_BASE}:${VERSION}"
+JDK_TAG="${IMG_BASE}:${VERSION}-jdk-${JDK}"
 LATEST_TAG="${IMG_BASE}:latest"
 
 TGT=target/docker
@@ -151,32 +168,48 @@ if [[ "${MODE}" == "full" || "${MODE}" == "prod" ]] ; then
 
     echo "Building '${TAG}' from '${BASE}'."
     sed -e "s+__BASE_IMG__+${BASE}+g" ${SRC}/build/Dockerfile > ${TGT}/Dockerfile
+
+    TAGS=
+    if [[ "${TAG_VERSION}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${TAG}"
+    fi
+    if [[ "${TAG_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${JDK_TAG}"
+    fi
+    if [[ "${TAG_LATEST}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}"
+    fi
+    if [[ "${TAG_LATEST_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}-jdk-${JDK}"
+    fi
+
     if [[ "${PUSH}" == "y" ]] ; then
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG} -t ${LATEST_TAG} ${TGT}
-        else
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG} ${TGT}
-        fi
+        docker buildx build --platform ${PLATFORMS} --push ${TAGS} ${TGT}
     else
-        docker build -t ${TAG} ${TGT}
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker tag ${TAG} ${LATEST_TAG}
-        fi
+        docker build ${TAGS} ${TGT}
     fi
 
     echo "Building '${TAG}-nonroot' from '${BASE_NONROOT}'."
     sed -e "s+__BASE_IMG__+${BASE_NONROOT}+g" ${SRC}/build-nonroot/Dockerfile > ${TGT}/Dockerfile
+
+    TAGS=
+    if [[ "${TAG_VERSION}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${TAG}-nonroot"
+    fi
+    if [[ "${TAG_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${JDK_TAG}-nonroot"
+    fi
+    if [[ "${TAG_LATEST}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}-nonroot"
+    fi
+    if [[ "${TAG_LATEST_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}-jdk-${JDK}-nonroot"
+    fi
+
     if [[ "${PUSH}" == "y" ]] ; then
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-nonroot -t ${LATEST_TAG}-nonroot ${TGT}
-        else
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-nonroot ${TGT}
-        fi
+        docker buildx build --platform ${PLATFORMS} --push ${TAGS} ${TGT}
     else
-        docker build -t ${TAG}-nonroot ${TGT}
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker tag ${TAG}-nonroot ${LATEST_TAG}-nonroot
-        fi
+        docker build ${TAGS} ${TGT}
     fi
 
 fi
@@ -185,30 +218,48 @@ if [[ "${MODE}" == "full" || "${MODE}" == "dev" ]] ; then
 
     echo "Building '${TAG}-dev' from '${BASE_DEV}'."
     sed -e "s+__BASE_IMG__+${BASE_DEV}+g" ${SRC}/build/Dockerfile > ${TGT}/Dockerfile
-    if [[ "${PUSH}" == "y" ]] ; then
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev -t ${LATEST_TAG}-dev ${TGT}
-        else
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev ${TGT}
-        fi
-    else
-        docker build -t ${TAG}-dev ${TGT}
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker tag ${TAG}-dev ${LATEST_TAG}-dev
-        fi
+
+    TAGS=
+    if [[ "${TAG_VERSION}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${TAG}-dev"
+    fi
+    if [[ "${TAG_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${JDK_TAG}-dev"
+    fi
+    if [[ "${TAG_LATEST}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}-dev"
+    fi
+    if [[ "${TAG_LATEST_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}-jdk-${JDK}-dev"
     fi
 
     if [[ "${PUSH}" == "y" ]] ; then
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev-nonroot -t ${LATEST_TAG}-dev-nonroot ${TGT}
-        else
-            docker buildx build --platform ${PLATFORMS} --push -t ${TAG}-dev-nonroot ${TGT}
-        fi
+        docker buildx build --platform ${PLATFORMS} --push ${TAGS} ${TGT}
     else
-        docker build -t ${TAG}-dev-nonroot ${TGT}
-        if [[ "${LATEST}" == "y" ]] ; then
-            docker tag ${TAG}-dev-nonroot ${LATEST_TAG}-dev-nonroot
-        fi
+        docker build ${TAGS} ${TGT}
+    fi
+
+    echo "Building '${TAG}-dev-nonroot' from '${BASE_DEV}'."
+    sed -e "s+__BASE_IMG__+${BASE_DEV_NONROOT}+g" ${SRC}/build-nonroot/Dockerfile > ${TGT}/Dockerfile
+
+    TAGS=
+    if [[ "${TAG_VERSION}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${TAG}-dev-nonroot"
+    fi
+    if [[ "${TAG_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${JDK_TAG}-dev-nonroot"
+    fi
+    if [[ "${TAG_LATEST}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}-dev-nonroot"
+    fi
+    if [[ "${TAG_LATEST_JDK}" == "y" ]] ; then
+        TAGS="${TAGS} -t ${LATEST_TAG}-jdk-${JDK}-dev-nonroot"
+    fi
+
+    if [[ "${PUSH}" == "y" ]] ; then
+        docker buildx build --platform ${PLATFORMS} --push ${TAGS} ${TGT}
+    else
+        docker build ${TAGS} ${TGT}
     fi
 
 fi
