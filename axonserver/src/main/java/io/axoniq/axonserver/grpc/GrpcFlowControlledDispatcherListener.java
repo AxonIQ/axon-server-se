@@ -15,6 +15,8 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -27,12 +29,13 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     private static final ExecutorService executorService = Executors.newCachedThreadPool(new CustomizableThreadFactory("request-dispatcher-"));
+    private final BlockingQueue<FlowControlQueues<T>.DestinationNode> EMPTY_QUEUE = new ArrayBlockingQueue<>(1);
 
     protected final StreamObserver<I> inboundStream;
     private final AtomicLong permitsLeft = new AtomicLong(0);
     private final FlowControlQueues<T> queues;
     protected final String queueName;
-    private Future<?>[] futures;
+    private final Future<?>[] futures;
     private volatile boolean running = true;
 
     public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, String queueName, StreamObserver<I> inboundStream, int threads) {
@@ -110,7 +113,7 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     }
 
     public int waiting() {
-        return queues.getSegments().get(queueName).size();
+        return queues.getSegments().getOrDefault(queueName, EMPTY_QUEUE).size();
     }
 
     public long permits() {
