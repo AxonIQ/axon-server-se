@@ -163,6 +163,7 @@ fi
 
 chmod 755 ${TGT}/axonserver.jar
 cp ${SRC}/axonserver.properties ${TGT}/
+cp axonserver/LICENSE "${TGT}/AXONIQ OPEN SOURCE LICENSE.txt"
 
 if [[ "${MODE}" == "full" || "${MODE}" == "prod" ]] ; then
 
