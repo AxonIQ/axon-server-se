@@ -7,13 +7,23 @@
  *
  */
 
-package io.axoniq.axonserver.rest;
+package io.axoniq.axonserver.transport.rest;
 
-import io.axoniq.axonserver.component.processor.*;
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
+import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
+import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
+import io.axoniq.axonserver.component.processor.EventProcessor;
+import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
+import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
@@ -34,6 +44,7 @@ public class EventProcessorRestController {
 
     private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
+    private final EventProcessorAdminService service;
 
     /**
      * Instantiate a REST endpoint to open up several Event Processor operations, like start, stop and segment release,
@@ -42,12 +53,14 @@ public class EventProcessorRestController {
      * @param processorEventsSource the {@link ProcessorEventPublisher} used to publish specific application
      *                              events for the provided endpoints
      * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
-     *                              instances containing the known status of all the Event Processors
+     * @param service               the service that performs the operarions
      */
     public EventProcessorRestController(ProcessorEventPublisher processorEventsSource,
-                                        ClientProcessors eventProcessors) {
+                                        ClientProcessors eventProcessors,
+                                        EventProcessorAdminService service) {
         this.processorEventsSource = processorEventsSource;
         this.eventProcessors = eventProcessors;
+        this.service = service;
     }
 
     @GetMapping("components/{component}/processors")
@@ -60,17 +73,19 @@ public class EventProcessorRestController {
         return new ComponentEventProcessors(component, context, eventProcessors);
     }
 
+    /**
+     * Processes the request to pause a specific event processor.
+     *
+     * @param processor            the event processor name
+     * @param tokenStoreIdentifier the identifier of the token store for the event processor
+     * @param principal            the authenticated user
+     */
     @PatchMapping("components/{component}/processors/{processor}/pause")
-    public void pause(@PathVariable("component") String component,
-                      @PathVariable("processor") String processor,
-                      @RequestParam("context") String context,
+    public void pause(@PathVariable("processor") String processor,
                       @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                       @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to pause Event processor \"{}\" in component \"{}\".",
-                      AuditLog.username(principal), context, processor, component);
-        clientsByEventProcessor(context, processor, tokenStoreIdentifier)
-                .forEach(clientId -> processorEventsSource
-                        .pauseProcessorRequest(context, clientId, processor));
+        service.pause(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                      new PrincipalAuthentication(principal));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/start")

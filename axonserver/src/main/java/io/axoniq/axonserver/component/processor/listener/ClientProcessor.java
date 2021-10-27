@@ -24,6 +24,8 @@ public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> 
 
     String clientId();
 
+    String context();
+
     EventProcessorInfo eventProcessorInfo();
 
     default boolean running() {
