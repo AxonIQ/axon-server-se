@@ -59,4 +59,30 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
             .subscribe(ep -> processorEventsSource.pauseProcessorRequest(ep.context(), ep.clientId(), processor));
         // the context will be removed from the event processor
     }
-}
+
+    /**
+     * Handles a request to start a certain event processor.
+     * The method returns once the request has been propagated to the proper clients.
+     * It doesn't imply that the clients have processed it.
+     *
+     * @param identifier     the event processor identifier
+     * @param authentication info about the authenticated user
+     */
+    @Override
+    public void start(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+        String processor = identifier.name();
+        String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to start Event processor \"{}@{}\".",
+                          AuditLog.username(authentication.name()),
+                          processor,
+                          tokenStoreIdentifier);
+        }
+
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        Flux.fromIterable(eventProcessors)
+            .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+            .subscribe(ep -> processorEventsSource.startProcessorRequest(ep.context(), ep.clientId(), processor));
+        // the context will be removed from the event processor
+    }
+

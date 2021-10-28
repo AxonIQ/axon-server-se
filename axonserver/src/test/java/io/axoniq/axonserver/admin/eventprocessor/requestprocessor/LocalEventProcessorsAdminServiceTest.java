@@ -37,4 +37,20 @@ public class LocalEventProcessorsAdminServiceTest {
         verify(publisher).pauseProcessorRequest(eq("default"), eq("Client-B"), eq(processorName));
         verifyNoMoreInteractions(publisher);
     }
+
+    @Test
+    public void startTest() {
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
+        ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
+        ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        testSubject.start(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user");
+        verify(publisher).startProcessorRequest(eq("default"), eq("Client-A"), eq(processorName));
+        verify(publisher).startProcessorRequest(eq("default"), eq("Client-B"), eq(processorName));
+        verifyNoMoreInteractions(publisher);
+    }
 }

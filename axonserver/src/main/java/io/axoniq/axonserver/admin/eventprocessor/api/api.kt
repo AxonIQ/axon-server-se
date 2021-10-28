@@ -18,7 +18,14 @@ interface EventProcessorAdminService {
      * It doesn't guarantee that the request has been processed by all clients.
      */
     fun pause(identifier: EventProcessorId, authentication: Authentication)
-}
+
+    /**
+     * Handles a request to start a certain event processor.
+     * Returns when the request has been propagated to the clients.
+     * It doesn't guarantee that the request has been processed by all clients.
+     */
+    fun start(identifier: EventProcessorId, authentication: Authentication)
+
 
 /**
  * Identifier for event processor.

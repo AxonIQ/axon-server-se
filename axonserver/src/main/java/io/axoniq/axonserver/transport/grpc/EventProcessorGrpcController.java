@@ -48,4 +48,22 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
             responseObserver.onError(e);
         }
     }
+
+    /**
+     * Processes the request to start a specific event processor.
+     *
+     * @param eventProcessorId the identifier of the event processor
+     * @param responseObserver the grpc {@link StreamObserver}
+     */
+    @Override
+    public void startEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
+        EventProcessorId eventProcessor = new EventProcessorIdMessage(eventProcessorId);
+        Authentication authentication = new GrpcAuthentication(authenticationProvider);
+        try {
+            service.start(eventProcessor, authentication);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(e);
+        }
+    }
 }
