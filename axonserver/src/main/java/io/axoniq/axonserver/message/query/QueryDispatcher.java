@@ -41,6 +41,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
+import static java.lang.String.format;
 import static java.util.Collections.singleton;
 
 /**
@@ -171,6 +172,12 @@ public class QueryDispatcher {
         return queryQueue;
     }
 
+    public void cancelQuery(String context, WrappedQuery query) {
+        // TODO: 10/27/21 priority
+        queryCache.get(query.queryRequest().getMessageIdentifier())
+                  .waitingFor()
+                  .forEach(clientStreamId -> queryQueue.put(format("%s.%s", clientStreamId, context), query));
+    }
 
     public void query(SerializedQuery serializedQuery, Authentication principal,
                       Consumer<QueryResponse> callback, Consumer<String> onCompleted) {
@@ -298,7 +305,7 @@ public class QueryDispatcher {
                                          .setMessageIdentifier(UUID.randomUUID().toString())
                                          .setErrorMessage(
                                                  ErrorMessageFactory
-                                                         .build(String.format("Client %s not found while processing: %s"
+                                                         .build(format("Client %s not found while processing: %s"
                                                                  , clientId, query.getQuery())))
                                          .build());
             onCompleted.accept(clientId);

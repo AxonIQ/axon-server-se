@@ -9,12 +9,15 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.grpc.query.QueryComplete;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.UUID;
 
 /**
  * Reads messages for a specific client from a queue and sends them to the client using gRPC.
@@ -35,9 +38,20 @@ public class GrpcQueryDispatcherListener extends GrpcFlowControlledDispatcherLis
         if( logger.isDebugEnabled()) {
             logger.debug("Send request {}, with priority: {}", message.queryRequest(), message.priority() );
         }
-        SerializedQuery request = validate(message, queryDispatcher, logger);
-        if( request == null) return false;
-        inboundStream.onNext(QueryProviderInbound.newBuilder().setQuery(request.query()).build());
+        // TODO: 10/28/21 refactor WrappedQuery
+        if (!message.isTerminateQuery()) {
+            SerializedQuery request = validate(message, queryDispatcher, logger);
+            if (request == null) return false;
+            inboundStream.onNext(QueryProviderInbound.newBuilder().setQuery(request.query()).build());
+        } else {
+            inboundStream.onNext(QueryProviderInbound.newBuilder()
+                                                     .setQueryComplete(QueryComplete.newBuilder()
+                                                                                    .setRequestId(message.queryRequest()
+                                                                                                         .getMessageIdentifier())
+                                                                                    .setMessageId(UUID.randomUUID()
+                                                                                                      .toString())
+                                                                                    .build()).build());
+        }
         return true;
     }
 

@@ -11,6 +11,7 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
 import io.axoniq.axonserver.grpc.SerializedQuery;
+import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 /**
@@ -25,14 +26,32 @@ public class WrappedQuery {
     private final SerializedQuery queryRequest;
     private final long timeout;
     private final long priority;
+    private final boolean terminateQuery;
+
+    public static WrappedQuery terminateQuery(String queryId) {
+        return new WrappedQuery(null,
+                                null,
+                                new SerializedQuery(null,
+                                                    QueryRequest.newBuilder()
+                                                                .setMessageIdentifier(queryId)
+                                                                .build()),
+                                0L,
+                                true);
+    }
 
     public WrappedQuery(ClientStreamIdentification targetClientStreamIdentification,
                         String targetClientId, SerializedQuery queryRequest, long timeout) {
+        this(targetClientStreamIdentification, targetClientId, queryRequest, timeout, false);
+    }
+
+    public WrappedQuery(ClientStreamIdentification targetClientStreamIdentification,
+                        String targetClientId, SerializedQuery queryRequest, long timeout, boolean terminateQuery) {
         this.targetClientStreamIdentification = targetClientStreamIdentification;
         this.targetClientId = targetClientId;
         this.queryRequest = queryRequest;
         this.timeout = timeout;
         this.priority = ProcessingInstructionHelper.priority(queryRequest.query().getProcessingInstructionsList());
+        this.terminateQuery = terminateQuery;
     }
 
     public SerializedQuery queryRequest() {
@@ -57,5 +76,9 @@ public class WrappedQuery {
 
     public String context() {
         return targetClientStreamIdentification.getContext();
+    }
+
+    public boolean isTerminateQuery() {
+        return terminateQuery;
     }
 }

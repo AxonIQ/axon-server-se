@@ -32,8 +32,10 @@ import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryResponseConsumer;
+import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -306,6 +308,10 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         if (logger.isTraceEnabled()) {
             logger.trace("{}: Received query: {}", request.getClientId(), request.getQuery());
         }
+        ((ServerCallStreamObserver<QueryResponse>) responseObserver).setOnCancelHandler(() -> {
+            queryDispatcher.cancelQuery(contextProvider.getContext(),
+                                        WrappedQuery.terminateQuery(request.getMessageIdentifier()));
+        });
         GrpcQueryResponseConsumer responseConsumer = new GrpcQueryResponseConsumer(responseObserver);
         queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
                               authenticationProvider.get(), responseConsumer::onNext,
