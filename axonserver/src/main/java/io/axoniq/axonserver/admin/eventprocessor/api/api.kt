@@ -27,6 +27,20 @@ interface EventProcessorAdminService {
     fun start(identifier: EventProcessorId, authentication: Authentication)
 
 
+    /**
+     * Handles a request to split the biggest segment of a certain event processor.
+     * Returns when the request has been propagated to the interested client.
+     * It doesn't guarantee that the request has been processed by the client.
+     */
+    fun split(identifier: EventProcessorId, authentication: Authentication)
+
+    /**
+     * Handles a request to merge the two smallest segments of a certain event processor.
+     * Returns when the request has been propagated to the interested clients.
+     * It doesn't guarantee that the request has been processed by the clients.
+     */
+    fun merge(identifier: EventProcessorId, authentication: Authentication)
+}
 /**
  * Identifier for event processor.
  */

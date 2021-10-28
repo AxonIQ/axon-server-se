@@ -14,7 +14,6 @@ import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
 import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
 import io.axoniq.axonserver.component.processor.EventProcessor;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
-import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
@@ -27,8 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
@@ -114,51 +111,31 @@ public class EventProcessorRestController {
     }
 
     /**
-     * Split the smallest segment of the Event Processor with the given {@code processorName}.
+     * Split the biggest segment of the Event Processor with the given {@code processorName}.
      *
-     * @param component            a {@link String} specifying the component for which this operation should be
-     *                             performed
-     * @param processorName        a {@link String} specifying the specific Event Processor to split a segment from
-     * @param context              a {@link String} defining the context within which this operation should occur
+     * @param processor            a {@link String} specifying the specific Event Processor to split a segment from
      * @param tokenStoreIdentifier a {@link String} specifying the token store identifier of the Event Processor
      */
     @PatchMapping("components/{component}/processors/{processor}/segments/split")
-    public void splitSegment(@PathVariable("component") String component,
-                             @PathVariable("processor") String processorName,
-                             @RequestParam("context") String context,
+    public void splitSegment(@PathVariable("processor") String processor,
                              @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                              @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to split segment of event processor \"{}\" in component \"{}\".",
-                      AuditLog.username(principal), context, processorName, component);
-        Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        processorEventsSource.splitSegment(context, list(clientIds), processorName);
+        service.split(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                      new PrincipalAuthentication(principal));
     }
 
     /**
-     * Merge the biggest segment of the Event Processor with the given {@code processorName}.
+     * Merge the smallest two segments of the Event Processor with the given {@code processorName}.
      *
-     * @param component            a {@link String} specifying the component for which this operation should be
-     *                             performed
-     * @param processorName        a {@link String} specifying the specific Event Processor to merge a segment from
-     * @param context              a {@link String} defining the context within which this operation should occur
+     * @param processor            a {@link String} specifying the specific Event Processor to merge a segment from
      * @param tokenStoreIdentifier a {@link String} specifying the token store identifier of the Event Processor
      */
     @PatchMapping("components/{component}/processors/{processor}/segments/merge")
-    public void mergeSegment(@PathVariable("component") String component,
-                             @PathVariable("processor") String processorName,
-                             @RequestParam("context") String context,
+    public void mergeSegment(@PathVariable("processor") String processor,
                              @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                              @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to merge segment of event processor \"{}\" in component \"{}\".",
-                      AuditLog.username(principal), context, processorName, component);
-        Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        processorEventsSource.mergeSegment(context, list(clientIds), processorName);
-    }
-
-    private List<String> list(Iterable<String> clientNames) {
-        List<String> result = new ArrayList<>();
-        clientNames.forEach(result::add);
-        return result;
+        service.merge(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                      new PrincipalAuthentication(principal));
     }
 
     /**

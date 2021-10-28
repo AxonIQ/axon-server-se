@@ -2,8 +2,6 @@ package io.axoniq.axonserver.transport.grpc;
 
 import com.google.protobuf.Empty;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
-import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
-import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
@@ -34,15 +32,13 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     /**
      * Processes the request to pause a specific event processor.
      *
-     * @param eventProcessorId the identifier of the event processor
+     * @param processorId      the identifier of the event processor
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void pauseEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
-        EventProcessorId eventProcessor = new EventProcessorIdMessage(eventProcessorId);
-        Authentication authentication = new GrpcAuthentication(authenticationProvider);
+    public void pauseEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         try {
-            service.pause(eventProcessor, authentication);
+            service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
             responseObserver.onCompleted();
         } catch (Exception e) {
             responseObserver.onError(e);
@@ -52,15 +48,46 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     /**
      * Processes the request to start a specific event processor.
      *
-     * @param eventProcessorId the identifier of the event processor
+     * @param processorId      the identifier of the event processor
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void startEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
-        EventProcessorId eventProcessor = new EventProcessorIdMessage(eventProcessorId);
-        Authentication authentication = new GrpcAuthentication(authenticationProvider);
+    public void startEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         try {
-            service.start(eventProcessor, authentication);
+            service.start(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(e);
+        }
+    }
+
+
+    /**
+     * Processes the request to split the bigger segment of a specific event processor.
+     *
+     * @param processorId      the identifier of the event processor
+     * @param responseObserver the grpc {@link StreamObserver}
+     */
+    @Override
+    public void splitEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
+        try {
+            service.split(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(e);
+        }
+    }
+
+    /**
+     * Processes the request to split the bigger segment of a specific event processor.
+     *
+     * @param processorId      the identifier of the event processor
+     * @param responseObserver the grpc {@link StreamObserver}
+     */
+    @Override
+    public void mergeEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
+        try {
+            service.merge(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
             responseObserver.onCompleted();
         } catch (Exception e) {
             responseObserver.onError(e);

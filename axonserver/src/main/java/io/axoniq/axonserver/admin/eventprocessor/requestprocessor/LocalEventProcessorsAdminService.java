@@ -5,6 +5,7 @@ import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
@@ -86,3 +87,64 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         // the context will be removed from the event processor
     }
 
+
+    /**
+     * Handles a request to split the biggest segment of a certain event processor.
+     * The method returns once the request has been propagated to the proper client.
+     * It doesn't imply that the client has already processed the request.
+     *
+     * @param identifier     the event processor identifier
+     * @param authentication info about the authenticated user
+     */
+    @Override
+    public void split(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+        String processor = identifier.name();
+        String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to split a segment of Event processor \"{}@{}\".",
+                          AuditLog.username(authentication.name()),
+                          processor,
+                          tokenStoreIdentifier);
+        }
+
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        Flux.fromIterable(eventProcessors)
+            .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+            .groupBy(ClientProcessor::context)
+            .subscribe(contextGroup -> contextGroup
+                    .map(ClientProcessor::clientId)
+                    .collectList()
+                    .subscribe(clients -> processorEventsSource.splitSegment(contextGroup.key(), clients, processor)));
+        // the context will be removed from the event processor
+    }
+
+    /**
+     * Handles a request to merge the two smallest segments of a certain event processor.
+     * The method returns once the request has been propagated to the proper clients.
+     * It doesn't imply that the clients have already processed the request.
+     *
+     * @param identifier     the event processor identifier
+     * @param authentication info about the authenticated user
+     */
+    @Override
+    public void merge(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+        String processor = identifier.name();
+        String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to merge two segments of Event processor \"{}@{}\".",
+                          AuditLog.username(authentication.name()),
+                          processor,
+                          tokenStoreIdentifier);
+        }
+
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        Flux.fromIterable(eventProcessors)
+            .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+            .groupBy(ClientProcessor::context)
+            .subscribe(contextGroup -> contextGroup
+                    .map(ClientProcessor::clientId)
+                    .collectList()
+                    .subscribe(clients -> processorEventsSource.mergeSegment(contextGroup.key(), clients, processor)));
+        // the context will be removed from the event processor
+    }
+}
