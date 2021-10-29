@@ -59,8 +59,6 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
                .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 
-
-
     /**
      * Processes the request to split the bigger segment of a specific event processor.
      *
@@ -69,12 +67,8 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void splitEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
-        try {
-            service.split(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+        service.split(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 
     /**
@@ -85,11 +79,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void mergeEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
-        try {
-            service.merge(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+        service.merge(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 }
