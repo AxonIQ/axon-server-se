@@ -61,6 +61,7 @@ public class BackupInfoRestController {
             @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
+            @RequestParam(value = "lastVersionBackedUp", required = false, defaultValue = "0") int lastVersionBackedUp,
             @ApiIgnore Principal principal) {
         auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
                       AuditLog.username(principal),
@@ -68,12 +69,12 @@ public class BackupInfoRestController {
                       type);
 
         return localEventStore
-                .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp)
+                .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, lastVersionBackedUp)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Makes a safe export of controlDB and returns the location of the the full path to the export file.
+     * Makes a safe export of controlDB and returns the location of the full path to the export file.
      *
      * @return the full path to the export file
      *

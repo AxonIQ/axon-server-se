@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
-import io.axoniq.axonserver.eventstore.transformation.impl.TransformationCache;
+import io.axoniq.axonserver.eventstore.transformation.impl.TransformationStateManager;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -20,7 +20,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.Date;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Marc Gathier
@@ -29,30 +28,30 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class DefaultEventStoreTransformationService implements EventStoreTransformationService {
 
-    private final TransformationCache transformationCache;
+    private final TransformationStateManager transformationStateManager;
     private final TransformationValidator transformationValidator;
     private final TransformationProcessor transformationProcessor;
     private final LocalEventStore localEventStore;
 
     public DefaultEventStoreTransformationService(
-            TransformationCache transformationCache,
+            TransformationStateManager transformationStateManager,
             TransformationValidator transformationValidator,
             TransformationProcessor transformationProcessor,
             LocalEventStore localEventStore) {
-        this.transformationCache = transformationCache;
+        this.transformationStateManager = transformationStateManager;
         this.transformationValidator = transformationValidator;
         this.transformationProcessor = transformationProcessor;
         this.localEventStore = localEventStore;
     }
 
     @Override
-    public Mono<String> startTransformation(String context) {
+    public Mono<String> startTransformation(String context, String description) {
         return Mono.create(sink -> {
             String id = UUID.randomUUID().toString();
-            transformationCache.reserve(context, id);
+            transformationStateManager.reserve(context, id);
             transformationProcessor.startTransformation(context, id,
-                                                        transformationCache.nextVersion(context),
-                                                        null);
+                                                        transformationStateManager.nextVersion(context),
+                                                        description);
             sink.success(id);
         });
     }
@@ -91,7 +90,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
             transformationValidator.apply(context, transformationId, lastEventToken);
             return transformationProcessor.apply(transformationId, localEventStore.keepOldVersions(context) || keepOldVersions,
                                                  appliedBy,
-                                                 new Date())
+                                                 new Date(), transformationStateManager.firstToken(transformationId), lastEventToken)
                                    .thenAccept(result -> transformationProcessor.complete(transformationId));
 
         });

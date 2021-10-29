@@ -9,7 +9,8 @@
 
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
-import io.axoniq.axonserver.eventstore.transformation.impl.TransformationCache;
+import io.axoniq.axonserver.eventstore.transformation.impl.DefaultTransformationValidator;
+import io.axoniq.axonserver.eventstore.transformation.impl.TransformationStateManager;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
 import io.axoniq.axonserver.grpc.event.Event;
@@ -18,7 +19,6 @@ import org.junit.*;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.util.Date;
 import java.util.UUID;
 
 import static org.mockito.Mockito.*;
@@ -30,26 +30,26 @@ import static org.mockito.Mockito.*;
 public class DefaultEventStoreTransformationServiceTest {
 
     private DefaultEventStoreTransformationService testSubject;
-    private final TransformationValidator transformationValidator = mock(TransformationValidator.class);
+    private final TransformationValidator transformationValidator = mock(DefaultTransformationValidator.class);
     private final TransformationProcessor transformationProcessor = mock(TransformationProcessor.class);
 
     @Before
     public void setUp() throws Exception {
-        TransformationCache transformationCache = mock(TransformationCache.class);
+        TransformationStateManager transformationStateManager = mock(TransformationStateManager.class);
 
         when(transformationProcessor.apply(anyString(),
                                            anyBoolean(),
-                                           "TestUser",
-                                           new Date()));
-        testSubject = new DefaultEventStoreTransformationService(transformationCache,
+                                           anyString(),
+                                           any(), anyLong(), anyLong()));
+        testSubject = new DefaultEventStoreTransformationService(transformationStateManager,
                                                                  transformationValidator,
                                                                  transformationProcessor,
-        mock(LocalEventStore.class));
+                                                                 mock(LocalEventStore.class));
     }
 
     @Test
     public void startTransformation() {
-        StepVerifier.create(testSubject.startTransformation("demo"))
+        StepVerifier.create(testSubject.startTransformation("demo", "descirption"))
                     .assertNext(UUID::fromString)
                     .expectComplete()
                     .verify();

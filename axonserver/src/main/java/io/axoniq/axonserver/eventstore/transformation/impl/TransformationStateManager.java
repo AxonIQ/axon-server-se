@@ -10,7 +10,9 @@
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
+import org.springframework.data.util.CloseableIterator;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -24,19 +26,22 @@ import javax.annotation.PostConstruct;
 import javax.transaction.Transactional;
 
 /**
+ * Manages the state of transactions. Updates state information in the control db and caches information about active
+ * transactions for validation purposes.
+ *
  * @author Marc Gathier
  * @since 4.6.0
  */
 @Component
-public class TransformationCache {
+public class TransformationStateManager {
 
-    private final Map<String, EventStoreTransformation> activeTransformations = new ConcurrentHashMap<>();
+    private final Map<String, ActiveEventStoreTransformation> activeTransformations = new ConcurrentHashMap<>();
     private final EventStoreTransformationRepository eventStoreTransformationRepository;
     private final TransformationStoreRegistry transformationStoreRegistry;
     private final EventStoreTransformationProgressRepository eventStoreTransformationProgressRepository;
 
 
-    public TransformationCache(
+    public TransformationStateManager(
             EventStoreTransformationRepository eventStoreTransformationRepository,
             TransformationStoreRegistry transformationStoreRegistry,
             EventStoreTransformationProgressRepository eventStoreTransformationProgressRepository) {
@@ -45,22 +50,28 @@ public class TransformationCache {
         this.eventStoreTransformationProgressRepository = eventStoreTransformationProgressRepository;
     }
 
+    /**
+     * Loads information about active transformations at the start of Axon Server.
+     */
     @PostConstruct
     public void init() {
         eventStoreTransformationRepository.findAll()
-                .forEach(transformation -> {
-                    if (isActive(transformation.getStatus())) {
-                        EventStoreTransformation eventStoreTransformation = new EventStoreTransformation(transformation.getTransformationId(),
-                                                                                                         transformation.getContext());
-                        TransformationEntryStore store = transformationStoreRegistry.register(transformation.getContext(),
-                                                                                              transformation.getTransformationId());
-                        TransformEventsRequest entry = store.lastEntry();
-                        if (entry != null) {
-                            eventStoreTransformation.previousToken(token(entry));
-                        }
-                        activeTransformations.put(transformation.getTransformationId(), eventStoreTransformation);
-                    }
-                });
+                                          .forEach(transformation -> {
+                                              if (isActive(transformation.getStatus())) {
+                                                  TransformationEntryStore store = transformationStoreRegistry.register(
+                                                          transformation.getContext(),
+                                                          transformation.getTransformationId());
+                                                  long lastToken = -1;
+                                                  TransformEventsRequest entry = store.lastEntry();
+                                                  if (entry != null) {
+                                                      lastToken = token(entry);
+                                                  }
+                                                  activeTransformations.put(transformation.getTransformationId(),
+                                                                            new ActiveEventStoreTransformation(
+                                                                                    transformation,
+                                                                                    lastToken));
+                                              }
+                                          });
     }
 
     private long token(TransformEventsRequest request) {
@@ -75,7 +86,13 @@ public class TransformationCache {
     }
 
 
-    public EventStoreTransformation get(String transformationId) {
+    /**
+     * Retrieves information on a transformation
+     *
+     * @param transformationId the identifier of the transformation
+     * @return information on an active transformation or null
+     */
+    public ActiveEventStoreTransformation get(String transformationId) {
         return activeTransformations.get(transformationId);
     }
 
@@ -87,7 +104,7 @@ public class TransformationCache {
             transformationJpa.setDescription(description);
             eventStoreTransformationRepository.save(transformationJpa);
             transformationStoreRegistry.register(context, transformationId);
-            activeTransformations.put(transformationId, new EventStoreTransformation(transformationId, context));
+            activeTransformations.put(transformationId, new ActiveEventStoreTransformation(transformationJpa, -1));
         }
     }
 
@@ -96,7 +113,10 @@ public class TransformationCache {
             if (activeTransformations.values().stream().anyMatch(tr -> context.equals(tr.context()))) {
                 throw new RuntimeException("Transformation already active for " + context);
             }
-            activeTransformations.put(transformationId, new EventStoreTransformation(transformationId, context));
+            activeTransformations.put(transformationId,
+                                      new ActiveEventStoreTransformation(new EventStoreTransformationJpa(
+                                              transformationId,
+                                              context), -1));
         }
     }
 
@@ -108,22 +128,23 @@ public class TransformationCache {
     public void delete(String transformationId) {
         eventStoreTransformationRepository.deleteById(transformationId);
         eventStoreTransformationProgressRepository.findById(transformationId)
-                                                          .ifPresent(eventStoreTransformationProgressRepository::delete);
+                                                  .ifPresent(eventStoreTransformationProgressRepository::delete);
         activeTransformations.remove(transformationId);
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void setTransformationStatus(String transformationId, EventStoreTransformationJpa.Status status) {
         EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
-                                                                                      .orElseThrow(() -> new RuntimeException(
-                                                                                              "Transformation not found"));
+                                                                                          .orElseThrow(() -> new RuntimeException(
+                                                                                                  "Transformation not found"));
         transformationJpa.setStatus(status);
         eventStoreTransformationRepository.save(transformationJpa);
+        activeTransformations.computeIfPresent(transformationId, (id, active) -> active.withState(transformationJpa));
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void startApply(String transformationId, boolean keepOldVersions, String appliedBy,
-                           Date appliedDate) {
+                           Date appliedDate, long firstEventToken, long lastEventToken) {
         EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
                                                                                           .orElseThrow(() -> new RuntimeException(
                                                                                                   "Transformation not found"));
@@ -131,22 +152,27 @@ public class TransformationCache {
         transformationJpa.setDateApplied(appliedDate);
         transformationJpa.setAppliedBy(appliedBy);
         transformationJpa.setKeepOldVersions(keepOldVersions);
+        transformationJpa.setFirstEventToken(firstEventToken);
+        transformationJpa.setLastEventToken(lastEventToken);
         eventStoreTransformationRepository.save(transformationJpa);
+        activeTransformations.computeIfPresent(transformationId, (id, active) -> active.withState(transformationJpa));
         getOrCreateProgress(transformationId);
-   }
+    }
 
     public Mono<Void> add(String transformationId, TransformEventsRequest transformEventsRequest) {
-        EventStoreTransformation transformation = activeTransformations.get(transformationId);
         return transformationStoreRegistry.get(transformationId).append(transformEventsRequest)
-                .doOnSuccess(result -> transformation.previousToken(token(transformEventsRequest)));
+                                          .doOnSuccess(result -> activeTransformations.computeIfPresent(transformationId,
+                                                                                                        (key, old) -> old.withLastToken(
+                                                                                                                token(transformEventsRequest))));
     }
 
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void setProgress(String transformationId, TransformationProgress transformationProgress) {
-        EventStoreTransformationProgress transformationJpa = eventStoreTransformationProgressRepository.findById(transformationId)
-                                                                                          .orElseThrow(() -> new RuntimeException(
-                                                                                                  "Transformation not found"));
+        EventStoreTransformationProgress transformationJpa = eventStoreTransformationProgressRepository.findById(
+                                                                                                               transformationId)
+                                                                                                       .orElseThrow(() -> new RuntimeException(
+                                                                                                               "Transformation not found"));
         transformationJpa.setLastTokenApplied(transformationProgress.lastTokenProcessed());
         eventStoreTransformationProgressRepository.save(transformationJpa);
     }
@@ -181,11 +207,11 @@ public class TransformationCache {
         eventStoreTransformationRepository.save(transformationJpa);
         if (!EventStoreTransformationJpa.Status.DONE.equals(status)) {
             transformationStoreRegistry.register(context, transformationId);
-            activeTransformations.put(transformationId,  new EventStoreTransformation(transformationId, context));
+            activeTransformations.put(transformationId, new ActiveEventStoreTransformation(transformationJpa, -1));
         }
     }
 
-    public List<EventStoreTransformationJpa> findTransformation(String context) {
+    public List<EventStoreTransformationJpa> findTransformations(String context) {
         return eventStoreTransformationRepository.findByContext(context);
     }
 
@@ -195,11 +221,12 @@ public class TransformationCache {
 
     public EventStoreTransformationProgress getOrCreateProgress(String transformationId) {
         return eventStoreTransformationProgressRepository.findById(transformationId)
-                .orElseGet(() -> {
-                    EventStoreTransformationProgress progress = new EventStoreTransformationProgress();
-                    progress.setTransformationId(transformationId);
-                    return eventStoreTransformationProgressRepository.save(progress);
-                });
+                                                         .orElseGet(() -> {
+                                                             EventStoreTransformationProgress progress = new EventStoreTransformationProgress();
+                                                             progress.setTransformationId(transformationId);
+                                                             return eventStoreTransformationProgressRepository.save(
+                                                                     progress);
+                                                         });
     }
 
     public Optional<EventStoreTransformationProgress> progress(String transformationId) {
@@ -207,7 +234,7 @@ public class TransformationCache {
     }
 
 
-    public void completeTransformation(String transformationId) {
+    public void completeProgress(String transformationId) {
         EventStoreTransformationProgress transformation = getOrCreateProgress(transformationId);
         transformation.setCompleted(true);
         eventStoreTransformationProgressRepository.save(transformation);
@@ -215,9 +242,23 @@ public class TransformationCache {
 
     public int nextVersion(String context) {
         AtomicInteger lastVersion = new AtomicInteger(0);
-        findTransformation(context).forEach(t -> {
+        findTransformations(context).forEach(t -> {
             lastVersion.updateAndGet(old -> Math.max(old, t.getVersion()));
         });
-        return lastVersion.get()+1;
+        return lastVersion.get() + 1;
+    }
+
+    public long firstToken(String transformationId) {
+        TransformEventsRequest firstEntry = transformationStoreRegistry.get(transformationId).firstEntry();
+        if (firstEntry == null) {
+            return -1;
+        }
+        return token(firstEntry);
+    }
+
+    public void setIteratorForActiveTransformation(String id, CloseableIterator<SerializedEventWithToken> iterator) {
+        activeTransformations.computeIfPresent(id,
+                                               (transformationId, activeTransformation)
+                                                       -> activeTransformation.withIterator(iterator));
     }
 }

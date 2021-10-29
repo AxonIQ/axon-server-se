@@ -108,9 +108,10 @@ public interface IndexManager {
      * Returns a stream of index related files that should be included in the backup
      *
      * @param lastSegmentBackedUp the sequence number of the last already backed up segment
+     * @param lastVersionBackedUp
      * @return stream of index related files
      */
-    Stream<String> getBackupFilenames(long lastSegmentBackedUp);
+    Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp);
 
     /**
      * Adds a number of index entries for a segment.

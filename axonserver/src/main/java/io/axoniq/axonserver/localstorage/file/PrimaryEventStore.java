@@ -384,8 +384,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        return next != null ? next.getBackupFilenames(lastSegmentBackedUp) : Stream.empty();
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
+        return next != null ? next.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp) : Stream.empty();
     }
 
     @Override

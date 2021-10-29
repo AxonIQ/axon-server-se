@@ -34,6 +34,22 @@ public class EventStoreTransformationJpa {
         this.keepOldVersions = keepOldVersions;
     }
 
+    public Long getLastEventToken() {
+        return lastEventToken;
+    }
+
+    public void setLastEventToken(Long lastEventToken) {
+        this.lastEventToken = lastEventToken;
+    }
+
+    public Long getFirstEventToken() {
+        return firstEventToken;
+    }
+
+    public void setFirstEventToken(Long firstEventToken) {
+        this.firstEventToken = firstEventToken;
+    }
+
     public enum Status {
         CREATED,
         CLOSED,
@@ -57,6 +73,10 @@ public class EventStoreTransformationJpa {
     private Date dateApplied;
 
     private String appliedBy;
+
+    private Long firstEventToken;
+
+    private Long lastEventToken;
 
 
     public EventStoreTransformationJpa(String transformationId, String context) {

@@ -32,14 +32,6 @@ import java.util.stream.Stream;
  */
 public interface EventStorageEngine {
 
-    default boolean keepOldVersions() {
-        return false;
-    }
-
-    default int nextVersion() {
-        return 1;
-    }
-
     enum SearchHint {
         RECENT_ONLY
     }
@@ -191,7 +183,7 @@ public interface EventStorageEngine {
      * @param lastSegmentBackedUp last segment backed up before
      * @return stream of filenames
      */
-    default Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
         throw new UnsupportedOperationException();
     }
 
@@ -246,13 +238,23 @@ public interface EventStorageEngine {
                            int version, BiFunction<Event, Long, Event> transformationFunction,
                            Consumer<TransformationProgress> transformationProgressConsumer);
 
-    default void deleteSegments(int version) {
+    default void deleteOldVersions(int version) {
         throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
+    }
+
+    default boolean canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
+        return false;
     }
 
     default void rollbackSegments(int version){
         throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
     }
 
+    default boolean keepOldVersions() {
+        return false;
+    }
 
+    default int nextVersion() {
+        return 1;
+    }
 }

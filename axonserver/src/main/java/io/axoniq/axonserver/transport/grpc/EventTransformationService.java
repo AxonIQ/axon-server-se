@@ -9,18 +9,18 @@
 
 package io.axoniq.axonserver.transport.grpc;
 
-import com.google.protobuf.Empty;
 import io.axoniq.axonserver.config.AuthenticationProvider;
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
+import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.springframework.security.core.Authentication;
@@ -53,11 +53,11 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
     }
 
     @Override
-    public void startTransformation(Empty request, StreamObserver<TransformationId> responseObserver) {
+    public void startTransformation(StartTransformationRequest request, StreamObserver<TransformationId> responseObserver) {
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
         auditLog.info("{}@{}: Request to start transformation", authentication.getName(), context);
-        eventStoreTransformationService.startTransformation(context)
+        eventStoreTransformationService.startTransformation(context, request.getDescription())
                                        .subscribe(id -> responseObserver.onNext(transformationId(id)),
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
                                                           throwable)),

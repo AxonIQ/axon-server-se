@@ -16,6 +16,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
@@ -57,7 +58,7 @@ public class EventTransformationServiceTest {
             private final Map<String, String> activeTransformations = new HashMap<>();
 
             @Override
-            public Mono<String> startTransformation(String context) {
+            public Mono<String> startTransformation(String context, String description) {
                 return Mono.create(sink -> {
                     if (activeTransformations.containsKey(context)) {
                         sink.error(new MessagingPlatformException(
@@ -164,7 +165,7 @@ public class EventTransformationServiceTest {
 
     private TransformationId doStartTransformation() throws InterruptedException, ExecutionException {
         CompletableFuture<TransformationId> futureTransformationId = new CompletableFuture<>();
-        testSubject.startTransformation(Empty.getDefaultInstance(),
+        testSubject.startTransformation(StartTransformationRequest.getDefaultInstance(),
                                         new CompletableFutureStreamObserver<>(futureTransformationId));
 
         return futureTransformationId.get();

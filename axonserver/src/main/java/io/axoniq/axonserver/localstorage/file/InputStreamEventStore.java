@@ -68,7 +68,13 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     @Override
     public void close(boolean deleteData) {
         if (deleteData) {
-            segments.forEach((segment, version) -> removeSegment(segment));
+            segments.forEach(this::removeAllSegmentVersions);
+        }
+    }
+
+    private void removeAllSegmentVersions(Long segment, int currentVersion) {
+        for (int i = 0; i <= currentVersion; i++) {
+            removeSegment(segment, i);
         }
     }
 
@@ -80,10 +86,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     @Override
     protected void segmentActiveVersion(long segment, int version) {
         segments.put(segment, version);
-    }
-
-    private void removeSegment(long segment) {
-        removeSegment(segment, segments.remove(segment));
     }
 
     @Override

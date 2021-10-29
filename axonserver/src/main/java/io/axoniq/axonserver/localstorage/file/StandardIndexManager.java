@@ -550,10 +550,10 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
         return indexesDescending.entrySet()
                                 .stream()
-                                .filter(s -> s.getKey() > lastSegmentBackedUp)
+                                .filter(s -> s.getKey() > lastSegmentBackedUp || s.getValue() > lastVersionBackedUp)
                                 .flatMap(s -> Stream.of(
                                         storageProperties.index(context, s.getKey()).getAbsolutePath(),
                                         storageProperties.bloomFilter(context, s.getKey()).getAbsolutePath()

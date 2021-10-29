@@ -10,139 +10,106 @@
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import org.springframework.data.util.CloseableIterator;
-import org.springframework.stereotype.Controller;
 
 /**
- * Validates event store transformation requests. There can only be one transformation per context. Each entry should
- * provide a valid previous token. When an event is replaced, the aggregate id and sequence number must remain the
- * same.
- *
+ * Defines interface for validation actions for transformation operations. Validation actions throw an exception if the
+ * validation fails.
+ * Implementation may implement additional validations, if needed.
  * @author Marc Gathier
  * @since 4.6.0
  */
-@Controller
-public class TransformationValidator {
+public interface TransformationValidator {
 
-    private final LocalEventStore localEventStore;
-    private final TransformationCache transformationCache;
+    /**
+     * Validates a request to delete an event as part of the transformation.
+     * Validations:
+     * <ul>
+     *     <li>transformation id is existing transformation</li>
+     *     <li>transformation id is valid for the context</li>
+     *     <li>transformation is still open</li>
+     *     <li>previous token is token of last provided event for this transformation</li>
+     *     <li>token is higher than the previous token</li>
+     * </ul>
+     * @param context the event store context
+     * @param transformationId the identification of the transformation
+     * @param token the token (global index) of the event to delete
+     * @param previousToken the token of the previous event sent in this transformation (or -1 if this is the first event)
+     */
+    void validateDeleteEvent(String context, String transformationId, long token, long previousToken);
 
-    public TransformationValidator(
-            TransformationCache transformationCache,
-            LocalEventStore localEventStore) {
-        this.transformationCache = transformationCache;
-        this.localEventStore = localEventStore;
-    }
+    /**
+     * Validates a request to update an event as part of the transformation.
+     * Validations:
+     * <ul>
+     *     <li>transformation id is existing transformation</li>
+     *     <li>transformation id is valid for the context</li>
+     *     <li>transformation is still open</li>
+     *     <li>previous token is token of last provided event for this transformation</li>
+     *     <li>token is higher than the previous token</li>
+     *     <li>the aggregate identifier/sequence number match the aggregate identifier/sequence number of the existing event</li>
+     * </ul>
+     * @param context the event store context
+     * @param transformationId the identification of the transformation
+     * @param token the token (global index) of the event to delete
+     * @param previousToken the token of the previous event sent in this transformation (or -1 if this is the first event)
+     * @param event the updated event
+     */
+    void validateReplaceEvent(String context, String transformationId, long token, long previousToken,
+                              Event event);
 
-    public void validateDeleteEvent(String context, String transformationId, long token, long previousToken) {
-        EventStoreTransformation transformation = transformationCache.get(transformationId);
-        validateContext(context, transformation);
-        validatePreviousToken(previousToken, transformation);
-    }
+    /**
+     * Validates a request to apply the transformation.
+     * Validations:
+     * <ul>
+     *     <li>transformation id is existing transformation</li>
+     *     <li>transformation id is valid for the context</li>
+     *     <li>transformation is still open</li>
+     *     <li>previous token is token of last provided event for this transformation</li>
+     * </ul>
+     * @param context the event store context
+     * @param transformationId the identification of the transformation
+     * @param lastEventToken the token of the last event provided in the transformation
+     */
+    void apply(String context, String transformationId, long lastEventToken);
 
-    public void validateReplaceEvent(String context, String transformationId, long token, long previousToken,
-                                     Event event) {
-        EventStoreTransformation transformation = transformationCache.get(transformationId);
-        validateContext(context, transformation);
-        validatePreviousToken(previousToken, transformation);
-        validateEventToReplace(token, event, context, transformation);
-    }
+    /**
+     * Validates a request to cancel a transformation.
+     * Validations:
+     * <ul>
+     *     <li>transformation id is existing transformation</li>
+     *     <li>transformation id is valid for the context</li>
+     *     <li>transformation is still open</li>
+     * </ul>
+     * @param context the event store context
+     * @param transformationId the identification of the transformation
+     */
+    void cancel(String context, String transformationId);
 
-    public void apply(String context, String transformationId, long lastEventToken) {
-        EventStoreTransformation transformation = transformationCache.get(transformationId);
-        validateContext(context, transformation);
-        validatePreviousToken(lastEventToken, transformation);
-        transformation.closeIterator();
-    }
+    /**
+     * Validates a request to delete old versions of event store segments after a transformation.
+     * Validations:
+     * <ul>
+     *     <li>transformation id is existing transformation</li>
+     *     <li>transformation id is valid for the context</li>
+     *     <li>transformation is done</li>
+     *     <li>transformation is applied with keep old versions option</li>
+     * </ul>
+     * @param context the event store context
+     * @param transformationId the identification of the transformation
+     */
+    void deleteOldVersions(String context, String transformationId);
 
-    public void cancel(String context, String transformationId) {
-        EventStoreTransformation transformation = transformationCache.get(transformationId);
-        validateContext(context, transformation);
-        if (transformation.applying()) {
-            throw new RuntimeException("Transformation in progress");
-        }
-    }
-
-    private void validatePreviousToken(long previousToken, EventStoreTransformation transformation) {
-        if (previousToken != transformation.previousToken()) {
-            throw new RuntimeException("Invalid previous token");
-        }
-    }
-
-    private void validateContext(String context, EventStoreTransformation transformation) {
-        if (transformation == null) {
-            throw new RuntimeException("Transformation not found");
-        }
-
-        if (!transformation.context().equals(context)) {
-            throw new RuntimeException("Transformation id not valid for context");
-        }
-    }
-
-    private void validateEventToReplace(long token, Event event, String context,
-                                        EventStoreTransformation transformation) {
-        if (event.getAggregateType().isEmpty()) {
-            return;
-        }
-
-        CloseableIterator<SerializedEventWithToken> iterator = transformation.iterator();
-        if (iterator == null) {
-            iterator = localEventStore.eventIterator(context, token);
-            transformation.iterator(iterator);
-        }
-
-        if (!iterator.hasNext()) {
-            throw new RuntimeException("Event for token not found: " + token);
-        }
-        SerializedEventWithToken stored = iterator.next();
-        while (stored.getToken() < token && iterator.hasNext()) {
-            stored = iterator.next();
-        }
-
-        if (stored.getToken() != token) {
-            throw new RuntimeException("Event for token not found: " + token);
-        }
-
-        if (!event.getAggregateIdentifier().equals(stored.getSerializedEvent().getAggregateIdentifier())) {
-            throw new RuntimeException("Invalid aggregate identifier for: " + token);
-        }
-        if (event.getAggregateSequenceNumber() != stored.getSerializedEvent()
-                                                        .getAggregateSequenceNumber()) {
-            throw new RuntimeException("Invalid aggregate sequence number for: " + token);
-        }
-    }
-
-    public void deleteOldVersions(String context, String transformationId) {
-        EventStoreTransformationJpa transformation = transformationCache.transformation(transformationId)
-                .orElseThrow(() -> new RuntimeException("Transformation not found"));
-        if (!transformation.getContext().equals(context)) {
-            throw new RuntimeException("Transformation id not valid for context");
-        }
-
-        if (!EventStoreTransformationJpa.Status.DONE.equals(transformation.getStatus())) {
-            throw new RuntimeException("Transformation is not completed yet");
-        }
-
-        if (!transformation.isKeepOldVersions()) {
-            throw new RuntimeException("Transformation started without keep old versions option");
-        }
-    }
-
-    public void rollback(String context, String transformationId) {
-        EventStoreTransformationJpa transformation = transformationCache.transformation(transformationId)
-                                                                        .orElseThrow(() -> new RuntimeException("Transformation not found"));
-        if (!transformation.getContext().equals(context)) {
-            throw new RuntimeException("Transformation id not valid for context");
-        }
-
-        if (!EventStoreTransformationJpa.Status.DONE.equals(transformation.getStatus())) {
-            throw new RuntimeException("Transformation is not completed yet");
-        }
-
-        if (!transformation.isKeepOldVersions()) {
-            throw new RuntimeException("Transformation started without keep old versions option");
-        }
-    }
+    /**
+     * Validates a request to rollback a transformation.
+     * Validations:
+     * <ul>
+     *     <li>transformation id is existing transformation</li>
+     *     <li>transformation id is valid for the context</li>
+     *     <li>transformation is done</li>
+     *     <li>transformation is applied with keep old versions option</li>
+     * </ul>
+     * @param context the event store context
+     * @param transformationId the identification of the transformation
+     */
+    void rollback(String context, String transformationId);
 }

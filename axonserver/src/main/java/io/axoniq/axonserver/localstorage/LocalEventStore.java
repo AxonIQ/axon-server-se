@@ -917,14 +917,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotWriteStorage.waitingTransactions();
     }
 
-    public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp) {
+    public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp, int lastVersionBackedUp) {
         try {
             Workers workers = workers(context);
             if (eventType == EventType.SNAPSHOT) {
-                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp);
+                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp);
             }
 
-            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp);
+            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp);
         } catch (Exception ex) {
             logger.warn("Failed to get backup filenames", ex);
         }
@@ -948,12 +948,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.containsKey(context) && workersMap.get(context).initialized;
     }
 
-    public void deleteSegments(String context, int version) {
-        workers(context).deleteSegments(version);
+    public void deleteOldVersions(String context, int version) {
+        workers(context).deleteOldVersions(version);
     }
 
     public void rollbackSegments(String context, int version) {
         workers(context).rollbackSegments(version);
+    }
+
+    public boolean canRollbackTransformation(String context, int version, long firstEventToken, long lastEventToken) {
+        return workers(context).canRollbackTransformation(version, firstEventToken, lastEventToken);
     }
 
     private class Workers {
@@ -1064,10 +1068,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             trackingEventManager.validateActiveConnections(minLastPermits);
         }
 
-        public void deleteSegments(int version) {
-            eventStorageEngine.deleteSegments(version);
+        public void deleteOldVersions(int version) {
+            eventStorageEngine.deleteOldVersions(version);
         }
 
+        public boolean canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
+            return eventStorageEngine.canRollbackTransformation(version, firstEventToken, lastEventToken);
+        }
         public void rollbackSegments(int version) {
             eventStorageEngine.rollbackSegments(version);
         }

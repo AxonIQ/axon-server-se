@@ -15,7 +15,9 @@ create table event_store_transformations (
     description varchar(4000),
     date_applied date,
     keep_old_versions bool,
-    applied_by varchar(255)
+    applied_by varchar(255),
+    first_event_token long,
+    last_event_token long
 );
 
 create table event_store_transformation_progress (

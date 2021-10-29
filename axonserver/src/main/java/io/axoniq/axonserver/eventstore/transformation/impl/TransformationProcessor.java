@@ -40,58 +40,59 @@ public class TransformationProcessor {
 
     private final Logger logger = LoggerFactory.getLogger(TransformationProcessor.class);
     private final TransformationStoreRegistry transformationStoreRegistry;
-    private final TransformationCache transformationCache;
+    private final TransformationStateManager transformationStateManager;
     private final EventStoreTransformationRepository transformationRepository;
     private final ApplicationContext applicationContext;
 
     public TransformationProcessor(
             ApplicationContext applicationContext,
             TransformationStoreRegistry transformationStoreRegistry,
-            TransformationCache transformationCache,
+            TransformationStateManager transformationStateManager,
             EventStoreTransformationRepository transformationRepository) {
         this.applicationContext = applicationContext;
         this.transformationRepository = transformationRepository;
         this.transformationStoreRegistry = transformationStoreRegistry;
-        this.transformationCache = transformationCache;
+        this.transformationStateManager = transformationStateManager;
     }
 
     public void startTransformation(String context, String transformationId, int version, String description) {
-        transformationCache.create(context, transformationId, version, description);
+        transformationStateManager.create(context, transformationId, version, description);
     }
 
     public Mono<Void> deleteEvent(String transformationId, long token) {
-        return transformationCache.add(transformationId, deleteEventEntry(token));
+        return transformationStateManager.add(transformationId, deleteEventEntry(token));
     }
 
     public Mono<Void> replaceEvent(String transformationId, long token, Event event) {
-        return transformationCache.add(transformationId, replaceEventEntry(token, event));
+        return transformationStateManager.add(transformationId, replaceEventEntry(token, event));
     }
 
     public void cancel(String transformationId) {
         transformationStoreRegistry.delete(transformationId);
-        transformationCache.delete(transformationId);
+        transformationStateManager.delete(transformationId);
     }
 
     public void complete(String transformationId) {
         transformationStoreRegistry.delete(transformationId);
-        transformationCache.complete(transformationId);
+        transformationStateManager.complete(transformationId);
     }
 
     public CompletableFuture<Void> apply(String transformationId, boolean keepOldVersions, String appliedBy,
-                                         Date appliedDate) {
+                                         Date appliedDate, long firstEventToken, long lastEventToken) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
             TransformationEntryStore transformationFileStore = transformationStoreRegistry.get(transformationId);
-            EventStoreTransformationJpa transformation = transformationCache.transformation(transformationId)
-                                                                            .orElseThrow(() -> new RuntimeException(
+            EventStoreTransformationJpa transformation = transformationStateManager.transformation(transformationId)
+                                                                                   .orElseThrow(() -> new RuntimeException(
                                                                                     "Transformation not found"));
-
+            transformationStateManager.startApply(transformationId, keepOldVersions, appliedBy, appliedDate, firstEventToken, lastEventToken);
             return doApply(transformationFileStore,
                         transformation.getContext(),
                         transformationId,
                         keepOldVersions,
                         transformation.getVersion(),
-                           appliedBy, appliedDate,
+                        firstEventToken,
+                        lastEventToken,
                         0);
         } catch (Exception ex) {
             future.completeExceptionally(ex);
@@ -101,25 +102,25 @@ public class TransformationProcessor {
 
     private CompletableFuture<Void> doApply(TransformationEntryStore transformationFileStore, String context,
                                             String transformationId, boolean keepOldVersions, int version,
-                                            String appliedBy, Date appliedDate, long nextToken) {
+                                            long firstEventToken,
+                                            long lastEventToken,
+                                            long nextToken) {
 
-        TransformEventsRequest first = transformationFileStore.firstEntry();
-        if (first == null) {
+        if (lastEventToken < 0) {
+            transformationStateManager.completeProgress(transformationId);
             return CompletableFuture.completedFuture(null);
         }
-        long firstToken = max(token(first), nextToken);
-        long lastToken = token(transformationFileStore.lastEntry());
+        long firstToken = max(firstEventToken, nextToken);
 
-        logger.info("{}: Start apply transformation from {} to {}", context, firstToken, lastToken);
+        logger.info("{}: Start apply transformation from {} to {}", context, firstToken, lastEventToken);
         CloseableIterator<TransformEventsRequest> iterator = transformationFileStore.iterator(0);
         if (iterator.hasNext()) {
-            transformationCache.startApply(transformationId, keepOldVersions, appliedBy, appliedDate);
             TransformEventsRequest transformationEntry = iterator.next();
             AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
             logger.debug("Next token {}", token(request.get()));
             return localEventStore().transformEvents(context,
                                                    firstToken,
-                                                   lastToken,
+                                                   lastEventToken,
                                                    keepOldVersions,
                                                    version,
                                                    (event, token) -> {
@@ -147,7 +148,7 @@ public class TransformationProcessor {
                                                                                                           transformationProgress))
                                   .thenAccept(r -> {
                                       iterator.close();
-                                      transformationCache.completeTransformation(transformationId);
+                                      transformationStateManager.completeProgress(transformationId);
                                   });
         }
         return CompletableFuture.completedFuture(null);
@@ -156,7 +157,7 @@ public class TransformationProcessor {
     private void handleTransformationProgress(String context, String transformationId,
                                               TransformationProgress transformationProgress) {
         logger.info("{}: Transformation {} Progress {}", context, transformationId, transformationProgress);
-        transformationCache.setProgress(transformationId, transformationProgress);
+        transformationStateManager.setProgress(transformationId, transformationProgress);
     }
 
     private TransformEventsRequest deleteEventEntry(long token) {
@@ -217,11 +218,11 @@ public class TransformationProcessor {
 
     public CompletableFuture<String> restartApply(String context) {
         CompletableFuture<String> future = new CompletableFuture<>();
-        List<EventStoreTransformationJpa> toApply = transformationCache.findTransformation(context)
-                                                                       .stream()
-                                                                       .filter(transformation -> EventStoreTransformationJpa.Status.CLOSED.equals(
+        List<EventStoreTransformationJpa> toApply = transformationStateManager.findTransformations(context)
+                                                                              .stream()
+                                                                              .filter(transformation -> EventStoreTransformationJpa.Status.CLOSED.equals(
                                                                                transformation.getStatus()))
-                                                                       .collect(Collectors.toList());
+                                                                              .collect(Collectors.toList());
         if (toApply.isEmpty()) {
             future.complete(null);
         } else if (toApply.size() > 1) {
@@ -229,21 +230,21 @@ public class TransformationProcessor {
             future.complete(null);
         } else {
             EventStoreTransformationJpa transformation = toApply.get(0);
-            Optional<EventStoreTransformationProgress> progress = transformationCache.progress(transformation.getTransformationId());
+            Optional<EventStoreTransformationProgress> progress = transformationStateManager.progress(transformation.getTransformationId());
             if(!progress.isPresent()) {
                 future.complete(null);
             } else {
                 TransformationEntryStore transformationFileStore = transformationStoreRegistry.get(
                         transformation.getTransformationId());
-                transformationCache.reserve(context, transformation.getTransformationId());
+                transformationStateManager.reserve(context, transformation.getTransformationId());
                 return doApply(transformationFileStore,
                                transformation.getContext(),
                                transformation.getTransformationId(),
                                transformation.isKeepOldVersions(),
                                transformation.getVersion(),
-                               transformation.getAppliedBy(),
-                               transformation.getDateApplied(),
-                               progress.get().getLastTokenApplied())
+                               progress.get().getLastTokenApplied(),
+                               transformation.getFirstEventToken(),
+                               transformation.getLastEventToken())
                         .thenApply(v -> transformation.getTransformationId());
             }
         }
@@ -252,26 +253,27 @@ public class TransformationProcessor {
 
     public void deleteOldVersions(String context, String id) {
         transformationRepository.findById(id)
-                                .ifPresent(transformation -> {
-                                    localEventStore().deleteSegments(context, transformation.getVersion());
-                                });
+                                .ifPresent(transformation -> localEventStore().deleteOldVersions(context, transformation.getVersion()));
     }
 
     public void rollbackTransformation(String context, String transformationId) {
         transformationRepository.findById(transformationId)
                                 .ifPresent(transformation -> {
-                                    localEventStore().rollbackSegments(context, transformation.getVersion());
-                                    transformationCache.delete(transformationId);
+                                    localEventStore().rollbackSegments(context,
+                                                                       transformation.getVersion());
+                                    transformationStateManager.delete(transformationId);
                                 });
     }
 
     public void checkApplyProcessor(String id) {
-        transformationCache.transformation(id)
-                .ifPresent(transformation -> {
+        transformationStateManager.transformation(id)
+                                  .ifPresent(transformation -> {
                     if (EventStoreTransformationJpa.Status.CLOSED.equals(transformation.getStatus())) {
                         apply(id, transformation.isKeepOldVersions(),
                               transformation.getAppliedBy(),
-                              transformation.getDateApplied());
+                              transformation.getDateApplied(),
+                              transformation.getFirstEventToken(),
+                              transformation.getLastEventToken());
                     }
                 });
     }

@@ -300,13 +300,18 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void deleteSegments(int version) {
+    public void deleteOldVersions(int version) {
         SortedSet<Long> mySegments = getSegments();
         mySegments.forEach(s -> {
-            scheduleForDeletion(s, version);
+            if (storageProperties.dataFile(context, new FileVersion(s, version)).exists()) {
+                int previousVersion = previousVersion(s, version);
+                if( previousVersion >= 0) {
+                    scheduleForDeletion(s, previousVersion);
+                }
+            }
         });
         if (next != null) {
-            next.deleteSegments(version);
+            next.deleteOldVersions(version);
         }
     }
 
@@ -316,15 +321,45 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         mySegments.forEach(s -> {
             if (currentSegmentVersion(s) == version) {
                 int previousVersion = previousVersion(s, version);
-                indexManager.activeVersion(s, previousVersion);
-                segmentActiveVersion(s, previousVersion);
-                scheduleForDeletion(s, version);
+                if( previousVersion >= 0) {
+                    indexManager.activeVersion(s, previousVersion);
+                    segmentActiveVersion(s, previousVersion);
+                    scheduleForDeletion(s, version);
+                }
             }
         });
 
         if (next != null) {
             next.rollbackSegments(version);
         }
+    }
+
+    @Override
+    public boolean canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
+        if (lastEventToken < getFirstToken()) {
+            return true;
+        }
+        if (getSegments().stream().anyMatch(s -> currentSegmentVersion(s) == version && hasPreviousVersion(s, version))) {
+            return true;
+        }
+
+        if (next != null) {
+            return next.canRollbackTransformation(version, firstEventToken, lastEventToken);
+        }
+        return false;
+    }
+
+    @Override
+    public int nextVersion() {
+        int version = 1;
+        for (Long segment : getSegments()) {
+           version = Math.max(version, currentSegmentVersion(segment)+1);
+        }
+        return next == null ? version : Math.max(version, next.nextVersion());
+    }
+
+    private boolean hasPreviousVersion(long segment, int version) {
+        return previousVersion(segment, version) >= 0;
     }
 
     private int previousVersion(Long segment, int version) {
@@ -335,7 +370,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
             previous--;
         }
-        throw new RuntimeException(context + ": No previous version found for segment: " + segment);
+        return -1;
     }
 
     private void transformSegment(long segment, int currentVersion, boolean keepOldVersion,
@@ -418,7 +453,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         } else {
             FileUtils.delete(tempFile);
         }
-        transformationProgressConsumer.accept(new TransformationProgressUpdate(token-1));
+        transformationProgressConsumer.accept(new TransformationProgressUpdate(token - 1));
     }
 
     protected abstract Integer currentSegmentVersion(Long segment);
@@ -722,17 +757,23 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
         Stream<String> filenames = Stream.concat(getSegments().stream()
-                                                              .filter(s -> s > lastSegmentBackedUp)
-                                                              .map(s -> storageProperties.dataFile(context, s)
+                                                              .filter(s -> (s > lastSegmentBackedUp
+                                                                      || currentSegmentVersion(s)
+                                                                      > lastVersionBackedUp))
+                                                              .map(s -> storageProperties.dataFile(context,
+                                                                                                   new FileVersion(s,
+                                                                                                                   currentSegmentVersion(
+                                                                                                                           s)))
                                                                                          .getAbsolutePath()),
-                                                 indexManager.getBackupFilenames(lastSegmentBackedUp));
+                                                 indexManager.getBackupFilenames(lastSegmentBackedUp,
+                                                                                 lastVersionBackedUp));
 
         if (next == null) {
             return filenames;
         }
-        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
+        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp));
     }
 
     protected void renameFileIfNecessary(long segment) {
