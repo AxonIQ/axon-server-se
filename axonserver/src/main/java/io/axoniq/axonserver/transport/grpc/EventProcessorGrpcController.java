@@ -2,8 +2,6 @@ package io.axoniq.axonserver.transport.grpc;
 
 import com.google.protobuf.Empty;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
-import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
-import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
@@ -25,6 +23,12 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     private final EventProcessorAdminService service;
     private final AuthenticationProvider authenticationProvider;
 
+    /**
+     * Constructor that specify the service to perform the requested operation and the authentication provider.
+     *
+     * @param service                used to perform the requested operations
+     * @param authenticationProvider used to retrieve the information related to the authenticated user
+     */
     public EventProcessorGrpcController(EventProcessorAdminService service,
                                         AuthenticationProvider authenticationProvider) {
         this.service = service;
@@ -34,18 +38,13 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     /**
      * Processes the request to pause a specific event processor.
      *
-     * @param eventProcessorId the identifier of the event processor
+     * @param processorId      the identifier of the event processor
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void pauseEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
-        EventProcessorId eventProcessor = new EventProcessorIdMessage(eventProcessorId);
-        Authentication authentication = new GrpcAuthentication(authenticationProvider);
-        try {
-            service.pause(eventProcessor, authentication);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+    public void pauseEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
+        service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {
+               }, responseObserver::onError, responseObserver::onCompleted);
     }
 }

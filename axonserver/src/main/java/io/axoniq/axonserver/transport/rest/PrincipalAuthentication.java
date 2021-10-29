@@ -21,7 +21,7 @@ public class PrincipalAuthentication implements Authentication {
 
     @Nonnull
     @Override
-    public String name() {
+    public String username() {
         return principal == null ? "<anonymous>" : principal.getName();
     }
 }

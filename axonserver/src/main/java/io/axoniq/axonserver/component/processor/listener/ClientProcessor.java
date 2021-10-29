@@ -24,6 +24,11 @@ public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> 
 
     String clientId();
 
+    /**
+     * Returns the context to which the client is connected
+     *
+     * @return the context to which the client is connected
+     */
     String context();
 
     EventProcessorInfo eventProcessorInfo();
