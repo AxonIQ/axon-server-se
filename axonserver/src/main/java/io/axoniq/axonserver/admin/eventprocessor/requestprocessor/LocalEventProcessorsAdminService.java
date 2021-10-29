@@ -10,6 +10,7 @@ import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
 
@@ -27,6 +28,12 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
     private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
 
+    /**
+     * Default implementation of {@link EventProcessorAdminService}.
+     *
+     * @param processorEventsSource used to propagate the instructions to the proper clients
+     * @param eventProcessors       the list of all event processors
+     */
     public LocalEventProcessorsAdminService(
             ProcessorEventPublisher processorEventsSource,
             ClientProcessors eventProcessors) {
@@ -34,29 +41,21 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         this.eventProcessors = eventProcessors;
     }
 
-    /**
-     * Handles a request to pause a certain event processor.
-     * The method returns once the request has been propagated to the proper clients.
-     * It doesn't imply that the clients have processed it.
-     *
-     * @param identifier     the event processor identifier
-     * @param authentication info about the authenticated user
-     */
+    @Nonnull
     @Override
-    public void pause(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+    public Mono<Void> pause(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to pause Event processor \"{}@{}\".",
-                          AuditLog.username(authentication.name()),
+                          AuditLog.username(authentication.username()),
                           processor,
                           tokenStoreIdentifier);
         }
-
-        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
-        Flux.fromIterable(eventProcessors)
-            .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-            .subscribe(ep -> processorEventsSource.pauseProcessorRequest(ep.context(), ep.clientId(), processor));
+        return Flux.fromIterable(eventProcessors)
+                   .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                   .doOnNext(ep -> processorEventsSource.pauseProcessorRequest(ep.context(), ep.clientId(), processor))
+                   .then();
         // the context will be removed from the event processor
     }
 
