@@ -16,7 +16,6 @@ import io.axoniq.axonserver.topology.Topology;
  * {@link ClientProcessor} Fake implementation for test purpose .
  *
  * @author Sara Pellegrini
- *
  */
 public class FakeClientProcessor implements ClientProcessor {
 
@@ -27,6 +26,15 @@ public class FakeClientProcessor implements ClientProcessor {
     private final String belongsToContext;
 
     private final EventProcessorInfo eventProcessorInfo;
+
+    public FakeClientProcessor(String clientId, String processorName, String tokenStoreId) {
+        this(clientId, true, EventProcessorInfo.newBuilder()
+                                               .setProcessorName(processorName)
+                                               .setTokenStoreIdentifier(tokenStoreId)
+                                               .setRunning(true)
+                                               .build());
+    }
+
 
     public FakeClientProcessor(String clientId, boolean belongsToComponent, String processorName, boolean running) {
         this(clientId, belongsToComponent, EventProcessorInfo.newBuilder()
@@ -51,6 +59,11 @@ public class FakeClientProcessor implements ClientProcessor {
     @Override
     public String clientId() {
         return clientId;
+    }
+
+    @Override
+    public String context() {
+        return "default";
     }
 
     @Override
