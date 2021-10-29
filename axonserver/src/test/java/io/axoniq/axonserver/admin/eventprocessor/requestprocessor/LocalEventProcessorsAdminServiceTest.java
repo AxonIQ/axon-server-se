@@ -49,7 +49,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
-        testSubject.start(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user");
+        testSubject.start(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
+                   .block();
         verify(publisher).startProcessorRequest(eq("default"), eq("Client-A"), eq(processorName));
         verify(publisher).startProcessorRequest(eq("default"), eq("Client-B"), eq(processorName));
         verifyNoMoreInteractions(publisher);

@@ -44,8 +44,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void pauseEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {
-               }, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 
     /**
@@ -56,13 +55,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void startEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
-        EventProcessorId eventProcessor = new EventProcessorIdMessage(eventProcessorId);
-        Authentication authentication = new GrpcAuthentication(authenticationProvider);
-        try {
-            service.start(eventProcessor, authentication);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+        service.start(new EventProcessorIdMessage(eventProcessorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 }

@@ -15,7 +15,7 @@ interface EventProcessorAdminService {
 
     /**
      * Handles a request to pause a certain event processor.
-     * The {@link Mono} completes when the request has been propagated to the clients.
+     * The returned {@link Mono} completes when the request has been propagated to the clients.
      * It doesn't guarantee that the request has been processed by all clients.
      *
      * @param identifier     the event processor identifier
@@ -25,10 +25,13 @@ interface EventProcessorAdminService {
 
     /**
      * Handles a request to start a certain event processor.
-     * Returns when the request has been propagated to the clients.
+     * The returned {@link Mono} completes when the request has been propagated to the clients.
      * It doesn't guarantee that the request has been processed by all clients.
+     *
+     * @param identifier     the event processor identifier
+     * @param authentication info about the authenticated user
      */
-    fun start(identifier: EventProcessorId, authentication: Authentication)
+    fun start(identifier: EventProcessorId, authentication: Authentication): Mono<Void>
 }
 
 /**
