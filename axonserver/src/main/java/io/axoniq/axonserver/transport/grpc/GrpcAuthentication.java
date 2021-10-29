@@ -22,7 +22,7 @@ public class GrpcAuthentication implements Authentication {
 
     @Nonnull
     @Override
-    public String name() {
+    public String username() {
         return authentication.getName();
     }
 }

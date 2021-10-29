@@ -11,5 +11,5 @@ interface Authentication {
     /**
      * Returns the username of the authenticated user
      */
-    fun name(): String
+    fun username(): String
 }

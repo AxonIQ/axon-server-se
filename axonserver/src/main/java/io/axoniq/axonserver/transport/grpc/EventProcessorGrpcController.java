@@ -23,6 +23,12 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     private final EventProcessorAdminService service;
     private final AuthenticationProvider authenticationProvider;
 
+    /**
+     * Constructor that specify the service to perform the requested operation and the authentication provider.
+     *
+     * @param service                used to perform the requested operations
+     * @param authenticationProvider used to retrieve the information related to the authenticated user
+     */
     public EventProcessorGrpcController(EventProcessorAdminService service,
                                         AuthenticationProvider authenticationProvider) {
         this.service = service;
@@ -37,29 +43,22 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void pauseEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
-        try {
-            service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+        service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 
     /**
      * Processes the request to start a specific event processor.
      *
-     * @param processorId      the identifier of the event processor
+     * @param eventProcessorId the identifier of the event processor
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void startEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
-        try {
-            service.start(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider));
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+    public void startEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
+        service.start(new EventProcessorIdMessage(eventProcessorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
+
 
 
     /**
