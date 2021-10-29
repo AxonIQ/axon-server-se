@@ -87,4 +87,22 @@ public class LocalEventProcessorsAdminServiceTest {
         verify(publisher).mergeSegment("default", clients, processorName);
         verifyNoMoreInteractions(publisher);
     }
+
+    @Test
+    public void testMoveSegment() {
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
+        ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
+        ClientProcessor clientE = new FakeClientProcessor("Client-E", processorName, tokenStore);
+        ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
+                         () -> "authenticated-user");
+        verify(publisher).releaseSegment("default", "Client-A", processorName, 2);
+        verify(publisher).releaseSegment("default", "Client-E", processorName, 2);
+        verifyNoMoreInteractions(publisher);
+    }
 }
