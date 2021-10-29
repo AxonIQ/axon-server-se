@@ -19,21 +19,21 @@ import java.util.NoSuchElementException;
  * Iterator that iterates through log entries in a single log entry file.
  *
  * @author Marc Gathier
- * @since 4.1
+ * @since 4.6.0
  */
-public class SegmentEntryIterator implements CloseableIterator<FileStoreEntry> {
+public class BufferEntryIterator implements CloseableIterator<FileStoreEntry> {
 
     private final ByteBufferEntrySource source;
 
     /**
      * Creates the iterator.
-     *
-     * @param source    the buffer mapped to the file, current position is the position of the first log entry to read
+     *  @param source    the buffer mapped to the file, current position is the position of the first log entry to read
+     * @param segment
      * @param nextIndex index of the first log entry to read
      */
-    public SegmentEntryIterator(ByteBufferEntrySource source, long nextIndex) {
+    public BufferEntryIterator(ByteBufferEntrySource source, long segment, long nextIndex) {
         this.source = source;
-        for( long i = source.segment() ; i < nextIndex; i++) {
+        for( long i = segment ; i < nextIndex; i++) {
             if( hasNext()) {
                 next();
             } else {
@@ -45,7 +45,6 @@ public class SegmentEntryIterator implements CloseableIterator<FileStoreEntry> {
 
     @Override
     public void close() {
-        source.close();
     }
 
     @Override

@@ -14,22 +14,19 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 /**
+ * Stores progress while applying a transformation.
  * @author Marc Gathier
  * @since 4.6.0
  */
 @Entity
 @Table(name="event_store_transformation_progress")
-public class EventStoreTransformationProgress {
+public class EventStoreTransformationProgressJpa {
     @Id
     private String transformationId;
     private long lastTokenApplied;
     private boolean completed;
 
-    public EventStoreTransformationProgress(String transformationId) {
-        this.transformationId = transformationId;
-    }
-
-    public EventStoreTransformationProgress() {
+    public EventStoreTransformationProgressJpa() {
     }
 
     public String getTransformationId() {

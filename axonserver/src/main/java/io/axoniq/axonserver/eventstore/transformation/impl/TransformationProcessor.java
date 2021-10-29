@@ -230,7 +230,7 @@ public class TransformationProcessor {
             future.complete(null);
         } else {
             EventStoreTransformationJpa transformation = toApply.get(0);
-            Optional<EventStoreTransformationProgress> progress = transformationStateManager.progress(transformation.getTransformationId());
+            Optional<EventStoreTransformationProgressJpa> progress = transformationStateManager.progress(transformation.getTransformationId());
             if(!progress.isPresent()) {
                 future.complete(null);
             } else {

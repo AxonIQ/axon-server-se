@@ -37,7 +37,7 @@ import java.util.function.Consumer;
  * One instance per context
  *
  * @author Marc Gathier
- * @since 4.1
+ * @since 4.6.0
  */
 
 public class Synchronizer {

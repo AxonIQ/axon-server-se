@@ -2,7 +2,7 @@ package io.axoniq.axonserver.filestorage.impl;
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
 public enum FileStoreErrorCode {
     VALIDATION_FAILED,

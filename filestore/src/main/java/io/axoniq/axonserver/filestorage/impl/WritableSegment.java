@@ -23,6 +23,7 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.CompletableFuture;
@@ -31,7 +32,6 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 
 /**
  * @author Marc Gathier
@@ -104,11 +104,27 @@ public class WritableSegment extends AbstractSegment {
     }
 
     public CloseableIterator<FileStoreEntry> getEntryIterator(long nextIndex) {
+        if (nextIndex > lastIndex.get()) {
+            throw new NoSuchElementException();
+        }
         return new MultiSegmentIterator(this::getSegmentIterator, this::getLastIndex, nextIndex);
     }
 
+
     public CloseableIterator<FileStoreEntry> getEntryIterator(long nextIndex, long toIndex) {
+        if (nextIndex > lastIndex.get()) {
+            throw new NoSuchElementException();
+        }
         return new MultiSegmentIterator(this::getSegmentIterator, () -> Math.min(getLastIndex(), toIndex), nextIndex);
+    }
+
+    @Override
+    protected Optional<CloseableIterator<FileStoreEntry>> createIterator(long segment, long startIndex) {
+        ByteBufferEntrySource buffer = readBuffers.get(segment);
+        if( buffer == null) {
+            return Optional.empty();
+        }
+        return Optional.of(buffer.createEntryIterator(startIndex));
     }
 
     @Override
@@ -123,7 +139,7 @@ public class WritableSegment extends AbstractSegment {
         long first = getFirstFile(lastInitialized, storageDir);
         WritableEntrySource buffer = getOrOpenDatafile(first, storageProperties.getSegmentSize(), false);
         long sequence = first;
-        try (CloseableIterator<FileStoreEntry> iterator = new SegmentEntryIterator(buffer, first)) {
+        try (CloseableIterator<FileStoreEntry> iterator = new BufferEntryIterator(buffer, first, first)) {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
             while (iterator.hasNext()) {
@@ -225,23 +241,8 @@ public class WritableSegment extends AbstractSegment {
         return positionsPerSegmentMap.descendingKeySet();
     }
 
-    @Override
-    protected Optional<EntrySource> getEventSource(long segment) {
-        if (readBuffers.containsKey(segment)) {
-            return Optional.of(readBuffers.get(segment).duplicate());
-        }
-        return Optional.empty();
-    }
-
-
     public long getLastIndex() {
         return lastIndex.get();
-    }
-
-
-    @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        return next != null ? next.getBackupFilenames(lastSegmentBackedUp) : Stream.empty();
     }
 
     protected void removeSegment(long segment) {
@@ -456,5 +457,9 @@ public class WritableSegment extends AbstractSegment {
 
     public FileStoreEntry lastEntry() {
         return lastEntry.get();
+    }
+
+    public boolean isEmpty() {
+        return lastIndex.get() <= storageProperties.getFirstIndex();
     }
 }

@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * File store containing transformation actions for a specific transformation on a context.
  * @author Marc Gathier
  * @since 4.6.0
  */
@@ -30,22 +31,40 @@ public class TransformationEntryStore {
     private final FileStore fileStore;
     private final AtomicBoolean open = new AtomicBoolean();
 
+    /**
+     * Constructor for the transformation entry store.
+     * @param storageProperties  configuration of the store
+     * @param id    store identifier
+     */
     public TransformationEntryStore(StorageProperties storageProperties, String id) {
         fileStore = new BaseFileStore(storageProperties, id);
     }
 
+    /**
+     * Opens a file store for transformation entries. If the file store does not exist it will be created.
+     * @param validate perform validation of the existing store
+     */
     public void open(boolean validate) {
         if (open.compareAndSet(false, true)) {
             fileStore.open(validate);
         }
     }
 
+    /**
+     * Delete a file store.
+     */
     public void delete() {
         fileStore.delete();
     }
 
-    public CloseableIterator<TransformEventsRequest> iterator(int i) {
-        CloseableIterator<FileStoreEntry> wrapped = fileStore.iterator(i);
+    /**
+     * Create an iterator for the entry store from a specific index.
+     *
+     * @param start the index in the file store where to start
+     * @return an iterator of entries
+     */
+    public CloseableIterator<TransformEventsRequest> iterator(int start) {
+        CloseableIterator<FileStoreEntry> wrapped = fileStore.iterator(start);
         return new CloseableIterator<TransformEventsRequest>() {
             @Override
             public void close() {
@@ -64,15 +83,24 @@ public class TransformationEntryStore {
         };
     }
 
+    /**
+     * Returns a flux with all entries in the entry store.
+     * @return a flux of entries
+     */
      public Flux<TransformEventsRequest> entries() {
         return fileStore.stream(0).map(this::parse);
      }
 
-    public Mono<Void> append(TransformEventsRequest replaceEventEntry) {
+    /**
+     * Adds an entry to the entry store.
+     * @param request the entry to add
+     * @return a mono that is completed when the entry is stored.
+     */
+    public Mono<Void> append(TransformEventsRequest request) {
         return fileStore.append(new FileStoreEntry() {
             @Override
             public byte[] bytes() {
-                return replaceEventEntry.toByteArray();
+                return request.toByteArray();
             }
 
             @Override
@@ -82,12 +110,21 @@ public class TransformationEntryStore {
         }).then();
     }
 
+    /**
+     * Returns the last entry in the entry store. Returns null is store is empty.
+     * @return an entry or null
+     */
     public TransformEventsRequest lastEntry() {
         FileStoreEntry entry = fileStore.lastEntry();
-        return parse(entry);
+        return entry == null ? null : parse(entry);
     }
 
+    /**
+     * Returns the first entry in the entry store. Returns null is store is empty.
+     * @return an entry or null
+     */
     public TransformEventsRequest firstEntry() {
+        if (fileStore.isEmpty()) return null;
         FileStoreEntry entry = fileStore.read(0).block();
         return parse(entry);
     }

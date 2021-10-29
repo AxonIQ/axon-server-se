@@ -15,6 +15,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @author Marc Gathier
  * @since 4.6.0
  */
-public interface EventStoreTransformationProgressRepository extends JpaRepository<EventStoreTransformationProgress, String> {
+public interface EventStoreTransformationProgressRepository extends JpaRepository<EventStoreTransformationProgressJpa, String> {
 
 }

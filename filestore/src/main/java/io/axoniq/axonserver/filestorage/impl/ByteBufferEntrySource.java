@@ -7,8 +7,10 @@ import java.nio.ByteBuffer;
 
 /**
  * @author Marc Gathier
+ * @since 4.6.0
  */
-public class ByteBufferEntrySource implements EntrySource {
+public class ByteBufferEntrySource {
+    private final int START_POSITION = 5;
 
     private final ByteBuffer buffer;
     private final long segment;
@@ -18,7 +20,7 @@ public class ByteBufferEntrySource implements EntrySource {
     public ByteBufferEntrySource(ByteBuffer buffer, StorageProperties storageProperties, long segment) {
         this.buffer = buffer;
         this.segment = segment;
-        this.buffer.position(EntrySource.START_POSITION);
+        this.buffer.position(START_POSITION);
         this.main = true;
         this.cleanerHackNeeded = storageProperties.isForceClean();
     }
@@ -62,9 +64,8 @@ public class ByteBufferEntrySource implements EntrySource {
         }
     }
 
-    @Override
-    public CloseableIterator<FileStoreEntry> createLogEntryIterator(long startIndex) {
-        return new SegmentEntryIterator(duplicate(EntrySource.START_POSITION), startIndex);
+    public CloseableIterator<FileStoreEntry> createEntryIterator(long startIndex) {
+        return new BufferEntryIterator(duplicate(START_POSITION), segment, startIndex);
     }
 
     public ByteBufferEntrySource duplicate() {
@@ -72,11 +73,6 @@ public class ByteBufferEntrySource implements EntrySource {
     }
     public ByteBufferEntrySource duplicate(int startPosition) {
         return new ByteBufferEntrySource(buffer.duplicate(), startPosition, segment);
-    }
-
-    @Override
-    public long segment() {
-        return segment;
     }
 
     @Override

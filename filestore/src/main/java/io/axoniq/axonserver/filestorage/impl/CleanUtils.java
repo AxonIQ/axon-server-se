@@ -24,7 +24,7 @@ import java.util.function.BooleanSupplier;
 
 /**
  * @author Marc Gathier
- * @since 4.0
+ * @since 4.6.0
  */
 public class CleanUtils {
     private static final Logger logger = LoggerFactory.getLogger(CleanUtils.class);

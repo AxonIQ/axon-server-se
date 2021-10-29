@@ -19,5 +19,10 @@ import java.util.List;
  */
 public interface EventStoreTransformationRepository extends JpaRepository<EventStoreTransformationJpa, String> {
 
+    /**
+     * Find all transformations for a context.
+     * @param context the name of the context
+     * @return a list of transformations for the context
+     */
     List<EventStoreTransformationJpa> findByContext(String context);
 }

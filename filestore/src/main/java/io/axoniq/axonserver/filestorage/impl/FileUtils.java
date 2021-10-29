@@ -18,6 +18,7 @@ import java.nio.file.Files;
 
 /**
  * @author Marc Gathier
+ * @since 4.6.0
  */
 public class FileUtils {
     public static final Logger logger = LoggerFactory.getLogger(FileUtils.class);

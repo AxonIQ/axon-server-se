@@ -4,6 +4,7 @@ import java.util.Comparator;
 
 /**
  * @author Marc Gathier
+ * @since 4.6.0
  */
 public class WritePosition implements Comparable<WritePosition> {
     static final WritePosition INVALID = new WritePosition(Long.MAX_VALUE, Integer.MAX_VALUE, null, null);

@@ -19,6 +19,7 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 /**
+ * Stores the information on each transformation.
  * @author Marc Gathier
  * @since 4.6.0
  */

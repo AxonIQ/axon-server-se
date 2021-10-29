@@ -5,7 +5,7 @@ import java.util.zip.CRC32;
 
 /**
  * @author Marc Gathier
- * @since 4.1
+ * @since 4.6.0
  */
 public class Checksum {
     private final CRC32 crc32;

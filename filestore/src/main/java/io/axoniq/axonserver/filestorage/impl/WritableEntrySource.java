@@ -17,6 +17,7 @@ import java.nio.MappedByteBuffer;
 
 /**
  * @author Marc Gathier
+ * @since 4.6.0
  */
 public class WritableEntrySource extends ByteBufferEntrySource {
     private static final Logger logger = LoggerFactory.getLogger(WritableEntrySource.class);

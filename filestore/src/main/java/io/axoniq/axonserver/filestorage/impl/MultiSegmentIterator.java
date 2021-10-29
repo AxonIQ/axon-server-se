@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 
 /**
  * @author Marc Gathier
- * @since 4.1
+ * @since 4.6.0
  */
 public class MultiSegmentIterator implements CloseableIterator<FileStoreEntry> {
 

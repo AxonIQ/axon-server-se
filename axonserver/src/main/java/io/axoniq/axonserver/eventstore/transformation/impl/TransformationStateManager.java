@@ -169,9 +169,9 @@ public class TransformationStateManager {
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void setProgress(String transformationId, TransformationProgress transformationProgress) {
-        EventStoreTransformationProgress transformationJpa = eventStoreTransformationProgressRepository.findById(
+        EventStoreTransformationProgressJpa transformationJpa = eventStoreTransformationProgressRepository.findById(
                                                                                                                transformationId)
-                                                                                                       .orElseThrow(() -> new RuntimeException(
+                                                                                                          .orElseThrow(() -> new RuntimeException(
                                                                                                                "Transformation not found"));
         transformationJpa.setLastTokenApplied(transformationProgress.lastTokenProcessed());
         eventStoreTransformationProgressRepository.save(transformationJpa);
@@ -219,23 +219,23 @@ public class TransformationStateManager {
         return eventStoreTransformationRepository.findById(transformationId);
     }
 
-    public EventStoreTransformationProgress getOrCreateProgress(String transformationId) {
+    public EventStoreTransformationProgressJpa getOrCreateProgress(String transformationId) {
         return eventStoreTransformationProgressRepository.findById(transformationId)
                                                          .orElseGet(() -> {
-                                                             EventStoreTransformationProgress progress = new EventStoreTransformationProgress();
+                                                             EventStoreTransformationProgressJpa progress = new EventStoreTransformationProgressJpa();
                                                              progress.setTransformationId(transformationId);
                                                              return eventStoreTransformationProgressRepository.save(
                                                                      progress);
                                                          });
     }
 
-    public Optional<EventStoreTransformationProgress> progress(String transformationId) {
+    public Optional<EventStoreTransformationProgressJpa> progress(String transformationId) {
         return eventStoreTransformationProgressRepository.findById(transformationId);
     }
 
 
     public void completeProgress(String transformationId) {
-        EventStoreTransformationProgress transformation = getOrCreateProgress(transformationId);
+        EventStoreTransformationProgressJpa transformation = getOrCreateProgress(transformationId);
         transformation.setCompleted(true);
         eventStoreTransformationProgressRepository.save(transformation);
     }

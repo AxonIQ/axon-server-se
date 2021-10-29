@@ -26,7 +26,7 @@ import java.util.stream.Stream;
 
 /**
  * @author Marc Gathier
- * @since 4.1
+ * @since 4.6.0
  */
 public abstract class AbstractSegment {
     protected static final Logger logger = LoggerFactory.getLogger(AbstractSegment.class);
@@ -107,14 +107,11 @@ public abstract class AbstractSegment {
 
 
     protected CloseableIterator<FileStoreEntry> getEntries(long segment, long token) {
-        Optional<EntrySource> reader = getEventSource(segment);
-        return reader.map(r -> createIterator(r, token))
-                     .orElseGet(() -> next.getEntries(segment, token));
+        return createIterator(segment, token)
+                .orElseGet(() -> next.getEntries(segment, token));
     }
 
-    protected CloseableIterator<FileStoreEntry> createIterator(EntrySource eventSource, long startIndex) {
-        return eventSource.createLogEntryIterator(startIndex);
-    }
+    protected abstract Optional<CloseableIterator<FileStoreEntry>> createIterator(long segment, long startIndex);
 
     public long getSegmentFor(long token) {
         for (Long segment : getSegments()) {
@@ -143,20 +140,6 @@ public abstract class AbstractSegment {
 
     public abstract void cleanup(int delay);
 
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        Stream<String> filenames = getSegments().stream().filter(s -> s > lastSegmentBackedUp).flatMap(s -> Stream.of(
-                storageProperties.dataFile(s).getAbsolutePath()
-        ));
-        if( next == null) return filenames;
-        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
-    }
-
-    /**
-     * @param segment gets an EntrySource for the segment
-     * @return the event source or Optional.empty() if segment not managed by this handler
-     */
-    protected abstract Optional<EntrySource> getEventSource(long segment);
-
     /**
      * Get all segments
      * @return descending set of segment ids
@@ -172,14 +155,8 @@ public abstract class AbstractSegment {
      */
     public CloseableIterator<FileStoreEntry> getSegmentIterator(long nextIndex) {
         long segment = getSegmentFor(nextIndex);
-        Optional<EntrySource> eventSource = getEventSource(segment);
-        if( eventSource.isPresent()) {
-            return eventSource.get().createLogEntryIterator(nextIndex);
-        }
-        if( next != null) {
-            return next.getSegmentIterator(nextIndex);
-        }
-        return null;
+        return createIterator(segment, nextIndex)
+                .orElseThrow(() -> new FileStoreException(FileStoreErrorCode.DATAFILE_READ_ERROR, "Failed to create iterator from index: " + nextIndex));
     }
 
     /**

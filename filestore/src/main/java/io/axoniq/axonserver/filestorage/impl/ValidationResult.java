@@ -11,6 +11,7 @@ package io.axoniq.axonserver.filestorage.impl;
 
 /**
  * @author Marc Gathier
+ * @since 4.6.0
  */
 public class ValidationResult {
 
