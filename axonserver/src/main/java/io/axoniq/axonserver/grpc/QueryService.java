@@ -31,10 +31,11 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
-import io.axoniq.axonserver.message.query.QueryResponseConsumer;
 import io.axoniq.axonserver.message.query.WrappedQuery;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
+import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
@@ -44,14 +45,15 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
+import javax.annotation.PreDestroy;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.PreDestroy;
 
 /**
  * GRPC service to handle query bus requests from Axon Application
@@ -309,13 +311,25 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
             logger.trace("{}: Received query: {}", request.getClientId(), request.getQuery());
         }
         ((ServerCallStreamObserver<QueryResponse>) responseObserver).setOnCancelHandler(() -> {
-            queryDispatcher.cancelQuery(contextProvider.getContext(),
+            queryDispatcher.queueQueryInstruction(contextProvider.getContext(),
                                         WrappedQuery.terminateQuery(request.getMessageIdentifier()));
         });
-        GrpcQueryResponseConsumer responseConsumer = new GrpcQueryResponseConsumer(responseObserver);
-        queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
-                              authenticationProvider.get(), responseConsumer::onNext,
-                              result -> responseConsumer.onCompleted());
+
+        FlowControlledOutgoingStream<QueryResponse> flowControlledOutgoingStream =
+                new FlowControlledOutgoingStream<>(new GrpcQueryResponseConsumer((CallStreamObserver<QueryResponse>) responseObserver));
+        flowControlledOutgoingStream.accept(Flux.<QueryResponse>create(sink -> {
+
+            queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
+                    authenticationProvider.get(), sink::next,
+                    result -> sink.complete());
+
+            sink.onRequest(requested-> {
+                queryDispatcher.queueQueryInstruction(contextProvider.getContext(), WrappedQuery.flowControl(request.getMessageIdentifier(), requested));
+            });
+
+        })
+                .limitRate(32));
+
     }
 
     @Override
@@ -333,12 +347,14 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         return new HashSet<>(dispatcherListeners.values());
     }
 
-    private class GrpcQueryResponseConsumer implements QueryResponseConsumer {
+    private class GrpcQueryResponseConsumer extends CallStreamObserver<QueryResponse> {
 
         private final SendingStreamObserver<QueryResponse> responseObserver;
+        private final CallStreamObserver<QueryResponse> original;
 
-        GrpcQueryResponseConsumer(StreamObserver<QueryResponse> responseObserver) {
+        GrpcQueryResponseConsumer(CallStreamObserver<QueryResponse> responseObserver) {
             this.responseObserver = new SendingStreamObserver<>(responseObserver);
+            this.original = responseObserver;
         }
 
         @Override
@@ -351,8 +367,38 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         }
 
         @Override
+        public void onError(Throwable t) {
+            responseObserver.onError(t);
+        }
+
+        @Override
         public void onCompleted() {
             responseObserver.onCompleted();
+        }
+
+        @Override
+        public boolean isReady() {
+            return original.isReady();
+        }
+
+        @Override
+        public void setOnReadyHandler(Runnable onReadyHandler) {
+            original.setOnReadyHandler(onReadyHandler);
+        }
+
+        @Override
+        public void disableAutoInboundFlowControl() {
+            original.disableAutoInboundFlowControl();
+        }
+
+        @Override
+        public void request(int count) {
+            original.request(count);
+        }
+
+        @Override
+        public void setMessageCompression(boolean enable) {
+            original.setMessageCompression(enable);
         }
     }
 

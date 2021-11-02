@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.grpc.query.QueryComplete;
+import io.axoniq.axonserver.grpc.query.QueryFlowControl;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.WrappedQuery;
@@ -39,18 +40,32 @@ public class GrpcQueryDispatcherListener extends GrpcFlowControlledDispatcherLis
             logger.debug("Send request {}, with priority: {}", message.queryRequest(), message.priority() );
         }
         // TODO: 10/28/21 refactor WrappedQuery
-        if (!message.isTerminateQuery()) {
-            SerializedQuery request = validate(message, queryDispatcher, logger);
-            if (request == null) return false;
-            inboundStream.onNext(QueryProviderInbound.newBuilder().setQuery(request.query()).build());
-        } else {
-            inboundStream.onNext(QueryProviderInbound.newBuilder()
-                                                     .setQueryComplete(QueryComplete.newBuilder()
-                                                                                    .setRequestId(message.queryRequest()
-                                                                                                         .getMessageIdentifier())
-                                                                                    .setMessageId(UUID.randomUUID()
-                                                                                                      .toString())
-                                                                                    .build()).build());
+        switch(message.queryType()) {
+            case QUERY:
+                SerializedQuery request = validate(message, queryDispatcher, logger);
+                if (request == null) return false;
+                inboundStream.onNext(QueryProviderInbound.newBuilder().setQuery(request.query()).build());
+                break;
+            case TERMINATE:
+                inboundStream.onNext(QueryProviderInbound.newBuilder()
+                        .setQueryComplete(QueryComplete.newBuilder()
+                                .setRequestId(message.queryRequest()
+                                        .getMessageIdentifier())
+                                .setMessageId(UUID.randomUUID()
+                                        .toString())
+                                .build()).build());
+                break;
+            case FLOW_CONTROL:
+                inboundStream.onNext(QueryProviderInbound.newBuilder()
+                                .setQueryFlowControll(QueryFlowControl.newBuilder()
+                                        .setRequestId(message.queryRequest().getMessageIdentifier())
+                                        .setMessageId(UUID.randomUUID().toString())
+                                        .setPermits(message.flowControl())
+                                        .build())
+                        .build());
+                break;
+            default:
+                throw new IllegalStateException("Unsupported message to be sent.");
         }
         return true;
     }

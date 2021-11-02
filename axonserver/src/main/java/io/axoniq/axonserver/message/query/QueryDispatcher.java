@@ -34,6 +34,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -172,11 +173,12 @@ public class QueryDispatcher {
         return queryQueue;
     }
 
-    public void cancelQuery(String context, WrappedQuery query) {
+    public void queueQueryInstruction(String context, WrappedQuery query) {
         // TODO: 10/27/21 priority
-        queryCache.get(query.queryRequest().getMessageIdentifier())
-                  .waitingFor()
-                  .forEach(clientStreamId -> queryQueue.put(format("%s.%s", clientStreamId, context), query));
+        Optional.ofNullable(queryCache.get(query.queryRequest().getMessageIdentifier()))
+                .ifPresent(q->
+                        q.waitingFor()
+                        .forEach(clientStreamId -> queryQueue.put(format("%s.%s", clientStreamId, context), query)));
     }
 
     public void query(SerializedQuery serializedQuery, Authentication principal,

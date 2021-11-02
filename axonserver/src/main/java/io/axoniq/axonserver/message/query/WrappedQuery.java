@@ -21,12 +21,17 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
  */
 public class WrappedQuery {
 
+    public enum QueryType {
+        QUERY, TERMINATE, FLOW_CONTROL
+    }
+
     private final ClientStreamIdentification targetClientStreamIdentification;
     private final String targetClientId;
     private final SerializedQuery queryRequest;
     private final long timeout;
     private final long priority;
-    private final boolean terminateQuery;
+    private final QueryType queryType;
+    private final long flowControl;
 
     public static WrappedQuery terminateQuery(String queryId) {
         return new WrappedQuery(null,
@@ -36,22 +41,37 @@ public class WrappedQuery {
                                                                 .setMessageIdentifier(queryId)
                                                                 .build()),
                                 0L,
-                                true);
+                                QueryType.TERMINATE,
+                0L);
+    }
+
+    public static WrappedQuery flowControl(String queryId, long flowControl) {
+        return new WrappedQuery(null,
+                null,
+                new SerializedQuery(null,
+                        QueryRequest.newBuilder()
+                                .setMessageIdentifier(queryId)
+                                .build()),
+                0L,
+                QueryType.FLOW_CONTROL,
+                flowControl);
     }
 
     public WrappedQuery(ClientStreamIdentification targetClientStreamIdentification,
                         String targetClientId, SerializedQuery queryRequest, long timeout) {
-        this(targetClientStreamIdentification, targetClientId, queryRequest, timeout, false);
+        this(targetClientStreamIdentification, targetClientId, queryRequest, timeout, QueryType.QUERY, 0L);
     }
 
     public WrappedQuery(ClientStreamIdentification targetClientStreamIdentification,
-                        String targetClientId, SerializedQuery queryRequest, long timeout, boolean terminateQuery) {
+                        String targetClientId, SerializedQuery queryRequest, long timeout, QueryType queryType,
+                        long flowControl) {
         this.targetClientStreamIdentification = targetClientStreamIdentification;
         this.targetClientId = targetClientId;
         this.queryRequest = queryRequest;
         this.timeout = timeout;
         this.priority = ProcessingInstructionHelper.priority(queryRequest.query().getProcessingInstructionsList());
-        this.terminateQuery = terminateQuery;
+        this.queryType = queryType;
+        this.flowControl = flowControl;
     }
 
     public SerializedQuery queryRequest() {
@@ -78,7 +98,11 @@ public class WrappedQuery {
         return targetClientStreamIdentification.getContext();
     }
 
-    public boolean isTerminateQuery() {
-        return terminateQuery;
+    public QueryType queryType() {
+        return queryType;
+    }
+
+    public long flowControl() {
+        return flowControl;
     }
 }
