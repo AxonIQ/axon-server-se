@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 import static java.lang.Math.max;
 
 /**
+ * Responsible for executing the event store transformation actions.
+ *
  * @author Marc Gathier
  * @since 4.6.0
  */
@@ -39,19 +41,13 @@ import static java.lang.Math.max;
 public class TransformationProcessor {
 
     private final Logger logger = LoggerFactory.getLogger(TransformationProcessor.class);
-    private final TransformationStoreRegistry transformationStoreRegistry;
     private final TransformationStateManager transformationStateManager;
-    private final EventStoreTransformationRepository transformationRepository;
     private final ApplicationContext applicationContext;
 
     public TransformationProcessor(
             ApplicationContext applicationContext,
-            TransformationStoreRegistry transformationStoreRegistry,
-            TransformationStateManager transformationStateManager,
-            EventStoreTransformationRepository transformationRepository) {
+            TransformationStateManager transformationStateManager) {
         this.applicationContext = applicationContext;
-        this.transformationRepository = transformationRepository;
-        this.transformationStoreRegistry = transformationStoreRegistry;
         this.transformationStateManager = transformationStateManager;
     }
 
@@ -68,32 +64,46 @@ public class TransformationProcessor {
     }
 
     public void cancel(String transformationId) {
-        transformationStoreRegistry.delete(transformationId);
         transformationStateManager.delete(transformationId);
     }
 
     public void complete(String transformationId) {
-        transformationStoreRegistry.delete(transformationId);
         transformationStateManager.complete(transformationId);
     }
 
+    /**
+     * Starts applying a transformation. The transformation runs asynchronously, the operation competes the future
+     * when the apply process is completed.
+     * @param transformationId the transformation id
+     * @param keepOldVersions flag to indicate if the apply process should keep old versions of modified events
+     * @param appliedBy the name of the application/user starting the apply process
+     * @param appliedDate the time the apply process was started
+     * @param firstEventToken token of the first transformed event in the transformation
+     * @param lastEventToken token of the last transformed event in the transformation
+     * @return a completable future
+     */
     public CompletableFuture<Void> apply(String transformationId, boolean keepOldVersions, String appliedBy,
                                          Date appliedDate, long firstEventToken, long lastEventToken) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            TransformationEntryStore transformationFileStore = transformationStoreRegistry.get(transformationId);
+            TransformationEntryStore transformationFileStore = transformationStateManager.entryStore(transformationId);
             EventStoreTransformationJpa transformation = transformationStateManager.transformation(transformationId)
                                                                                    .orElseThrow(() -> new RuntimeException(
-                                                                                    "Transformation not found"));
-            transformationStateManager.startApply(transformationId, keepOldVersions, appliedBy, appliedDate, firstEventToken, lastEventToken);
+                                                                                           "Transformation not found"));
+            transformationStateManager.startApply(transformationId,
+                                                  keepOldVersions,
+                                                  appliedBy,
+                                                  appliedDate,
+                                                  firstEventToken,
+                                                  lastEventToken);
             return doApply(transformationFileStore,
-                        transformation.getContext(),
-                        transformationId,
-                        keepOldVersions,
-                        transformation.getVersion(),
-                        firstEventToken,
-                        lastEventToken,
-                        0);
+                           transformation.getContext(),
+                           transformationId,
+                           keepOldVersions,
+                           transformation.getVersion(),
+                           firstEventToken,
+                           lastEventToken,
+                           0);
         } catch (Exception ex) {
             future.completeExceptionally(ex);
         }
@@ -119,39 +129,42 @@ public class TransformationProcessor {
             AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
             logger.debug("Next token {}", token(request.get()));
             return localEventStore().transformEvents(context,
-                                                   firstToken,
-                                                   lastEventToken,
-                                                   keepOldVersions,
-                                                   version,
-                                                   (event, token) -> {
-                                                       logger.debug("Found token {}", token);
-                                                       Event result = event;
-                                                       TransformEventsRequest nextRequest = request.get();
-                                                       long t = token(nextRequest);
-                                                       while (t < token && iterator.hasNext()) {
-                                                           nextRequest = iterator.next();
-                                                           request.set(nextRequest);
-                                                           t = token(nextRequest);
-                                                       }
-
-                                                       if (token(nextRequest) == token) {
-                                                           result = applyTransformation(event, nextRequest);
-                                                           if (iterator.hasNext()) {
-                                                               request.set(iterator.next());
-                                                               logger.debug("Next token {}", token(request.get()));
-                                                           }
-                                                       }
-                                                       return result;
-                                                   },
-                                                   transformationProgress -> handleTransformationProgress(context,
-                                                                                                          transformationId,
-                                                                                                          transformationProgress))
-                                  .thenAccept(r -> {
-                                      iterator.close();
-                                      transformationStateManager.completeProgress(transformationId);
-                                  });
+                                                     firstToken,
+                                                     lastEventToken,
+                                                     keepOldVersions,
+                                                     version,
+                                                     (event, token) -> processEvent(iterator, request, event, token),
+                                                     transformationProgress -> handleTransformationProgress(context,
+                                                                                                            transformationId,
+                                                                                                            transformationProgress))
+                                    .thenAccept(r -> {
+                                        iterator.close();
+                                        transformationStateManager.completeProgress(transformationId);
+                                    });
         }
         return CompletableFuture.completedFuture(null);
+    }
+
+    private Event processEvent(CloseableIterator<TransformEventsRequest> iterator,
+                           AtomicReference<TransformEventsRequest> request, Event event, Long token) {
+        logger.debug("Found token {}", token);
+        Event result = event;
+        TransformEventsRequest nextRequest = request.get();
+        long t = token(nextRequest);
+        while (t < token && iterator.hasNext()) {
+            nextRequest = iterator.next();
+            request.set(nextRequest);
+            t = token(nextRequest);
+        }
+
+        if (token(nextRequest) == token) {
+            result = applyTransformation(event, nextRequest);
+            if (iterator.hasNext()) {
+                request.set(iterator.next());
+                logger.debug("Next token {}", token(request.get()));
+            }
+        }
+        return result;
     }
 
     private void handleTransformationProgress(String context, String transformationId,
@@ -216,12 +229,17 @@ public class TransformationProcessor {
         }
     }
 
+    /**
+     * Restart a previously aborted transformation for a context.
+     * @param context the name of the context
+     * @return completable future with the transformation id of the applied transformation
+     */
     public CompletableFuture<String> restartApply(String context) {
         CompletableFuture<String> future = new CompletableFuture<>();
         List<EventStoreTransformationJpa> toApply = transformationStateManager.findTransformations(context)
                                                                               .stream()
                                                                               .filter(transformation -> EventStoreTransformationJpa.Status.CLOSED.equals(
-                                                                               transformation.getStatus()))
+                                                                                      transformation.getStatus()))
                                                                               .collect(Collectors.toList());
         if (toApply.isEmpty()) {
             future.complete(null);
@@ -231,10 +249,10 @@ public class TransformationProcessor {
         } else {
             EventStoreTransformationJpa transformation = toApply.get(0);
             Optional<EventStoreTransformationProgressJpa> progress = transformationStateManager.progress(transformation.getTransformationId());
-            if(!progress.isPresent()) {
+            if (!progress.isPresent()) {
                 future.complete(null);
             } else {
-                TransformationEntryStore transformationFileStore = transformationStoreRegistry.get(
+                TransformationEntryStore transformationFileStore = transformationStateManager.entryStore(
                         transformation.getTransformationId());
                 transformationStateManager.reserve(context, transformation.getTransformationId());
                 return doApply(transformationFileStore,
@@ -252,30 +270,18 @@ public class TransformationProcessor {
     }
 
     public void deleteOldVersions(String context, String id) {
-        transformationRepository.findById(id)
-                                .ifPresent(transformation -> localEventStore().deleteOldVersions(context, transformation.getVersion()));
+        transformationStateManager.transformation(id)
+                                  .ifPresent(transformation -> localEventStore().deleteOldVersions(context,
+                                                                                                   transformation.getVersion()));
     }
 
     public void rollbackTransformation(String context, String transformationId) {
-        transformationRepository.findById(transformationId)
-                                .ifPresent(transformation -> {
-                                    localEventStore().rollbackSegments(context,
-                                                                       transformation.getVersion());
-                                    transformationStateManager.delete(transformationId);
-                                });
-    }
-
-    public void checkApplyProcessor(String id) {
-        transformationStateManager.transformation(id)
+        transformationStateManager.transformation(transformationId)
                                   .ifPresent(transformation -> {
-                    if (EventStoreTransformationJpa.Status.CLOSED.equals(transformation.getStatus())) {
-                        apply(id, transformation.isKeepOldVersions(),
-                              transformation.getAppliedBy(),
-                              transformation.getDateApplied(),
-                              transformation.getFirstEventToken(),
-                              transformation.getLastEventToken());
-                    }
-                });
+                                      localEventStore().rollbackSegments(context,
+                                                                         transformation.getVersion());
+                                      transformationStateManager.delete(transformationId);
+                                  });
     }
 
     private LocalEventStore localEventStore() {

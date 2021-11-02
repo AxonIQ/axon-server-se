@@ -59,11 +59,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -113,6 +115,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long newPermitsTimeout = 120000;
     @SuppressWarnings("FieldMayBeFinal") @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
     private boolean checkSequenceNrForSnapshots = true;
+
+    private final Collection<Consumer<String>> initialializedListeners = new CopyOnWriteArrayList<>();
 
     public LocalEventStore(EventStoreFactory eventStoreFactory,
                            MeterRegistry meterFactory,
@@ -1020,9 +1024,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     eventStorageEngine.init(validate, defaultFirstEventIndex);
                     snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
                     initialized = true;
+                    initialializedListeners.forEach(listener -> listener.accept(context));
                 } catch (RuntimeException runtimeException) {
                     eventStorageEngine.close(false);
                     snapshotStorageEngine.close(false);
+                    initialized = false;
                     throw runtimeException;
                 }
             }

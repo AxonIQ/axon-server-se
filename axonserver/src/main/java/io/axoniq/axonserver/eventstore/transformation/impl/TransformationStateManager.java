@@ -130,6 +130,7 @@ public class TransformationStateManager {
         eventStoreTransformationProgressRepository.findById(transformationId)
                                                   .ifPresent(eventStoreTransformationProgressRepository::delete);
         activeTransformations.remove(transformationId);
+        transformationStoreRegistry.delete(transformationId);
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
@@ -188,6 +189,7 @@ public class TransformationStateManager {
     public void complete(String transformationId) {
         activeTransformations.remove(transformationId);
         setTransformationStatus(transformationId, EventStoreTransformationJpa.Status.DONE);
+        transformationStoreRegistry.delete(transformationId);
     }
 
     @Transactional
@@ -260,5 +262,9 @@ public class TransformationStateManager {
         activeTransformations.computeIfPresent(id,
                                                (transformationId, activeTransformation)
                                                        -> activeTransformation.withIterator(iterator));
+    }
+
+    public TransformationEntryStore entryStore(String transformationId) {
+        return transformationStoreRegistry.get(transformationId);
     }
 }

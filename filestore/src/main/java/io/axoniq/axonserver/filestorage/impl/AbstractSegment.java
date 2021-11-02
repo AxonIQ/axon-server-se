@@ -52,16 +52,6 @@ public abstract class AbstractSegment {
         }
     }
 
-    public long getFirstIndex() {
-        if (next != null && !next.getSegments().isEmpty()) {
-            return next.getFirstIndex();
-        }
-        if (getSegments().isEmpty()) {
-            return 0;
-        }
-        return getSegments().last();
-    }
-
     public void validate(int maxSegments) {
         Stream<Long> segments = getAllSegments();
         List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(
@@ -103,7 +93,7 @@ public abstract class AbstractSegment {
         }
     }
 
-    public abstract void initSegments(long maxValue);
+    public abstract void initSegments(long lastInitialized);
 
 
     protected CloseableIterator<FileStoreEntry> getEntries(long segment, long token) {

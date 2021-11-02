@@ -60,17 +60,7 @@ public class ReaderEventIterator implements CloseableIterator<FileStoreEntry> {
 
     @Override
     public boolean hasNext() {
-        return nextSize > 0 || refreshNextSize() > 0;
-    }
-
-    private int refreshNextSize() {
-        try {
-            reader.position(reader.position()-4);
-            nextSize = reader.readInt();
-            return nextSize;
-        } catch (IOException e) {
-            throw new FileStoreException(FileStoreErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
-        }
+        return nextSize > 0;
     }
 
     @Override
