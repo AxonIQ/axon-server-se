@@ -174,6 +174,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         synchronizer.init(writePosition);
     }
 
+    public int activeSegmentCount() {
+        return readBuffers.size();
+    }
+
     private long firstSegmentIfLatestCompleted(long latestSegment) {
         if (!indexManager.validIndex(new FileVersion(latestSegment, 0))) {
             return latestSegment;
@@ -395,9 +399,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
             long nextToken = start;
             EventIterator eventIterator;
+            final AtomicBoolean closed = new AtomicBoolean();
 
             @Override
             public void close() {
+                closed.set(true);
                 if (eventIterator != null) {
                     eventIterator.close();
                 }
@@ -405,11 +411,13 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
             @Override
             public boolean hasNext() {
+                if (closed.get()) throw new IllegalStateException("Iterator is closed");
                 return nextToken <= getLastToken();
             }
 
             @Override
             public SerializedEventWithToken next() {
+                if (closed.get()) throw new IllegalStateException("Iterator is closed");
                 if (eventIterator == null) {
                     eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
                 }

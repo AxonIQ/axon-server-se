@@ -112,11 +112,6 @@
                 <version>3.0.2</version>
             </dependency>
             <dependency>
-                <groupId>io.axoniq</groupId>
-                <artifactId>axon-server-api</artifactId>
-                <version>${axonserver.api.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>

@@ -1,9 +1,11 @@
 package io.axoniq.axonserver.component.processor;
 
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 
 import java.util.Objects;
+import javax.annotation.Nonnull;
 
 /**
  * Identifies uniquely an event processor inside a specific context.
@@ -11,7 +13,7 @@ import java.util.Objects;
  * @author Sara Pellegrini
  * @since 4.4
  */
-public final class EventProcessorIdentifier {
+public final class EventProcessorIdentifier implements EventProcessorId {
 
     private final String name;
 
@@ -31,12 +33,19 @@ public final class EventProcessorIdentifier {
         this.tokenStoreIdentifier = tokenStoreIdentifier;
     }
 
+    @Nonnull
     public String name() {
         return name;
     }
 
+    @Nonnull
     public String tokenStoreIdentifier() {
         return tokenStoreIdentifier;
+    }
+
+    public boolean equals(EventProcessorId id) {
+        return Objects.equals(name, id.name()) &&
+                Objects.equals(tokenStoreIdentifier, id.tokenStoreIdentifier());
     }
 
     @Override

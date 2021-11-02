@@ -13,7 +13,7 @@
 <head>
     <title>AxonDashboard: Login</title>
     <link rel="stylesheet" href="css/style.css"/>
-    <link rel="icon" type="image/x-icon" href="/img/favicon.ico"/>
+    <link rel="icon" type="image/x-icon" href="./img/favicon.ico"/>
     <script src="js/fontawesome-all.js"></script>
     <style>
         .externalLogin a {
@@ -50,7 +50,7 @@
 
     <div th:if="${logout}" class="msg warning" th:text="${logout}"/>
 
-    <form th:action="@{/login}" method="post">
+    <form action="login" method="post">
         <div class="column configuration">
             <section class="login">
                 <ul>

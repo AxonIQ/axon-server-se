@@ -242,6 +242,21 @@ public class PrimaryEventStoreTest {
         assertEquals(23, events.size());
     }
 
+    @Test
+    public void readClosedIterator() throws InterruptedException {
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 1000, 20);
+        assertWithin(5, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegmentCount()));
+        CloseableIterator<SerializedEventWithToken> transactionWithTokenIterator = testSubject.getGlobalIterator(0);
+        transactionWithTokenIterator.close();
+        try {
+            transactionWithTokenIterator.hasNext();
+            fail("Cannot read from a closed iterator");
+        } catch (IllegalStateException expected) {
+            // Expected exception
+        }
+    }
+
     private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents)
             throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);

@@ -27,6 +27,7 @@ import java.io.InputStream;
 public class SerializedEventWithToken {
 
     private final long token;
+    // TODO: 8/24/21 make this resemble {@link SerializedEvent}? byte[] of data
     private final SerializedEvent serializedEvent;
 
     public SerializedEventWithToken(long token, SerializedEvent event) {
@@ -36,6 +37,16 @@ public class SerializedEventWithToken {
 
     public SerializedEventWithToken(long token, Event event) {
         this(token, new SerializedEvent(event));
+    }
+
+    public SerializedEventWithToken(InputStream inputStream) {
+        try {
+            EventWithToken eventWithToken = EventWithToken.parseFrom(inputStream);
+            this.token = eventWithToken.getToken();
+            this.serializedEvent = new SerializedEvent(eventWithToken.getEvent());
+        } catch (IOException e) {
+            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+        }
     }
 
     /**
@@ -61,7 +72,7 @@ public class SerializedEventWithToken {
             cos.flush();
             return new ByteArrayInputStream(bytes, 0, cos.getTotalBytesWritten());
         } catch (IOException e) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Unable to writed to Coded Stream", e);
+            throw new MessagingPlatformException(ErrorCode.OTHER, "Unable to write to Coded Stream", e);
         }
     }
 
