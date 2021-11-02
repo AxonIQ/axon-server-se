@@ -32,6 +32,7 @@ interface EventProcessorAdminService {
      * @param authentication info about the authenticated user
      */
     fun start(identifier: EventProcessorId, authentication: Authentication): Mono<Void>
+
     /**
      * Handles a request to split the biggest segment of a certain event processor.
      * The returned {@link Mono} completes when the request has been propagated to the interested client.
@@ -54,10 +55,15 @@ interface EventProcessorAdminService {
 
     /**
      * Handles a request to move a segment from the client that claimed it to the target client.
-     * Returns when the request has been propagated to the interested clients.
+     * The returned {@link Mono} completes when the request has been propagated to the interested clients.
      * It doesn't guarantee that the request has been processed the clients.
+     *
+     * @param identifier     the event processor identifier
+     * @param segment        the segment to move
+     * @param target         the client that should claim the segment
+     * @param authentication info about the authenticated user
      */
-    fun move(identifier: EventProcessorId, segment: Int, target: String, authentication: Authentication)
+    fun move(identifier: EventProcessorId, segment: Int, target: String, authentication: Authentication): Mono<Void>
 }
 
 /**

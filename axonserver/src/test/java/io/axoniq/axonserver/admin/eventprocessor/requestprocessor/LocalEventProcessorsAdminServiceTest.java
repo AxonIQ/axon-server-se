@@ -105,7 +105,7 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
         testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
-                         () -> "authenticated-user");
+                         () -> "authenticated-user").block();
         verify(publisher).releaseSegment("default", "Client-A", processorName, 2);
         verify(publisher).releaseSegment("default", "Client-E", processorName, 2);
         verifyNoMoreInteractions(publisher);

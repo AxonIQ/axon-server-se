@@ -139,21 +139,30 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
      * @param target         the client that should claim the segment
      * @param authentication info about the authenticated user
      */
+    @Nonnull
     @Override
-    public void move(@Nonnull EventProcessorId identifier, int segment, @Nonnull String target,
-                     @Nonnull Authentication authentication) {
+    public Mono<Void> move(@Nonnull EventProcessorId identifier, int segment, @Nonnull String target,
+                           @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to move the segment {} for Event processor \"{}@{}\" to client {}.",
-                          AuditLog.username(authentication.name()), segment, processor, tokenStoreIdentifier, target);
+                          AuditLog.username(authentication.username()),
+                          segment,
+                          processor,
+                          tokenStoreIdentifier,
+                          target);
         }
 
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
-        Flux.fromIterable(eventProcessors)
-            .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-            .filter(eventProcessor -> !target.equals(eventProcessor.clientId()))
-            .subscribe(ep -> processorEventsSource.releaseSegment(ep.context(), ep.clientId(), processor, segment));
+        return Flux.fromIterable(eventProcessors)
+                   .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                   .filter(eventProcessor -> !target.equals(eventProcessor.clientId()))
+                   .doOnNext(ep -> processorEventsSource.releaseSegment(ep.context(),
+                                                                        ep.clientId(),
+                                                                        processor,
+                                                                        segment))
+                   .then();
         // the context will be removed from the event processor
     }
 }

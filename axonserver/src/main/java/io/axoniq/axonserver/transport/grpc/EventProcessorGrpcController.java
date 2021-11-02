@@ -92,14 +92,10 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void moveEventProcessorSegment(MoveSegment request, StreamObserver<Empty> responseObserver) {
-        try {
-            service.move(new EventProcessorIdMessage(request.getEventProcessor()),
-                         request.getSegment(),
-                         request.getTargetClientId(),
-                         new GrpcAuthentication(authenticationProvider));
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+        service.move(new EventProcessorIdMessage(request.getEventProcessor()),
+                     request.getSegment(),
+                     request.getTargetClientId(),
+                     new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 }
