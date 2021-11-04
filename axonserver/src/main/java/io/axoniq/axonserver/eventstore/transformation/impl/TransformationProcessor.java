@@ -51,6 +51,13 @@ public class TransformationProcessor {
         this.transformationStateManager = transformationStateManager;
     }
 
+    /**
+     * Starts a new transformation
+     * @param context the context in which to transform the events
+     * @param transformationId a unique transformation id
+     * @param version the version of the event store after this transformation
+     * @param description a description for the transformation
+     */
     public void startTransformation(String context, String transformationId, int version, String description) {
         transformationStateManager.create(context, transformationId, version, description);
     }
@@ -123,24 +130,28 @@ public class TransformationProcessor {
         long firstToken = max(firstEventToken, nextToken);
 
         logger.info("{}: Start apply transformation from {} to {}", context, firstToken, lastEventToken);
-        CloseableIterator<TransformEventsRequest> iterator = transformationFileStore.iterator(0);
-        if (iterator.hasNext()) {
-            TransformEventsRequest transformationEntry = iterator.next();
-            AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
-            logger.debug("Next token {}", token(request.get()));
-            return localEventStore().transformEvents(context,
-                                                     firstToken,
-                                                     lastEventToken,
-                                                     keepOldVersions,
-                                                     version,
-                                                     (event, token) -> processEvent(iterator, request, event, token),
-                                                     transformationProgress -> handleTransformationProgress(context,
-                                                                                                            transformationId,
-                                                                                                            transformationProgress))
-                                    .thenAccept(r -> {
-                                        iterator.close();
-                                        transformationStateManager.completeProgress(transformationId);
-                                    });
+        try (CloseableIterator<TransformEventsRequest> iterator = transformationFileStore.iterator()) {
+            if (iterator.hasNext()) {
+                TransformEventsRequest transformationEntry = iterator.next();
+                AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
+                logger.debug("Next token {}", token(request.get()));
+                return localEventStore().transformEvents(context,
+                                                         firstToken,
+                                                         lastEventToken,
+                                                         keepOldVersions,
+                                                         version,
+                                                         (event, token) -> processEvent(iterator,
+                                                                                        request,
+                                                                                        event,
+                                                                                        token),
+                                                         transformationProgress -> handleTransformationProgress(context,
+                                                                                                                transformationId,
+                                                                                                                transformationProgress))
+                                        .thenAccept(r -> {
+                                            iterator.close();
+                                            transformationStateManager.completeProgress(transformationId);
+                                        });
+            }
         }
         return CompletableFuture.completedFuture(null);
     }
@@ -260,9 +271,9 @@ public class TransformationProcessor {
                                transformation.getTransformationId(),
                                transformation.isKeepOldVersions(),
                                transformation.getVersion(),
-                               progress.get().getLastTokenApplied(),
                                transformation.getFirstEventToken(),
-                               transformation.getLastEventToken())
+                               transformation.getLastEventToken(),
+                               progress.get().getLastTokenApplied()+1)
                         .thenApply(v -> transformation.getTransformationId());
             }
         }

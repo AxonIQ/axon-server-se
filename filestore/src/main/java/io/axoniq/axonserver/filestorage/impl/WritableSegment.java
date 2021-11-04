@@ -23,7 +23,6 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.CompletableFuture;
@@ -104,17 +103,11 @@ public class WritableSegment extends AbstractSegment {
     }
 
     public CloseableIterator<FileStoreEntry> getEntryIterator(long nextIndex) {
-        if (nextIndex > lastIndex.get()) {
-            throw new NoSuchElementException();
-        }
         return new MultiSegmentIterator(this::getSegmentIterator, this::getLastIndex, nextIndex);
     }
 
 
     public CloseableIterator<FileStoreEntry> getEntryIterator(long nextIndex, long toIndex) {
-        if (nextIndex > lastIndex.get()) {
-            throw new NoSuchElementException();
-        }
         return new MultiSegmentIterator(this::getSegmentIterator, () -> Math.min(getLastIndex(), toIndex), nextIndex);
     }
 

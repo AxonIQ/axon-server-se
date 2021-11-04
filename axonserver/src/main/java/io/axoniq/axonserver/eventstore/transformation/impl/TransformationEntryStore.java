@@ -60,11 +60,10 @@ public class TransformationEntryStore {
     /**
      * Create an iterator for the entry store from a specific index.
      *
-     * @param start the index in the file store where to start
      * @return an iterator of entries
      */
-    public CloseableIterator<TransformEventsRequest> iterator(int start) {
-        CloseableIterator<FileStoreEntry> wrapped = fileStore.iterator(start);
+    public CloseableIterator<TransformEventsRequest> iterator() {
+        CloseableIterator<FileStoreEntry> wrapped = fileStore.iterator(0);
         return new CloseableIterator<TransformEventsRequest>() {
             @Override
             public void close() {

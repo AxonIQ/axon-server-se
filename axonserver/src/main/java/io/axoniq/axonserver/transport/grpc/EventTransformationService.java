@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nonnull;
 
 /**
+ * GRPC endpoint for the event store transformation service.
  * @author Marc Gathier
  * @since 4.6.0
  */
@@ -56,7 +57,7 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
     public void startTransformation(StartTransformationRequest request, StreamObserver<TransformationId> responseObserver) {
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to start transformation", authentication.getName(), context);
+        auditLog.info("{}@{}: Request to start transformation - {}", authentication.getName(), context, request.getDescription());
         eventStoreTransformationService.startTransformation(context, request.getDescription())
                                        .subscribe(id -> responseObserver.onNext(transformationId(id)),
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
