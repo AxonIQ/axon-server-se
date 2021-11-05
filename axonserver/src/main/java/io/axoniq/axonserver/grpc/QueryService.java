@@ -323,9 +323,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     authenticationProvider.get(), sink::next,
                     result -> sink.complete());
 
-            sink.onRequest(requested-> {
-                queryDispatcher.queueQueryInstruction(contextProvider.getContext(), WrappedQuery.flowControl(request.getMessageIdentifier(), requested));
-            });
+            //todo - drop initial request, as its already requested by the client
+            sink.onRequest(requested-> queryDispatcher.queueQueryInstruction(contextProvider.getContext(), WrappedQuery.flowControl(request.getMessageIdentifier(), requested)));
 
         })
                 .limitRate(32));
