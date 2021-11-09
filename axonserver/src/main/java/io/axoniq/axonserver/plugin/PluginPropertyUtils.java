@@ -96,6 +96,7 @@ public class PluginPropertyUtils {
 
         switch (pluginProperty.getType()) {
             case STRING:
+            case TEXT:
                 return String.valueOf(value);
             case INTEGER:
                 if (value instanceof Number) {

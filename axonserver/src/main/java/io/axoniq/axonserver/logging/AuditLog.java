@@ -27,6 +27,10 @@ public class AuditLog implements ApplicationListener<AbstractAuthenticationEvent
         return onOff ? "ENABLED" : "DISABLED";
     }
 
+    public static String username(String username) {
+        return (username == null) ? "<anonymous>" : sanitize(username);
+    }
+
     public static String username(Principal principal) {
         return (principal == null) ? "<anonymous>" : sanitize(principal.getName());
     }
