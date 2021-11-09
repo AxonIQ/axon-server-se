@@ -30,8 +30,8 @@ setTemurin() {
 }
 
 JDK=11
-BASE_TYPE=temorin
-IMG_BASE=eu.gcr.io/axoniq-devops/axonserver
+BASE_TYPE=temurin
+IMG_BASE=my-axonserver
 TAG=
 MODE=full
 PUSH=n
@@ -46,7 +46,7 @@ PLATFORMS_OVR=
 PLATFORMS_DEF=linux/amd64,linux/arm64
 
 Usage() {
-    echo "Usage: $0 [OPTIONS] <version> [<tag>]"
+    echo "Usage: $0 [OPTIONS] <version>"
     echo "  --dev-only         Only generate 'dev' images. (including shell) Shorthand: '-d'."
     echo "  --no-dev           Only generate non-'dev' images. (without shell, if possible) Shorthand: '-n'."
     echo "  --full             Generate all image variants. This is the default mode."
@@ -62,6 +62,7 @@ Usage() {
     echo "  --distroless       Use the Distroless base images."
     echo "  --temurin          Use the Eclipse Temurin base images. (Ubuntu Focal Fossa)"
     echo "  --ubi8             Use the RedHat Ubi8 base images."
+    echo "  --repo <name>      Use this as the base for the pushed images, default 'eu.gcr.io/axoniq-devops/axonserver'"
     echo "  --platforms <list> The platforms to build for, default 'linux/amd64,linux/arm64'."
     echo "  <version>          The Axon Server version."
     exit 1
