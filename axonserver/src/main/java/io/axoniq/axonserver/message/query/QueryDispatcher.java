@@ -165,7 +165,7 @@ public class QueryDispatcher {
     public void removeFromCache(String client, String messageId) {
         QueryInformation query = queryCache.remove(messageId);
         if (query != null) {
-            query.completeWithError(client, ErrorCode.COMMAND_TIMEOUT, "Query cancelled due to timeout");
+            query.completeWithError(client, ErrorCode.QUERY_TIMEOUT, "Query cancelled due to timeout");
         }
     }
 
