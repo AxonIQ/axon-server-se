@@ -89,16 +89,11 @@ public class EventProcessorRestController {
     }
 
     @PatchMapping("components/{component}/processors/{processor}/start")
-    public void start(@PathVariable("component") String component,
-                      @PathVariable("processor") String processor,
-                      @RequestParam("context") String context,
+    public void start(@PathVariable("processor") String processor,
                       @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                       @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to start Event processor \"{}\" in component \"{}\".",
-                      AuditLog.username(principal), context, processor, component);
-        clientsByEventProcessor(context, processor, tokenStoreIdentifier)
-                .forEach(clientId -> processorEventsSource
-                        .startProcessorRequest(context, clientId, processor));
+        service.start(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                      new PrincipalAuthentication(principal));
     }
 
     @PatchMapping("components/{component}/processors/{processor}/segments/{segment}/move")
