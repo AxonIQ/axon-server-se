@@ -11,7 +11,7 @@ def deployingBranches = [   // The branches mentioned here will get their artifa
     "master", "axonserver-se-4.5.x"
 ]
 def dockerBranches = [      // The branches mentioned here will get Docker images built
-    "master", "axonserver-se-4.5.x"
+    "master", "axonserver-se-4.5.x", "feature/new-docker-images"
 ]
 
 /*
@@ -90,20 +90,15 @@ podTemplate(label: label,
                     if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                         mavenTarget = "clean deploy"
                     }
-                    if (relevantBranch(gitBranch, dockerBranches)) {
-                        mavenTarget = "-Pdocker " + mavenTarget
-                    }
                     mavenTarget = "-Pcoverage " + mavenTarget
 
                     try {
-                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore ${mavenTarget}"   // Ignore test failures; we want the numbers only.
+                        // Ignore test failures; we want the numbers only.
+                        // Also skip the integration tests during this first run.
+                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore -DskipITs ${mavenTarget}"
 
                         if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                             slackReport = slackReport + "\nDeployed to Nexus"
-                         }
-
-                         if (relevantBranch(gitBranch, dockerBranches)) {
-                            slackReport = slackReport + "\nNew Docker images have been pushed"
                          }
                     }
                     catch (err) {
@@ -112,6 +107,45 @@ podTemplate(label: label,
                     }
                     finally {
                         junit '**/target/surefire-reports/TEST-*.xml'                   // Read the test results
+                        slackReport = slackReport + "\n" + getTestSummary()
+                    }
+                }
+            }
+
+            stage ('Docker image builds') {
+                if (relevantBranch(gitBranch, dockerBranches)) {
+                    try {
+                        def baseTag = "eu.gcr.io/axoniq-devops/axonserver"
+
+                        container("docker") {
+                            sh """
+                                docker-credential-gcr config --token-source=env,store
+                                docker-credential-gcr configure-docker
+
+                                bin/build-docker-release.sh --dev-only --temurin --no-tag-latest --tag-jdk --tag-latest-jdk --no-tag-version --jdk 8  --repo ${baseTag} --push ${pomVersion}
+                                bin/build-docker-release.sh --dev-only --temurin --tag-latest    --tag-jdk --tag-latest-jdk --tag-version    --jdk 11 --repo ${baseTag} --push ${pomVersion}
+                                bin/build-docker-release.sh --dev-only --temurin --no-tag-latest --tag-jdk --tag-latest-jdk --no-tag-version --jdk 17 --repo ${baseTag} --push ${pomVersion}
+                            """
+                        }
+                        slackReport = slackReport + "\nNew Docker images pushed."
+                    } catch (err) {
+                        slackReport = slackReport + "\nFAILED to push Docker images."
+                    }
+                }
+            }
+
+            stage ('Integration Tests') {
+                container("maven-jdk8") {
+                    try {
+                        // Again, ignore test failures, but this time, skip the Unit tests.
+                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore -DskipUTs -Pcoverage clean verify"
+                    }
+                    catch (err) {
+                        slackReport = slackReport + "\nIntegration tests FAILED!"
+                        throw err
+                    }
+                    finally {
+                        junit '**/target/failsafe-reports/TEST-*.xml'                   // Read the test results
                         slackReport = slackReport + "\n" + getTestSummary()
                     }
                 }

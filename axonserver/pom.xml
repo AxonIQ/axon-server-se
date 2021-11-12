@@ -31,8 +31,11 @@
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
 
         <mapdb.version>3.0.8</mapdb.version>
-        <skip.integration.tests>false</skip.integration.tests>
         <kotlin.version>1.5.21</kotlin.version>
+
+        <skipTests>false</skipTests>
+        <skipITs>${skipTests}</skipITs>
+        <skipUTs>${skipTests}</skipUTs>
     </properties>
 
     <dependencies>
@@ -297,7 +300,11 @@
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -325,14 +332,17 @@
         </resources>
 
         <extensions>
-            <!-- resolves ${os.detected.classifier} -->
+            <!-- Maven OS Plugin - Resolves ${os.detected.classifier} -->
             <extension>
                 <groupId>kr.motd.maven</groupId>
                 <artifactId>os-maven-plugin</artifactId>
                 <version>1.7.0</version>
             </extension>
         </extensions>
+
         <plugins>
+
+            <!-- Maven antrun Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
@@ -370,12 +380,17 @@
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>2.22.2</version>
                 <configuration>
-                    <skipITs>${skip.integration.tests}</skipITs>
+                    <skipTests>${skipTests}</skipTests>
+                    <skipITs>${skipITs}</skipITs>
+<!--                    <includes>-->
+<!--                        <include>**/*ITCase.java</include>-->
+<!--                    </includes>-->
                 </configuration>
                 <executions>
                     <execution>
@@ -387,6 +402,16 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+                <configuration>
+                    <skipTests>${skipUTs}</skipTests>
+                </configuration>
+            </plugin>
+
+            <!-- Spring-boot Maven Plugin -->
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
@@ -397,7 +422,7 @@
                             <goal>start</goal>
                         </goals>
                         <configuration>
-                            <skip>${skip.integration.tests}</skip>
+                            <skip>${skipITs}</skip>
                             <wait>5000</wait>
                             <workingDirectory>target/integration</workingDirectory>
                         </configuration>
@@ -408,7 +433,7 @@
                             <goal>stop</goal>
                         </goals>
                         <configuration>
-                            <skip>${skip.integration.tests}</skip>
+                            <skip>${skipITs}</skip>
                         </configuration>
                     </execution>
                     <execution>
