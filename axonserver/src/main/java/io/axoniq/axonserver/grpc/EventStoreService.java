@@ -186,7 +186,7 @@ public class EventStoreService implements AxonServerClientService {
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<SerializedEventWithToken> responseObserver) {
         Executor executor = grpcFlowControlExecutorProvider.provide();
         OutgoingStream<SerializedEventWithToken> outgoingStream = new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEventWithToken>) responseObserver,
-                executor);
+                                                                                                     executor);
         return new StreamObserver<GetEventsRequest>() {
 
             private final AtomicReference<Sinks.Many<GetEventsRequest>> requestFluxRef = new AtomicReference<>();

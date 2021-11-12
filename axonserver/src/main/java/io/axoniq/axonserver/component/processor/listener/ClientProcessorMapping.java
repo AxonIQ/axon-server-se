@@ -27,6 +27,11 @@ public interface ClientProcessorMapping {
             }
 
             @Override
+            public String context() {
+                return context;
+            }
+
+            @Override
             public EventProcessorInfo eventProcessorInfo() {
                 return eventProcessorInfo;
             }
