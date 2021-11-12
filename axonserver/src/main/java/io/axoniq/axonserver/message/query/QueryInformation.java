@@ -34,6 +34,7 @@ public class QueryInformation {
     private final Set<String> clientStreamIds;
     private final String sourceClientId;
     private final AtomicReference<QueryResponse> failedResponse = new AtomicReference<>();
+    private final boolean streaming;
 
     /**
      * Creates an instance with the specified parameters.
@@ -54,6 +55,17 @@ public class QueryInformation {
                             int expectedResults,
                             Consumer<QueryResponse> responseConsumer,
                             Consumer<String> onAllReceived) {
+        this(key, sourceClientId, query, clientStreamIds, expectedResults, responseConsumer, onAllReceived, false);
+    }
+
+    public QueryInformation(String key,
+                            String sourceClientId,
+                            QueryDefinition query,
+                            Set<String> clientStreamIds,
+                            int expectedResults,
+                            Consumer<QueryResponse> responseConsumer,
+                            Consumer<String> onAllReceived,
+                            boolean streaming) {
         this.key = key;
         this.sourceClientId = sourceClientId;
         this.query = query;
@@ -61,6 +73,7 @@ public class QueryInformation {
         this.remainingReplies = new AtomicInteger(expectedResults);
         this.onAllReceived = onAllReceived;
         this.clientStreamIds = new CopyOnWriteArraySet<>(clientStreamIds);
+        this.streaming = streaming;
     }
 
     public QueryDefinition getQuery() {
@@ -193,5 +206,9 @@ public class QueryInformation {
      */
     public Set<String> waitingFor() {
         return clientStreamIds;
+    }
+
+    public boolean isStreaming() {
+        return streaming;
     }
 }

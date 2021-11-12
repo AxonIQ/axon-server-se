@@ -77,6 +77,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<QueryProviderInbound> instructionAckSource;
+    private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -90,7 +91,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         SubscriptionQueryInterceptors subscriptionQueryInterceptors,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
-                                InstructionAckSource<QueryProviderInbound> instructionAckSource) {
+                                InstructionAckSource<QueryProviderInbound> instructionAckSource,
+                        GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
@@ -99,6 +101,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
+        this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
     }
 
     @PreDestroy
@@ -310,13 +313,17 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         if (logger.isTraceEnabled()) {
             logger.trace("{}: Received query: {}", request.getClientId(), request.getQuery());
         }
-        ((ServerCallStreamObserver<QueryResponse>) responseObserver).setOnCancelHandler(() -> {
+        ServerCallStreamObserver<QueryResponse> serverResponseObserver =
+                (ServerCallStreamObserver<QueryResponse>) responseObserver;
+        serverResponseObserver.setOnCancelHandler(() -> {
             queryDispatcher.queueQueryInstruction(contextProvider.getContext(),
-                                        WrappedQuery.terminateQuery(request.getMessageIdentifier()));
+                    request,
+                    WrappedQuery.terminateQuery(request.getMessageIdentifier(), contextProvider.getContext()));
         });
 
         FlowControlledOutgoingStream<QueryResponse> flowControlledOutgoingStream =
-                new FlowControlledOutgoingStream<>(new GrpcQueryResponseConsumer((CallStreamObserver<QueryResponse>) responseObserver));
+                new FlowControlledOutgoingStream<>(new GrpcQueryResponseConsumer(serverResponseObserver),
+                                                   grpcFlowControlExecutorProvider.provide());
         flowControlledOutgoingStream.accept(Flux.<QueryResponse>create(sink -> {
 
             queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
@@ -324,10 +331,11 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                     result -> sink.complete());
 
             //todo - drop initial request, as its already requested by the client
-            sink.onRequest(requested-> queryDispatcher.queueQueryInstruction(contextProvider.getContext(), WrappedQuery.flowControl(request.getMessageIdentifier(), requested)));
+            sink.onRequest(requested-> queryDispatcher.queueQueryInstruction(contextProvider.getContext(),
+                    request,
+                    WrappedQuery.flowControl(request.getMessageIdentifier(), requested, contextProvider.getContext())));
 
-        })
-                .limitRate(32));
+        }).limitRate(32));
 
     }
 

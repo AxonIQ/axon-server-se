@@ -72,7 +72,11 @@ public abstract class QueryHandler<T> {
         WrappedQuery wrappedQuery = new WrappedQuery(getClientStreamIdentification(),
                                                      getClientId(),
                                                      request.withClient(getClientStreamId()), timeout);
-        queryQueue.put(queueName(), wrappedQuery, wrappedQuery.priority());
+        enqueue(queryQueue, wrappedQuery);
+    }
+
+    public void enqueue(FlowControlQueues<WrappedQuery> queryQueue, WrappedQuery query) {
+        queryQueue.put(queueName(), query.withTargetClientStreamId(getClientStreamId()), query.priority());
     }
 
     @Override

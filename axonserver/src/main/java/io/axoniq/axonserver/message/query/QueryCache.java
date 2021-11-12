@@ -65,8 +65,10 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
-        Set<Entry<String, QueryInformation>> toDelete = entrySet().stream().filter(e -> e.getValue().getTimestamp() < minTimestamp).collect(
-                Collectors.toSet());
+        Set<Entry<String, QueryInformation>> toDelete = entrySet().stream()
+                .filter(e -> e.getValue().getTimestamp() < minTimestamp)
+                .filter(e -> !e.getValue().isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
+                .collect(Collectors.toSet());
         if( ! toDelete.isEmpty()) {
             logger.warn("Found {} waiting queries to delete", toDelete.size());
             toDelete.forEach(e -> {

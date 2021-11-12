@@ -35,6 +35,7 @@ import org.junit.*;
 import org.mockito.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
@@ -69,7 +70,8 @@ public class QueryServiceTest {
                                        eventPublisher,
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                                                     .setAck(ack)
-                                                                                                    .build()));
+                                                                                                    .build()),
+                                       Executors::newSingleThreadExecutor);
     }
 
     @Test
@@ -186,12 +188,13 @@ public class QueryServiceTest {
     @SuppressWarnings("unchecked")
     @Test
     public void dispatch()  {
+        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
+        responseObserver.setIsReady(true);
         doAnswer(invocationOnMock -> {
             Consumer<QueryResponse> callback = (Consumer<QueryResponse>) invocationOnMock.getArguments()[2];
             callback.accept(QueryResponse.newBuilder().build());
             return null;
         }).when(queryDispatcher).query(isA(SerializedQuery.class), any(), isA(Consumer.class), any());
-        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.query(QueryRequest.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.values().size());
     }

@@ -47,22 +47,27 @@ public class GrpcQueryDispatcherListener extends GrpcFlowControlledDispatcherLis
                 inboundStream.onNext(QueryProviderInbound.newBuilder().setQuery(request.query()).build());
                 break;
             case TERMINATE:
+                QueryComplete complete =
+                        QueryComplete.newBuilder()
+                                     .setRequestId(message.queryRequest()
+                                                          .getMessageIdentifier())
+                                     .setMessageId(UUID.randomUUID().toString())
+                                     .build();
                 inboundStream.onNext(QueryProviderInbound.newBuilder()
-                        .setQueryComplete(QueryComplete.newBuilder()
-                                .setRequestId(message.queryRequest()
-                                        .getMessageIdentifier())
-                                .setMessageId(UUID.randomUUID()
-                                        .toString())
-                                .build()).build());
+                                                         .setQueryComplete(complete)
+                                                         .build());
                 break;
             case FLOW_CONTROL:
-                inboundStream.onNext(QueryProviderInbound.newBuilder()
-                                .setQueryFlowControll(QueryFlowControl.newBuilder()
-                                        .setRequestId(message.queryRequest().getMessageIdentifier())
+                QueryFlowControl flowControl =
+                        QueryFlowControl.newBuilder()
+                                        .setRequestId(message.queryRequest()
+                                                             .getMessageIdentifier())
                                         .setMessageId(UUID.randomUUID().toString())
                                         .setPermits(message.flowControl())
-                                        .build())
-                        .build());
+                                        .build();
+                inboundStream.onNext(QueryProviderInbound.newBuilder()
+                                                         .setQueryFlowControl(flowControl)
+                                                         .build());
                 break;
             default:
                 throw new IllegalStateException("Unsupported message to be sent.");

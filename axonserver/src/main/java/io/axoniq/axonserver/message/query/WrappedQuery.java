@@ -33,8 +33,8 @@ public class WrappedQuery {
     private final QueryType queryType;
     private final long flowControl;
 
-    public static WrappedQuery terminateQuery(String queryId) {
-        return new WrappedQuery(null,
+    public static WrappedQuery terminateQuery(String queryId, String context) {
+        return new WrappedQuery(new ClientStreamIdentification(context, null),
                                 null,
                                 new SerializedQuery(null,
                                                     QueryRequest.newBuilder()
@@ -45,8 +45,8 @@ public class WrappedQuery {
                 0L);
     }
 
-    public static WrappedQuery flowControl(String queryId, long flowControl) {
-        return new WrappedQuery(null,
+    public static WrappedQuery flowControl(String queryId, long flowControl, String context) {
+        return new WrappedQuery(new ClientStreamIdentification(context, null),
                 null,
                 new SerializedQuery(null,
                         QueryRequest.newBuilder()
@@ -104,5 +104,14 @@ public class WrappedQuery {
 
     public long flowControl() {
         return flowControl;
+    }
+
+    public WrappedQuery withTargetClientStreamId(String targetClientStreamId) {
+        return new WrappedQuery(targetClientStreamIdentification.withClientStreamId(targetClientStreamId),
+                targetClientId,
+                queryRequest,
+                timeout,
+                queryType,
+                flowControl);
     }
 }

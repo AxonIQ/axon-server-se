@@ -54,6 +54,8 @@ import static java.util.Collections.singleton;
 @Component("QueryDispatcher")
 public class QueryDispatcher {
 
+    private static final int STREAMING_NR_OF_RESULTS = -2;
+
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
     private final ConstraintCache<String, QueryInformation> queryCache;
@@ -173,12 +175,12 @@ public class QueryDispatcher {
         return queryQueue;
     }
 
-    public void queueQueryInstruction(String context, WrappedQuery query) {
-        // TODO: 10/27/21 priority
-        Optional.ofNullable(queryCache.get(query.queryRequest().getMessageIdentifier()))
-                .ifPresent(q->
-                        q.waitingFor()
-                        .forEach(clientStreamId -> queryQueue.put(format("%s.%s", clientStreamId, context), query)));
+    public void queueQueryInstruction(String context, QueryRequest query, WrappedQuery instruction) {
+        registrationCache.find(context, query).forEach(h -> dispatchOne(h, instruction));
+    }
+
+    public void queueProxiedQueryInstruction(String clientStreamId, WrappedQuery instruction) {
+        queryQueue.put(format("%s.%s", clientStreamId, instruction.context()), instruction);
     }
 
     public void query(SerializedQuery serializedQuery, Authentication principal,
@@ -211,6 +213,7 @@ public class QueryDispatcher {
                 QueryDefinition queryDefinition = new QueryDefinition(serializedQuery.context(), query.getQuery());
                 int expectedResults = Integer.MAX_VALUE;
                 int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
+                boolean streaming = nrOfResults == STREAMING_NR_OF_RESULTS;
                 if (nrOfResults > 0) {
                     expectedResults = nrOfResults;
                 }
@@ -221,7 +224,8 @@ public class QueryDispatcher {
                                                                                  .collect(Collectors.toSet()),
                                                                          expectedResults,
                                                                          interceptedCallback,
-                                                                         onCompleted);
+                                                                         onCompleted,
+                                                                         streaming);
                 queryCache.put(query.getMessageIdentifier(), queryInformation);
                 handlers.forEach(h -> dispatchOne(h, serializedQuery2, timeout));
             }
@@ -315,6 +319,7 @@ public class QueryDispatcher {
             QueryDefinition queryDefinition = new QueryDefinition(context, query.getQuery());
             int expectedResults = Integer.MAX_VALUE;
             int nrOfResults = ProcessingInstructionHelper.numberOfResults(query.getProcessingInstructionsList());
+            boolean streaming = nrOfResults == STREAMING_NR_OF_RESULTS;
             if (nrOfResults > 0) {
                 expectedResults = nrOfResults;
             }
@@ -325,7 +330,8 @@ public class QueryDispatcher {
                                                                      singleton(queryHandler.getClientStreamId()),
                                                                      expectedResults,
                                                                      callback,
-                                                                     onCompleted);
+                                                                     onCompleted,
+                                                                     streaming);
             try {
                 queryCache.put(key, queryInformation);
                 dispatchOne(queryHandler, serializedQuery, timeout);
@@ -342,6 +348,17 @@ public class QueryDispatcher {
             queryHandler.enqueue(query, queryQueue, timeout);
         } catch (MessagingPlatformException mpe) {
             QueryInformation information = queryCache.remove(query.getMessageIdentifier());
+            if (information != null) {
+                information.completeWithError(queryHandler.getClientId(), mpe.getErrorCode(), mpe.getMessage());
+            }
+        }
+    }
+
+    private void dispatchOne(QueryHandler<?> queryHandler, WrappedQuery query) {
+        try {
+            queryHandler.enqueue(queryQueue, query);
+        } catch (MessagingPlatformException mpe) {
+            QueryInformation information = queryCache.remove(query.queryRequest().getMessageIdentifier());
             if (information != null) {
                 information.completeWithError(queryHandler.getClientId(), mpe.getErrorCode(), mpe.getMessage());
             }
