@@ -66,7 +66,12 @@ podTemplate(label: label,
             envVars: [
                 envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
             ],
-            command: 'cat', ttyEnabled: true)
+            command: 'cat', ttyEnabled: true),
+        containerTemplate(name: 'docker', image: 'eu.gcr.io/axoniq-devops/docker-axoniq:latest', alwaysPullImage: true,
+            command: 'cat', ttyEnabled: true,
+            envVars: [
+                envVar(key: 'AXONIQ_HOME', value: '/axoniq')
+            ])
     ],
     volumes: [
         secretVolume(secretName: 'maven-settings', mountPath: '/maven_settings')          // For the settings.xml
