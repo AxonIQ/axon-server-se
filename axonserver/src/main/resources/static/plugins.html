@@ -232,7 +232,7 @@
                     <td :title="plugin.filename">{{ plugin.name }}</td>
                     <td>{{ plugin.version }}
                         <span @click="deletePlugin(plugin)" title="Delete">
-                                <i class="far fa-trash-alt"/>
+                            <i class="far fa-trash-alt"></i>
                             </span>
                     </td>
                     <td>{{ plugin.pluginStatus }}</td>
@@ -248,13 +248,13 @@
                                           title="Delete"><i
                                             class="far fa-trash-alt"></i></span>
                                     <span @click="selectPlugin(plugin, contextInfo.context)" title="Edit">
-                                        <i class="fas fa-pencil-alt"/></span>
+                                        <i class="fas fa-pencil-alt"></i></span>
                                     <span v-if="admin && !contextInfo.active"
                                           @click="start(plugin, contextInfo.context)" title="Start">
-                                        <i class="far fa-play-circle"/></span>
+                                        <i class="far fa-play-circle"></i></span>
                                     <span v-if="admin && contextInfo.active"
                                           @click="stop(plugin, contextInfo.context)" title="Stop">
-                                        <i class="far fa-pause-circle"/></span>
+                                        <i class="far fa-pause-circle"></i></span>
                                      </td>
                                  </tr>
                              </table>
@@ -270,13 +270,13 @@
                         </td>
                     <td v-if="!isEnterprise()">
                             <span @click="selectPlugin(plugin, 'default')" title="Edit"><i
-                                    class="fas fa-pencil-alt"/></span>
+                                    class="fas fa-pencil-alt"></i></span>
                         <span v-if="admin && !isActiveSE(plugin)"
                               @click="start(plugin, 'default')" title="Start"><i
-                                class="far fa-play-circle"/></span>
+                                class="far fa-play-circle"></i></span>
                         <span v-if="admin && isActiveSE(plugin)" @click="stop(plugin, 'default')"
                               title="Stop"><i
-                                class="far fa-pause-circle"/></span>
+                                class="far fa-pause-circle"></i></span>
                     </td>
                     </tr>
                 </tbody>
