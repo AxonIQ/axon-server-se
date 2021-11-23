@@ -16,8 +16,6 @@ import org.osgi.framework.BundleException;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.Assert.*;
@@ -29,8 +27,7 @@ public class OsgiControllerTest {
 
     private final OsgiController testSubject = new OsgiController("cache",
                                                                   "onFirstInit",
-                                                                  true,
-                                                                  HashMap::new);
+                                                                  true);
 
     @Before
     public void setup() {
@@ -54,15 +51,5 @@ public class OsgiControllerTest {
         Set<ServiceWithInfo<CommandRequestInterceptor>> interceptors = testSubject.getServicesWithInfo(
                 CommandRequestInterceptor.class);
         assertEquals(1, interceptors.size());
-    }
-
-    @Test
-    public void getAxonServerProperties() {
-        Optional<AxonServerInformationProvider> axonServerContextProvider = testSubject.get(
-                AxonServerInformationProvider.class);
-        assertTrue(axonServerContextProvider.isPresent());
-
-        AxonServerInformationProvider service = axonServerContextProvider.get();
-        System.out.println(service.properties());
     }
 }
