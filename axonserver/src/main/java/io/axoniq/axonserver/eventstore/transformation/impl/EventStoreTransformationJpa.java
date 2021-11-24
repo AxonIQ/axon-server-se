@@ -54,8 +54,7 @@ public class EventStoreTransformationJpa {
     public enum Status {
         CREATED,
         CLOSED,
-        DONE,
-        FAILED
+        DONE
     }
     @Id
     private String transformationId;

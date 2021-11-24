@@ -170,8 +170,4 @@ public class SerializedEvent {
     public boolean isSnapshot() {
         return asEvent().getSnapshot();
     }
-
-    public boolean isSoftDeleted() {
-        return asEvent().getMessageIdentifier().isEmpty();
-    }
 }

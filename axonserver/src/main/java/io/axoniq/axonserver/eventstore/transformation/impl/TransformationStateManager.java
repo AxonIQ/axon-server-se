@@ -161,7 +161,8 @@ public class TransformationStateManager {
     }
 
     public Mono<Void> add(String transformationId, TransformEventsRequest transformEventsRequest) {
-        return transformationStoreRegistry.get(transformationId).append(transformEventsRequest)
+        return transformationStoreRegistry.get(transformationId)
+                                          .append(transformEventsRequest)
                                           .doOnSuccess(result -> activeTransformations.computeIfPresent(transformationId,
                                                                                                         (key, old) -> old.withLastToken(
                                                                                                                 token(transformEventsRequest))));
@@ -170,18 +171,19 @@ public class TransformationStateManager {
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void setProgress(String transformationId, TransformationProgress transformationProgress) {
-        EventStoreTransformationProgressJpa transformationJpa = eventStoreTransformationProgressRepository.findById(
-                                                                                                               transformationId)
-                                                                                                          .orElseThrow(() -> new RuntimeException(
-                                                                                                               "Transformation not found"));
+        EventStoreTransformationProgressJpa transformationJpa =
+                eventStoreTransformationProgressRepository.findById(transformationId)
+                                                          .orElseThrow(() -> new RuntimeException(
+                                                                  "Transformation not found"));
         transformationJpa.setLastTokenApplied(transformationProgress.lastTokenProcessed());
         eventStoreTransformationProgressRepository.save(transformationJpa);
     }
 
     public EventStoreTransformationJpa.Status status(String transformationId) {
-        EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
-                                                                                          .orElseThrow(() -> new RuntimeException(
-                                                                                                  "Transformation not found"));
+        EventStoreTransformationJpa transformationJpa =
+                eventStoreTransformationRepository.findById(transformationId)
+                                                  .orElseThrow(() -> new RuntimeException(
+                                                          "Transformation not found"));
         return transformationJpa.getStatus();
     }
 
