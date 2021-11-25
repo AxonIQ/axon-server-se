@@ -12,6 +12,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
+import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationInactivityTimeout;
@@ -201,21 +202,25 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                 if (!ExceptionUtils.isCancelled(throwable)) {
                     logger.warn("{}: error on connection - {}", sender(), throwable.getMessage());
                 }
-                deregisterClient(clientComponent.get());
+                deregisterClient(clientComponent.get(), "Error on platform connection from client");
             }
 
             @Override
             public void onCompleted() {
-                deregisterClient(clientComponent.get());
+                deregisterClient(clientComponent.get(), "Platform connection completed by client");
             }
         };
     }
 
-    public boolean requestReconnect(ClientComponent clientName) {
-        logger.debug("Request reconnect: {}", clientName);
+    public boolean requestReconnect(ClientComponent clientName, String reason) {
+        logger.debug("Request reconnect: {} - {}", clientName, reason);
 
         StreamObserver<PlatformOutboundInstruction> stream = connectionMap.get(clientName);
         if (stream != null) {
+            eventPublisher.publishEvent(new TopologyEvents.ApplicationReconnectRequested(clientName.context,
+                    clientName.clientId,
+                    clientName.component,
+                    reason));
             stream.onNext(PlatformOutboundInstruction.newBuilder()
                                                      .setRequestReconnect(RequestReconnect.newBuilder())
                                                      .build());
@@ -224,12 +229,12 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         return false;
     }
 
-    public boolean requestReconnect(String clientId) {
+    public boolean requestReconnect(String clientId, String reason) {
         logger.debug("Request reconnect: {}", clientId);
         return connectionMap.keySet()
                             .stream()
                             .filter(e -> e.clientId.equals(clientId))
-                            .map(this::requestReconnect)
+                            .map(e -> requestReconnect(e, reason))
                             .findFirst().orElse(false);
     }
 
@@ -346,7 +351,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         ));
     }
 
-    private void deregisterClient(ClientComponent clientComponent) {
+    private void deregisterClient(ClientComponent clientComponent, String reason) {
         logger.debug("De-registered client : {}", clientComponent);
 
         if (clientComponent != null) {
@@ -361,7 +366,8 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     clientComponent.component,
                     clientComponent.clientStreamId,
                     clientComponent.clientId,
-                    null
+                    null,
+                    reason
             ));
         }
     }
@@ -372,7 +378,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
             StreamObserverUtils.error(stream, cause);
         }
 
-        deregisterClient(clientComponent);
+        deregisterClient(clientComponent, cause.getMessage());
     }
 
     /**
@@ -406,11 +412,11 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      *
      * @param context the context
      */
-    public void requestReconnectForContext(String context) {
+    public void requestReconnectForContext(String context, String reason) {
         Set<ClientComponent> clients = connectionMap.keySet().stream().filter(c -> c.context.equals(context)).collect(
                 Collectors.toSet());
 
-        clients.forEach(this::requestReconnect);
+        clients.forEach(clientName -> requestReconnect(clientName, reason));
     }
 
     /**

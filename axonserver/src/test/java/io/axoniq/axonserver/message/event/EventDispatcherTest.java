@@ -195,7 +195,7 @@ public class EventDispatcherTest {
         assertEquals(1, responseObserver.completedCount());
         testSubject.on(new TopologyEvents.ApplicationDisconnected(Topology.DEFAULT_CONTEXT,
                                                                   "myComponent",
-                                                                  "sampleClient"));
+                                                                  "sampleClient", "test"));
         assertTrue(testSubject.eventTrackerStatus(Topology.DEFAULT_CONTEXT).isEmpty());
     }
 
