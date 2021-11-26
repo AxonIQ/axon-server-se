@@ -44,18 +44,36 @@ public class TopologyEventsLogger {
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected event) {
         if( event.isProxied()) {
-            logger.info("Application disconnected via {}: {}, clientId = {}, context = {}",
+            logger.info("Application disconnected via {}: {}, clientId = {}, context = {}: {}",
                         event.getProxy(),
                         event.getComponentName(),
                         event.getClientStreamId(),
-                        event.getContext());
+                        event.getContext(),
+                        event.getReason());
         } else {
-            logger.info("Application disconnected: {}, clientId = {}, context = {}",
+            logger.info("Application disconnected: {}, clientId = {}, context = {}: {}",
                         event.getComponentName(),
                         event.getClientStreamId(),
-                        event.getContext());
+                        event.getContext(),
+                        event.getReason());
         }
     }
 
+    @EventListener
+    public void on(TopologyEvents.ApplicationInactivityTimeout event) {
+        logger.info("Application inactivity timeout for {} clientId = {}, context = {}",
+                    event.componentName(),
+                    event.client().clientId(),
+                    event.client().context());
 
+    }
+
+    @EventListener
+    public void on(TopologyEvents.ApplicationReconnectRequested event) {
+        logger.info("Requested application reconnect for {} clientId = {}, context = {} - {}",
+                    event.componentName(),
+                    event.clientId(),
+                    event.context(),
+                    event.reason());
+    }
 }

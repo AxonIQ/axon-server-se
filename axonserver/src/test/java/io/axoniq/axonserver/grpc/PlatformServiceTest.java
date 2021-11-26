@@ -104,7 +104,7 @@ public class PlatformServiceTest {
                                                                                                              "component")
         ).build());
 
-        platformService.requestReconnect("client");
+        platformService.requestReconnect("client", "test");
     }
 
     @Test
@@ -203,7 +203,7 @@ public class PlatformServiceTest {
         assertEquals(1, platformService.getConnectedClients().size());
         String clientStreamId = platformService.getConnectedClients().iterator().next().getClientStreamId();
         platformService.on(new TopologyEvents.ApplicationDisconnected(context,
-                                                                      component, clientStreamId));
+                                                                      component, clientStreamId, "test"));
         assertEquals(0, platformService.getConnectedClients().size());
         assertEquals(1, responseObserver.completedCount());
     }
