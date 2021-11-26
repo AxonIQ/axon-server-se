@@ -168,9 +168,9 @@ podTemplate(label: label,
                                 docker-credential-gcr config --token-source=env,store
                                 docker-credential-gcr configure-docker
 
-                                bin/build-docker-release.sh ${images} ${tagsDef} --jdk 8  --repo ${baseTag} --push ${pomVersion}
-                                bin/build-docker-release.sh ${images} ${tags11}  --jdk 11 --repo ${baseTag} --push ${pomVersion}
-                                bin/build-docker-release.sh ${images} ${tagsDef} --jdk 17 --repo ${baseTag} --push ${pomVersion}
+                                bin/build-docker-release.sh --local ${images} ${tagsDef} --jdk 8  --repo ${baseTag} --push ${pomVersion}
+                                bin/build-docker-release.sh --local ${images} ${tags11}  --jdk 11 --repo ${baseTag} --push ${pomVersion}
+                                bin/build-docker-release.sh --local ${images} ${tagsDef} --jdk 17 --repo ${baseTag} --push ${pomVersion}
                             """
                         }
                         slackReport = slackReport + "\nNew Docker images pushed."
