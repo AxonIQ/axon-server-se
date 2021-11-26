@@ -19,6 +19,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * A gRPC controller for the UserAdminService.
+ * Controls Axon Server users via gRPC interface.
+ *
  * @author Stefan Dragisic
  * @since 4.6.0
  */
@@ -74,10 +77,7 @@ public class UserGrpcController extends UserAdminServiceGrpc.UserAdminServiceImp
         try {
             userController.getUsers()
                     .stream()
-                    .map(user -> UserOverview.newBuilder()
-                            .setUserName(user.getUserName())
-                            .setEnabled(user.isEnabled())
-                            .build())
+                    .map(user -> UserOverview.newBuilder().setUserName(user.getUserName()).setEnabled(user.isEnabled()).build())
                     .forEach(responseObserver::onNext);
             responseObserver.onCompleted();
         } catch (Exception e) {
