@@ -14,8 +14,10 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.EventTransformationResult;
+import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
+import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.junit.*;
 import org.springframework.context.ApplicationContext;
 
@@ -29,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
 import static org.junit.Assert.*;
@@ -71,26 +74,38 @@ public class TransformationProcessorTest {
         when(transformationStateManager.progress(RESTARTED_TRANSFORMATION)).thenReturn(Optional.of(t));
 
         ApplicationContext applicationContext = mock(ApplicationContext.class);
-        LocalEventStore localEventStore = mock(LocalEventStore.class);
-        when(applicationContext.getBean(LocalEventStore.class)).thenReturn(localEventStore);
+        LocalEventStoreTransformer localEventStore = new LocalEventStoreTransformer() {
+            @Override
+            public void deleteOldVersions(String context, int version) {
 
-        when(localEventStore.transformEvents(anyString(), anyLong(), anyLong(), anyBoolean(),
-                                             anyInt(), any(), any())).then(invocationOnMock -> {
-                                                 BiFunction<Event,Long, Event> handler = invocationOnMock.getArgument(5);
-                                                 long last = invocationOnMock.getArgument(2);
-            LongStream.range(invocationOnMock.getArgument(1), last+1)
-                    .forEach(i -> {
-                        Event original = Event.newBuilder().setPayload(SerializedObject.newBuilder()
-                                                                               .setType("PayloadType")
-                                                                                       .build()).build();
-                        Event updated = handler.apply(original, i);
-                        if (!original.equals(updated)) {
-                            updatesCounter.incrementAndGet();
-                        }
+            }
 
-                    });
-           return CompletableFuture.completedFuture(null);
-        });
+            @Override
+            public void rollbackSegments(String context, int version) {
+
+            }
+
+            @Override
+            public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
+                                                           boolean keepOldVersions, int version,
+                                                           BiFunction<Event, Long, EventTransformationResult> transformationFunction,
+                                                           Consumer<TransformationProgress> transformationProgressConsumer) {
+                LongStream.range(firstToken, lastToken+1)
+                          .forEach(i -> {
+                              Event original = Event.newBuilder().setPayload(SerializedObject.newBuilder()
+                                                                                             .setType("PayloadType")
+                                                                                             .build()).build();
+                              Event updated = transformationFunction.apply(original, i).event();
+                              if (!original.equals(updated)) {
+                                  updatesCounter.incrementAndGet();
+                              }
+
+                          });
+                return CompletableFuture.completedFuture(null);
+            }
+        };
+        when(applicationContext.getBean(LocalEventStoreTransformer.class)).thenReturn(localEventStore);
+
         testSubject = new TransformationProcessor(applicationContext, transformationStateManager);
     }
 

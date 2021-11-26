@@ -20,7 +20,7 @@ import org.springframework.data.util.CloseableIterator;
 public class ActiveEventStoreTransformation {
 
     private final EventStoreTransformationJpa persistedState;
-    private long lastToken = -1;
+    private final long lastToken;
     private final CloseableIterator<SerializedEventWithToken> iterator;
 
 

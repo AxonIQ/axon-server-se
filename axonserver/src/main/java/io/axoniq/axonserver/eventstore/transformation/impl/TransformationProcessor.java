@@ -13,7 +13,8 @@ import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.EventTransformationResult;
+import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,34 +131,23 @@ public class TransformationProcessor {
         long firstToken = max(firstEventToken, nextToken);
 
         logger.info("{}: Start apply transformation from {} to {}", context, firstToken, lastEventToken);
-        try (CloseableIterator<TransformEventsRequest> iterator = transformationFileStore.iterator()) {
-            if (iterator.hasNext()) {
-                TransformEventsRequest transformationEntry = iterator.next();
-                AtomicReference<TransformEventsRequest> request = new AtomicReference<>(transformationEntry);
-                logger.debug("Next token {}", token(request.get()));
-                return localEventStore().transformEvents(context,
-                                                         firstToken,
-                                                         lastEventToken,
-                                                         keepOldVersions,
-                                                         version,
-                                                         (event, token) -> processEvent(iterator,
-                                                                                        request,
-                                                                                        event,
-                                                                                        token),
-                                                         transformationProgress -> handleTransformationProgress(context,
-                                                                                                                transformationId,
-                                                                                                                transformationProgress))
-                                        .thenAccept(r -> {
-                                            iterator.close();
-                                            transformationStateManager.completeProgress(transformationId);
-                                        });
-            }
-        }
+        TransformationEntryProcessor transformationEntryProcessor  =
+                new TransformationEntryProcessor(transformationFileStore::iterator);
+        localEventStore().transformEvents(context, firstToken, lastEventToken, keepOldVersions, version,
+                                          transformationEntryProcessor,
+                                          transformationProgress -> handleTransformationProgress(context,
+                                                                                                 transformationId,
+                                                                                                 transformationProgress))
+                .thenAccept(r -> {
+                    transformationEntryProcessor.close();
+                    transformationStateManager.completeProgress(transformationId);
+                });
+
         return CompletableFuture.completedFuture(null);
     }
 
-    private Event processEvent(CloseableIterator<TransformEventsRequest> iterator,
-                           AtomicReference<TransformEventsRequest> request, Event event, Long token) {
+    private EventTransformationResult processEvent(CloseableIterator<TransformEventsRequest> iterator,
+                                                   AtomicReference<TransformEventsRequest> request, Event event, Long token) {
         logger.debug("Found token {}", token);
         Event result = event;
         TransformEventsRequest nextRequest = request.get();
@@ -175,7 +165,21 @@ public class TransformationProcessor {
                 logger.debug("Next token {}", token(request.get()));
             }
         }
-        return result;
+        return defaultEventTransformationResult(result, token(request.get()));
+    }
+
+    private EventTransformationResult defaultEventTransformationResult(Event result, long token) {
+        return new EventTransformationResult() {
+            @Override
+            public Event event() {
+                return result;
+            }
+
+            @Override
+            public long nextToken() {
+                return token;
+            }
+        };
     }
 
     private void handleTransformationProgress(String context, String transformationId,
@@ -295,7 +299,7 @@ public class TransformationProcessor {
                                   });
     }
 
-    private LocalEventStore localEventStore() {
-        return applicationContext.getBean(LocalEventStore.class);
+    private LocalEventStoreTransformer localEventStore() {
+        return applicationContext.getBean(LocalEventStoreTransformer.class);
     }
 }

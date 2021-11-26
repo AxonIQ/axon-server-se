@@ -86,7 +86,9 @@ import java.util.stream.Stream;
  * @since 4.0
  */
 @Component
-public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore, SmartLifecycle {
+public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore,
+        LocalEventStoreTransformer,
+        SmartLifecycle {
 
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
     private final Logger logger = LoggerFactory.getLogger(LocalEventStore.class);
@@ -235,7 +237,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
                                                    boolean keepOldVersions,
                                                    int version,
-                                                   BiFunction<Event,Long,Event> transformationFunction,
+                                                   BiFunction<Event,Long,EventTransformationResult> transformationFunction,
                                                    Consumer<TransformationProgress> transformationProgressConsumer) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         runInDataFetcherPool(() -> {
@@ -257,7 +259,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             }
 
             workers.snapshotStorageEngine
-                    .transformContents(0, Long.MAX_VALUE, false, workers.snapshotStorageEngine.nextVersion(), (snapshot, token) -> {
+                    .transformContents(0, workers.snapshotStorageEngine.getLastToken(), false, workers.snapshotStorageEngine.nextVersion(), (snapshot, token) -> {
                                            Optional<Long> optionalLastSequenceNumber = workers.snapshotStorageEngine
                                                    .getLastSequenceNumber(snapshot.getAggregateIdentifier())
                                                    .filter(lastSequenceNumber ->
@@ -267,9 +269,29 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                                                    - minSequenceOffset);
                                            if (optionalLastSequenceNumber.isPresent()) {
                                                deletedCount.incrementAndGet();
-                                               return null;
+                                               return new EventTransformationResult() {
+                                                   @Override
+                                                   public Event event() {
+                                                       return null;
+                                                   }
+
+                                                   @Override
+                                                   public long nextToken() {
+                                                       return token+1;
+                                                   }
+                                               };
                                            }
-                                           return snapshot;
+                                           return new EventTransformationResult() {
+                                               @Override
+                                               public Event event() {
+                                                   return snapshot;
+                                               }
+
+                                               @Override
+                                               public long nextToken() {
+                                                   return token+1;
+                                               }
+                                           };
                                        }, transformationProgress -> {}
                     );
             result.complete(deletedCount.get());

@@ -13,6 +13,7 @@ import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
@@ -313,7 +314,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public void transformContents(long firstToken, long lastToken,
                                   boolean keepOldVersions, int version,
-                                  BiFunction<Event, Long, Event> transformationFunction,
+                                  BiFunction<Event, Long, EventTransformationResult> transformationFunction,
                                   Consumer<TransformationProgress> transformationProgressConsumer) {
         if(readBuffers.firstKey() > lastToken) {
             if( readBuffers.lastKey() <= lastToken) {

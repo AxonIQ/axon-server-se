@@ -49,9 +49,14 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
         return Mono.create(sink -> {
             String id = UUID.randomUUID().toString();
             transformationStateManager.reserve(context, id);
-            transformationProcessor.startTransformation(context, id,
-                                                        transformationStateManager.nextVersion(context),
-                                                        description);
+            try {
+                transformationProcessor.startTransformation(context, id,
+                                                            transformationStateManager.nextVersion(context),
+                                                            description);
+            } catch (RuntimeException runtimeException) {
+                transformationStateManager.delete(id);
+                throw runtimeException;
+            }
             sink.success(id);
         });
     }

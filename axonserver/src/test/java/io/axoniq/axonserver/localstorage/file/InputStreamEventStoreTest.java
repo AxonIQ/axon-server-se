@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -111,9 +112,31 @@ public class InputStreamEventStoreTest {
         testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (event, token) -> {
             System.out.println("id=" + event.getAggregateIdentifier());
             if (event.getAggregateIdentifier().equals("abb070e9-943f-4947-8def-c50481b968c7")) {
-                return Event.getDefaultInstance();
+                return new EventTransformationResult() {
+
+                    @Override
+                    public Event event() {
+                        return Event.getDefaultInstance();
+                    }
+
+                    @Override
+                    public long nextToken() {
+                        return token + 1;
+                    }
+                };
             }
-            return event;
+            return new EventTransformationResult() {
+
+                @Override
+                public Event event() {
+                    return event;
+                }
+
+                @Override
+                public long nextToken() {
+                    return token + 1;
+                }
+            };
         }, transformationProgress -> {});
 
         SerializedEvent event = testSubject.eventsPerAggregate(

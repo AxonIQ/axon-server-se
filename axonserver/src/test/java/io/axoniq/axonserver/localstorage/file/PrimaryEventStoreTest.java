@@ -14,6 +14,7 @@ import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -348,11 +349,32 @@ public class PrimaryEventStoreTest {
 
             testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token) -> {
                 if (!"Aggregate-1".equals(e.getAggregateIdentifier())) {
-                    return e;
-                }
+                    return new EventTransformationResult() {
+                        @Override
+                        public Event event() {
+                            return e;
+                        }
 
-                return Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
-                        setType("Transformed")).build();
+                        @Override
+                        public long nextToken() {
+                            return token + 1;
+                        }
+                    };
+                }
+                Event updated = Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
+                                                                               setType("Transformed")).build();
+
+                return new EventTransformationResult() {
+                    @Override
+                    public Event event() {
+                        return updated;
+                    }
+
+                    @Override
+                    public long nextToken() {
+                        return token+1;
+                    }
+                };
             }, progress -> {});
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-1",
@@ -397,11 +419,11 @@ public class PrimaryEventStoreTest {
 
             testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token)  -> {
                 if (!"Aggregate-9".equals(e.getAggregateIdentifier())) {
-                    return e;
+                    return eventTransformerResult(e, token+1);
                 }
 
-                return Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
-                        setType("Transformed")).build();
+                return eventTransformerResult(Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
+                        setType("Transformed")).build(), token+1);
             }, progress -> {});
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-9",
@@ -416,6 +438,20 @@ public class PrimaryEventStoreTest {
             Thread.sleep(10);
             testSubject.close(true);
         }
+    }
+
+    private EventTransformationResult eventTransformerResult(Event event, long nextToken) {
+        return new EventTransformationResult() {
+            @Override
+            public Event event() {
+                return event;
+            }
+
+            @Override
+            public long nextToken() {
+                return nextToken;
+            }
+        };
     }
 
     @Test
@@ -475,11 +511,11 @@ public class PrimaryEventStoreTest {
 
             testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token)  -> {
                 if (!"Aggregate-1".equals(e.getAggregateIdentifier())) {
-                    return e;
+                    return eventTransformerResult(e, token+1);
                 }
 
-                return Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
-                        setType("Transformed")).build();
+                return eventTransformerResult(Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
+                        setType("Transformed")).build(), token+1);
             }, progress -> {});
 
             subscriptionRef.get().request(1000);
