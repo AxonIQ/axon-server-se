@@ -188,11 +188,12 @@ function getTagOpts() {
 function doBuild() {
     local tagSuffix=$1
     local baseImg=$2
+    local srcFile=$3
 
     echo "Building '${TAG_BASE}${tagSuffix}' from '${baseImg}'."
 
-    echo "- Generating Dockerfile from '${SRC}/build${tagSuffix}/Dockerfile'"
-    sed -e "s+__BASE_IMG__+${baseImg}+g" ${SRC}/build${tagSuffix}/Dockerfile > ${TGT}/Dockerfile
+    echo "- Generating Dockerfile from '${srcFile}'"
+    sed -e "s+__BASE_IMG__+${baseImg}+g" ${srcFile} > ${TGT}/Dockerfile
 
     local TAGS=$(getTags ${tagSuffix})
     local TAG_OPTS=$(getTagOpts ${tagSuffix})
@@ -234,17 +235,26 @@ chmod 755 ${TGT}/axonserver.jar
 cp ${SRC}/axonserver.properties ${TGT}/
 
 if [[ "${DO_PROD}" == "y" ]] ; then
-    doBuild "" ${IMG_BASE}
+    doBuild "" ${IMG_BASE} ${SRC}/build/Dockerfile
 
     if [[ "${DO_NONROOT}" == "y" ]] ; then
-      doBuild "-nonroot" ${IMG_BASE_NONROOT}
+      doBuild "-nonroot" ${IMG_BASE_NONROOT} ${SRC}/build-nonroot/Dockerfile
     fi
 fi
 
 if [[ "${DO_DEV}" == "y" ]] ; then
-    doBuild "-dev" ${IMG_BASE_DEV}
+
+    if [ -s ${SRC}/build-dev/Dockerfile ] ; then
+        doBuild "-dev" ${IMG_BASE_DEV} ${SRC}/build-dev/Dockerfile
+    else
+        doBuild "-dev" ${IMG_BASE_DEV} ${SRC}/build/Dockerfile
+    fi
 
     if [[ "${DO_NONROOT}" == "y" ]] ; then
-        doBuild "-dev-nonroot" ${IMG_BASE_DEV_NONROOT}
+        if [ -s ${SRC}/build-dev-nonroot/Dockerfile ] ; then
+            doBuild "-dev-nonroot" ${IMG_BASE_DEV_NONROOT} ${SRC}/build-dev-nonroot/Dockerfile
+        else
+            doBuild "-dev-nonroot" ${IMG_BASE_DEV_NONROOT} ${SRC}/build-nonroot/Dockerfile
+        fi
     fi
 fi
