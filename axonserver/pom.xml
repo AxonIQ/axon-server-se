@@ -381,6 +381,7 @@
                 </executions>
             </plugin>
 
+            <!-- Maven Failsafe Plugin, for Integration Tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -388,9 +389,6 @@
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
                     <skipITs>${skipITs}</skipITs>
-<!--                    <includes>-->
-<!--                        <include>**/*ITCase.java</include>-->
-<!--                    </includes>-->
                 </configuration>
                 <executions>
                     <execution>
@@ -401,6 +399,8 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Maven Surefire Plugin, for Unit Tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
