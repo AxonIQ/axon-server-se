@@ -18,7 +18,7 @@ import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
 import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.grpc.stub.StreamObserver;
@@ -73,11 +73,11 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
     }
 
     @Override
-    public StreamObserver<TransformEventsRequest> transformEvents(StreamObserver<Confirmation> responseObserver) {
+    public StreamObserver<TransformEventRequest> transformEvents(StreamObserver<Confirmation> responseObserver) {
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
         auditLog.info("{}@{}: Request to transformEvents", authentication.getName(), context);
-        Sinks.Many<TransformEventsRequest> many = Sinks.many().unicast().onBackpressureBuffer();
+        Sinks.Many<TransformEventRequest> many = Sinks.many().unicast().onBackpressureBuffer();
 
         AtomicBoolean closed = new AtomicBoolean();
         many.asFlux().subscribe(request -> {
@@ -86,13 +86,13 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
                     eventStoreTransformationService.replaceEvent(context, transformationId(request),
                                                                  request.getEvent().getToken(),
                                                                  request.getEvent().getEvent(),
-                                                                 request.getEvent().getPreviousToken())
+                                                                 request.getPreviousToken())
                                                    .block();
                     break;
                 case DELETE_EVENT:
                     eventStoreTransformationService.deleteEvent(context, transformationId(request),
                                                                 request.getDeleteEvent().getToken(),
-                                                                request.getDeleteEvent().getPreviousToken())
+                                                                request.getPreviousToken())
                                                    .block();
                     break;
                 case REQUEST_NOT_SET:
@@ -106,9 +106,9 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
             responseObserver.onCompleted();
         });
 
-        return new StreamObserver<TransformEventsRequest>() {
+        return new StreamObserver<TransformEventRequest>() {
             @Override
-            public void onNext(TransformEventsRequest transformEventsRequest) {
+            public void onNext(TransformEventRequest transformEventsRequest) {
                 if( closed.get()) return;
 
                 many.emitNext(transformEventsRequest, ((signalType, emitResult) -> {
@@ -130,7 +130,7 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         };
     }
 
-    private String transformationId(TransformEventsRequest request) {
+    private String transformationId(TransformEventRequest request) {
         return request.hasTransformationId() ? request.getTransformationId().getId() : null;
     }
 

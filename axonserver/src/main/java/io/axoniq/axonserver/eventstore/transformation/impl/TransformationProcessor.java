@@ -11,7 +11,7 @@ package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
@@ -146,27 +146,6 @@ public class TransformationProcessor {
         return CompletableFuture.completedFuture(null);
     }
 
-    private EventTransformationResult processEvent(CloseableIterator<TransformEventsRequest> iterator,
-                                                   AtomicReference<TransformEventsRequest> request, Event event, Long token) {
-        logger.debug("Found token {}", token);
-        Event result = event;
-        TransformEventsRequest nextRequest = request.get();
-        long t = token(nextRequest);
-        while (t < token && iterator.hasNext()) {
-            nextRequest = iterator.next();
-            request.set(nextRequest);
-            t = token(nextRequest);
-        }
-
-        if (token(nextRequest) == token) {
-            result = applyTransformation(event, nextRequest);
-            if (iterator.hasNext()) {
-                request.set(iterator.next());
-                logger.debug("Next token {}", token(request.get()));
-            }
-        }
-        return defaultEventTransformationResult(result, token(request.get()));
-    }
 
     private EventTransformationResult defaultEventTransformationResult(Event result, long token) {
         return new EventTransformationResult() {
@@ -188,61 +167,21 @@ public class TransformationProcessor {
         transformationStateManager.setProgress(transformationId, transformationProgress);
     }
 
-    private TransformEventsRequest deleteEventEntry(long token) {
-        return TransformEventsRequest.newBuilder()
+    private TransformEventRequest deleteEventEntry(long token) {
+        return TransformEventRequest.newBuilder()
                                      .setDeleteEvent(DeletedEvent.newBuilder()
                                                                  .setToken(token))
                                      .build();
     }
 
-    private TransformEventsRequest replaceEventEntry(long token, Event event) {
-        return TransformEventsRequest.newBuilder()
+    private TransformEventRequest replaceEventEntry(long token, Event event) {
+        return TransformEventRequest.newBuilder()
                                      .setEvent(TransformedEvent.newBuilder()
                                                                .setToken(token)
                                                                .setEvent(event))
                                      .build();
     }
 
-
-    private Event applyTransformation(Event original, TransformEventsRequest transformRequest) {
-        switch (transformRequest.getRequestCase()) {
-            case EVENT:
-                return merge(original, transformRequest.getEvent().getEvent());
-            case DELETE_EVENT:
-                return nullify(original);
-            case REQUEST_NOT_SET:
-                break;
-        }
-        return original;
-    }
-
-    private Event merge(Event original, Event updated) {
-        return Event.newBuilder(original)
-                    .clearMetaData()
-                    .setAggregateType(updated.getAggregateType())
-                    .setPayload(updated.getPayload())
-                    .putAllMetaData(updated.getMetaDataMap())
-                    .build();
-    }
-
-    private Event nullify(Event event) {
-        return Event.newBuilder(event)
-                    .clearPayload()
-                    .clearMessageIdentifier()
-                    .clearMetaData()
-                    .build();
-    }
-
-    private long token(TransformEventsRequest nextRequest) {
-        switch (nextRequest.getRequestCase()) {
-            case EVENT:
-                return nextRequest.getEvent().getToken();
-            case DELETE_EVENT:
-                return nextRequest.getDeleteEvent().getToken();
-            default:
-                throw new IllegalArgumentException("Request without token");
-        }
-    }
 
     /**
      * Restart a previously aborted transformation for a context.

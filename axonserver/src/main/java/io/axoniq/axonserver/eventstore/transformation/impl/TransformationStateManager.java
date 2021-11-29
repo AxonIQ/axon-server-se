@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
@@ -62,7 +62,7 @@ public class TransformationStateManager {
                                                           transformation.getContext(),
                                                           transformation.getTransformationId());
                                                   long lastToken = -1;
-                                                  TransformEventsRequest entry = store.lastEntry();
+                                                  TransformEventRequest entry = store.lastEntry();
                                                   if (entry != null) {
                                                       lastToken = token(entry);
                                                   }
@@ -74,7 +74,7 @@ public class TransformationStateManager {
                                           });
     }
 
-    private long token(TransformEventsRequest request) {
+    private long token(TransformEventRequest request) {
         switch (request.getRequestCase()) {
             case EVENT:
                 return request.getEvent().getToken();
@@ -160,7 +160,7 @@ public class TransformationStateManager {
         getOrCreateProgress(transformationId);
     }
 
-    public Mono<Void> add(String transformationId, TransformEventsRequest transformEventsRequest) {
+    public Mono<Void> add(String transformationId, TransformEventRequest transformEventsRequest) {
         return transformationStoreRegistry.get(transformationId)
                                           .append(transformEventsRequest)
                                           .doOnSuccess(result -> activeTransformations.computeIfPresent(transformationId,
@@ -253,7 +253,7 @@ public class TransformationStateManager {
     }
 
     public long firstToken(String transformationId) {
-        TransformEventsRequest firstEntry = transformationStoreRegistry.get(transformationId).firstEntry();
+        TransformEventRequest firstEntry = transformationStoreRegistry.get(transformationId).firstEntry();
         if (firstEntry == null) {
             return -1;
         }

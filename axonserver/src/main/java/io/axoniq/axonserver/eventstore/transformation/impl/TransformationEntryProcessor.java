@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import org.springframework.data.util.CloseableIterator;
 
@@ -25,11 +25,11 @@ import java.util.function.Supplier;
  */
 public class TransformationEntryProcessor implements BiFunction<Event, Long, EventTransformationResult> {
     private final AtomicLong lastToken = new AtomicLong(-1);
-    private final AtomicReference<CloseableIterator<TransformEventsRequest>> iteratorHolder = new AtomicReference<>();
-    private final AtomicReference<TransformEventsRequest> nextEntry = new AtomicReference<>();
-    private final Supplier<CloseableIterator<TransformEventsRequest>> iteratorFactory;
+    private final AtomicReference<CloseableIterator<TransformEventRequest>> iteratorHolder = new AtomicReference<>();
+    private final AtomicReference<TransformEventRequest> nextEntry = new AtomicReference<>();
+    private final Supplier<CloseableIterator<TransformEventRequest>> iteratorFactory;
 
-    public TransformationEntryProcessor(Supplier<CloseableIterator<TransformEventsRequest>> iteratorFactory) {
+    public TransformationEntryProcessor(Supplier<CloseableIterator<TransformEventRequest>> iteratorFactory) {
         this.iteratorFactory = iteratorFactory;
     }
 
@@ -48,7 +48,7 @@ public class TransformationEntryProcessor implements BiFunction<Event, Long, Eve
             return eventTransformationResult(event, Long.MAX_VALUE);
         }
 
-        TransformEventsRequest request = nextEntry.get();
+        TransformEventRequest request = nextEntry.get();
         if (token(request) == token) {
             event = applyTransformation(event, request);
             if (!iteratorHolder.get().hasNext()) {
@@ -61,7 +61,7 @@ public class TransformationEntryProcessor implements BiFunction<Event, Long, Eve
         return eventTransformationResult(event, token(nextEntry.get()));
     }
 
-    private Event applyTransformation(Event original, TransformEventsRequest transformRequest) {
+    private Event applyTransformation(Event original, TransformEventRequest transformRequest) {
         switch (transformRequest.getRequestCase()) {
             case EVENT:
                 return merge(original, transformRequest.getEvent().getEvent());
@@ -105,7 +105,7 @@ public class TransformationEntryProcessor implements BiFunction<Event, Long, Eve
         };
     }
 
-    private long token(TransformEventsRequest request) {
+    private long token(TransformEventRequest request) {
         switch (request.getRequestCase()) {
             case EVENT:
                 return request.getEvent().getToken();
@@ -118,10 +118,10 @@ public class TransformationEntryProcessor implements BiFunction<Event, Long, Eve
 
     private void initTransformationAtToken(Long token) {
         if (nextEntry.get() == null) {
-            CloseableIterator<TransformEventsRequest> iterator = iteratorFactory.get();
+            CloseableIterator<TransformEventRequest> iterator = iteratorFactory.get();
             boolean found = false;
             while (!found && iterator.hasNext()) {
-                TransformEventsRequest request = iterator.next();
+                TransformEventRequest request = iterator.next();
                 if (token(request) >= token) {
                     found = true;
                     nextEntry.set(request);
@@ -132,7 +132,7 @@ public class TransformationEntryProcessor implements BiFunction<Event, Long, Eve
     }
 
     public void close() {
-        CloseableIterator<TransformEventsRequest> currentIterator = iteratorHolder.getAndSet(null);
+        CloseableIterator<TransformEventRequest> currentIterator = iteratorHolder.getAndSet(null);
         if (currentIterator != null) {
             currentIterator.close();
         }

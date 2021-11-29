@@ -14,7 +14,7 @@ import io.axoniq.axonserver.filestorage.FileStore;
 import io.axoniq.axonserver.filestorage.FileStoreEntry;
 import io.axoniq.axonserver.filestorage.impl.BaseFileStore;
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -62,9 +62,9 @@ public class TransformationEntryStore {
      *
      * @return an iterator of entries
      */
-    public CloseableIterator<TransformEventsRequest> iterator() {
+    public CloseableIterator<TransformEventRequest> iterator() {
         CloseableIterator<FileStoreEntry> wrapped = fileStore.iterator(0);
-        return new CloseableIterator<TransformEventsRequest>() {
+        return new CloseableIterator<TransformEventRequest>() {
             @Override
             public void close() {
                 wrapped.close();
@@ -76,7 +76,7 @@ public class TransformationEntryStore {
             }
 
             @Override
-            public TransformEventsRequest next() {
+            public TransformEventRequest next() {
                 return parse(wrapped.next());
             }
         };
@@ -86,7 +86,7 @@ public class TransformationEntryStore {
      * Returns a flux with all entries in the entry store.
      * @return a flux of entries
      */
-     public Flux<TransformEventsRequest> entries() {
+     public Flux<TransformEventRequest> entries() {
         return fileStore.stream(0).map(this::parse);
      }
 
@@ -95,7 +95,7 @@ public class TransformationEntryStore {
      * @param request the entry to add
      * @return a mono that is completed when the entry is stored.
      */
-    public Mono<Void> append(TransformEventsRequest request) {
+    public Mono<Void> append(TransformEventRequest request) {
         return fileStore.append(new FileStoreEntry() {
             @Override
             public byte[] bytes() {
@@ -113,7 +113,7 @@ public class TransformationEntryStore {
      * Returns the last entry in the entry store. Returns null is store is empty.
      * @return an entry or null
      */
-    public TransformEventsRequest lastEntry() {
+    public TransformEventRequest lastEntry() {
         FileStoreEntry entry = fileStore.lastEntry();
         return entry == null ? null : parse(entry);
     }
@@ -122,18 +122,18 @@ public class TransformationEntryStore {
      * Returns the first entry in the entry store. Returns null is store is empty.
      * @return an entry or null
      */
-    public TransformEventsRequest firstEntry() {
+    public TransformEventRequest firstEntry() {
         if (fileStore.isEmpty()) return null;
         FileStoreEntry entry = fileStore.read(0).block();
         return parse(entry);
     }
 
-    private TransformEventsRequest parse(FileStoreEntry entry) {
+    private TransformEventRequest parse(FileStoreEntry entry) {
         if (entry == null) {
             return null;
         }
         try {
-            return TransformEventsRequest.parseFrom(entry.bytes());
+            return TransformEventRequest.parseFrom(entry.bytes());
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }

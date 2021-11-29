@@ -9,15 +9,10 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.access.jpa.User;
-import io.axoniq.axonserver.access.jpa.UserRole;
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
-import io.axoniq.axonserver.applicationevents.UserEvents;
-import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
@@ -71,10 +66,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.Collections;
 import java.util.concurrent.ScheduledExecutorService;
+import javax.annotation.Nonnull;
 
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 

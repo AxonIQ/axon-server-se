@@ -122,7 +122,9 @@ public class ByteBufferEventSource implements EventSource {
     public void close() {
         if (closed.compareAndSet(false, true )) {
             if (onClose != null) {
-                if (closed.compareAndSet(false, true))  {onClose.run();
+                if (closed.compareAndSet(false, true))  {
+                    onClose.run();
+                }
             }
         }
     }

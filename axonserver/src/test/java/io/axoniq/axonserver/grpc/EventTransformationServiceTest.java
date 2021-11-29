@@ -9,18 +9,17 @@
 
 package io.axoniq.axonserver.grpc;
 
-import com.google.protobuf.Empty;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
-import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.transport.grpc.EventTransformationService;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
@@ -149,9 +148,9 @@ public class EventTransformationServiceTest {
     public void transformEvents() throws ExecutionException, InterruptedException {
         TransformationId transformationId = doStartTransformation();
         CompletableFuture<Confirmation> futureConfirmation = new CompletableFuture<>();
-        StreamObserver<TransformEventsRequest> requestStream = testSubject.transformEvents(new CompletableFutureStreamObserver<>(
+        StreamObserver<TransformEventRequest> requestStream = testSubject.transformEvents(new CompletableFutureStreamObserver<>(
                 futureConfirmation));
-        requestStream.onNext(TransformEventsRequest.newBuilder()
+        requestStream.onNext(TransformEventRequest.newBuilder()
                                                    .setTransformationId(transformationId)
                                                    .setEvent(TransformedEvent.newBuilder()
                                                                              .setToken(1)
@@ -175,9 +174,9 @@ public class EventTransformationServiceTest {
     public void transformEventsError() throws InterruptedException {
         TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
         CompletableFuture<Confirmation> futureConfirmation = new CompletableFuture<>();
-        StreamObserver<TransformEventsRequest> requestStream = testSubject.transformEvents(new CompletableFutureStreamObserver<>(
+        StreamObserver<TransformEventRequest> requestStream = testSubject.transformEvents(new CompletableFutureStreamObserver<>(
                 futureConfirmation));
-        requestStream.onNext(TransformEventsRequest.newBuilder()
+        requestStream.onNext(TransformEventRequest.newBuilder()
                                                    .setTransformationId(transformationId)
                                                    .setEvent(TransformedEvent.newBuilder()
                                                                              .setToken(1)

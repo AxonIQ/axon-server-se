@@ -12,7 +12,7 @@ package io.axoniq.axonserver.eventstore.transformation.impl;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import org.jetbrains.annotations.NotNull;
@@ -31,11 +31,11 @@ import static org.junit.Assert.*;
  */
 public class TransformationEntryProcessorTest {
     private final TransformationEntryProcessor testSubject = new TransformationEntryProcessor(this::iterator);
-    private final List<TransformEventsRequest> requestList = new LinkedList<>();
+    private final List<TransformEventRequest> requestList = new LinkedList<>();
 
-    private CloseableIterator<TransformEventsRequest> iterator() {
-        Iterator<TransformEventsRequest> wrapped = requestList.iterator();
-        return new CloseableIterator<TransformEventsRequest>() {
+    private CloseableIterator<TransformEventRequest> iterator() {
+        Iterator<TransformEventRequest> wrapped = requestList.iterator();
+        return new CloseableIterator<TransformEventRequest>() {
             @Override
             public void close() {
 
@@ -47,7 +47,7 @@ public class TransformationEntryProcessorTest {
             }
 
             @Override
-            public TransformEventsRequest next() {
+            public TransformEventRequest next() {
                 return wrapped.next();
             }
         };
@@ -118,15 +118,15 @@ public class TransformationEntryProcessorTest {
     }
 
     @NotNull
-    private TransformEventsRequest deleteEvent(long token) {
-        return TransformEventsRequest.newBuilder()
+    private TransformEventRequest deleteEvent(long token) {
+        return TransformEventRequest.newBuilder()
                                 .setDeleteEvent(DeletedEvent.newBuilder()
                                                         .setToken(token))
                                               .build();
     }
     @NotNull
-    private TransformEventsRequest updateEvent(long token) {
-        return TransformEventsRequest.newBuilder()
+    private TransformEventRequest updateEvent(long token) {
+        return TransformEventRequest.newBuilder()
                                      .setEvent(TransformedEvent.newBuilder()
                                                        .setEvent(Event.newBuilder()
                                                                       .setPayload(SerializedObject.newBuilder()

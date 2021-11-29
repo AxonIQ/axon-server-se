@@ -13,7 +13,7 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.TransformEventsRequest;
+import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -126,9 +126,9 @@ public class TransformationProcessorTest {
     @Test
     public void applyNormal() throws ExecutionException, InterruptedException, TimeoutException {
         TransformationEntryStore store = registry.register(CONTEXT, NORMAL_TRANSFORMATION);
-        store.append(TransformEventsRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(100)).build()).block();
-        store.append(TransformEventsRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(101)).build()).block();
-        store.append(TransformEventsRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(111)).build()).block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(100)).build()).block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(101)).build()).block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(111)).build()).block();
 
         testSubject.apply(NORMAL_TRANSFORMATION, true, "Junit", new Date(), 100, 150)
                    .get(1, TimeUnit.SECONDS);
@@ -138,9 +138,9 @@ public class TransformationProcessorTest {
     @Test
     public void restartApply() throws ExecutionException, InterruptedException, TimeoutException {
         TransformationEntryStore store = registry.register(CONTEXT, RESTARTED_TRANSFORMATION);
-        store.append(TransformEventsRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(100)).build()).block();
-        store.append(TransformEventsRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(101)).build()).block();
-        store.append(TransformEventsRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(111)).build()).block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(100)).build()).block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(101)).build()).block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(111)).build()).block();
 
         testSubject.restartApply(CONTEXT).get(1, TimeUnit.SECONDS);
         assertEquals(1, updatesCounter.get());
