@@ -37,9 +37,9 @@
                             <span v-for="role in app.workingRoles">{{role.context}}:{{role.role}}<br></span>
                         </td>
                         <td  v-if="admin">
-                            <span @click="deleteApp(app)" title="Delete"><i class="far fa-trash-alt"/></span>
-                            <span @click="renewToken(app)" title="Generate New Token"><i class="fas fa-redo-alt"/></span>
-                            <span @click="selectApp(app)" title="Edit"><i class="fas fa-pencil-alt"/></span>
+                            <span @click="deleteApp(app)" title="Delete"><i class="far fa-trash-alt"></i></span>
+                            <span @click="renewToken(app)" title="Generate New Token"><i class="fas fa-redo-alt"></i></span>
+                            <span @click="selectApp(app)" title="Edit"><i class="fas fa-pencil-alt"></i></span>
                         </td>
                     </tr>
                 </tbody>
