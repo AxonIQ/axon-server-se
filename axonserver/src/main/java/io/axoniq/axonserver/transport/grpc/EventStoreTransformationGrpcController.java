@@ -25,7 +25,6 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Sinks;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,7 +36,7 @@ import javax.annotation.Nonnull;
  * @since 4.6.0
  */
 @Component
-public class EventTransformationService extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
+public class EventStoreTransformationGrpcController extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
         implements AxonServerClientService {
 
     private final ContextProvider contextProvider;
@@ -45,9 +44,9 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
     private final Logger auditLog = AuditLog.getLogger();
     private final EventStoreTransformationService eventStoreTransformationService;
 
-    public EventTransformationService(ContextProvider contextProvider,
-                                      AuthenticationProvider authenticationProvider,
-                                      EventStoreTransformationService eventStoreTransformationService) {
+    public EventStoreTransformationGrpcController(ContextProvider contextProvider,
+                                                  AuthenticationProvider authenticationProvider,
+                                                  EventStoreTransformationService eventStoreTransformationService) {
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
         this.eventStoreTransformationService = eventStoreTransformationService;
@@ -142,32 +141,6 @@ public class EventTransformationService extends EventTransformationServiceGrpc.E
         auditLog.info("{}@{}: Request to cancel transformation {}", authentication.getName(), context, request.getId());
         eventStoreTransformationService.cancelTransformation(context, request.getId())
                                        .subscribe(new ConfirmationSubscriber(responseObserver));
-    }
-
-    private static class ConfirmationSubscriber extends BaseSubscriber<Void> {
-
-        private final StreamObserver<Confirmation> responseObserver;
-
-        ConfirmationSubscriber(StreamObserver<Confirmation> responseObserver) {
-
-            this.responseObserver = responseObserver;
-        }
-
-        @Override
-        protected void hookOnComplete() {
-            responseObserver.onNext(confirmation());
-            responseObserver.onCompleted();
-        }
-
-        @Override
-        protected void hookOnError(@Nonnull Throwable throwable) {
-            responseObserver.onError(GrpcExceptionBuilder.build(
-                    throwable));
-        }
-
-        private Confirmation confirmation() {
-            return Confirmation.newBuilder().setSuccess(true).build();
-        }
     }
 
     @Override

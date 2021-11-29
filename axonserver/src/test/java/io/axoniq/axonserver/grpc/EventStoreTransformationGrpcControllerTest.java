@@ -20,7 +20,7 @@ import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
 import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
-import io.axoniq.axonserver.transport.grpc.EventTransformationService;
+import io.axoniq.axonserver.transport.grpc.EventStoreTransformationGrpcController;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
@@ -39,17 +39,17 @@ import static org.junit.Assert.*;
  * @author Marc Gathier
  * @since 4.6.0
  */
-public class EventTransformationServiceTest {
+public class EventStoreTransformationGrpcControllerTest {
 
     private static final String CONTEXT = "CONTEXT";
     private static final Authentication AUTHENTICATION = GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
-    private EventTransformationService testSubject;
+    private EventStoreTransformationGrpcController testSubject;
 
     @Before
     public void setUp() throws Exception {
-        testSubject = new EventTransformationService(() -> CONTEXT,
-                                                     () -> AUTHENTICATION,
-                                                     eventStoreTransformationService());
+        testSubject = new EventStoreTransformationGrpcController(() -> CONTEXT,
+                                                                 () -> AUTHENTICATION,
+                                                                 eventStoreTransformationService());
     }
 
     private EventStoreTransformationService eventStoreTransformationService() {
