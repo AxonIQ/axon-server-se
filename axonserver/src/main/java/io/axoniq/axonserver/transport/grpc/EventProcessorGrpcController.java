@@ -44,7 +44,18 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void pauseEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {
-               }, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+    }
+
+    /**
+     * Processes the request to start a specific event processor.
+     *
+     * @param eventProcessorId the identifier of the event processor
+     * @param responseObserver the grpc {@link StreamObserver}
+     */
+    @Override
+    public void startEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
+        service.start(new EventProcessorIdMessage(eventProcessorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 }

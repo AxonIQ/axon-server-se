@@ -45,12 +45,11 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
     @Override
     public Mono<Void> pause(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
-        String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to pause Event processor \"{}@{}\".",
                           AuditLog.username(authentication.username()),
                           processor,
-                          tokenStoreIdentifier);
+                          identifier.tokenStoreIdentifier());
         }
         return Flux.fromIterable(eventProcessors)
                    .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
@@ -58,4 +57,23 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                    .then();
         // the context will be removed from the event processor
     }
+
+    @Nonnull
+    @Override
+    public Mono<Void> start(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+        String processor = identifier.name();
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to start Event processor \"{}@{}\".",
+                          AuditLog.username(authentication.username()),
+                          processor,
+                          identifier.tokenStoreIdentifier());
+        }
+
+        return Flux.fromIterable(eventProcessors)
+                   .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                   .doOnNext(ep -> processorEventsSource.startProcessorRequest(ep.context(), ep.clientId(), processor))
+                   .then();
+        // the context will be removed from the event processor
+    }
 }
+

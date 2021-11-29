@@ -7,14 +7,14 @@
  *
  */
 
-package io.axoniq.axonserver.rest;
+package io.axoniq.axonserver.transport.rest;
 
 
+import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.roles.RoleController;
-import io.axoniq.axonserver.access.jpa.Role;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
+import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
+import javax.annotation.Nonnull;
+import javax.validation.Valid;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -38,7 +40,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.validation.Valid;
 
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
@@ -55,10 +56,10 @@ public class UserRestController {
     private static final Logger logger = LoggerFactory.getLogger(UserRestController.class);
     private static final Logger auditLog = AuditLog.getLogger();
 
-    private final UserControllerFacade userController;
+    private final UserAdminService userController;
     private final RoleController roleController;
 
-    public UserRestController(UserControllerFacade userController,
+    public UserRestController(UserAdminService userController,
                               RoleController roleController) {
         this.userController = userController;
         this.roleController = roleController;
@@ -98,14 +99,26 @@ public class UserRestController {
             }
         }
         auditLog.info("[{}] Create user \"{}\" with translated roles {}.", AuditLog.username(principal), userJson.getUserName(), roles);
-        userController.updateUser(userJson.userName, userJson.password, roles);
+        userController.createOrUpdateUser(userJson.userName, userJson.password, roles.stream().map(r->new io.axoniq.axonserver.admin.user.api.UserRole() {
+            @Nonnull
+            @Override
+            public String role() {
+                return r.getRole();
+            }
+
+            @Nonnull
+            @Override
+            public String context() {
+                return r.getContext();
+            }
+        }).collect(Collectors.toSet()));
     }
 
     @GetMapping("public/users")
     public List<UserJson> listUsers(@ApiIgnore Principal principal) {
         auditLog.info("[{}] Request to list users and their roles.", AuditLog.username(principal));
         try {
-            return userController.getUsers().stream().map(UserJson::new).sorted(Comparator
+            return userController.users().stream().map(UserJson::new).sorted(Comparator
                                                                                         .comparing(UserJson::getUserName))
                                  .collect(Collectors.toList());
         } catch (Exception exception) {

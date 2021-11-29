@@ -270,7 +270,7 @@ public class EventDispatcherTest {
 
         testSubject.on(new TopologyEvents.ApplicationDisconnected(DEFAULT_CONTEXT,
                                                                   "myComponent",
-                                                                  "sampleClient"));
+                                                                  "sampleClient", "test"));
         assertTrue(testSubject.eventTrackerStatus(DEFAULT_CONTEXT).isEmpty());
     }
 
