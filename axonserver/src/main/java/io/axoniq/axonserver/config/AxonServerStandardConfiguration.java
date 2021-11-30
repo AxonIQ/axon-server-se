@@ -172,8 +172,8 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(UserAdminService.class)
-    public UserAdminService userControllerFacade(UserController userController,
-                                                 ApplicationEventPublisher eventPublisher) {
+    public UserAdminService userAdminService(UserController userController,
+                                             ApplicationEventPublisher eventPublisher) {
         return getUserAdminService(userController, eventPublisher);
     }
 
