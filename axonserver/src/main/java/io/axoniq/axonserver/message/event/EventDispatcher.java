@@ -284,30 +284,19 @@ public class EventDispatcher {
 
     public Flux<QueryEventsResponse> queryEvents(String context, Authentication authentication,
                                                  Flux<QueryEventsRequest> requestFlux) {
-        AtomicReference<Sinks.Many<QueryEventsRequest>> eventStoreRequestFluxRef = new AtomicReference<>();
-        return Flux.create(sink -> requestFlux.subscribe(request -> {
-            if (eventStoreRequestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
-                eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
-                                 .flatMapMany(es -> es.queryEvents(context,
-                                                                   eventStoreRequestFluxRef.get().asFlux(),
-                                                                   authentication))
-                                 .subscribe(sink::next, sink::error, sink::complete);
+        return requestFlux.switchOnFirst((signal, rf) -> {
+            if (signal.isOnNext()) {
+                QueryEventsRequest request = signal.get();
+                return eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
+                                        .flatMapMany(es -> es.queryEvents(context,
+                                                                          rf,
+                                                                          authentication));
+            } else if (signal.isOnError()) {
+                return Flux.error(signal.getThrowable());
+            } else {
+                return Flux.empty();
             }
-            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-            if (eventStoreRequestFlux != null && eventStoreRequestFlux.tryEmitNext(request).isFailure()) {
-                eventStoreRequestFlux.tryEmitError(new RuntimeException("Unable to send the request for querying events."));
-            }
-        }, t -> {
-            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-            if (eventStoreRequestFlux != null) {
-                eventStoreRequestFlux.tryEmitError(t);
-            }
-        }, () -> {
-            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-            if (eventStoreRequestFlux != null) {
-                eventStoreRequestFlux.tryEmitComplete();
-            }
-        }));
+        });
     }
 
     public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
