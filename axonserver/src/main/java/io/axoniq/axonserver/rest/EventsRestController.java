@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,12 +12,10 @@ package io.axoniq.axonserver.rest;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
 import io.axoniq.axonserver.grpc.event.GetEventsRequest;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -31,16 +29,13 @@ import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
@@ -51,9 +46,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
@@ -75,32 +68,10 @@ public class EventsRestController {
     private static final Logger auditLog = AuditLog.getLogger();
 
     private final EventDispatcher eventStoreClient;
-    private final LocalEventStore localEventStore;
     private final Logger logger = LoggerFactory.getLogger(EventsRestController.class);
 
-    public EventsRestController(EventDispatcher eventStoreClient,
-                                LocalEventStore localEventStore) {
+    public EventsRestController(EventDispatcher eventStoreClient) {
         this.eventStoreClient = eventStoreClient;
-        this.localEventStore = localEventStore;
-    }
-
-    @DeleteMapping(path = "snapshots")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    public void deleteSnapshots(
-            @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
-            @RequestParam(value = "minOffset", defaultValue = "0", required = false) long minOffset,
-            @ApiIgnore final Authentication principal
-            ) throws ExecutionException, InterruptedException, TimeoutException {
-        auditLog.info("[{}@{}] Request to delete snapshots with sequence number {}  lower than last sequence number",
-                      AuditLog.username(principal), context, minOffset);
-        localEventStore.deleteOldSnapshots(context, minOffset).whenComplete((count, ex) -> {
-            if( ex != null) {
-                logger.warn("{}: delete snapshots failed", context, ex);
-            } else {
-                logger.info("{}: deleted {} snapshots", context, count);
-            }
-
-        });
     }
 
     @GetMapping(path = "snapshots")

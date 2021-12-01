@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,6 +24,7 @@ import io.axoniq.axonserver.test.TestUtils;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
+import reactor.core.publisher.Sinks;
 
 import java.util.SortedSet;
 
@@ -110,7 +111,6 @@ public class InputStreamEventStoreTest {
     @Test
     public void transform() {
         testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (event, token) -> {
-            System.out.println("id=" + event.getAggregateIdentifier());
             if (event.getAggregateIdentifier().equals("abb070e9-943f-4947-8def-c50481b968c7")) {
                 return new EventTransformationResult() {
 
@@ -137,7 +137,7 @@ public class InputStreamEventStoreTest {
                     return token + 1;
                 }
             };
-        }, transformationProgress -> {});
+        }, Sinks.many().unicast().onBackpressureBuffer());
 
         SerializedEvent event = testSubject.eventsPerAggregate(
                 "abb070e9-943f-4947-8def-c50481b968c7",

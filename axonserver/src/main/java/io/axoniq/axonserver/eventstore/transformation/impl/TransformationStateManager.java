@@ -252,12 +252,9 @@ public class TransformationStateManager {
         return lastVersion.get() + 1;
     }
 
-    public long firstToken(String transformationId) {
-        TransformEventRequest firstEntry = transformationStoreRegistry.get(transformationId).firstEntry();
-        if (firstEntry == null) {
-            return -1;
-        }
-        return token(firstEntry);
+    public Mono<Long> firstToken(String transformationId) {
+        return transformationStoreRegistry.get(transformationId).firstEntry()
+                                          .map(this::token);
     }
 
     public void setIteratorForActiveTransformation(String id, CloseableIterator<SerializedEventWithToken> iterator) {

@@ -120,12 +120,14 @@ public class TransformationEntryStore {
 
     /**
      * Returns the first entry in the entry store. Returns null is store is empty.
+     *
      * @return an entry or null
      */
-    public TransformEventRequest firstEntry() {
-        if (fileStore.isEmpty()) return null;
-        FileStoreEntry entry = fileStore.read(0).block();
-        return parse(entry);
+    public Mono<TransformEventRequest> firstEntry() {
+        if (fileStore.isEmpty()) {
+            return Mono.empty();
+        }
+        return fileStore.read(0).map(this::parse);
     }
 
     private TransformEventRequest parse(FileStoreEntry entry) {

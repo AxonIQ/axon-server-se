@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -30,6 +30,7 @@ import org.junit.rules.*;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.nio.file.Path;
@@ -372,10 +373,10 @@ public class PrimaryEventStoreTest {
 
                     @Override
                     public long nextToken() {
-                        return token+1;
+                        return token + 1;
                     }
                 };
-            }, progress -> {});
+            }, Sinks.many().unicast().onBackpressureBuffer());
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-1",
                                                                                 0,
@@ -417,14 +418,16 @@ public class PrimaryEventStoreTest {
             assertWithin( 30, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegments().size()));
 
 
-            testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token)  -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token) -> {
                 if (!"Aggregate-9".equals(e.getAggregateIdentifier())) {
-                    return eventTransformerResult(e, token+1);
+                    return eventTransformerResult(e, token + 1);
                 }
 
-                return eventTransformerResult(Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
-                        setType("Transformed")).build(), token+1);
-            }, progress -> {});
+                return eventTransformerResult(Event.newBuilder(e)
+                                                   .setPayload(SerializedObject.newBuilder(e.getPayload()).
+                                                                               setType("Transformed")).build(),
+                                              token + 1);
+            }, Sinks.many().unicast().onBackpressureBuffer());
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-9",
                                                                           0,
@@ -509,14 +512,16 @@ public class PrimaryEventStoreTest {
             });
 
 
-            testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token)  -> {
+            testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (e, token) -> {
                 if (!"Aggregate-1".equals(e.getAggregateIdentifier())) {
-                    return eventTransformerResult(e, token+1);
+                    return eventTransformerResult(e, token + 1);
                 }
 
-                return eventTransformerResult(Event.newBuilder(e).setPayload(SerializedObject.newBuilder(e.getPayload()).
-                        setType("Transformed")).build(), token+1);
-            }, progress -> {});
+                return eventTransformerResult(Event.newBuilder(e)
+                                                   .setPayload(SerializedObject.newBuilder(e.getPayload()).
+                                                                               setType("Transformed")).build(),
+                                              token + 1);
+            }, Sinks.many().unicast().onBackpressureBuffer());
 
             subscriptionRef.get().request(1000);
             completed.get(5, TimeUnit.SECONDS);

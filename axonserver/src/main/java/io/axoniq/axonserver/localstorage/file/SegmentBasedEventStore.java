@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -15,6 +15,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
@@ -33,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +57,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -274,11 +275,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                   long lastToken,
                                   boolean keepOldVersions,
                                   int newVersion,
-                                  BiFunction<Event, Long, EventTransformationResult> transformationFunction,
-                                  Consumer<TransformationProgress> transformationProgressConsumer) {
+                                  EventTransformationFunction transformationFunction,
+                                  Sinks.Many<TransformationProgress> transformationProgressConsumer) {
         long nextToken = Math.max(firstToken, getFirstToken());
+        long previousSegment = -1;
         while (nextToken <= lastToken) {
             long segment = getSegmentFor(nextToken);
+            if (segment == previousSegment) {
+                return;
+            }
             nextToken = transformSegment(segment,
                                          nextToken,
                                          currentSegmentVersion(segment),
@@ -286,6 +291,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                          newVersion,
                                          transformationFunction,
                                          transformationProgressConsumer);
+            previousSegment = segment;
         }
     }
 
@@ -313,7 +319,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 int previousVersion = previousVersion(s, version);
                 if( previousVersion >= 0) {
                     indexManager.activeVersion(s, previousVersion);
-                    segmentActiveVersion(s, previousVersion);
+                    activateSegmentVersion(s, previousVersion);
                     scheduleForDeletion(s, version);
                 }
             }
@@ -365,8 +371,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     private long transformSegment(long segment, long nextToken, int currentVersion, boolean keepOldVersion,
                                   int newVersion,
-                                  BiFunction<Event, Long, EventTransformationResult> transformationFunction,
-                                  Consumer<TransformationProgress> transformationProgressConsumer) {
+                                  EventTransformationFunction transformationFunction,
+                                  Sinks.Many<TransformationProgress> transformationProgressConsumer) {
         Map<String, List<IndexEntry>> indexEntriesMap;
         boolean changed = false;
         File dataFile = storageProperties.dataFile(
@@ -386,15 +392,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                     Event event = serializedEvent.asEvent();
                     if (transaction.getToken() + i == nextToken) {
                         EventTransformationResult result = transformationFunction.apply(event, transaction.getToken() + i);
-                        if (result.event() == null) {
-                            event = Event.getDefaultInstance();
-                        }
                         if (!event.equals(result.event())) {
                             changed = true;
                             event = result.event();
                         }
-                        nextToken = result.nextToken();
-
+                        nextToken = Math.max(nextToken + 1, result.nextToken());
                     }
                     updatedEvents.add(event);
                     i++;
@@ -414,7 +416,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             indexManager.createNewVersion(segment, newVersion, indexEntriesMap);
             try {
                 FileUtils.rename(tempFile, dataFile);
-                segmentActiveVersion(segment, newVersion);
+                activateSegmentVersion(segment, newVersion);
                 if (!keepOldVersion) {
                     scheduleForDeletion(segment, currentVersion);
                 }
@@ -424,13 +426,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         } else {
             FileUtils.delete(tempFile);
         }
-        transformationProgressConsumer.accept(new TransformationProgressUpdate(token - 1));
+        transformationProgressConsumer.tryEmitNext(new TransformationProgressUpdate(token - 1));
         return nextToken;
     }
 
     protected abstract Integer currentSegmentVersion(Long segment);
 
-    protected abstract void segmentActiveVersion(long segment, int version);
+    protected abstract void activateSegmentVersion(long segment, int version);
 
     protected void scheduleForDeletion(long segment, int version) {
         Executors.newSingleThreadScheduledExecutor().schedule(() -> {

@@ -20,28 +20,30 @@ import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
 import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
 import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
-import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.util.StreamObserverUtils;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Sinks;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 
 /**
  * GRPC endpoint for the event store transformation service.
+ *
  * @author Marc Gathier
  * @since 4.6.0
  */
 @Component
-public class EventStoreTransformationGrpcController extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
+public class EventStoreTransformationGrpcController
+        extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
         implements AxonServerClientService {
+
+    private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
 
     private final ContextProvider contextProvider;
     private final AuthenticationProvider authenticationProvider;
-    private final Logger auditLog = AuditLog.getLogger();
     private final EventStoreTransformationService eventStoreTransformationService;
 
     public EventStoreTransformationGrpcController(ContextProvider contextProvider,
@@ -53,11 +55,12 @@ public class EventStoreTransformationGrpcController extends EventTransformationS
     }
 
     @Override
-    public void startTransformation(StartTransformationRequest request, StreamObserver<TransformationId> responseObserver) {
+    public void startTransformation(StartTransformationRequest request,
+                                    StreamObserver<TransformationId> responseObserver) {
         String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to start transformation - {}", authentication.getName(), context, request.getDescription());
-        eventStoreTransformationService.startTransformation(context, request.getDescription())
+        eventStoreTransformationService.startTransformation(context,
+                                                            request.getDescription(),
+                                                            new GrpcAuthentication(authenticationProvider))
                                        .subscribe(id -> responseObserver.onNext(transformationId(id)),
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
                                                           throwable)),
@@ -73,58 +76,78 @@ public class EventStoreTransformationGrpcController extends EventTransformationS
 
     @Override
     public StreamObserver<TransformEventRequest> transformEvents(StreamObserver<Confirmation> responseObserver) {
+        CallStreamObserver<Confirmation> serverCallStreamObserver =
+                (CallStreamObserver<Confirmation>) responseObserver;
+        serverCallStreamObserver.disableAutoInboundFlowControl();
+
         String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to transformEvents", authentication.getName(), context);
-        Sinks.Many<TransformEventRequest> many = Sinks.many().unicast().onBackpressureBuffer();
-
-        AtomicBoolean closed = new AtomicBoolean();
-        many.asFlux().subscribe(request -> {
-            switch (request.getRequestCase()) {
-                case EVENT:
-                    eventStoreTransformationService.replaceEvent(context, transformationId(request),
-                                                                 request.getEvent().getToken(),
-                                                                 request.getEvent().getEvent(),
-                                                                 request.getPreviousToken())
-                                                   .block();
-                    break;
-                case DELETE_EVENT:
-                    eventStoreTransformationService.deleteEvent(context, transformationId(request),
-                                                                request.getDeleteEvent().getToken(),
-                                                                request.getPreviousToken())
-                                                   .block();
-                    break;
-                case REQUEST_NOT_SET:
-                    break;
-            }
-        }, error -> {
-            closed.set(true);
-            responseObserver.onError(GrpcExceptionBuilder.build(error));
-        }, () -> {
-            responseObserver.onNext(Confirmation.newBuilder().setSuccess(true).build());
-            responseObserver.onCompleted();
-        });
-
         return new StreamObserver<TransformEventRequest>() {
-            @Override
-            public void onNext(TransformEventRequest transformEventsRequest) {
-                if( closed.get()) return;
+            final AtomicInteger pendingRequests = new AtomicInteger();
+            final AtomicBoolean sendConfirmation = new AtomicBoolean();
 
-                many.emitNext(transformEventsRequest, ((signalType, emitResult) -> {
-                    responseObserver.onError(GrpcExceptionBuilder.build(new RuntimeException(
-                            "Emit error: " + emitResult)));
-                    return false;
-                }));
+            @Override
+            public void onNext(TransformEventRequest request) {
+                switch (request.getRequestCase()) {
+                    case EVENT:
+                        pendingRequests.incrementAndGet();
+                        eventStoreTransformationService.replaceEvent(context,
+                                                                     transformationId(request),
+                                                                     request.getEvent().getToken(),
+                                                                     request.getEvent().getEvent(),
+                                                                     request.getPreviousToken(),
+                                                                     new GrpcAuthentication(authenticationProvider))
+                                                       .subscribe(r -> {
+                                                                  },
+                                                                  this::forwardError,
+                                                                  this::handleRequestProcessed);
+                        break;
+                    case DELETE_EVENT:
+                        pendingRequests.incrementAndGet();
+                        eventStoreTransformationService.deleteEvent(context,
+                                                                    transformationId(request),
+                                                                    request.getDeleteEvent().getToken(),
+                                                                    request.getPreviousToken(),
+                                                                    new GrpcAuthentication(authenticationProvider))
+                                                       .subscribe(r -> {
+                                                                  },
+                                                                  this::forwardError,
+                                                                  this::handleRequestProcessed);
+                        break;
+                    case REQUEST_NOT_SET:
+                        break;
+                }
+            }
+
+            private void handleRequestProcessed() {
+                pendingRequests.decrementAndGet();
+                checkRequestsDone();
+                serverCallStreamObserver.request(1);
+            }
+
+            private void forwardError(Throwable throwable) {
+                StreamObserverUtils.error(responseObserver, GrpcExceptionBuilder.build(throwable));
             }
 
             @Override
             public void onError(Throwable throwable) {
-                many.tryEmitError(throwable);
+                throwable.printStackTrace();
             }
 
             @Override
             public void onCompleted() {
-                many.tryEmitComplete();
+                sendConfirmation.set(true);
+                checkRequestsDone();
+            }
+
+            private void checkRequestsDone() {
+                if (pendingRequests.get() == 0 && sendConfirmation.compareAndSet(true, false)) {
+                    try {
+                        responseObserver.onNext(CONFIRMATION);
+                        responseObserver.onCompleted();
+                    } catch (Exception ex) {
+                        // unable to send confirmation
+                    }
+                }
             }
         };
     }
@@ -137,49 +160,38 @@ public class EventStoreTransformationGrpcController extends EventTransformationS
     @Override
     public void cancelTransformation(TransformationId request, StreamObserver<Confirmation> responseObserver) {
         String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to cancel transformation {}", authentication.getName(), context, request.getId());
-        eventStoreTransformationService.cancelTransformation(context, request.getId())
-                                       .subscribe(new ConfirmationSubscriber(responseObserver));
+        eventStoreTransformationService.cancelTransformation(context,
+                                                             request.getId(),
+                                                             new GrpcAuthentication(authenticationProvider))
+                                       .subscribe(new VoidStreamObserverSubscriber<>(responseObserver, CONFIRMATION));
     }
 
     @Override
     public void applyTransformation(ApplyTransformationRequest request, StreamObserver<Confirmation> responseObserver) {
         String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to apply transformation {}",
-                      authentication.getName(),
-                      context,
-                      request.getTransformationId().getId());
         eventStoreTransformationService.applyTransformation(context,
                                                             request.getTransformationId().getId(),
                                                             request.getLastEventToken(),
                                                             request.getKeepOldVersions(),
-                                                            authentication.getName())
-                                       .subscribe(new ConfirmationSubscriber(responseObserver));
+                                                            new GrpcAuthentication(authenticationProvider))
+                                       .subscribe(new VoidStreamObserverSubscriber<>(responseObserver, CONFIRMATION));
     }
 
     @Override
     public void rollbackTransformation(TransformationId request, StreamObserver<Confirmation> responseObserver) {
         String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to rollback transformation {}",
-                      authentication.getName(),
-                      context,
-                      request.getId());
-        eventStoreTransformationService.rollbackTransformation(context, request.getId())
-                .subscribe(new ConfirmationSubscriber(responseObserver));
+        eventStoreTransformationService.rollbackTransformation(context,
+                                                               request.getId(),
+                                                               new GrpcAuthentication(authenticationProvider))
+                                       .subscribe(new VoidStreamObserverSubscriber<>(responseObserver, CONFIRMATION));
     }
 
     @Override
     public void deleteOldVersions(TransformationId request, StreamObserver<Confirmation> responseObserver) {
         String context = contextProvider.getContext();
-        Authentication authentication = authenticationProvider.get();
-        auditLog.info("{}@{}: Request to delete old event store files from transformation {}",
-                      authentication.getName(),
-                      context,
-                      request.getId());
-        eventStoreTransformationService.deleteOldVersions(context, request.getId())
-                                       .subscribe(new ConfirmationSubscriber(responseObserver));
+        eventStoreTransformationService.deleteOldVersions(context,
+                                                          request.getId(),
+                                                          new GrpcAuthentication(authenticationProvider))
+                                       .subscribe(new VoidStreamObserverSubscriber<>(responseObserver, CONFIRMATION));
     }
 }

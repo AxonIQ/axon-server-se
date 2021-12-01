@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.transport.grpc;
 
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.grpc.stub.StreamObserver;
 import reactor.core.publisher.BaseSubscriber;
 
@@ -20,17 +19,19 @@ import javax.annotation.Nonnull;
  * @author Marc Gathier
  * @since
  */
-public class ConfirmationSubscriber extends BaseSubscriber<Void> {
+public class VoidStreamObserverSubscriber<T> extends BaseSubscriber<Void> {
 
-    private final StreamObserver<Confirmation> responseObserver;
+    private final StreamObserver<T> responseObserver;
+    private final T response;
 
-    public ConfirmationSubscriber(StreamObserver<Confirmation> responseObserver) {
+    public VoidStreamObserverSubscriber(StreamObserver<T> responseObserver, T response) {
         this.responseObserver = responseObserver;
+        this.response = response;
     }
 
     @Override
     protected void hookOnComplete() {
-        responseObserver.onNext(confirmation());
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
@@ -38,9 +39,5 @@ public class ConfirmationSubscriber extends BaseSubscriber<Void> {
     protected void hookOnError(@Nonnull Throwable throwable) {
         responseObserver.onError(GrpcExceptionBuilder.build(
                 throwable));
-    }
-
-    private Confirmation confirmation() {
-        return Confirmation.newBuilder().setSuccess(true).build();
     }
 }

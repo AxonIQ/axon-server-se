@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -52,6 +52,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
@@ -73,7 +74,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
@@ -234,69 +234,22 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers;
     }
 
-    public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
-                                                   boolean keepOldVersions,
-                                                   int version,
-                                                   BiFunction<Event,Long,EventTransformationResult> transformationFunction,
-                                                   Consumer<TransformationProgress> transformationProgressConsumer) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
+    public Flux<TransformationProgress> transformEvents(String context, long firstToken, long lastToken,
+                                                        boolean keepOldVersions,
+                                                        int version,
+                                                        EventTransformationFunction transformationFunction) {
+        Sinks.Many<TransformationProgress> sink = Sinks.many().unicast().onBackpressureBuffer();
         runInDataFetcherPool(() -> {
             Workers workers = workersMap.get(context);
-            workers.eventStorageEngine.transformContents(firstToken, lastToken, keepOldVersions, version, transformationFunction, transformationProgressConsumer);
-            result.complete(null);
-        }, result::completeExceptionally);
-        return result;
-    }
-
-    public CompletableFuture<Long> deleteOldSnapshots(String context, long minSequenceOffset) {
-        CompletableFuture<Long> result = new CompletableFuture<>();
-        runInDataFetcherPool(() -> {
-            Workers workers = workersMap.get(context);
-            AtomicLong deletedCount = new AtomicLong();
-            if (workers == null) {
-                result.complete(null);
-                return;
-            }
-
-            workers.snapshotStorageEngine
-                    .transformContents(0, workers.snapshotStorageEngine.getLastToken(), false, workers.snapshotStorageEngine.nextVersion(), (snapshot, token) -> {
-                                           Optional<Long> optionalLastSequenceNumber = workers.snapshotStorageEngine
-                                                   .getLastSequenceNumber(snapshot.getAggregateIdentifier())
-                                                   .filter(lastSequenceNumber ->
-                                                                   snapshot.getAggregateSequenceNumber()
-                                                                           <
-                                                                           lastSequenceNumber
-                                                                                   - minSequenceOffset);
-                                           if (optionalLastSequenceNumber.isPresent()) {
-                                               deletedCount.incrementAndGet();
-                                               return new EventTransformationResult() {
-                                                   @Override
-                                                   public Event event() {
-                                                       return null;
-                                                   }
-
-                                                   @Override
-                                                   public long nextToken() {
-                                                       return token+1;
-                                                   }
-                                               };
-                                           }
-                                           return new EventTransformationResult() {
-                                               @Override
-                                               public Event event() {
-                                                   return snapshot;
-                                               }
-
-                                               @Override
-                                               public long nextToken() {
-                                                   return token+1;
-                                               }
-                                           };
-                                       }, transformationProgress -> {}
-                    );
-            result.complete(deletedCount.get());
-        }, result::completeExceptionally);
-        return result;
+            workers.eventStorageEngine.transformContents(firstToken,
+                                                         lastToken,
+                                                         keepOldVersions,
+                                                         version,
+                                                         transformationFunction,
+                                                         sink);
+            sink.tryEmitComplete();
+        }, sink::tryEmitError);
+        return sink.asFlux();
     }
 
     @Override

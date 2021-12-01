@@ -13,13 +13,11 @@ import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventRequest;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
-import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -27,7 +25,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.max;
@@ -54,10 +51,11 @@ public class TransformationProcessor {
 
     /**
      * Starts a new transformation
-     * @param context the context in which to transform the events
+     *
+     * @param context          the context in which to transform the events
      * @param transformationId a unique transformation id
-     * @param version the version of the event store after this transformation
-     * @param description a description for the transformation
+     * @param version          the version of the event store after this transformation
+     * @param description      a description for the transformation
      */
     public void startTransformation(String context, String transformationId, int version, String description) {
         transformationStateManager.create(context, transformationId, version, description);
@@ -80,20 +78,20 @@ public class TransformationProcessor {
     }
 
     /**
-     * Starts applying a transformation. The transformation runs asynchronously, the operation competes the future
-     * when the apply process is completed.
+     * Starts applying a transformation. The transformation runs asynchronously, the operation competes the future when
+     * the apply process is completed.
+     *
      * @param transformationId the transformation id
-     * @param keepOldVersions flag to indicate if the apply process should keep old versions of modified events
-     * @param appliedBy the name of the application/user starting the apply process
-     * @param appliedDate the time the apply process was started
-     * @param firstEventToken token of the first transformed event in the transformation
-     * @param lastEventToken token of the last transformed event in the transformation
+     * @param keepOldVersions  flag to indicate if the apply process should keep old versions of modified events
+     * @param appliedBy        the name of the application/user starting the apply process
+     * @param appliedDate      the time the apply process was started
+     * @param firstEventToken  token of the first transformed event in the transformation
+     * @param lastEventToken   token of the last transformed event in the transformation
      * @return a completable future
      */
-    public CompletableFuture<Void> apply(String transformationId, boolean keepOldVersions, String appliedBy,
-                                         Date appliedDate, long firstEventToken, long lastEventToken) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        try {
+    public Mono<Void> apply(String transformationId, boolean keepOldVersions, String appliedBy,
+                            Date appliedDate, long firstEventToken, long lastEventToken) {
+        return Mono.defer(() -> {
             TransformationEntryStore transformationFileStore = transformationStateManager.entryStore(transformationId);
             EventStoreTransformationJpa transformation = transformationStateManager.transformation(transformationId)
                                                                                    .orElseThrow(() -> new RuntimeException(
@@ -112,79 +110,49 @@ public class TransformationProcessor {
                            firstEventToken,
                            lastEventToken,
                            0);
-        } catch (Exception ex) {
-            future.completeExceptionally(ex);
-        }
-        return future;
+        });
     }
 
-    private CompletableFuture<Void> doApply(TransformationEntryStore transformationFileStore, String context,
-                                            String transformationId, boolean keepOldVersions, int version,
-                                            long firstEventToken,
-                                            long lastEventToken,
-                                            long nextToken) {
+    private Mono<Void> doApply(TransformationEntryStore transformationFileStore, String context,
+                               String transformationId, boolean keepOldVersions, int version,
+                               long firstEventToken,
+                               long lastEventToken,
+                               long nextToken) {
 
         if (lastEventToken < 0) {
             transformationStateManager.completeProgress(transformationId);
-            return CompletableFuture.completedFuture(null);
+            return Mono.empty();
         }
-        long firstToken = max(firstEventToken, nextToken);
 
-        logger.info("{}: Start apply transformation from {} to {}", context, firstToken, lastEventToken);
-        TransformationEntryProcessor transformationEntryProcessor  =
-                new TransformationEntryProcessor(transformationFileStore::iterator);
-        localEventStore().transformEvents(context, firstToken, lastEventToken, keepOldVersions, version,
-                                          transformationEntryProcessor,
-                                          transformationProgress -> handleTransformationProgress(context,
-                                                                                                 transformationId,
-                                                                                                 transformationProgress))
-                .thenAccept(r -> {
-                    transformationEntryProcessor.close();
-                    transformationStateManager.completeProgress(transformationId);
-                });
+        return Mono.create(sink -> {
+            long firstToken = max(firstEventToken, nextToken);
 
-        return CompletableFuture.completedFuture(null);
-    }
+            logger.info("{}: Start apply transformation from {} to {}", context, firstToken, lastEventToken);
+            TransformationEntryProcessor transformationEntryProcessor =
+                    new TransformationEntryProcessor(transformationFileStore::iterator);
 
-
-    private EventTransformationResult defaultEventTransformationResult(Event result, long token) {
-        return new EventTransformationResult() {
-            @Override
-            public Event event() {
-                return result;
-            }
-
-            @Override
-            public long nextToken() {
-                return token;
-            }
-        };
-    }
-
-    private void handleTransformationProgress(String context, String transformationId,
-                                              TransformationProgress transformationProgress) {
-        logger.info("{}: Transformation {} Progress {}", context, transformationId, transformationProgress);
-        transformationStateManager.setProgress(transformationId, transformationProgress);
-    }
-
-    private TransformEventRequest deleteEventEntry(long token) {
-        return TransformEventRequest.newBuilder()
-                                     .setDeleteEvent(DeletedEvent.newBuilder()
-                                                                 .setToken(token))
-                                     .build();
-    }
-
-    private TransformEventRequest replaceEventEntry(long token, Event event) {
-        return TransformEventRequest.newBuilder()
-                                     .setEvent(TransformedEvent.newBuilder()
-                                                               .setToken(token)
-                                                               .setEvent(event))
-                                     .build();
+            localEventStoreTransformer().transformEvents(context,
+                                                         firstToken,
+                                                         lastEventToken,
+                                                         keepOldVersions,
+                                                         version,
+                                                         transformationEntryProcessor)
+                                        .subscribe(transformationProgress -> handleTransformationProgress(context,
+                                                                                                          transformationId,
+                                                                                                          transformationProgress),
+                                                   sink::error,
+                                                   () -> {
+                                                       transformationEntryProcessor.close();
+                                                       transformationStateManager.completeProgress(transformationId);
+                                                       sink.success();
+                                                   });
+        });
     }
 
 
     /**
      * Restart a previously aborted transformation for a context.
+     *
      * @param context the name of the context
      * @return completable future with the transformation id of the applied transformation
      */
@@ -209,15 +177,18 @@ public class TransformationProcessor {
                 TransformationEntryStore transformationFileStore = transformationStateManager.entryStore(
                         transformation.getTransformationId());
                 transformationStateManager.reserve(context, transformation.getTransformationId());
-                return doApply(transformationFileStore,
-                               transformation.getContext(),
-                               transformation.getTransformationId(),
-                               transformation.isKeepOldVersions(),
-                               transformation.getVersion(),
-                               transformation.getFirstEventToken(),
-                               transformation.getLastEventToken(),
-                               progress.get().getLastTokenApplied()+1)
-                        .thenApply(v -> transformation.getTransformationId());
+                doApply(transformationFileStore,
+                        transformation.getContext(),
+                        transformation.getTransformationId(),
+                        transformation.isKeepOldVersions(),
+                        transformation.getVersion(),
+                        transformation.getFirstEventToken(),
+                        transformation.getLastEventToken(),
+                        progress.get().getLastTokenApplied() + 1)
+                        .subscribe(r -> {
+                                   },
+                                   future::completeExceptionally,
+                                   () -> future.complete(transformation.getTransformationId()));
             }
         }
         return future;
@@ -225,20 +196,41 @@ public class TransformationProcessor {
 
     public void deleteOldVersions(String context, String id) {
         transformationStateManager.transformation(id)
-                                  .ifPresent(transformation -> localEventStore().deleteOldVersions(context,
-                                                                                                   transformation.getVersion()));
+                                  .ifPresent(transformation -> localEventStoreTransformer().deleteOldVersions(context,
+                                                                                                              transformation.getVersion()));
     }
 
     public void rollbackTransformation(String context, String transformationId) {
         transformationStateManager.transformation(transformationId)
                                   .ifPresent(transformation -> {
-                                      localEventStore().rollbackSegments(context,
-                                                                         transformation.getVersion());
+                                      localEventStoreTransformer().rollbackSegments(context,
+                                                                                    transformation.getVersion());
                                       transformationStateManager.delete(transformationId);
                                   });
     }
 
-    private LocalEventStoreTransformer localEventStore() {
+    private LocalEventStoreTransformer localEventStoreTransformer() {
         return applicationContext.getBean(LocalEventStoreTransformer.class);
+    }
+
+    private void handleTransformationProgress(String context, String transformationId,
+                                              TransformationProgress transformationProgress) {
+        logger.info("{}: Transformation {} Progress {}", context, transformationId, transformationProgress);
+        transformationStateManager.setProgress(transformationId, transformationProgress);
+    }
+
+    private TransformEventRequest deleteEventEntry(long token) {
+        return TransformEventRequest.newBuilder()
+                                    .setDeleteEvent(DeletedEvent.newBuilder()
+                                                                .setToken(token))
+                                    .build();
+    }
+
+    private TransformEventRequest replaceEventEntry(long token, Event event) {
+        return TransformEventRequest.newBuilder()
+                                    .setEvent(TransformedEvent.newBuilder()
+                                                              .setToken(token)
+                                                              .setEvent(event))
+                                    .build();
     }
 }

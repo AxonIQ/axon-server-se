@@ -9,12 +9,8 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
+import reactor.core.publisher.Flux;
 
 /**
  * @author Marc Gathier
@@ -26,9 +22,8 @@ public interface LocalEventStoreTransformer {
 
     void rollbackSegments(String context, int version);
 
-    CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
-                                            boolean keepOldVersions,
-                                            int version,
-                                            BiFunction<Event,Long,EventTransformationResult> transformationFunction,
-                                            Consumer<TransformationProgress> transformationProgressConsumer);
+    Flux<TransformationProgress> transformEvents(String context, long firstToken, long lastToken,
+                                                 boolean keepOldVersions,
+                                                 int version,
+                                                 EventTransformationFunction transformationFunction);
 }

@@ -14,24 +14,23 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventRequest;
-import io.axoniq.axonserver.localstorage.EventTransformationResult;
+import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.junit.*;
 import org.springframework.context.ApplicationContext;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.stream.LongStream;
 
 import static org.junit.Assert.*;
@@ -86,11 +85,10 @@ public class TransformationProcessorTest {
             }
 
             @Override
-            public CompletableFuture<Void> transformEvents(String context, long firstToken, long lastToken,
-                                                           boolean keepOldVersions, int version,
-                                                           BiFunction<Event, Long, EventTransformationResult> transformationFunction,
-                                                           Consumer<TransformationProgress> transformationProgressConsumer) {
-                LongStream.range(firstToken, lastToken+1)
+            public Flux<TransformationProgress> transformEvents(String context, long firstToken, long lastToken,
+                                                                boolean keepOldVersions, int version,
+                                                                EventTransformationFunction transformationFunction) {
+                LongStream.range(firstToken, lastToken + 1)
                           .forEach(i -> {
                               Event original = Event.newBuilder().setPayload(SerializedObject.newBuilder()
                                                                                              .setType("PayloadType")
@@ -101,7 +99,7 @@ public class TransformationProcessorTest {
                               }
 
                           });
-                return CompletableFuture.completedFuture(null);
+                return Flux.empty();
             }
         };
         when(applicationContext.getBean(LocalEventStoreTransformer.class)).thenReturn(localEventStore);
@@ -116,22 +114,27 @@ public class TransformationProcessorTest {
     }
 
     @Test
-    public void applyEmpty() throws ExecutionException, InterruptedException, TimeoutException {
+    public void applyEmpty() {
         registry.register(CONTEXT, NORMAL_TRANSFORMATION);
 
-        testSubject.apply(NORMAL_TRANSFORMATION, true, "Junit", new Date(), 0, 0)
-                .get(1, TimeUnit.SECONDS);
+        StepVerifier.create(testSubject.apply(NORMAL_TRANSFORMATION, true, "Junit", new Date(), 0, 0))
+                    .expectComplete()
+                    .verify();
     }
 
     @Test
-    public void applyNormal() throws ExecutionException, InterruptedException, TimeoutException {
+    public void applyNormal() {
         TransformationEntryStore store = registry.register(CONTEXT, NORMAL_TRANSFORMATION);
-        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(100)).build()).block();
-        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(101)).build()).block();
-        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(111)).build()).block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(100)).build())
+             .block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(101)).build())
+             .block();
+        store.append(TransformEventRequest.newBuilder().setDeleteEvent(DeletedEvent.newBuilder().setToken(111)).build())
+             .block();
 
-        testSubject.apply(NORMAL_TRANSFORMATION, true, "Junit", new Date(), 100, 150)
-                   .get(1, TimeUnit.SECONDS);
+        StepVerifier.create(testSubject.apply(NORMAL_TRANSFORMATION, true, "Junit", new Date(), 100, 150))
+                    .expectComplete()
+                    .verify();
         assertEquals(3, updatesCounter.get());
     }
 

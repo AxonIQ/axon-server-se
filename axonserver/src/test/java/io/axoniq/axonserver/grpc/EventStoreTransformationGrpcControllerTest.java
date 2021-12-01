@@ -22,6 +22,7 @@ import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.transport.grpc.EventStoreTransformationGrpcController;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.security.core.Authentication;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import javax.annotation.Nonnull;
 
 import static org.junit.Assert.*;
 
@@ -57,7 +59,8 @@ public class EventStoreTransformationGrpcControllerTest {
             private final Map<String, String> activeTransformations = new HashMap<>();
 
             @Override
-            public Mono<String> startTransformation(String context, String description) {
+            public Mono<String> startTransformation(String context, String description,
+                                                    @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.create(sink -> {
                     if (activeTransformations.containsKey(context)) {
                         sink.error(new MessagingPlatformException(
@@ -71,19 +74,9 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Mono<Void> deleteEvent(String context, String transformationId, long token, long previousToken) {
-                if (transformationId != null  && !transformationId.equals(
-                        activeTransformations.get(context))) {
-                    return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                              "Transformation not found"));
-                }
-                return Mono.empty();
-            }
-
-            @Override
-            public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
-                                           long previousToken) {
-                if (transformationId != null  && !transformationId.equals(
+            public Mono<Void> deleteEvent(String context, String transformationId, long token, long previousToken,
+                                          @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
+                if (transformationId != null && !transformationId.equals(
                         activeTransformations.get(context))) {
                     return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
                                                                      "Transformation not found"));
@@ -92,7 +85,20 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Mono<Void> cancelTransformation(String context, String id) {
+            public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
+                                           long previousToken,
+                                           @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
+                if (transformationId != null && !transformationId.equals(
+                        activeTransformations.get(context))) {
+                    return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
+                                                                     "Transformation not found"));
+                }
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> cancelTransformation(String context, String id,
+                                                   @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.create(sink -> {
                     if (id.equals(activeTransformations.get(context))) {
                         sink.success();
@@ -105,7 +111,7 @@ public class EventStoreTransformationGrpcControllerTest {
             @Override
             public Mono<Void> applyTransformation(String context, String id, long lastEventToken,
                                                   boolean keepOldVersions,
-                                                  String appliedBy) {
+                                                  @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.create(sink -> {
                     if (id.equals(activeTransformations.get(context))) {
                         sink.success();
@@ -116,12 +122,14 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Mono<Void> rollbackTransformation(String context, String id) {
+            public Mono<Void> rollbackTransformation(String context, String id,
+                                                     @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.empty();
             }
 
             @Override
-            public Mono<Void> deleteOldVersions(String context, String id) {
+            public Mono<Void> deleteOldVersions(String context, String id,
+                                                @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.empty();
             }
         };
@@ -148,7 +156,7 @@ public class EventStoreTransformationGrpcControllerTest {
     public void transformEvents() throws ExecutionException, InterruptedException {
         TransformationId transformationId = doStartTransformation();
         CompletableFuture<Confirmation> futureConfirmation = new CompletableFuture<>();
-        StreamObserver<TransformEventRequest> requestStream = testSubject.transformEvents(new CompletableFutureStreamObserver<>(
+        StreamObserver<TransformEventRequest> requestStream = testSubject.transformEvents(new FlowControlledCompletableFutureStreamObserver<>(
                 futureConfirmation));
         requestStream.onNext(TransformEventRequest.newBuilder()
                                                    .setTransformationId(transformationId)
@@ -174,7 +182,7 @@ public class EventStoreTransformationGrpcControllerTest {
     public void transformEventsError() throws InterruptedException {
         TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
         CompletableFuture<Confirmation> futureConfirmation = new CompletableFuture<>();
-        StreamObserver<TransformEventRequest> requestStream = testSubject.transformEvents(new CompletableFutureStreamObserver<>(
+        StreamObserver<TransformEventRequest> requestStream = testSubject.transformEvents(new FlowControlledCompletableFutureStreamObserver<>(
                 futureConfirmation));
         requestStream.onNext(TransformEventRequest.newBuilder()
                                                    .setTransformationId(transformationId)
@@ -256,6 +264,54 @@ public class EventStoreTransformationGrpcControllerTest {
         @Override
         public void onCompleted() {
             futureTransactionId.complete(transformationId);
+        }
+    }
+
+    private static class FlowControlledCompletableFutureStreamObserver<T> extends CallStreamObserver<T> {
+
+        private final CompletableFuture<T> futureTransactionId;
+        volatile T transformationId;
+
+        public FlowControlledCompletableFutureStreamObserver(
+                CompletableFuture<T> futureTransactionId) {
+            super();
+            this.futureTransactionId = futureTransactionId;
+        }
+
+        @Override
+        public void onNext(T transformationId) {
+            this.transformationId = transformationId;
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            futureTransactionId.completeExceptionally(throwable);
+        }
+
+        @Override
+        public void onCompleted() {
+            futureTransactionId.complete(transformationId);
+        }
+
+        @Override
+        public boolean isReady() {
+            return false;
+        }
+
+        @Override
+        public void setOnReadyHandler(Runnable runnable) {
+        }
+
+        @Override
+        public void disableAutoInboundFlowControl() {
+        }
+
+        @Override
+        public void request(int i) {
+        }
+
+        @Override
+        public void setMessageCompression(boolean b) {
         }
     }
 }

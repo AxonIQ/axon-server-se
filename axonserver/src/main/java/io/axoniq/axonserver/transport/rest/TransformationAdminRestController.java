@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.rest;
+package io.axoniq.axonserver.transport.rest;
 
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.impl.EventStoreTransformationJpa;
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
+import java.security.Principal;
 import java.util.Collection;
 
 /**
@@ -42,8 +43,10 @@ public class TransformationAdminRestController {
 
     @DeleteMapping("v1/transformations")
     public void cancelTransformation(@RequestParam("id") String id,
-                                     @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context) {
-        eventStoreTransformationService.cancelTransformation(context, id).block();
+                                     @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
+                                     @ApiIgnore final Principal principal) {
+        eventStoreTransformationService.cancelTransformation(context, id, new PrincipalAuthentication(principal))
+                                       .block();
     }
 
     @PostMapping("v1/transformations")
@@ -53,7 +56,7 @@ public class TransformationAdminRestController {
                                     @ApiIgnore final Authentication principal
     ) {
         eventStoreTransformationService.applyTransformation(context, id, lastToken, false,
-                                                            principal == null ? "": principal.getName())
+                                                            new PrincipalAuthentication(principal))
                 .subscribe(v -> System.out.println("Done"), t -> t.printStackTrace());
     }
 

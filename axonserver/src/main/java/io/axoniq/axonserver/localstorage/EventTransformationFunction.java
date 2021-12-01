@@ -14,26 +14,22 @@ import io.axoniq.axonserver.grpc.event.Event;
 import javax.annotation.Nonnull;
 
 /**
- * Result of a single event transformation.
+ * Defines the function that is executed for an even to transform the event content during the event store
+ * transformation process.
  *
  * @author Marc Gathier
  * @since 4.6.0
  */
-public interface EventTransformationResult {
+@FunctionalInterface
+public interface EventTransformationFunction {
 
     /**
-     * Returns the transformed event.
+     * Transforms a single event.
      *
-     * @return the transformed event
+     * @param event the stored event
+     * @param token the token (global sequence number) of the stored event
+     * @return result of the transformation
      */
     @Nonnull
-    Event event();
-
-    /**
-     * Returns the token of the next event to transform. If the transformation function does not know the next token, it
-     * must return the token from the event transformation request plus one.
-     *
-     * @return the token of the next event to transform
-     */
-    long nextToken();
+    EventTransformationResult apply(Event event, Long token);
 }

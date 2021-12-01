@@ -11,19 +11,32 @@ package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.TransformEventRequest;
+import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import org.springframework.data.util.CloseableIterator;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 /**
+ * Implementation of the {@link EventTransformationFunction} to transform events based on updates that are available in
+ * the event transformation store.
+ * <p>
+ * Entries in the event transformation store are stored in ascending order for the global sequence number of the updated
+ * events. This implementation keeps an iterator for the transformation store to efficiently find updated events. If,
+ * for any reason, the event transformation processor calls this operation with an event with a lower token than the one
+ * that is previously presented, the instance re-initiializes the transformation store iterator.
+ * <p>
+ * As the entries in the transformation store are stored in ascending order, the apply operation can provide a token for
+ * the next event to be transformed in the result of the apply function. This enables optimizations in the main
+ * transformation process.
+ *
  * @author Marc Gathier
  * @since 4.6.0
  */
-public class TransformationEntryProcessor implements BiFunction<Event, Long, EventTransformationResult> {
+public class TransformationEntryProcessor implements EventTransformationFunction {
+
     private final AtomicLong lastToken = new AtomicLong(-1);
     private final AtomicReference<CloseableIterator<TransformEventRequest>> iteratorHolder = new AtomicReference<>();
     private final AtomicReference<TransformEventRequest> nextEntry = new AtomicReference<>();

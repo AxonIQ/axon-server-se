@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,7 +13,7 @@ import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.EventTransformationResult;
+import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
@@ -25,6 +25,7 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Sinks;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,8 +49,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -68,7 +67,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected final Synchronizer synchronizer;
     protected final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     protected final AtomicLong lastToken = new AtomicLong(-1);
-    //
     protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>();
     protected EventTransformer eventTransformer;
     protected final FileSystemMonitor fileSystemMonitor;
@@ -312,19 +310,23 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void transformContents(long firstToken, long lastToken,
-                                  boolean keepOldVersions, int version,
-                                  BiFunction<Event, Long, EventTransformationResult> transformationFunction,
-                                  Consumer<TransformationProgress> transformationProgressConsumer) {
-        if(readBuffers.firstKey() > lastToken) {
-            if( readBuffers.lastKey() <= lastToken) {
+    public void transformContents(long firstToken,
+                                  long lastToken,
+                                  boolean keepOldVersions,
+                                  int version,
+                                  EventTransformationFunction transformationFunction,
+                                  Sinks.Many<TransformationProgress> transformationProgressConsumer) {
+
+        if (readBuffers.lastKey() > lastToken) {
+            // all transformations in segments that are already closed or about to be closed
+            if (readBuffers.firstKey() <= lastToken) {
                 // event store is closing a completed segment, wait until it is completed
                 waitForPendingFileCompletions();
             }
         } else {
             forceNextSegment();
         }
-        if ( next != null) {
+        if (next != null) {
             next.transformContents(firstToken, lastToken,
                                    keepOldVersions,
                                    version, transformationFunction, transformationProgressConsumer);
@@ -337,7 +339,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    protected void segmentActiveVersion(long segment, int version) {
+    protected void activateSegmentVersion(long segment, int version) {
         // no-op, no versioning for primary segments
     }
 
@@ -375,6 +377,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     private void waitForPendingFileCompletions() {
         while ( readBuffers.size() != 1) {
             try {
+                //noinspection BusyWait
                 Thread.sleep(10);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
