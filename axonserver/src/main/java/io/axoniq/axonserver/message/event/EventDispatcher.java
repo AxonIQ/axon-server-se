@@ -280,7 +280,7 @@ public class EventDispatcher {
     }
 
     public Mono<Long> firstEventToken(String context) {
-        return eventStoreLocator.eventStore(context)
+        return eventStoreLocator.eventStore(context, false)
                                 .flatMap(eventStore -> eventStore.firstEventToken(context));
     }
 
@@ -290,7 +290,7 @@ public class EventDispatcher {
     }
 
     public Mono<Long> eventTokenAt(String context, Instant timestamp) {
-        return eventStoreLocator.eventStore(context)
+        return eventStoreLocator.eventStore(context, false)
                                 .flatMap(eventStore -> eventStore.eventTokenAt(context, timestamp));
     }
 
