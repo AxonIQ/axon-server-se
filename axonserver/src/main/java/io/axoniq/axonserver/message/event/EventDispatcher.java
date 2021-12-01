@@ -338,7 +338,6 @@ public class EventDispatcher {
         private final String context;
         private final AtomicLong lastToken;
         private final Runnable completeHandler;
-        private volatile boolean completed = false;
 
         public EventTrackerInfo(String client, String context, long lastToken, Runnable completeHandler) {
             this.client = client;
@@ -364,12 +363,7 @@ public class EventDispatcher {
         }
 
         public void complete() {
-            completed = true;
             completeHandler.run();
-        }
-
-        public boolean isCompleted() {
-            return completed;
         }
 
         @Override
