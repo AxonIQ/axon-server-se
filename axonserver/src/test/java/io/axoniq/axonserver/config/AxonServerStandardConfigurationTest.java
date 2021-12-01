@@ -33,7 +33,7 @@ public class AxonServerStandardConfigurationTest {
 
         ApplicationEventPublisher applicationEventPublisher = mock(ApplicationEventPublisher.class);
         UserController userController = mock(UserController.class);
-        UserAdminService facade = testSubject.userControllerFacade(userController,
+        UserAdminService facade = testSubject.userAdminService(userController,
                                                                        applicationEventPublisher);
         facade.deleteUser("User");
         verify(applicationEventPublisher).publishEvent(argThat(new ArgumentMatcher<Object>() {
@@ -51,7 +51,7 @@ public class AxonServerStandardConfigurationTest {
         doAnswer((invocationOnMock ->
                 new User((String)invocationOnMock.getArguments()[0], (String)invocationOnMock.getArguments()[1])
                  )).when(userController).updateUser(any(), any(), any());
-        UserAdminService facade = testSubject.userControllerFacade(userController,
+        UserAdminService facade = testSubject.userAdminService(userController,
                                                                        applicationEventPublisher);
         facade.createOrUpdateUser("User", "Password", Collections.emptySet());
         verify(applicationEventPublisher).publishEvent(argThat(new ArgumentMatcher<Object>() {
