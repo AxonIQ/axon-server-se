@@ -97,9 +97,14 @@ public class TransformationProcessorTest {
                               if (!original.equals(updated)) {
                                   updatesCounter.incrementAndGet();
                               }
-
                           });
                 return Flux.empty();
+            }
+
+            @Override
+            public boolean canRollbackTransformation(String context, int version, long firstEventToken,
+                                                     long lastEventToken) {
+                return false;
             }
         };
         when(applicationContext.getBean(LocalEventStoreTransformer.class)).thenReturn(localEventStore);

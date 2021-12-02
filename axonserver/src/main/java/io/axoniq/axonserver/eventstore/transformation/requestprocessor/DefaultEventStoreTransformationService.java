@@ -15,10 +15,8 @@ import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcess
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationStateManager;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -30,28 +28,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nonnull;
 
 /**
+ * Implementation of the {@link EventStoreTransformationService}.
+ *
  * @author Marc Gathier
  * @since 4.6.0
  */
-@Component
 public class DefaultEventStoreTransformationService implements EventStoreTransformationService {
 
     private final TransformationStateManager transformationStateManager;
     private final TransformationValidator transformationValidator;
     private final TransformationProcessor transformationProcessor;
-    private final LocalEventStore localEventStore;
     private final Map<String, Scheduler> executorServicePerContext = new ConcurrentHashMap<>();
     private final Logger auditLog = AuditLog.getLogger();
 
     public DefaultEventStoreTransformationService(
             TransformationStateManager transformationStateManager,
             TransformationValidator transformationValidator,
-            TransformationProcessor transformationProcessor,
-            LocalEventStore localEventStore) {
+            TransformationProcessor transformationProcessor) {
         this.transformationStateManager = transformationStateManager;
         this.transformationValidator = transformationValidator;
         this.transformationProcessor = transformationProcessor;
-        this.localEventStore = localEventStore;
     }
 
     @Override
@@ -119,7 +115,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
             return transformationStateManager.firstToken(transformationId)
                                              .flatMap(firstToken -> transformationProcessor.apply(
                                                      transformationId,
-                                                     localEventStore.keepOldVersions(context) || keepOldVersions,
+                                                     keepOldVersions,
                                                      authentication.username(),
                                                      new Date(),
                                                      firstToken,

@@ -68,7 +68,9 @@ public class TransformationStateManager {
                                                   }
                                                   activeTransformations.put(transformation.getTransformationId(),
                                                                             new ActiveEventStoreTransformation(
-                                                                                    transformation,
+                                                                                    transformation.getTransformationId(),
+                                                                                    transformation.getContext(),
+                                                                                    transformation.getStatus(),
                                                                                     lastToken));
                                               }
                                           });
@@ -104,7 +106,10 @@ public class TransformationStateManager {
             transformationJpa.setDescription(description);
             eventStoreTransformationRepository.save(transformationJpa);
             transformationStoreRegistry.register(context, transformationId);
-            activeTransformations.put(transformationId, new ActiveEventStoreTransformation(transformationJpa, -1));
+            activeTransformations.put(transformationId, new ActiveEventStoreTransformation(transformationId,
+                                                                                           context,
+                                                                                           transformationJpa.getStatus(),
+                                                                                           -1));
         }
     }
 
@@ -114,9 +119,8 @@ public class TransformationStateManager {
                 throw new RuntimeException("Transformation already active for " + context);
             }
             activeTransformations.put(transformationId,
-                                      new ActiveEventStoreTransformation(new EventStoreTransformationJpa(
-                                              transformationId,
-                                              context), -1));
+                                      new ActiveEventStoreTransformation(transformationId,
+                                                                         context, null, -1));
         }
     }
 
@@ -211,7 +215,8 @@ public class TransformationStateManager {
         eventStoreTransformationRepository.save(transformationJpa);
         if (!EventStoreTransformationJpa.Status.DONE.equals(status)) {
             transformationStoreRegistry.register(context, transformationId);
-            activeTransformations.put(transformationId, new ActiveEventStoreTransformation(transformationJpa, -1));
+            activeTransformations.put(transformationId,
+                                      new ActiveEventStoreTransformation(transformationId, context, status, -1));
         }
     }
 

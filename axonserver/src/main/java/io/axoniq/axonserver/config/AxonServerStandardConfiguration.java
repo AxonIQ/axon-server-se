@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,7 +12,11 @@ package io.axoniq.axonserver.config;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
+import io.axoniq.axonserver.eventstore.transformation.impl.TransformationStateManager;
+import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
@@ -131,6 +135,17 @@ public class AxonServerStandardConfiguration {
     public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore,
                                                TransformationProcessor transformationProcessor) {
         return new DefaultEventStoreLocator(localEventStore, transformationProcessor);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EventStoreTransformationService.class)
+    public EventStoreTransformationService eventStoreTransformationService(
+            TransformationStateManager transformationStateManager,
+            TransformationValidator transformationValidator,
+            TransformationProcessor transformationProcessor) {
+        return new DefaultEventStoreTransformationService(transformationStateManager,
+                                                          transformationValidator,
+                                                          transformationProcessor);
     }
 
     @Bean

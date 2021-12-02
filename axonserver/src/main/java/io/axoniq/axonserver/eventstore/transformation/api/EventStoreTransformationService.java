@@ -25,8 +25,10 @@ public interface EventStoreTransformationService {
 
     /**
      * Initializes a new transformation and returns a transformation id.
-     * @param context the name of the context
-     * @param description description of the goal of the transformation
+     *
+     * @param context        the name of the context
+     * @param description    description of the goal of the transformation
+     * @param authentication authentication of the user/application requesting the service
      * @return a mono with a unique identifier for the transformation
      */
     Mono<String> startTransformation(String context, String description, @Nonnull Authentication authentication);
@@ -39,6 +41,7 @@ public interface EventStoreTransformationService {
      * @param transformationId the identification of the transformation
      * @param token            the token (global position) of the event to delete
      * @param previousToken    the token of the token of the previous update in this transformation
+     * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the delete event action is registered
      */
     Mono<Void> deleteEvent(String context, String transformationId, long token, long previousToken,
@@ -54,6 +57,7 @@ public interface EventStoreTransformationService {
      * @param token            the token (global position) of the event to delete
      * @param event            the new content of the event
      * @param previousToken    the token of the token of the previous update in this transformation
+     * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the delete event action is registered
      */
     Mono<Void> replaceEvent(String context, String transformationId, long token, Event event, long previousToken,
@@ -64,6 +68,7 @@ public interface EventStoreTransformationService {
      *
      * @param context          the name of the context
      * @param transformationId the identification of the transformation
+     * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the transformation is cancelled
      */
     Mono<Void> cancelTransformation(String context, String transformationId, @Nonnull Authentication authentication);
@@ -76,7 +81,7 @@ public interface EventStoreTransformationService {
      * @param lastEventToken   the token of the last event included in this transformation
      * @param keepOldVersions  option to keep old versions of the event store segments, so that the transformation can
      *                         be rolled back
-     * @param appliedBy        the user/application that started the apply process
+     * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when applying the transformation is started
      */
     Mono<Void> applyTransformation(String context, String transformationId, long lastEventToken,
@@ -85,16 +90,21 @@ public interface EventStoreTransformationService {
 
     /**
      * Rolls back a previously applied transformation. Only the last transformation for a context can be rolled back.
-     * @param context the name of the context
+     *
+     * @param context          the name of the context
      * @param transformationId the identification of the transformation
+     * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the rollback is completed successfully
      */
     Mono<Void> rollbackTransformation(String context, String transformationId, @Nonnull Authentication authentication);
 
     /**
-     * Deletes old versions of segments updated by a transformation (if the transformation was applied with the {@code keepOldVersions} option)
-     * @param context the name of the context
+     * Deletes old versions of segments updated by a transformation (if the transformation was applied with the {@code
+     * keepOldVersions} option)
+     *
+     * @param context          the name of the context
      * @param transformationId the identification of the transformation
+     * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the operation is completed successfully
      */
     Mono<Void> deleteOldVersions(String context, String transformationId, @Nonnull Authentication authentication);

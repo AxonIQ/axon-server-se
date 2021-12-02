@@ -286,7 +286,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
             nextToken = transformSegment(segment,
                                          nextToken,
-                                         currentSegmentVersion(segment),
                                          keepOldVersions,
                                          newVersion,
                                          transformationFunction,
@@ -369,34 +368,34 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return -1;
     }
 
-    private long transformSegment(long segment, long nextToken, int currentVersion, boolean keepOldVersion,
+    private long transformSegment(long segment, long nextTokenToTransform, boolean keepOldVersion,
                                   int newVersion,
                                   EventTransformationFunction transformationFunction,
                                   Sinks.Many<TransformationProgress> transformationProgressConsumer) {
         Map<String, List<IndexEntry>> indexEntriesMap;
         boolean changed = false;
-        File dataFile = storageProperties.dataFile(
-                context,
-                new FileVersion(segment, newVersion));
+        int currentVersion = currentSegmentVersion(segment);
+
+        File dataFile = storageProperties.dataFile(context, new FileVersion(segment, newVersion));
         File tempFile = new File(dataFile.getAbsolutePath() + ".temp");
         long token;
         try (SegmentWriter segmentWriter = new StreamSegmentWriter(tempFile, segment, storageProperties.getFlags());
              TransactionIterator transactionIterator = getTransactions(segment, segment)) {
 
             while (transactionIterator.hasNext()) {
-                SerializedTransactionWithToken transaction = transactionIterator
-                        .next();
+                SerializedTransactionWithToken transaction = transactionIterator.next();
                 List<Event> updatedEvents = new ArrayList<>();
                 int i = 0;
                 for (SerializedEvent serializedEvent : transaction.getEvents()) {
                     Event event = serializedEvent.asEvent();
-                    if (transaction.getToken() + i == nextToken) {
-                        EventTransformationResult result = transformationFunction.apply(event, transaction.getToken() + i);
+                    if (transaction.getToken() + i == nextTokenToTransform) {
+                        EventTransformationResult result = transformationFunction.apply(event,
+                                                                                        transaction.getToken() + i);
                         if (!event.equals(result.event())) {
                             changed = true;
                             event = result.event();
                         }
-                        nextToken = Math.max(nextToken + 1, result.nextToken());
+                        nextTokenToTransform = Math.max(nextTokenToTransform + 1, result.nextToken());
                     }
                     updatedEvents.add(event);
                     i++;
@@ -413,21 +412,35 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
         }
         if (changed) {
-            indexManager.createNewVersion(segment, newVersion, indexEntriesMap);
-            try {
-                FileUtils.rename(tempFile, dataFile);
-                activateSegmentVersion(segment, newVersion);
-                if (!keepOldVersion) {
-                    scheduleForDeletion(segment, currentVersion);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(String.format("%s: rename segment %s failed", context, tempFile), e);
-            }
+            completeNewSegmentVersion(segment,
+                                      keepOldVersion,
+                                      newVersion,
+                                      indexEntriesMap,
+                                      currentVersion,
+                                      dataFile,
+                                      tempFile);
         } else {
             FileUtils.delete(tempFile);
         }
-        transformationProgressConsumer.tryEmitNext(new TransformationProgressUpdate(token - 1));
-        return nextToken;
+        transformationProgressConsumer.tryEmitNext(new TransformationProgressUpdate(token));
+        return nextTokenToTransform;
+    }
+
+    private void completeNewSegmentVersion(long segment, boolean keepOldVersion, int newVersion,
+                                           Map<String, List<IndexEntry>> indexEntriesMap, int currentVersion,
+                                           File dataFile,
+                                           File tempFile) {
+        indexManager.createNewVersion(segment, newVersion, indexEntriesMap);
+        try {
+            FileUtils.rename(tempFile, dataFile);
+            activateSegmentVersion(segment, newVersion);
+            if (!keepOldVersion) {
+                scheduleForDeletion(segment, currentVersion);
+            }
+        } catch (IOException e) {
+            indexManager.remove(new FileVersion(segment, newVersion));
+            throw new RuntimeException(String.format("%s: rename segment %s failed", context, tempFile), e);
+        }
     }
 
     protected abstract Integer currentSegmentVersion(Long segment);

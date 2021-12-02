@@ -9,12 +9,12 @@
 
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.eventstore.transformation.impl.DefaultTransformationValidator;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationStateManager;
 import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.LocalEventStore;
 import org.junit.*;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
@@ -32,7 +33,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
 public class DefaultEventStoreTransformationServiceTest {
 
@@ -40,6 +41,14 @@ public class DefaultEventStoreTransformationServiceTest {
     private final TransformationValidator transformationValidator = mock(DefaultTransformationValidator.class);
     private final TransformationProcessor transformationProcessor = mock(TransformationProcessor.class);
     private final TransformationStateManager transformationStateManager = mock(TransformationStateManager.class);
+    private final Authentication authentication = new Authentication() {
+        @Nonnull
+        @Override
+        public String username() {
+            return "JUNIT";
+        }
+    };
+
     @Before
     public void setUp() throws Exception {
 
@@ -50,13 +59,12 @@ public class DefaultEventStoreTransformationServiceTest {
                 .thenReturn(Mono.empty());
         testSubject = new DefaultEventStoreTransformationService(transformationStateManager,
                                                                  transformationValidator,
-                                                                 transformationProcessor,
-                                                                 mock(LocalEventStore.class));
+                                                                 transformationProcessor);
     }
 
     @Test
     public void startTransformation() {
-        StepVerifier.create(testSubject.startTransformation("demo", "descirption"))
+        StepVerifier.create(testSubject.startTransformation("demo", "descirption", authentication))
                     .assertNext(UUID::fromString)
                     .expectComplete()
                     .verify();
@@ -67,7 +75,7 @@ public class DefaultEventStoreTransformationServiceTest {
         when(transformationProcessor.deleteEvent(anyString(), anyLong())).thenReturn(Mono.empty());
         StepVerifier.create(
                             testSubject.deleteEvent("demo", "transformationId",
-                                                    0, -1))
+                                                    0, -1, authentication))
                     .expectComplete()
                     .verify();
     }
@@ -79,7 +87,7 @@ public class DefaultEventStoreTransformationServiceTest {
                                                      "transformationId",
                                                      0,
                                                      Event.getDefaultInstance(),
-                                                     -1))
+                                                     -1, authentication))
                     .expectComplete()
                     .verify();
     }
@@ -87,7 +95,7 @@ public class DefaultEventStoreTransformationServiceTest {
     @Test
     public void cancelTransformation() {
         StepVerifier.create(testSubject.cancelTransformation("demo",
-                                                             "transformationId"))
+                                                             "transformationId", authentication))
                     .expectComplete()
                     .verify();
     }
@@ -98,7 +106,7 @@ public class DefaultEventStoreTransformationServiceTest {
         StepVerifier.create(testSubject.applyTransformation("demo",
                                                             "1234",
                                                             100,
-                                                            false, "user"))
+                                                            false, authentication))
                     .expectComplete()
                     .verify();
     }
@@ -111,7 +119,7 @@ public class DefaultEventStoreTransformationServiceTest {
         StepVerifier.create(testSubject.applyTransformation("demo",
                                                             "1234",
                                                             100,
-                                                            false, "user"))
+                                                            false, authentication))
                     .expectError(IllegalStateException.class)
                     .verify();
     }
@@ -119,7 +127,7 @@ public class DefaultEventStoreTransformationServiceTest {
     @Test
     public void rollbackTransformation() {
         StepVerifier.create(testSubject.rollbackTransformation("demo",
-                                                               "transformationId"))
+                                                               "transformationId", authentication))
                     .expectComplete()
                     .verify();
     }
@@ -127,7 +135,7 @@ public class DefaultEventStoreTransformationServiceTest {
     @Test
     public void deleteOldVersions() {
         StepVerifier.create(testSubject.deleteOldVersions("demo",
-                                                          "transformationId"))
+                                                          "transformationId", authentication))
                     .expectComplete()
                     .verify();
     }
@@ -146,15 +154,16 @@ public class DefaultEventStoreTransformationServiceTest {
                                           .validateReplaceEvent(anyString(), anyString(), anyLong(), anyLong(), any());
 
         Scheduler scheduler = Schedulers.parallel();
-        testSubject.startTransformation("demo", "description")
+        testSubject.startTransformation("demo", "description", authentication)
                    .subscribe(id -> {
                        scheduler.schedule(() ->
-                                                  testSubject.deleteEvent("demo", id, 0, -1)
+                                                  testSubject.deleteEvent("demo", id, 0, -1, authentication)
                                                              .subscribe(r -> {
                                                                         },
                                                                         Throwable::printStackTrace,
                                                                         () -> entries.add("DELETE")));
-                       scheduler.schedule(() -> testSubject.replaceEvent("demo", id, 1, Event.getDefaultInstance(), 0)
+                       scheduler.schedule(() -> testSubject.replaceEvent("demo", id, 1,
+                                                                         Event.getDefaultInstance(), 0, authentication)
                                                            .subscribe(r -> {
                                                            }, Throwable::printStackTrace, () ->
                                                                               entries.add("REPLACE")));

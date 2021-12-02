@@ -243,7 +243,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             Workers workers = workersMap.get(context);
             workers.eventStorageEngine.transformContents(firstToken,
                                                          lastToken,
-                                                         keepOldVersions,
+                                                         keepOldVersions || workers.keepOldVersions(),
                                                          version,
                                                          transformationFunction,
                                                          sink);
@@ -338,8 +338,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private StreamObserver<SerializedEvent> createAppendEventConnection(String context,
-                                                                   Authentication authentication,
-                                                                   StreamObserver<Confirmation> responseObserver) {
+                                                                        Authentication authentication,
+                                                                        StreamObserver<Confirmation> responseObserver) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
         return new StreamObserver<SerializedEvent>() {
             private final List<Event> eventList = new ArrayList<>();
@@ -520,9 +520,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private void listAggregateSnapshots(String context,
-                                       Authentication authentication,
-                                       GetAggregateSnapshotsRequest request,
-                                       StreamObserver<SerializedEvent> responseStreamObserver) {
+                                        Authentication authentication,
+                                        GetAggregateSnapshotsRequest request,
+                                        StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             if (request.getMaxSequence() >= 0) {
                 EventDecorator activeEventDecorator = eventInterceptors.noSnapshotReadInterceptors(context) ?
@@ -580,7 +580,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
-                                                       StreamObserver<InputStream> responseStreamObserver) {
+                                                        StreamObserver<InputStream> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
             private final AtomicReference<TrackingEventProcessorManager.EventTracker> controllerRef = new AtomicReference<>();
 
@@ -652,24 +652,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public Mono<Long> eventTokenAt(String context, Instant timestamp) {
         return Mono.create(sink ->
-            getTokenAt(context,
-                       GetTokenAtRequest.newBuilder().setInstant(timestamp.toEpochMilli()).build(),
-                       new StreamObserver<TrackingToken>() {
-                           @Override
-                           public void onNext(TrackingToken trackingToken) {
-                               sink.success(trackingToken.getToken());
-                           }
+                                   getTokenAt(context,
+                                              GetTokenAtRequest.newBuilder().setInstant(timestamp.toEpochMilli())
+                                                               .build(),
+                                              new StreamObserver<TrackingToken>() {
+                                                  @Override
+                                                  public void onNext(TrackingToken trackingToken) {
+                                                      sink.success(trackingToken.getToken());
+                                                  }
 
-                           @Override
-                           public void onError(Throwable throwable) {
-                               sink.error(throwable);
-                           }
+                                                  @Override
+                                                  public void onError(Throwable throwable) {
+                                                      sink.error(throwable);
+                                                  }
 
-                           @Override
-                           public void onCompleted() {
-                               //nothing to do, already completed
-                           }
-                       }));
+                                                  @Override
+                                                  public void onCompleted() {
+                                                      //nothing to do, already completed
+                                                  }
+                                              }));
     }
 
     private void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
@@ -683,28 +684,31 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public Mono<Long> highestSequenceNumber(String context, String aggregateId) {
         return Mono.create(sink ->
-            readHighestSequenceNr(context,
-                                  ReadHighestSequenceNrRequest.newBuilder().setAggregateId(aggregateId).build(),
-                                  new StreamObserver<ReadHighestSequenceNrResponse>() {
-                                      @Override
-                                      public void onNext(ReadHighestSequenceNrResponse readHighestSequenceNrResponse) {
-                                          sink.success(readHighestSequenceNrResponse.getToSequenceNr());
-                                      }
+                                   readHighestSequenceNr(context,
+                                                         ReadHighestSequenceNrRequest.newBuilder()
+                                                                                     .setAggregateId(aggregateId)
+                                                                                     .build(),
+                                                         new StreamObserver<ReadHighestSequenceNrResponse>() {
+                                                             @Override
+                                                             public void onNext(
+                                                                     ReadHighestSequenceNrResponse readHighestSequenceNrResponse) {
+                                                                 sink.success(readHighestSequenceNrResponse.getToSequenceNr());
+                                                             }
 
-                                      @Override
-                                      public void onError(Throwable throwable) {
-                                          sink.error(throwable);
-                                      }
+                                                             @Override
+                                                             public void onError(Throwable throwable) {
+                                                                 sink.error(throwable);
+                                                             }
 
-                                      @Override
-                                      public void onCompleted() {
-                                          //nothing to do, already completed
-                                      }
-                                  }));
+                                                             @Override
+                                                             public void onCompleted() {
+                                                                 //nothing to do, already completed
+                                                             }
+                                                         }));
     }
 
     private void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
-                                      StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
+                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
         runInDataFetcherPool(() -> {
             long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
             responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
@@ -751,7 +755,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
-                                                          StreamObserver<QueryEventsResponse> responseObserver) {
+                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
         EventDecorator activeEventDecorator = eventInterceptors
                 .noEventReadInterceptors(context) ? eventDecorator : new InterceptorAwareEventDecorator(context,
@@ -887,7 +891,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotWriteStorage.waitingTransactions();
     }
 
-    public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp, int lastVersionBackedUp) {
+    public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp,
+                                             int lastVersionBackedUp) {
         try {
             Workers workers = workers(context);
             if (eventType == EventType.SNAPSHOT) {
@@ -918,14 +923,17 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.containsKey(context) && workersMap.get(context).initialized;
     }
 
+    @Override
     public void deleteOldVersions(String context, int version) {
         workers(context).deleteOldVersions(version);
     }
 
+    @Override
     public void rollbackSegments(String context, int version) {
         workers(context).rollbackSegments(version);
     }
 
+    @Override
     public boolean canRollbackTransformation(String context, int version, long firstEventToken, long lastEventToken) {
         return workers(context).canRollbackTransformation(version, firstEventToken, lastEventToken);
     }
@@ -1061,6 +1069,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         public boolean canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
             return eventStorageEngine.canRollbackTransformation(version, firstEventToken, lastEventToken);
         }
+
         public void rollbackSegments(int version) {
             eventStorageEngine.rollbackSegments(version);
         }
