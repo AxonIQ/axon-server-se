@@ -18,6 +18,7 @@ import org.springframework.data.util.CloseableIterator;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import javax.annotation.Nonnull;
 
 /**
  * Implementation of the {@link EventTransformationFunction} to transform events based on updates that are available in
@@ -77,7 +78,7 @@ public class TransformationEntryProcessor implements EventTransformationFunction
     private Event applyTransformation(Event original, TransformEventRequest transformRequest) {
         switch (transformRequest.getRequestCase()) {
             case EVENT:
-                return merge(original, transformRequest.getEvent().getEvent());
+                return transformRequest.getEvent().getEvent();
             case DELETE_EVENT:
                 return nullify(original);
             case REQUEST_NOT_SET:
@@ -86,27 +87,20 @@ public class TransformationEntryProcessor implements EventTransformationFunction
         return original;
     }
 
-    private Event merge(Event original, Event updated) {
-        return Event.newBuilder(original)
-                    .clearMetaData()
-                    .setAggregateType(updated.getAggregateType())
-                    .setPayload(updated.getPayload())
-                    .putAllMetaData(updated.getMetaDataMap())
-                    .build();
-    }
-
     private Event nullify(Event event) {
         return Event.newBuilder(event)
                     .clearPayload()
                     .clearMessageIdentifier()
+                    .clearAggregateType()
                     .clearMetaData()
                     .build();
     }
 
     private EventTransformationResult eventTransformationResult(Event event, long nextToken) {
-        return new EventTransformationResult(){
+        return new EventTransformationResult() {
 
             @Override
+            @Nonnull
             public Event event() {
                 return event;
             }

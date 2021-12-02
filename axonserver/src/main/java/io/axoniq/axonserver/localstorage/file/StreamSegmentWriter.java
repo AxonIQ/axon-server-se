@@ -25,7 +25,7 @@ import static io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore.TRAN
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
 public class StreamSegmentWriter implements SegmentWriter {
     private final DataOutputStream dataOutputStream;
@@ -62,6 +62,7 @@ public class StreamSegmentWriter implements SegmentWriter {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         DataOutputStream eventsBlock = new DataOutputStream(bytes);
         for (Event updatedEvent : events) {
+            token++;
             int size = updatedEvent.getSerializedSize();
             eventsBlock.writeInt(size);
             eventsBlock.write(updatedEvent.toByteArray());
@@ -72,7 +73,6 @@ public class StreamSegmentWriter implements SegmentWriter {
                                                    token));
             }
             eventPosition += size + 4;
-            token++;
         }
 
         byte[] eventBytes = bytes.toByteArray();
