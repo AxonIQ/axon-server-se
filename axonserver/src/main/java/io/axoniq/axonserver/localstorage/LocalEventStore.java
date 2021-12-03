@@ -246,7 +246,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                          keepOldVersions || workers.keepOldVersions(),
                                                          version,
                                                          transformationFunction,
-                                                         sink);
+                                                         sink::tryEmitNext);
             sink.tryEmitComplete();
         }, sink::tryEmitError);
         return sink.asFlux();

@@ -14,7 +14,6 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -108,7 +107,7 @@ public class FakeEventStore implements EventStorageEngine {
     @Override
     public void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
                                   int version, EventTransformationFunction transformationFunction,
-                                  Sinks.Many<TransformationProgress> transformationProgressConsumer) {
+                                  Consumer<TransformationProgress> transformationProgressConsumer) {
 
     }
 

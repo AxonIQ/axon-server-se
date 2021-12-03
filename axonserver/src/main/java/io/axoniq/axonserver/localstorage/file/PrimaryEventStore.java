@@ -25,7 +25,6 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
-import reactor.core.publisher.Sinks;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,6 +48,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -315,7 +315,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                                   boolean keepOldVersions,
                                   int version,
                                   EventTransformationFunction transformationFunction,
-                                  Sinks.Many<TransformationProgress> transformationProgressConsumer) {
+                                  Consumer<TransformationProgress> transformationProgressConsumer) {
 
         if (readBuffers.lastKey() > lastToken) {
             // all transformations in segments that are already closed or about to be closed

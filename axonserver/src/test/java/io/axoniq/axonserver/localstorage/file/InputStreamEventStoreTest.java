@@ -24,7 +24,6 @@ import io.axoniq.axonserver.test.TestUtils;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
-import reactor.core.publisher.Sinks;
 
 import java.util.SortedSet;
 
@@ -137,7 +136,8 @@ public class InputStreamEventStoreTest {
                     return token + 1;
                 }
             };
-        }, Sinks.many().unicast().onBackpressureBuffer());
+        }, progress -> {
+        });
 
         SerializedEvent event = testSubject.eventsPerAggregate(
                 "abb070e9-943f-4947-8def-c50481b968c7",

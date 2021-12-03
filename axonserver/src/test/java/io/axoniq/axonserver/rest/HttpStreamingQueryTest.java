@@ -34,7 +34,6 @@ import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -146,7 +145,7 @@ public class HttpStreamingQueryTest {
             @Override
             public void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
                                           int version, EventTransformationFunction transformationFunction,
-                                          Sinks.Many<TransformationProgress> transformationProgressConsumer) {
+                                          Consumer<TransformationProgress> transformationProgressConsumer) {
 
             }
         };

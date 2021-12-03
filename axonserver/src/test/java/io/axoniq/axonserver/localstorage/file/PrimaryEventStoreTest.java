@@ -30,7 +30,6 @@ import org.junit.rules.*;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
-import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.nio.file.Path;
@@ -376,7 +375,8 @@ public class PrimaryEventStoreTest {
                         return token + 1;
                     }
                 };
-            }, Sinks.many().unicast().onBackpressureBuffer());
+            }, progress -> {
+            });
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-1",
                                                                                 0,
@@ -427,7 +427,8 @@ public class PrimaryEventStoreTest {
                                                    .setPayload(SerializedObject.newBuilder(e.getPayload()).
                                                                                setType("Transformed")).build(),
                                               token + 1);
-            }, Sinks.many().unicast().onBackpressureBuffer());
+            }, progress -> {
+            });
 
             List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-9",
                                                                           0,
@@ -521,7 +522,8 @@ public class PrimaryEventStoreTest {
                                                    .setPayload(SerializedObject.newBuilder(e.getPayload()).
                                                                                setType("Transformed")).build(),
                                               token + 1);
-            }, Sinks.many().unicast().onBackpressureBuffer());
+            }, progress -> {
+            });
 
             subscriptionRef.get().request(1000);
             completed.get(5, TimeUnit.SECONDS);

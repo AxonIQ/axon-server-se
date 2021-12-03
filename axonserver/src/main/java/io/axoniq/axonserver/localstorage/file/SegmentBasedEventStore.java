@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
 
 import java.io.File;
 import java.io.IOException;
@@ -276,7 +275,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                   boolean keepOldVersions,
                                   int newVersion,
                                   EventTransformationFunction transformationFunction,
-                                  Sinks.Many<TransformationProgress> transformationProgressConsumer) {
+                                  Consumer<TransformationProgress> transformationProgressConsumer) {
         long nextToken = Math.max(firstToken, getFirstToken());
         long previousSegment = -1;
         while (nextToken <= lastToken) {
@@ -371,7 +370,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private long transformSegment(long segment, long nextTokenToTransform, boolean keepOldVersion,
                                   int newVersion,
                                   EventTransformationFunction transformationFunction,
-                                  Sinks.Many<TransformationProgress> transformationProgressConsumer) {
+                                  Consumer<TransformationProgress> transformationProgressConsumer) {
         Map<String, List<IndexEntry>> indexEntriesMap;
         boolean changed = false;
         int currentVersion = currentSegmentVersion(segment);
@@ -422,7 +421,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         } else {
             FileUtils.delete(tempFile);
         }
-        transformationProgressConsumer.tryEmitNext(new TransformationProgressUpdate(token));
+        transformationProgressConsumer.accept(new TransformationProgressUpdate(token));
         return nextTokenToTransform;
     }
 
