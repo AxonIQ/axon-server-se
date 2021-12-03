@@ -7,12 +7,12 @@
  *
  */
 
-package io.axoniq.axonserver.component.processor;
+package io.axoniq.axonserver.transport.rest.json;
 
-import io.axoniq.axonserver.component.processor.warning.ActiveWarnings;
-import io.axoniq.axonserver.component.processor.warning.Warning;
 import io.axoniq.axonserver.serializer.Media;
 import io.axoniq.axonserver.serializer.Printable;
+import io.axoniq.axonserver.transport.rest.json.warning.ActiveWarnings;
+import io.axoniq.axonserver.transport.rest.json.warning.Warning;
 
 import static java.util.Collections.emptyList;
 

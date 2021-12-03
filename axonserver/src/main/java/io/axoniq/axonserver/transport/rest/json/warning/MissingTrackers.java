@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -7,9 +7,9 @@
  *
  */
 
-package io.axoniq.axonserver.component.processor.warning;
+package io.axoniq.axonserver.transport.rest.json.warning;
 
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorSegment;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -22,9 +22,9 @@ import java.util.Set;
  */
 public class MissingTrackers implements Warning {
 
-    private final Iterable<SegmentStatus> trackerInfos;
+    private final Iterable<EventProcessorSegment> trackerInfos;
 
-    public MissingTrackers(Iterable<SegmentStatus> trackerInfos) {
+    public MissingTrackers(Iterable<EventProcessorSegment> trackerInfos) {
         this.trackerInfos = trackerInfos;
     }
 
@@ -33,9 +33,11 @@ public class MissingTrackers implements Warning {
         double completion = 0;
         Set<Integer> ids = new HashSet<>();
 
-        for (SegmentStatus info : trackerInfos) {
-            int segmentId = info.getSegmentId();
-            if (!ids.contains(segmentId))completion += 1d/info.getOnePartOf();
+        for (EventProcessorSegment info : trackerInfos) {
+            int segmentId = info.id();
+            if (!ids.contains(segmentId)) {
+                completion += 1d / info.onePartOf();
+            }
             ids.add(segmentId);
         }
 
@@ -46,5 +48,4 @@ public class MissingTrackers implements Warning {
     public String message() {
         return "Not all segments claimed";
     }
-
 }

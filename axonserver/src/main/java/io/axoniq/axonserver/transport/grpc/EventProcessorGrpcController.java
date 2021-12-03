@@ -1,14 +1,27 @@
+/*
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc;
 
 import com.google.protobuf.Empty;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
+import io.axoniq.axonserver.grpc.Component;
+import io.axoniq.axonserver.grpc.admin.EventProcessor;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
 import io.axoniq.axonserver.grpc.admin.EventProcessorIdentifier;
 import io.axoniq.axonserver.grpc.admin.MoveSegment;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorIdMessage;
+import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorMapping;
 import io.grpc.stub.StreamObserver;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -23,6 +36,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
 
     private final EventProcessorAdminService service;
     private final AuthenticationProvider authenticationProvider;
+    private final EventProcessorMapping eventProcessorMapping;
 
     /**
      * Constructor that specify the service to perform the requested operation and the authentication provider.
@@ -30,10 +44,18 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      * @param service                used to perform the requested operations
      * @param authenticationProvider used to retrieve the information related to the authenticated user
      */
+    @Autowired
     public EventProcessorGrpcController(EventProcessorAdminService service,
                                         AuthenticationProvider authenticationProvider) {
+        this(service, authenticationProvider, new EventProcessorMapping());
+    }
+
+    public EventProcessorGrpcController(EventProcessorAdminService service,
+                                        AuthenticationProvider authenticationProvider,
+                                        EventProcessorMapping eventProcessorMapping) {
         this.service = service;
         this.authenticationProvider = authenticationProvider;
+        this.eventProcessorMapping = eventProcessorMapping;
     }
 
     /**
@@ -97,5 +119,20 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
                      request.getTargetClientId(),
                      new GrpcAuthentication(authenticationProvider))
                .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+    }
+
+    @Override
+    public void getAllEventProcessors(Empty request, StreamObserver<EventProcessor> responseObserver) {
+        service.eventProcessors(new GrpcAuthentication(authenticationProvider))
+               .map(eventProcessorMapping)
+               .subscribe(responseObserver::onNext, responseObserver::onError, responseObserver::onCompleted);
+    }
+
+    @Override
+    public void getEventProcessorsByComponent(Component request, StreamObserver<EventProcessor> responseObserver) {
+        String component = request.getComponent();
+        service.eventProcessorsByComponent(component, new GrpcAuthentication(authenticationProvider))
+               .map(eventProcessorMapping)
+               .subscribe(responseObserver::onNext, responseObserver::onError, responseObserver::onCompleted);
     }
 }

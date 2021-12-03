@@ -1,7 +1,18 @@
+/*
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.admin.eventprocessor.api
 
 import io.axoniq.axonserver.api.Authentication
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.*
 
 
 /**
@@ -12,6 +23,19 @@ import reactor.core.publisher.Mono
  * @since 4.6
  */
 interface EventProcessorAdminService {
+
+
+    /**
+     * Returns the Flux of identifiers of all clients containing a certain event processor.
+     *
+     * @param identifier the {@link EventProcessorId} to identify the event processor
+     * @param authentication info about the authenticated user
+     */
+    fun clientsBy(identifier: EventProcessorId, authentication: Authentication): Flux<String>
+
+    fun eventProcessorsByComponent(component: String, authentication: Authentication): Flux<EventProcessor>
+
+    fun eventProcessors(authentication: Authentication): Flux<EventProcessor>
 
     /**
      * Handles a request to pause a certain event processor.
@@ -79,4 +103,92 @@ interface EventProcessorId {
      * Returns token store identifier
      */
     fun tokenStoreIdentifier(): String
+}
+
+interface EventProcessor {
+    /**
+     * Returns the event processor identifier
+     */
+    fun id(): EventProcessorId
+
+    /**
+     * Returns true if the event processor is Streaming, false otherwise.
+     */
+    fun isStreaming(): Boolean
+
+    /**
+     * Returns the mode of the event processor
+     */
+    fun mode(): String
+
+    /**
+     * Returns the instances that run the event processor, one for each client registered on AxonServer
+     */
+    fun instances(): Iterable<EventProcessorInstance>
+
+
+}
+
+interface EventProcessorInstance {
+    /**
+     * Returns the client identifier
+     */
+    fun clientId(): String
+
+    /**
+     * Returns true if the instance of the event processor is running, false otherwise
+     */
+    fun isRunning(): Boolean
+
+    /**
+     * Returns the max number of segments the instance can claim
+     */
+    fun maxSegments(): Int
+
+    /**
+     * Returns the segments that the instance claimed
+     */
+    fun claimedSegments(): Iterable<EventProcessorSegment>
+}
+
+interface EventProcessorSegment {
+    /**
+     * Returns the segment id.
+     */
+    fun id(): Int
+
+    /**
+     * Returns the denominator of the unit fraction that represents the segment size
+     */
+    fun onePartOf(): Int
+
+    /**
+     * Returns the identifier of the client that claimed the segment
+     */
+    fun claimedBy(): String
+
+    /**
+     * Returns true if the segment is caught up, false otherwise
+     */
+    fun isCaughtUp(): Boolean
+
+    /**
+     * Returns true if the segment is replaying, false otherwise
+     */
+    fun isReplaying(): Boolean
+
+    /**
+     * Returns the lowest token that has already been handled
+     */
+    fun tokenPosition(): Long
+
+    /**
+     * Returns true if the segments is in error, false otherwise
+     */
+    fun isInError(): Boolean
+
+    /**
+     * Returns the optional error, if any
+     */
+    fun error(): Optional<String>
 }

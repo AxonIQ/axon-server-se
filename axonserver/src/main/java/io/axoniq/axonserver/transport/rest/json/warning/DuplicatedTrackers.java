@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -7,9 +7,9 @@
  *
  */
 
-package io.axoniq.axonserver.component.processor.warning;
+package io.axoniq.axonserver.transport.rest.json.warning;
 
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorSegment;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -20,9 +20,9 @@ import java.util.Set;
  */
 public class DuplicatedTrackers implements Warning {
 
-    private final Iterable<SegmentStatus> trackerInfos;
+    private final Iterable<EventProcessorSegment> trackerInfos;
 
-    public DuplicatedTrackers(Iterable<SegmentStatus> trackerInfos) {
+    public DuplicatedTrackers(Iterable<EventProcessorSegment> trackerInfos) {
         this.trackerInfos = trackerInfos;
     }
 
@@ -31,8 +31,8 @@ public class DuplicatedTrackers implements Warning {
         int count = 0;
         Set<Integer> ids = new HashSet<>();
 
-        for (SegmentStatus info : trackerInfos) {
-            ids.add(info.getSegmentId());
+        for (EventProcessorSegment info : trackerInfos) {
+            ids.add(info.id());
             count++;
         }
 
@@ -43,5 +43,4 @@ public class DuplicatedTrackers implements Warning {
     public String message() {
         return "Duplicated segment claim detected";
     }
-
 }

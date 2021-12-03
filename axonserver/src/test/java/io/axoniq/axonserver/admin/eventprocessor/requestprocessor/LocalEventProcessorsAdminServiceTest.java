@@ -1,16 +1,30 @@
+/*
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
 import org.mockito.junit.*;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 import java.util.List;
+import javax.annotation.Nonnull;
 
 import static java.util.Arrays.asList;
 import static org.mockito.Mockito.*;
@@ -109,5 +123,38 @@ public class LocalEventProcessorsAdminServiceTest {
         verify(publisher).releaseSegment("default", "Client-A", processorName, 2);
         verify(publisher).releaseSegment("default", "Client-E", processorName, 2);
         verifyNoMoreInteractions(publisher);
+    }
+
+    @Test
+    public void testGetByComponent() {
+        EventProcessorInfo eventProcessorA = buildEventProcessorInfo("blue", "X");
+        EventProcessorInfo eventProcessorB = buildEventProcessorInfo("blue", "X");
+        EventProcessorInfo eventProcessorC = buildEventProcessorInfo("blue", "Y");
+        EventProcessorInfo eventProcessorD = buildEventProcessorInfo("green", "X");
+        EventProcessorInfo eventProcessorE = buildEventProcessorInfo("green", "Y");
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", true, eventProcessorA);
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", false, eventProcessorB);
+        ClientProcessor clientC = new FakeClientProcessor("Client-C", false, eventProcessorC);
+        ClientProcessor clientD = new FakeClientProcessor("Client-D", false, eventProcessorD);
+        ClientProcessor clientE = new FakeClientProcessor("Client-E", true, eventProcessorE);
+
+        ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        Flux<String> clients = testSubject.eventProcessorsByComponent("component",
+                                                                      () -> "authenticated-user")
+                                          .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
+                                          .map(EventProcessorInstance::clientId);
+
+        StepVerifier.create(clients)
+                    .expectNext("Client-A", "Client-B", "Client-E")
+                    .verifyComplete();
+    }
+
+    @Nonnull
+    private EventProcessorInfo buildEventProcessorInfo(String processorName, String tokenStoreId) {
+        return EventProcessorInfo.newBuilder()
+                                 .setProcessorName(processorName)
+                                 .setTokenStoreIdentifier(tokenStoreId)
+                                 .build();
     }
 }
