@@ -14,6 +14,7 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -31,6 +32,7 @@ public class ByteBufferEventSource implements EventSource {
     private final String path;
     // indicates if the low-level clean method should be called (needed to free file lock on windows)
     private final boolean cleanerHack;
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory,
                                  StorageProperties storageProperties) {
@@ -119,7 +121,9 @@ public class ByteBufferEventSource implements EventSource {
     @Override
     public void close() {
         if( onClose != null) {
-            onClose.run();
+            if (closed.compareAndSet(false, true))  {
+                onClose.run();
+            }
         }
     }
 }

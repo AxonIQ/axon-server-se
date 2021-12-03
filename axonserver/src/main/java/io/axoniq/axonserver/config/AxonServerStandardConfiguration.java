@@ -9,14 +9,10 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.access.jpa.User;
-import io.axoniq.axonserver.access.jpa.UserRole;
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
-import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.admin.user.api.UserAdminService;
+import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
+import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.exception.CriticalEventException;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -69,12 +65,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.Collections;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
-import javax.annotation.Nonnull;
 
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 
@@ -177,43 +171,15 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(UserControllerFacade.class)
-    public UserControllerFacade userControllerFacade(UserController userController,
-                                                     ApplicationEventPublisher eventPublisher) {
-        return new UserControllerFacade() {
-            @Override
-            public void updateUser(String userName, String password, Set<UserRole> roles) {
-                validateContexts(roles);
-                User updatedUser = userController.updateUser(userName, password, roles);
-                eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false));
+    @ConditionalOnMissingBean(UserAdminService.class)
+    public UserAdminService userAdminService(UserController userController,
+                                             ApplicationEventPublisher eventPublisher) {
+        return getUserAdminService(userController, eventPublisher);
+    }
 
-            }
-
-            private void validateContexts(Set<UserRole> roles) {
-                if (roles == null) {
-                    return;
-                }
-                if (roles.stream().anyMatch(userRole -> !validContext(userRole.getContext()))) {
-                    throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                         "Only specify context default for standard edition");
-                }
-            }
-
-            private boolean validContext(String context) {
-                return context == null || context.equals(Topology.DEFAULT_CONTEXT) || context.equals("*");
-            }
-
-            @Override
-            public List<User> getUsers() {
-                return userController.getUsers();
-            }
-
-            @Override
-            public void deleteUser(String name) {
-                userController.deleteUser(name);
-                eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false));
-            }
-        };
+    @Nonnull
+    private UserAdminService getUserAdminService(UserController userController, ApplicationEventPublisher eventPublisher) {
+        return new LocalUserAdminService(userController,eventPublisher);
     }
 
     @Bean

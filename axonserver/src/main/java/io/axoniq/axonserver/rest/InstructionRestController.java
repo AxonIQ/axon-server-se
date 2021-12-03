@@ -43,7 +43,7 @@ public class InstructionRestController {
                                    @ApiIgnore final Principal principal) {
         auditLog.info("[{}] Request client \"{}\" to reconnect.", AuditLog.username(principal), clientId);
 
-        if (platformService.requestReconnect(clientId)) {
+        if (platformService.requestReconnect(clientId, "reconnect requested through REST interface")) {
             return clientId + ": requested reconnect";
         } else {
             return clientId + ": not connected to this server";

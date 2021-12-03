@@ -184,6 +184,9 @@ public class EventStoreService implements AxonServerClientService {
 
 
     public StreamObserver<GetEventsRequest> listEvents(StreamObserver<SerializedEventWithToken> responseObserver) {
+        Executor executor = grpcFlowControlExecutorProvider.provide();
+        OutgoingStream<SerializedEventWithToken> outgoingStream = new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEventWithToken>) responseObserver,
+                                                                                                     executor);
         return new StreamObserver<GetEventsRequest>() {
 
             private final AtomicReference<Sinks.Many<GetEventsRequest>> requestFluxRef = new AtomicReference<>();
@@ -192,9 +195,6 @@ public class EventStoreService implements AxonServerClientService {
             public void onNext(GetEventsRequest getEventsRequest) {
                 if (requestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
                     String context = contextProvider.getContext();
-                    Executor executor = grpcFlowControlExecutorProvider.provide();
-                    OutgoingStream<SerializedEventWithToken> outgoingStream = new FlowControlledOutgoingStream<>((CallStreamObserver<SerializedEventWithToken>) responseObserver,
-                                                                                                                 executor);
                     Sinks.Many<GetEventsRequest> requestFlux = requestFluxRef.get();
                     if (requestFlux != null) {
                         outgoingStream.accept(eventDispatcher.events(context,

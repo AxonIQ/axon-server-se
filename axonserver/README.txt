@@ -3,6 +3,12 @@ This is the Axon Server Standard Edition, version 4.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.5.9
+-------------------------------
+* Updated gRPC and Netty versions
+* Improved logging on client application disconnects
+* Fix: missing/double icons on plugin page
+
 Release Notes for version 4.5.8
 -------------------------------
 * Update Felix to version 7.0.1 to support java 17
