@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
+import reactor.core.publisher.MonoSink;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
@@ -188,68 +188,40 @@ public class EventDispatcher {
 
     public Flux<SerializedEventWithToken> events(String context, Authentication principal,
                                                  Flux<GetEventsRequest> requestFlux) {
-        AtomicReference<Sinks.Many<GetEventsRequest>> eventStoreRequestFluxRef = new AtomicReference<>();
-        AtomicReference<EventTrackerInfo> eventTrackerInfoRef = new AtomicReference<>();
-        return Flux.create(sink -> requestFlux
-                .subscribe(request -> {
-                    if (eventStoreRequestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
-                        EventTrackerInfo trackerInfo = new EventTrackerInfo(request.getClientId(),
-                                                                            context,
-                                                                            request.getTrackingToken() - 1,
-                                                                            () -> {
-                                                                                Sinks.Many<GetEventsRequest> esSink = eventStoreRequestFluxRef.get();
-                                                                                if (esSink != null) {
-                                                                                    esSink.tryEmitComplete();
-                                                                                }
-                                                                            });
-                        eventTrackerInfoRef.set(trackerInfo);
-                        eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
-                                         .flatMapMany(eventStore -> eventStore.events(context,
-                                                                                      principal,
-                                                                                      eventStoreRequestFluxRef.get()
-                                                                                                              .asFlux()))
-                                         .onErrorResume(Flux::error)
-                                         .subscribe(serializedEventWithToken -> {
-                                                        sink.next(serializedEventWithToken);
-                                                        trackerInfo.incrementLastToken();
-                                                    },
-                                                    t -> {
-                                                        sink.error(t);
-                                                        removeTrackerInfo(trackerInfo);
-                                                    },
-                                                    () -> {
-                                                        sink.complete();
-                                                        removeTrackerInfo(trackerInfo);
-                                                    });
-
-                        trackingEventProcessors.computeIfAbsent(new ClientStreamIdentification(trackerInfo.context,
-                                                                                               trackerInfo.client),
-                                                                key -> new CopyOnWriteArrayList<>()).add(trackerInfo);
-                        logger.info("Starting tracking event processor for {}:{} - {}",
-                                    request.getClientId(),
-                                    request.getComponentName(),
-                                    request.getTrackingToken());
-                    }
-                    Sinks.Many<GetEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-                    if (eventStoreRequestFlux != null) {
-                        if (eventStoreRequestFlux.tryEmitNext(request).isFailure()) {
-                            eventStoreRequestFlux.tryEmitError(new RuntimeException("Unable to send the request for events."));
-                            removeTrackerInfo(eventTrackerInfoRef.get());
-                        }
-                    }
-                }, t -> {
-                    Sinks.Many<GetEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-                    if (eventStoreRequestFlux != null) {
-                        eventStoreRequestFlux.tryEmitError(t);
-                    }
-                    removeTrackerInfo(eventTrackerInfoRef.get());
-                }, () -> {
-                    Sinks.Many<GetEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-                    if (eventStoreRequestFlux != null) {
-                        eventStoreRequestFlux.tryEmitComplete();
-                    }
-                    removeTrackerInfo(eventTrackerInfoRef.get());
-                }));
+        return requestFlux.switchOnFirst((signal, rf) -> {
+            if (signal.isOnNext()) {
+                AtomicReference<MonoSink<Void>> completeSink = new AtomicReference<>();
+                Mono<Void> complete = Mono.create(completeSink::set);
+                GetEventsRequest request = signal.get();
+                EventTrackerInfo trackerInfo = new EventTrackerInfo(request.getClientId(),
+                                                                    context,
+                                                                    request.getTrackingToken() - 1,
+                                                                    () -> {
+                                                                        MonoSink<Void> sink = completeSink.get();
+                                                                        if (sink != null) {
+                                                                            sink.success();
+                                                                        }
+                                                                    });
+                ClientStreamIdentification clientStreamIdentification =
+                        new ClientStreamIdentification(trackerInfo.context, trackerInfo.client);
+                trackingEventProcessors.computeIfAbsent(clientStreamIdentification, key -> new CopyOnWriteArrayList<>())
+                                       .add(trackerInfo);
+                logger.info("Starting tracking event processor for {}:{} - {}",
+                            request.getClientId(),
+                            request.getComponentName(),
+                            request.getTrackingToken());
+                return eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
+                                        .flatMapMany(eventStore -> eventStore.events(context,
+                                                                                     principal,
+                                                                                     rf))
+                                        .takeUntilOther(complete)
+                                        .doFinally(s -> removeTrackerInfo(trackerInfo));
+            } else if (signal.isOnError()) {
+                return Flux.error(signal.getThrowable());
+            } else {
+                return Flux.empty();
+            }
+        });
     }
 
     private void removeTrackerInfo(EventTrackerInfo trackerInfo) {
@@ -308,7 +280,7 @@ public class EventDispatcher {
     }
 
     public Mono<Long> firstEventToken(String context) {
-        return eventStoreLocator.eventStore(context)
+        return eventStoreLocator.eventStore(context, false)
                                 .flatMap(eventStore -> eventStore.firstEventToken(context));
     }
 
@@ -318,7 +290,7 @@ public class EventDispatcher {
     }
 
     public Mono<Long> eventTokenAt(String context, Instant timestamp) {
-        return eventStoreLocator.eventStore(context)
+        return eventStoreLocator.eventStore(context, false)
                                 .flatMap(eventStore -> eventStore.eventTokenAt(context, timestamp));
     }
 
@@ -329,30 +301,19 @@ public class EventDispatcher {
 
     public Flux<QueryEventsResponse> queryEvents(String context, Authentication authentication,
                                                  Flux<QueryEventsRequest> requestFlux) {
-        AtomicReference<Sinks.Many<QueryEventsRequest>> eventStoreRequestFluxRef = new AtomicReference<>();
-        return Flux.create(sink -> requestFlux.subscribe(request -> {
-            if (eventStoreRequestFluxRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
-                eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
-                                 .flatMapMany(es -> es.queryEvents(context,
-                                                                   eventStoreRequestFluxRef.get().asFlux(),
-                                                                   authentication))
-                                 .subscribe(sink::next, sink::error, sink::complete);
+        return requestFlux.switchOnFirst((signal, rf) -> {
+            if (signal.isOnNext()) {
+                QueryEventsRequest request = signal.get();
+                return eventStoreLocator.eventStore(context, request.getForceReadFromLeader())
+                                        .flatMapMany(es -> es.queryEvents(context,
+                                                                          rf,
+                                                                          authentication));
+            } else if (signal.isOnError()) {
+                return Flux.error(signal.getThrowable());
+            } else {
+                return Flux.empty();
             }
-            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-            if (eventStoreRequestFlux != null && eventStoreRequestFlux.tryEmitNext(request).isFailure()) {
-                eventStoreRequestFlux.tryEmitError(new RuntimeException("Unable to send the request for querying events."));
-            }
-        }, t -> {
-            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-            if (eventStoreRequestFlux != null) {
-                eventStoreRequestFlux.tryEmitError(t);
-            }
-        }, () -> {
-            Sinks.Many<QueryEventsRequest> eventStoreRequestFlux = eventStoreRequestFluxRef.get();
-            if (eventStoreRequestFlux != null) {
-                eventStoreRequestFlux.tryEmitComplete();
-            }
-        }));
+        });
     }
 
     public Flux<SerializedEvent> aggregateSnapshots(String context, Authentication authentication,
