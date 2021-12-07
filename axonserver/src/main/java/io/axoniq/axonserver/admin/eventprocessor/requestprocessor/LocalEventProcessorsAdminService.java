@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
@@ -14,6 +23,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.Nonnull;
+
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
 /**
  * Service that implements the operations applicable to an Event Processor.
@@ -49,8 +60,8 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to pause Event processor \"{}@{}\".",
                           AuditLog.username(authentication.username()),
-                          processor,
-                          identifier.tokenStoreIdentifier());
+                          sanitize(processor),
+                          sanitize(identifier.tokenStoreIdentifier()));
         }
         return Flux.fromIterable(eventProcessors)
                    .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
@@ -66,8 +77,8 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to start Event processor \"{}@{}\".",
                           AuditLog.username(authentication.username()),
-                          processor,
-                          identifier.tokenStoreIdentifier());
+                          sanitize(processor),
+                          sanitize(identifier.tokenStoreIdentifier()));
         }
 
         return Flux.fromIterable(eventProcessors)
@@ -85,20 +96,20 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to split a segment of Event processor \"{}@{}\".",
                           AuditLog.username(authentication.username()),
-                          processor,
-                          tokenStoreIdentifier);
+                          sanitize(processor),
+                          sanitize(tokenStoreIdentifier));
         }
 
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
         return Flux.fromIterable(eventProcessors)
                    .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                    .groupBy(ClientProcessor::context)
-                   .doOnNext(contextGroup -> contextGroup
+                   .flatMap(contextGroup -> contextGroup
                            .map(ClientProcessor::clientId)
                            .collectList()
-                           .subscribe(clients -> processorEventsSource.splitSegment(contextGroup.key(),
-                                                                                    clients,
-                                                                                    processor)))
+                           .doOnNext(clients -> processorEventsSource.splitSegment(contextGroup.key(),
+                                                                                   clients,
+                                                                                   processor)))
                    .then();
         // the context will be removed from the event processor
     }
@@ -111,20 +122,20 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request to merge two segments of Event processor \"{}@{}\".",
                           AuditLog.username(authentication.username()),
-                          processor,
-                          tokenStoreIdentifier);
+                          sanitize(processor),
+                          sanitize(tokenStoreIdentifier));
         }
 
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
         return Flux.fromIterable(eventProcessors)
                    .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                    .groupBy(ClientProcessor::context)
-                   .doOnNext(contextGroup -> contextGroup
+                   .flatMap(contextGroup -> contextGroup
                            .map(ClientProcessor::clientId)
                            .collectList()
-                           .subscribe(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
-                                                                                    clients,
-                                                                                    processor)))
+                           .doOnNext(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
+                                                                                   clients,
+                                                                                   processor)))
                    .then();
         // the context will be removed from the event processor
     }
