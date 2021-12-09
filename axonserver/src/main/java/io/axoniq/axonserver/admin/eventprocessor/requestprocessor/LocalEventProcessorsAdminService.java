@@ -160,9 +160,9 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
             auditLog.info("[{}] Request to move the segment {} for Event processor \"{}@{}\" to client {}.",
                           AuditLog.username(authentication.username()),
                           segment,
-                          processor,
-                          tokenStoreIdentifier,
-                          target);
+                          sanitize(processor),
+                          sanitize(tokenStoreIdentifier),
+                          sanitize(target));
         }
 
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
