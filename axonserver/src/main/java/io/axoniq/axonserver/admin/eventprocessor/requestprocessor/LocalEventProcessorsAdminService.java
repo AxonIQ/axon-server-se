@@ -161,10 +161,10 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         return eventProcessors
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                 .groupBy(ClientProcessor::context)
-                .doOnNext(contextGroup -> contextGroup
+                   .flatMap(contextGroup -> contextGroup
                         .map(ClientProcessor::clientId)
                         .collectList()
-                        .subscribe(clients -> processorEventsSource.splitSegment(contextGroup.key(),
+                           .doOnNext(clients -> processorEventsSource.splitSegment(contextGroup.key(),
                                                                                  clients,
                                                                                  processor)))
                 .then();
@@ -187,10 +187,10 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         return eventProcessors
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                 .groupBy(ClientProcessor::context)
-                .doOnNext(contextGroup -> contextGroup
+                   .flatMap(contextGroup -> contextGroup
                         .map(ClientProcessor::clientId)
                         .collectList()
-                        .subscribe(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
+                           .doOnNext(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
                                                                                  clients,
                                                                                  processor)))
                 .then();
