@@ -360,7 +360,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         workers(context)
                                 .eventWriteStorage
                                 .store(interceptedEventList)
-                                .thenAccept(r -> eventInterceptors.eventsPostCommit(interceptedEventList, executionContext))
+                                .thenAccept(r -> eventInterceptors.eventsPostCommit(interceptedEventList,
+                                                                                    executionContext))
                                 .thenRun(this::confirm)
                                 .exceptionally(this::error);
                     } catch (RequestRejectedException e) {
@@ -689,9 +690,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                         long maxTokenHint) {
         CompletableFuture<Long> sequenceNr = new CompletableFuture<>();
         runInDataFetcherPool(() -> sequenceNr.complete(
-                workers(context)
-                        .aggregateReader
-                        .readHighestSequenceNr(aggregateIdenfier, maxSegmentsHint, maxTokenHint))
+                                     workers(context)
+                                             .aggregateReader
+                                             .readHighestSequenceNr(aggregateIdenfier, maxSegmentsHint, maxTokenHint))
                 , sequenceNr::completeExceptionally);
         return sequenceNr;
     }
@@ -938,12 +939,22 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 if (initialized) {
                     return;
                 }
-                logger.debug("{}: initializing", context);
+                if (logger.isInfoEnabled()) {
+                    logger.info("{}: initializing Workers [{}]", context, System.identityHashCode(this));
+                }
                 try {
                     eventStorageEngine.init(validate, defaultFirstEventIndex);
                     snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
                     initialized = true;
+                    if (logger.isInfoEnabled()) {
+                        logger.info("Workers[{}] for context {} has been initialized.",
+                                    System.identityHashCode(this),
+                                    context);
+                    }
                 } catch (RuntimeException runtimeException) {
+                    if (logger.isWarnEnabled()) {
+                        logger.warn("Problems during initialization of Workers[{}]", System.identityHashCode(this));
+                    }
                     eventStorageEngine.close(false);
                     snapshotStorageEngine.close(false);
                     throw runtimeException;
@@ -955,11 +966,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
          * Close all activity on a context and release all resources.
          */
         public void close(boolean deleteData) {
+            logger.info("Start closing the Workers[{}] for context {} with deleteData = {}.",
+                        System.identityHashCode(this), context, deleteData);
             trackingEventManager.close();
             eventStorageEngine.close(deleteData);
             snapshotStorageEngine.close(deleteData);
             meterFactory.remove(gauge);
             meterFactory.remove(snapshotGauge);
+            logger.info("Workers[{}] closed for context {} with deleteData = {}.",
+                        System.identityHashCode(this), context, deleteData);
         }
 
         private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,

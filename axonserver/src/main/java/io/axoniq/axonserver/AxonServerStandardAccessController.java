@@ -10,7 +10,7 @@
 package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.access.jpa.User;
-import io.axoniq.axonserver.access.user.UserController;
+import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
