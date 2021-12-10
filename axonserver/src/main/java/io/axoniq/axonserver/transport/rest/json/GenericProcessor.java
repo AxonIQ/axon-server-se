@@ -9,13 +9,20 @@
 
 package io.axoniq.axonserver.transport.rest.json;
 
+import io.axoniq.axonserver.serializer.Media;
+import io.axoniq.axonserver.serializer.Printable;
+import io.axoniq.axonserver.transport.rest.json.warning.ActiveWarnings;
+import io.axoniq.axonserver.transport.rest.json.warning.Warning;
+
+import static java.util.Collections.emptyList;
+
 /**
  * Generic state representation of an Event Processor for the UI.
  *
  * @author Sara Pellegrini
  * @since 4.0
  */
-public class GenericProcessor implements EventProcessor {
+public class GenericProcessor implements Printable {
 
     private final io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor eventProcessor;
 
@@ -29,12 +36,23 @@ public class GenericProcessor implements EventProcessor {
     }
 
     @Override
-    public String name() {
+    public void printOn(Media media) {
+        media.with("name", name())
+             .with("mode", eventProcessor.mode())
+             .with("isStreaming", eventProcessor.isStreaming())
+             .with("fullName", fullName())
+             .with("warnings", new ActiveWarnings(warnings()));
+    }
+
+    String name() {
         return eventProcessor.id().name();
     }
 
-    @Override
-    public String mode() {
-        return eventProcessor.mode();
+    String fullName() {
+        return name();
+    }
+
+    Iterable<Warning> warnings() {
+        return emptyList();
     }
 }

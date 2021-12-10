@@ -36,7 +36,7 @@ import static java.util.Arrays.asList;
  * @author Sara Pellegrini
  * @since 4.0
  */
-public class StreamingProcessor extends GenericProcessor implements EventProcessor {
+public class StreamingProcessor extends GenericProcessor implements Printable {
 
     private static final String TOKEN_STORE_IDENTIFIER = "tokenStoreIdentifier";
     private static final String FREE_THREAD_INSTANCES_COUNT = "freeThreadInstances";
@@ -57,11 +57,6 @@ public class StreamingProcessor extends GenericProcessor implements EventProcess
     public StreamingProcessor(io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor eventProcessor) {
         super(eventProcessor);
         this.eventProcessor = eventProcessor;
-    }
-
-    @Override
-    public Boolean isStreaming() {
-        return true;
     }
 
     @Override
@@ -109,7 +104,7 @@ public class StreamingProcessor extends GenericProcessor implements EventProcess
              .with(ACTIVE_THREADS_COUNT, activeThreads)
              .with(CAN_PAUSE_KEY, anyClientRunning.get())
              .with(CAN_PLAY_KEY, anyClientPaused.get())
-             .with(CAN_SPLIT_KEY, anyClientRunning.get() && isStreaming())
+             .with(CAN_SPLIT_KEY, anyClientRunning.get() && eventProcessor.isStreaming())
              .with(CAN_MERGE_KEY, canMerge)
              .with(TRACKERS_LIST_KEY, trackers());
     }

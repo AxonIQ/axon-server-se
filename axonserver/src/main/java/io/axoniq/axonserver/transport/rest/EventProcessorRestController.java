@@ -11,7 +11,7 @@ package io.axoniq.axonserver.transport.rest;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
-import io.axoniq.axonserver.transport.rest.json.EventProcessor;
+import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.transport.rest.json.GenericProcessor;
 import io.axoniq.axonserver.transport.rest.json.StreamingProcessor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,13 +48,11 @@ public class EventProcessorRestController {
     }
 
     @GetMapping("components/{component}/processors")
-    public Flux<EventProcessor> componentProcessors(@PathVariable("component") String component,
-                                                    @ApiIgnore final Principal principal) {
+    public Flux<Printable> componentProcessors(@PathVariable("component") String component,
+                                               @ApiIgnore final Principal principal) {
 
         return service.eventProcessorsByComponent(component, new PrincipalAuthentication(principal))
-                      .map(eventProcessor -> eventProcessor.isStreaming() ?
-                              new StreamingProcessor(eventProcessor) :
-                              new GenericProcessor(eventProcessor));
+                      .map(p -> p.isStreaming() ? new StreamingProcessor(p) : new GenericProcessor(p));
     }
 
     /**
