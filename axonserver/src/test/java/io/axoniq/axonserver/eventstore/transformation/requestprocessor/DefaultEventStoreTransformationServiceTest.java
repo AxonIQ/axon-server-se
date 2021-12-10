@@ -115,7 +115,7 @@ public class DefaultEventStoreTransformationServiceTest {
     public void applyTransformationValidationFailed() {
         doAnswer(invocationOnMock -> {
             throw new IllegalStateException();
-        }).when(transformationValidator).apply(anyString(), anyString(), anyLong());
+        }).when(transformationValidator).validateApply(anyString(), anyString(), anyLong());
         StepVerifier.create(testSubject.applyTransformation("demo",
                                                             "1234",
                                                             100,

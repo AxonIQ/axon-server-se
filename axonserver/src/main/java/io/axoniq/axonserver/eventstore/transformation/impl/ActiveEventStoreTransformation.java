@@ -66,12 +66,11 @@ public class ActiveEventStoreTransformation {
         return new ActiveEventStoreTransformation(id, context, status, lastToken, iterator);
     }
 
-    public ActiveEventStoreTransformation withState(EventStoreTransformationJpa transformation) {
-        return new ActiveEventStoreTransformation(id, context, status, lastToken, iterator);
+    public ActiveEventStoreTransformation withState(EventStoreTransformationJpa.Status newStatus) {
+        return new ActiveEventStoreTransformation(id, context, newStatus, lastToken, iterator);
     }
 
     public ActiveEventStoreTransformation withLastToken(long lastToken) {
         return new ActiveEventStoreTransformation(id, context, status, lastToken, iterator);
     }
-
 }

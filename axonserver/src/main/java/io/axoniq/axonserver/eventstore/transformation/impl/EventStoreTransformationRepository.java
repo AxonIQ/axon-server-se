@@ -21,8 +21,15 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
 
     /**
      * Find all transformations for a context.
+     *
      * @param context the name of the context
      * @return a list of transformations for the context
      */
     List<EventStoreTransformationJpa> findByContext(String context);
+
+    List<EventStoreTransformationJpa> findAllByStatus(EventStoreTransformationJpa.Status status);
+
+    default List<EventStoreTransformationJpa> findAllClosed() {
+        return findAllByStatus(EventStoreTransformationJpa.Status.CLOSED);
+    }
 }

@@ -15,6 +15,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
@@ -117,17 +118,17 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, long defaultFirstIndex) {
-        long first = getFirstFile(lastInitialized, storageDir, defaultFirstIndex);
-        renameFileIfNecessary(first);
+        FileVersion first = getFirstFile(lastInitialized, storageDir, new FileVersion(defaultFirstIndex, 0));
+        renameFileIfNecessary(first.segment());
         first = firstSegmentIfLatestCompleted(first);
         if (next != null) {
-            next.initSegments(first);
+            next.initSegments(first.segment());
         }
         WritableEventSource buffer = getOrOpenDatafile(first, storageProperties.getSegmentSize(), false);
         indexManager.remove(first);
-        long sequence = first;
+        long sequence = first.segment();
         Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
-        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first)) {
+        try (EventIterator iterator = buffer.createEventIterator(first.segment())) {
             while (sequence < nextToken && iterator.hasNext()) {
                 EventInformation event = iterator.next();
                 if (event.isDomainEvent()) {
@@ -165,10 +166,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             lastToken.set(sequence - 1);
         }
 
-        indexManager.addToActiveSegment(first, loadedEntries);
+        indexManager.addToActiveSegment(first.segment(), loadedEntries);
 
         buffer.putInt(buffer.position(), 0);
-        WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
+        WritePosition writePosition = new WritePosition(sequence,
+                                                        buffer.position(),
+                                                        first.version(),
+                                                        buffer,
+                                                        first.segment());
         writePositionRef.set(writePosition);
         synchronizer.init(writePosition);
     }
@@ -177,13 +182,13 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return readBuffers.size();
     }
 
-    private long firstSegmentIfLatestCompleted(long latestSegment) {
-        if (!indexManager.validIndex(new FileVersion(latestSegment, 0))) {
+    private FileVersion firstSegmentIfLatestCompleted(FileVersion latestSegment) {
+        if (!indexManager.validIndex(latestSegment)) {
             return latestSegment;
         }
         WritableEventSource buffer = getOrOpenDatafile(latestSegment, storageProperties.getSegmentSize(), false);
-        long token = latestSegment;
-        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, latestSegment, latestSegment)) {
+        long token = latestSegment.segment();
+        try (EventIterator iterator = buffer.createEventIterator(latestSegment.segment())) {
             while (iterator.hasNext()) {
                 iterator.next();
                 token++;
@@ -192,24 +197,24 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             readBuffers.remove(latestSegment);
             buffer.close();
         }
-        return token;
+        return new FileVersion(token, 0);
     }
 
-    private long getFirstFile(long lastInitialized, File events, long defaultFirstIndex) {
+    private FileVersion getFirstFile(long lastInitialized, File events, FileVersion defaultFirstIndex) {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
 
         return Arrays.stream(eventFiles)
-                     .map(name -> FileUtils.process(name).segment())
-                     .filter(segment -> segment < lastInitialized)
-                     .max(Long::compareTo)
+                     .map(name -> FileUtils.process(name))
+                     .filter(segment -> segment.segment() < lastInitialized)
+                     .max(FileVersion::compareTo)
                      .orElse(defaultFirstIndex);
     }
 
-    private FilePreparedTransaction prepareTransaction(List<Event> origEventList) {
+    private FilePreparedTransaction prepareTransaction(List<Event> origEventList, int version) {
         List<ProcessedEvent> eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
                 Collectors.toList());
         int eventSize = eventBlockSize(eventList);
-        WritePosition writePosition = claim(eventSize, eventList.size());
+        WritePosition writePosition = claim(eventSize, eventList.size(), version);
         return new FilePreparedTransaction(writePosition, eventSize, eventList);
     }
 
@@ -220,12 +225,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
      * @return completable future with the token of the first event
      */
     @Override
-    public CompletableFuture<Long> store(List<Event> events) {
+    public CompletableFuture<Long> store(List<Event> events, int version) {
 
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         try {
             Map<String, List<IndexEntry>> indexEntries = new HashMap<>();
-            FilePreparedTransaction preparedTransaction = prepareTransaction(events);
+            FilePreparedTransaction preparedTransaction = prepareTransaction(events, version);
             WritePosition writePosition = preparedTransaction.getWritePosition();
 
             synchronizer.register(writePosition, new StorageCallback() {
@@ -281,7 +286,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
         indexManager.cleanup(deleteData);
         if (deleteData) {
-            storageDir.delete();
+            FileUtils.delete(storageDir);
         }
         closeListeners.forEach(Runnable::run);
     }
@@ -334,6 +339,20 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
+    public LocalEventStoreTransformer.Result canRollbackTransformation(int version, long firstEventToken,
+                                                                       long lastEventToken) {
+        if (lastEventToken < getFirstToken()) {
+            return result(true, null);
+        }
+
+        if (lastEventToken > getLastToken()) {
+            return result(false, "Last token in transformation not in local event store");
+        }
+
+        return super.canRollbackTransformation(version, firstEventToken, lastEventToken);
+    }
+
+    @Override
     protected Integer currentSegmentVersion(Long segment) {
         return 0;
     }
@@ -345,8 +364,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     private void forceNextSegment() {
         WritePosition writePosition = writePositionRef.getAndAccumulate(
-                new WritePosition(0, (int)storageProperties.getSegmentSize()),
-                (prev, x) -> prev.incrementedWith(x.sequence, x.position));
+                new WritePosition(0, (int) storageProperties.getSegmentSize(), 0),
+                (prev, x) -> prev.incrementedWith(x.sequence, x.position, x.version));
 
         if (writePosition.isOverflow((int)storageProperties.getSegmentSize())) {
             // only one thread can be here
@@ -354,9 +373,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
             writePosition.buffer.putInt(writePosition.position, -1);
 
-            WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, storageProperties.getSegmentSize(), false);
-            writePositionRef.set(writePosition.reset(buffer));
-            synchronizer.register(new WritePosition(writePosition.sequence, 0, buffer, writePosition.sequence),
+            WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
+                                                           storageProperties.getSegmentSize(),
+                                                           false);
+            writePositionRef.set(writePosition.reset(buffer, 0));
+            synchronizer.register(new WritePosition(writePosition.sequence, 0, 0, buffer, writePosition.sequence),
                                   new StorageCallback() {
                                       @Override
                                       public boolean onCompleted(long firstToken) {
@@ -459,9 +480,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     protected void completeSegment(WritePosition writePosition) {
-        indexManager.complete(writePosition.segment);
+        indexManager.complete(new FileVersion(writePosition.segment, writePosition.version));
         if (next != null) {
-            next.handover(new FileVersion(writePosition.segment, 0), () -> {
+            next.handover(new FileVersion(writePosition.segment, writePosition.version), () -> {
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
                 logger.debug("Handed over {}, remaining segments: {}",
                              writePosition.segment,
@@ -521,8 +542,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return eventsSize;
     }
 
-    private WritePosition claim(int eventBlockSize, int nrOfEvents) {
-        int blocks = (int)Math.ceil(nrOfEvents/(double)maxEventsPerTransaction);
+    private WritePosition claim(int eventBlockSize, int nrOfEvents, int version) {
+        int blocks = (int) Math.ceil(nrOfEvents / (double) maxEventsPerTransaction);
         int totalSize = eventBlockSize + blocks * (HEADER_BYTES + TX_CHECKSUM_BYTES);
         if (totalSize > MAX_TRANSACTION_SIZE || eventBlockSize <= 0) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
@@ -531,20 +552,21 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         WritePosition writePosition;
         do {
             writePosition = writePositionRef.getAndAccumulate(
-                    new WritePosition(nrOfEvents, totalSize),
-                    (prev, x) -> prev.incrementedWith(x.sequence, x.position));
+                    new WritePosition(nrOfEvents, totalSize, version),
+                    (prev, x) -> prev.incrementedWith(x.sequence, x.position, x.version));
 
-            if (writePosition.isOverflow(totalSize)) {
+            if (writePosition.isOverflow(totalSize) || writePosition.isVersionUpdate(version)) {
                 // only one thread can be here
                 logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
 
                 writePosition.buffer.putInt(writePosition.position, -1);
 
-                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, (long)totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
+                WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, version),
+                                                               (long) totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
                                                                true);
-                writePositionRef.set(writePosition.reset(buffer));
+                writePositionRef.set(writePosition.reset(buffer, version));
             }
-        } while (!writePosition.isWritable(totalSize));
+        } while (!writePosition.isWritable(totalSize) || writePosition.isVersionUpdate(version));
 
         return writePosition;
     }
@@ -554,12 +576,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return writePositionRef.get().sequence;
     }
 
-    protected WritableEventSource getOrOpenDatafile(long segment, long minSize, boolean canReplaceFile) {
+    protected WritableEventSource getOrOpenDatafile(FileVersion segment, long minSize, boolean canReplaceFile) {
         File file = storageProperties.dataFile(context, segment);
         long size = Math.max(storageProperties.getSegmentSize(), minSize);
         if (file.exists()) {
             if (canReplaceFile && file.length() < minSize) {
-                ByteBufferEventSource s = readBuffers.remove(segment);
+                ByteBufferEventSource s = readBuffers.remove(segment.segment());
                 if (s != null) {
                     s.clean(0);
                 }
@@ -567,7 +589,17 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             } else {
                 size = file.length();
             }
+        } else if (segment.version() > 0) {
+            File defaultFile = storageProperties.dataFile(context, new FileVersion(segment.segment(), 0));
+            if (defaultFile.exists()) {
+                ByteBufferEventSource s = readBuffers.remove(segment.segment());
+                if (s != null) {
+                    s.clean(0);
+                }
+                FileUtils.delete(defaultFile);
+            }
         }
+
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
             logger.info("Opening file {}", file);
             MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
@@ -575,9 +607,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             buffer.putInt(storageProperties.getFlags());
             WritableEventSource writableEventSource = new WritableEventSource(file.getAbsolutePath(),
                                                                               buffer,
+                                                                              segment.segment(),
+                                                                              segment.version(),
                                                                               eventTransformer,
                                                                               storageProperties.isCleanRequired());
-            readBuffers.put(segment, writableEventSource);
+            readBuffers.put(segment.segment(), writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,

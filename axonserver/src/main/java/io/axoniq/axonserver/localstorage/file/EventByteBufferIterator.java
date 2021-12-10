@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -25,10 +25,10 @@ public class EventByteBufferIterator extends EventIterator {
     private final ByteBufferEventSource eventSource;
 
 
-    public EventByteBufferIterator(ByteBufferEventSource eventSource, long segment, long token) {
+    public EventByteBufferIterator(ByteBufferEventSource eventSource, long token) {
         this.eventSource = eventSource;
         this.reader = eventSource.getBuffer();
-        this.currentSequenceNumber = segment;
+        this.currentSequenceNumber = eventSource.segment();
         forwardTo(token);
     }
 

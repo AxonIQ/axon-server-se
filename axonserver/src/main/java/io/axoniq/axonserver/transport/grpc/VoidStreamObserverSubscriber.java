@@ -37,6 +37,7 @@ public class VoidStreamObserverSubscriber<T> extends BaseSubscriber<Void> {
 
     @Override
     protected void hookOnError(@Nonnull Throwable throwable) {
+        throwable.printStackTrace();
         responseObserver.onError(GrpcExceptionBuilder.build(
                 throwable));
     }

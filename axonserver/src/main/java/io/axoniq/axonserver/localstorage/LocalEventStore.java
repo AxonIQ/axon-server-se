@@ -855,7 +855,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public long syncEvents(String context, SerializedTransactionWithToken value) {
         try {
             Workers worker = workers(context);
-            worker.eventSyncStorage.sync(value.getToken(), value.getEvents());
+            worker.eventSyncStorage.sync(value.getToken(), value.getEventVersion(), value.getEvents());
             worker.triggerTrackerEventProcessors();
             return value.getToken() + value.getEvents().size();
         } catch (MessagingPlatformException ex) {
@@ -871,7 +871,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public long syncSnapshots(String context, SerializedTransactionWithToken value) {
         try {
             SyncStorage writeStorage = workers(context).snapshotSyncStorage;
-            writeStorage.sync(value.getToken(), value.getEvents());
+            writeStorage.sync(value.getToken(), value.getEventVersion(), value.getEvents());
             return value.getToken() + value.getEvents().size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
@@ -934,7 +934,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public boolean canRollbackTransformation(String context, int version, long firstEventToken, long lastEventToken) {
+    public Result canRollbackTransformation(String context, int version, long firstEventToken, long lastEventToken) {
         return workers(context).canRollbackTransformation(version, firstEventToken, lastEventToken);
     }
 
@@ -1066,7 +1066,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             eventStorageEngine.deleteOldVersions(version);
         }
 
-        public boolean canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
+        public Result canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
             return eventStorageEngine.canRollbackTransformation(version, firstEventToken, lastEventToken);
         }
 

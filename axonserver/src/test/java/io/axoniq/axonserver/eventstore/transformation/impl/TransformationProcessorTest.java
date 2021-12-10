@@ -102,9 +102,19 @@ public class TransformationProcessorTest {
             }
 
             @Override
-            public boolean canRollbackTransformation(String context, int version, long firstEventToken,
-                                                     long lastEventToken) {
-                return false;
+            public Result canRollbackTransformation(String context, int version, long firstEventToken,
+                                                    long lastEventToken) {
+                return new Result() {
+                    @Override
+                    public boolean accepted() {
+                        return false;
+                    }
+
+                    @Override
+                    public String reason() {
+                        return null;
+                    }
+                };
             }
         };
         when(applicationContext.getBean(LocalEventStoreTransformer.class)).thenReturn(localEventStore);

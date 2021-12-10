@@ -70,7 +70,7 @@ public interface TransformationValidator {
      * @param transformationId the identification of the transformation
      * @param lastEventToken the token of the last event provided in the transformation
      */
-    void apply(String context, String transformationId, long lastEventToken);
+    void validateApply(String context, String transformationId, long lastEventToken);
 
     /**
      * Validates a request to cancel a transformation.
@@ -83,7 +83,7 @@ public interface TransformationValidator {
      * @param context the event store context
      * @param transformationId the identification of the transformation
      */
-    void cancel(String context, String transformationId);
+    void validateCancel(String context, String transformationId);
 
     /**
      * Validates a request to delete old versions of event store segments after a transformation.
@@ -97,7 +97,7 @@ public interface TransformationValidator {
      * @param context the event store context
      * @param transformationId the identification of the transformation
      */
-    void deleteOldVersions(String context, String transformationId);
+    void validateDeleteOldVersions(String context, String transformationId);
 
     /**
      * Validates a request to rollback a transformation.
@@ -111,5 +111,5 @@ public interface TransformationValidator {
      * @param context the event store context
      * @param transformationId the identification of the transformation
      */
-    void rollback(String context, String transformationId);
+    void validateRollback(String context, String transformationId);
 }

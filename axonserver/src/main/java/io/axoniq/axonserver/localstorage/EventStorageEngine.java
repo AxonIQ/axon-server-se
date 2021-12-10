@@ -47,20 +47,25 @@ public interface EventStorageEngine {
     }
 
     /**
-     * Stores a number of events.
-     * Completes the returned completable future when the write is confirmed.
+     * Stores a number of events. Completes the returned completable future when the write is confirmed.
      *
      * @param eventList list of events
      * @return completable future containing the token of the first stored event
      */
     default CompletableFuture<Long> store(List<Event> eventList) {
+        return store(eventList, 0);
+    }
+
+    default CompletableFuture<Long> store(List<Event> eventList, int version) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;
     }
 
+
     /**
      * Retrieves the last token confirmed in the event store.
+     *
      * @return the last confirmed token
      */
     default long getLastToken() {
@@ -241,11 +246,22 @@ public interface EventStorageEngine {
         throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
     }
 
-    default boolean canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
-        return false;
+    default LocalEventStoreTransformer.Result canRollbackTransformation(int version, long firstEventToken,
+                                                                        long lastEventToken) {
+        return new LocalEventStoreTransformer.Result() {
+            @Override
+            public boolean accepted() {
+                return false;
+            }
+
+            @Override
+            public String reason() {
+                return "Check not implemented";
+            }
+        };
     }
 
-    default void rollbackSegments(int version){
+    default void rollbackSegments(int version) {
         throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
     }
 

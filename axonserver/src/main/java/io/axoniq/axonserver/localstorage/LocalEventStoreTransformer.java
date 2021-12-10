@@ -60,7 +60,7 @@ public interface LocalEventStoreTransformer {
      * @param lastEventToken  the last token that was transformed in this version
      * @return true if rollback is possible
      */
-    boolean canRollbackTransformation(String context, int version, long firstEventToken, long lastEventToken);
+    Result canRollbackTransformation(String context, int version, long firstEventToken, long lastEventToken);
 
     /**
      * Removes the events with given version, making the previous version of the events the active version.
@@ -69,4 +69,11 @@ public interface LocalEventStoreTransformer {
      * @param version the version of the event store to rollback
      */
     void rollbackSegments(String context, int version);
+
+    interface Result {
+
+        boolean accepted();
+
+        String reason();
+    }
 }

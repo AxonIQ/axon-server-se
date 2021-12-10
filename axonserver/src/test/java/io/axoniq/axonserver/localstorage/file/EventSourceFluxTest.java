@@ -52,13 +52,23 @@ class EventSourceFluxTest {
                     }
 
                     @Override
-                    public TransactionIterator createTransactionIterator(long segment, long token, boolean validating) {
+                    public TransactionIterator createTransactionIterator(long token, boolean validating) {
                         return null;
                     }
 
                     @Override
-                    public EventIterator createEventIterator(long segment, long startToken) {
+                    public EventIterator createEventIterator(long startToken) {
                         return null;
+                    }
+
+                    @Override
+                    public int version() {
+                        return 0;
+                    }
+
+                    @Override
+                    public long segment() {
+                        return 0;
                     }
 
                     @Override

@@ -64,7 +64,7 @@ public class InputStreamEventStoreTest {
     @Test
     public void getEventSource() {
         EventSource eventSource = testSubject.getEventSource(0).get();
-        try (EventIterator iterator = eventSource.createEventIterator(0, 5)) {
+        try (EventIterator iterator = eventSource.createEventIterator(5)) {
             assertTrue(iterator.hasNext());
             EventInformation next = iterator.next();
             assertEquals(5, next.getToken());
@@ -89,7 +89,7 @@ public class InputStreamEventStoreTest {
     @Test
     public void iterateTransactions() {
         EventSource eventSource = testSubject.getEventSource(0).get();
-        TransactionIterator iterator = eventSource.createTransactionIterator(0, 5, true);
+        TransactionIterator iterator = eventSource.createTransactionIterator(5, true);
         assertTrue(iterator.hasNext());
         SerializedTransactionWithToken next = iterator.next();
         assertEquals(5, next.getToken());

@@ -11,9 +11,12 @@ package io.axoniq.axonserver.eventstore.transformation.impl;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
+import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.stereotype.Controller;
+
+import static java.lang.String.format;
 
 /**
  * Validates event store transformation requests. There can only be one transformation per context. Each entry should
@@ -61,18 +64,18 @@ public class DefaultTransformationValidator implements TransformationValidator {
     }
 
     @Override
-    public void apply(String context, String transformationId, long lastEventToken) {
+    public void validateApply(String context, String transformationId, long lastEventToken) {
         ActiveEventStoreTransformation transformation = transformationStateManager.get(transformationId);
         validateContext(context, transformation);
         validatePreviousToken(lastEventToken, transformation);
         CloseableIterator<SerializedEventWithToken> iterator = transformation.iterator();
-        if( iterator != null) {
+        if (iterator != null) {
             iterator.close();
         }
     }
 
     @Override
-    public void cancel(String context, String transformationId) {
+    public void validateCancel(String context, String transformationId) {
         ActiveEventStoreTransformation transformation = transformationStateManager.get(transformationId);
         validateContext(context, transformation);
         if (transformation.applying()) {
@@ -82,7 +85,9 @@ public class DefaultTransformationValidator implements TransformationValidator {
 
     private void validatePreviousToken(long previousToken, ActiveEventStoreTransformation transformation) {
         if (previousToken != transformation.lastToken()) {
-            throw new RuntimeException("Invalid previous token");
+            throw new RuntimeException(format("Invalid previous token %d, expecting %d",
+                                              previousToken,
+                                              transformation.lastToken()));
         }
     }
 
@@ -130,9 +135,10 @@ public class DefaultTransformationValidator implements TransformationValidator {
     }
 
     @Override
-    public void deleteOldVersions(String context, String transformationId) {
+    public void validateDeleteOldVersions(String context, String transformationId) {
         EventStoreTransformationJpa transformation = transformationStateManager.transformation(transformationId)
-                                                                               .orElseThrow(() -> new RuntimeException("Transformation not found"));
+                                                                               .orElseThrow(() -> new RuntimeException(
+                                                                                       "Transformation not found"));
         transformationKeepingOldVersions(context, transformation);
     }
 
@@ -151,13 +157,18 @@ public class DefaultTransformationValidator implements TransformationValidator {
     }
 
     @Override
-    public void rollback(String context, String transformationId) {
+    public void validateRollback(String context, String transformationId) {
         EventStoreTransformationJpa transformation = transformationStateManager.transformation(transformationId)
-                                                                               .orElseThrow(() -> new RuntimeException("Transformation not found"));
+                                                                               .orElseThrow(() -> new RuntimeException(
+                                                                                       "Transformation not found"));
         transformationKeepingOldVersions(context, transformation);
-
-        if (!localEventStore.canRollbackTransformation(context, transformation.getVersion(), transformation.getFirstEventToken(), transformation.getLastEventToken())) {
-            throw new RuntimeException("Previous versions for transformation no longer present");
+        LocalEventStoreTransformer.Result canRollback = localEventStore.canRollbackTransformation(
+                context,
+                transformation.getVersion(),
+                transformation.getFirstEventToken(),
+                transformation.getLastEventToken());
+        if (!canRollback.accepted()) {
+            throw new RuntimeException(canRollback.reason());
         }
     }
 }

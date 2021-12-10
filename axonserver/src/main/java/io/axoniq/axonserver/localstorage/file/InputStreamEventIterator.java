@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -23,10 +23,10 @@ public class InputStreamEventIterator extends EventIterator {
     private final InputStreamEventSource eventSource;
     private final PositionKeepingDataInputStream reader;
 
-    public InputStreamEventIterator(InputStreamEventSource eventSource, long segment, long start) {
+    public InputStreamEventIterator(InputStreamEventSource eventSource, long start) {
         reader = eventSource.getStream();
         this.eventSource = eventSource;
-        currentSequenceNumber = segment;
+        currentSequenceNumber = eventSource.segment();
         try {
             forwardTo(start);
         } catch (IOException e) {

@@ -28,12 +28,15 @@ public class InputStreamEventIteratorTest {
     public void setUp() throws Exception {
 
         File file = new File(TestUtils
-                .fixPathOnWindows(InputStreamEventStore.class
-                                          .getResource(
-                                                  "/data/default/00000000000000000000.events")
-                                          .getFile()));
-        InputStreamEventSource eventSource = new InputStreamEventSource(file, new DefaultEventTransformerFactory());
-        testSubject = new InputStreamEventIterator(eventSource, 0, 0);
+                                     .fixPathOnWindows(InputStreamEventStore.class
+                                                               .getResource(
+                                                                       "/data/default/00000000000000000000.events")
+                                                               .getFile()));
+        InputStreamEventSource eventSource = new InputStreamEventSource(file,
+                                                                        0,
+                                                                        0,
+                                                                        new DefaultEventTransformerFactory());
+        testSubject = new InputStreamEventIterator(eventSource, 0);
     }
 
     @Test

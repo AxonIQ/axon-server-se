@@ -32,6 +32,7 @@ import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
 import reactor.test.StepVerifier;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -164,7 +165,7 @@ public class PrimaryEventStoreTest {
     }
 
     @Test
-    public void testLargeEvent() {
+    public void testLargeEvent() throws ExecutionException, InterruptedException, TimeoutException {
         PrimaryEventStore testSubject = primaryEventStore();
         storeEvent(testSubject, embeddedDBProperties.getEvent().getSegmentSize() + 1);
         storeEvent(testSubject, 10);
@@ -180,7 +181,7 @@ public class PrimaryEventStoreTest {
     }
 
     @Test
-    public void testLargeSecondEvent() {
+    public void testLargeSecondEvent() throws ExecutionException, InterruptedException, TimeoutException {
         PrimaryEventStore testSubject = primaryEventStore();
         storeEvent(testSubject, 10);
         storeEvent(testSubject, embeddedDBProperties.getEvent().getSegmentSize() + 1);
@@ -193,6 +194,27 @@ public class PrimaryEventStoreTest {
             }
         }
         assertEquals(2, counter);
+    }
+
+    @Test
+    public void testEventVersions() throws ExecutionException, InterruptedException, TimeoutException {
+        PrimaryEventStore testSubject = primaryEventStore();
+        storeEvent(testSubject, 10);
+        storeEventWithNewVersion(testSubject, 10, 1);
+        long counter = 0;
+        try (CloseableIterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject
+                .transactionIterator(0, Long.MAX_VALUE)) {
+            while (transactionWithTokenIterator.hasNext()) {
+                counter++;
+                transactionWithTokenIterator.next();
+            }
+        }
+        assertEquals(2, counter);
+        assertEquals(2, testSubject.nextToken());
+        File file = new File(embeddedDBProperties.getEvent().getStorage(context));
+        for (File f : file.listFiles()) {
+            System.out.println(f.getAbsolutePath());
+        }
     }
 
     @Test
@@ -278,15 +300,26 @@ public class PrimaryEventStoreTest {
         }
     }
 
-    private void storeEvent(PrimaryEventStore testSubject, long payloadSize) {
-        CountDownLatch latch = new CountDownLatch(1);
+    private void storeEvent(PrimaryEventStore testSubject, long payloadSize)
+            throws ExecutionException, InterruptedException, TimeoutException {
         byte[] buffer = new byte[(int) payloadSize];
         Arrays.fill(buffer, (byte) 'a');
         Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
                               .setAggregateType("Demo").setPayload(SerializedObject.newBuilder()
                                                                                    .setData(ByteString.copyFrom(buffer))
                                                                                    .build()).build();
-        testSubject.store(singletonList(newEvent)).thenAccept(t -> latch.countDown());
+        testSubject.store(singletonList(newEvent)).get(1, TimeUnit.SECONDS);
+    }
+
+    private void storeEventWithNewVersion(PrimaryEventStore testSubject, long payloadSize, int version)
+            throws ExecutionException, InterruptedException, TimeoutException {
+        byte[] buffer = new byte[(int) payloadSize];
+        Arrays.fill(buffer, (byte) 'a');
+        Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
+                              .setAggregateType("Demo").setPayload(SerializedObject.newBuilder()
+                                                                                   .setData(ByteString.copyFrom(buffer))
+                                                                                   .build()).build();
+        testSubject.store(singletonList(newEvent), version).get(1, TimeUnit.SECONDS);
     }
 
     @Test

@@ -117,13 +117,15 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
         fileOpenMeter.increment();
         return new InputStreamEventSource(storageProperties.dataFile(context, segment),
+                                          segment.segment(),
+                                          segment.version(),
                                           eventTransformerFactory);
     }
 
     @Override
     protected void recreateIndex(FileVersion segment) {
         try (InputStreamEventSource is = get(segment, true);
-             EventIterator iterator = createEventIterator(is, segment.segment(), segment.segment())) {
+             EventIterator iterator = createEventIterator(is, segment.segment())) {
             recreateIndexFromIterator(segment, iterator);
         }
     }

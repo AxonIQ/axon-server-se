@@ -97,7 +97,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     public Mono<Void> cancelTransformation(String context, String id, @Nonnull Authentication authentication) {
         return Mono.<Void>fromRunnable(() -> {
             auditLog.info("{}@{}: Request to cancel transformation {}", authentication.username(), context, id);
-            transformationValidator.cancel(context, id);
+            transformationValidator.validateCancel(context, id);
             transformationProcessor.cancel(id);
         }).subscribeOn(scheduler(context));
     }
@@ -111,7 +111,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                           authentication.username(),
                           context,
                           transformationId);
-            transformationValidator.apply(context, transformationId, lastEventToken);
+            transformationValidator.validateApply(context, transformationId, lastEventToken);
             return transformationStateManager.firstToken(transformationId)
                                              .flatMap(firstToken -> transformationProcessor.apply(
                                                      transformationId,
@@ -128,7 +128,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     public Mono<Void> rollbackTransformation(String context, String id, @Nonnull Authentication authentication) {
         return Mono.<Void>fromRunnable(() -> {
             auditLog.info("{}@{}: Request to rollback transformation {}", authentication.username(), context, id);
-            transformationValidator.rollback(context, id);
+            transformationValidator.validateRollback(context, id);
             transformationProcessor.rollbackTransformation(context, id);
         }).subscribeOn(scheduler(context));
     }
@@ -140,7 +140,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                           authentication.username(),
                           context,
                           id);
-            transformationValidator.deleteOldVersions(context, id);
+            transformationValidator.validateDeleteOldVersions(context, id);
             transformationProcessor.deleteOldVersions(context, id);
         }).subscribeOn(scheduler(context));
     }

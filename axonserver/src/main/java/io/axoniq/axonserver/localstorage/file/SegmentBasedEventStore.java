@@ -19,6 +19,7 @@ import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -222,7 +223,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 eventSource.ifPresent(e -> {
                     long minTimestampInSegment = Long.MAX_VALUE;
                     EventInformation eventWithToken;
-                    EventIterator iterator = createEventIterator(e, segment, segment);
+                    EventIterator iterator = createEventIterator(e, segment);
                     while (iterator.hasNext()) {
                         eventWithToken = iterator.next();
                         minTimestampInSegment = Math.min(minTimestampInSegment,
@@ -260,8 +261,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected abstract Optional<EventSource> getEventSource(long segment);
 
-    protected EventIterator createEventIterator(EventSource e, long segment, long startToken) {
-        return e.createEventIterator(segment, startToken);
+    protected EventIterator createEventIterator(EventSource e, long startToken) {
+        return e.createEventIterator(startToken);
     }
 
     @Override
@@ -329,25 +330,38 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public boolean canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
-        if (lastEventToken < getFirstToken()) {
-            return true;
-        }
-        if (getSegments().stream().anyMatch(s -> currentSegmentVersion(s) == version && hasPreviousVersion(s, version))) {
-            return true;
+    public LocalEventStoreTransformer.Result canRollbackTransformation(int version, long firstEventToken,
+                                                                       long lastEventToken) {
+        if (getSegments().stream().anyMatch(s -> currentSegmentVersion(s) == version && !hasPreviousVersion(s,
+                                                                                                            version))) {
+            return result(false, "Not all segments have previous version");
         }
 
         if (next != null) {
             return next.canRollbackTransformation(version, firstEventToken, lastEventToken);
         }
-        return false;
+        return result(true, null);
+    }
+
+    protected LocalEventStoreTransformer.Result result(boolean result, String reason) {
+        return new LocalEventStoreTransformer.Result() {
+            @Override
+            public boolean accepted() {
+                return result;
+            }
+
+            @Override
+            public String reason() {
+                return reason;
+            }
+        };
     }
 
     @Override
     public int nextVersion() {
         int version = 1;
         for (Long segment : getSegments()) {
-           version = Math.max(version, currentSegmentVersion(segment)+1);
+            version = Math.max(version, currentSegmentVersion(segment) + 1);
         }
         return next == null ? version : Math.max(version, next.nextVersion());
     }
@@ -374,6 +388,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         Map<String, List<IndexEntry>> indexEntriesMap;
         boolean changed = false;
         int currentVersion = currentSegmentVersion(segment);
+        if (currentVersion >= newVersion) {
+            return nextToken(segment);
+        }
 
         File dataFile = storageProperties.dataFile(context, new FileVersion(segment, newVersion));
         File tempFile = new File(dataFile.getAbsolutePath() + ".temp");
@@ -423,6 +440,20 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
         transformationProgressConsumer.accept(new TransformationProgressUpdate(token));
         return nextTokenToTransform;
+    }
+
+    private long nextToken(long segment) {
+        File dataFile = storageProperties.dataFile(context, new FileVersion(segment, currentSegmentVersion(segment)));
+        long token = segment;
+        try (TransactionIterator transactionIterator = getTransactions(segment, segment)) {
+            while (transactionIterator.hasNext()) {
+                SerializedTransactionWithToken transaction = transactionIterator.next();
+                token += transaction.getEventsCount();
+            }
+            return token;
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
+        }
     }
 
     private void completeNewSegmentVersion(long segment, boolean keepOldVersion, int newVersion,
@@ -515,15 +546,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return Optional.empty();
     }
 
-    private Optional<SerializedEvent> readSerializedEvent(EventSource eventSource, long minSequenceNumber,
-                                                          int lastEventPosition) {
-        SerializedEvent event = eventSource.readEvent(lastEventPosition);
-        if (event.getAggregateSequenceNumber() >= minSequenceNumber) {
-            return Optional.of(event);
-        }
-        return Optional.empty();
-    }
-
     @Override
     public boolean keepOldVersions() {
         return storageProperties.isKeepOldVersions();
@@ -552,7 +574,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         for (long segment : getSegments()) {
             Optional<EventSource> eventSource = getEventSource(segment);
             Long found = eventSource.map(es -> {
-                try (EventIterator iterator = createEventIterator(es, segment, segment)) {
+                try (EventIterator iterator = es.createEventIterator(segment)) {
                     return iterator.getTokenAt(instant);
                 }
             }).orElse(null);
@@ -636,7 +658,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public EventIterator getEvents(long segment, long token) {
         Optional<EventSource> reader = getEventSource(segment);
-        return reader.map(eventSource -> createEventIterator(eventSource, segment, token))
+        return reader.map(eventSource -> eventSource.createEventIterator(token))
                      .orElseGet(() -> next.getEvents(segment, token));
     }
 
@@ -646,7 +668,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected TransactionIterator getTransactions(long segment, long token, boolean validating) {
         Optional<EventSource> reader = getEventSource(segment);
-        return reader.map(r -> createTransactionIterator(r, segment, token, validating))
+        return reader.map(r -> r.createTransactionIterator(token, validating))
                      .orElseGet(() -> getTransactionsFromNext(segment, token, validating));
     }
 
@@ -660,11 +682,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                          token));
         }
         return next.getTransactions(segment, token, validating);
-    }
-
-    protected TransactionIterator createTransactionIterator(EventSource eventSource, long segment, long token,
-                                                            boolean validating) {
-        return eventSource.createTransactionIterator(segment, token, validating);
     }
 
     public long getSegmentFor(long token) {

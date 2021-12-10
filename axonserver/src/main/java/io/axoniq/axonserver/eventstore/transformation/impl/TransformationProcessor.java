@@ -176,7 +176,6 @@ public class TransformationProcessor {
             } else {
                 TransformationEntryStore transformationFileStore = transformationStateManager.entryStore(
                         transformation.getTransformationId());
-                transformationStateManager.reserve(context, transformation.getTransformationId());
                 doApply(transformationFileStore,
                         transformation.getContext(),
                         transformation.getTransformationId(),

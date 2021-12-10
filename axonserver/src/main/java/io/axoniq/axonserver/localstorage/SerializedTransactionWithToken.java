@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -21,13 +21,15 @@ public class SerializedTransactionWithToken {
 
     private final long token;
     private final byte version;
+    private final int eventVersion;
     private final List<SerializedEvent> events;
 
-    public SerializedTransactionWithToken(long token, byte version,
+    public SerializedTransactionWithToken(long token, byte version, int eventVersion,
                                           List<SerializedEvent> events) {
         this.token = token;
         this.version = version;
         this.events = events;
+        this.eventVersion = eventVersion;
     }
 
     public long getToken() {
@@ -40,6 +42,10 @@ public class SerializedTransactionWithToken {
 
     public int getVersion() {
         return version;
+    }
+
+    public int getEventVersion() {
+        return eventVersion;
     }
 
     @Override

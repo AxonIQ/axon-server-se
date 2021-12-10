@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -33,8 +33,10 @@ public class SyncStorage {
         this.eventStore = eventStore;
     }
 
-    public void sync(long token, List<SerializedEvent> eventList) {
-        if( eventList.isEmpty()) return;
+    public void sync(long token, int eventVersion, List<SerializedEvent> eventList) {
+        if (eventList.isEmpty()) {
+            return;
+        }
         if (token < eventStore.nextToken()) {
             eventStore.validateTransaction(token, eventList);
             return;
@@ -42,15 +44,15 @@ public class SyncStorage {
 
         if (token != eventStore.nextToken()) {
             logger.error("{}: {} expecting token {} received {}",
-                        eventStore.getType().getContext(), eventStore.getType().getEventType(),
-                        eventStore.nextToken(),
+                         eventStore.getType().getContext(), eventStore.getType().getEventType(),
+                         eventStore.nextToken(),
                         token);
             throw new EventStoreValidationException("Received invalid token");
         }
         try {
             List<Event> events = new ArrayList<>(eventList.size());
             eventList.forEach(e -> events.add(e.asEvent()));
-            eventStore.store(events).get();
+            eventStore.store(events, eventVersion).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e);

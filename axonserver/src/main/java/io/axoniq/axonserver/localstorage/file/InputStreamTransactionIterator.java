@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -31,10 +31,10 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     private final boolean validating;
     private SerializedTransactionWithToken next;
 
-    public InputStreamTransactionIterator(InputStreamEventSource eventSource, long segment, long start, boolean validating) {
+    public InputStreamTransactionIterator(InputStreamEventSource eventSource, long start, boolean validating) {
         this.eventSource = eventSource;
         this.reader = eventSource.getStream();
-        this.currentSequenceNumber = segment;
+        this.currentSequenceNumber = eventSource.segment();
         this.validating = validating;
         try {
             forwardTo(start);
@@ -82,7 +82,7 @@ public class InputStreamTransactionIterator implements TransactionIterator {
             for (int idx = 0; idx < nrOfMessages; idx++) {
                 events.add(eventSource.readEvent());
             }
-            next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
+            next = new SerializedTransactionWithToken(currentSequenceNumber, version, eventSource.version(), events);
             currentSequenceNumber += nrOfMessages;
             reader.readInt(); // checksum
             return true;

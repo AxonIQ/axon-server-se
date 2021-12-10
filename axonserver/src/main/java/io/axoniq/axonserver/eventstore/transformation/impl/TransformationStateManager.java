@@ -130,7 +130,8 @@ public class TransformationStateManager {
 
     @Transactional
     public void delete(String transformationId) {
-        eventStoreTransformationRepository.deleteById(transformationId);
+        eventStoreTransformationRepository.findById(transformationId)
+                                          .ifPresent(eventStoreTransformationRepository::delete);
         eventStoreTransformationProgressRepository.findById(transformationId)
                                                   .ifPresent(eventStoreTransformationProgressRepository::delete);
         activeTransformations.remove(transformationId);
@@ -144,7 +145,8 @@ public class TransformationStateManager {
                                                                                                   "Transformation not found"));
         transformationJpa.setStatus(status);
         eventStoreTransformationRepository.save(transformationJpa);
-        activeTransformations.computeIfPresent(transformationId, (id, active) -> active.withState(transformationJpa));
+        activeTransformations.computeIfPresent(transformationId,
+                                               (id, active) -> active.withState(transformationJpa.getStatus()));
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
@@ -160,7 +162,8 @@ public class TransformationStateManager {
         transformationJpa.setFirstEventToken(firstEventToken);
         transformationJpa.setLastEventToken(lastEventToken);
         eventStoreTransformationRepository.save(transformationJpa);
-        activeTransformations.computeIfPresent(transformationId, (id, active) -> active.withState(transformationJpa));
+        activeTransformations.computeIfPresent(transformationId,
+                                               (id, active) -> active.withState(transformationJpa.getStatus()));
         getOrCreateProgress(transformationId);
     }
 
