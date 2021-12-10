@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -14,7 +14,6 @@ import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
 import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
 import io.axoniq.axonserver.component.processor.EventProcessor;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
-import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
