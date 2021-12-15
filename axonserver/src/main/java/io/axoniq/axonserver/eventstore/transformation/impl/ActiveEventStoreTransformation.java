@@ -63,6 +63,9 @@ public class ActiveEventStoreTransformation {
     }
 
     public ActiveEventStoreTransformation withIterator(CloseableIterator<SerializedEventWithToken> iterator) {
+        if (this.iterator != null) {
+            this.iterator.close();
+        }
         return new ActiveEventStoreTransformation(id, context, status, lastToken, iterator);
     }
 

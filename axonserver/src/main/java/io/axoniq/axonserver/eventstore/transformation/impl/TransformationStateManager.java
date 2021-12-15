@@ -134,6 +134,7 @@ public class TransformationStateManager {
 
     @Transactional
     public void delete(String transformationId) {
+        setIteratorForActiveTransformation(transformationId, null);
         eventStoreTransformationRepository.findById(transformationId)
                                           .ifPresent(eventStoreTransformationRepository::delete);
         eventStoreTransformationProgressRepository.findById(transformationId)
@@ -156,6 +157,7 @@ public class TransformationStateManager {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void startApply(String transformationId, boolean keepOldVersions, String appliedBy,
                            Date appliedDate, long firstEventToken, long lastEventToken) {
+        setIteratorForActiveTransformation(transformationId, null);
         EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
                                                                                           .orElseThrow(() -> new RuntimeException(
                                                                                                   "Transformation not found"));

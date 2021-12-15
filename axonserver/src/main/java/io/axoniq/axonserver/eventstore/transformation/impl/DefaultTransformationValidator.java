@@ -68,10 +68,6 @@ public class DefaultTransformationValidator implements TransformationValidator {
         ActiveEventStoreTransformation transformation = transformationStateManager.get(transformationId);
         validateContext(context, transformation);
         validatePreviousToken(lastEventToken, transformation);
-        CloseableIterator<SerializedEventWithToken> iterator = transformation.iterator();
-        if (iterator != null) {
-            iterator.close();
-        }
     }
 
     @Override
@@ -116,6 +112,7 @@ public class DefaultTransformationValidator implements TransformationValidator {
         if (!iterator.hasNext()) {
             throw new RuntimeException("Event for token not found: " + token);
         }
+
         SerializedEventWithToken stored = iterator.next();
         while (stored.getToken() < token && iterator.hasNext()) {
             stored = iterator.next();
@@ -126,10 +123,12 @@ public class DefaultTransformationValidator implements TransformationValidator {
         }
 
         if (!event.getAggregateIdentifier().equals(stored.getSerializedEvent().getAggregateIdentifier())) {
+            transformationStateManager.setIteratorForActiveTransformation(transformation.id(), null);
             throw new RuntimeException("Invalid aggregate identifier for: " + token);
         }
         if (event.getAggregateSequenceNumber() != stored.getSerializedEvent()
                                                         .getAggregateSequenceNumber()) {
+            transformationStateManager.setIteratorForActiveTransformation(transformation.id(), null);
             throw new RuntimeException("Invalid aggregate sequence number for: " + token);
         }
     }

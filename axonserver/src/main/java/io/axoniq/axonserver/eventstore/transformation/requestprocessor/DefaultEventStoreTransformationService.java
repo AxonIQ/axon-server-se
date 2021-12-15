@@ -29,6 +29,8 @@ import javax.annotation.Nonnull;
 
 /**
  * Implementation of the {@link EventStoreTransformationService}.
+ * <p>
+ * Actions are executed by a single thread per context.
  *
  * @author Marc Gathier
  * @since 4.6.0
