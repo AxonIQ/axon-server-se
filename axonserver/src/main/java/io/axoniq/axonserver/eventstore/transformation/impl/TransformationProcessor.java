@@ -125,6 +125,7 @@ public class TransformationProcessor {
         }
 
         return Mono.create(sink -> {
+            transformationStateManager.setApplying(transformationId);
             long firstToken = max(firstEventToken, nextToken);
 
             logger.info("{}: Start apply transformation from {} to {}", context, firstToken, lastEventToken);

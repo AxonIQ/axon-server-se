@@ -14,16 +14,19 @@ import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.PostConstruct;
-import javax.transaction.Transactional;
 
 /**
  * Manages the state of transactions. Updates state information in the control db and caches information about active
@@ -39,6 +42,7 @@ public class TransformationStateManager {
     private final EventStoreTransformationRepository eventStoreTransformationRepository;
     private final TransformationStoreRegistry transformationStoreRegistry;
     private final EventStoreTransformationProgressRepository eventStoreTransformationProgressRepository;
+    private Set<String> applyingTransformations = new CopyOnWriteArraySet<>();
 
 
     public TransformationStateManager(
@@ -138,7 +142,7 @@ public class TransformationStateManager {
         transformationStoreRegistry.delete(transformationId);
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void setTransformationStatus(String transformationId, EventStoreTransformationJpa.Status status) {
         EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
                                                                                           .orElseThrow(() -> new RuntimeException(
@@ -149,7 +153,7 @@ public class TransformationStateManager {
                                                (id, active) -> active.withState(transformationJpa.getStatus()));
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void startApply(String transformationId, boolean keepOldVersions, String appliedBy,
                            Date appliedDate, long firstEventToken, long lastEventToken) {
         EventStoreTransformationJpa transformationJpa = eventStoreTransformationRepository.findById(transformationId)
@@ -176,7 +180,7 @@ public class TransformationStateManager {
     }
 
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void setProgress(String transformationId, TransformationProgress transformationProgress) {
         EventStoreTransformationProgressJpa transformationJpa =
                 eventStoreTransformationProgressRepository.findById(transformationId)
@@ -250,6 +254,7 @@ public class TransformationStateManager {
         EventStoreTransformationProgressJpa transformation = getOrCreateProgress(transformationId);
         transformation.setCompleted(true);
         eventStoreTransformationProgressRepository.save(transformation);
+        applyingTransformations.remove(transformationId);
     }
 
     public int nextVersion(String context) {
@@ -273,5 +278,13 @@ public class TransformationStateManager {
 
     public TransformationEntryStore entryStore(String transformationId) {
         return transformationStoreRegistry.get(transformationId);
+    }
+
+    public boolean isActive(String transformationId) {
+        return applyingTransformations.contains(transformationId);
+    }
+
+    public void setApplying(String transformationId) {
+        applyingTransformations.add(transformationId);
     }
 }
