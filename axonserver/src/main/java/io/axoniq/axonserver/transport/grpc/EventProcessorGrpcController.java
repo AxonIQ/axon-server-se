@@ -6,6 +6,7 @@ import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
 import io.axoniq.axonserver.grpc.admin.EventProcessorIdentifier;
+import io.axoniq.axonserver.grpc.admin.MoveSegment;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorIdMessage;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Controller;
@@ -80,6 +81,21 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void mergeEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         service.merge(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+    }
+
+    /**
+     * Processes the request to move one segment of a certain event processor to a specific client.
+     *
+     * @param request          the request details
+     * @param responseObserver the grpc {@link StreamObserver}
+     */
+    @Override
+    public void moveEventProcessorSegment(MoveSegment request, StreamObserver<Empty> responseObserver) {
+        service.move(new EventProcessorIdMessage(request.getEventProcessor()),
+                     request.getSegment(),
+                     request.getTargetClientId(),
+                     new GrpcAuthentication(authenticationProvider))
                .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
     }
 }

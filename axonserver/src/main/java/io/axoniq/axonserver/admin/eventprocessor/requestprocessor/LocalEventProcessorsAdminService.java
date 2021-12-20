@@ -139,4 +139,41 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                    .then();
         // the context will be removed from the event processor
     }
+
+    /**
+     * Handles a request to move a certain segment for a certain event processor to a specific client.
+     * The method returns once the request has been propagated to the proper clients.
+     * It doesn't imply that the segment has been moved already.
+     *
+     * @param identifier     the event processor identifier
+     * @param segment        the segment to move
+     * @param target         the client that should claim the segment
+     * @param authentication info about the authenticated user
+     */
+    @Nonnull
+    @Override
+    public Mono<Void> move(@Nonnull EventProcessorId identifier, int segment, @Nonnull String target,
+                           @Nonnull Authentication authentication) {
+        String processor = identifier.name();
+        String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request to move the segment {} for Event processor \"{}@{}\" to client {}.",
+                          AuditLog.username(authentication.username()),
+                          segment,
+                          sanitize(processor),
+                          sanitize(tokenStoreIdentifier),
+                          sanitize(target));
+        }
+
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        return Flux.fromIterable(eventProcessors)
+                   .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                   .filter(eventProcessor -> !target.equals(eventProcessor.clientId()))
+                   .doOnNext(ep -> processorEventsSource.releaseSegment(ep.context(),
+                                                                        ep.clientId(),
+                                                                        processor,
+                                                                        segment))
+                   .then();
+        // the context will be removed from the event processor
+    }
 }

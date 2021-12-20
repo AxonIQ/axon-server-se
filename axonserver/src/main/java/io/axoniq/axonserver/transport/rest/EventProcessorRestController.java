@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -14,7 +14,6 @@ import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
 import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
 import io.axoniq.axonserver.component.processor.EventProcessor;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
-import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
@@ -40,7 +39,6 @@ public class EventProcessorRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
 
-    private final ProcessorEventPublisher processorEventsSource;
     private final ClientProcessors eventProcessors;
     private final EventProcessorAdminService service;
 
@@ -48,15 +46,11 @@ public class EventProcessorRestController {
      * Instantiate a REST endpoint to open up several Event Processor operations, like start, stop and segment release,
      * to the Axon Server UI.
      *
-     * @param processorEventsSource the {@link ProcessorEventPublisher} used to publish specific application
-     *                              events for the provided endpoints
-     * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
-     * @param service               the service that performs the operarions
+     * @param eventProcessors an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
+     * @param service         the service that performs the operations
      */
-    public EventProcessorRestController(ProcessorEventPublisher processorEventsSource,
-                                        ClientProcessors eventProcessors,
+    public EventProcessorRestController(ClientProcessors eventProcessors,
                                         EventProcessorAdminService service) {
-        this.processorEventsSource = processorEventsSource;
         this.eventProcessors = eventProcessors;
         this.service = service;
     }
@@ -95,20 +89,13 @@ public class EventProcessorRestController {
     }
 
     @PatchMapping("components/{component}/processors/{processor}/segments/{segment}/move")
-    public void moveSegment(@PathVariable("component") String component,
-                            @PathVariable("processor") String processor,
+    public void moveSegment(@PathVariable("processor") String processor,
                             @PathVariable("segment") int segment,
                             @RequestParam("target") String target,
-                            @RequestParam("context") String context,
                             @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                             @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to move segment {} of event processor \"{}\" in component \"{}\" to \"{}\".",
-                      AuditLog.username(principal), context, segment, processor, component, target);
-        clientsByEventProcessor(context, processor, tokenStoreIdentifier).forEach(clientId -> {
-            if (!target.equals(clientId)) {
-                processorEventsSource.releaseSegment(context, clientId, processor, segment);
-            }
-        });
+        service.move(new EventProcessorIdentifier(processor, tokenStoreIdentifier), segment, target,
+                     new PrincipalAuthentication(principal));
     }
 
     /**
