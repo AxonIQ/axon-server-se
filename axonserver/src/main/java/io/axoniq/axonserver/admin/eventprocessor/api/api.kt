@@ -33,8 +33,19 @@ interface EventProcessorAdminService {
      */
     fun clientsBy(identifier: EventProcessorId, authentication: Authentication): Flux<String>
 
+    /**
+     * Returns the Flux of the {@link EventProcessor}s for the specified component.
+     *
+     * @param component the component that contains the event processors
+     * @param authentication info about the authenticated user
+     */
     fun eventProcessorsByComponent(component: String, authentication: Authentication): Flux<EventProcessor>
 
+    /**
+     * Returns the Flux of all known {@link EventProcessor}s.
+     *
+     * @param authentication info about the authenticated user
+     */
     fun eventProcessors(authentication: Authentication): Flux<EventProcessor>
 
     /**
