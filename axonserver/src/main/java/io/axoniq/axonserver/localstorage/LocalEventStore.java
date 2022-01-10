@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -53,8 +53,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -525,16 +523,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             StreamObserver<GetEventsRequest> requestStreamObserver =
                     listEvents(context,
                                authentication,
-                               new StreamObserver<InputStream>() {
+                               new StreamObserver<SerializedEventWithToken>() {
                                    @Override
-                                   public void onNext(InputStream inputStream) {
-                                       try {
-                                           SerializedEventWithToken event = new SerializedEventWithToken(EventWithToken.parseFrom(
-                                                   inputStream));
-                                           sink.next(event);
-                                       } catch (IOException e) {
-                                           sink.error(e);
-                                       }
+                                   public void onNext(SerializedEventWithToken event) {
+                                       sink.next(event);
                                    }
 
                                    @Override
@@ -554,7 +546,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
-                                                       StreamObserver<InputStream> responseStreamObserver) {
+                                                        StreamObserver<SerializedEventWithToken> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
             private final AtomicReference<TrackingEventProcessorManager.EventTracker> controllerRef = new AtomicReference<>();
 
@@ -567,13 +559,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
                                                                    getEventsRequest.getForceReadFromLeader(),
-                                                                   new StreamObserver<InputStream>() {
+                                                                   new StreamObserver<SerializedEventWithToken>() {
                                                                        @Override
-                                                                       public void onNext(InputStream inputStream) {
+                                                                       public void onNext(
+                                                                               SerializedEventWithToken eventWithToken) {
                                                                            responseStreamObserver.onNext(
                                                                                    activeEventDecorator
                                                                                            .decorateEventWithToken(
-                                                                                                   inputStream));
+                                                                                                   eventWithToken));
                                                                        }
 
                                                                        @Override
@@ -754,7 +747,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             // just stop waiting
             Thread.currentThread().interrupt();
         }
-        dataFetcher.shutdownNow();
     }
 
     @Override
@@ -980,7 +972,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,
                                                                               String clientId,
                                                                               boolean forceReadingFromLeader,
-                                                                              StreamObserver<InputStream> eventStream) {
+                                                                              StreamObserver<SerializedEventWithToken> eventStream) {
             return trackingEventManager.createEventTracker(trackingToken,
                                                            clientId,
                                                            forceReadingFromLeader,
@@ -1029,23 +1021,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
 
         @Override
-        public InputStream decorateEventWithToken(InputStream inputStream) {
+        public SerializedEventWithToken decorateEventWithToken(SerializedEventWithToken eventWithToken) {
             if (eventInterceptors.noEventReadInterceptors(unitOfWork.contextName())) {
-                return eventDecorator.decorateEventWithToken(inputStream);
+                return eventDecorator.decorateEventWithToken(eventWithToken);
             }
 
             try {
-                EventWithToken eventWithToken = EventWithToken.parseFrom(inputStream);
-                Event event = eventInterceptors.readEvent(eventWithToken.getEvent(), unitOfWork);
+                Event event = eventInterceptors.readEvent(eventWithToken.asEvent(), unitOfWork);
                 return eventDecorator.decorateEventWithToken(new SerializedEventWithToken(eventWithToken.getToken(),
-                                                                                          event)
-                                                                     .asInputStream());
+                                                                                          event));
             } catch (RuntimeException exception) {
                 unitOfWork.compensate(exception);
                 throw exception;
-            } catch (IOException ioException) {
-                unitOfWork.compensate(ioException);
-                throw new RuntimeException(ioException);
             }
         }
 
