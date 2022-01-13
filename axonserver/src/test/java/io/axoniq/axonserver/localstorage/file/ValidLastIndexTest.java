@@ -15,9 +15,8 @@ import java.io.File;
 import java.net.UnknownHostException;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -48,19 +47,19 @@ public class ValidLastIndexTest {
         storageProperties.setStorage(sampleEventStoreFolder.getAbsolutePath());
 
         IndexManager indexManager = new StandardIndexManager("default",
-                                                             storageProperties,
+                                                             () -> storageProperties,
                                                              EventType.EVENT,
                                                              meterFactory);
         InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
                                                                                                    EventType.EVENT),
                                                                               indexManager,
                                                                               new DefaultEventTransformerFactory(),
-                                                                              storageProperties,
+                                                                              () -> storageProperties,
                                                                               meterFactory);
         testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
                                             indexManager,
                                             new DefaultEventTransformerFactory(),
-                                            storageProperties,
+                                            () -> storageProperties,
                                             secondaryEventStore,
                                             meterFactory, fileSystemMonitor);
     }

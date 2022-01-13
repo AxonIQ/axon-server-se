@@ -13,12 +13,17 @@
         el: '#context',
         data: {
             contexts: [],
+            showAdd: true,
+            showUpdate: false,
             replicationGroups: [],
             contextProperties: [],
             newContext: {
                 nodes: [],
                 selectedReplicationGroup: "",
                 replicationGroup: null,
+                metaData: {}
+            },
+            currentContext: {
                 metaData: {}
             },
             admin: globals.admin,
@@ -117,6 +122,17 @@
                     this.loadContexts();
                 });
             },
+            doUpdateContext() {
+                if (this.currentContext.metaDataLabel && this.currentContext.metaDataValue) {
+                    this.addMetaDataToCurrent()
+                }
+
+                axios.patch("v1/context/" + this.currentContext.context, this.currentContext.metaData).then(response => {
+                    this.showAdd = true;
+                    this.showUpdate = false;
+                    this.loadContexts();
+                });
+            },
             existsContext() {
                 for (var i = 0; i < this.contexts.length; i++) {
                     if (this.contexts[i].context === this.newContext.context) {
@@ -172,6 +188,30 @@
                 delete this.newContext.metaData[key];
                 this.$forceUpdate();
             },
+            isReadonly(metaDataKey) {
+                let prop = this.contextProperties.find(v => v.key ===metaDataKey);
+                return prop ? !prop.updatable : false;
+            },
+            updateContext(context) {
+                this.showUpdate = true;
+                this.showAdd = false;
+                this.currentContext = {"context": context.context,
+                        "metaData": Object.assign({}, context.metaData)};
+            },
+            cancelUpdate() {
+                this.currentContext = null;
+                this.showUpdate = false;
+                this.showAdd = true;
+            },
+            addMetaDataToCurrent() {
+                this.currentContext.metaData[this.currentContext.metaDataLabel] = this.currentContext.metaDataValue;
+                this.currentContext.metaDataLabel = '';
+                this.currentContext.metaDataValue = '';
+            },
+            deleteMetaDataFromCurrent(key) {
+                delete this.currentContext.metaData[key];
+                this.$forceUpdate();
+            },
             addMetaData() {
                 this.newContext.metaData[this.newContext.metaDataLabel] = this.newContext.metaDataValue;
                 this.newContext.metaDataLabel = '';
@@ -200,6 +240,10 @@
                           title="Delete Context">
                         <i class="far fa-trash-alt"></i>
                     </span>
+                    <span @click="updateContext(context)" v-if="admin && !isInternalContext(context)"
+                          title="Update Context">
+                        <i class="fas fa-pencil-alt"></i>
+                    </span>
                 </td>
                 <td>
                     {{context.replicationGroup}}
@@ -220,7 +264,7 @@
         Multi-context is not allowed
     </div>
 
-    <section id="applicationDetails" v-if="admin && hasFeature('MULTI_CONTEXT')">
+    <section id="newContextPanel" v-if="admin && hasFeature('MULTI_CONTEXT') && showAdd">
     <div class="column configuration">
         <form id="contextForm">
                     <ul>
@@ -306,6 +350,68 @@
                         <li>
                             <span class="narrow">&nbsp;</span>
                             <span><button @click.prevent="createContext()" class="button">Save</button></span>
+                        </li>
+                    </ul>
+                </form>
+            </div>
+    </section>
+
+    <section id="updateContextPanel" v-if="admin && hasFeature('MULTI_CONTEXT') && showUpdate">
+    <div class="column configuration">
+        <form id="updateContext">
+                    <ul>
+                        <li>
+                            <span class="narrow">Context Name</span>
+                            <span>{{currentContext.context}}</span>
+                        </li>
+                        <li>
+                            <span class="narrow">Context Properties</span>
+                            <span>
+                                <table class="nestedTable">
+                                    <tbody>
+                                        <tr v-for="key in Object.keys(currentContext.metaData)">
+                                            <td style="width: 60%">{{key}}</td>
+                                            <td>
+                                                <span v-if="isReadonly(key)">
+                                                    {{currentContext.metaData[key]}}
+                                                </span>
+                                                <input v-if=!isReadonly(key) class="propertyValue" data-lpignore="true"
+                                                       v-model="currentContext.metaData[key]"
+                                                ></td>
+                                            <td style="width: 20px">
+                                                <span v-if=!isReadonly(key) @click="deleteMetaDataFromCurrent(key)" title="Delete Context Property">
+                                                    <i class="far fa-trash-alt"></i>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="width: 60%">
+                                                <select class="propertyName" v-model="currentContext.metaDataLabel">
+                                                    <option v-for="n in contextProperties" :value="n.key"
+                                                            v-if="n.updatable"
+                                                            :title="n.description">{{n.key}}</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input class="propertyValue" data-lpignore="true"
+                                                       v-model="currentContext.metaDataValue">
+                                            </td>
+                                            <td style="width: 20px">
+                                    <span @click="addMetaDataToCurrent()" title="Add Context Property">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="narrow">&nbsp;</span>
+                            <span>
+                                <button @click.prevent="doUpdateContext()" class="button">Save</button>
+                                <button @click.prevent="cancelUpdate()" class="button">Cancel</button>
+                            </span>
                         </li>
                     </ul>
                 </form>

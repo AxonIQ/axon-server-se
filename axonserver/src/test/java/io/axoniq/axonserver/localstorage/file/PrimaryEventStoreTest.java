@@ -75,7 +75,7 @@ public class PrimaryEventStoreTest {
     }
 
     private PrimaryEventStore primaryEventStore(EventType eventType) {
-        return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+        return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties::getEvent,
                                                           eventType,
                                                           meterFactory));
     }
@@ -85,7 +85,7 @@ public class PrimaryEventStoreTest {
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
-                                                                 embeddedDBProperties.getEvent(),
+                                                                 embeddedDBProperties::getEvent,
                                                                  meterFactory);
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
@@ -93,10 +93,10 @@ public class PrimaryEventStoreTest {
         PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                                               indexManager,
                                                               eventTransformerFactory,
-                                                              embeddedDBProperties.getEvent(),
+                                                              embeddedDBProperties::getEvent,
                                                               second,
                                                               meterFactory, fileSystemMonitor,
-                                                              (short)10);
+                                                              (short) 10);
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));
         return testSubject;
