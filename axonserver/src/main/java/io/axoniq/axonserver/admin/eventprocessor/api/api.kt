@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -36,10 +36,10 @@ interface EventProcessorAdminService {
     /**
      * Returns the Flux of the {@link EventProcessor}s for the specified component.
      *
-     * @param component the component that contains the event processors
+     * @param application the application that contains the event processors
      * @param authentication info about the authenticated user
      */
-    fun eventProcessorsByComponent(component: String, authentication: Authentication): Flux<EventProcessor>
+    fun eventProcessorsByApplication(application: String, authentication: Authentication): Flux<EventProcessor>
 
     /**
      * Returns the Flux of all known {@link EventProcessor}s.

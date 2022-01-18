@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -51,7 +51,7 @@ public class EventProcessorRestController {
     public Flux<Printable> componentProcessors(@PathVariable("component") String component,
                                                @ApiIgnore final Principal principal) {
 
-        return service.eventProcessorsByComponent(component, new PrincipalAuthentication(principal))
+        return service.eventProcessorsByApplication(component, new PrincipalAuthentication(principal))
                       .map(p -> p.isStreaming() ? new StreamingProcessor(p) : new GenericProcessor(p));
     }
 

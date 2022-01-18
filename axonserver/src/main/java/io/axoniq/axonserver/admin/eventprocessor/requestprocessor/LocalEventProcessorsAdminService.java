@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -87,15 +87,15 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Flux<EventProcessor> eventProcessorsByComponent(@Nonnull String component,
-                                                           @Nonnull Authentication authentication) {
+    public Flux<EventProcessor> eventProcessorsByApplication(@Nonnull String application,
+                                                             @Nonnull Authentication authentication) {
         if (auditLog.isInfoEnabled()) {
-            auditLog.debug("[{}] Request to list Event processors in component \"{}\".",
-                           AuditLog.username(authentication.username()), sanitize(component));
+            auditLog.debug("[{}] Request to list Event processors in application \"{}\".",
+                           AuditLog.username(authentication.username()), sanitize(application));
         }
         return eventProcessors
                 .filterWhen(c -> eventProcessors
-                        .filter(clientProcessor -> clientProcessor.belongsToComponent(component))
+                        .filter(clientProcessor -> clientProcessor.belongsToComponent(application))
                         .map(EventProcessorIdentifier::new)
                         .map(ep -> ep.equals(new EventProcessorIdentifier(c)))
                         .reduce(Boolean::logicalOr))
@@ -161,12 +161,12 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         return eventProcessors
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                 .groupBy(ClientProcessor::context)
-                   .flatMap(contextGroup -> contextGroup
+                .flatMap(contextGroup -> contextGroup
                         .map(ClientProcessor::clientId)
                         .collectList()
-                           .doOnNext(clients -> processorEventsSource.splitSegment(contextGroup.key(),
-                                                                                 clients,
-                                                                                 processor)))
+                        .doOnNext(clients -> processorEventsSource.splitSegment(contextGroup.key(),
+                                                                                clients,
+                                                                                processor)))
                 .then();
         // the context will be removed from the event processor
     }
@@ -187,12 +187,12 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         return eventProcessors
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                 .groupBy(ClientProcessor::context)
-                   .flatMap(contextGroup -> contextGroup
+                .flatMap(contextGroup -> contextGroup
                         .map(ClientProcessor::clientId)
                         .collectList()
-                           .doOnNext(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
-                                                                                 clients,
-                                                                                 processor)))
+                        .doOnNext(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
+                                                                                clients,
+                                                                                processor)))
                 .then();
         // the context will be removed from the event processor
     }

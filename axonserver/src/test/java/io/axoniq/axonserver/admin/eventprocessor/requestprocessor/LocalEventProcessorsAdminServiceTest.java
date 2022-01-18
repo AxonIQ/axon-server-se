@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -140,8 +140,8 @@ public class LocalEventProcessorsAdminServiceTest {
 
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
-        Flux<String> clients = testSubject.eventProcessorsByComponent("component",
-                                                                      () -> "authenticated-user")
+        Flux<String> clients = testSubject.eventProcessorsByApplication("component",
+                                                                        () -> "authenticated-user")
                                           .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
                                           .map(EventProcessorInstance::clientId);
 
