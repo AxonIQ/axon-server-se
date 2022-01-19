@@ -92,6 +92,7 @@ public class AxonIQCliCommand {
             if (address.startsWith("https")) {
                 HttpClientBuilder clientBuilder = HttpClients
                         .custom()
+                        .useSystemProperties()
                         .disableRedirectHandling();
                 if (commandLine.hasOption(CommandOptions.CONNECT_INSECURE.getOpt())) {
                     clientBuilder
@@ -103,7 +104,10 @@ public class AxonIQCliCommand {
                 return clientBuilder.build();
             }
 
-            return HttpClientBuilder.create().disableRedirectHandling().build();
+            return HttpClientBuilder.create()
+                                    .disableRedirectHandling()
+                                    .useSystemProperties()
+                                    .build();
         } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
             throw new RuntimeException(e);
         }
