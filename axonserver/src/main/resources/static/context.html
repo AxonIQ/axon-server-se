@@ -17,14 +17,19 @@
             showUpdate: false,
             replicationGroups: [],
             contextProperties: [],
+            updatableContextProperties: [],
             newContext: {
                 nodes: [],
                 selectedReplicationGroup: "",
                 replicationGroup: null,
-                metaData: {}
+                metaData: {},
+                metaDataLabel: '',
+                metaDataValue: ''
             },
             currentContext: {
-                metaData: {}
+                metaData: {},
+                metaDataLabel: '',
+                metaDataValue: ''
             },
             admin: globals.admin,
             webSocketInfo: globals.webSocketInfo,
@@ -52,6 +57,7 @@
             });
             axios.get("v1/public/context-properties").then(response => {
                 this.contextProperties = response.data;
+                this.updatableContextProperties = this.contextProperties.filter(p => p.updatable);
             });
             this.connect();
         }, beforeDestroy() {
@@ -196,7 +202,10 @@
                 this.showUpdate = true;
                 this.showAdd = false;
                 this.currentContext = {"context": context.context,
-                        "metaData": Object.assign({}, context.metaData)};
+                        "metaData": Object.assign({}, context.metaData),
+                        "metaDataLabel": '',
+                        "metaDataValue": ''
+                };
             },
             cancelUpdate() {
                 this.currentContext = null;
@@ -216,6 +225,11 @@
                 this.newContext.metaData[this.newContext.metaDataLabel] = this.newContext.metaDataValue;
                 this.newContext.metaDataLabel = '';
                 this.newContext.metaDataValue = '';
+                this.$forceUpdate()
+                this.$nextTick(() => {
+                    this.newContext.metaDataLabel = '';
+                    this.newContext.metaDataValue = '';
+                })
             }
         }
     });
@@ -326,25 +340,22 @@
                                                 </span>
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <td style="width: 60%">
-                                                <select class="propertyName" v-model="newContext.metaDataLabel">
-                                                    <option v-for="n in contextProperties" :value="n.key"
-                                                            :title="n.description">{{n.key}}</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input class="propertyValue" data-lpignore="true"
-                                                       v-model="newContext.metaDataValue">
-                                            </td>
-                                            <td style="width: 20px">
-                                    <span @click="addMetaData()" title="Add Context Property">
-                                        <i class="fas fa-plus"></i>
-                                    </span>
-                                            </td>
-                                        </tr>
                                     </tbody>
                                 </table>
+                                <span style="width: 60%">
+                                <component-suggestion-box :options="contextProperties"
+                                                          :value="newContext.metaDataLabel"
+                                                          @input="newContext.metaDataLabel = $event">
+                                </component-suggestion-box>
+                                    </span>
+                                <span style="width: 30%;padding:5px;">
+                                                <input class="propertyValue" data-lpignore="true"
+                                                       v-model="newContext.metaDataValue">
+                                    </span>
+
+                                    <span style="width: 15px" @click="addMetaData()" title="Add Context Property">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
                             </span>
                         </li>
                         <li>
@@ -384,26 +395,20 @@
                                                 </span>
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <td style="width: 60%">
-                                                <select class="propertyName" v-model="currentContext.metaDataLabel">
-                                                    <option v-for="n in contextProperties" :value="n.key"
-                                                            v-if="n.updatable"
-                                                            :title="n.description">{{n.key}}</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input class="propertyValue" data-lpignore="true"
-                                                       v-model="currentContext.metaDataValue">
-                                            </td>
-                                            <td style="width: 20px">
-                                    <span @click="addMetaDataToCurrent()" title="Add Context Property">
-                                        <i class="fas fa-plus"></i>
-                                    </span>
-                                            </td>
-                                        </tr>
                                     </tbody>
                                 </table>
+                                <span style="width: 60%">
+                                <component-suggestion-box :options="updatableContextProperties" :value="currentContext.metaDataLabel" @input="currentContext.metaDataLabel = $event">
+                                </component-suggestion-box>
+                                    </span>
+                                <span style="width: 30%;padding:5px;">
+                                                <input class="propertyValue" data-lpignore="true"
+                                                       v-model="currentContext.metaDataValue">
+                                    </span>
+
+                                    <span style="width: 15px" @click="addMetaDataToCurrent()" title="Add Context Property">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
                             </span>
                         </li>
                         <li>

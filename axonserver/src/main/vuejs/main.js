@@ -16,6 +16,7 @@ import ComponentQueries from './components/component/Queries.vue';
 import ComponentProcessors from './components/component/Processors.vue';
 import ComponentCommandMetrics from './components/component/CommandMetrics.vue';
 import ComponentSubscriptionsMetrics from './components/component/SubscriptionsMetrics.vue';
+import SuggestList from './components/component/SuggestList.vue';
 
 Vue.use(VModal)
 Vue.use(VClipboard)
@@ -26,5 +27,6 @@ Vue.component('component-queries', ComponentQueries);
 Vue.component('component-processors', ComponentProcessors);
 Vue.component('component-command-metrics', ComponentCommandMetrics);
 Vue.component('component-subscription-metrics', ComponentSubscriptionsMetrics);
+Vue.component('component-suggestion-box', SuggestList);
 
 window.Vue = Vue;
