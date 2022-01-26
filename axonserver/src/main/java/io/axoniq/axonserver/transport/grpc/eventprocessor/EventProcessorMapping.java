@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -15,8 +15,6 @@ import io.axoniq.axonserver.grpc.admin.EventProcessorInstance;
 import io.axoniq.axonserver.grpc.admin.EventProcessorSegment;
 
 import java.util.function.Function;
-
-import static java.lang.Boolean.TRUE;
 
 /**
  * Transforms an {@link EventProcessor} into the corresponding GRPC message.
@@ -34,7 +32,7 @@ public class EventProcessorMapping
                                                       .setProcessorName(processor.id().name())
                                                       .setTokenStoreIdentifier(processor.id().tokenStoreIdentifier()));
         builder.setMode(processor.mode())
-               .setIsStreaming(TRUE.equals(processor.isStreaming()));
+               .setIsStreaming(processor.isStreaming());
 
         processor.instances().forEach(instance -> builder.addClientInstance(grpcProcessorInstance(instance)));
         return builder.build();
@@ -44,7 +42,7 @@ public class EventProcessorMapping
             io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance instance) {
         EventProcessorInstance.Builder builder = EventProcessorInstance.newBuilder();
         builder.setClientId(instance.clientId())
-               .setIsRunning(TRUE.equals(instance.isRunning()))
+               .setIsRunning(instance.isRunning())
                .setMaxSegments(instance.maxSegments());
         instance.claimedSegments().forEach(segment -> builder.addClaimedSegment(grpcSegment(segment)));
         return builder.build();
@@ -55,9 +53,9 @@ public class EventProcessorMapping
         EventProcessorSegment.Builder builder = EventProcessorSegment.newBuilder();
         return builder.setId(segment.id())
                       .setClaimedBy(segment.claimedBy())
-                      .setIsCaughtUp(TRUE.equals(segment.isCaughtUp()))
-                      .setIsReplaying(TRUE.equals(segment.isReplaying()))
-                      .setIsInError(TRUE.equals(segment.isInError()))
+                      .setIsCaughtUp(segment.isCaughtUp())
+                      .setIsReplaying(segment.isReplaying())
+                      .setIsInError(segment.isInError())
                       .setOnePartOf(segment.onePartOf())
                       .setError(segment.error().orElse(""))
                       .build();

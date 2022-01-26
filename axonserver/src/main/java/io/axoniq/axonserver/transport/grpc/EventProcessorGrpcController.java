@@ -14,6 +14,7 @@ import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.Application;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
+import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.admin.EventProcessor;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
 import io.axoniq.axonserver.grpc.admin.EventProcessorIdentifier;
@@ -23,6 +24,8 @@ import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorMapping;
 import io.grpc.stub.StreamObserver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+
+import java.util.function.Consumer;
 
 /**
  * Exposed through GRPC the operations applicable to an Event Processor.
@@ -67,7 +70,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void pauseEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
     }
 
     /**
@@ -79,7 +82,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void startEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
         service.start(new EventProcessorIdMessage(eventProcessorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
     }
 
     /**
@@ -91,7 +94,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void splitEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         service.split(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
     }
 
     /**
@@ -103,7 +106,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void mergeEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
         service.merge(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
     }
 
     /**
@@ -118,21 +121,37 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
                      request.getSegment(),
                      request.getTargetClientId(),
                      new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
     }
 
+    /**
+     * Uses the responseObserver to return all event processors registered by all clients connected to on AS
+     *
+     * @param request          not used
+     * @param responseObserver the grpc {@link StreamObserver} used to send the event processor stream
+     */
     @Override
     public void getAllEventProcessors(Empty request, StreamObserver<EventProcessor> responseObserver) {
         service.eventProcessors(new GrpcAuthentication(authenticationProvider))
                .map(eventProcessorMapping)
-               .subscribe(responseObserver::onNext, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(responseObserver::onNext, onError(responseObserver), responseObserver::onCompleted);
     }
 
+    /**
+     * Uses the responseObserver to return the event processors registered by a specific application connected to on AS
+     *
+     * @param request          the request contains the application name used to filter the event processors
+     * @param responseObserver the grpc {@link StreamObserver} used to send the event processor stream
+     */
     @Override
     public void getEventProcessorsByApplication(Application request, StreamObserver<EventProcessor> responseObserver) {
         String application = request.getApplication();
         service.eventProcessorsByApplication(application, new GrpcAuthentication(authenticationProvider))
                .map(eventProcessorMapping)
-               .subscribe(responseObserver::onNext, responseObserver::onError, responseObserver::onCompleted);
+               .subscribe(responseObserver::onNext, onError(responseObserver), responseObserver::onCompleted);
+    }
+
+    private Consumer<Throwable> onError(StreamObserver<?> responseObserver) {
+        return error -> responseObserver.onError(GrpcExceptionBuilder.build(error));
     }
 }
