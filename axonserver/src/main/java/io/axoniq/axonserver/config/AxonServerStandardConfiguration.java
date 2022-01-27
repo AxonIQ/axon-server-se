@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -66,14 +66,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import javax.annotation.Nonnull;
 
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 
@@ -266,9 +264,10 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(AxonServerInformationProvider.class)
-    public AxonServerInformationProvider axonServerInformationProvider(VersionInfoProvider versionInfoProvider) {
-        Map<String,String> versionInfo = new HashMap<>();
-        versionInfo.put(AxonServerInformationProvider.PRODUCT, versionInfoProvider.get().getProductName());
+    public AxonServerInformationProvider axonServerInformationProvider(VersionInfoProvider versionInfoProvider,
+                                                                       FeatureChecker featureChecker) {
+        Map<String, String> versionInfo = new HashMap<>();
+        versionInfo.put(AxonServerInformationProvider.EDITION, featureChecker.getEdition());
         versionInfo.put(AxonServerInformationProvider.VERSION, versionInfoProvider.get().getVersion());
         return () -> versionInfo;
     }
