@@ -48,8 +48,8 @@
             https://github.com/grpc/grpc-java/blob/master/SECURITY.md
         -->
         <grpc.version>1.44.0</grpc.version>
-        <netty.tcnative.version>2.0.38.Final</netty.tcnative.version>
-        <netty.version>4.1.63.Final</netty.version>
+        <netty.tcnative.version>2.0.46.Final</netty.tcnative.version>
+        <netty.version>4.1.72.Final</netty.version>
         <axon.version>4.5.3</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
