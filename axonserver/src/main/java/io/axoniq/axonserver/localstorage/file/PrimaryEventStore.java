@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,12 +12,12 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -451,7 +451,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 writePosition.buffer.putInt(writePosition.position, -1);
 
-                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, (long)totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
+                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence,
+                                                               totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
                                                                true);
                 writePositionRef.set(writePosition.reset(buffer));
             }
@@ -465,9 +466,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return writePositionRef.get().sequence;
     }
 
-    protected WritableEventSource getOrOpenDatafile(long segment, long minSize, boolean canReplaceFile) {
+    protected WritableEventSource getOrOpenDatafile(long segment, int minSize, boolean canReplaceFile) {
         File file = storageProperties.dataFile(context, segment);
-        long size = Math.max(storageProperties.getSegmentSize(), minSize);
+        int size = Math.max(storageProperties.getSegmentSize(), minSize);
         if (file.exists()) {
             if (canReplaceFile && file.length() < minSize) {
                 ByteBufferEventSource s = readBuffers.remove(segment);
@@ -476,7 +477,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 }
                 FileUtils.delete(file);
             } else {
-                size = file.length();
+                size = (int) file.length();
             }
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {
