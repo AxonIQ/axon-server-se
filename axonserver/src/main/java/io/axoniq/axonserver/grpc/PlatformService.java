@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -238,15 +238,15 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .findFirst().orElse(false);
     }
 
-    /**
-     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
-     *
-     * @param instruction the {@link PlatformInboundInstruction} to be sent
-     */
-    public void sendToAllClients(PlatformOutboundInstruction instruction) {
-        connectionMap.values()
-                     .forEach(stream -> stream.onNext(instruction));
-    }
+//    /**
+//     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
+//     *
+//     * @param instruction the {@link PlatformInboundInstruction} to be sent
+//     */
+//    public void sendToAllClients(PlatformOutboundInstruction instruction) {
+//        connectionMap.values()
+//                     .forEach(stream -> stream.onNext(instruction));
+//    }
 
     /**
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.

@@ -87,15 +87,15 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Flux<EventProcessor> eventProcessorsByApplication(@Nonnull String application,
-                                                             @Nonnull Authentication authentication) {
+    public Flux<EventProcessor> eventProcessorsByComponent(@Nonnull String component,
+                                                           @Nonnull Authentication authentication) {
         if (auditLog.isInfoEnabled()) {
-            auditLog.debug("[{}] Request to list Event processors in application \"{}\".",
-                           AuditLog.username(authentication.username()), sanitize(application));
+            auditLog.debug("[{}] Request to list Event processors in component \"{}\".",
+                           AuditLog.username(authentication.username()), sanitize(component));
         }
         return eventProcessors
                 .filterWhen(c -> eventProcessors
-                        .filter(clientProcessor -> clientProcessor.belongsToComponent(application))
+                        .filter(clientProcessor -> clientProcessor.belongsToComponent(component))
                         .map(EventProcessorIdentifier::new)
                         .map(ep -> ep.equals(new EventProcessorIdentifier(c)))
                         .reduce(Boolean::logicalOr))

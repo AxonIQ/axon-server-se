@@ -12,8 +12,8 @@ package io.axoniq.axonserver.transport.grpc;
 import com.google.protobuf.Empty;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.config.AuthenticationProvider;
-import io.axoniq.axonserver.grpc.Application;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
+import io.axoniq.axonserver.grpc.Component;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.admin.EventProcessor;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
@@ -144,9 +144,9 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      * @param responseObserver the grpc {@link StreamObserver} used to send the event processor stream
      */
     @Override
-    public void getEventProcessorsByApplication(Application request, StreamObserver<EventProcessor> responseObserver) {
-        String application = request.getApplication();
-        service.eventProcessorsByApplication(application, new GrpcAuthentication(authenticationProvider))
+    public void getEventProcessorsByComponent(Component request, StreamObserver<EventProcessor> responseObserver) {
+        String component = request.getComponent();
+        service.eventProcessorsByComponent(component, new GrpcAuthentication(authenticationProvider))
                .map(eventProcessorMapping)
                .subscribe(responseObserver::onNext, onError(responseObserver), responseObserver::onCompleted);
     }

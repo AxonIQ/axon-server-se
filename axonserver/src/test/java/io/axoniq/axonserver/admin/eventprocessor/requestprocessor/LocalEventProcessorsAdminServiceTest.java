@@ -140,8 +140,8 @@ public class LocalEventProcessorsAdminServiceTest {
 
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
-        Flux<String> clients = testSubject.eventProcessorsByApplication("component",
-                                                                        () -> "authenticated-user")
+        Flux<String> clients = testSubject.eventProcessorsByComponent("component",
+                                                                      () -> "authenticated-user")
                                           .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
                                           .map(EventProcessorInstance::clientId);
 

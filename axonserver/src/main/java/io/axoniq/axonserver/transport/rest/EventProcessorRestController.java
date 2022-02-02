@@ -51,7 +51,7 @@ public class EventProcessorRestController {
     public Flux<Printable> componentProcessors(@PathVariable("component") String component,
                                                @ApiIgnore final Principal principal) {
 
-        return service.eventProcessorsByApplication(component, new PrincipalAuthentication(principal))
+        return service.eventProcessorsByComponent(component, new PrincipalAuthentication(principal))
                       .map(p -> p.isStreaming() ? new StreamingProcessor(p) : new GenericProcessor(p));
     }
 
