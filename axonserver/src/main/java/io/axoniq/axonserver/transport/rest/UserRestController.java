@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.transport.rest;
 
 
-import io.axoniq.axonserver.access.jpa.Role;
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.roles.RoleController;
@@ -18,7 +17,6 @@ import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -31,8 +29,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
-import javax.annotation.Nonnull;
-import javax.validation.Valid;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -40,8 +36,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static io.axoniq.axonserver.util.StringUtils.sanitize;
+import javax.annotation.Nonnull;
+import javax.validation.Valid;
 
 /**
  * Rest services to manage users.
@@ -68,37 +64,15 @@ public class UserRestController {
     @PostMapping("users")
     public void createUser(@RequestBody @Valid UserJson userJson,
                            @ApiIgnore Principal principal) {
-        if (auditLog.isInfoEnabled()) {
-            auditLog.info("[{}] Request to create user \"{}\" with roles {}.",
-                          AuditLog.username(principal),
-                          sanitize(userJson.getUserName()),
-                          Arrays.stream(userJson.getRoles())
-                                .map(StringUtils::sanitize)
-                                .collect(Collectors.toSet()));
-        }
-
-        if (userJson.userName != null && principal != null && userJson.userName.equals(principal.getName())) {
+        if (principal != null && userJson.userName.equals(principal.getName())) {
             throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
                                                  "Not allowed to change your own credentials");
         }
 
-        Set<String> validRoles = roleController.listRoles().stream().map(Role::getRole).collect(Collectors.toSet());
         Set<UserRole> roles = new HashSet<>();
         if (userJson.roles != null) {
             roles = Arrays.stream(userJson.roles).map(UserRole::parse).collect(Collectors.toSet());
-            for (UserRole role : roles) {
-                if (!validRoles.contains(role.getRole())) {
-                    auditLog.error("[{}] Request to create user \"{}\" with roles {} FAILED: Unknown role \"{}\".",
-                                   AuditLog.username(principal),
-                                   sanitize(userJson.getUserName()),
-                                   roles,
-                                   role);
-                    throw new MessagingPlatformException(ErrorCode.UNKNOWN_ROLE,
-                                                         role + ": Role unknown");
-                }
-            }
         }
-        auditLog.info("[{}] Create user \"{}\" with translated roles {}.", AuditLog.username(principal), userJson.getUserName(), roles);
         userController.createOrUpdateUser(userJson.userName, userJson.password, roles.stream().map(r->new io.axoniq.axonserver.admin.user.api.UserRole() {
             @Nonnull
             @Override
@@ -111,15 +85,15 @@ public class UserRestController {
             public String context() {
                 return r.getContext();
             }
-        }).collect(Collectors.toSet()));
+        }).collect(Collectors.toSet()), new PrincipalAuthentication(principal));
     }
 
     @GetMapping("public/users")
     public List<UserJson> listUsers(@ApiIgnore Principal principal) {
-        auditLog.info("[{}] Request to list users and their roles.", AuditLog.username(principal));
         try {
-            return userController.users().stream().map(UserJson::new).sorted(Comparator
-                                                                                        .comparing(UserJson::getUserName))
+            return userController.users(new PrincipalAuthentication(principal)).stream().map(UserJson::new).sorted(
+                                         Comparator
+                                                 .comparing(UserJson::getUserName))
                                  .collect(Collectors.toList());
         } catch (Exception exception) {
             logger.info("[{}] List users failed - {}", AuditLog.username(principal), exception.getMessage(), exception);
@@ -131,8 +105,7 @@ public class UserRestController {
     public void dropUser(@PathVariable("name") String name,
                          @ApiIgnore Principal principal) {
         try {
-            auditLog.info("[{}] Request to delete user \"{}\".", AuditLog.username(principal), name);
-            userController.deleteUser(name);
+            userController.deleteUser(name, new PrincipalAuthentication(principal));
         } catch (Exception exception) {
             auditLog.error("[{}] Delete user {} failed - {}",
                            AuditLog.username(principal),
@@ -144,6 +117,7 @@ public class UserRestController {
 
     public static class UserJson {
 
+        @Nonnull
         private String userName;
         private String password;
         private String[] roles;
