@@ -83,7 +83,7 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param topology             the {@link Topology} of the group this Axon Server instance participates in
      * @param contextProvider      a {@link ContextProvider} used to retrieve the context this Axon Server instance is
      *                             working under
-     * @param clientIdRegistry      registry to keep track of connected control streams
+     * @param clientIdRegistry     registry to keep track of connected control streams
      * @param eventPublisher       the {@link ApplicationEventPublisher} to publish events through this Axon Server
      * @param instructionAckSource responsible for sending instruction acknowledgements
      */
@@ -163,7 +163,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                     ClientIdentification client = instruction.getRegister();
                     String clientId = client.getClientId();
                     String clientStreamId = clientId + "." + UUID.randomUUID();
-                    clientIdRegistry.register(clientStreamId, new ClientContext(clientId, context), ClientIdRegistry.ConnectionType.PLATFORM);
+                    clientIdRegistry.register(clientStreamId,
+                                              new ClientContext(clientId, context),
+                                              ClientIdRegistry.ConnectionType.PLATFORM);
                     eventPublisher.publishEvent(new ClientTagsUpdate(clientStreamId,
                                                                      context,
                                                                      client.getTagsMap()));
@@ -218,9 +220,9 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         StreamObserver<PlatformOutboundInstruction> stream = connectionMap.get(clientName);
         if (stream != null) {
             eventPublisher.publishEvent(new TopologyEvents.ApplicationReconnectRequested(clientName.context,
-                    clientName.clientId,
-                    clientName.component,
-                    reason));
+                                                                                         clientName.clientId,
+                                                                                         clientName.component,
+                                                                                         reason));
             stream.onNext(PlatformOutboundInstruction.newBuilder()
                                                      .setRequestReconnect(RequestReconnect.newBuilder())
                                                      .build());
@@ -262,19 +264,18 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
      * @param instruction the {@link PlatformInboundInstruction} to be sent
      */
     public void sendToClient(String context, String clientId, PlatformOutboundInstruction instruction) {
-        List<SendingStreamObserver<PlatformOutboundInstruction>> stream =
-                connectionMap.entrySet().stream()
-                             .filter(e -> e.getKey().clientId.equals(clientId))
-                             .filter(e -> e.getKey().context.equals(context))
-                             .map(Map.Entry::getValue)
-                             .collect(Collectors.toList());
-        stream.forEach(s -> s.onNext(instruction));
+        connectionMap.entrySet().stream()
+                     .filter(e -> e.getKey().clientId.equals(clientId))
+                     .filter(e -> e.getKey().context.equals(context))
+                     .map(Map.Entry::getValue)
+                     .forEach(connection -> connection.onNext(instruction));
     }
 
     @EventListener
     public void on(PauseEventProcessorRequest evt) {
         PlatformOutboundInstruction instruction = PlatformOutboundInstruction
                 .newBuilder()
+                .setInstructionId(evt.instructionId())
                 .setPauseEventProcessor(EventProcessorReference.newBuilder()
                                                                .setProcessorName(evt.processorName()))
                 .build();

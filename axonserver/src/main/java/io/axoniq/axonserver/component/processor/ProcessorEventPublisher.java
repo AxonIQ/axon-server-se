@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -91,19 +91,24 @@ public class ProcessorEventPublisher {
         applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus));
     }
 
-    public void pauseProcessorRequest(String context, String clientId, String processorName) {
+    public void pauseProcessorRequest(String context, String clientId, String processorName, String instructionId) {
         applicationEventPublisher.publishEvent(new PauseEventProcessorRequest(context,
-                                                                              clientId, processorName, NOT_PROXIED));
+                                                                              clientId, processorName,
+                                                                              instructionId,
+                                                                              NOT_PROXIED));
     }
 
-    public void startProcessorRequest(String context, String clientId, String processorName) {
+    public void startProcessorRequest(String context, String clientId, String processorName, String instructionId) {
         applicationEventPublisher.publishEvent(new StartEventProcessorRequest(context,
-                                                                              clientId, processorName, NOT_PROXIED));
+                                                                              clientId, processorName,
+                                                                              instructionId,
+                                                                              NOT_PROXIED));
     }
 
-    public void releaseSegment(String context, String clientId, String processorName, int segmentId) {
+    public void releaseSegment(String context, String clientId, String processorName, int segmentId,
+                               String instructionId) {
         applicationEventPublisher.publishEvent(
-                new ReleaseSegmentRequest(context, clientId, processorName, segmentId, NOT_PROXIED)
+                new ReleaseSegmentRequest(context, clientId, processorName, segmentId, instructionId, NOT_PROXIED)
         );
     }
 
@@ -111,12 +116,12 @@ public class ProcessorEventPublisher {
      * Split the biggest segment of the given {@code processorName} in two, by publishing a {@link SplitSegmentRequest}
      * as an application event to be picked up by the component publishing this message towards the right Axon client.
      *
-     * @param context         the principal context of the event processor
-     * @param clientIds a {@link List} of {@link String}s containing the specified tracking event processor
-     * @param processorName   a {@link String} specifying the Tracking Event Processor for which the biggest segment
-     *                        should be split in two
+     * @param context       the principal context of the event processor
+     * @param clientIds     a {@link List} of {@link String}s containing the specified tracking event processor
+     * @param processorName a {@link String} specifying the Tracking Event Processor for which the biggest segment
+     *                      should be split in two
      */
-    public void splitSegment(String context, List<String> clientIds, String processorName) {
+    public void splitSegment(String context, List<String> clientIds, String processorName, String instructionId) {
         Map<ClientSegmentPair, SegmentStatus> clientToTracker =
                 buildClientToTrackerMap(clientIds, processorName, REGULAR_ORDER);
 
@@ -131,9 +136,11 @@ public class ProcessorEventPublisher {
                 NOT_PROXIED,
                 context,
                 getClientIdForSegment(clientToTracker, biggestSegment)
-                        .orElseThrow(() -> new IllegalArgumentException("No client found which has a claim on segment [" + biggestSegment + "]")),
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "No client found which has a claim on segment [" + biggestSegment + "]")),
                 processorName,
-                biggestSegment
+                biggestSegment,
+                instructionId
         ));
     }
 
@@ -148,7 +155,7 @@ public class ProcessorEventPublisher {
      * @param processorName a {@link String} specifying the Tracking Event Processor for which the smallest segment
      *                      should be merged with the segment that it's paired with
      */
-    public void mergeSegment(String context, List<String> clientIds, String processorName) {
+    public void mergeSegment(String context, List<String> clientIds, String processorName, String instructionId) {
         Map<ClientSegmentPair, SegmentStatus> clientToTracker =
                 buildClientToTrackerMap(clientIds, processorName, REVERSE_ORDER);
 
@@ -173,7 +180,12 @@ public class ProcessorEventPublisher {
 
         if (clientIdOwningSegmentToMerge.isPresent()) {
             applicationEventPublisher.publishEvent(new MergeSegmentRequest(
-                    NOT_PROXIED, context, clientIdOwningSegmentToMerge.get(), processorName, segmentToMerge
+                    NOT_PROXIED,
+                    context,
+                    clientIdOwningSegmentToMerge.get(),
+                    processorName,
+                    segmentToMerge,
+                    instructionId
             ));
         } else {
             // the segment to merge with is unclaimed. We need to merge the known part
@@ -184,7 +196,12 @@ public class ProcessorEventPublisher {
                     );
 
             applicationEventPublisher.publishEvent(new MergeSegmentRequest(
-                    NOT_PROXIED, context, clientOwningSmallestSegment, processorName, smallestSegment.getSegmentId()
+                    NOT_PROXIED,
+                    context,
+                    clientOwningSmallestSegment,
+                    processorName,
+                    smallestSegment.getSegmentId(),
+                    instructionId
             ));
         }
     }

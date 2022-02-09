@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -80,12 +80,15 @@ public class EventProcessorEvents {
         private final String context;
         private final String clientId;
         private final String processorName;
+        private final String instructionId;
 
-        public PauseEventProcessorRequest(String context, String clientId, String processorName, boolean proxied) {
+        public PauseEventProcessorRequest(String context, String clientId, String processorName,
+                                          String instructionId, boolean proxied) {
             super(proxied);
             this.context = context;
             this.clientId = clientId;
             this.processorName = processorName;
+            this.instructionId = instructionId;
         }
 
         public String clientId() {
@@ -98,10 +101,15 @@ public class EventProcessorEvents {
 
         /**
          * Returns the principal context of the event processor
+         *
          * @return the principal context of the event processor
          */
         public String context() {
             return context;
+        }
+
+        public String instructionId() {
+            return instructionId;
         }
     }
 
@@ -111,12 +119,15 @@ public class EventProcessorEvents {
         private final String context;
         private final String clientId;
         private final String processorName;
+        private final String instructionId;
 
-        public StartEventProcessorRequest(String context, String clientId, String processorName, boolean proxied) {
+        public StartEventProcessorRequest(String context, String clientId, String processorName,
+                                          String instructionId, boolean proxied) {
             super(proxied);
             this.context = context;
             this.clientId = clientId;
             this.processorName = processorName;
+            this.instructionId = instructionId;
         }
 
         public String clientId() {
@@ -146,6 +157,7 @@ public class EventProcessorEvents {
         private final String context;
         private final String clientId;
         private final String processorName;
+        private final String instructionId;
         private final int segmentId;
 
         /**
@@ -156,14 +168,17 @@ public class EventProcessorEvents {
          * @param context       the principal context of the event processor
          * @param clientId      a {@link String} defining the platform stream of the client which should handle this
          *                      message
+         * @param instructionId
          * @param processorName a {@link String} defining the name of the processor which this message should perform
          *                      some operation on/with
          * @param segmentId     an {@code int} specifying the segment identifier which this message should perform some
          */
-        protected BaseSegmentRequest(boolean proxied, String context, String clientId, String processorName, int segmentId) {
+        protected BaseSegmentRequest(boolean proxied, String context, String clientId, String instructionId,
+                                     String processorName, int segmentId) {
             super(proxied);
             this.context = context;
             this.clientId = clientId;
+            this.instructionId = instructionId;
             this.processorName = processorName;
             this.segmentId = segmentId;
         }
@@ -197,10 +212,15 @@ public class EventProcessorEvents {
 
         /**
          * Returns the principal context of the event processor
+         *
          * @return the principal context of the event processor
          */
         public String context() {
             return context;
+        }
+
+        public String instructionId() {
+            return instructionId;
         }
     }
 
@@ -210,8 +230,9 @@ public class EventProcessorEvents {
      */
     public static class ReleaseSegmentRequest extends BaseSegmentRequest {
 
-        public ReleaseSegmentRequest(String context, String clientName, String processorName, int segmentId, boolean proxied) {
-            super(proxied, context, clientName, processorName, segmentId);
+        public ReleaseSegmentRequest(String context, String clientName, String processorName, int segmentId,
+                                     String instructionId, boolean proxied) {
+            super(proxied, context, clientName, instructionId, processorName, segmentId);
         }
     }
 
@@ -251,8 +272,9 @@ public class EventProcessorEvents {
      */
     public static class SplitSegmentRequest extends BaseSegmentRequest {
 
-        public SplitSegmentRequest(boolean proxied, String context, String clientId, String processorName, int segmentId) {
-            super(proxied, context, clientId, processorName, segmentId);
+        public SplitSegmentRequest(boolean proxied, String context, String clientId, String processorName,
+                                   int segmentId, String instructionId) {
+            super(proxied, context, clientId, instructionId, processorName, segmentId);
         }
     }
 
@@ -262,8 +284,9 @@ public class EventProcessorEvents {
      */
     public static class MergeSegmentRequest extends BaseSegmentRequest {
 
-        public MergeSegmentRequest(boolean proxied, String context, String clientId, String processorName, int segmentId) {
-            super(proxied, context, clientId, processorName, segmentId);
+        public MergeSegmentRequest(boolean proxied, String context, String clientId, String processorName,
+                                   int segmentId, String instructionId) {
+            super(proxied, context, clientId, instructionId, processorName, segmentId);
         }
     }
 

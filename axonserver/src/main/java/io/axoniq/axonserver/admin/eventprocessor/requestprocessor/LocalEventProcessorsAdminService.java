@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
+import io.axoniq.axonserver.admin.InstructionCache;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
@@ -18,12 +19,18 @@ import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
@@ -39,8 +46,10 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
 public class LocalEventProcessorsAdminService implements EventProcessorAdminService {
 
     private static final Logger auditLog = AuditLog.getLogger();
+    private final Logger logger = LoggerFactory.getLogger(LocalEventProcessorsAdminService.class);
     private final ProcessorEventPublisher processorEventsSource;
     private final Flux<ClientProcessor> eventProcessors;
+    private final ConstraintCache<String, InstructionCache.Instruction> instructionCache;
 
     /**
      * Default implementation of {@link EventProcessorAdminService}.
@@ -51,15 +60,18 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
     @Autowired
     public LocalEventProcessorsAdminService(
             ProcessorEventPublisher processorEventsSource,
-            ClientProcessors eventProcessors) {
-        this(processorEventsSource, Flux.fromIterable(eventProcessors));
+            ClientProcessors eventProcessors,
+            InstructionCache instructionCache) {
+        this(processorEventsSource, Flux.fromIterable(eventProcessors), instructionCache);
     }
 
     public LocalEventProcessorsAdminService(
             ProcessorEventPublisher processorEventsSource,
-            Flux<ClientProcessor> eventProcessors) {
+            Flux<ClientProcessor> eventProcessors,
+            ConstraintCache<String, InstructionCache.Instruction> instructionCache) {
         this.processorEventsSource = processorEventsSource;
         this.eventProcessors = eventProcessors;
+        this.instructionCache = instructionCache;
     }
 
     @Nonnull
@@ -114,87 +126,144 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
     @Override
     public Mono<Void> pause(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
-        if (auditLog.isInfoEnabled()) {
-            auditLog.info("[{}] Request to pause Event processor \"{}@{}\".",
-                          AuditLog.username(authentication.username()),
-                          sanitize(processor),
-                          sanitize(identifier.tokenStoreIdentifier()));
-        }
+        String requestDescription = "Pause " + processor;
         return eventProcessors
+                .doFirst(() -> {
+                    if (auditLog.isInfoEnabled()) {
+                        auditLog.info("[{}] Request to pause Event processor \"{}@{}\".",
+                                      AuditLog.username(authentication.username()),
+                                      sanitize(processor),
+                                      sanitize(identifier.tokenStoreIdentifier()));
+                    }
+                })
                 .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
-                .doOnNext(ep -> processorEventsSource.pauseProcessorRequest(ep.context(), ep.clientId(), processor))
-                .then();
-        // the context will be removed from the event processor
+                .collectList()
+                .flatMap(clients -> Mono.<Void>create(sink -> {
+                    String instructionId = UUID.randomUUID().toString();
+                    Set<String> targetClients = clients.stream()
+                                                       .map(ClientProcessor::clientId)
+                                                       .collect(Collectors.toSet());
+                    instructionCache.put(instructionId, new InstructionInformation(sink,
+                                                                                   instructionId,
+                                                                                   requestDescription,
+                                                                                   targetClients));
+                    clients.forEach(ep -> processorEventsSource.pauseProcessorRequest(ep.context(),
+                                                                                      ep.clientId(),
+                                                                                      processor,
+                                                                                      instructionId));
+                }))
+                .doOnError(err -> logError(requestDescription, err));
+    }
+
+    private void logError(String description, Throwable err) {
+        logger.warn("{} failed", description, err);
     }
 
     @Nonnull
     @Override
     public Mono<Void> start(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
-        if (auditLog.isInfoEnabled()) {
-            auditLog.info("[{}] Request to start Event processor \"{}@{}\".",
-                          AuditLog.username(authentication.username()),
-                          sanitize(processor),
-                          sanitize(identifier.tokenStoreIdentifier()));
-        }
-
+        String requestDescription = "Start " + processor;
         return eventProcessors
+                .doFirst(() -> {
+                    if (auditLog.isInfoEnabled()) {
+                        auditLog.info("[{}] Request to start Event processor \"{}@{}\".",
+                                      AuditLog.username(authentication.username()),
+                                      sanitize(processor),
+                                      sanitize(identifier.tokenStoreIdentifier()));
+                    }
+                })
                 .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
-                .doOnNext(ep -> processorEventsSource.startProcessorRequest(ep.context(), ep.clientId(), processor))
-                .then();
-        // the context will be removed from the event processor
+                .collectList()
+                .flatMap(clients -> Mono.<Void>create(sink -> {
+                    String instructionId = UUID.randomUUID().toString();
+                    Set<String> targetClients = clients.stream()
+                                                       .map(ClientProcessor::clientId)
+                                                       .collect(Collectors.toSet());
+                    instructionCache.put(instructionId, new InstructionInformation(sink,
+                                                                                   instructionId,
+                                                                                   requestDescription,
+                                                                                   targetClients));
+                    clients.forEach(ep -> processorEventsSource.startProcessorRequest(ep.context(),
+                                                                                      ep.clientId(),
+                                                                                      processor,
+                                                                                      instructionId));
+                }))
+                .doOnError(err -> logError(requestDescription, err));
     }
 
     @Nonnull
     @Override
     public Mono<Void> split(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
+        String requestDescription = "Split " + processor;
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
-        if (auditLog.isInfoEnabled()) {
-            auditLog.info("[{}] Request to split a segment of Event processor \"{}@{}\".",
-                          AuditLog.username(authentication.username()),
-                          sanitize(processor),
-                          sanitize(tokenStoreIdentifier));
-        }
-
-        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
         return eventProcessors
-                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-                .groupBy(ClientProcessor::context)
-                .flatMap(contextGroup -> contextGroup
-                        .map(ClientProcessor::clientId)
-                        .collectList()
-                        .doOnNext(clients -> processorEventsSource.splitSegment(contextGroup.key(),
-                                                                                clients,
-                                                                                processor)))
-                .then();
-        // the context will be removed from the event processor
+                .doFirst(() -> {
+                    if (auditLog.isInfoEnabled()) {
+                        auditLog.info("[{}] Request to split a segment of Event processor \"{}@{}\".",
+                                      AuditLog.username(authentication.username()),
+                                      sanitize(processor),
+                                      sanitize(tokenStoreIdentifier));
+                    }
+                })
+                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .collectList()
+                .flatMap(clients -> Mono.<Void>create(sink -> {
+                    String instructionId = UUID.randomUUID().toString();
+                    Set<String> targetClients = clients.stream()
+                                                       .map(ClientProcessor::clientId)
+                                                       .collect(Collectors.toSet());
+                    instructionCache.put(instructionId, new InstructionInformation(sink,
+                                                                                   instructionId,
+                                                                                   requestDescription,
+                                                                                   targetClients));
+                    clients.forEach(ep -> processorEventsSource.splitSegment(ep.context(),
+                                                                             clientsPerContext(clients, ep.context()),
+                                                                             processor,
+                                                                             instructionId));
+                }))
+                .doOnError(err -> logError(requestDescription, err));
+    }
+
+    private List<String> clientsPerContext(List<ClientProcessor> clients, String context) {
+        return clients.stream().filter(p -> p.belongsToContext(context))
+                      .map(ClientProcessor::clientId)
+                      .collect(Collectors.toList());
     }
 
     @Nonnull
     @Override
     public Mono<Void> merge(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
+        String requestDescription = "Merge " + processor;
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
-        if (auditLog.isInfoEnabled()) {
-            auditLog.info("[{}] Request to merge two segments of Event processor \"{}@{}\".",
-                          AuditLog.username(authentication.username()),
-                          sanitize(processor),
-                          sanitize(tokenStoreIdentifier));
-        }
-
-        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
         return eventProcessors
-                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-                .groupBy(ClientProcessor::context)
-                .flatMap(contextGroup -> contextGroup
-                        .map(ClientProcessor::clientId)
-                        .collectList()
-                        .doOnNext(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
-                                                                                clients,
-                                                                                processor)))
-                .then();
-        // the context will be removed from the event processor
+                .doFirst(() -> {
+                    if (auditLog.isInfoEnabled()) {
+                        auditLog.info("[{}] Request to merge a segment of Event processor \"{}@{}\".",
+                                      AuditLog.username(authentication.username()),
+                                      sanitize(processor),
+                                      sanitize(tokenStoreIdentifier));
+                    }
+                })
+                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .collectList()
+                .flatMap(clients -> Mono.<Void>create(sink -> {
+                    String instructionId = UUID.randomUUID().toString();
+                    Set<String> targetClients = clients.stream()
+                                                       .map(ClientProcessor::clientId)
+                                                       .collect(Collectors.toSet());
+                    instructionCache.put(instructionId, new InstructionInformation(sink,
+                                                                                   instructionId,
+                                                                                   requestDescription,
+                                                                                   targetClients));
+                    clients.forEach(ep -> processorEventsSource.mergeSegment(ep.context(),
+                                                                             clientsPerContext(clients, ep.context()),
+                                                                             processor,
+                                                                             instructionId));
+                }))
+                .doOnError(err -> logError(requestDescription, err));
     }
 
 
@@ -204,24 +273,36 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                            @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
-        if (auditLog.isInfoEnabled()) {
-            auditLog.info("[{}] Request to move the segment {} for Event processor \"{}@{}\" to client {}.",
-                          AuditLog.username(authentication.username()),
-                          segment,
-                          sanitize(processor),
-                          sanitize(tokenStoreIdentifier),
-                          sanitize(target));
-        }
-
+        String requestDescription = "Move " + processor;
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+
         return eventProcessors
+                .doFirst(() -> {
+                    if (auditLog.isInfoEnabled()) {
+                        auditLog.info("[{}] Request to start Event processor \"{}@{}\".",
+                                      AuditLog.username(authentication.username()),
+                                      sanitize(processor),
+                                      sanitize(identifier.tokenStoreIdentifier()));
+                    }
+                })
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                 .filter(eventProcessor -> !target.equals(eventProcessor.clientId()))
-                .doOnNext(ep -> processorEventsSource.releaseSegment(ep.context(),
-                                                                     ep.clientId(),
-                                                                     processor,
-                                                                     segment))
-                .then();
-        // the context will be removed from the event processor
+                .collectList()
+                .flatMap(clients -> Mono.<Void>create(sink -> {
+                    String instructionId = UUID.randomUUID().toString();
+                    Set<String> targetClients = clients.stream()
+                                                       .map(ClientProcessor::clientId)
+                                                       .collect(Collectors.toSet());
+                    instructionCache.put(instructionId, new InstructionInformation(sink,
+                                                                                   instructionId,
+                                                                                   requestDescription,
+                                                                                   targetClients));
+                    clients.forEach(ep -> processorEventsSource.releaseSegment(ep.context(),
+                                                                               ep.clientId(),
+                                                                               processor,
+                                                                               segment,
+                                                                               instructionId));
+                }))
+                .doOnError(err -> logError(requestDescription, err));
     }
 }

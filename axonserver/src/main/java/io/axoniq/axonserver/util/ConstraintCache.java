@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -20,9 +20,9 @@ public interface ConstraintCache<K, V> {
 
     int size();
 
-    V remove(Object key);
+    V remove(K key);
 
-    V get(Object key);
+    V get(K key);
 
     V put(K key, V value);
 
