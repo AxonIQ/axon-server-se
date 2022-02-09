@@ -238,16 +238,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                             .findFirst().orElse(false);
     }
 
-//    /**
-//     * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
-//     *
-//     * @param instruction the {@link PlatformInboundInstruction} to be sent
-//     */
-//    public void sendToAllClients(PlatformOutboundInstruction instruction) {
-//        connectionMap.values()
-//                     .forEach(stream -> stream.onNext(instruction));
-//    }
-
     /**
      * Sends the specified instruction to all the clients that are directly connected to this instance of AxonServer.
      *
