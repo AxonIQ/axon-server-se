@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -56,6 +57,7 @@ public class ProcessorEventPublisherTest {
 
     private ProcessorEventPublisher testSubject;
     private List<ClientProcessor> eventProcessors;
+    private final String instructionId = UUID.randomUUID().toString();
 
     @Before
     public void setUp() {
@@ -103,13 +105,13 @@ public class ProcessorEventPublisherTest {
     }
 
     /**
-     * Test whether the {@link ProcessorEventPublisher#splitSegment(String, List, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#splitSegment(String, List, String, String)} operation correctly
      * deduces what the largest Segment for a given Event Processor is, for which the {@code segmentId} will be included
      * to the {@link SplitSegmentRequest}.
      */
     @Test
     public void testSplitSegmentSelectsTheLargestSegmentToSplit() {
-        testSubject.splitSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_SPLIT);
+        testSubject.splitSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_SPLIT, instructionId);
 
         ArgumentCaptor<SplitSegmentRequest> argumentCaptor = ArgumentCaptor.forClass(SplitSegmentRequest.class);
         verify(applicationEventPublisher).publishEvent(argumentCaptor.capture());
@@ -122,7 +124,7 @@ public class ProcessorEventPublisherTest {
     }
 
     /**
-     * Test whether the {@link ProcessorEventPublisher#mergeSegment(String, List, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#mergeSegment(String, List, String, String)} operation correctly
      * deduces what the smallest Segment for a given Event Processor is, for which the {@code segmentId} will be
      * included to the {@link MergeSegmentRequest}.
      */
@@ -130,7 +132,7 @@ public class ProcessorEventPublisherTest {
     public void testMergeSegmentSelectsTheSmallestSegmentToMerge() {
         int expectedInvocations = 2;
 
-        testSubject.mergeSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_MERGE);
+        testSubject.mergeSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_MERGE, instructionId);
 
         ArgumentCaptor<Object> argumentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(applicationEventPublisher, times(expectedInvocations)).publishEvent(argumentCaptor.capture());
@@ -151,7 +153,7 @@ public class ProcessorEventPublisherTest {
 
 
     /**
-     * Test whether the {@link ProcessorEventPublisher#mergeSegment(String, List, String)} operation correctly
+     * Test whether the {@link ProcessorEventPublisher#mergeSegment(String, List, String, String)} operation correctly
      * deduces what the smallest Segment for a given Event Processor is, for which the {@code segmentId} will be
      * included to the {@link MergeSegmentRequest}.
      */
@@ -175,7 +177,7 @@ public class ProcessorEventPublisherTest {
         when(splitClientProcessor.eventProcessorInfo()).thenReturn(eventProcessorToSplit);
         eventProcessors.add(splitClientProcessor);
 
-        testSubject.mergeSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_SPLIT);
+        testSubject.mergeSegment(CONTEXT, CLIENTS, PROCESSOR_NAME_TO_SPLIT, instructionId);
 
         ArgumentCaptor<Object> argumentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(applicationEventPublisher, times(expectedInvocations)).publishEvent(argumentCaptor.capture());

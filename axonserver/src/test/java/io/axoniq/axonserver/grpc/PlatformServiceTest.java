@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -29,6 +29,7 @@ import org.junit.runner.*;
 import org.mockito.junit.*;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -43,6 +44,7 @@ public class PlatformServiceTest {
     private final String context = Topology.DEFAULT_CONTEXT;
     private PlatformService platformService;
     private final ClientIdRegistry clientIdRegistry = new DefaultClientIdRegistry();
+    private final String instructionId = UUID.randomUUID().toString();
 
     @Before
     public void setUp() {

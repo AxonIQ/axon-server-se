@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -27,7 +27,10 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -211,6 +214,11 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 .collectList()
                 .flatMap(clients -> Mono.<Void>create(sink -> {
                     String instructionId = UUID.randomUUID().toString();
+                    Map<String, List<String>> clientsPerContext = new HashMap<>();
+                    clients.forEach(cp -> {
+                        clientsPerContext.computeIfAbsent(cp.context(), c -> new LinkedList<>())
+                                         .add(cp.clientId());
+                    });
                     Set<String> targetClients = clients.stream()
                                                        .map(ClientProcessor::clientId)
                                                        .collect(Collectors.toSet());
@@ -218,10 +226,10 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                                                                    instructionId,
                                                                                    requestDescription,
                                                                                    targetClients));
-                    clients.forEach(ep -> processorEventsSource.splitSegment(ep.context(),
-                                                                             clientsPerContext(clients, ep.context()),
-                                                                             processor,
-                                                                             instructionId));
+                    clientsPerContext.forEach((context, c) -> processorEventsSource.splitSegment(context,
+                                                                                                 c,
+                                                                                                 processor,
+                                                                                                 instructionId));
                 }))
                 .doOnError(err -> logError(requestDescription, err));
     }
@@ -251,6 +259,11 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 .collectList()
                 .flatMap(clients -> Mono.<Void>create(sink -> {
                     String instructionId = UUID.randomUUID().toString();
+                    Map<String, List<String>> clientsPerContext = new HashMap<>();
+                    clients.forEach(cp -> {
+                        clientsPerContext.computeIfAbsent(cp.context(), c -> new LinkedList<>())
+                                         .add(cp.clientId());
+                    });
                     Set<String> targetClients = clients.stream()
                                                        .map(ClientProcessor::clientId)
                                                        .collect(Collectors.toSet());
@@ -258,10 +271,10 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                                                                    instructionId,
                                                                                    requestDescription,
                                                                                    targetClients));
-                    clients.forEach(ep -> processorEventsSource.mergeSegment(ep.context(),
-                                                                             clientsPerContext(clients, ep.context()),
-                                                                             processor,
-                                                                             instructionId));
+                    clientsPerContext.forEach((context, c) -> processorEventsSource.mergeSegment(context,
+                                                                                                 c,
+                                                                                                 processor,
+                                                                                                 instructionId));
                 }))
                 .doOnError(err -> logError(requestDescription, err));
     }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -26,6 +26,7 @@ import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Rest APIs related to the load balancing of tracking event processors over client applications.
@@ -83,6 +84,7 @@ public class LoadBalancingRestController {
                        processor, strategyName);
 
         TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context, tokenStoreIdentifier);
-        processorLoadBalanceStrategy.balance(trackingProcessor, strategyName).perform();
+        String instructionId = UUID.randomUUID().toString();
+        processorLoadBalanceStrategy.balance(trackingProcessor, strategyName).perform(instructionId);
     }
 }

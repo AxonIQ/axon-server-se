@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.MergeSegmentRequest;
@@ -14,6 +23,7 @@ import org.junit.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -35,11 +45,13 @@ public class EventProcessorServiceTest {
     private List<Object> publishedInternalEvents = new CopyOnWriteArrayList<>();
 
     private EventProcessorService testSubject = new EventProcessorService(
-            (context, client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>()).add(i),
+            (context, client, i) -> publishedInstructions.computeIfAbsent(client, k -> new CopyOnWriteArrayList<>())
+                                                         .add(i),
             instructionId -> (subscriber, timeout) -> resultSubscribers.computeIfAbsent(instructionId,
                                                                                         k -> new CopyOnWriteArrayList<>())
                                                                        .add(subscriber),
             event -> publishedInternalEvents.add(event));
+    private final String instructionId = UUID.randomUUID().toString();
 
     @Before
     public void setUp() throws Exception {
@@ -54,7 +66,8 @@ public class EventProcessorServiceTest {
                                                                           context,
                                                                           "MergeClient",
                                                                           "Processor",
-                                                                          1);
+                                                                          1,
+                                                                          instructionId);
         testSubject.on(mergeSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("MergeClient").get(0);
@@ -78,7 +91,8 @@ public class EventProcessorServiceTest {
                                                                           context,
                                                                           "MergeClient",
                                                                           "Processor",
-                                                                          1);
+                                                                          1,
+                                                                          instructionId);
         testSubject.on(mergeSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("MergeClient").get(0);
@@ -98,7 +112,8 @@ public class EventProcessorServiceTest {
                                                                           context,
                                                                           "SplitClient",
                                                                           "processor",
-                                                                          1);
+                                                                          1,
+                                                                          instructionId);
         testSubject.on(splitSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("SplitClient").get(0);
@@ -122,7 +137,8 @@ public class EventProcessorServiceTest {
                                                                           context,
                                                                           "SplitClient",
                                                                           "processor",
-                                                                          1);
+                                                                          1,
+                                                                          instructionId);
         testSubject.on(splitSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());
         PlatformOutboundInstruction published = publishedInstructions.get("SplitClient").get(0);
@@ -143,6 +159,7 @@ public class EventProcessorServiceTest {
                                                                                 "Release",
                                                                                 "processor",
                                                                                 1,
+                                                                                instructionId,
                                                                                 false);
         testSubject.on(releaseSegmentRequest);
         assertFalse(publishedInstructions.isEmpty());

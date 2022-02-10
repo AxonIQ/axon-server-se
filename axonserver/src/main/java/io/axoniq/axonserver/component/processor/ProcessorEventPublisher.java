@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -172,8 +172,12 @@ public class ProcessorEventPublisher {
         clientIdOwningSegmentToMerge.ifPresent(
                 clientId -> {
                     clientIds.stream()
-                               .filter(client -> !client.equals(clientId))
-                               .forEach(client -> releaseSegment(context, client, processorName, smallestSegment.getSegmentId()));
+                             .filter(client -> !client.equals(clientId))
+                             .forEach(client -> releaseSegment(context,
+                                                               client,
+                                                               processorName,
+                                                               smallestSegment.getSegmentId(),
+                                                               instructionId));
 
                 }
         );

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,12 +9,14 @@
 
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
+import io.axoniq.axonserver.admin.InstructionCache;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
+import io.axoniq.axonserver.grpc.InstructionResult;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.junit.*;
 import org.junit.runner.*;
@@ -37,6 +39,100 @@ public class LocalEventProcessorsAdminServiceTest {
 
     @Mock
     ProcessorEventPublisher publisher;
+    private final InstructionCache instructionCache = new InstructionCache(100, 1000);
+
+    @Before
+    public void setup() {
+        doAnswer(invocationOnMock -> {
+            String invocationId = invocationOnMock.getArgument(3);
+            List<String> clientIds = invocationOnMock.getArgument(1);
+            clientIds.forEach(clientId -> {
+                instructionCache.get(invocationId).on(new InstructionCache.Result() {
+
+                    @Override
+                    public String clientId() {
+                        return clientId;
+                    }
+
+                    @Override
+                    public InstructionResult instructionResult() {
+                        return InstructionResult.newBuilder().setSuccess(true).build();
+                    }
+                });
+            });
+            return null;
+        }).when(publisher).splitSegment(anyString(), any(), anyString(), anyString());
+        doAnswer(invocationOnMock -> {
+            String invocationId = invocationOnMock.getArgument(3);
+            List<String> clientIds = invocationOnMock.getArgument(1);
+            clientIds.forEach(clientId -> {
+                instructionCache.get(invocationId).on(new InstructionCache.Result() {
+
+                    @Override
+                    public String clientId() {
+                        return clientId;
+                    }
+
+                    @Override
+                    public InstructionResult instructionResult() {
+                        return InstructionResult.newBuilder().setSuccess(true).build();
+                    }
+                });
+            });
+            return null;
+        }).when(publisher).mergeSegment(anyString(), any(), anyString(), anyString());
+        doAnswer(invocationOnMock -> {
+            String invocationId = invocationOnMock.getArgument(3);
+            String clientId = invocationOnMock.getArgument(1);
+            instructionCache.get(invocationId).on(new InstructionCache.Result() {
+
+                @Override
+                public String clientId() {
+                    return clientId;
+                }
+
+                @Override
+                public InstructionResult instructionResult() {
+                    return InstructionResult.newBuilder().setSuccess(true).build();
+                }
+            });
+            return null;
+        }).when(publisher).pauseProcessorRequest(anyString(), anyString(), anyString(), anyString());
+        doAnswer(invocationOnMock -> {
+            String invocationId = invocationOnMock.getArgument(3);
+            String clientId = invocationOnMock.getArgument(1);
+            instructionCache.get(invocationId).on(new InstructionCache.Result() {
+
+                @Override
+                public String clientId() {
+                    return clientId;
+                }
+
+                @Override
+                public InstructionResult instructionResult() {
+                    return InstructionResult.newBuilder().setSuccess(true).build();
+                }
+            });
+            return null;
+        }).when(publisher).startProcessorRequest(anyString(), anyString(), anyString(), anyString());
+        doAnswer(invocationOnMock -> {
+            String invocationId = invocationOnMock.getArgument(4);
+            String clientId = invocationOnMock.getArgument(1);
+            instructionCache.get(invocationId).on(new InstructionCache.Result() {
+
+                @Override
+                public String clientId() {
+                    return clientId;
+                }
+
+                @Override
+                public InstructionResult instructionResult() {
+                    return InstructionResult.newBuilder().setSuccess(true).build();
+                }
+            });
+            return null;
+        }).when(publisher).releaseSegment(anyString(), anyString(), anyString(), anyInt(), anyString());
+    }
 
     @Test
     public void pauseTest() {
@@ -47,11 +143,13 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
         testSubject.pause(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
-        verify(publisher).pauseProcessorRequest("default", "Client-A", processorName);
-        verify(publisher).pauseProcessorRequest("default", "Client-B", processorName);
+        verify(publisher).pauseProcessorRequest(eq("default"), eq("Client-A"), eq(processorName), any());
+        verify(publisher).pauseProcessorRequest(eq("default"), eq("Client-B"), eq(processorName), any());
         verifyNoMoreInteractions(publisher);
     }
 
@@ -64,11 +162,13 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
         testSubject.start(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
-        verify(publisher).startProcessorRequest("default", "Client-A", processorName);
-        verify(publisher).startProcessorRequest("default", "Client-B", processorName);
+        verify(publisher).startProcessorRequest(eq("default"), eq("Client-A"), eq(processorName), any());
+        verify(publisher).startProcessorRequest(eq("default"), eq("Client-B"), eq(processorName), any());
         verifyNoMoreInteractions(publisher);
     }
 
@@ -82,11 +182,13 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
         testSubject.split(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         List<String> clients = asList("Client-A", "Client-B");
-        verify(publisher).splitSegment("default", clients, processorName);
+        verify(publisher).splitSegment(eq("default"), eq(clients), eq(processorName), any());
         verifyNoMoreInteractions(publisher);
     }
 
@@ -99,11 +201,13 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
         testSubject.merge(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         List<String> clients = asList("Client-A", "Client-B");
-        verify(publisher).mergeSegment("default", clients, processorName);
+        verify(publisher).mergeSegment(eq("default"), eq(clients), eq(processorName), any());
         verifyNoMoreInteractions(publisher);
     }
 
@@ -117,11 +221,13 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessor clientE = new FakeClientProcessor("Client-E", processorName, tokenStore);
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
         testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
                          () -> "authenticated-user").block();
-        verify(publisher).releaseSegment("default", "Client-A", processorName, 2);
-        verify(publisher).releaseSegment("default", "Client-E", processorName, 2);
+        verify(publisher).releaseSegment(eq("default"), eq("Client-A"), eq(processorName), eq(2), any());
+        verify(publisher).releaseSegment(eq("default"), eq("Client-E"), eq(processorName), eq(2), any());
         verifyNoMoreInteractions(publisher);
     }
 
@@ -139,7 +245,9 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientE = new FakeClientProcessor("Client-E", true, eventProcessorE);
 
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
         Flux<String> clients = testSubject.eventProcessorsByComponent("component",
                                                                       () -> "authenticated-user")
                                           .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
