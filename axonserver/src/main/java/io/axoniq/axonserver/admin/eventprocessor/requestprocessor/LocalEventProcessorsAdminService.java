@@ -233,6 +233,8 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                                                                   segmentStatus.getSegmentId(),
                                                                                   segmentStatus.getOnePartOf())))
                 .reduce((segment, segment2) -> segment.onePartOf < segment2.onePartOf ? segment : segment2)
+                .switchIfEmpty(Mono.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_NOT_FOUND,
+                                                                         "Event processor not found")))
                 .flatMap(largestSegment -> Mono.<Void>create(sink -> {
                     String instructionId = UUID.randomUUID().toString();
                     instructionCache.put(instructionId, new InstructionInformation(sink,
@@ -245,8 +247,6 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                                        largestSegment.segmentId,
                                                        instructionId);
                 }))
-                .switchIfEmpty(Mono.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_NOT_FOUND,
-                                                                         "Event processor not found")))
                 .doOnError(err -> logError(requestDescription, err));
     }
 
@@ -328,7 +328,8 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                 .doOnNext(eventProcessor -> {
                     if (target.equals(eventProcessor.clientId())) {
-                        if (eventProcessor.eventProcessorInfo().getAvailableThreads() < 1) {
+                        if (eventProcessor.eventProcessorInfo().getAvailableThreads() -
+                                eventProcessor.eventProcessorInfo().getActiveThreads() < 1) {
                             throw new MessagingPlatformException(ErrorCode.OTHER, "No available threads on target");
                         }
                     }

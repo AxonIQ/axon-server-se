@@ -60,6 +60,7 @@ public class FakeClientProcessor implements ClientProcessor {
                                                         .setProcessorName(processorName)
                                                         .setTokenStoreIdentifier(tokenStore)
                                                         .addAllSegmentStatus(Arrays.asList(segments))
+                                                        .setAvailableThreads(10)
                                                         .setRunning(true)
                                                         .build());
     }
@@ -87,5 +88,14 @@ public class FakeClientProcessor implements ClientProcessor {
     @Override
     public boolean belongsToContext(String context) {
         return this.context.equals(context);
+    }
+
+    public ClientProcessor withActiveThreads(int activeThreads) {
+        return new FakeClientProcessor(clientId,
+                                       belongsToComponent,
+                                       context,
+                                       EventProcessorInfo.newBuilder(eventProcessorInfo)
+                                                         .setActiveThreads(activeThreads)
+                                                         .build());
     }
 }
