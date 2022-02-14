@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -15,12 +15,14 @@ import java.util.Collection;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 /**
  * @author Sara Pellegrini
  * @since 4.6.0
  */
-public class ActiveRequestsCache<R> implements ConstraintCache<String, R> /*Cancellable*/ {
+public class ActiveRequestsCache<R extends ActiveRequestsCache.Completable>
+        implements ConstraintCache<String, R> /*Cancellable*/ {
 
     private final ConstraintCache<String, R> buffer;
 
@@ -46,6 +48,7 @@ public class ActiveRequestsCache<R> implements ConstraintCache<String, R> /*Canc
 
     @Override
     public R put(String key, R value) {
+        value.onCompletion(() -> buffer.remove(key));
         return buffer.put(key, value);
     }
 
@@ -76,5 +79,11 @@ public class ActiveRequestsCache<R> implements ConstraintCache<String, R> /*Canc
         void cancel(String requestId, R request);
 
         boolean requestToBeCanceled(String requestId, R request);
+    }
+
+    @FunctionalInterface
+    public interface Completable {
+
+        void onCompletion(@Nonnull Runnable listener);
     }
 }

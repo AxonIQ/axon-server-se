@@ -9,14 +9,15 @@
 
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
+import io.axoniq.axonserver.admin.Instruction;
 import io.axoniq.axonserver.admin.InstructionCache;
+import io.axoniq.axonserver.admin.InstructionResult;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
-import io.axoniq.axonserver.grpc.InstructionResult;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import org.junit.*;
 import org.junit.runner.*;
@@ -25,7 +26,6 @@ import org.mockito.junit.*;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-import java.util.List;
 import javax.annotation.Nonnull;
 
 import static java.util.Arrays.asList;
@@ -44,92 +44,48 @@ public class LocalEventProcessorsAdminServiceTest {
     @Before
     public void setup() {
         doAnswer(invocationOnMock -> {
-            String invocationId = invocationOnMock.getArgument(3);
-            List<String> clientIds = invocationOnMock.getArgument(1);
-            clientIds.forEach(clientId -> {
-                instructionCache.get(invocationId).on(new InstructionCache.Result() {
-
-                    @Override
-                    public String clientId() {
-                        return clientId;
-                    }
-
-                    @Override
-                    public InstructionResult instructionResult() {
-                        return InstructionResult.newBuilder().setSuccess(true).build();
-                    }
-                });
-            });
+            String invocationId = invocationOnMock.getArgument(4);
+            String clientId = invocationOnMock.getArgument(1);
+            Instruction instruction = instructionCache.get(invocationId);
+            if (instruction != null) {
+                instruction.on(new SuccessInstructionResult(clientId));
+            }
             return null;
-        }).when(publisher).splitSegment(anyString(), any(), anyString(), anyString());
+        }).when(publisher).splitSegment(anyString(), anyString(), anyString(), anyInt(), anyString());
         doAnswer(invocationOnMock -> {
-            String invocationId = invocationOnMock.getArgument(3);
-            List<String> clientIds = invocationOnMock.getArgument(1);
-            clientIds.forEach(clientId -> {
-                instructionCache.get(invocationId).on(new InstructionCache.Result() {
-
-                    @Override
-                    public String clientId() {
-                        return clientId;
-                    }
-
-                    @Override
-                    public InstructionResult instructionResult() {
-                        return InstructionResult.newBuilder().setSuccess(true).build();
-                    }
-                });
-            });
+            String invocationId = invocationOnMock.getArgument(4);
+            String clientId = invocationOnMock.getArgument(1);
+            Instruction instruction = instructionCache.get(invocationId);
+            if (instruction != null) {
+                instruction.on(new SuccessInstructionResult(clientId));
+            }
             return null;
-        }).when(publisher).mergeSegment(anyString(), any(), anyString(), anyString());
+        }).when(publisher).mergeSegment(anyString(), anyString(), anyString(), anyInt(), anyString());
         doAnswer(invocationOnMock -> {
             String invocationId = invocationOnMock.getArgument(3);
             String clientId = invocationOnMock.getArgument(1);
-            instructionCache.get(invocationId).on(new InstructionCache.Result() {
-
-                @Override
-                public String clientId() {
-                    return clientId;
-                }
-
-                @Override
-                public InstructionResult instructionResult() {
-                    return InstructionResult.newBuilder().setSuccess(true).build();
-                }
-            });
+            Instruction instruction = instructionCache.get(invocationId);
+            if (instruction != null) {
+                instruction.on(new SuccessInstructionResult(clientId));
+            }
             return null;
         }).when(publisher).pauseProcessorRequest(anyString(), anyString(), anyString(), anyString());
         doAnswer(invocationOnMock -> {
             String invocationId = invocationOnMock.getArgument(3);
             String clientId = invocationOnMock.getArgument(1);
-            instructionCache.get(invocationId).on(new InstructionCache.Result() {
-
-                @Override
-                public String clientId() {
-                    return clientId;
-                }
-
-                @Override
-                public InstructionResult instructionResult() {
-                    return InstructionResult.newBuilder().setSuccess(true).build();
-                }
-            });
+            Instruction instruction = instructionCache.get(invocationId);
+            if (instruction != null) {
+                instruction.on(new SuccessInstructionResult(clientId));
+            }
             return null;
         }).when(publisher).startProcessorRequest(anyString(), anyString(), anyString(), anyString());
         doAnswer(invocationOnMock -> {
             String invocationId = invocationOnMock.getArgument(4);
             String clientId = invocationOnMock.getArgument(1);
-            instructionCache.get(invocationId).on(new InstructionCache.Result() {
-
-                @Override
-                public String clientId() {
-                    return clientId;
-                }
-
-                @Override
-                public InstructionResult instructionResult() {
-                    return InstructionResult.newBuilder().setSuccess(true).build();
-                }
-            });
+            Instruction instruction = instructionCache.get(invocationId);
+            if (instruction != null) {
+                instruction.on(new SuccessInstructionResult(clientId));
+            }
             return null;
         }).when(publisher).releaseSegment(anyString(), anyString(), anyString(), anyInt(), anyString());
     }
@@ -177,8 +133,10 @@ public class LocalEventProcessorsAdminServiceTest {
     public void splitTest() {
         String processorName = "processorName";
         String tokenStore = "tokenStore";
-        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
-        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore, segment(0, 2));
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore,
+                                                          segment(1, 4),
+                                                          segment(2, 4));
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
@@ -187,8 +145,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache);
         testSubject.split(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
-        List<String> clients = asList("Client-A", "Client-B");
-        verify(publisher).splitSegment(eq("default"), eq(clients), eq(processorName), any());
+        verify(publisher).splitSegment(eq("default"), eq("Client-A"), eq(processorName), eq(0), any());
         verifyNoMoreInteractions(publisher);
     }
 
@@ -196,8 +153,8 @@ public class LocalEventProcessorsAdminServiceTest {
     public void mergeTest() {
         String processorName = "processorName";
         String tokenStore = "tokenStore";
-        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
-        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore, segment(0, 2));
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore, segment(1, 2));
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
@@ -206,9 +163,45 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache);
         testSubject.merge(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
-        List<String> clients = asList("Client-A", "Client-B");
-        verify(publisher).mergeSegment(eq("default"), eq(clients), eq(processorName), any());
+        // TODO: 10/02/2022 improve checking to ensure only one of client-a, client-b gets merge request and the other gets release request
+        verify(publisher).mergeSegment(eq("default"), eq("Client-B"), eq(processorName), eq(1), any());
+        verify(publisher).releaseSegment(eq("default"), eq("Client-A"), eq(processorName), eq(0), any());
         verifyNoMoreInteractions(publisher);
+    }
+
+    @Test
+    public void mergeTest2() {
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore, segment(0, 4));
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore, segment(2, 4));
+        ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore, segment(1, 16));
+        ClientProcessor clientD = new FakeClientProcessor("Client-D",
+                                                          processorName,
+                                                          "anotherTokenStore",
+                                                          segment(1, 8));
+        ClientProcessor clientE = new FakeClientProcessor("Client-E",
+                                                          processorName,
+                                                          tokenStore,
+                                                          "anotherContext",
+                                                          segment(1, 2));
+        ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
+        testSubject.merge(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
+                   .block();
+        // TODO: 10/02/2022 improve checking to ensure only one of client-a, client-b gets merge request and the other gets release request
+        verify(publisher).mergeSegment(eq("default"), eq("Client-B"), eq(processorName), eq(2), any());
+        verify(publisher).releaseSegment(eq("default"), eq("Client-A"), eq(processorName), eq(0), any());
+        verify(publisher).releaseSegment(eq("anotherContext"), eq("Client-E"), eq(processorName), eq(0), any());
+        verifyNoMoreInteractions(publisher);
+    }
+
+    private EventProcessorInfo.SegmentStatus segment(int segmentId, int onePartOf) {
+        return EventProcessorInfo.SegmentStatus.newBuilder().setSegmentId(segmentId)
+                                               .setOnePartOf(onePartOf)
+                                               .build();
     }
 
     @Test
@@ -264,5 +257,34 @@ public class LocalEventProcessorsAdminServiceTest {
                                  .setProcessorName(processorName)
                                  .setTokenStoreIdentifier(tokenStoreId)
                                  .build();
+    }
+
+    private static class SuccessInstructionResult implements InstructionResult {
+
+        private final String clientId;
+
+        public SuccessInstructionResult(String clientId) {
+            this.clientId = clientId;
+        }
+
+        @Override
+        public String clientId() {
+            return clientId;
+        }
+
+        @Override
+        public boolean success() {
+            return true;
+        }
+
+        @Override
+        public String errorCode() {
+            return null;
+        }
+
+        @Override
+        public String errorMessage() {
+            return null;
+        }
     }
 }

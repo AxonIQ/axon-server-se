@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,9 +9,7 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.PauseEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.StartEventProcessorRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
@@ -269,26 +267,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
                      .filter(e -> e.getKey().context.equals(context))
                      .map(Map.Entry::getValue)
                      .forEach(connection -> connection.onNext(instruction));
-    }
-
-    @EventListener
-    public void on(PauseEventProcessorRequest evt) {
-        PlatformOutboundInstruction instruction = PlatformOutboundInstruction
-                .newBuilder()
-                .setInstructionId(evt.instructionId())
-                .setPauseEventProcessor(EventProcessorReference.newBuilder()
-                                                               .setProcessorName(evt.processorName()))
-                .build();
-        sendToClient(evt.context(), evt.clientId(), instruction);
-    }
-
-    @EventListener
-    public void on(StartEventProcessorRequest evt) {
-        PlatformOutboundInstruction instruction = PlatformOutboundInstruction
-                .newBuilder()
-                .setStartEventProcessor(EventProcessorReference.newBuilder().setProcessorName(evt.processorName()))
-                .build();
-        sendToClient(evt.context(), evt.clientId(), instruction);
     }
 
     @EventListener

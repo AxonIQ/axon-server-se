@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -140,10 +140,15 @@ public class EventProcessorEvents {
 
         /**
          * Returns the principal context of the event processor
+         *
          * @return the principal context of the event processor
          */
         public String context() {
             return context;
+        }
+
+        public String instructionId() {
+            return instructionId;
         }
     }
 
@@ -168,7 +173,7 @@ public class EventProcessorEvents {
          * @param context       the principal context of the event processor
          * @param clientId      a {@link String} defining the platform stream of the client which should handle this
          *                      message
-         * @param instructionId
+         * @param instructionId a unique identifier for the instruction
          * @param processorName a {@link String} defining the name of the processor which this message should perform
          *                      some operation on/with
          * @param segmentId     an {@code int} specifying the segment identifier which this message should perform some

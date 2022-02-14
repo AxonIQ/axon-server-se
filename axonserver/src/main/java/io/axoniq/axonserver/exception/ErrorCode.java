@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -64,6 +64,8 @@ public enum ErrorCode {
 
     SCHEDULED_EVENT_NOT_FOUND("AXONIQ-2610", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
     PLUGIN_NOT_FOUND("AXONIQ-2700", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
+    EVENT_PROCESSOR_NOT_FOUND("AXONIQ-2800", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
+
     EXCEPTION_IN_INTERCEPTOR("AXONIQ-6100", Status.UNKNOWN, HttpStatus.INTERNAL_SERVER_ERROR),
     POST_COMMIT_HOOK_EXCEPTION("AXONIQ-6101", Status.UNKNOWN, HttpStatus.INTERNAL_SERVER_ERROR),
 
@@ -75,7 +77,7 @@ public enum ErrorCode {
     // Command handling errors
     NO_HANDLER_FOR_COMMAND("AXONIQ-4000", Status.NOT_FOUND, HttpStatus.INTERNAL_SERVER_ERROR),
     CONNECTION_TO_HANDLER_LOST("AXONIQ-4001", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
-    COMMAND_TIMEOUT("AXONIQ-4002", Status.CANCELLED, HttpStatus.REQUEST_TIMEOUT),
+    COMMAND_TIMEOUT("AXONIQ-4002", Status.CANCELLED, HttpStatus.GATEWAY_TIMEOUT),
     COMMAND_DISPATCH_ERROR("AXONIQ-4003", Status.CANCELLED, HttpStatus.INTERNAL_SERVER_ERROR),
     COMMAND_REJECTED_BY_INTERCEPTOR("AXONIQ-4004", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST),
 
@@ -84,10 +86,10 @@ public enum ErrorCode {
     QUERY_DISPATCH_ERROR("AXONIQ-5002", Status.NOT_FOUND, HttpStatus.BAD_REQUEST, true),
     QUERY_REJECTED_BY_INTERCEPTOR("AXONIQ-5004", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST),
     SUBSCRIPTION_QUERY_REJECTED_BY_INTERCEPTOR("AXONIQ-5005", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST),
-    QUERY_TIMEOUT("AXONIQ-5006", Status.CANCELLED, HttpStatus.REQUEST_TIMEOUT),
+    QUERY_TIMEOUT("AXONIQ-5006", Status.CANCELLED, HttpStatus.GATEWAY_TIMEOUT),
 
     // Instruction handling errors
-    INSTRUCTION_TIMEOUT("AXONIQ-11000", Status.CANCELLED, HttpStatus.REQUEST_TIMEOUT),
+    INSTRUCTION_TIMEOUT("AXONIQ-11000", Status.CANCELLED, HttpStatus.GATEWAY_TIMEOUT),
 
     NO_EVENTSTORE("AXONIQ-6000", Status.NOT_FOUND, HttpStatus.SERVICE_UNAVAILABLE),
     CLIENT_DISCONNECTED("AXONIQ-6001", Status.NOT_FOUND, HttpStatus.INTERNAL_SERVER_ERROR),
@@ -140,10 +142,12 @@ public enum ErrorCode {
     }
 
     public static ErrorCode find(String errorCode) {
-        if(StringUtils.isEmpty(errorCode)) return ErrorCode.OTHER;
+        if (StringUtils.hasText(errorCode)) {
+            return ErrorCode.OTHER;
+        }
 
         for (ErrorCode value : ErrorCode.values()) {
-            if( value.code.equals(errorCode)) {
+            if (value.code.equals(errorCode)) {
                 return value;
             }
         }

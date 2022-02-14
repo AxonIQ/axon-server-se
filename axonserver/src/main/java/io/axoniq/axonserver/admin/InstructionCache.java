@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,7 +14,6 @@ import io.axoniq.axonserver.CancelOnTimeout;
 import io.axoniq.axonserver.LimitedBuffer;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.grpc.InstructionResult;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +28,7 @@ import static java.lang.String.format;
  * @since 4.6.0
  */
 @Component
-public class InstructionCache extends ActiveRequestsCache<InstructionCache.Instruction> {
+public class InstructionCache extends ActiveRequestsCache<Instruction> {
 
     private static final String REQUEST_TYPE = "Instruction";
     private static final String FULL_BUFFER_MESSAGE = "Instruction handlers might be slow.";
@@ -67,25 +66,5 @@ public class InstructionCache extends ActiveRequestsCache<InstructionCache.Instr
         String clientStreamId = applicationDisconnected.getClientStreamId();
         CancelStrategy<Instruction> onApplicationDisconnected = new CancelOnApplicationDisconnected(clientStreamId);
         this.cancel(onApplicationDisconnected);
-    }
-
-    public interface Instruction {
-
-        long timestamp();
-
-        String description();
-
-        void on(Result result);
-
-        void completeExceptionally(ErrorCode errorCode, String message);
-
-        boolean isWaitingFor(String clientStreamId);
-    }
-
-    public interface Result {
-
-        String clientId(); //TODO client streamId?
-
-        InstructionResult instructionResult(); //TODO is it fine to use InstructionResult here?
     }
 }
