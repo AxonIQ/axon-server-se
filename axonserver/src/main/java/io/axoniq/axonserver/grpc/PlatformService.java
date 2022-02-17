@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.EventProcessorEvents.ProcessorStatusRequest;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
@@ -20,7 +19,6 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
-import io.axoniq.axonserver.grpc.control.EventProcessorReference;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
@@ -293,19 +291,6 @@ public class PlatformService extends PlatformServiceGrpc.PlatformServiceImplBase
         consumers.add(consumer);
     }
 
-    @EventListener
-    public void on(ProcessorStatusRequest event) {
-        EventProcessorReference eventProcessorInfoRequest =
-                EventProcessorReference.newBuilder()
-                                       .setProcessorName(event.processorName())
-                                       .build();
-
-        PlatformOutboundInstruction outboundInstruction =
-                PlatformOutboundInstruction.newBuilder()
-                                           .setRequestEventProcessorInfo(eventProcessorInfoRequest)
-                                           .build();
-        sendToClient(event.context(), event.clientId(), outboundInstruction);
-    }
 
     private void registerClient(ClientComponent clientComponent,
                                 SendingStreamObserver<PlatformOutboundInstruction> responseObserver) {

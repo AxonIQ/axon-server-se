@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -22,7 +22,7 @@ import javax.annotation.Nonnull;
  * @since 4.6.0
  */
 public class ActiveRequestsCache<R extends ActiveRequestsCache.Completable>
-        implements ConstraintCache<String, R> /*Cancellable*/ {
+        implements ConstraintCache<String, R> /* TODO Cancellable*/ {
 
     private final ConstraintCache<String, R> buffer;
 

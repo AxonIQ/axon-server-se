@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -22,6 +22,7 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ClientContext;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.util.ConstraintCache;
 import org.slf4j.Logger;
@@ -32,6 +33,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -315,7 +318,6 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
         String requestDescription = "Move " + processor;
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
-
         return eventProcessors
                 .doFirst(() -> {
                     if (auditLog.isInfoEnabled()) {
@@ -326,36 +328,56 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                     }
                 })
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-                .doOnNext(eventProcessor -> {
-                    if (target.equals(eventProcessor.clientId())) {
-                        if (eventProcessor.eventProcessorInfo().getAvailableThreads() -
-                                eventProcessor.eventProcessorInfo().getActiveThreads() < 1) {
-                            throw new MessagingPlatformException(ErrorCode.OTHER, "No available threads on target");
-                        }
-                    }
-                })
-                .filter(eventProcessor -> !target.equals(eventProcessor.clientId()))
                 .collectList()
                 .flatMap(clients -> Mono.<Void>create(sink -> {
-                    // only one client which already should have this segment or should be able to claim it
-                    if (clients.isEmpty()) {
-                        sink.success();
+                    Optional<ClientProcessor> targetEventProcessor = clients.stream()
+                                                                            .filter(ep -> target.equals(ep.clientId()))
+                                                                            .findFirst();
+                    if (!targetEventProcessor.isPresent()) {
+                        sink.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_MOVE_UNKNOWN_TARGET,
+                                                                  "Target for move not found")); //TODO check if there is something more specific that OTHER
+                        return;
+                    } else {
+                        List<SegmentStatus> segments = targetEventProcessor.get()
+                                                                           .eventProcessorInfo()
+                                                                           .getSegmentStatusList();
+                        if (segments.stream().anyMatch(s -> s.getSegmentId() == segment)) {
+                            sink.success();
+                            return;
+                        }
+
+
+                        if (targetEventProcessor.get().eventProcessorInfo().getAvailableThreads() -
+                                targetEventProcessor.get().eventProcessorInfo().getActiveThreads() < 1) {
+                            sink.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_MOVE_NO_AVAILBLE_THREADS,
+                                                                      "No available threads on target"));
+                            return;
+                        }
                     }
+
                     String instructionId = UUID.randomUUID().toString();
-                    Set<String> targetClients = clients.stream()
-                                                       .map(ClientProcessor::clientId)
-                                                       .collect(Collectors.toSet());
+                    Set<String> clientsToRelease = clients.stream()
+                                                          .map(ClientProcessor::clientId)
+                                                          .filter(clientId -> !target.equals(clientId))
+                                                          .collect(Collectors.toSet());
+                    // only one client which already should have this segment or should be able to claim it
+                    if (clientsToRelease.isEmpty()) {
+                        sink.error(new MessagingPlatformException(ErrorCode.OTHER,
+                                                                  "No other client has claimed the segment"));
+                        return;
+                    }
                     instructionCache.put(instructionId, new InstructionInformation(sink,
                                                                                    instructionId,
                                                                                    requestDescription,
-                                                                                   targetClients));
-                    clients.forEach(ep -> processorEventsSource.releaseSegment(ep.context(),
+                                                                                   clientsToRelease));
+                    clients.stream()
+                           .filter(ep -> !target.equals(ep.clientId()))
+                           .forEach(ep -> processorEventsSource.releaseSegment(ep.context(),
                                                                                ep.clientId(),
                                                                                processor,
                                                                                segment,
                                                                                instructionId));
                 }))
-                // TODO: 11/02/2022 check if target client actually has the segment
                 .doOnError(err -> logError(requestDescription, err));
     }
 

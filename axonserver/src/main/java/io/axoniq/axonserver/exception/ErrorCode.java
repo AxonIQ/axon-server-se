@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -65,6 +65,8 @@ public enum ErrorCode {
     SCHEDULED_EVENT_NOT_FOUND("AXONIQ-2610", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
     PLUGIN_NOT_FOUND("AXONIQ-2700", Status.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, true),
     EVENT_PROCESSOR_NOT_FOUND("AXONIQ-2800", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
+    EVENT_PROCESSOR_MOVE_UNKNOWN_TARGET("AXONIQ-2801", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
+    EVENT_PROCESSOR_MOVE_NO_AVAILBLE_THREADS("AXONIQ-2802", Status.NOT_FOUND, HttpStatus.NOT_FOUND, true),
 
     EXCEPTION_IN_INTERCEPTOR("AXONIQ-6100", Status.UNKNOWN, HttpStatus.INTERNAL_SERVER_ERROR),
     POST_COMMIT_HOOK_EXCEPTION("AXONIQ-6101", Status.UNKNOWN, HttpStatus.INTERNAL_SERVER_ERROR),

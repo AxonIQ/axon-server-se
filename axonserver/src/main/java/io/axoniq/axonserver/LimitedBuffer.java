@@ -11,8 +11,6 @@ package io.axoniq.axonserver;
 
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.util.ConstraintCache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Map;
@@ -25,8 +23,6 @@ import javax.annotation.Nonnull;
  * @since 4.6.0
  */
 public class LimitedBuffer<T> implements ConstraintCache<String, T> {
-
-    private final Logger logger = LoggerFactory.getLogger(LimitedBuffer.class);
 
     private final long capacity;
     private final String bufferName;
@@ -48,7 +44,6 @@ public class LimitedBuffer<T> implements ConstraintCache<String, T> {
 
     @Override
     public T remove(@Nonnull String key) {
-        logger.debug("Remove {} from {} buffer", key, bufferName);
         return buffer.remove(key);
     }
 
@@ -57,6 +52,15 @@ public class LimitedBuffer<T> implements ConstraintCache<String, T> {
         return buffer.get(key);
     }
 
+    /**
+     * Inserts or replaces the value in the buffer associated to the proper key.
+     *
+     * @param key   the key of the value
+     * @param value the value
+     * @return the old value, when exists, null otherwise
+     *
+     * @throws InsufficientBufferCapacityException if the buffer is full
+     */
     @Override
     public T put(@Nonnull String key, @Nonnull T value) {
         checkCapacity();

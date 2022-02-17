@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -21,6 +21,7 @@ import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
+import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import org.junit.*;
 import org.junit.runner.*;
 import org.mockito.*;
@@ -132,6 +133,23 @@ public class LocalEventProcessorsAdminServiceTest {
     }
 
     @Test
+    public void pauseUnknownProcessor() {
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessors processors = () -> asList(clientA, clientB).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
+        StepVerifier.create(testSubject.pause(new EventProcessorIdentifier("anotherProcessor", tokenStore),
+                                              () -> "authenticated-user"))
+                    .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_NOT_FOUND))
+                    .verify();
+    }
+
+
+    @Test
     public void startUnknownProcessor() {
         String processorName = "processorName";
         String tokenStore = "tokenStore";
@@ -235,10 +253,10 @@ public class LocalEventProcessorsAdminServiceTest {
         verifyNoMoreInteractions(publisher);
     }
 
-    private EventProcessorInfo.SegmentStatus segment(int segmentId, int onePartOf) {
-        return EventProcessorInfo.SegmentStatus.newBuilder().setSegmentId(segmentId)
-                                               .setOnePartOf(onePartOf)
-                                               .build();
+    private SegmentStatus segment(int segmentId, int onePartOf) {
+        return SegmentStatus.newBuilder().setSegmentId(segmentId)
+                            .setOnePartOf(onePartOf)
+                            .build();
     }
 
     @Test
@@ -267,6 +285,7 @@ public class LocalEventProcessorsAdminServiceTest {
         String tokenStore = "tokenStore";
         ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
         ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore)
+                .withAvailableThreads(10)
                 .withActiveThreads(10);
         ClientProcessors processors = () -> asList(clientA, clientB).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
@@ -274,7 +293,54 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache);
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
                                              () -> "authenticated-user"))
+                    .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_MOVE_NO_AVAILBLE_THREADS))
+                    .verify();
+    }
+
+    @Test
+    public void testMoveSegmentWithTargetNotAvailable() {
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
+        ClientProcessors processors = () -> asList(clientA).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
+        StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
+                                             () -> "authenticated-user"))
+                    .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_MOVE_UNKNOWN_TARGET))
+                    .verify();
+    }
+
+    @Test
+    public void testMoveSegmentWithNoClientToRequestRelease() {
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
+        ClientProcessors processors = () -> asList(clientA).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
+        StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-A",
+                                             () -> "authenticated-user"))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.OTHER))
+                    .verify();
+    }
+
+    @Test
+    public void testMoveSegmentWhenAlreadyOwned() {
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        SegmentStatus segmentStatus = SegmentStatus.newBuilder().setSegmentId(2).build();
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore, segmentStatus);
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessors processors = () -> asList(clientA, clientB).iterator();
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache);
+        StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-A",
+                                             () -> "authenticated-user"))
+                    .expectComplete()
                     .verify();
     }
 
