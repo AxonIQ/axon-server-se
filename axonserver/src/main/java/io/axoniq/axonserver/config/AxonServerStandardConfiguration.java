@@ -38,6 +38,7 @@ import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.plugin.AxonServerInformationProvider;
 import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
@@ -68,6 +69,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.annotation.Nonnull;
 
@@ -261,6 +264,16 @@ public class AxonServerStandardConfiguration {
                 }
             }
         };
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AxonServerInformationProvider.class)
+    public AxonServerInformationProvider axonServerInformationProvider(VersionInfoProvider versionInfoProvider,
+                                                                       FeatureChecker featureChecker) {
+        Map<String, String> versionInfo = new HashMap<>();
+        versionInfo.put(AxonServerInformationProvider.EDITION, featureChecker.getEdition());
+        versionInfo.put(AxonServerInformationProvider.VERSION, versionInfoProvider.get().getVersion());
+        return () -> versionInfo;
     }
 
     @Bean

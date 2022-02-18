@@ -7,13 +7,13 @@
  *
  */
 
-package io.axoniq.axonserver.component.processor;
+package io.axoniq.axonserver.transport.rest.json;
 
-import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorSegment;
+import io.axoniq.axonserver.admin.eventprocessor.api.FakeEventProcessorSegment;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import org.junit.*;
 
-import static io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus.newBuilder;
 import static org.junit.Assert.*;
 
 /**
@@ -26,12 +26,12 @@ public class StreamingProcessorSegmentTest {
     @Test
     public void printOn() {
         GsonMedia gsonMedia = new GsonMedia();
-        SegmentStatus eventTrackerInfo = newBuilder().setSegmentId(1)
-                                                     .setOnePartOf(2)
-                                                     .setReplaying(false)
-                                                     .setCaughtUp(true)
-                                                     .build();
-        StreamingProcessorSegment tracker = new StreamingProcessorSegment("myClient", eventTrackerInfo);
+        EventProcessorSegment eventTrackerInfo = new FakeEventProcessorSegment(1,
+                                                                               2,
+                                                                               false,
+                                                                               true,
+                                                                               "myClient");
+        StreamingProcessorSegment tracker = new StreamingProcessorSegment(eventTrackerInfo);
         tracker.printOn(gsonMedia);
         assertEquals("{\"clientId\":\"myClient\","
                              + "\"segmentId\":1,"
