@@ -31,7 +31,7 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
-import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.message.query.QueryInstruction;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
@@ -180,8 +180,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
                                                        clientRef.get().getClientStreamId(),
-                                                       clientIdRef.get(),
-                                                       false);
+                                                       clientIdRef.get());
                         break;
                     case QUERY_COMPLETE:
                         logger.debug("{}-[{}]: Query Complete received.",
@@ -315,28 +314,20 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         }
         ServerCallStreamObserver<QueryResponse> serverResponseObserver =
                 (ServerCallStreamObserver<QueryResponse>) responseObserver;
-        serverResponseObserver.setOnCancelHandler(() -> {
-            queryDispatcher.queueQueryInstruction(contextProvider.getContext(),
-                    request,
-                    WrappedQuery.terminateQuery(request.getMessageIdentifier(), contextProvider.getContext()));
-        });
+        serverResponseObserver.setOnCancelHandler(() -> queryDispatcher.cancel(request.getMessageIdentifier()));
 
         FlowControlledOutgoingStream<QueryResponse> flowControlledOutgoingStream =
                 new FlowControlledOutgoingStream<>(new GrpcQueryResponseConsumer(serverResponseObserver),
                                                    grpcFlowControlExecutorProvider.provide());
         flowControlledOutgoingStream.accept(Flux.<QueryResponse>create(sink -> {
+            SerializedQuery serializedQuery = new SerializedQuery(contextProvider.getContext(), request);
+            queryDispatcher.query(serializedQuery,
+                                  authenticationProvider.get(),
+                                  sink::next,
+                                  result -> sink.complete());
 
-            queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
-                    authenticationProvider.get(), sink::next,
-                    result -> sink.complete());
-
-            //todo - drop initial request, as its already requested by the client
-            sink.onRequest(requested-> queryDispatcher.queueQueryInstruction(contextProvider.getContext(),
-                    request,
-                    WrappedQuery.flowControl(request.getMessageIdentifier(), requested, contextProvider.getContext())));
-
+            sink.onRequest(requested -> queryDispatcher.flowControl(request.getMessageIdentifier(), requested));
         }).limitRate(32));
-
     }
 
     @Override

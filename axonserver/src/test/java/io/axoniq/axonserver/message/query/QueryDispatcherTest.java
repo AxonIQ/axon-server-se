@@ -13,6 +13,7 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
@@ -45,6 +46,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -77,30 +79,27 @@ public class QueryDispatcherTest {
     public void queryResponse() {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
-        queryCache.put("1234", new QueryInformation("1234",
-                                                    "Source",
-                                                    new QueryDefinition("c",
+        queryCache.put("1234", new ActiveQuery("1234",
+                                               "Source",
+                                               new QueryDefinition("c",
                                                                         "q"),
-
-                                                    Collections.singleton("client"),
-                                                    2,
                                                     r -> dispatchCalled.incrementAndGet(),
-                                                    (client) -> doneCalled.set(true)));
+                                               (client) -> doneCalled.set(true), mockedQueryHandlers()));
         testSubject.handleResponse(QueryResponse.newBuilder()
                                                 .setMessageIdentifier("12345")
                                                 .setRequestIdentifier("1234")
-                                                .build(), "client", "clientId",false);
+                                                .build(), "client", "clientId");
         assertEquals(1, dispatchCalled.get());
         assertFalse(doneCalled.get());
 
         testSubject.handleResponse(QueryResponse.newBuilder()
                                                 .setMessageIdentifier("1234")
                                                 .setRequestIdentifier("1234")
-                                                .build(), "client", "clientId",false);
+                                                .build(), "client", "clientId");
+        testSubject.handleComplete("1234", "client", "clientId", false);
         assertEquals(2, dispatchCalled.get());
         assertTrue(doneCalled.get());
     }
-
 
     @Test
     public void queryNotFound() {
@@ -134,13 +133,13 @@ public class QueryDispatcherTest {
                                            .setClientId("sampleClient")
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
-        Set<QueryHandler> handlers = new HashSet<>();
+        Set<QueryHandler<?>> handlers = new HashSet<>();
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
-        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
@@ -158,14 +157,14 @@ public class QueryDispatcherTest {
                                            .setMessageIdentifier("1234")
                                            .build();
         FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
-        Set<QueryHandler> handlers = new HashSet<>();
+        Set<QueryHandler<?>> handlers = new HashSet<>();
 
         FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
 
         handlers.add(new DirectQueryHandler(dispatchStreamObserver,
                                             new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
                                             "componentName", "client"));
-        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL, responseObserver::onNext,
                           client -> responseObserver.onCompleted());
@@ -241,7 +240,7 @@ public class QueryDispatcherTest {
 
         CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
         CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
-        Set<QueryHandler> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
+        Set<QueryHandler<?>> handlers = Collections.singleton(new QueryHandler<QueryProviderInbound>(null,
                                                                                                   new ClientStreamIdentification(
                                                                                                           Topology.DEFAULT_CONTEXT,
                                                                                                           "clientStreamId"),
@@ -252,17 +251,18 @@ public class QueryDispatcherTest {
 
             }
         });
-        when(registrationCache.find(any(), any())).thenReturn(handlers);
+        when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
         testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
                           GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                           futureResponse::complete,
                           client -> futureCompleted.complete(true));
 
-        testSubject.handleResponse(QueryResponse.newBuilder().setMessageIdentifier("FAIL")
-                                                .setRequestIdentifier(request.getMessageIdentifier()).build(),
+        testSubject.handleResponse(QueryResponse.newBuilder()
+                                                .setMessageIdentifier("FAIL")
+                                                .setRequestIdentifier(request.getMessageIdentifier())
+                                                .build(),
                                    "clientStreamId",
-                                   "clientId",
-                                   false);
+                                   "clientId");
 
         QueryResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
@@ -343,6 +343,69 @@ public class QueryDispatcherTest {
         assertEquals(1, testSubject.getQueryQueue().getSegments().get("client").size());
     }
 
+    @Test
+    public void queryCancellation() throws InterruptedException {
+        String requestId = "1234";
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setQuery("test")
+                                           .setMessageIdentifier(requestId)
+                                           .build();
+
+        Set<QueryHandler<?>> handlers = new HashSet<>();
+
+        FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
+        handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "client"));
+        when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
+
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                          q -> { },
+                          d -> { });
+
+        testSubject.cancel(requestId);
+
+        FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
+        QueryInstruction instruction = queue.take("client.default");
+        assertTrue(instruction.hasQuery());
+        instruction = queue.take("client.default");
+        assertTrue(instruction.hasCancel());
+        assertEquals(requestId, instruction.cancel().requestId());
+    }
+
+    @Test
+    public void queryFlowControl() throws InterruptedException {
+        String requestId = "1234";
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setQuery("test")
+                                           .setMessageIdentifier(requestId)
+                                           .build();
+
+        Set<QueryHandler<?>> handlers = new HashSet<>();
+
+        FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
+        handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "client"));
+        when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
+
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                          q -> { },
+                          d -> { });
+
+        testSubject.flowControl(requestId, 100);
+
+        FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
+        QueryInstruction instruction = queue.take("client.default");
+        assertTrue(instruction.hasQuery());
+        instruction = queue.take("client.default");
+        assertTrue(instruction.hasFlowControl());
+        assertEquals(requestId, instruction.flowControl().requestId());
+        assertEquals(100, instruction.flowControl().flowControl());
+    }
+
     private static class MyQueryInterceptors implements QueryInterceptors {
 
         @Override
@@ -365,6 +428,12 @@ public class QueryDispatcherTest {
             }
             return response;
         }
+    }
+
+    private Set<QueryHandler<?>> mockedQueryHandlers() {
+        QueryHandler<?> handler = mock(QueryHandler.class);
+        when(handler.getClientStreamId()).thenReturn("client");
+        return Collections.singleton(handler);
     }
         // TODO
     //ErrorCode.TOO_MANY_REQUESTS

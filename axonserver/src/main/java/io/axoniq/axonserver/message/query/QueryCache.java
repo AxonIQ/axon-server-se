@@ -36,8 +36,8 @@ import static java.lang.String.format;
  * @author Marc Gathier
  */
 @Component("QueryCache")
-public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
-        implements ConstraintCache<String, QueryInformation> {
+public class QueryCache extends ConcurrentHashMap<String, ActiveQuery>
+        implements ConstraintCache<String, ActiveQuery> {
 
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
@@ -56,7 +56,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
         }
     }
 
-    private QueryInformation remove(String messagId) {
+    private ActiveQuery remove(String messagId) {
         logger.debug("Remove messageId {}", messagId);
         return super.remove(messagId);
     }
@@ -65,10 +65,10 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
-        Set<Entry<String, QueryInformation>> toDelete = entrySet().stream()
-                .filter(e -> e.getValue().getTimestamp() < minTimestamp)
-                .filter(e -> !e.getValue().isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
-                .collect(Collectors.toSet());
+        Set<Entry<String, ActiveQuery>> toDelete = entrySet().stream()
+                                                             .filter(e -> e.getValue().getTimestamp() < minTimestamp)
+                                                             .filter(e -> !e.getValue().isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
+                                                             .collect(Collectors.toSet());
         if( ! toDelete.isEmpty()) {
             logger.warn("Found {} waiting queries to delete", toDelete.size());
             toDelete.forEach(e -> {
@@ -87,7 +87,7 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
         forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClientStreamId()));
     }
 
-    private void completeForApplication(QueryInformation entry, String handlerClientStreamId) {
+    private void completeForApplication(ActiveQuery entry, String handlerClientStreamId) {
         if (entry.waitingFor(handlerClientStreamId) &&
                 entry.completeWithError(handlerClientStreamId,
                                         ErrorCode.CONNECTION_TO_HANDLER_LOST,
@@ -97,19 +97,19 @@ public class QueryCache extends ConcurrentHashMap<String, QueryInformation>
     }
 
     @Override
-    public QueryInformation put(@Nonnull String key, @Nonnull QueryInformation value) {
+    public ActiveQuery put(@Nonnull String key, @Nonnull ActiveQuery value) {
         checkCapacity();
         return super.put(key, value);
     }
 
     @Override
-    public QueryInformation putIfAbsent(String key, QueryInformation value) {
+    public ActiveQuery putIfAbsent(String key, ActiveQuery value) {
         checkCapacity();
         return super.putIfAbsent(key, value);
     }
 
     @Override
-    public void putAll(Map<? extends String, ? extends QueryInformation> m) {
+    public void putAll(Map<? extends String, ? extends ActiveQuery> m) {
         checkCapacity();
         super.putAll(m);
     }

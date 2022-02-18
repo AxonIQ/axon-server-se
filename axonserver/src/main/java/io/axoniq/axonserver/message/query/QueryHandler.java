@@ -62,21 +62,36 @@ public abstract class QueryHandler<T> {
         return clientStreamIdentification.toString();
     }
 
-    /**
-     * Enqueues a query for the target client. Queries will be read from queues based on priorities.
-     * @param request the query to send
-     * @param queryQueue the queue holders for queries
-     * @param timeout timeout of the query
-     */
-    public void enqueue(SerializedQuery request, FlowControlQueues<WrappedQuery> queryQueue, long timeout) {
-        WrappedQuery wrappedQuery = new WrappedQuery(getClientStreamIdentification(),
-                                                     getClientId(),
-                                                     request.withClient(getClientStreamId()), timeout);
-        enqueue(queryQueue, wrappedQuery);
+    public void enqueueQuery(SerializedQuery request, FlowControlQueues<QueryInstruction> queryQueue, long timeout,
+                             boolean streaming) {
+        QueryInstruction.Query query = new QueryInstruction.Query(getClientStreamIdentification(),
+                                                                  getClientId(),
+                                                                  request.withClient(getClientStreamId()),
+                                                                  timeout,
+                                                                  0L,
+                                                                  streaming);
+        enqueueInstruction(queryQueue, QueryInstruction.query(query));
     }
 
-    public void enqueue(FlowControlQueues<WrappedQuery> queryQueue, WrappedQuery query) {
-        queryQueue.put(queueName(), query.withTargetClientStreamId(getClientStreamId()), query.priority());
+    public void enqueueCancellation(String requestId, String queryName,
+                                    FlowControlQueues<QueryInstruction> queryQueue) {
+        QueryInstruction.Cancel cancel = new QueryInstruction.Cancel(requestId,
+                                                                     queryName,
+                                                                     getClientStreamIdentification());
+        enqueueInstruction(queryQueue, QueryInstruction.cancel(cancel));
+    }
+
+    public void enqueueFlowControl(String requestId, String queryName, long permits,
+                                   FlowControlQueues<QueryInstruction> queryQueue) {
+        QueryInstruction.FlowControl flowControl = new QueryInstruction.FlowControl(requestId,
+                                                                                    queryName,
+                                                                                    getClientStreamIdentification(),
+                                                                                    permits);
+        enqueueInstruction(queryQueue, QueryInstruction.flowControl(flowControl));
+    }
+
+    public void enqueueInstruction(FlowControlQueues<QueryInstruction> queryQueue, QueryInstruction instruction) {
+        queryQueue.put(queueName(), instruction, instruction.priority());
     }
 
     @Override

@@ -135,7 +135,7 @@ public class QueryRegistrationCache {
      * @param request the query request
      * @return a set of {@link QueryHandler}s.
      */
-    public Set<QueryHandler> find(String context, QueryRequest request) {
+    public Set<QueryHandler<?>> find(String context, QueryRequest request) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
         if (queryInformation == null) {
@@ -169,7 +169,7 @@ public class QueryRegistrationCache {
         return (registrationsPerQuery.containsKey(def)) ? registrationsPerQuery.get(def).handlers.values() : emptySet();
     }
 
-    private QueryHandler pickOne(QueryDefinition queryDefinition, String componentName,
+    private QueryHandler<?> pickOne(QueryDefinition queryDefinition, String componentName,
                                  NavigableSet<ClientStreamIdentification> queryHandlers,
                                  Set<ClientStreamIdentification> filteredCandidates) {
         if (queryHandlers.isEmpty()) {
@@ -216,7 +216,12 @@ public class QueryRegistrationCache {
 
     public QueryHandler find(String context, QueryRequest request, String clientStreamId) {
         QueryDefinition queryDefinition = new QueryDefinition(context, request.getQuery());
-        ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(context, clientStreamId);
+        return find(queryDefinition, clientStreamId);
+    }
+
+    public QueryHandler<?> find(QueryDefinition queryDefinition, String clientStreamId) {
+        ClientStreamIdentification clientStreamIdentification =
+                new ClientStreamIdentification(queryDefinition.getContext(), clientStreamId);
         QueryInformation queryInformation = registrationsPerQuery.get(queryDefinition);
         return queryInformation == null ? null : queryInformation.getHandler(clientStreamIdentification);
     }
