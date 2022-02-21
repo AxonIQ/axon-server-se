@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
 import static java.lang.String.format;
@@ -91,7 +90,7 @@ public class QueryDispatcher {
                                String clientStreamId,
                                String clientId) {
         String requestIdentifier = queryResponse.getRequestIdentifier();
-        ActiveQuery activeQuery = getQueryInformation(clientStreamId, requestIdentifier);
+        ActiveQuery activeQuery = activeQuery(clientStreamId, requestIdentifier);
         if (activeQuery != null) {
             ClientStreamIdentification clientStream = new ClientStreamIdentification(activeQuery.getContext(),
                                                                                      clientStreamId);
@@ -106,7 +105,7 @@ public class QueryDispatcher {
         }
     }
 
-    private ActiveQuery getQueryInformation(String clientStreamId, String requestIdentifier) {
+    private ActiveQuery activeQuery(String clientStreamId, String requestIdentifier) {
         ActiveQuery activeQuery = queryCache.get(requestIdentifier);
         if (activeQuery == null) {
             requestIdentifier = requestIdentifier + "/" + clientStreamId;
@@ -116,7 +115,7 @@ public class QueryDispatcher {
     }
 
     public void handleComplete(String requestId, String clientStreamId, String clientId, boolean proxied) {
-        ActiveQuery activeQuery = getQueryInformation(clientStreamId, requestId);
+        ActiveQuery activeQuery = activeQuery(clientStreamId, requestId);
         if (activeQuery != null) {
             if (activeQuery.completed(clientStreamId)) {
                 queryCache.remove(activeQuery.getKey());
@@ -332,11 +331,26 @@ public class QueryDispatcher {
         }
     }
 
+    /**
+     * Dispatches the query. The request is initiated via other node.
+     *
+     * @param serializedQuery the serialized query
+     * @param callback        the callback to be invoked for each query result when they are ready
+     * @param onCompleted     the callback to be invoked when the query is completed
+     */
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback,
                                 Consumer<String> onCompleted) {
         dispatchProxied(serializedQuery, callback, onCompleted, true);
     }
 
+    /**
+     * Dispatches the query. The request is initiated via other node.
+     *
+     * @param serializedQuery the serialized query
+     * @param callback        the callback to be invoked for each query result when they are ready
+     * @param onCompleted     the callback to be invoked when the query is completed
+     * @param streaming       indicates whether results of this query are going to be streamed or not
+     */
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback,
                                 Consumer<String> onCompleted, boolean streaming) {
         QueryRequest query = serializedQuery.query();

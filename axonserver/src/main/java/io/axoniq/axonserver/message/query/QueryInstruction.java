@@ -13,9 +13,10 @@ import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 
 /**
- * Wrapper around a serialized query to use for handling messages from query queues.
+ * A query instruction. Contains all necessary information for the query instruction to be executed on the client side.
  *
  * @author Marc Gathier
+ * @author Milan Savic
  */
 public class QueryInstruction {
 
@@ -23,14 +24,35 @@ public class QueryInstruction {
     private final Cancel cancel;
     private final FlowControl flowControl;
 
+    /**
+     * Creates an instruction to execute the given {@code query}.
+     *
+     * @param query the query to be executed
+     * @return a freshly created query instruction
+     * @see Query
+     */
     public static QueryInstruction query(Query query) {
         return new QueryInstruction(query, null, null);
     }
 
+    /**
+     * Creates an instruction to cancel the query.
+     *
+     * @param cancel necessary information about the query to be cancelled
+     * @return a freshly created query instruction
+     * @see Cancel
+     */
     public static QueryInstruction cancel(Cancel cancel) {
         return new QueryInstruction(null, cancel, null);
     }
 
+    /**
+     * Creates an instruction to request more responses from the query handler.
+     *
+     * @param flowControl necessary information for requesting more responses
+     * @return a freshly created query instruction
+     * @see FlowControl
+     */
     public static QueryInstruction flowControl(FlowControl flowControl) {
         return new QueryInstruction(null, null, flowControl);
     }
@@ -41,30 +63,54 @@ public class QueryInstruction {
         this.flowControl = flowControl;
     }
 
+    /**
+     * @return whether this instruction is about issuing a new query.
+     */
     public boolean hasQuery() {
         return query != null;
     }
 
+    /**
+     * @return whether this instruction is about cancelling a query.
+     */
     public boolean hasCancel() {
         return cancel != null;
     }
 
+    /**
+     * @return whether this instruction is about requesting more responses from a query.
+     */
     public boolean hasFlowControl() {
         return flowControl != null;
     }
 
+    /**
+     * @return the query to be dispatched. Do note that the result might be {@code null}. Please check {@link
+     * #hasQuery()} first.
+     */
     public Query query() {
         return query;
     }
 
+    /**
+     * @return the cancellation of the query. Do note that the result might be {@code null}. Please check {@link
+     * #hasCancel()} first.
+     */
     public Cancel cancel() {
         return cancel;
     }
 
+    /**
+     * @return the flow control for the query. Do note that the result might be {@code null}. Please check {@link
+     * #hasFlowControl()} first.
+     */
     public FlowControl flowControl() {
         return flowControl;
     }
 
+    /**
+     * @return the identifier of the query request.
+     */
     public String requestId() {
         if (hasQuery()) {
             return query().queryRequest().getMessageIdentifier();
@@ -76,6 +122,9 @@ public class QueryInstruction {
         return null;
     }
 
+    /**
+     * @return the context of the query.
+     */
     public String context() {
         if (hasQuery()) {
             return query().context();
@@ -87,6 +136,9 @@ public class QueryInstruction {
         return null;
     }
 
+    /**
+     * @return the priority of the instruction.
+     */
     public long priority() {
         if (hasQuery()) {
             return query().priority();
@@ -94,6 +146,9 @@ public class QueryInstruction {
         return 0L;
     }
 
+    /**
+     * The query to be dispatched.
+     */
     public static class Query {
 
         private final ClientStreamIdentification targetClientStreamIdentification;
@@ -146,6 +201,9 @@ public class QueryInstruction {
         }
     }
 
+    /**
+     * Cancellation of the query.
+     */
     public static class Cancel {
 
         private final String requestId;
@@ -181,6 +239,9 @@ public class QueryInstruction {
         }
     }
 
+    /**
+     * Flow control for the query.
+     */
     public static class FlowControl {
 
         private final String requestId;

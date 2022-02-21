@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 /**
+ * Contains all necesseary information about active query - a query in progress.
+ *
+ * @author Milan Savic
  * @author Marc Gathier
  */
 public class ActiveQuery {
@@ -55,12 +58,24 @@ public class ActiveQuery {
         this(key, sourceClientId, query, responseConsumer, onAllReceived, handlers, false);
     }
 
+    /**
+     * Creates an instance with the specified parameters.
+     *
+     * @param key              the unique identifier of the query request
+     * @param sourceClientId   the unique identifier of the client that sent the query
+     * @param query            the {@link QueryDefinition}
+     * @param responseConsumer a {@link Consumer} for the received {@link QueryResponse}
+     * @param onAllReceived    a {@link Consumer} for the clientStreamId that sent the last expected response
+     * @param handlers         all handlers applicable to the given query
+     * @param streaming        indicates whether results of this query are going to be streamed
+     */
     public ActiveQuery(String key,
                        String sourceClientId,
                        QueryDefinition query,
                        Consumer<QueryResponse> responseConsumer,
                        Consumer<String> onAllReceived,
-                       Set<QueryHandler<?>> handlers, boolean streaming) {
+                       Set<QueryHandler<?>> handlers,
+                       boolean streaming) {
         this.key = key;
         this.sourceClientId = sourceClientId;
         this.query = query;
@@ -194,14 +209,23 @@ public class ActiveQuery {
                        .collect(Collectors.toSet());
     }
 
+    /**
+     * @return {@code true} if results of this query are going to be streamed, {@code false} otherwise
+     */
     public boolean isStreaming() {
         return streaming;
     }
 
+    /**
+     * @return a set of all applicable handlers for this query. The set is not modifiable.
+     */
     public Set<QueryHandler<?>> handlers() {
         return Collections.unmodifiableSet(handlers);
     }
 
+    /**
+     * @return the name of the query.
+     */
     public String queryName() {
         return query.getQueryName();
     }

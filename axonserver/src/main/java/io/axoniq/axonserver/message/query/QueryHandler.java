@@ -62,6 +62,14 @@ public abstract class QueryHandler<T> {
         return clientStreamIdentification.toString();
     }
 
+    /**
+     * Enqueues the query for later dispatching.
+     *
+     * @param request    the serialized query request
+     * @param queryQueue the queue used for enqueueing
+     * @param timeout    how long we should wait for this query
+     * @param streaming  indicates whether this query is streaming results or not
+     */
     public void enqueueQuery(SerializedQuery request, FlowControlQueues<QueryInstruction> queryQueue, long timeout,
                              boolean streaming) {
         QueryInstruction.Query query = new QueryInstruction.Query(getClientStreamIdentification(),
@@ -73,6 +81,13 @@ public abstract class QueryHandler<T> {
         enqueueInstruction(queryQueue, QueryInstruction.query(query));
     }
 
+    /**
+     * Enqueues cancellation for the query with given {@code requestId} and {@code queryName}.
+     *
+     * @param requestId  the identifier of the query request
+     * @param queryName  the name of the query
+     * @param queryQueue the queue used for enqueueing
+     */
     public void enqueueCancellation(String requestId, String queryName,
                                     FlowControlQueues<QueryInstruction> queryQueue) {
         QueryInstruction.Cancel cancel = new QueryInstruction.Cancel(requestId,
@@ -81,6 +96,14 @@ public abstract class QueryHandler<T> {
         enqueueInstruction(queryQueue, QueryInstruction.cancel(cancel));
     }
 
+    /**
+     * Enqueues flow control of {@code permits} for the query with given {@code requestId} and {@code queryName}.
+     *
+     * @param requestId  the identifier of the query request
+     * @param queryName  the name of the query
+     * @param permits    the permits - how many results we are demanindg from this handler to produce
+     * @param queryQueue the queue used for enqueueing
+     */
     public void enqueueFlowControl(String requestId, String queryName, long permits,
                                    FlowControlQueues<QueryInstruction> queryQueue) {
         QueryInstruction.FlowControl flowControl = new QueryInstruction.FlowControl(requestId,
@@ -90,6 +113,12 @@ public abstract class QueryHandler<T> {
         enqueueInstruction(queryQueue, QueryInstruction.flowControl(flowControl));
     }
 
+    /**
+     * Enqueues the given {@code instruction} to the given {@code queryQueue}.
+     *
+     * @param queryQueue  the queue used for enqueueing
+     * @param instruction the query instruction
+     */
     public void enqueueInstruction(FlowControlQueues<QueryInstruction> queryQueue, QueryInstruction instruction) {
         queryQueue.put(queueName(), instruction, instruction.priority());
     }

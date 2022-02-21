@@ -38,10 +38,6 @@ public class ClientStreamIdentification implements Comparable<ClientStreamIdenti
         return clientStreamId;
     }
 
-    public ClientStreamIdentification withClientStreamId(String clientStreamId) {
-        return new ClientStreamIdentification(this.context, clientStreamId);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
