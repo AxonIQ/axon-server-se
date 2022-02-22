@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,8 +10,6 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-
-import java.io.InputStream;
 
 /**
  * Decorator that allows changing the events before returning them at the client. This decorator is applied on
@@ -35,11 +33,11 @@ public interface EventDecorator {
     /**
      * Manipulate the event with token before returning it to the client.
      *
-     * @param inputStream the original event with token as input stream
+     * @param eventWithToken the original event with token
      * @return the updated event
      */
-    default InputStream decorateEventWithToken(InputStream inputStream) {
-        return inputStream;
+    default SerializedEventWithToken decorateEventWithToken(SerializedEventWithToken eventWithToken) {
+        return eventWithToken;
     }
 
     /**

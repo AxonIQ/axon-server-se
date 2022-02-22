@@ -96,8 +96,7 @@ public class PrimaryEventStoreTest {
                                                               eventTransformerFactory,
                                                               embeddedDBProperties.getEvent(),
                                                               second,
-                                                              meterFactory, fileSystemMonitor,
-                                                              (short)10);
+                                                              meterFactory, fileSystemMonitor);
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));
         return testSubject;
@@ -206,7 +205,7 @@ public class PrimaryEventStoreTest {
     @Test
     public void largeTransactions() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
-        setupEvents(testSubject, 10, 23);
+        setupEvents(testSubject, 10, Short.MAX_VALUE + 5);
         Iterator<SerializedTransactionWithToken> transactionWithTokenIterator =
                 testSubject.transactionIterator(0, Long.MAX_VALUE);
 
@@ -216,23 +215,23 @@ public class PrimaryEventStoreTest {
             transactionWithTokenIterator.next();
         }
 
-        assertEquals(30, counter);
-        try (EventIterator iterator = testSubject.getEvents(0, 0)) {
+        assertEquals(20, counter);
+        try (CloseableIterator<SerializedEventWithToken> iterator = testSubject.getGlobalIterator(0)) {
             counter = 0;
             while (iterator.hasNext()) {
                 counter++;
                 iterator.next();
             }
-            assertEquals(230, counter);
+            assertEquals(10 * (Short.MAX_VALUE + 5), counter);
         }
 
         List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-4",
-                                                                            0,
+                                                                      0,
                                                                             Long.MAX_VALUE,
                                                                             0)
                                                         .collect(Collectors.toList())
                 .block();
-        assertEquals(23, events.size());
+        assertEquals(Short.MAX_VALUE + 5, events.size());
     }
 
     @Test

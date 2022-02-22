@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.component.processor.warning;
+package io.axoniq.axonserver.transport.rest.json.warning;
 
 import org.junit.*;
 
@@ -18,8 +18,9 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
- * Created by Sara Pellegrini on 23/03/2018.
- * sara.pellegrini@gmail.com
+ * Unit tests for {@link ActiveWarnings}
+ *
+ * @author Sara Pellegrini
  */
 public class ActiveWarningsTest {
 
@@ -32,9 +33,9 @@ public class ActiveWarningsTest {
         );
 
         Iterator<Warning> iterator = new ActiveWarnings(fakes).iterator();
-        assertTrue(iterator.hasNext());
-        assertEquals(activeWarning,iterator.next());
-        assertFalse(iterator.hasNext());
+        Assert.assertTrue(iterator.hasNext());
+        assertEquals(activeWarning, iterator.next());
+        Assert.assertFalse(iterator.hasNext());
     }
 
     @Test
@@ -44,6 +45,6 @@ public class ActiveWarningsTest {
         );
 
         Iterator<Warning> iterator = new ActiveWarnings(fakes).iterator();
-        assertFalse(iterator.hasNext());
+        Assert.assertFalse(iterator.hasNext());
     }
 }

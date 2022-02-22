@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -7,11 +7,10 @@
  *
  */
 
-package io.axoniq.axonserver.component.processor.warning;
+package io.axoniq.axonserver.transport.rest.json.warning;
 
 /**
- * Created by Sara Pellegrini on 30/03/2018.
- * sara.pellegrini@gmail.com
+ * Fake implementation of {@link Warning} for test purpose.
  */
 public class FakeWarning implements Warning {
 
