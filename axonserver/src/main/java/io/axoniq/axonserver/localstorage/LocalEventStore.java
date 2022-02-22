@@ -66,7 +66,6 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -91,7 +90,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final EventInterceptors eventInterceptors;
-    private final int maxEventCount;
 
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
@@ -119,7 +117,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
              storageTransactionManagerFactory,
              eventInterceptors,
              new DefaultEventDecorator(),
-             Integer.MAX_VALUE,
              1000,
              24,
              8);
@@ -131,7 +128,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
                            EventInterceptors eventInterceptors,
                            EventDecorator eventDecorator,
-                           @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
                            @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads,
                            @Value("${axoniq.axonserver.data-writer-threads:8}") int writerThreads) {
@@ -139,7 +135,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this.meterFactory = meterFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
         this.eventInterceptors = eventInterceptors;
-        this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
         DataFetcherSchedulerProvider.setDataFetcher(dataFetcher);
@@ -310,34 +305,21 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private StreamObserver<SerializedEvent> createAppendEventConnection(String context,
-                                                                   Authentication authentication,
-                                                                   StreamObserver<Confirmation> responseObserver) {
+                                                                        Authentication authentication,
+                                                                        StreamObserver<Confirmation> responseObserver) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
         return new StreamObserver<SerializedEvent>() {
             private final List<Event> eventList = new ArrayList<>();
             private final AtomicBoolean closed = new AtomicBoolean();
-            private final AtomicLong eventCount = new AtomicLong();
 
             @Override
             public void onNext(SerializedEvent inputStream) {
-                if (checkMaxEventCount()) {
-                    try {
-                        eventList.add(inputStream.asEvent());
-                    } catch (Exception e) {
-                        closed.set(true);
-                        responseObserver.onError(GrpcExceptionBuilder.build(e));
-                    }
+                try {
+                    eventList.add(inputStream.asEvent());
+                } catch (Exception e) {
+                    closed.set(true);
+                    responseObserver.onError(GrpcExceptionBuilder.build(e));
                 }
-            }
-
-            private boolean checkMaxEventCount() {
-                if (eventCount.incrementAndGet() < maxEventCount) {
-                    return true;
-                }
-                responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
-                                                                    "Maximum number of events in transaction exceeded: "
-                                                                            + maxEventCount));
-                return false;
             }
 
             @Override
@@ -492,9 +474,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private void listAggregateSnapshots(String context,
-                                       Authentication authentication,
-                                       GetAggregateSnapshotsRequest request,
-                                       StreamObserver<SerializedEvent> responseStreamObserver) {
+                                        Authentication authentication,
+                                        GetAggregateSnapshotsRequest request,
+                                        StreamObserver<SerializedEvent> responseStreamObserver) {
         runInDataFetcherPool(() -> {
             if (request.getMaxSequence() >= 0) {
                 EventDecorator activeEventDecorator = eventInterceptors.noSnapshotReadInterceptors(context) ?
@@ -619,24 +601,25 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public Mono<Long> eventTokenAt(String context, Instant timestamp) {
         return Mono.create(sink ->
-            getTokenAt(context,
-                       GetTokenAtRequest.newBuilder().setInstant(timestamp.toEpochMilli()).build(),
-                       new StreamObserver<TrackingToken>() {
-                           @Override
-                           public void onNext(TrackingToken trackingToken) {
-                               sink.success(trackingToken.getToken());
-                           }
+                                   getTokenAt(context,
+                                              GetTokenAtRequest.newBuilder().setInstant(timestamp.toEpochMilli())
+                                                               .build(),
+                                              new StreamObserver<TrackingToken>() {
+                                                  @Override
+                                                  public void onNext(TrackingToken trackingToken) {
+                                                      sink.success(trackingToken.getToken());
+                                                  }
 
-                           @Override
-                           public void onError(Throwable throwable) {
-                               sink.error(throwable);
-                           }
+                                                  @Override
+                                                  public void onError(Throwable throwable) {
+                                                      sink.error(throwable);
+                                                  }
 
-                           @Override
-                           public void onCompleted() {
-                               //nothing to do, already completed
-                           }
-                       }));
+                                                  @Override
+                                                  public void onCompleted() {
+                                                      //nothing to do, already completed
+                                                  }
+                                              }));
     }
 
     private void getTokenAt(String context, GetTokenAtRequest request, StreamObserver<TrackingToken> responseObserver) {
@@ -650,28 +633,31 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Override
     public Mono<Long> highestSequenceNumber(String context, String aggregateId) {
         return Mono.create(sink ->
-            readHighestSequenceNr(context,
-                                  ReadHighestSequenceNrRequest.newBuilder().setAggregateId(aggregateId).build(),
-                                  new StreamObserver<ReadHighestSequenceNrResponse>() {
-                                      @Override
-                                      public void onNext(ReadHighestSequenceNrResponse readHighestSequenceNrResponse) {
-                                          sink.success(readHighestSequenceNrResponse.getToSequenceNr());
-                                      }
+                                   readHighestSequenceNr(context,
+                                                         ReadHighestSequenceNrRequest.newBuilder()
+                                                                                     .setAggregateId(aggregateId)
+                                                                                     .build(),
+                                                         new StreamObserver<ReadHighestSequenceNrResponse>() {
+                                                             @Override
+                                                             public void onNext(
+                                                                     ReadHighestSequenceNrResponse readHighestSequenceNrResponse) {
+                                                                 sink.success(readHighestSequenceNrResponse.getToSequenceNr());
+                                                             }
 
-                                      @Override
-                                      public void onError(Throwable throwable) {
-                                          sink.error(throwable);
-                                      }
+                                                             @Override
+                                                             public void onError(Throwable throwable) {
+                                                                 sink.error(throwable);
+                                                             }
 
-                                      @Override
-                                      public void onCompleted() {
-                                          //nothing to do, already completed
-                                      }
-                                  }));
+                                                             @Override
+                                                             public void onCompleted() {
+                                                                 //nothing to do, already completed
+                                                             }
+                                                         }));
     }
 
     private void readHighestSequenceNr(String context, ReadHighestSequenceNrRequest request,
-                                      StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
+                                       StreamObserver<ReadHighestSequenceNrResponse> responseObserver) {
         runInDataFetcherPool(() -> {
             long sequenceNumber = workers(context).aggregateReader.readHighestSequenceNr(request.getAggregateId());
             responseObserver.onNext(ReadHighestSequenceNrResponse.newBuilder().setToSequenceNr(sequenceNumber).build());
@@ -718,7 +704,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private StreamObserver<QueryEventsRequest> queryEvents(String context, Authentication authentication,
-                                                          StreamObserver<QueryEventsResponse> responseObserver) {
+                                                           StreamObserver<QueryEventsResponse> responseObserver) {
         Workers workers = workers(context);
         EventDecorator activeEventDecorator = eventInterceptors
                 .noEventReadInterceptors(context) ? eventDecorator : new InterceptorAwareEventDecorator(context,
