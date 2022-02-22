@@ -25,9 +25,9 @@
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
         <exec.plugin.version>1.6.0</exec.plugin.version>
 
-        <kotlin.version>1.5.31</kotlin.version>
+        <kotlin.version>1.6.10</kotlin.version>
 
-        <frontend-maven-plugin.version>1.12.0</frontend-maven-plugin.version>
+        <frontend-maven-plugin.version>1.12.1</frontend-maven-plugin.version>
         <frontend-maven-plugin.nodeVersion>v9.7.1</frontend-maven-plugin.nodeVersion>
         <frontend-maven-plugin.npmVersion>5.6.0</frontend-maven-plugin.npmVersion>
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
@@ -216,7 +216,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20210307</version>
+            <version>20211205</version>
         </dependency>
         <dependency>
             <groupId>io.springfox</groupId>
@@ -549,7 +549,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.3.0</version>
                 <executions>
                     <execution>
                         <id>attach-README</id>
@@ -783,7 +783,7 @@
                     <plugin>
                         <groupId>com.google.cloud.tools</groupId>
                         <artifactId>jib-maven-plugin</artifactId>
-                        <version>3.1.2</version>
+                        <version>3.2.0</version>
                         <executions>
                             <execution>
                                 <id>build-docker-tar</id>
@@ -821,7 +821,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>build-helper-maven-plugin</artifactId>
-                        <version>3.2.0</version>
+                        <version>3.3.0</version>
                         <executions>
                             <execution>
                                 <id>attach-docker-tar</id>

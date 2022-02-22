@@ -15,6 +15,7 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Set;
@@ -26,6 +27,7 @@ import static java.util.stream.StreamSupport.stream;
  * Created by Sara Pellegrini on 10/08/2018.
  * sara.pellegrini@gmail.com
  */
+@Component
 public class DefaultInstancesRepository implements ThreadNumberBalancing.InstancesRepo {
 
     private final ClientProcessors processors;
