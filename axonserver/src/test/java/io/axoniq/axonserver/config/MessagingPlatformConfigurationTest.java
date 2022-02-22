@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,13 +9,14 @@
 
 package io.axoniq.axonserver.config;
 
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.unit.DataSize;
 
 import java.lang.invoke.MethodHandles;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
@@ -115,7 +116,20 @@ public class MessagingPlatformConfigurationTest {
         }
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testMaxMessageSizeTooLarge() {
+        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d");
+        configuration.setMaxMessageSize(DataSize.ofBytes(Integer.MAX_VALUE + 1L));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testMaxMessageSizeTooSmall() {
+        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d");
+        configuration.setMaxMessageSize(DataSize.ofBytes(-1));
+    }
+
     private static class NameTest {
+
         private final String testName;
         private final String testMessage;
         private final String name;

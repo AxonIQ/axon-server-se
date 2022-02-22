@@ -406,7 +406,9 @@ public class MessagingPlatformConfiguration {
     }
 
     public void setMaxMessageSize(DataSize maxMessageSize) {
-        Assert.isTrue(maxMessageSize.toBytes() > 0, "Max message size must be greater than 0");
+        Assert.isTrue(maxMessageSize.toBytes() >= 0, "Max message size must be greater than 0");
+        Assert.isTrue(maxMessageSize.toBytes() <= Integer.MAX_VALUE,
+                      "Max message size must be less than " + Integer.MAX_VALUE);
         this.maxMessageSize = (int) maxMessageSize.toBytes();
     }
 

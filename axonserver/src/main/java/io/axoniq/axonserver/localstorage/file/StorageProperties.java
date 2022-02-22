@@ -175,7 +175,7 @@ public class StorageProperties implements Cloneable {
     public void setSegmentSize(DataSize segmentSize) {
         Assert.isTrue(segmentSize.toBytes() <= Integer.MAX_VALUE,
                       "Segment size must be less than " + Integer.MAX_VALUE);
-        Assert.isTrue(segmentSize.toBytes() > 0, "Segment size must be more than 0");
+        Assert.isTrue(segmentSize.toBytes() > 0, "Segment size must be greater than 0");
 
         this.segmentSize = (int) segmentSize.toBytes();
     }
