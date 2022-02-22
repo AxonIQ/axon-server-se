@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -16,7 +16,6 @@ import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 
-import java.io.InputStream;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -77,16 +76,16 @@ public class TrackingEventProcessorManagerTest {
                         .createEventTracker(100L,
                                             "",
                                             true,
-                                            new StreamObserver<InputStream>() {
+                                            new StreamObserver<SerializedEventWithToken>() {
                                                 @Override
-                                                public void onNext(InputStream value) {
+                                                public void onNext(SerializedEventWithToken value) {
                                                     messagesReceived.incrementAndGet();
                                                 }
 
                                                 @Override
                                                 public void onError(Throwable t) {
-                                                       failed.set(true);
-                                                   }
+                                                    failed.set(true);
+                                                }
 
                                                    @Override
                                                    public void onCompleted() {
@@ -120,10 +119,10 @@ public class TrackingEventProcessorManagerTest {
                 testSubject.createEventTracker(100L,
                                                "",
                                                true,
-                                               new StreamObserver<InputStream>() {
+                                               new StreamObserver<SerializedEventWithToken>() {
                                                    @Override
                                                    public void onNext(
-                                                           InputStream value) {
+                                                           SerializedEventWithToken value) {
                                                        messagesReceived.incrementAndGet();
                                                    }
 
@@ -156,9 +155,9 @@ public class TrackingEventProcessorManagerTest {
                 100,
                 "",
                 false,
-                new StreamObserver<InputStream>() {
+                new StreamObserver<SerializedEventWithToken>() {
                     @Override
-                    public void onNext(InputStream value) {
+                    public void onNext(SerializedEventWithToken value) {
                         useLocalStoreMessagesReceived.incrementAndGet();
                     }
 

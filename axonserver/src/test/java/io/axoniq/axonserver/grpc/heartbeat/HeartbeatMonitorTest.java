@@ -30,13 +30,13 @@ public class HeartbeatMonitorTest {
     private final ApplicationConnected client4_2_1Connected =
             new ApplicationConnected("A", "A", "A", "A", "4.2.1");
     private final ApplicationDisconnected client4_2_1Disconnected =
-            new ApplicationDisconnected("A", "A", "A");
+            new ApplicationDisconnected("A", "A", "A", "test");
 
     private final ClientStreamIdentification client4_2 = new ClientStreamIdentification("B", "B");
     private final ApplicationConnected client4_2Connected =
             new ApplicationConnected("B", "B", "B", "B", "4.2");
     private final ApplicationDisconnected client4_2Disconnected =
-            new ApplicationDisconnected("B", "B", "B");
+            new ApplicationDisconnected("B", "B", "B", "test");
 
     private final PlatformInboundInstruction heartbeat = newBuilder().setHeartbeat(Heartbeat.newBuilder()).build();
 

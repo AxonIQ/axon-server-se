@@ -11,6 +11,7 @@ package io.axoniq.axonserver.applicationevents;
 
 import io.axoniq.axonserver.grpc.ClientContext;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import org.springframework.context.ApplicationEvent;
 
 /**
  * Set of events raised when application connect to or disconnect from Axon Server.
@@ -123,25 +124,29 @@ public class TopologyEvents {
          */
         private final String clientId;
         private final String proxy;
+        private final String reason;
 
         public ApplicationDisconnected(String context,
                                        String componentName,
                                        String clientStreamId,
                                        String clientId,
-                                       String proxy) {
+                                       String proxy,
+                                       String reason) {
             super(proxy != null);
             this.context = context;
             this.componentName = componentName;
             this.clientStreamId = clientStreamId;
             this.clientId = clientId;
             this.proxy = proxy;
+            this.reason = reason;
         }
 
         public ApplicationDisconnected(String context,
                                        String componentName,
-                                       String clientStreamId
+                                       String clientStreamId,
+                                       String reason
         ) {
-            this(context, componentName, clientStreamId, clientStreamId, null);
+            this(context, componentName, clientStreamId, clientStreamId, null, reason);
         }
 
         public String getComponentName() {
@@ -172,6 +177,10 @@ public class TopologyEvents {
 
         public String getProxy() {
             return proxy;
+        }
+
+        public String getReason() {
+            return reason;
         }
 
         public boolean isProxied() {
@@ -354,6 +363,41 @@ public class TopologyEvents {
          */
         public ClientContext client() {
             return client;
+        }
+    }
+
+    public static class ApplicationReconnectRequested  {
+        private final String context;
+        private final String componentName;
+
+        /**
+         * The unique identifier of the client that has been connected to Axon Server.
+         */
+        private final String clientId;
+        private final String reason;
+
+        public ApplicationReconnectRequested(String context, String componentName,
+                                             String clientId, String reason) {
+            this.context = context;
+            this.componentName = componentName;
+            this.clientId = clientId;
+            this.reason = reason;
+        }
+
+        public String context() {
+            return context;
+        }
+
+        public String componentName() {
+            return componentName;
+        }
+
+        public String clientId() {
+            return clientId;
+        }
+
+        public String reason() {
+            return reason;
         }
     }
 }
