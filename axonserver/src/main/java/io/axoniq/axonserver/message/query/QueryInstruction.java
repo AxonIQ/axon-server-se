@@ -146,6 +146,15 @@ public class QueryInstruction {
         return 0L;
     }
 
+    @Override
+    public String toString() {
+        return "QueryInstruction{" +
+                "query=" + query +
+                ", cancel=" + cancel +
+                ", flowControl=" + flowControl +
+                '}';
+    }
+
     /**
      * The query to be dispatched.
      */
@@ -199,6 +208,18 @@ public class QueryInstruction {
         public String context() {
             return targetClientStreamIdentification().getContext();
         }
+
+        @Override
+        public String toString() {
+            return "Query{" +
+                    "targetClientStreamIdentification=" + targetClientStreamIdentification +
+                    ", targetClientId='" + targetClientId + '\'' +
+                    ", queryRequest=" + queryRequest +
+                    ", timeout=" + timeout +
+                    ", priority=" + priority +
+                    ", streaming=" + streaming +
+                    '}';
+        }
     }
 
     /**
@@ -236,6 +257,15 @@ public class QueryInstruction {
 
         public String context() {
             return targetClientStreamIdentification().getContext();
+        }
+
+        @Override
+        public String toString() {
+            return "Cancel{" +
+                    "requestId='" + requestId + '\'' +
+                    ", queryName='" + queryName + '\'' +
+                    ", targetClientStreamIdentification=" + targetClientStreamIdentification +
+                    '}';
         }
     }
 
@@ -281,6 +311,16 @@ public class QueryInstruction {
 
         public String context() {
             return targetClientStreamIdentification().getContext();
+        }
+
+        @Override
+        public String toString() {
+            return "FlowControl{" +
+                    "requestId='" + requestId + '\'' +
+                    ", queryName='" + queryName + '\'' +
+                    ", targetClientStreamIdentification=" + targetClientStreamIdentification +
+                    ", flowControl=" + flowControl +
+                    '}';
         }
     }
 }
