@@ -59,7 +59,7 @@ public class PublicRestControllerTest {
             public String getHostName() throws UnknownHostException {
                 return "DEMO";
             }
-        });
+        }, null);
         clusterController = new DefaultTopology(messagePlatformConfiguration);
         testSubject = new PublicRestController(new AxonServers(clusterController),
                                                clusterController,

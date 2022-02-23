@@ -16,15 +16,21 @@ import io.axoniq.axonserver.util.StringUtils;
 import io.grpc.internal.GrpcUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import static io.axoniq.axonserver.logging.AuditLog.enablement;
+import static java.util.Arrays.asList;
 
 /**
  * @author Marc Gathier
@@ -39,6 +45,9 @@ public class MessagingPlatformConfiguration {
     private static final int RESERVED = 10000;
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
+
+    private final ConfigurableBeanFactory beanFactory;    // Used to load experimental features
+
     /**
      * gRPC port for axonserver platform
      */
@@ -159,10 +168,30 @@ public class MessagingPlatformConfiguration {
      */
     private String pluginCleanPolicy = "onFirstInit";
 
-    public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
+    /**
+     * A comma-separated list of classnames of classes implementing {@link FeatureToggle}.
+     */
+    private String experimentalFeatures = "";
+
+    /**
+     * The available features, keyed by name.
+     */
+    private final Map<String, FeatureToggle> experimental = new HashMap<>();
+
+    public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider, ConfigurableBeanFactory beanFactory) {
         this.systemInfoProvider = systemInfoProvider;
+        this.beanFactory = beanFactory;
     }
 
+    /**
+     * Check the given hostname and domain. If the hostname is specified as an FQDN, its domain will override the
+     * configured domain and the hostname is truncated to just the first part.
+     *
+     * @param configHostname the configured hostname.
+     * @param configDomain   the configured domain.
+     * @param isInternal     if {@code true}, the configuration is for the internal hostname.
+     * @param updateSettings a {@link BiConsumer} to update the settings with potentially changed values.
+     */
     private void validateHostname(final String configHostname, final String configDomain, boolean isInternal,
                                   BiConsumer<String, String> updateSettings) {
         final String prefix = isInternal ? "internal " : "";
@@ -194,6 +223,8 @@ public class MessagingPlatformConfiguration {
 
     @PostConstruct
     public void postConstruct() {
+        loadExperimentalFeatures();
+
         validateHostname(getHostname(), getDomain(), false,
                 (h, d) -> {
                     setHostname(h);
@@ -291,7 +322,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if (StringUtils.isEmpty(internalDomain)) {
+        if (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(AllowEmptyDomainFeature.NAME)) {
             internalDomain = getDomain();
         }
         return internalDomain;
@@ -309,16 +340,18 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getFullyQualifiedHostname() {
-        if (!StringUtils.isEmpty(getDomain())) {
-            return getHostname() + "." + getDomain();
+        final String domain = getDomain();
+        if (!StringUtils.isEmpty(domain)) {
+            return getHostname() + "." + domain;
         }
 
         return getHostname();
     }
 
     public String getFullyQualifiedInternalHostname() {
-        if (!StringUtils.isEmpty(getInternalDomain())) {
-            return getInternalHostname() + "." + getInternalDomain();
+        final String internalDomain = getInternalDomain();
+        if (!StringUtils.isEmpty(internalDomain)) {
+            return getInternalHostname() + "." + internalDomain;
         }
 
         return getInternalHostname();
@@ -496,5 +529,43 @@ public class MessagingPlatformConfiguration {
 
     public void setPluginPackageDirectory(String pluginPackageDirectory) {
         this.pluginPackageDirectory = pluginPackageDirectory;
+    }
+
+    public String getExperimentalFeatures() {
+        return experimentalFeatures;
+    }
+
+    public void setExperimentalFeatures(String experimentalFeatures) {
+        this.experimentalFeatures = experimentalFeatures;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends FeatureToggle> T getExperimentalFeature(String name, Class<T> clazz) {
+        final FeatureToggle toggle = experimental.get(name);
+        return clazz.isInstance(toggle) ? (T) toggle : null;
+    }
+
+    public boolean isExperimentalFeatureEnabled(String name) {
+        final FeatureToggle toggle = experimental.get(name);
+        return toggle != null && toggle.isEnabled();
+    }
+
+    private void loadExperimentalFeatures() {
+        if ((beanFactory != null) && (experimentalFeatures != null) && !experimentalFeatures.isEmpty()) {
+            logger.warn("Loading experimental features");
+            for (String clazz : experimentalFeatures.split(",")) {
+                try {
+                    FeatureToggle feature = (FeatureToggle) beanFactory.getBean(Class.forName(clazz));
+                    if (feature.isEnabled()) {
+                        logger.warn("ENABLING EXPERIMENTAL FEATURE '{}'.", feature.getName());
+                    } else {
+                        logger.info("Loaded DISABLED feature '{}'.", feature.getName());
+                    }
+                    experimental.put(feature.getName(), feature);
+                } catch (ClassNotFoundException e) {
+                    logger.error("Unable to load feature {}.", clazz);
+                }
+            }
+        }
     }
 }

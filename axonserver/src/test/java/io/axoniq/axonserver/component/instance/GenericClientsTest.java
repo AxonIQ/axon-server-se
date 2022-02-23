@@ -34,7 +34,7 @@ public class GenericClientsTest {
         public String getHostName() {
             return "localhost";
         }
-    }), new ClientTagsCache(clientIdRegistry));
+    }, null), new ClientTagsCache(clientIdRegistry));
 
 
     @Test

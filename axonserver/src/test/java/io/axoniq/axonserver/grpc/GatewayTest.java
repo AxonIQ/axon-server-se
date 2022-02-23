@@ -56,7 +56,7 @@ public class GatewayTest {
     @Before
     public void setUp() {
         accessController = mock(AxonServerStandardAccessController.class);
-        routingConfiguration = new MessagingPlatformConfiguration(null);
+        routingConfiguration = new MessagingPlatformConfiguration(null, null);
         routingConfiguration.setPort(7023);
         routingConfiguration.setAccesscontrol(new AccessControlConfiguration());
         routingConfiguration.getAccesscontrol().setEnabled(true);
