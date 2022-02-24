@@ -213,6 +213,10 @@
                 this.showAdd = true;
             },
             addMetaDataToCurrent() {
+                if (!this.currentContext.metaDataLabel || !this.currentContext.metaDataValue) {
+                    alert("specify name and value")
+                    return;
+                }
                 this.currentContext.metaData[this.currentContext.metaDataLabel] = this.currentContext.metaDataValue;
                 this.currentContext.metaDataLabel = '';
                 this.currentContext.metaDataValue = '';
@@ -222,6 +226,11 @@
                 this.$forceUpdate();
             },
             addMetaData() {
+                if (!this.newContext.metaDataLabel || !this.newContext.metaDataValue) {
+                    alert("specify name and value")
+                    return;
+                }
+
                 this.newContext.metaData[this.newContext.metaDataLabel] = this.newContext.metaDataValue;
                 this.newContext.metaDataLabel = '';
                 this.newContext.metaDataValue = '';
