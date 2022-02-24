@@ -9,14 +9,11 @@
 
 package io.axoniq.axonserver.component.processor.balancing.strategy;
 
-import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
-import io.axoniq.axonserver.component.processor.balancing.DefaultOperationFactory;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.OperationFactory;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.strategy.MoveSegmentAlgorithm.MoveOperationFactory;
-import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -28,18 +25,13 @@ import static java.util.stream.StreamSupport.stream;
  * Created by Sara Pellegrini on 07/08/2018.
  * sara.pellegrini@gmail.com
  */
+@Component("ThreadNumberBalancingStrategy")
 public class ThreadNumberBalancing implements LoadBalancingStrategy {
 
-    public interface InstancesRepo {
-
-        Iterable<Application> findFor(TrackingEventProcessor processor);
-    }
-
     private final InstancesRepo instances;
-
     private final OperationFactory operationFactory;
 
-    ThreadNumberBalancing(InstancesRepo instances, OperationFactory operationFactory) {
+    public ThreadNumberBalancing(OperationFactory operationFactory, InstancesRepo instances) {
         this.instances = instances;
         this.operationFactory = operationFactory;
     }
@@ -49,8 +41,23 @@ public class ThreadNumberBalancing implements LoadBalancingStrategy {
         return new MoveSegmentAlgorithm<>(new Move(processor)).balance(instanceClones(processor));
     }
 
+    @Override
+    public String getLabel() {
+        return "Thread Number";
+    }
+
+    @Override
+    public String getName() {
+        return "threadNumber";
+    }
+
     private Iterable<Application> instanceClones(TrackingEventProcessor processor) {
         return () -> stream(instances.findFor(processor).spliterator(), false).iterator();
+    }
+
+    public interface InstancesRepo {
+
+        Iterable<Application> findFor(TrackingEventProcessor processor);
     }
 
     public static final class Application implements MoveSegmentAlgorithm.Instance<Application> {
@@ -107,26 +114,6 @@ public class ThreadNumberBalancing implements LoadBalancingStrategy {
         @Override
         public LoadBalancingOperation apply(Integer segment, Application source, Application target) {
             return operationFactory.move(segment, trackingProcessor, source.identifier, target.identifier);
-        }
-    }
-
-    @Component("ThreadNumberBalancingStrategy")
-    public static class ThreadNumberBalancingStrategyFactory implements Factory {
-
-        private final ProcessorEventPublisher processorEventsSource;
-
-        private final ClientProcessors processors;
-
-        public ThreadNumberBalancingStrategyFactory(ProcessorEventPublisher processorEventsSource,
-                                                    ClientProcessors processors) {
-            this.processorEventsSource = processorEventsSource;
-            this.processors = processors;
-        }
-
-        @Override
-        public LoadBalancingStrategy create() {
-            return new ThreadNumberBalancing(new DefaultInstancesRepository(processors),
-                                             new DefaultOperationFactory(processorEventsSource, processors));
         }
     }
 }

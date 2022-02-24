@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.api.Authentication;
@@ -18,6 +19,7 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -38,7 +40,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     private static final Logger auditLog = AuditLog.getLogger();
     private final ProcessorEventPublisher processorEventsSource;
-    private final ClientProcessors eventProcessors;
+    private final Flux<ClientProcessor> eventProcessors;
 
     /**
      * Default implementation of {@link EventProcessorAdminService}.
@@ -46,12 +48,67 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
      * @param processorEventsSource used to propagate the instructions to the proper clients
      * @param eventProcessors       the list of all event processors
      */
+    @Autowired
     public LocalEventProcessorsAdminService(
             ProcessorEventPublisher processorEventsSource,
             ClientProcessors eventProcessors) {
+        this(processorEventsSource, Flux.fromIterable(eventProcessors));
+    }
+
+    public LocalEventProcessorsAdminService(
+            ProcessorEventPublisher processorEventsSource,
+            Flux<ClientProcessor> eventProcessors) {
         this.processorEventsSource = processorEventsSource;
         this.eventProcessors = eventProcessors;
     }
+
+    @Nonnull
+    @Override
+    public Flux<String> clientsBy(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+        String processor = identifier.name();
+        String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info(
+                    "[{}] Request for a list of clients that contains the processor \"{}\" @ \"{}\"",
+                    AuditLog.username(authentication.username()), sanitize(processor), sanitize(tokenStoreIdentifier));
+        }
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        return eventProcessors
+                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                .map(ClientProcessor::clientId)
+                .distinct();
+    }
+
+    @Nonnull
+    @Override
+    public Flux<EventProcessor> eventProcessors(@Nonnull Authentication authentication) {
+        return eventProcessors.transform(this::group);
+    }
+
+    @Nonnull
+    @Override
+    public Flux<EventProcessor> eventProcessorsByComponent(@Nonnull String component,
+                                                           @Nonnull Authentication authentication) {
+        if (auditLog.isInfoEnabled()) {
+            auditLog.debug("[{}] Request to list Event processors in component \"{}\".",
+                           AuditLog.username(authentication.username()), sanitize(component));
+        }
+        return eventProcessors
+                .filterWhen(c -> eventProcessors
+                        .filter(clientProcessor -> clientProcessor.belongsToComponent(component))
+                        .map(EventProcessorIdentifier::new)
+                        .map(ep -> ep.equals(new EventProcessorIdentifier(c)))
+                        .reduce(Boolean::logicalOr))
+                .transform(this::group);
+    }
+
+    private Flux<EventProcessor> group(Flux<ClientProcessor> clientProcessors) {
+        return clientProcessors
+                .groupBy(EventProcessorIdentifier::new)
+                .flatMap(group -> group.collectList()
+                                       .map(list -> new DistributedEventProcessor(group.key(), list)));
+    }
+
 
     @Nonnull
     @Override
@@ -63,10 +120,10 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                           sanitize(processor),
                           sanitize(identifier.tokenStoreIdentifier()));
         }
-        return Flux.fromIterable(eventProcessors)
-                   .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
-                   .doOnNext(ep -> processorEventsSource.pauseProcessorRequest(ep.context(), ep.clientId(), processor))
-                   .then();
+        return eventProcessors
+                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .doOnNext(ep -> processorEventsSource.pauseProcessorRequest(ep.context(), ep.clientId(), processor))
+                .then();
         // the context will be removed from the event processor
     }
 
@@ -81,10 +138,10 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                           sanitize(identifier.tokenStoreIdentifier()));
         }
 
-        return Flux.fromIterable(eventProcessors)
-                   .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
-                   .doOnNext(ep -> processorEventsSource.startProcessorRequest(ep.context(), ep.clientId(), processor))
-                   .then();
+        return eventProcessors
+                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .doOnNext(ep -> processorEventsSource.startProcessorRequest(ep.context(), ep.clientId(), processor))
+                .then();
         // the context will be removed from the event processor
     }
 
@@ -101,16 +158,16 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         }
 
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
-        return Flux.fromIterable(eventProcessors)
-                   .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-                   .groupBy(ClientProcessor::context)
-                   .flatMap(contextGroup -> contextGroup
-                           .map(ClientProcessor::clientId)
-                           .collectList()
-                           .doOnNext(clients -> processorEventsSource.splitSegment(contextGroup.key(),
-                                                                                   clients,
-                                                                                   processor)))
-                   .then();
+        return eventProcessors
+                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                .groupBy(ClientProcessor::context)
+                .flatMap(contextGroup -> contextGroup
+                        .map(ClientProcessor::clientId)
+                        .collectList()
+                        .doOnNext(clients -> processorEventsSource.splitSegment(contextGroup.key(),
+                                                                                clients,
+                                                                                processor)))
+                .then();
         // the context will be removed from the event processor
     }
 
@@ -127,29 +184,20 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         }
 
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
-        return Flux.fromIterable(eventProcessors)
-                   .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-                   .groupBy(ClientProcessor::context)
-                   .flatMap(contextGroup -> contextGroup
-                           .map(ClientProcessor::clientId)
-                           .collectList()
-                           .doOnNext(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
-                                                                                   clients,
-                                                                                   processor)))
-                   .then();
+        return eventProcessors
+                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                .groupBy(ClientProcessor::context)
+                .flatMap(contextGroup -> contextGroup
+                        .map(ClientProcessor::clientId)
+                        .collectList()
+                        .doOnNext(clients -> processorEventsSource.mergeSegment(contextGroup.key(),
+                                                                                clients,
+                                                                                processor)))
+                .then();
         // the context will be removed from the event processor
     }
 
-    /**
-     * Handles a request to move a certain segment for a certain event processor to a specific client.
-     * The method returns once the request has been propagated to the proper clients.
-     * It doesn't imply that the segment has been moved already.
-     *
-     * @param identifier     the event processor identifier
-     * @param segment        the segment to move
-     * @param target         the client that should claim the segment
-     * @param authentication info about the authenticated user
-     */
+
     @Nonnull
     @Override
     public Mono<Void> move(@Nonnull EventProcessorId identifier, int segment, @Nonnull String target,
@@ -166,14 +214,14 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         }
 
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
-        return Flux.fromIterable(eventProcessors)
-                   .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
-                   .filter(eventProcessor -> !target.equals(eventProcessor.clientId()))
-                   .doOnNext(ep -> processorEventsSource.releaseSegment(ep.context(),
-                                                                        ep.clientId(),
-                                                                        processor,
-                                                                        segment))
-                   .then();
+        return eventProcessors
+                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                .filter(eventProcessor -> !target.equals(eventProcessor.clientId()))
+                .doOnNext(ep -> processorEventsSource.releaseSegment(ep.context(),
+                                                                     ep.clientId(),
+                                                                     processor,
+                                                                     segment))
+                .then();
         // the context will be removed from the event processor
     }
 }

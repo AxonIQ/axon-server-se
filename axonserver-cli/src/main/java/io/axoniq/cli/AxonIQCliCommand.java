@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -41,6 +41,7 @@ import java.io.InputStreamReader;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.function.Predicate;
 
 
 /**
@@ -93,6 +94,7 @@ public class AxonIQCliCommand {
             if (address.startsWith("https")) {
                 HttpClientBuilder clientBuilder = HttpClients
                         .custom()
+                        .useSystemProperties()
                         .disableRedirectHandling();
                 if (commandLine.hasOption(CommandOptions.CONNECT_INSECURE.getOpt())) {
                     clientBuilder
@@ -104,7 +106,10 @@ public class AxonIQCliCommand {
                 return clientBuilder.build();
             }
 
-            return HttpClientBuilder.create().disableRedirectHandling().build();
+            return HttpClientBuilder.create()
+                                    .disableRedirectHandling()
+                                    .useSystemProperties()
+                                    .build();
         } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
             throw new RuntimeException(e);
         }
@@ -171,8 +176,13 @@ public class AxonIQCliCommand {
         }
     }
 
-
     protected static void delete(CloseableHttpClient httpclient, String url, int expectedStatusCode, String token)
+            throws IOException {
+        delete(httpclient, url, statusCode -> statusCode == expectedStatusCode, token);
+    }
+
+    protected static void delete(CloseableHttpClient httpclient, String url, Predicate<Integer> statusCodeCheck,
+                                 String token)
             throws IOException {
         HttpDelete httpDelete = new HttpDelete(url);
         if (token != null) {
@@ -180,7 +190,7 @@ public class AxonIQCliCommand {
         }
 
         CloseableHttpResponse response = httpclient.execute(httpDelete);
-        if (response.getStatusLine().getStatusCode() != expectedStatusCode) {
+        if (!statusCodeCheck.test(response.getStatusLine().getStatusCode())) {
             throw new CommandExecutionException(response.getStatusLine().getStatusCode(),
                                                 url,
                                                 response.getStatusLine().toString() + " - " + responseBody(response));
@@ -193,6 +203,12 @@ public class AxonIQCliCommand {
     }
 
     protected static <T> T postJSON(CloseableHttpClient httpclient, String url, Object value, int expectedStatusCode,
+                                    String token, Class<T> responseClass) throws IOException {
+        return postJSON(httpclient, url, value, i -> i == expectedStatusCode, token, responseClass);
+    }
+
+    protected static <T> T postJSON(CloseableHttpClient httpclient, String url, Object value,
+                                    Predicate<Integer> statusCodeCheck,
                                     String token, Class<T> responseClass)
             throws IOException {
         HttpPost httpPost = new HttpPost(url);
@@ -207,7 +223,7 @@ public class AxonIQCliCommand {
         }
 
         CloseableHttpResponse response = httpclient.execute(httpPost);
-        if (response.getStatusLine().getStatusCode() != expectedStatusCode) {
+        if (!statusCodeCheck.test(response.getStatusLine().getStatusCode())) {
             throw new CommandExecutionException(response.getStatusLine().getStatusCode(), url,
                                                 response.getStatusLine().toString() + " - "
                                                         + responseBody(response));
