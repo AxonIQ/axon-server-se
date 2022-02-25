@@ -56,7 +56,7 @@
         <gson.version>2.8.9</gson.version>
         <axonserver-plugin-api.version>4.6.0-SNAPSHOT</axonserver-plugin-api.version>
         <flow.control.version>1.0</flow.control.version>
-        <spring-boot.version>2.5.3</spring-boot.version>
+        <spring-boot.version>2.6.4</spring-boot.version>
     </properties>
 
     <dependencyManagement>
