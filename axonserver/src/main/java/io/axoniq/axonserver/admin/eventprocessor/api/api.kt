@@ -99,6 +99,16 @@ interface EventProcessorAdminService {
      * @param authentication info about the authenticated user
      */
     fun move(identifier: EventProcessorId, segment: Int, target: String, authentication: Authentication): Mono<Void>
+
+    /**
+     * Balance the load for the specified event processor among the connected client.
+     *
+     * @param processor            the event processor name
+     * @param context              the principal context of the event processor
+     * @param tokenStoreIdentifier the token store identifier of the event processor
+     * @param strategyName         the strategy to be used to balance the load
+     */
+    fun loadBalance(processor: String, tokenStoreIdentifier: String, strategy: LoadBalanceStrategyType, authentication: Authentication): Mono<Void>
 }
 
 /**
@@ -202,4 +212,13 @@ interface EventProcessorSegment {
      * Returns the optional error, if any
      */
     fun error(): Optional<String>
+}
+
+enum class LoadBalanceStrategyType(val value: String) {
+    DEFAULT("default"),
+    THREAD_NUMBER("threadNumber");
+
+    companion object {
+        fun forStrategy(strategy: String? = "default") = values().find{ it.value == strategy } ?: DEFAULT
+    }
 }

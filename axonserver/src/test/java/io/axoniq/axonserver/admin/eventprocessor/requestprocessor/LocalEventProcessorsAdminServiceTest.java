@@ -10,21 +10,28 @@
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
+import io.axoniq.axonserver.admin.eventprocessor.api.LoadBalanceStrategyType;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
+import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
+import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.junit.*;
+import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-import java.util.List;
 import javax.annotation.Nonnull;
+import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.mockito.Mockito.*;
@@ -38,6 +45,15 @@ public class LocalEventProcessorsAdminServiceTest {
     @Mock
     ProcessorEventPublisher publisher;
 
+    @Mock
+    LoadBalanceStrategyRepository strategyController;
+
+    @Mock
+    LoadBalancingStrategy loadBalancingStrategy;
+
+    @Mock
+    LoadBalancingOperation loadBalancingOperation;
+
     @Test
     public void pauseTest() {
         String processorName = "processorName";
@@ -47,7 +63,7 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
         testSubject.pause(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         verify(publisher).pauseProcessorRequest("default", "Client-A", processorName);
@@ -64,7 +80,7 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
         testSubject.start(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         verify(publisher).startProcessorRequest("default", "Client-A", processorName);
@@ -82,7 +98,7 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
         testSubject.split(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         List<String> clients = asList("Client-A", "Client-B");
@@ -99,7 +115,7 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
         testSubject.merge(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         List<String> clients = asList("Client-A", "Client-B");
@@ -117,7 +133,7 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
         ClientProcessor clientE = new FakeClientProcessor("Client-E", processorName, tokenStore);
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
         testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
                          () -> "authenticated-user").block();
         verify(publisher).releaseSegment("default", "Client-A", processorName, 2);
@@ -139,7 +155,7 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessor clientE = new FakeClientProcessor("Client-E", true, eventProcessorE);
 
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
-        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors);
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
         Flux<String> clients = testSubject.eventProcessorsByComponent("component",
                                                                       () -> "authenticated-user")
                                           .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
@@ -148,6 +164,33 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(clients)
                     .expectNext("Client-A", "Client-B", "Client-E")
                     .verifyComplete();
+    }
+
+    @Test
+    public void loadBalance() {
+        ArgumentCaptor<TrackingEventProcessor> tepCaptor = ArgumentCaptor.forClass(TrackingEventProcessor.class);
+
+        when(loadBalancingStrategy.balance(tepCaptor.capture())).thenReturn(loadBalancingOperation);
+        when(strategyController.findByName("threadNumber")).thenReturn(loadBalancingStrategy);
+
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
+        ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
+        ClientProcessor clientE = new FakeClientProcessor("Client-E", processorName, tokenStore);
+        ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
+
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
+        testSubject.loadBalance(processorName, tokenStore, LoadBalanceStrategyType.THREAD_NUMBER, () -> "authenticated-user").block();
+
+        TrackingEventProcessor tep = tepCaptor.getValue();
+        Assertions.assertEquals(tep.fullName(), processorName+"@"+tokenStore);
+        Assertions.assertEquals(tep.context(), "default");
+        Assertions.assertEquals(tep.tokenStoreIdentifier(), tokenStore);
+        verify(loadBalancingStrategy, times(3)).balance(any(TrackingEventProcessor.class));
+        verify(loadBalancingOperation, times(3)).perform();
     }
 
     @Nonnull
