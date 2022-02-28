@@ -183,7 +183,9 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
 
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
-        testSubject.loadBalance(processorName, tokenStore, LoadBalanceStrategyType.THREAD_NUMBER, () -> "authenticated-user").block();
+
+        StepVerifier.create(testSubject.loadBalance(processorName, tokenStore, LoadBalanceStrategyType.THREAD_NUMBER, () -> "authenticated-user"))
+                .verifyComplete();
 
         TrackingEventProcessor tep = tepCaptor.getValue();
         Assertions.assertEquals(tep.fullName(), processorName+"@"+tokenStore);
