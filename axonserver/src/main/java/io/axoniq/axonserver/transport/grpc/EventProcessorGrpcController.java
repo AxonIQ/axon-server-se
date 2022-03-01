@@ -157,7 +157,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     /**
      * Balance the load for the specified event processor among the connected client.
      *
-     * @param request            that contains processor name, token store identifier, chosen strategy
+     * @param request          that contains processor name, token store identifier, chosen strategy
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
@@ -168,13 +168,16 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
                 strategy = LoadBalanceStrategyType.DEFAULT;
                 break;
             case THREAD_NUMBER:
-                strategy =  LoadBalanceStrategyType.THREAD_NUMBER;
+                strategy = LoadBalanceStrategyType.THREAD_NUMBER;
                 break;
             case UNRECOGNIZED:
                 throw new IllegalArgumentException("Unknown load balancing strategy: " + request.getStrategy());
         }
 
-        service.loadBalance(request.getProcessor().getProcessorName(), request.getProcessor().getTokenStoreIdentifier(), strategy, new GrpcAuthentication(authenticationProvider))
+        service.loadBalance(request.getProcessor().getProcessorName(),
+                        request.getProcessor().getTokenStoreIdentifier(),
+                        strategy,
+                        new GrpcAuthentication(authenticationProvider))
                 .subscribe(unused -> {
                 }, onError(responseObserver), responseObserver::onCompleted);
     }

@@ -16,6 +16,7 @@ import io.axoniq.axonserver.admin.eventprocessor.api.LoadBalanceStrategyType;
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
@@ -29,6 +30,9 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import javax.annotation.Nonnull;
+import java.security.Principal;
+import java.util.HashSet;
+import java.util.Set;
 
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
@@ -233,7 +237,6 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         // the context will be removed from the event processor
     }
 
-
     @Nonnull
     @Override
     public Mono<Void> loadBalance(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull LoadBalanceStrategyType strategy, @Nonnull Authentication authentication) {
@@ -248,5 +251,18 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                 AuditLog.username(authentication.username()), processor, strategy);
                     }
                 });
+    }
+
+    public Iterable<LoadBalancingStrategy> getBalancingStrategies(Principal principal) {
+        auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(principal));
+        return strategyController.findAll();
+    }
+
+    @Nonnull
+    public Set<String> getLoadBalancingStrategyFactoryBeans(Principal principal) {
+        auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));
+        Set<String> names = new HashSet<>();
+        strategyController.findAll().forEach(i -> names.add(i.getClass().getSimpleName()));
+        return names;
     }
 }
