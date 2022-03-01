@@ -392,7 +392,7 @@ public class QueryDispatcher {
     }
 
     private boolean isStreamingQuery(QueryRequest query) {
-        return !"".equals(query.getExpectedResponseType());
+        return ProcessingInstructionHelper.clientSupportsQueryStreaming(query.getProcessingInstructionsList());
     }
 
     private void dispatchQuery(QueryHandler<?> queryHandler, SerializedQuery query, long timeout) {

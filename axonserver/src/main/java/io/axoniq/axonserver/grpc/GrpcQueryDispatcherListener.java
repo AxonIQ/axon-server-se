@@ -12,6 +12,7 @@ package io.axoniq.axonserver.grpc;
 import io.axoniq.axonserver.grpc.query.QueryComplete;
 import io.axoniq.axonserver.grpc.query.QueryFlowControl;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.grpc.query.QueryReference;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryInstruction;
@@ -80,13 +81,11 @@ public class GrpcQueryDispatcherListener
 
     private boolean sendCancel(QueryInstruction.Cancel cancel) {
         debug(() -> format("Send query cancellation %s.", cancel.requestId()));
-        QueryComplete complete =
-                QueryComplete.newBuilder()
-                             .setRequestId(cancel.requestId())
-                             .setMessageId(UUID.randomUUID().toString())
-                             .build();
+        QueryReference queryReference = QueryReference.newBuilder()
+                                                      .setRequestId(cancel.requestId())
+                                                      .build();
         inboundStream.onNext(QueryProviderInbound.newBuilder()
-                                                 .setQueryComplete(complete)
+                                                 .setQueryCancel(queryReference)
                                                  .build());
         return true;
     }
@@ -95,10 +94,12 @@ public class GrpcQueryDispatcherListener
         debug(() -> format("Send query flow control %s, permits %d.",
                            flowControl.requestId(),
                            flowControl.flowControl()));
+        QueryReference queryReference = QueryReference.newBuilder()
+                                                      .setRequestId(flowControl.requestId())
+                                                      .build();
         QueryFlowControl flowControlMessage =
                 QueryFlowControl.newBuilder()
-                                .setRequestId(flowControl.requestId())
-                                .setMessageId(UUID.randomUUID().toString())
+                                .setQueryReference(queryReference)
                                 .setPermits(flowControl.flowControl())
                                 .build();
         inboundStream.onNext(QueryProviderInbound.newBuilder()
@@ -111,7 +112,7 @@ public class GrpcQueryDispatcherListener
         MetaDataValue.Builder value = MetaDataValue.newBuilder()
                                                    .setBooleanValue(streaming);
         return ProcessingInstruction.newBuilder()
-                                    .setKey(ProcessingKey.SUPPORTS_STREAMING)
+                                    .setKey(ProcessingKey.AS_SUPPORTS_STREAMING)
                                     .setValue(value)
                                     .build();
     }
