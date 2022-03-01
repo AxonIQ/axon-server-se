@@ -12,6 +12,8 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 
+import java.util.Optional;
+
 /**
  * A query instruction. Contains all necessary information for the query instruction to be executed on the client side.
  *
@@ -64,60 +66,36 @@ public class QueryInstruction {
     }
 
     /**
-     * @return whether this instruction is about issuing a new query.
+     * @return the query, if any, to be dispatched.
      */
-    public boolean hasQuery() {
-        return query != null;
+    public Optional<Query> query() {
+        return Optional.ofNullable(query);
     }
 
     /**
-     * @return whether this instruction is about cancelling a query.
+     * @return the cancellation, if any, of the query.
      */
-    public boolean hasCancel() {
-        return cancel != null;
+    public Optional<Cancel> cancel() {
+        return Optional.ofNullable(cancel);
     }
 
     /**
-     * @return whether this instruction is about requesting more responses from a query.
+     * @return the flow control, if any, for the query.
      */
-    public boolean hasFlowControl() {
-        return flowControl != null;
-    }
-
-    /**
-     * @return the query to be dispatched. Do note that the result might be {@code null}. Please check {@link
-     * #hasQuery()} first.
-     */
-    public Query query() {
-        return query;
-    }
-
-    /**
-     * @return the cancellation of the query. Do note that the result might be {@code null}. Please check {@link
-     * #hasCancel()} first.
-     */
-    public Cancel cancel() {
-        return cancel;
-    }
-
-    /**
-     * @return the flow control for the query. Do note that the result might be {@code null}. Please check {@link
-     * #hasFlowControl()} first.
-     */
-    public FlowControl flowControl() {
-        return flowControl;
+    public Optional<FlowControl> flowControl() {
+        return Optional.ofNullable(flowControl);
     }
 
     /**
      * @return the identifier of the query request.
      */
     public String requestId() {
-        if (hasQuery()) {
-            return query().queryRequest().getMessageIdentifier();
-        } else if (hasCancel()) {
-            return cancel().requestId();
-        } else if (hasFlowControl()) {
-            return flowControl().requestId();
+        if (query().isPresent()) {
+            return query().get().queryRequest().getMessageIdentifier();
+        } else if (cancel().isPresent()) {
+            return cancel().get().requestId();
+        } else if (flowControl().isPresent()) {
+            return flowControl().get().requestId();
         }
         return null;
     }
@@ -126,12 +104,12 @@ public class QueryInstruction {
      * @return the context of the query.
      */
     public String context() {
-        if (hasQuery()) {
-            return query().context();
-        } else if (hasCancel()) {
-            return cancel().context();
-        } else if (hasFlowControl()) {
-            return flowControl().context();
+        if (query().isPresent()) {
+            return query().get().context();
+        } else if (cancel().isPresent()) {
+            return cancel().get().context();
+        } else if (flowControl().isPresent()) {
+            return flowControl().get().context();
         }
         return null;
     }
@@ -140,8 +118,8 @@ public class QueryInstruction {
      * @return the priority of the instruction.
      */
     public long priority() {
-        if (hasQuery()) {
-            return query().priority();
+        if (query().isPresent()) {
+            return query().get().priority();
         }
         return 0L;
     }

@@ -368,10 +368,10 @@ public class QueryDispatcherTest {
 
         FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
         QueryInstruction instruction = queue.take("client.default");
-        assertTrue(instruction.hasQuery());
+        assertTrue(instruction.query().isPresent());
         instruction = queue.take("client.default");
-        assertTrue(instruction.hasCancel());
-        assertEquals(requestId, instruction.cancel().requestId());
+        assertTrue(instruction.cancel().isPresent());
+        assertEquals(requestId, instruction.requestId());
     }
 
     @Test
@@ -399,11 +399,11 @@ public class QueryDispatcherTest {
 
         FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
         QueryInstruction instruction = queue.take("client.default");
-        assertTrue(instruction.hasQuery());
+        assertTrue(instruction.query().isPresent());
         instruction = queue.take("client.default");
-        assertTrue(instruction.hasFlowControl());
-        assertEquals(requestId, instruction.flowControl().requestId());
-        assertEquals(100, instruction.flowControl().flowControl());
+        assertTrue(instruction.flowControl().isPresent());
+        assertEquals(requestId, instruction.requestId());
+        assertEquals(100, instruction.flowControl().get().flowControl());
     }
 
     private static class MyQueryInterceptors implements QueryInterceptors {

@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.grpc.query.QueryComplete;
 import io.axoniq.axonserver.grpc.query.QueryFlowControl;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryReference;
@@ -20,7 +19,6 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.UUID;
 import java.util.function.Supplier;
 
 import static java.lang.String.format;
@@ -47,12 +45,12 @@ public class GrpcQueryDispatcherListener
 
     @Override
     protected boolean send(QueryInstruction queryInstruction) {
-        if (queryInstruction.hasQuery()) {
-            return sendQuery(queryInstruction.query());
-        } else if (queryInstruction.hasCancel()) {
-            return sendCancel(queryInstruction.cancel());
-        } else if (queryInstruction.hasFlowControl()) {
-            return sendFlowControl(queryInstruction.flowControl());
+        if (queryInstruction.query().isPresent()) {
+            return send(queryInstruction.query().get());
+        } else if (queryInstruction.cancel().isPresent()) {
+            return send(queryInstruction.cancel().get());
+        } else if (queryInstruction.flowControl().isPresent()) {
+            return send(queryInstruction.flowControl().get());
         } else {
             throw new IllegalStateException("Unsupported queryInstruction to be sent.");
         }
@@ -63,7 +61,7 @@ public class GrpcQueryDispatcherListener
         return logger;
     }
 
-    private boolean sendQuery(QueryInstruction.Query query) {
+    private boolean send(QueryInstruction.Query query) {
         debug(() -> format("Send query request %s, with priority: %d", query.queryRequest(), query.priority()));
         SerializedQuery serializedQuery = validate(query, queryDispatcher, logger);
         if (serializedQuery == null) {
@@ -79,7 +77,7 @@ public class GrpcQueryDispatcherListener
         return true;
     }
 
-    private boolean sendCancel(QueryInstruction.Cancel cancel) {
+    private boolean send(QueryInstruction.Cancel cancel) {
         debug(() -> format("Send query cancellation %s.", cancel.requestId()));
         QueryReference queryReference = QueryReference.newBuilder()
                                                       .setRequestId(cancel.requestId())
@@ -90,7 +88,7 @@ public class GrpcQueryDispatcherListener
         return true;
     }
 
-    private boolean sendFlowControl(QueryInstruction.FlowControl flowControl) {
+    private boolean send(QueryInstruction.FlowControl flowControl) {
         debug(() -> format("Send query flow control %s, permits %d.",
                            flowControl.requestId(),
                            flowControl.flowControl()));
