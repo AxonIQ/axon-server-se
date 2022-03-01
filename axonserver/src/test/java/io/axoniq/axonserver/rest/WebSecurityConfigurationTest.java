@@ -59,7 +59,7 @@ public class WebSecurityConfigurationTest {
             public String getHostName() throws UnknownHostException {
                 return null;
             }
-        }, null);
+        });
         messagingPlatformConfiguration.getAccesscontrol().setToken("123456");
         UserController userController = mock(UserController.class);
         AxonServerAccessController accessController = new AxonServerStandardAccessController(

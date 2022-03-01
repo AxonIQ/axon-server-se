@@ -46,7 +46,7 @@ public class PlatformServiceTest {
 
     @Before
     public void setUp() {
-        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider(), null);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         platformService = new PlatformService(new DefaultTopology(configuration),
                                               () -> context,

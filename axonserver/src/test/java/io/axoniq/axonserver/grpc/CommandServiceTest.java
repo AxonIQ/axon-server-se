@@ -58,7 +58,7 @@ public class CommandServiceTest {
 
         when(commandDispatcher.getCommandQueues()).thenReturn(commandQueue);
         //when(commandDispatcher.redispatch(any(WrappedCommand.class))).thenReturn("test");
-        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider(), null);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
         testSubject = new CommandService(topology,
                                          commandDispatcher,

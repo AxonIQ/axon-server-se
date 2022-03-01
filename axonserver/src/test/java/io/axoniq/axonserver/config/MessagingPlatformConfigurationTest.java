@@ -48,7 +48,7 @@ public class MessagingPlatformConfigurationTest {
             public String getHostName() {
                 return systemHostname;
             }
-        }, null);
+        });
         result.setName(name);
         result.setHostname(hostname);
         result.setDomain(domain);

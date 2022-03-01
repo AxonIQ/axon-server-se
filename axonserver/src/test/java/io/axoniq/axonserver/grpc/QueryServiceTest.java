@@ -58,7 +58,7 @@ public class QueryServiceTest {
         queryQueue = new FlowControlQueues<>();
         eventPublisher = mock(ApplicationEventPublisher.class);
         when(queryDispatcher.getQueryQueue()).thenReturn(queryQueue);
-        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider(), null);
+        MessagingPlatformConfiguration configuration = new MessagingPlatformConfiguration(new TestSystemInfoProvider());
         Topology topology = new DefaultTopology(configuration);
         testSubject = new QueryService(topology,
                                        queryDispatcher,

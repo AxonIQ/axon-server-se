@@ -16,21 +16,17 @@ import io.axoniq.axonserver.util.StringUtils;
 import io.grpc.internal.GrpcUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import javax.annotation.PostConstruct;
 
 import static io.axoniq.axonserver.logging.AuditLog.enablement;
-import static java.util.Arrays.asList;
 
 /**
  * @author Marc Gathier
@@ -46,7 +42,7 @@ public class MessagingPlatformConfiguration {
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
 
-    private final ConfigurableBeanFactory beanFactory;    // Used to load experimental features
+    public static final String ALLOW_EMPTY_DOMAIN = "allow-empty-domain";
 
     /**
      * gRPC port for axonserver platform
@@ -169,18 +165,12 @@ public class MessagingPlatformConfiguration {
     private String pluginCleanPolicy = "onFirstInit";
 
     /**
-     * A comma-separated list of classnames of classes implementing {@link FeatureToggle}.
-     */
-    private String experimentalFeatures = "";
-
-    /**
      * The available features, keyed by name.
      */
-    private final Map<String, FeatureToggle> experimental = new HashMap<>();
+    private final Map<String, Boolean> experimental = new HashMap<>();
 
-    public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider, ConfigurableBeanFactory beanFactory) {
+    public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
-        this.beanFactory = beanFactory;
     }
 
     /**
@@ -210,11 +200,11 @@ public class MessagingPlatformConfiguration {
 
                 if (StringUtils.isEmpty(configDomain)) {
                     logger.info("Configuring domain from {}hostname property: hostname={}, domain={}",
-                            prefix, actualHostname, actualDomain);
+                                prefix, actualHostname, actualDomain);
                     updateSettings.accept(actualHostname, actualDomain);
                 } else {
                     logger.warn("Ignoring domain part of the {}hostname '{}': hostname={}, domain={}",
-                            prefix, configHostname, actualHostname, configDomain);
+                                prefix, configHostname, actualHostname, configDomain);
                     updateSettings.accept(actualHostname, configDomain);
                 }
             }
@@ -223,23 +213,21 @@ public class MessagingPlatformConfiguration {
 
     @PostConstruct
     public void postConstruct() {
-        loadExperimentalFeatures();
-
         validateHostname(getHostname(), getDomain(), false,
-                (h, d) -> {
-                    setHostname(h);
-                    setDomain(d);
-                });
+                         (h, d) -> {
+                             setHostname(h);
+                             setDomain(d);
+                         });
         validateHostname(getInternalHostname(), getInternalDomain(), true,
-                (h, d) -> {
-                    setInternalHostname(h);
-                    setInternalDomain(d);
-                });
+                         (h, d) -> {
+                             setInternalHostname(h);
+                             setInternalDomain(d);
+                         });
 
         if (auditLog.isInfoEnabled()) {
             auditLog.info("Configuration initialized with SSL {} and access control {}.",
-                    enablement(ssl.isEnabled()),
-                    enablement(accesscontrol.isEnabled()));
+                          enablement(ssl.isEnabled()),
+                          enablement(accesscontrol.isEnabled()));
         }
     }
 
@@ -322,7 +310,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(AllowEmptyDomainFeature.NAME)) {
+        if (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(ALLOW_EMPTY_DOMAIN)) {
             internalDomain = getDomain();
         }
         return internalDomain;
@@ -340,18 +328,18 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getFullyQualifiedHostname() {
-        final String domain = getDomain();
-        if (!StringUtils.isEmpty(domain)) {
-            return getHostname() + "." + domain;
+        final String clientDomain = getDomain();
+        if (!StringUtils.isEmpty(clientDomain)) {
+            return getHostname() + "." + clientDomain;
         }
 
         return getHostname();
     }
 
     public String getFullyQualifiedInternalHostname() {
-        final String internalDomain = getInternalDomain();
-        if (!StringUtils.isEmpty(internalDomain)) {
-            return getInternalHostname() + "." + internalDomain;
+        final String clusterDomain = getInternalDomain();
+        if (!StringUtils.isEmpty(clusterDomain)) {
+            return getInternalHostname() + "." + clusterDomain;
         }
 
         return getInternalHostname();
@@ -531,41 +519,11 @@ public class MessagingPlatformConfiguration {
         this.pluginPackageDirectory = pluginPackageDirectory;
     }
 
-    public String getExperimentalFeatures() {
-        return experimentalFeatures;
+    public Map<String, Boolean> getExperimental() {
+        return experimental;
     }
 
-    public void setExperimentalFeatures(String experimentalFeatures) {
-        this.experimentalFeatures = experimentalFeatures;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T extends FeatureToggle> T getExperimentalFeature(String name, Class<T> clazz) {
-        final FeatureToggle toggle = experimental.get(name);
-        return clazz.isInstance(toggle) ? (T) toggle : null;
-    }
-
-    public boolean isExperimentalFeatureEnabled(String name) {
-        final FeatureToggle toggle = experimental.get(name);
-        return toggle != null && toggle.isEnabled();
-    }
-
-    private void loadExperimentalFeatures() {
-        if ((beanFactory != null) && (experimentalFeatures != null) && !experimentalFeatures.isEmpty()) {
-            logger.warn("Loading experimental features");
-            for (String clazz : experimentalFeatures.split(",")) {
-                try {
-                    FeatureToggle feature = (FeatureToggle) beanFactory.getBean(Class.forName(clazz));
-                    if (feature.isEnabled()) {
-                        logger.warn("ENABLING EXPERIMENTAL FEATURE '{}'.", feature.getName());
-                    } else {
-                        logger.info("Loaded DISABLED feature '{}'.", feature.getName());
-                    }
-                    experimental.put(feature.getName(), feature);
-                } catch (ClassNotFoundException e) {
-                    logger.error("Unable to load feature {}.", clazz);
-                }
-            }
-        }
+    public boolean isExperimentalFeatureEnabled(final String name) {
+        return experimental.getOrDefault(name, false);
     }
 }
