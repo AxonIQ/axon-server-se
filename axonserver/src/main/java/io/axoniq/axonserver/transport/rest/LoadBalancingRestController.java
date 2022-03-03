@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.transport.rest;
 
-import io.axoniq.axonserver.admin.eventprocessor.api.LoadBalanceStrategyType;
 import io.axoniq.axonserver.admin.eventprocessor.requestprocessor.LocalEventProcessorsAdminService;
 import io.axoniq.axonserver.serializer.Printable;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +43,7 @@ public class LoadBalancingRestController {
 
     @GetMapping("processors/loadbalance/strategies")
     public Iterable<? extends Printable> getStrategies(@ApiIgnore final Principal principal) {
-        return eventProcessorAdminService.getBalancingStrategies(principal);
+        return eventProcessorAdminService.getBalancingStrategies(new PrincipalAuthentication(principal));
     }
 
     @Deprecated
@@ -66,7 +65,7 @@ public class LoadBalancingRestController {
                                            @RequestParam("strategy") String strategyName,
                                            @ApiIgnore final Principal principal) {
         return eventProcessorAdminService.loadBalance(processor, tokenStoreIdentifier,
-                LoadBalanceStrategyType.Companion.forStrategy(strategyName),
+                strategyName,
                 new PrincipalAuthentication(principal));
     }
 }

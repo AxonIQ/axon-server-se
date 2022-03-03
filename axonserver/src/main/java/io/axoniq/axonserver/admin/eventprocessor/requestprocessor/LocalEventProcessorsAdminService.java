@@ -12,7 +12,6 @@ package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
-import io.axoniq.axonserver.admin.eventprocessor.api.LoadBalanceStrategyType;
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
@@ -239,12 +238,12 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Mono<Void> loadBalance(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull LoadBalanceStrategyType strategy, @Nonnull Authentication authentication) {
+    public Mono<Void> loadBalance(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
         return eventProcessors
                 .filter(eventProcessor -> eventProcessor.eventProcessorInfo().getProcessorName().equals(processor)
                         && eventProcessor.eventProcessorInfo().getTokenStoreIdentifier().equals(tokenStoreIdentifier))
                 .map(ep -> new TrackingEventProcessor(processor, ep.context(), tokenStoreIdentifier))
-                .flatMap(ep -> Mono.fromRunnable(() -> strategyController.findByName(strategy.getValue()).balance(ep).perform()).subscribeOn(Schedulers.boundedElastic())).then()
+                .flatMap(ep -> Mono.fromRunnable(() -> strategyController.findByName(strategy).balance(ep).perform()).subscribeOn(Schedulers.boundedElastic())).then()
                 .doFirst(() -> {
                     if (auditLog.isInfoEnabled()) {
                         auditLog.info("[{}] Request to set load-balancing strategy for processor \"{}\" to \"{}\".",
@@ -253,8 +252,9 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 });
     }
 
-    public Iterable<LoadBalancingStrategy> getBalancingStrategies(Principal principal) {
-        auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(principal));
+    @Override
+    public Iterable<LoadBalancingStrategy> getBalancingStrategies(@Nonnull Authentication authentication) {
+        auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(authentication.username()));
         return strategyController.findAll();
     }
 

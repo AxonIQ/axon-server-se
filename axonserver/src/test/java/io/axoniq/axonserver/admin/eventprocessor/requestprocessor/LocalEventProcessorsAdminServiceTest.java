@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
-import io.axoniq.axonserver.admin.eventprocessor.api.LoadBalanceStrategyType;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
@@ -169,6 +168,7 @@ public class LocalEventProcessorsAdminServiceTest {
     @Test
     public void loadBalance() {
         ArgumentCaptor<TrackingEventProcessor> tepCaptor = ArgumentCaptor.forClass(TrackingEventProcessor.class);
+        String strategy = "threadNumber";
 
         when(loadBalancingStrategy.balance(tepCaptor.capture())).thenReturn(loadBalancingOperation);
         when(strategyController.findByName("threadNumber")).thenReturn(loadBalancingStrategy);
@@ -184,7 +184,7 @@ public class LocalEventProcessorsAdminServiceTest {
 
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher, processors, strategyController);
 
-        StepVerifier.create(testSubject.loadBalance(processorName, tokenStore, LoadBalanceStrategyType.THREAD_NUMBER, () -> "authenticated-user"))
+        StepVerifier.create(testSubject.loadBalance(processorName, tokenStore, strategy, () -> "authenticated-user"))
                 .verifyComplete();
 
         TrackingEventProcessor tep = tepCaptor.getValue();

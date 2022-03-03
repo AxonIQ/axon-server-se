@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.admin.eventprocessor.api
 
 import io.axoniq.axonserver.api.Authentication
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
@@ -104,11 +105,18 @@ interface EventProcessorAdminService {
      * Balance the load for the specified event processor among the connected client.
      *
      * @param processor            the event processor name
-     * @param context              the principal context of the event processor
      * @param tokenStoreIdentifier the token store identifier of the event processor
-     * @param strategyName         the strategy to be used to balance the load
+     * @param strategy         the strategy to be used to balance the load
      */
-    fun loadBalance(processor: String, tokenStoreIdentifier: String, strategy: LoadBalanceStrategyType, authentication: Authentication): Mono<Void>
+    fun loadBalance(processor: String, tokenStoreIdentifier: String, strategy: String, authentication: Authentication): Mono<Void>
+
+    /**
+     * Returns available load balancing strategies.
+     *
+     * @param principal info about the authenticated user
+     * @return the available load balancing strategies
+     */
+    fun getBalancingStrategies( authentication: Authentication): Iterable<LoadBalancingStrategy?>
 }
 
 /**
@@ -212,13 +220,4 @@ interface EventProcessorSegment {
      * Returns the optional error, if any
      */
     fun error(): Optional<String>
-}
-
-enum class LoadBalanceStrategyType(val value: String) {
-    DEFAULT("default"),
-    THREAD_NUMBER("threadNumber");
-
-    companion object {
-        fun forStrategy(strategy: String? = "default") = values().find{ it.value == strategy } ?: DEFAULT
-    }
 }

@@ -11,7 +11,6 @@ package io.axoniq.axonserver.transport.grpc;
 
 import com.google.protobuf.Empty;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
-import io.axoniq.axonserver.admin.eventprocessor.api.LoadBalanceStrategyType;
 import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.Component;
@@ -20,6 +19,7 @@ import io.axoniq.axonserver.grpc.admin.EventProcessor;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
 import io.axoniq.axonserver.grpc.admin.EventProcessorIdentifier;
 import io.axoniq.axonserver.grpc.admin.LoadBalanceRequest;
+import io.axoniq.axonserver.grpc.admin.LoadBalancingStrategy;
 import io.axoniq.axonserver.grpc.admin.MoveSegment;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorIdMessage;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorMapping;
@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
 import java.util.function.Consumer;
+import java.util.stream.StreamSupport;
 
 /**
  * Exposed through GRPC the operations applicable to an Event Processor.
@@ -162,24 +163,20 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void loadBalanceProcessor(LoadBalanceRequest request, StreamObserver<Empty> responseObserver) {
-        LoadBalanceStrategyType strategy = null;
-        switch (request.getStrategy()) {
-            case DEFAULT:
-                strategy = LoadBalanceStrategyType.DEFAULT;
-                break;
-            case THREAD_NUMBER:
-                strategy = LoadBalanceStrategyType.THREAD_NUMBER;
-                break;
-            case UNRECOGNIZED:
-                throw new IllegalArgumentException("Unknown load balancing strategy: " + request.getStrategy());
-        }
-
         service.loadBalance(request.getProcessor().getProcessorName(),
                         request.getProcessor().getTokenStoreIdentifier(),
-                        strategy,
+                        request.getStrategy(),
                         new GrpcAuthentication(authenticationProvider))
                 .subscribe(unused -> {
                 }, onError(responseObserver), responseObserver::onCompleted);
+    }
+
+    @Override
+    public void getBalancingStrategies(Empty request, StreamObserver<LoadBalancingStrategy> responseObserver) {
+        StreamSupport.stream(service.getBalancingStrategies(new GrpcAuthentication(authenticationProvider)).spliterator(), false)
+                .map(str -> LoadBalancingStrategy.newBuilder().setStrategy(str.getName()).setLabel(str.getLabel()).build())
+                .forEach(responseObserver::onNext);
+        responseObserver.onCompleted();
     }
 
     private Consumer<Throwable> onError(StreamObserver<?> responseObserver) {
