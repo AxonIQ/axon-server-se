@@ -252,12 +252,19 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 });
     }
 
+    @Nonnull
+    @Override
+    public Mono<Void> autoLoadBalance(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
+        return Mono.error(new UnsupportedOperationException("Auto load balancing is not supported"));
+    }
+
     @Override
     public Iterable<LoadBalancingStrategy> getBalancingStrategies(@Nonnull Authentication authentication) {
         auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(authentication.username()));
         return strategyController.findAll();
     }
 
+    @Deprecated
     @Nonnull
     public Set<String> getLoadBalancingStrategyFactoryBeans(Principal principal) {
         auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));

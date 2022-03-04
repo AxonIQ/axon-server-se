@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.transport.rest;
 
+import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.admin.eventprocessor.requestprocessor.LocalEventProcessorsAdminService;
 import io.axoniq.axonserver.serializer.Printable;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +36,7 @@ import java.util.Set;
 @RequestMapping("v1")
 public class LoadBalancingRestController {
 
-    private final LocalEventProcessorsAdminService eventProcessorAdminService;
+    private final EventProcessorAdminService eventProcessorAdminService;
 
     public LoadBalancingRestController(LocalEventProcessorsAdminService eventProcessorAdminService) {
         this.eventProcessorAdminService = eventProcessorAdminService;
@@ -49,7 +50,7 @@ public class LoadBalancingRestController {
     @Deprecated
     @GetMapping("processors/loadbalance/strategies/factories")
     public Set<String> getLoadBalancingStrategyFactoryBean(@ApiIgnore final Principal principal) {
-        return eventProcessorAdminService.getLoadBalancingStrategyFactoryBeans(principal);
+        return ((LocalEventProcessorsAdminService) eventProcessorAdminService).getLoadBalancingStrategyFactoryBeans(principal);
     }
 
     /**

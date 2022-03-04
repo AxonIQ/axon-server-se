@@ -111,6 +111,15 @@ interface EventProcessorAdminService {
     fun loadBalance(processor: String, tokenStoreIdentifier: String, strategy: String, authentication: Authentication): Mono<Void>
 
     /**
+     * Balance the load for the specified event processor among the connected client.
+     *
+     * @param processor            the event processor name
+     * @param tokenStoreIdentifier the token store identifier of the event processor
+     * @param strategy         the strategy to be used to balance the load
+     */
+    fun autoLoadBalance(processor: String, tokenStoreIdentifier: String, strategy: String, authentication: Authentication): Mono<Void>
+
+    /**
      * Returns available load balancing strategies.
      *
      * @param principal info about the authenticated user
