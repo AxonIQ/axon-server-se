@@ -31,7 +31,6 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
-import io.axoniq.axonserver.message.query.QueryInstruction;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;

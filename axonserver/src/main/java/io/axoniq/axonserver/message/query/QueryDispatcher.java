@@ -99,7 +99,10 @@ public class QueryDispatcher {
                                                          clientId,
                                                          clientStream.getContext(),
                                                          responseTime);
-            activeQuery.forward(queryResponse);
+            if (activeQuery.forward(queryResponse, clientStreamId)) {
+                activeQuery.removeHandlersNotMatching(clientStreamId)
+                           .forEach(h -> dispatchCancellation(h, activeQuery.getKey(), activeQuery.queryName()));
+            }
         } else {
             logger.debug("No (more) information for {}", queryResponse.getRequestIdentifier());
         }
@@ -117,7 +120,7 @@ public class QueryDispatcher {
     public void handleComplete(String requestId, String clientStreamId, String clientId, boolean proxied) {
         ActiveQuery activeQuery = activeQuery(clientStreamId, requestId);
         if (activeQuery != null) {
-            if (activeQuery.completed(clientStreamId)) {
+            if (activeQuery.complete(clientStreamId)) {
                 queryCache.remove(activeQuery.getKey());
             }
             if (!proxied) {
@@ -167,10 +170,11 @@ public class QueryDispatcher {
     public void cancel(String requestId) {
         ActiveQuery activeQuery = queryCache.get(requestId);
         if (activeQuery != null) {
-                activeQuery.handlers()
-                           .forEach(h -> dispatchCancellation(h,
-                                                              activeQuery.getKey(),
-                                                              activeQuery.queryName()));
+            activeQuery.handlers()
+                       .forEach(h -> dispatchCancellation(h,
+                                                          activeQuery.getKey(),
+                                                          activeQuery.queryName()));
+            queryCache.remove(requestId);
         }
     }
 
@@ -183,11 +187,10 @@ public class QueryDispatcher {
     public void flowControl(String requestId, long permits) {
         ActiveQuery activeQuery = queryCache.get(requestId);
         if (activeQuery != null) {
-            activeQuery.handlers()
-                       .forEach(h -> dispatchFlowControl(h,
-                                                         activeQuery.getKey(),
-                                                         activeQuery.queryName(),
-                                                         permits)); // TODO: 2/17/22 possible overflow since we're sending all permits to all handlers
+            activeQuery.handlers().forEach(h -> dispatchFlowControl(h,
+                                                                    activeQuery.getKey(),
+                                                                    activeQuery.queryName(),
+                                                                    permits));
         }
     }
 
@@ -304,7 +307,7 @@ public class QueryDispatcher {
      */
     public void cancelProxied(String requestId, String queryName, String context, String clientStreamId) {
         dispatchProxied(context, queryName, clientStreamId,
-                        handler -> dispatchCancellation(handler, queryName, requestId));
+                        handler -> dispatchCancellation(handler, requestId, queryName));
     }
 
     /**

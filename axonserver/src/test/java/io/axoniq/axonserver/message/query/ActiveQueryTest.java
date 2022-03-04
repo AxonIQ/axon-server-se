@@ -6,8 +6,6 @@ import org.assertj.core.util.Sets;
 import org.junit.jupiter.api.*;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -29,8 +27,8 @@ class ActiveQueryTest {
         testSubject.forward(QueryResponse.getDefaultInstance());
         assertEquals(2, responseList.size());
         assertNull(completed[0]);
-        testSubject.completed("client1");
-        testSubject.completed("client2");
+        testSubject.complete("client1");
+        testSubject.complete("client2");
         Assertions.assertNotNull(completed[0]);
     }
 
@@ -46,8 +44,8 @@ class ActiveQueryTest {
         testSubject.forward(QueryResponse.getDefaultInstance());
         assertEquals(1, responseList.size());
         assertNull(completed[0]);
-        testSubject.completed("client1");
-        testSubject.completed("client2");
+        testSubject.complete("client1");
+        testSubject.complete("client2");
         Assertions.assertNotNull(completed[0]);
     }
     @Test
@@ -60,8 +58,8 @@ class ActiveQueryTest {
                                                             s -> completed[0] = s, mockedQueryHandlers());
         testSubject.forward(QueryResponse.newBuilder().setErrorCode("Error1").build());
         testSubject.forward(QueryResponse.newBuilder().setErrorCode("Error2").build());
-        testSubject.completed("client1");
-        testSubject.completed("client2");
+        testSubject.complete("client1");
+        testSubject.complete("client2");
         assertEquals(1, responseList.size());
         assertNotNull(completed[0]);
         assertEquals("Error2", responseList.get(0).getErrorCode());

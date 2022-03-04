@@ -38,6 +38,7 @@ public class ActiveQuery {
     private final String sourceClientId;
     private final AtomicReference<QueryResponse> failedResponse = new AtomicReference<>();
     private final boolean streaming;
+    private final AtomicReference<String> targetClientStreamId = new AtomicReference<>();
 
     /**
      * Creates an instance with the specified parameters.
@@ -94,9 +95,25 @@ public class ActiveQuery {
     }
 
     /**
-     * Forwards the {@link QueryResponse} to the response consumer.
+     * Forwards the {@link QueryResponse} to the response consumer. The response was sent by the client with given
+     * {@code clientStreamId}.
      *
      * @param queryResponse  the {@link QueryResponse}
+     * @param clientStreamId the identifier of the target client stream
+     * @return {@code true} if forwarding was successful, {@code false} otherwise
+     */
+    public boolean forward(QueryResponse queryResponse, String clientStreamId) {
+        if (!singleTargetForStreamingQueries(clientStreamId)) {
+            return false;
+        }
+        forward(queryResponse);
+        return true;
+    }
+
+    /**
+     * Forwards the {@link QueryResponse} to the response consumer.
+     *
+     * @param queryResponse the {@link QueryResponse}
      */
     public void forward(QueryResponse queryResponse) {
         try {
@@ -111,6 +128,14 @@ public class ActiveQuery {
         }
     }
 
+    private boolean singleTargetForStreamingQueries(String clientStreamId) {
+        if (streaming) {
+            targetClientStreamId.compareAndSet(null, clientStreamId);
+            return clientStreamId.equals(targetClientStreamId.get());
+        }
+        return true;
+    }
+
     private boolean hasError(QueryResponse queryResponse) {
         return !queryResponse.getErrorCode().isEmpty() || queryResponse.hasErrorMessage();
     }
@@ -123,7 +148,7 @@ public class ActiveQuery {
      * @param clientStreamId the unique identifier of the query client stream from which it has been receive a response
      * @return {@code true} if this was the last expected response, {@code false} if at least another response is expected
      */
-    public boolean completed(String clientStreamId) {
+    public boolean complete(String clientStreamId) {
         handlers.removeIf(h -> clientStreamId.equals(h.getClientStreamId()));
         if (handlers.isEmpty()) {
             QueryResponse response = failedResponse.getAndSet(null);
@@ -177,7 +202,7 @@ public class ActiveQuery {
 
     public boolean completeWithError(String clientStreamId, ErrorCode errorCode, String message) {
         responseConsumer.accept(buildErrorResponse(errorCode, message));
-        return completed(clientStreamId);
+        return complete(clientStreamId);
     }
 
     @Nonnull
@@ -221,6 +246,20 @@ public class ActiveQuery {
      */
     public Set<QueryHandler<?>> handlers() {
         return Collections.unmodifiableSet(handlers);
+    }
+
+    /**
+     * Removes handlers that do not match given {@code clientStreamId}.
+     *
+     * @param clientStreamId the identifier of the client stream
+     * @return removed handlers
+     */
+    public Set<QueryHandler<?>> removeHandlersNotMatching(String clientStreamId) {
+        Set<QueryHandler<?>> toRemove = handlers.stream()
+                                                .filter(h -> !clientStreamId.equals(h.getClientStreamId()))
+                                                .collect(Collectors.toSet());
+        handlers.removeAll(toRemove);
+        return toRemove;
     }
 
     /**
