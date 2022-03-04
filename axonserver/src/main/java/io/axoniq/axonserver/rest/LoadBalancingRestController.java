@@ -10,8 +10,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyHolder;
-import io.axoniq.axonserver.component.processor.balancing.strategy.ProcessorLoadBalanceStrategy;
+import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.serializer.Printable;
 import org.slf4j.Logger;
@@ -25,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,14 +41,10 @@ public class LoadBalancingRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
 
-    private final LoadBalanceStrategyHolder strategyController;
-    private final ProcessorLoadBalanceStrategy processorLoadBalanceStrategy;
+    private final LoadBalanceStrategyRepository strategyController;
 
-    public LoadBalancingRestController(
-            LoadBalanceStrategyHolder strategyController,
-            ProcessorLoadBalanceStrategy processorLoadBalanceStrategy) {
+    public LoadBalancingRestController(LoadBalanceStrategyRepository strategyController) {
         this.strategyController = strategyController;
-        this.processorLoadBalanceStrategy = processorLoadBalanceStrategy;
     }
 
     @GetMapping("processors/loadbalance/strategies")
@@ -58,11 +54,13 @@ public class LoadBalancingRestController {
         return strategyController.findAll();
     }
 
+    @Deprecated
     @GetMapping("processors/loadbalance/strategies/factories")
     public Set<String> getLoadBalancingStrategyFactoryBean(@ApiIgnore final Principal principal) {
         auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));
-
-        return strategyController.getFactoryBeans();
+        Set<String> names = new HashSet<>();
+        strategyController.findAll().forEach(i -> names.add(i.getClass().getSimpleName()));
+        return names;
     }
 
     /**
@@ -80,11 +78,10 @@ public class LoadBalancingRestController {
                                      @RequestParam("strategy") String strategyName,
                                      @ApiIgnore final Principal principal) {
         auditLog.debug("[{}@{}] Request to set load-balancing strategy for processor \"{}\" to \"{}\".",
-                       AuditLog.username(principal), context,
-                       processor, strategyName);
+                       AuditLog.username(principal), context, processor, strategyName);
 
         TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context, tokenStoreIdentifier);
         String instructionId = UUID.randomUUID().toString();
-        processorLoadBalanceStrategy.balance(trackingProcessor, strategyName).perform(instructionId);
+        strategyController.findByName(strategyName).balance(trackingProcessor, strategyName).perform(instructionId);
     }
 }

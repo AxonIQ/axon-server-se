@@ -11,6 +11,7 @@ package io.axoniq.axonserver.component.processor.balancing;
 
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
+import org.springframework.stereotype.Component;
 
 import static java.util.stream.StreamSupport.stream;
 
@@ -18,6 +19,7 @@ import static java.util.stream.StreamSupport.stream;
  * Created by Sara Pellegrini on 08/08/2018.
  * sara.pellegrini@gmail.com
  */
+@Component
 public class DefaultOperationFactory implements OperationFactory {
 
     private final ProcessorEventPublisher processorEventsSource;

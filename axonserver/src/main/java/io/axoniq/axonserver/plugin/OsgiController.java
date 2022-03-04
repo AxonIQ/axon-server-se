@@ -61,15 +61,18 @@ public class OsgiController implements PluginServiceProvider {
     private final String cacheDirectory;
     private final String cacheCleanPolicy;
     private final boolean pluginsEnabled;
+    private final AxonServerInformationProvider axonServerInformationProvider;
     private final SystemPackagesProvider systemPackagesProvider;
     private volatile BundleContext bundleContext;
     private volatile Framework framework;
 
     @Autowired
-    public OsgiController(MessagingPlatformConfiguration configuration) {
+    public OsgiController(MessagingPlatformConfiguration configuration,
+                          AxonServerInformationProvider axonServerInformationProvider) {
         this(configuration.getPluginCacheDirectory(),
              configuration.getPluginCleanPolicy(),
-             configuration.isPluginsEnabled());
+             configuration.isPluginsEnabled(),
+             axonServerInformationProvider);
     }
 
     /**
@@ -78,10 +81,12 @@ public class OsgiController implements PluginServiceProvider {
      * @param cacheDirectory   OSGi cache directory
      * @param cacheCleanPolicy clean policy of the OSGi cache (none or onFirstInit)
      */
-    public OsgiController(String cacheDirectory, String cacheCleanPolicy, boolean pluginsEnabled) {
+    public OsgiController(String cacheDirectory, String cacheCleanPolicy, boolean pluginsEnabled,
+                          AxonServerInformationProvider axonServerInformationProvider) {
         this.cacheDirectory = cacheDirectory;
         this.cacheCleanPolicy = cacheCleanPolicy;
         this.pluginsEnabled = pluginsEnabled;
+        this.axonServerInformationProvider = axonServerInformationProvider;
         this.systemPackagesProvider = new SystemPackagesProvider();
     }
 
@@ -105,6 +110,7 @@ public class OsgiController implements PluginServiceProvider {
             framework.start();
 
             bundleContext = framework.getBundleContext();
+            bundleContext.registerService(AxonServerInformationProvider.class, axonServerInformationProvider, null);
             bundleContext.addBundleListener(event -> {
                 logger.debug("{}/{}: Bundle changed, type = {}, bundle state = {}",
                              event.getBundle().getSymbolicName(),

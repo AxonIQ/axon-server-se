@@ -12,7 +12,6 @@ package io.axoniq.axonserver.component.processor.balancing.strategy;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
-import org.springframework.stereotype.Component;
 
 /**
  * Created by Sara Pellegrini on 13/08/2018.
@@ -20,19 +19,21 @@ import org.springframework.stereotype.Component;
  */
 public class NoLoadBalanceStrategy implements LoadBalancingStrategy {
 
+    public static final NoLoadBalanceStrategy INSTANCE = new NoLoadBalanceStrategy();
+
     @Override
     public LoadBalancingOperation balance(TrackingEventProcessor processor) {
         return (String instructionId) -> {
         };
     }
 
-    @Component("NoLoadBalance")
-    public static final class Factory implements LoadBalancingStrategy.Factory {
+    @Override
+    public String getLabel() {
+        return "Disabled";
+    }
 
-
-        @Override
-        public LoadBalancingStrategy create() {
-            return new NoLoadBalanceStrategy();
-        }
+    @Override
+    public String getName() {
+        return "disabled";
     }
 }
