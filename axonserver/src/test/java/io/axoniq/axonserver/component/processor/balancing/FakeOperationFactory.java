@@ -27,7 +27,7 @@ public class FakeOperationFactory implements OperationFactory {
     @Override
     public LoadBalancingOperation move(Integer segmentIdentifier, TrackingEventProcessor trackingEventProcessor,
                                        String sourceInstance, String targetInstance) {
-        return (String instructionId) -> {
+        return () -> {
             assert configuration.get(sourceInstance).contains(segmentIdentifier);
             configuration.get(sourceInstance).remove(segmentIdentifier);
             configuration.get(targetInstance).add(segmentIdentifier);

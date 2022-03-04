@@ -26,7 +26,7 @@ public class OperationSequence implements LoadBalancingOperation {
     }
 
     @Override
-    public void perform(String instructionId) {
-        sequence.forEach(s -> s.perform(instructionId));
+    public void perform() {
+        sequence.forEach(LoadBalancingOperation::perform);
     }
 }

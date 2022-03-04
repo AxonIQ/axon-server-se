@@ -13,6 +13,8 @@ import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 import static java.util.stream.StreamSupport.stream;
 
 /**
@@ -52,7 +54,7 @@ public class DefaultOperationFactory implements OperationFactory {
         }
 
         @Override
-        public void perform(String instructionId) {
+        public void perform() {
             stream(processors.spliterator(), false)
                     .filter(new SameProcessor(processor))
                     .filter(p -> !target.equals(p.clientId()))
@@ -61,7 +63,7 @@ public class DefaultOperationFactory implements OperationFactory {
                                             p.clientId(),
                                             processor.name(),
                                             segment,
-                                            instructionId));
+                                            UUID.randomUUID().toString()));
         }
 
         @Override

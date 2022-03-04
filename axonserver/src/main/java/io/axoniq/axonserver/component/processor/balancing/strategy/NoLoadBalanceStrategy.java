@@ -23,7 +23,7 @@ public class NoLoadBalanceStrategy implements LoadBalancingStrategy {
 
     @Override
     public LoadBalancingOperation balance(TrackingEventProcessor processor) {
-        return (String instructionId) -> {
+        return () -> {
         };
     }
 

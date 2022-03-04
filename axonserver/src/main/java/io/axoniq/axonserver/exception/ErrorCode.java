@@ -144,7 +144,7 @@ public enum ErrorCode {
     }
 
     public static ErrorCode find(String errorCode) {
-        if (StringUtils.hasText(errorCode)) {
+        if (!StringUtils.hasText(errorCode)) {
             return ErrorCode.OTHER;
         }
 

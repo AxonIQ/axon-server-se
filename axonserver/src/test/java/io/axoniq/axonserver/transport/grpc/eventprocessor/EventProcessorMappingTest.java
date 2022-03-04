@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -68,7 +68,7 @@ public class EventProcessorMappingTest {
                 + "client_instance {\n"
                 + "  client_id: \"clientIdOne\"\n"
                 + "  isRunning: true\n"
-                + "  max_segments: 4\n"
+                + "  max_capacity: 4\n"
                 + "  claimed_segment {\n"
                 + "    one_part_of: 2\n"
                 + "    claimed_by: \"clientIdOne\"\n"
@@ -78,7 +78,7 @@ public class EventProcessorMappingTest {
                 + "client_instance {\n"
                 + "  client_id: \"clientIdTwo\"\n"
                 + "  isRunning: true\n"
-                + "  max_segments: 1\n"
+                + "  max_capacity: 1\n"
                 + "  claimed_segment {\n"
                 + "    id: 1\n"
                 + "    one_part_of: 2\n"

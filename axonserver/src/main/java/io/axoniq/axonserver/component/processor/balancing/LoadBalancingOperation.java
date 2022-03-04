@@ -15,6 +15,6 @@ package io.axoniq.axonserver.component.processor.balancing;
  */
 public interface LoadBalancingOperation {
 
-    void perform(String instructionId);
+    void perform();
 
 }

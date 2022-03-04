@@ -13,7 +13,6 @@ import org.junit.*;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.UUID;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -23,15 +22,13 @@ import static org.junit.Assert.*;
  */
 public class OperationSequenceTest {
 
-    private static final String INSTRUCTION_ID = UUID.randomUUID().toString();
-
     @Test
     public void perform() {
         List<String> operations = new LinkedList<>();
-        OperationSequence testSubject = new OperationSequence(asList((String instructionId) -> operations.add("A"),
-                                                                     (String instructionId) -> operations.add("B"),
-                                                                     (String instructionId) -> operations.add("C")));
-        testSubject.perform(INSTRUCTION_ID);
+        OperationSequence testSubject = new OperationSequence(asList(() -> operations.add("A"),
+                                                                     () -> operations.add("B"),
+                                                                     () -> operations.add("C")));
+        testSubject.perform();
         assertEquals(asList("A", "B", "C"), operations);
     }
 }

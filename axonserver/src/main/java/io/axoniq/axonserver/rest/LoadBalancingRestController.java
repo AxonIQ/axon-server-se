@@ -26,7 +26,6 @@ import springfox.documentation.annotations.ApiIgnore;
 import java.security.Principal;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Rest APIs related to the load balancing of tracking event processors over client applications.
@@ -81,7 +80,8 @@ public class LoadBalancingRestController {
                        AuditLog.username(principal), context, processor, strategyName);
 
         TrackingEventProcessor trackingProcessor = new TrackingEventProcessor(processor, context, tokenStoreIdentifier);
-        String instructionId = UUID.randomUUID().toString();
-        strategyController.findByName(strategyName).balance(trackingProcessor, strategyName).perform(instructionId);
+        strategyController.findByName(strategyName)
+                          .balance(trackingProcessor)
+                          .perform();
     }
 }
