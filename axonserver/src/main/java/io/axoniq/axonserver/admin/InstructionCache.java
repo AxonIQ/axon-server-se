@@ -38,7 +38,7 @@ public class InstructionCache extends ActiveRequestsCache<Instruction> {
     @Autowired
     public InstructionCache(
             @Value("${axoniq.axonserver.instruction-cache-capacity:1000}") long capacity,
-            @Value("${axoniq.axonserver.instruction-cache-capacity:10000}") long timeout) {
+            @Value("${axoniq.axonserver.instruction-cache-timeout:10000}") long timeout) {
         this(new LimitedBuffer<>(REQUEST_TYPE, FULL_BUFFER_MESSAGE, capacity), timeout);
     }
 

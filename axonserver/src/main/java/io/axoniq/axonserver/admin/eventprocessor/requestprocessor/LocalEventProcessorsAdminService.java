@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -347,8 +347,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                         }
 
 
-                        if (targetEventProcessor.get().eventProcessorInfo().getAvailableThreads() -
-                                targetEventProcessor.get().eventProcessorInfo().getActiveThreads() < 1) {
+                        if (targetEventProcessor.get().eventProcessorInfo().getAvailableThreads() < 1) {
                             sink.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_MOVE_NO_AVAILBLE_THREADS,
                                                                       "No available threads on target"));
                             return;

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -91,7 +91,7 @@ public enum ErrorCode {
     QUERY_TIMEOUT("AXONIQ-5006", Status.CANCELLED, HttpStatus.GATEWAY_TIMEOUT),
 
     // Instruction handling errors
-    INSTRUCTION_TIMEOUT("AXONIQ-11000", Status.CANCELLED, HttpStatus.GATEWAY_TIMEOUT),
+    INSTRUCTION_TIMEOUT("AXONIQ-11000", Status.DEADLINE_EXCEEDED, HttpStatus.GATEWAY_TIMEOUT),
 
     NO_EVENTSTORE("AXONIQ-6000", Status.NOT_FOUND, HttpStatus.SERVICE_UNAVAILABLE),
     CLIENT_DISCONNECTED("AXONIQ-6001", Status.NOT_FOUND, HttpStatus.INTERNAL_SERVER_ERROR),
