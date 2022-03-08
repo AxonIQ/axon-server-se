@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,6 +24,9 @@ import org.springframework.stereotype.Component;
 import static java.lang.String.format;
 
 /**
+ * Component used to cache active instructions.
+ *
+ * @author Marc Gathier
  * @author Sara Pellegrini
  * @since 4.6.0
  */
@@ -35,6 +38,12 @@ public class InstructionCache extends ActiveRequestsCache<Instruction> {
 
     private final CancelStrategy<Instruction> onTimeout;
 
+    /**
+     * Constructs an instance based on the specified parameters.
+     *
+     * @param capacity the max number of instruction that can be cached
+     * @param timeout  the timeout after which to cancel the uncompleted instruction
+     */
     @Autowired
     public InstructionCache(
             @Value("${axoniq.axonserver.instruction-cache-capacity:1000}") long capacity,
@@ -42,6 +51,12 @@ public class InstructionCache extends ActiveRequestsCache<Instruction> {
         this(new LimitedBuffer<>(REQUEST_TYPE, FULL_BUFFER_MESSAGE, capacity), timeout);
     }
 
+    /**
+     * Constructs an instance based on the specified parameters.
+     *
+     * @param buffer  the cache buffer to collect active instructions
+     * @param timeout the timeout after which to cancel the uncompleted instruction
+     */
     public InstructionCache(ConstraintCache<String, Instruction> buffer, long timeout) {
         super(buffer);
         this.onTimeout = new CancelOnTimeout<>(REQUEST_TYPE,
@@ -56,15 +71,23 @@ public class InstructionCache extends ActiveRequestsCache<Instruction> {
         instruction.completeExceptionally(ErrorCode.INSTRUCTION_TIMEOUT, message);
     }
 
+    /**
+     * Schedules the timeout check.
+     */
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void checkTimeout() {
         this.cancel(onTimeout);
     }
 
+    /**
+     * Cancels instructions when the handler disconnects.
+     *
+     * @param applicationDisconnected the client disconnected event
+     */
     @EventListener
     public void on(ApplicationDisconnected applicationDisconnected) {
-        String clientStreamId = applicationDisconnected.getClientStreamId();
-        CancelStrategy<Instruction> onApplicationDisconnected = new CancelOnApplicationDisconnected(clientStreamId);
+        String clientId = applicationDisconnected.getClientId();
+        CancelStrategy<Instruction> onApplicationDisconnected = new CancelOnHandlerDisconnected(clientId);
         this.cancel(onApplicationDisconnected);
     }
 }

@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -335,7 +335,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                                                             .findFirst();
                     if (!targetEventProcessor.isPresent()) {
                         sink.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_MOVE_UNKNOWN_TARGET,
-                                                                  "Target for move not found")); //TODO check if there is something more specific that OTHER
+                                                                  "Target for move not found"));
                         return;
                     } else {
                         List<SegmentStatus> segments = targetEventProcessor.get()

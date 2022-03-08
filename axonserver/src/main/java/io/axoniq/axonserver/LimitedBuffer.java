@@ -19,6 +19,8 @@ import java.util.concurrent.ConcurrentMap;
 import javax.annotation.Nonnull;
 
 /**
+ * Implementation of the {@link ConstraintCache} that limits the total number of the items.
+ *
  * @author Sara Pellegrini
  * @since 4.6.0
  */
