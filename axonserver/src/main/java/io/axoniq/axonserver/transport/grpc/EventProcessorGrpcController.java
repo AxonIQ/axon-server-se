@@ -172,8 +172,8 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     }
 
     @Override
-    public void autoLoadBalanceProcessor(LoadBalanceRequest request, StreamObserver<Empty> responseObserver) {
-        service.autoLoadBalance(request.getProcessor().getProcessorName(),
+    public void setAutoLoadBalanceStrategy(LoadBalanceRequest request, StreamObserver<Empty> responseObserver) {
+        service.setAutoLoadBalanceStrategy(request.getProcessor().getProcessorName(),
                         request.getProcessor().getTokenStoreIdentifier(),
                         request.getStrategy(),
                         new GrpcAuthentication(authenticationProvider))

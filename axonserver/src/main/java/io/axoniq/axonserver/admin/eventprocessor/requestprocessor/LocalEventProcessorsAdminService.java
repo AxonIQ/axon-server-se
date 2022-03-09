@@ -29,9 +29,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import javax.annotation.Nonnull;
-import java.security.Principal;
-import java.util.HashSet;
-import java.util.Set;
 
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
@@ -254,7 +251,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Mono<Void> autoLoadBalance(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
+    public Mono<Void> setAutoLoadBalanceStrategy(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
         return Mono.error(new UnsupportedOperationException("Auto load balancing is not supported"));
     }
 
@@ -262,14 +259,5 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
     public Iterable<LoadBalancingStrategy> getBalancingStrategies(@Nonnull Authentication authentication) {
         auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(authentication.username()));
         return strategyController.findAll();
-    }
-
-    @Deprecated
-    @Nonnull
-    public Set<String> getLoadBalancingStrategyFactoryBeans(Principal principal) {
-        auditLog.debug("[{}] Request to list load-balancing strategy factories.", AuditLog.username(principal));
-        Set<String> names = new HashSet<>();
-        strategyController.findAll().forEach(i -> names.add(i.getClass().getSimpleName()));
-        return names;
     }
 }

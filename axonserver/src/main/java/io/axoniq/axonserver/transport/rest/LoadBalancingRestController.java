@@ -23,7 +23,6 @@ import reactor.core.publisher.Mono;
 import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
-import java.util.Set;
 
 /**
  * Rest APIs related to the load balancing of tracking event processors over client applications.
@@ -45,12 +44,6 @@ public class LoadBalancingRestController {
     @GetMapping("processors/loadbalance/strategies")
     public Iterable<? extends Printable> getStrategies(@ApiIgnore final Principal principal) {
         return eventProcessorAdminService.getBalancingStrategies(new PrincipalAuthentication(principal));
-    }
-
-    @Deprecated
-    @GetMapping("processors/loadbalance/strategies/factories")
-    public Set<String> getLoadBalancingStrategyFactoryBean(@ApiIgnore final Principal principal) {
-        return ((LocalEventProcessorsAdminService) eventProcessorAdminService).getLoadBalancingStrategyFactoryBeans(principal);
     }
 
     /**
