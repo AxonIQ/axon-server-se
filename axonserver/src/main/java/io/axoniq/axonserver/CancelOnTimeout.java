@@ -18,6 +18,9 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
+ * {@link CancelStrategy} implementation to cancel the requests that are not completed after a certain time.
+ *
+ * @author Marc Gathier
  * @author Sara Pellegrini
  * @since 4.6.0
  */
@@ -32,12 +35,31 @@ public class CancelOnTimeout<T> implements CancelStrategy<T> {
     private final Consumer<T> cancelRequest;
 
 
+    /**
+     * Constructs an instance base on given parameters.
+     *
+     * @param requestType        the type of the request, used for logging
+     * @param timeout            the timeout after which the request should be canceled
+     * @param requestDescription a function that provides the request description, used for logging
+     * @param requestTimestamp   a function that provides the request timestamp
+     * @param cancelRequest      the cancellation handler
+     */
     public CancelOnTimeout(String requestType, long timeout,
                            Function<T, String> requestDescription,
                            Function<T, Long> requestTimestamp, Consumer<T> cancelRequest) {
         this(requestType, Clock.systemUTC(), timeout, requestDescription, requestTimestamp, cancelRequest);
     }
 
+    /**
+     * Constructs an instance base on given parameters.
+     *
+     * @param requestType        the type of the request, used for logging
+     * @param clock              the clock to use for checking timeout
+     * @param timeout            the timeout after which the request should be canceled
+     * @param requestDescription a function that provides the request description, used for logging
+     * @param requestTimestamp   a function that provides the request timestamp
+     * @param cancelRequest      the cancellation handler
+     */
     public CancelOnTimeout(String requestType, Clock clock, long timeout,
                            Function<T, String> requestDescription,
                            Function<T, Long> requestTimestamp, Consumer<T> cancelRequest) {

@@ -18,11 +18,14 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 /**
+ * A cache for generic active requests.
+ *
+ * @author Marc Gathier
  * @author Sara Pellegrini
  * @since 4.6.0
  */
 public class ActiveRequestsCache<R extends ActiveRequestsCache.Completable>
-        implements ConstraintCache<String, R> /* TODO Cancellable*/ {
+        implements ConstraintCache<String, R> {
 
     private final ConstraintCache<String, R> buffer;
 
@@ -58,7 +61,12 @@ public class ActiveRequestsCache<R extends ActiveRequestsCache.Completable>
     }
 
 
-    public void cancel(CancelStrategy<R> cancelStrategy) {
+    /**
+     * Cancel the active requests inside the cache according to the specified strategy.
+     *
+     * @param cancelStrategy the strategy to decide which requests need to be canceled.
+     */
+    protected void cancel(CancelStrategy<R> cancelStrategy) {
         Set<Entry<String, R>> toCancel =
                 buffer.entrySet()
                       .stream()
@@ -74,16 +82,43 @@ public class ActiveRequestsCache<R extends ActiveRequestsCache.Completable>
         }
     }
 
+    /**
+     * Strategy to define which requests should be canceled and how they are canceled.
+     *
+     * @param <R> the type of the request
+     */
     public interface CancelStrategy<R> {
 
+        /**
+         * Performs the cancel operation of the request
+         *
+         * @param requestId the identifier of the request
+         * @param request   the request to be canceled
+         */
         void cancel(String requestId, R request);
 
+        /**
+         * Returns {@code  true} if the request must be canceled, {@code  false} otherwise
+         *
+         * @param requestId the identifier of the request
+         * @param request   the request to be checked
+         * @return {@code  true} if the request must be canceled, {@code  false} otherwise
+         */
         boolean requestToBeCanceled(String requestId, R request);
     }
 
+
+    /**
+     * Interface to provide observability on item completion.
+     */
     @FunctionalInterface
     public interface Completable {
 
+        /**
+         * Register a callback to be invoked on the completion of the item
+         *
+         * @param listener the {@link Runnable} to be invoked when the item is completed
+         */
         void onCompletion(@Nonnull Runnable listener);
     }
 }

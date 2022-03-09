@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -25,6 +25,9 @@ import javax.annotation.Nonnull;
 import static java.lang.String.format;
 
 /**
+ * Default {@link Instruction} implementation.
+ *
+ * @author Marc Gathier
  * @author Sara Pellegrini
  * @since 4.6.0
  */
@@ -39,13 +42,32 @@ public class InstructionInformation implements Instruction {
     private final AtomicReference<Runnable> completionListener = new AtomicReference<>(() -> {
     });
 
-    public InstructionInformation(MonoSink<Void> completionHandler, String instructionId,
-                                  String requestType, Set<String> targetClients) {
+
+    /**
+     * Constructs an instance based on the specified parameters.
+     *
+     * @param completionHandler a handler for the instruction completion
+     * @param instructionId     the identifier of the instruction
+     * @param requestType       the request type for logging purpose
+     * @param targetClients     the set of client ids that should provide a result for the instruction
+     */
+    InstructionInformation(MonoSink<Void> completionHandler, String instructionId,
+                           String requestType, Set<String> targetClients) {
         this(Instant.now().toEpochMilli(), completionHandler, instructionId, requestType, targetClients);
     }
 
-    public InstructionInformation(long timestamp, MonoSink<Void> completionHandler, String instructionId,
-                                  String requestType, Set<String> targetClients) {
+
+    /**
+     * Constructs an instance based on the specified parameters.
+     *
+     * @param timestamp         the time when the instruction has been sent
+     * @param completionHandler a handler for the instruction completion
+     * @param instructionId     the identifier of the instruction
+     * @param requestType       the request type for logging purpose
+     * @param targetClients     the set of client ids that should provide a result for the instruction
+     */
+    InstructionInformation(long timestamp, MonoSink<Void> completionHandler, String instructionId,
+                           String requestType, Set<String> targetClients) {
         this.timestamp = timestamp;
         this.completionHandler = completionHandler;
         this.instructionId = instructionId;
@@ -92,8 +114,8 @@ public class InstructionInformation implements Instruction {
     }
 
     @Override
-    public boolean isWaitingFor(String clientStreamId) {
-        return waitingForClients.contains(clientStreamId);
+    public boolean isWaitingFor(String clientId) {
+        return waitingForClients.contains(clientId);
     }
 
     @Override

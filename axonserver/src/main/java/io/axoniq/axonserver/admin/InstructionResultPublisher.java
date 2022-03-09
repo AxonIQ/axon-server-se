@@ -16,12 +16,17 @@ import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.PlatformService.InstructionConsumer;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.RequestCase;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.function.BiConsumer;
 import javax.annotation.PostConstruct;
 
 /**
+ * Component responsible to publish a Spring event when an {@link io.axoniq.axonserver.admin.InstructionResult}
+ * has been received from a client.
+ *
+ * @author Marc Gathier
  * @author Sara Pellegrini
  * @since 4.6.0
  */
@@ -31,12 +36,34 @@ public class InstructionResultPublisher {
     private final AxonServerEventPublisher applicationEventPublisher;
     private final BiConsumer<RequestCase, InstructionConsumer> registerHandler;
 
+    /**
+     * Constructs an instance based on the specified parameters.
+     *
+     * @param applicationEventPublisher the event publisher
+     * @param platformService           the platform service used to register a handler for the specific request case
+     */
+    @Autowired
     public InstructionResultPublisher(AxonServerEventPublisher applicationEventPublisher,
                                       PlatformService platformService) {
-        this.applicationEventPublisher = applicationEventPublisher;
-        this.registerHandler = platformService::onInboundInstruction;
+        this(applicationEventPublisher, platformService::onInboundInstruction);
     }
 
+    /**
+     * Constructs an instance based on the specified parameters.
+     *
+     * @param applicationEventPublisher the event publisher
+     * @param registerHandler           a function used to register a handler for the specific request case
+     */
+    public InstructionResultPublisher(
+            AxonServerEventPublisher applicationEventPublisher,
+            BiConsumer<RequestCase, InstructionConsumer> registerHandler) {
+        this.applicationEventPublisher = applicationEventPublisher;
+        this.registerHandler = registerHandler;
+    }
+
+    /**
+     * Initialize the component registering itself as a listener for the instruction results.
+     */
     @PostConstruct
     public void initialize() {
         registerHandler.accept(RequestCase.RESULT, this::publishResult);
