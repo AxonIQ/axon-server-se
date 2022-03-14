@@ -8,6 +8,15 @@
  */
 
 /*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
+/*
  * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
@@ -113,4 +122,32 @@ values ('io.axoniq.axonserver.grpc.admin.EventProcessorAdminService/SetAutoLoadB
         'GET_EVENT_PROCESSORS_STRATEGIES');
 
 insert into PATHS_TO_FUNCTIONS
-values ('io.axoniq.axonserver.grpc.admin.EventProcessorAdminService/GetBalancingStrategies', 'LIST_USERS');
+values ('io.axoniq.axonserver.grpc.admin.EventProcessorAdminService/GetBalancingStrategies',
+        'GET_EVENT_PROCESSORS_STRATEGIES');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSORS', 'CONTEXT_ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSORS_STRATEGIES', 'CONTEXT_ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSOR_STRATEGY', 'CONTEXT_ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSORS', 'ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSORS_STRATEGIES', 'ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSOR_STRATEGY', 'ADMIN');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSORS', 'USE_CONTEXT');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSORS_STRATEGIES', 'USE_CONTEXT');
+
+insert into FUNCTION_ROLES(function, role)
+values ('GET_EVENT_PROCESSOR_STRATEGY', 'USE_CONTEXT');
