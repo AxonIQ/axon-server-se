@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -33,7 +33,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.*;
@@ -82,7 +81,7 @@ public class LocalEventStorageEngineTest {
         }, new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
                                           transactionManagerFactory,
                                           new NoOpEventInterceptors(),
-                                          new DefaultEventDecorator(), 5, 1000, 10, 10);
+                                          new DefaultEventDecorator(), 1000, 10, 10);
         testSubject.initContext(SAMPLE_CONTEXT, false);
         testSubject.start();
     }
@@ -159,16 +158,6 @@ public class LocalEventStorageEngineTest {
         StepVerifier.create(result)
                     .verifyComplete();
         assertTrue(pendingTransactions.get(0).isDone());
-    }
-
-    @Test
-    public void createAppendEventConnectionWithTooManyEvents() {
-        Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 10)
-                                                      .mapToObj(i -> new SerializedEvent(Event.getDefaultInstance())));
-        Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
-
-        StepVerifier.create(result)
-                    .verifyErrorMessage("INVALID_ARGUMENT: Maximum number of events in transaction exceeded: 5");
     }
 
     @Test

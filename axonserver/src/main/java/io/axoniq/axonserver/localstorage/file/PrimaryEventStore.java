@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,12 +12,12 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -59,6 +59,7 @@ import java.util.stream.Stream;
 public class PrimaryEventStore extends SegmentBasedEventStore {
 
     protected static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
+    public static final int MAX_EVENTS_PER_BLOCK = Short.MAX_VALUE;
 
     protected final EventTransformerFactory eventTransformerFactory;
     protected final Synchronizer synchronizer;
@@ -68,7 +69,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>();
     protected EventTransformer eventTransformer;
     protected final FileSystemMonitor fileSystemMonitor;
-    private final short maxEventsPerTransaction;
 
     /**
      * @param context                 the context and the content type (events or snapshots)
@@ -84,22 +84,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                              SegmentBasedEventStore completedSegmentsHandler,
                              MeterFactory meterFactory,
                              FileSystemMonitor fileSystemMonitor) {
-        this(context, indexManager, eventTransformerFactory, storageProperties, completedSegmentsHandler, meterFactory,
-             fileSystemMonitor, Short.MAX_VALUE);
-    }
-
-    public PrimaryEventStore(EventTypeContext context,
-                             IndexManager indexManager,
-                             EventTransformerFactory eventTransformerFactory,
-                             StorageProperties storageProperties,
-                             SegmentBasedEventStore completedSegmentsHandler,
-                             MeterFactory meterFactory,
-                             FileSystemMonitor fileSystemMonitor,
-                             short maxEventsPerTransaction) {
         super(context, indexManager, storageProperties, completedSegmentsHandler, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
         this.fileSystemMonitor = fileSystemMonitor;
-        this.maxEventsPerTransaction = maxEventsPerTransaction;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }
 
@@ -391,11 +378,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         writeBuffer.position(writePosition.position);
         int count = eventList.size();
         int from = 0;
-        int to = Math.min(count, from + maxEventsPerTransaction);
+        int to = Math.min(count, from + MAX_EVENTS_PER_BLOCK);
         int firstSize = writeBlock(writeBuffer, eventList, 0, to, indexEntries, writePosition.sequence);
         while (to < count) {
             from = to;
-            to = Math.min(count, from + maxEventsPerTransaction);
+            to = Math.min(count, from + MAX_EVENTS_PER_BLOCK);
             int positionBefore = writeBuffer.position();
             int blockSize = writeBlock(writeBuffer, eventList, from, to, indexEntries, writePosition.sequence + from);
             int positionAfter = writeBuffer.position();
@@ -433,7 +420,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     private WritePosition claim(int eventBlockSize, int nrOfEvents) {
-        int blocks = (int)Math.ceil(nrOfEvents/(double)maxEventsPerTransaction);
+        int blocks = (int) Math.ceil(nrOfEvents / (double) MAX_EVENTS_PER_BLOCK);
         int totalSize = eventBlockSize + blocks * (HEADER_BYTES + TX_CHECKSUM_BYTES);
         if (totalSize > MAX_TRANSACTION_SIZE || eventBlockSize <= 0) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
