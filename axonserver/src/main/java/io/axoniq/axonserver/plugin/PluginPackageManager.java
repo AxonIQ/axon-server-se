@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -19,13 +19,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
+import javax.transaction.Transactional;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Optional;
-import javax.transaction.Transactional;
 
 /**
  * Manages the installed plugins.
@@ -79,6 +79,11 @@ public class PluginPackageManager implements SmartLifecycle {
 
     private void startPlugin(PluginPackage pluginPackage) {
         try {
+            if (pluginPackage.isDeleted()) {
+                pluginPackageRepository.deleteById(pluginPackage.getId());
+                FileUtils.delete(new File(bundleDirectory + File.separatorChar + pluginPackage.getFilename()));
+                return;
+            }
             osgiController.startPlugin(
                     bundleDirectory + File.separatorChar + pluginPackage
                             .getFilename());
