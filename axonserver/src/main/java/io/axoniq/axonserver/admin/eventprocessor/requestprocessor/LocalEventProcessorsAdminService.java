@@ -15,6 +15,9 @@ import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
+import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
+import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.logging.AuditLog;
@@ -23,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import javax.annotation.Nonnull;
 
@@ -38,9 +42,10 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
 @Service
 public class LocalEventProcessorsAdminService implements EventProcessorAdminService {
 
-    private static final Logger auditLog = AuditLog.getLogger();
-    private final ProcessorEventPublisher processorEventsSource;
-    private final Flux<ClientProcessor> eventProcessors;
+    protected static final Logger auditLog = AuditLog.getLogger();
+    protected final ProcessorEventPublisher processorEventsSource;
+    protected final Flux<ClientProcessor> eventProcessors;
+    protected final LoadBalanceStrategyRepository strategyController;
 
     /**
      * Default implementation of {@link EventProcessorAdminService}.
@@ -51,15 +56,18 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
     @Autowired
     public LocalEventProcessorsAdminService(
             ProcessorEventPublisher processorEventsSource,
-            ClientProcessors eventProcessors) {
-        this(processorEventsSource, Flux.fromIterable(eventProcessors));
+            ClientProcessors eventProcessors,
+            LoadBalanceStrategyRepository strategyController) {
+        this(processorEventsSource, Flux.fromIterable(eventProcessors), strategyController);
     }
 
     public LocalEventProcessorsAdminService(
             ProcessorEventPublisher processorEventsSource,
-            Flux<ClientProcessor> eventProcessors) {
+            Flux<ClientProcessor> eventProcessors,
+            LoadBalanceStrategyRepository strategyController) {
         this.processorEventsSource = processorEventsSource;
         this.eventProcessors = eventProcessors;
+        this.strategyController = strategyController;
     }
 
     @Nonnull
@@ -223,5 +231,33 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                                                      segment))
                 .then();
         // the context will be removed from the event processor
+    }
+
+    @Nonnull
+    @Override
+    public Mono<Void> loadBalance(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
+        return eventProcessors
+                .filter(eventProcessor -> eventProcessor.eventProcessorInfo().getProcessorName().equals(processor)
+                        && eventProcessor.eventProcessorInfo().getTokenStoreIdentifier().equals(tokenStoreIdentifier))
+                .map(ep -> new TrackingEventProcessor(processor, ep.context(), tokenStoreIdentifier))
+                .flatMap(ep -> Mono.fromRunnable(() -> strategyController.findByName(strategy).balance(ep).perform()).subscribeOn(Schedulers.boundedElastic())).then()
+                .doFirst(() -> {
+                    if (auditLog.isInfoEnabled()) {
+                        auditLog.info("[{}] Request to set load-balancing strategy for processor \"{}\" to \"{}\".",
+                                AuditLog.username(authentication.username()), processor, strategy);
+                    }
+                });
+    }
+
+    @Nonnull
+    @Override
+    public Mono<Void> setAutoLoadBalanceStrategy(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
+        return Mono.error(new UnsupportedOperationException("Auto load balancing is not supported"));
+    }
+
+    @Override
+    public Iterable<LoadBalancingStrategy> getBalancingStrategies(@Nonnull Authentication authentication) {
+        auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(authentication.username()));
+        return strategyController.findAll();
     }
 }

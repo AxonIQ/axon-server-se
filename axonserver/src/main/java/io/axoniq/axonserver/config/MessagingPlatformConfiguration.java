@@ -112,6 +112,13 @@ public class MessagingPlatformConfiguration {
     private int metricsSynchronizationRate;
 
     /**
+     * Whether to force applications to connect to Primary nodes or Messaging Only nodes.
+     * When false, all nodes for a context are eligible to accept client connections.
+     * <p>
+     * Defaults to false.
+     */
+    private boolean forceConnectionToPrimaryOrMessagingNode = false;
+    /**
      * Expiry interval (minutes) of metrics
      */
     private int metricsInterval = 15;
@@ -385,6 +392,14 @@ public class MessagingPlatformConfiguration {
 
     public void setMetricsInterval(int metricsInterval) {
         this.metricsInterval = metricsInterval;
+    }
+
+    public boolean isForceConnectionToPrimaryOrMessagingNode() {
+        return forceConnectionToPrimaryOrMessagingNode;
+    }
+
+    public void setForceConnectionToPrimaryOrMessagingNode(boolean forceConnectionToPrimaryOrMessagingNode) {
+        this.forceConnectionToPrimaryOrMessagingNode = forceConnectionToPrimaryOrMessagingNode;
     }
 
     public long getKeepAliveTimeout() {
