@@ -317,7 +317,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(ALLOW_EMPTY_DOMAIN)) {
+        if ((internalDomain == null) || (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(ALLOW_EMPTY_DOMAIN))) {
             internalDomain = getDomain();
         }
         return internalDomain;
