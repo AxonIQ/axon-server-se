@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.transport.rest;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
+import io.axoniq.axonserver.admin.eventprocessor.api.Result;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.serializer.Printable;
@@ -73,7 +74,7 @@ public class EventProcessorRestController {
                                                     @ApiIgnore final Principal principal) {
         return service.pause(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
-                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(processor + " paused"))
+                      .map(result -> response(result, format("processor %s paused", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
@@ -83,7 +84,7 @@ public class EventProcessorRestController {
                                                     @ApiIgnore final Principal principal) {
         return service.start(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
-                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(processor + " started"))
+                      .map(result -> response(result, format("processor %s started", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
@@ -95,9 +96,9 @@ public class EventProcessorRestController {
                                                           @ApiIgnore final Principal principal) {
         return service.move(new EventProcessorIdentifier(processor, tokenStoreIdentifier), segment, target,
                             new PrincipalAuthentication(principal))
-                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s segment %d moved",
-                                                                                 processor,
-                                                                                 segment)))
+                      .map(result -> response(result, format("processor %s segment %d moved",
+                                                             processor,
+                                                             segment)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
@@ -113,7 +114,7 @@ public class EventProcessorRestController {
                                                            @ApiIgnore final Principal principal) {
         return service.split(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
-                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s split", processor)))
+                      .map(result -> response(result, format("processor %s split", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
@@ -129,7 +130,7 @@ public class EventProcessorRestController {
                                                            @ApiIgnore final Principal principal) {
         return service.merge(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
-                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s merged", processor)))
+                      .map(result -> response(result, format("processor %s merged", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
@@ -148,5 +149,12 @@ public class EventProcessorRestController {
                                               @ApiIgnore Principal principal) {
         return service.clientsBy(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                                  new PrincipalAuthentication(principal));
+    }
+
+    private ResponseEntity<RestResponse> response(Result result, String format) {
+        if (result.isSuccess()) {
+            return ResponseEntityFactory.asSuccessResponse(format);
+        }
+        return ResponseEntityFactory.asAcceptedRequest(format);
     }
 }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -11,17 +11,21 @@ package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
 import io.axoniq.axonserver.admin.Instruction;
 import io.axoniq.axonserver.admin.InstructionResult;
+import io.axoniq.axonserver.admin.eventprocessor.api.Result;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import reactor.core.publisher.MonoSink;
 
+import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.Nonnull;
 
+import static io.axoniq.axonserver.admin.Result.ACK;
+import static io.axoniq.axonserver.admin.Result.FAILURE;
+import static io.axoniq.axonserver.admin.Result.SUCCESS;
 import static java.lang.String.format;
 
 /**
@@ -34,14 +38,14 @@ import static java.lang.String.format;
 public class InstructionInformation implements Instruction {
 
     private final long timestamp;
-    private final MonoSink<Void> completionHandler;
+    private final MonoSink<Result> completionHandler;
     private final String instructionId;
     private final String requestType;
     private final Set<String> targetClients;
     private final Set<String> waitingForClients;
     private final AtomicReference<Runnable> completionListener = new AtomicReference<>(() -> {
     });
-
+    private final AtomicReference<io.axoniq.axonserver.admin.Result> resultRef = new AtomicReference<>(SUCCESS);
 
     /**
      * Constructs an instance based on the specified parameters.
@@ -51,7 +55,7 @@ public class InstructionInformation implements Instruction {
      * @param requestType       the request type for logging purpose
      * @param targetClients     the set of client ids that should provide a result for the instruction
      */
-    InstructionInformation(MonoSink<Void> completionHandler, String instructionId,
+    InstructionInformation(MonoSink<Result> completionHandler, String instructionId,
                            String requestType, Set<String> targetClients) {
         this(Instant.now().toEpochMilli(), completionHandler, instructionId, requestType, targetClients);
     }
@@ -66,7 +70,7 @@ public class InstructionInformation implements Instruction {
      * @param requestType       the request type for logging purpose
      * @param targetClients     the set of client ids that should provide a result for the instruction
      */
-    InstructionInformation(long timestamp, MonoSink<Void> completionHandler, String instructionId,
+    InstructionInformation(long timestamp, MonoSink<Result> completionHandler, String instructionId,
                            String requestType, Set<String> targetClients) {
         this.timestamp = timestamp;
         this.completionHandler = completionHandler;
@@ -95,16 +99,32 @@ public class InstructionInformation implements Instruction {
         if (!waitingForClients.remove(clientId)) {
             return;
         }
-        if (!result.success()) {
+        if (FAILURE.equals(result.result())) {
             ErrorCode errorCode = ErrorCode.find(result.errorCode());
             completionHandler.error(new MessagingPlatformException(errorCode, result.errorMessage()));
             completionListener.get().run();
             return;
         }
+
+        resultRef.updateAndGet(old -> old.and(result.result()));
         if (waitingForClients.isEmpty()) {
-            completionHandler.success();
+            completionHandler.success(map(resultRef.get()));
             completionListener.get().run();
         }
+    }
+
+    private Result map(io.axoniq.axonserver.admin.Result result) {
+        return new Result() {
+            @Override
+            public boolean isSuccess() {
+                return SUCCESS.equals(result);
+            }
+
+            @Override
+            public boolean isAccepted() {
+                return ACK.equals(result);
+            }
+        };
     }
 
     @Override
