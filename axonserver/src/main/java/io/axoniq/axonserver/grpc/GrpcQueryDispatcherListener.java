@@ -110,7 +110,7 @@ public class GrpcQueryDispatcherListener
         MetaDataValue.Builder value = MetaDataValue.newBuilder()
                                                    .setBooleanValue(streaming);
         return ProcessingInstruction.newBuilder()
-                                    .setKey(ProcessingKey.AS_SUPPORTS_STREAMING)
+                                    .setKey(ProcessingKey.SERVER_SUPPORTS_STREAMING)
                                     .setValue(value)
                                     .build();
     }
