@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.ProcessingInstruction;
 import io.axoniq.axonserver.grpc.ProcessingKey;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Utility class to retrieve values of processing instructions from incoming messages
@@ -48,6 +49,19 @@ public abstract class ProcessingInstructionHelper {
             }
         }
         return defaultValue;
+    }
+
+    public static boolean clientSupportsQueryStreaming(List<ProcessingInstruction> processingInstructions) {
+        return getProcessingInstructionBoolean(processingInstructions,
+                                               ProcessingKey.CLIENT_SUPPORTS_STREAMING).orElse(false);
+    }
+
+    public static Optional<Boolean> getProcessingInstructionBoolean(List<ProcessingInstruction> instructions,
+                                                                    ProcessingKey key) {
+        return instructions.stream()
+                           .filter(instruction -> key.equals(instruction.getKey()))
+                           .map(instruction -> instruction.getValue().getBooleanValue())
+                           .findFirst();
     }
 
     public static long priority(List<ProcessingInstruction> processingInstructions) {
