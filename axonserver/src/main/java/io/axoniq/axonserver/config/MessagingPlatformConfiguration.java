@@ -20,9 +20,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
+import javax.annotation.PostConstruct;
 
 import static io.axoniq.axonserver.logging.AuditLog.enablement;
 
@@ -39,6 +41,9 @@ public class MessagingPlatformConfiguration {
     private static final int RESERVED = 10000;
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
+
+    public static final String ALLOW_EMPTY_DOMAIN = "allow-empty-domain";
+
     /**
      * gRPC port for axonserver platform
      */
@@ -166,10 +171,24 @@ public class MessagingPlatformConfiguration {
      */
     private String pluginCleanPolicy = "onFirstInit";
 
+    /**
+     * The available features, keyed by name.
+     */
+    private final Map<String, Boolean> experimental = new HashMap<>();
+
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
 
+    /**
+     * Check the given hostname and domain. If the hostname is specified as an FQDN, its domain will override the
+     * configured domain and the hostname is truncated to just the first part.
+     *
+     * @param configHostname the configured hostname.
+     * @param configDomain   the configured domain.
+     * @param isInternal     if {@code true}, the configuration is for the internal hostname.
+     * @param updateSettings a {@link BiConsumer} to update the settings with potentially changed values.
+     */
     private void validateHostname(final String configHostname, final String configDomain, boolean isInternal,
                                   BiConsumer<String, String> updateSettings) {
         final String prefix = isInternal ? "internal " : "";
@@ -188,11 +207,11 @@ public class MessagingPlatformConfiguration {
 
                 if (StringUtils.isEmpty(configDomain)) {
                     logger.info("Configuring domain from {}hostname property: hostname={}, domain={}",
-                            prefix, actualHostname, actualDomain);
+                                prefix, actualHostname, actualDomain);
                     updateSettings.accept(actualHostname, actualDomain);
                 } else {
                     logger.warn("Ignoring domain part of the {}hostname '{}': hostname={}, domain={}",
-                            prefix, configHostname, actualHostname, configDomain);
+                                prefix, configHostname, actualHostname, configDomain);
                     updateSettings.accept(actualHostname, configDomain);
                 }
             }
@@ -202,20 +221,20 @@ public class MessagingPlatformConfiguration {
     @PostConstruct
     public void postConstruct() {
         validateHostname(getHostname(), getDomain(), false,
-                (h, d) -> {
-                    setHostname(h);
-                    setDomain(d);
-                });
+                         (h, d) -> {
+                             setHostname(h);
+                             setDomain(d);
+                         });
         validateHostname(getInternalHostname(), getInternalDomain(), true,
-                (h, d) -> {
-                    setInternalHostname(h);
-                    setInternalDomain(d);
-                });
+                         (h, d) -> {
+                             setInternalHostname(h);
+                             setInternalDomain(d);
+                         });
 
         if (auditLog.isInfoEnabled()) {
             auditLog.info("Configuration initialized with SSL {} and access control {}.",
-                    enablement(ssl.isEnabled()),
-                    enablement(accesscontrol.isEnabled()));
+                          enablement(ssl.isEnabled()),
+                          enablement(accesscontrol.isEnabled()));
         }
     }
 
@@ -298,7 +317,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if (StringUtils.isEmpty(internalDomain)) {
+        if ((internalDomain == null) || (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(ALLOW_EMPTY_DOMAIN))) {
             internalDomain = getDomain();
         }
         return internalDomain;
@@ -316,16 +335,18 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getFullyQualifiedHostname() {
-        if (!StringUtils.isEmpty(getDomain())) {
-            return getHostname() + "." + getDomain();
+        final String clientDomain = getDomain();
+        if (!StringUtils.isEmpty(clientDomain)) {
+            return getHostname() + "." + clientDomain;
         }
 
         return getHostname();
     }
 
     public String getFullyQualifiedInternalHostname() {
-        if (!StringUtils.isEmpty(getInternalDomain())) {
-            return getInternalHostname() + "." + getInternalDomain();
+        final String clusterDomain = getInternalDomain();
+        if (!StringUtils.isEmpty(clusterDomain)) {
+            return getInternalHostname() + "." + clusterDomain;
         }
 
         return getInternalHostname();
@@ -511,5 +532,13 @@ public class MessagingPlatformConfiguration {
 
     public void setPluginPackageDirectory(String pluginPackageDirectory) {
         this.pluginPackageDirectory = pluginPackageDirectory;
+    }
+
+    public Map<String, Boolean> getExperimental() {
+        return experimental;
+    }
+
+    public boolean isExperimentalFeatureEnabled(final String name) {
+        return experimental.getOrDefault(name, false);
     }
 }
