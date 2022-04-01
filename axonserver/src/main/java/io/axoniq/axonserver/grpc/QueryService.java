@@ -31,9 +31,11 @@ import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.query.DirectQueryHandler;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.QueryHandler;
-import io.axoniq.axonserver.message.query.QueryResponseConsumer;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.StreamObserverUtils;
+import io.axoniq.flowcontrol.producer.grpc.FlowControlledOutgoingStream;
+import io.grpc.stub.CallStreamObserver;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -42,14 +44,15 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
+import javax.annotation.PreDestroy;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.PreDestroy;
 
 /**
  * GRPC service to handle query bus requests from Axon Application
@@ -73,6 +76,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
     private final Logger logger = LoggerFactory.getLogger(QueryService.class);
     private final Map<ClientStreamIdentification, GrpcQueryDispatcherListener> dispatcherListeners = new ConcurrentHashMap<>();
     private final InstructionAckSource<QueryProviderInbound> instructionAckSource;
+    private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
 
     @Value("${axoniq.axonserver.query-threads:1}")
     private int processingThreads = 1;
@@ -86,7 +90,8 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                         SubscriptionQueryInterceptors subscriptionQueryInterceptors,
                         ApplicationEventPublisher eventPublisher,
                         @Qualifier("queryInstructionAckSource")
-                                InstructionAckSource<QueryProviderInbound> instructionAckSource) {
+                                InstructionAckSource<QueryProviderInbound> instructionAckSource,
+                        GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider) {
         this.topology = topology;
         this.queryDispatcher = queryDispatcher;
         this.contextProvider = contextProvider;
@@ -95,6 +100,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         this.subscriptionQueryInterceptors = subscriptionQueryInterceptors;
         this.eventPublisher = eventPublisher;
         this.instructionAckSource = instructionAckSource;
+        this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
     }
 
     @PreDestroy
@@ -173,8 +179,7 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
                                                                wrappedQueryProviderInboundObserver);
                         queryDispatcher.handleResponse(queryProviderOutbound.getQueryResponse(),
                                                        clientRef.get().getClientStreamId(),
-                                                       clientIdRef.get(),
-                                                       false);
+                                                       clientIdRef.get());
                         break;
                     case QUERY_COMPLETE:
                         logger.debug("{}-[{}]: Query Complete received.",
@@ -306,10 +311,22 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         if (logger.isTraceEnabled()) {
             logger.trace("{}: Received query: {}", request.getClientId(), request.getQuery());
         }
-        GrpcQueryResponseConsumer responseConsumer = new GrpcQueryResponseConsumer(responseObserver);
-        queryDispatcher.query(new SerializedQuery(contextProvider.getContext(), request),
-                              authenticationProvider.get(), responseConsumer::onNext,
-                              result -> responseConsumer.onCompleted());
+        ServerCallStreamObserver<QueryResponse> serverResponseObserver =
+                (ServerCallStreamObserver<QueryResponse>) responseObserver;
+        serverResponseObserver.setOnCancelHandler(() -> queryDispatcher.cancel(request.getMessageIdentifier()));
+
+        FlowControlledOutgoingStream<QueryResponse> flowControlledOutgoingStream =
+                new FlowControlledOutgoingStream<>(new GrpcQueryResponseConsumer(serverResponseObserver),
+                                                   grpcFlowControlExecutorProvider.provide());
+        flowControlledOutgoingStream.accept(Flux.<QueryResponse>create(sink -> {
+            SerializedQuery serializedQuery = new SerializedQuery(contextProvider.getContext(), request);
+            queryDispatcher.query(serializedQuery,
+                                  authenticationProvider.get(),
+                                  sink::next,
+                                  result -> sink.complete());
+
+            sink.onRequest(requested -> queryDispatcher.flowControl(request.getMessageIdentifier(), requested));
+        }).limitRate(32));
     }
 
     @Override
@@ -327,12 +344,14 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         return new HashSet<>(dispatcherListeners.values());
     }
 
-    private class GrpcQueryResponseConsumer implements QueryResponseConsumer {
+    private class GrpcQueryResponseConsumer extends CallStreamObserver<QueryResponse> {
 
         private final SendingStreamObserver<QueryResponse> responseObserver;
+        private final CallStreamObserver<QueryResponse> original;
 
-        GrpcQueryResponseConsumer(StreamObserver<QueryResponse> responseObserver) {
+        GrpcQueryResponseConsumer(CallStreamObserver<QueryResponse> responseObserver) {
             this.responseObserver = new SendingStreamObserver<>(responseObserver);
+            this.original = responseObserver;
         }
 
         @Override
@@ -345,8 +364,38 @@ public class QueryService extends QueryServiceGrpc.QueryServiceImplBase implemen
         }
 
         @Override
+        public void onError(Throwable t) {
+            responseObserver.onError(t);
+        }
+
+        @Override
         public void onCompleted() {
             responseObserver.onCompleted();
+        }
+
+        @Override
+        public boolean isReady() {
+            return original.isReady();
+        }
+
+        @Override
+        public void setOnReadyHandler(Runnable onReadyHandler) {
+            original.setOnReadyHandler(onReadyHandler);
+        }
+
+        @Override
+        public void disableAutoInboundFlowControl() {
+            original.disableAutoInboundFlowControl();
+        }
+
+        @Override
+        public void request(int count) {
+            original.request(count);
+        }
+
+        @Override
+        public void setMessageCompression(boolean enable) {
+            original.setMessageCompression(enable);
         }
     }
 

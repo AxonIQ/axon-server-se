@@ -214,7 +214,7 @@ public class QueryRegistrationCacheTest {
                                            .putMetaData("client",
                                                         MetaDataValue.newBuilder().setTextValue("client2").build())
                                            .build();
-        Set<QueryHandler> result = queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request);
+        Set<QueryHandler<?>> result = queryRegistrationCache.find(Topology.DEFAULT_CONTEXT, request);
         assertEquals(1, result.size());
         QueryHandler queryHandler = result.iterator().next();
         assertEquals("client2", queryHandler.getClientId());
