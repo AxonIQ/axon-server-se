@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.sql.SQLException;
@@ -39,7 +40,7 @@ public class BackupControlDBRestController {
     }
 
     @PostMapping("/createControlDbBackup")
-    public String createControlDbBackup(Principal principal) throws SQLException {
+    public String createControlDbBackup(@ApiIgnore Principal principal) throws SQLException {
         auditLog.info("[{}] Request for a backup of the controlDB.", AuditLog.username(principal));
 
         return backupInfoRestController.createControlDbBackup();
