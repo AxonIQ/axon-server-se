@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.test;
 
 import io.grpc.stub.CallStreamObserver;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 
 import java.util.LinkedList;
@@ -12,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @author Sara Pellegrini
  */
-public class FakeStreamObserver<M> extends CallStreamObserver<M> {
+public class FakeStreamObserver<M> extends ServerCallStreamObserver<M> {
 
     private List<M> values = new LinkedList<>();
     private List<Throwable> errors = new LinkedList<>();
@@ -79,6 +80,21 @@ public class FakeStreamObserver<M> extends CallStreamObserver<M> {
 
     @Override
     public void setMessageCompression(boolean b) {
+
+    }
+
+    @Override
+    public boolean isCancelled() {
+        return false;
+    }
+
+    @Override
+    public void setOnCancelHandler(Runnable runnable) {
+
+    }
+
+    @Override
+    public void setCompression(String s) {
 
     }
 }

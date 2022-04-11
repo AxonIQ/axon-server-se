@@ -21,7 +21,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
-import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,21 +30,19 @@ import javax.annotation.Nonnull;
 import static java.lang.String.format;
 
 /**
- * Cache for all active queries this instance of AS is involved into. Extends a {@link ConcurrentHashMap} where the key
- * represents the unique identifier of the query request message.
+ * Cache for all active queries this instance of AS is involved into.
+ * Extends a {@link ConcurrentHashMap} where the key represents the unique identifier of the query request message.
  *
  * @author Marc Gathier
  */
-@Component("QueryCache") //TODO evaluate to extend ActiveRequestCache
-public class QueryCache
-        implements ConstraintCache<String, QueryInformation> {
+@Component("QueryCache")
+public class QueryCache extends ConcurrentHashMap<String, ActiveQuery>
+        implements ConstraintCache<String, ActiveQuery> {
 
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
     private final long cacheCapacity;
     private final int QUERIES_PER_GB = 25000;
-    private final Map<String, QueryInformation> map = new ConcurrentHashMap<>();
-
 
     public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout,
                       @Value("${axoniq.axonserver.query-cache-capacity:0}") long cacheCapacity) {
@@ -59,18 +56,19 @@ public class QueryCache
         }
     }
 
-    public QueryInformation remove(String messagId) {
+    private ActiveQuery remove(String messagId) {
         logger.debug("Remove messageId {}", messagId);
-        return map.remove(messagId);
+        return super.remove(messagId);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
-        Set<Map.Entry<String, QueryInformation>> toDelete = entrySet().stream().filter(e -> e.getValue().getTimestamp()
-                < minTimestamp).collect(
-                Collectors.toSet());
+        Set<Entry<String, ActiveQuery>> toDelete = entrySet().stream()
+                                                             .filter(e -> e.getValue().getTimestamp() < minTimestamp)
+                                                             .filter(e -> !e.getValue().isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
+                                                             .collect(Collectors.toSet());
         if( ! toDelete.isEmpty()) {
             logger.warn("Found {} waiting queries to delete", toDelete.size());
             toDelete.forEach(e -> {
@@ -86,10 +84,10 @@ public class QueryCache
 
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected queryHandlerDisconnected) {
-        map.forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClientStreamId()));
+        forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClientStreamId()));
     }
 
-    private void completeForApplication(QueryInformation entry, String handlerClientStreamId) {
+    private void completeForApplication(ActiveQuery entry, String handlerClientStreamId) {
         if (entry.waitingFor(handlerClientStreamId) &&
                 entry.completeWithError(handlerClientStreamId,
                                         ErrorCode.CONNECTION_TO_HANDLER_LOST,
@@ -99,35 +97,29 @@ public class QueryCache
     }
 
     @Override
-    public QueryInformation put(@Nonnull String key, @Nonnull QueryInformation value) {
+    public ActiveQuery put(@Nonnull String key, @Nonnull ActiveQuery value) {
         checkCapacity();
-        return map.put(key, value);
+        return super.put(key, value);
     }
 
     @Override
-    public int size() {
-        return map.size();
+    public ActiveQuery putIfAbsent(String key, ActiveQuery value) {
+        checkCapacity();
+        return super.putIfAbsent(key, value);
     }
 
     @Override
-    public QueryInformation get(String key) {
-        return map.get(key);
-    }
-
-    @Override
-    public Collection<Map.Entry<String, QueryInformation>> entrySet() {
-        return map.entrySet();
+    public void putAll(Map<? extends String, ? extends ActiveQuery> m) {
+        checkCapacity();
+        super.putAll(m);
     }
 
     private void checkCapacity() {
-        if (map.size() >= cacheCapacity) {
-            throw new InsufficientBufferCapacityException(
-                    "Query buffer is full " + "(" + cacheCapacity + "/" + cacheCapacity + ") "
-                            + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
+        if (mappingCount() >= cacheCapacity) {
+            throw new InsufficientBufferCapacityException("Query buffer is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
+                                                                  + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
         }
     }
 
-    public boolean isEmpty() {
-        return map.isEmpty();
-    }
 }
+

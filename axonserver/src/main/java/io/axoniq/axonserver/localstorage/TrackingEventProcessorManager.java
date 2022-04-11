@@ -92,11 +92,11 @@ public class TrackingEventProcessorManager {
             while (runsWithoutChanges < 3) {
                 int sent = 0;
                 failedReplicators.clear();
-                for (EventTracker raftPeer : eventTrackerSet) {
+                for (EventTracker eventTracker : eventTrackerSet) {
                     try {
-                        sent += raftPeer.sendNext();
+                        sent += eventTracker.sendNext();
                     } catch (Throwable ex) {
-                        failedReplicators.add(raftPeer);
+                        failedReplicators.add(eventTracker);
                     }
                 }
                 if (!failedReplicators.isEmpty()) {
