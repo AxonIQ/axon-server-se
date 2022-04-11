@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.rest.json;
 
 import io.axoniq.axonserver.grpc.MetaDataValue;
+import io.axoniq.axonserver.util.SerializedObjectMapper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class MetaDataJson extends HashMap<String,Object> {
                     put(key, value.getDoubleValue());
                     break;
                 case BYTES_VALUE:
-                    put(key, value.getBytesValue());
+                    put(key, SerializedObjectMapper.map(value.getBytesValue()));
                     break;
                 case DATA_NOT_SET:
                     break;

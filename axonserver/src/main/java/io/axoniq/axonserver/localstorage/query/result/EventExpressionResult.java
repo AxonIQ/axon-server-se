@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,8 +12,9 @@ package io.axoniq.axonserver.localstorage.query.result;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.query.ExpressionResult;
-import org.jetbrains.annotations.NotNull;
+import io.axoniq.axonserver.util.SerializedObjectMapper;
 
+import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,7 +80,7 @@ public class EventExpressionResult implements AbstractMapExpressionResult {
         }
     }
 
-    @NotNull
+    @Nonnull
     private ExpressionResult toExpression(MetaDataValue s) {
         switch (s.getDataCase()) {
             case TEXT_VALUE:
@@ -91,7 +92,7 @@ public class EventExpressionResult implements AbstractMapExpressionResult {
             case DOUBLE_VALUE:
                 return new NumericExpressionResult(s.getDoubleValue());
             case BYTES_VALUE:
-                break;
+                return new StringExpressionResult(SerializedObjectMapper.map(s.getBytesValue()));
             case DATA_NOT_SET:
                 break;
         }
