@@ -36,9 +36,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
@@ -53,10 +57,10 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
 public class LocalEventProcessorsAdminService implements EventProcessorAdminService {
 
 
-    private static final Logger auditLog = AuditLog.getLogger();
+    protected static final Logger auditLog = AuditLog.getLogger();
     private final Logger logger = LoggerFactory.getLogger(LocalEventProcessorsAdminService.class);
     private final ProcessorEventPublisher processorEventsSource;
-    private final Flux<ClientProcessor> eventProcessors;
+    protected final Flux<ClientProcessor> eventProcessors;
     private final ConstraintCache<String, Instruction> instructionCache;
     protected final LoadBalanceStrategyRepository strategyController;
 
