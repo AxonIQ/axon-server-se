@@ -43,7 +43,7 @@ public class EventProcessorMapping
         EventProcessorInstance.Builder builder = EventProcessorInstance.newBuilder();
         builder.setClientId(instance.clientId())
                .setIsRunning(instance.isRunning())
-               .setMaxCapacity(instance.maxSegments());
+               .setMaxCapacity(instance.maxCapacity());
         instance.claimedSegments().forEach(segment -> builder.addClaimedSegment(grpcSegment(segment)));
         return builder.build();
     }
