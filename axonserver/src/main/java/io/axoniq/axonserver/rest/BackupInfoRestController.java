@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -16,13 +16,14 @@ import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.topology.Topology;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
 
+import javax.sql.DataSource;
 import java.io.File;
 import java.security.Principal;
 import java.sql.Connection;
@@ -30,7 +31,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
 
 /**
  * REST Controller to retrieve files for backup and create backup of controldb.
@@ -61,7 +61,7 @@ public class BackupInfoRestController {
             @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
-            @ApiIgnore Principal principal) {
+            @Parameter(hidden = true) Principal principal) {
         auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
                       AuditLog.username(principal),
                       context,

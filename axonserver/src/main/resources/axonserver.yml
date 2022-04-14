@@ -53,6 +53,11 @@ management:
     diskspace:
       threshold: 256MB
 
+springdoc:
+  swagger-ui:
+    operationsSorter: alpha
+    tagsSorter: alpha
+
 
 info:
   app:
