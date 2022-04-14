@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -35,6 +35,7 @@ import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import org.junit.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.unit.DataSize;
 
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -179,7 +180,7 @@ public class GatewayTest {
     @Test
     public void testSmallMaxMessageSize() {
         int size = 100;
-        routingConfiguration.setMaxMessageSize(size);
+        routingConfiguration.setMaxMessageSize(DataSize.ofBytes(size));
         routingConfiguration.getAccesscontrol().setEnabled(false);
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,
@@ -204,7 +205,7 @@ public class GatewayTest {
     @Test
     public void testLargeMaxMessageSize() {
         int size = 1024 * 1024 * 10;
-        routingConfiguration.setMaxMessageSize(size);
+        routingConfiguration.setMaxMessageSize(DataSize.ofBytes(size));
         routingConfiguration.getAccesscontrol().setEnabled(false);
         AxonServerClientService dummyPlatformService = new DummyPlatformService();
         testSubject = new Gateway(routingConfiguration,

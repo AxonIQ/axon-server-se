@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -23,6 +23,7 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
+import org.springframework.util.unit.DataSize;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,9 +35,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -57,13 +57,13 @@ public class StandardEventStoreFactoryTest {
         });
         embeddedDBProperties.getEvent().setStorage(
                 tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
-        embeddedDBProperties.getEvent().setSegmentSize(10 * 1024L);
+        embeddedDBProperties.getEvent().setSegmentSize(DataSize.ofKilobytes(10));
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
         embeddedDBProperties.getEvent().setSecondaryCleanupDelay(0);
         embeddedDBProperties.getEvent().setUseMmapIndex(false);
         embeddedDBProperties.getEvent().setForceCleanMmapIndex(true);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
-        embeddedDBProperties.getSnapshot().setSegmentSize(10 * 1024L);
+        embeddedDBProperties.getSnapshot().setSegmentSize(DataSize.ofKilobytes(10));
         embeddedDBProperties.getSnapshot().setPrimaryCleanupDelay(0);
         embeddedDBProperties.getSnapshot().setSecondaryCleanupDelay(0);
         embeddedDBProperties.getSnapshot().setUseMmapIndex(false);
