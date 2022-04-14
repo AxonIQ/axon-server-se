@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 
+import com.google.common.collect.Iterables;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
@@ -21,7 +22,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
@@ -94,10 +94,8 @@ public class DistributedEventProcessor implements EventProcessor {
         }
 
         @Override
-        public int maxSegments() {
-            AtomicInteger claimed = new AtomicInteger(0);
-            clientProcessor.forEach(segment -> claimed.incrementAndGet());
-            return claimed.get() + clientProcessor.eventProcessorInfo().getAvailableThreads();
+        public int maxCapacity() {
+            return clientProcessor.eventProcessorInfo().getAvailableThreads() + Iterables.size(clientProcessor);
         }
 
         @Nonnull

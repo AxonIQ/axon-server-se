@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
@@ -176,13 +177,16 @@ public class AxonServerStandardConfiguration {
     @Bean
     @ConditionalOnMissingBean(UserAdminService.class)
     public UserAdminService userAdminService(UserController userController,
-                                             ApplicationEventPublisher eventPublisher) {
-        return getUserAdminService(userController, eventPublisher);
+                                             ApplicationEventPublisher eventPublisher,
+                                             RoleController roleController) {
+        return getUserAdminService(userController, eventPublisher, roleController);
     }
 
     @Nonnull
-    private UserAdminService getUserAdminService(UserController userController, ApplicationEventPublisher eventPublisher) {
-        return new LocalUserAdminService(userController,eventPublisher);
+    private UserAdminService getUserAdminService(UserController userController,
+                                                 ApplicationEventPublisher eventPublisher,
+                                                 RoleController roleController) {
+        return new LocalUserAdminService(userController, eventPublisher, roleController);
     }
 
     @Bean

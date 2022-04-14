@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -104,8 +104,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
         this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
         this.aggregateSegmentsCount = meterFactory.distributionSummary
-                (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
-
+                                                          (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
     }
 
     public abstract void handover(Long segment, Runnable callback);
@@ -114,21 +113,22 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long firstSequence,
                                                     long lastSequence,
                                                     long minToken) {
-        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
-        //Map<segment, all positions in that segment>
-        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
-                                                                                   firstSequence,
-                                                                                   lastSequence,
-                                                                                   Long.MAX_VALUE,
-                                                                                   minToken);
-        logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
-        aggregateSegmentsCount.record(positionInfos.size());
-
-        return Flux.fromIterable(positionInfos.entrySet())
+        return Flux.defer(() -> {
+                       logger.debug("Reading index entries for aggregate {} started.", aggregateId);
+                       SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                                  firstSequence,
+                                                                                                  lastSequence,
+                                                                                                  Long.MAX_VALUE,
+                                                                                                  minToken);
+                       logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
+                       aggregateSegmentsCount.record(positionInfos.size());
+                       return Flux.fromIterable(positionInfos.entrySet());
+                   })
                    .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),
-                           PREFETCH_SEGMENT_FILES,
-                           storageProperties.getEventsPerSegmentPrefetch())
-                   .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence) //todo for safe guard, remove in 4.6
+                                      PREFETCH_SEGMENT_FILES,
+                                      storageProperties.getEventsPerSegmentPrefetch())
+                   .skipUntil(se -> se.getAggregateSequenceNumber()
+                           >= firstSequence) //todo for safe guard, remove in 4.6
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
                    .name("event_stream")
                    .tag("context", context)
@@ -140,16 +140,20 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries) {
         return (!containsSegment(segment) && next != null) ?
                 next.eventsForPositions(segment, indexEntries) :
-                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment, storageProperties.getEventsPerSegmentPrefetch()).get()
-                        .name("event_stream")
-                        .tag("context", context)
-                        .tag("stream", "aggregate_events")
-                        .tag("origin", "event_source")
-                        .metrics();
+                new EventSourceFlux(indexEntries,
+                                    () -> eventSource(segment),
+                                    segment,
+                                    storageProperties.getEventsPerSegmentPrefetch()).get()
+                                                                                    .name("event_stream")
+                                                                                    .tag("context", context)
+                                                                                    .tag("stream", "aggregate_events")
+                                                                                    .tag("origin", "event_source")
+                                                                                    .metrics();
     }
 
     /**
-     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false}
+     * otherwise.
      *
      * @param segment the segment to check
      * @return {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
