@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -19,8 +19,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.Assert;
+import org.springframework.util.unit.DataSize;
 
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -82,15 +85,15 @@ public class MessagingPlatformConfiguration {
     /**
      * Timeout for keep alive messages on gRPC connections.
      */
-    private long keepAliveTimeout = 5000;
+    private Duration keepAliveTimeout = Duration.ofMillis(5000);
     /**
      * Interval at which AxonServer will send timeout messages. Set to 0 to disbable gRPC timeout checks
      */
-    private long keepAliveTime = 2500;
+    private Duration keepAliveTime = Duration.ofMillis(2500);
     /**
      * Minimum keep alive interval accepted by this end of the gRPC connection.
      */
-    private long minKeepAliveTime = 1000;
+    private Duration minKeepAliveTime = Duration.ofMillis(1000);
 
     /**
      * Set WebSocket CORS Allowed Origins
@@ -121,7 +124,7 @@ public class MessagingPlatformConfiguration {
     /**
      * Expiry interval (minutes) of metrics
      */
-    private int metricsInterval = 15;
+    private Duration metricsInterval = Duration.ofMinutes(15);
 
     private final SystemInfoProvider systemInfoProvider;
     /**
@@ -386,11 +389,11 @@ public class MessagingPlatformConfiguration {
         this.accesscontrol = accesscontrol;
     }
 
-    public int getMetricsInterval() {
+    public Duration getMetricsInterval() {
         return metricsInterval;
     }
 
-    public void setMetricsInterval(int metricsInterval) {
+    public void setMetricsInterval(Duration metricsInterval) {
         this.metricsInterval = metricsInterval;
     }
 
@@ -403,26 +406,26 @@ public class MessagingPlatformConfiguration {
     }
 
     public long getKeepAliveTimeout() {
-        return keepAliveTimeout;
+        return keepAliveTimeout.toMillis();
     }
 
-    public void setKeepAliveTimeout(long keepAliveTimeout) {
+    public void setKeepAliveTimeout(Duration keepAliveTimeout) {
         this.keepAliveTimeout = keepAliveTimeout;
     }
 
     public long getKeepAliveTime() {
-        return keepAliveTime;
+        return keepAliveTime.toMillis();
     }
 
-    public void setKeepAliveTime(long keepAliveTime) {
+    public void setKeepAliveTime(Duration keepAliveTime) {
         this.keepAliveTime = keepAliveTime;
     }
 
     public long getMinKeepAliveTime() {
-        return minKeepAliveTime;
+        return minKeepAliveTime.toMillis();
     }
 
-    public void setMinKeepAliveTime(long minKeepAliveTime) {
+    public void setMinKeepAliveTime(Duration minKeepAliveTime) {
         this.minKeepAliveTime = minKeepAliveTime;
     }
 
@@ -438,8 +441,11 @@ public class MessagingPlatformConfiguration {
         return maxMessageSize;
     }
 
-    public void setMaxMessageSize(int maxMessageSize) {
-        this.maxMessageSize = maxMessageSize;
+    public void setMaxMessageSize(DataSize maxMessageSize) {
+        Assert.isTrue(maxMessageSize.toBytes() >= 0, "Max message size must be greater than 0");
+        Assert.isTrue(maxMessageSize.toBytes() <= Integer.MAX_VALUE,
+                      "Max message size must be less than " + Integer.MAX_VALUE);
+        this.maxMessageSize = (int) maxMessageSize.toBytes();
     }
 
     public int getMaxTransactionSize() {

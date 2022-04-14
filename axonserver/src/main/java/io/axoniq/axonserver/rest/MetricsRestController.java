@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -17,11 +17,11 @@ import io.axoniq.axonserver.message.query.QueryDefinition;
 import io.axoniq.axonserver.message.query.QueryHandler;
 import io.axoniq.axonserver.message.query.QueryMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryRegistrationCache;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 import java.util.ArrayList;
@@ -60,7 +60,8 @@ public class MetricsRestController {
 
 
     @GetMapping("/command-metrics")
-    public List<CommandMetricsRegistry.CommandMetric> getCommandMetrics(@ApiIgnore final Principal principal) {
+    public List<CommandMetricsRegistry.CommandMetric> getCommandMetrics(
+            @Parameter(hidden = true) final Principal principal) {
         auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
 
         List<CommandMetricsRegistry.CommandMetric> metrics = new ArrayList<>();
@@ -82,7 +83,7 @@ public class MetricsRestController {
     }
 
     @GetMapping("/query-metrics")
-    public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(@ApiIgnore final Principal principal) {
+    public List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(@Parameter(hidden = true) final Principal principal) {
         auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
 
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();

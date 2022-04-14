@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -105,8 +105,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
         this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
         this.aggregateSegmentsCount = meterFactory.distributionSummary
-                (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
-
+                                                          (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
     }
 
     public abstract void handover(Long segment, Runnable callback);
@@ -115,8 +114,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long firstSequence,
                                                     long lastSequence,
                                                     long minToken) {
-        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
-        //Map<segment, all positions in that segment>
+        return Flux.defer(() -> {
+                       logger.debug("Reading index entries for aggregate {} started.", aggregateId);
+
         SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
                                                                                    firstSequence,
                                                                                    lastSequence,
@@ -126,8 +126,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         aggregateSegmentsCount.record(positionInfos.size());
         StorageProperties storageProperties = storagePropertiesSupplier.get();
 
-        return Flux.fromIterable(positionInfos.entrySet())
-                   .flatMapSequential(e -> eventsForPositions(e.getKey(),
+        return Flux.fromIterable(positionInfos.entrySet());
+                   }).flatMapSequential(e -> eventsForPositions(e.getKey(),
                                                               e.getValue(),
                                                               storageProperties.getEventsPerSegmentPrefetch()),
                                       PREFETCH_SEGMENT_FILES,
@@ -144,7 +144,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries, int prefetch) {
         return (!containsSegment(segment) && next != null) ?
                 next.eventsForPositions(segment, indexEntries, prefetch) :
-                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment, prefetch).get()
+                new EventSourceFlux(indexEntries,
+                                    () -> eventSource(segment),
+                                    segment,
+                                    prefetch).get()
                                                                                                 .name("event_stream")
                                                                                                 .tag("context", context)
                                                                                                 .tag("stream",
@@ -155,7 +158,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     /**
-     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false}
+     * otherwise.
      *
      * @param segment the segment to check
      * @return {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.

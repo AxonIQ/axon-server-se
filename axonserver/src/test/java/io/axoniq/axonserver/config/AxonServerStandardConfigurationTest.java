@@ -14,15 +14,18 @@ import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.applicationevents.UserEvents;
-import org.junit.*;
-import org.mockito.*;
+import org.junit.Test;
+import org.mockito.ArgumentMatcher;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collections;
 
-import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier

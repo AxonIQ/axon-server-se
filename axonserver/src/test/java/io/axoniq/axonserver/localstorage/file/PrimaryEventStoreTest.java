@@ -27,6 +27,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
 import org.springframework.data.util.CloseableIterator;
+import org.springframework.util.unit.DataSize;
 import reactor.test.StepVerifier;
 
 import java.nio.file.Path;
@@ -63,7 +64,7 @@ public class PrimaryEventStoreTest {
         });
         embeddedDBProperties.getEvent().setStorage(
                 tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID());
-        embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
+        embeddedDBProperties.getEvent().setSegmentSize(DataSize.ofKilobytes(512));
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
     }

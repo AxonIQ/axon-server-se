@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,7 +24,7 @@ import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.version.VersionInfo;
 import io.axoniq.axonserver.version.VersionInfoProvider;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -33,13 +33,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Rest calls to retrieve information about the configuration of Axon Server. Used by UI and CLI.
@@ -88,15 +88,16 @@ public class PublicRestController {
 
 
     @GetMapping
-    @ApiOperation(value="Retrieves all nodes in the cluster that the current node knows about.", notes = "For _admin nodes the result contains all nodes, for non _admin nodes the"
-            + "result only contains nodes from contexts available on this node and the _admin nodes.")
+    @Operation(summary = "Retrieves all nodes in the cluster that the current node knows about.", description =
+            "For _admin nodes the result contains all nodes, for non _admin nodes the"
+                    + "result only contains nodes from contexts available on this node and the _admin nodes.")
     public List<JsonServerNode> getClusterNodes() {
         return axonServerProvider.apply(null).map(n -> new JsonServerNode(n))
                                  .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 
     @GetMapping(path = "me")
-    @ApiOperation(value="Retrieves general information on the configuration of the current node, including hostnames and ports for the gRPC and HTTP connections and contexts")
+    @Operation(summary = "Retrieves general information on the configuration of the current node, including hostnames and ports for the gRPC and HTTP connections and contexts")
     public NodeConfiguration getNodeConfiguration() {
         NodeConfiguration node = new NodeConfiguration(topology.getMe());
         node.setAuthentication(accessControlConfiguration.isEnabled());
@@ -111,16 +112,15 @@ public class PublicRestController {
     }
 
 
-    @GetMapping(path="mycontexts")
-    @ApiOperation(value="Retrieves names for all storage (non admin) contexts for the current node")
+    @GetMapping(path = "mycontexts")
+    @Operation(summary = "Retrieves names for all storage (non admin) contexts for the current node")
     public Iterable<String> getMyContextList() {
         return topology.getMyStorageContextNames();
     }
 
 
-
     @GetMapping(path = "license")
-    @ApiOperation(value="Retrieves license information")
+    @Operation(summary = "Retrieves license information")
     public LicenseInfo licenseInfo() {
         LicenseInfo licenseInfo = new LicenseInfo();
         licenseInfo.setExpiryDate(features.getExpiryDate());
@@ -133,7 +133,7 @@ public class PublicRestController {
     }
 
     @GetMapping(path = "status")
-    @ApiOperation(value="Retrieves status information, used by UI")
+    @Operation(summary = "Retrieves status information, used by UI")
     public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
@@ -151,7 +151,7 @@ public class PublicRestController {
 
 
     @GetMapping(path = "user")
-    @ApiOperation(value="Retrieves information on the user logged in in the current Http Session")
+    @Operation(summary = "Retrieves information on the user logged in in the current Http Session")
     public UserInfo userInfo(HttpServletRequest request) {
         if (request.getUserPrincipal() instanceof Authentication) {
             Authentication token = (Authentication) request.getUserPrincipal();
@@ -163,7 +163,7 @@ public class PublicRestController {
     }
 
     @GetMapping(path = "version")
-    @ApiOperation(value = "Retrieves version information of the product")
+    @Operation(summary = "Retrieves version information of the product")
     public VersionInfo versionInfo() {
         return versionInfoSupplier.get();
     }

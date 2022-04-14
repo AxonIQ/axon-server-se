@@ -21,15 +21,17 @@ import io.axoniq.axonserver.rest.svg.mapping.AxonServers;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.runners.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.net.UnknownHostException;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * @author Marc Gathier

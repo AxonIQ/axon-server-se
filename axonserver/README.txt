@@ -3,6 +3,12 @@ This is the Axon Server Standard Edition, version 4.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.0
+-------------------------------
+* Updated Spring Boot version to 2.6.6
+  The endpoint for the Swagger UI has changed to /swagger-ui/index.html (just /swagger-ui no longer works)
+  The generic endpoint for actuator is /actuator (/actuator/ no longer works)
+
 Release Notes for version 4.5.11
 --------------------------------
 * Updated Spring Boot version to 2.5.12 to fix CVE-2022-22965

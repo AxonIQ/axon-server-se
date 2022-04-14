@@ -312,7 +312,7 @@
                                 <table class="nestedTable pluginProperties">
                                     <tbody>
                                         <tr v-for="attr in group.properties">
-                                            <td width="20%" :title="attr.description">{{ attr.id }}</td>
+                                            <td width="20%" :title="attr.description">{{ attr.name }}</td>
                                             <td>
                                                 <div v-if="isSingle(attr)">
                                                 <input v-if="!hasOptions(attr) && !isText(attr)" :type="inputType(attr)"
