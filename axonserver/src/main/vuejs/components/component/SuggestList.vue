@@ -40,6 +40,9 @@ export default {
       },
       updateValue(ev) {
         this.$emit('input', ev)
+      },
+      setText(text) {
+        this.$children[0].setText(text);
       }
     }
   }

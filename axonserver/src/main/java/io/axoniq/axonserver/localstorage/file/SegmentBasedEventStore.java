@@ -117,21 +117,20 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return Flux.defer(() -> {
                        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
 
-        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
-                                                                                   firstSequence,
-                                                                                   lastSequence,
-                                                                                   Long.MAX_VALUE,
-                                                                                   minToken);
-        logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
-        aggregateSegmentsCount.record(positionInfos.size());
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
+                       SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                                  firstSequence,
+                                                                                                  lastSequence,
+                                                                                                  Long.MAX_VALUE,
+                                                                                                  minToken);
+                       logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
+                       aggregateSegmentsCount.record(positionInfos.size());
 
-        return Flux.fromIterable(positionInfos.entrySet());
+                       return Flux.fromIterable(positionInfos.entrySet());
                    }).flatMapSequential(e -> eventsForPositions(e.getKey(),
-                                                              e.getValue(),
-                                                              storageProperties.getEventsPerSegmentPrefetch()),
-                                      PREFETCH_SEGMENT_FILES,
-                                      storageProperties.getEventsPerSegmentPrefetch())
+                                                                e.getValue(),
+                                                                storagePropertiesSupplier.get().getEventsPerSegmentPrefetch()),
+                                        PREFETCH_SEGMENT_FILES,
+                                        storagePropertiesSupplier.get().getEventsPerSegmentPrefetch())
                    .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence) //todo for safe guard, remove in 4.6
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
                    .name("event_stream")
@@ -148,13 +147,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                     () -> eventSource(segment),
                                     segment,
                                     prefetch).get()
-                                                                                                .name("event_stream")
-                                                                                                .tag("context", context)
-                                                                                                .tag("stream",
-                                                                                                     "aggregate_events")
-                                                                                                .tag("origin",
-                                                                                                     "event_source")
-                                                                                                .metrics();
+                                             .name("event_stream")
+                                             .tag("context", context)
+                                             .tag("stream",
+                                                  "aggregate_events")
+                                             .tag("origin",
+                                                  "event_source")
+                                             .metrics();
     }
 
     /**

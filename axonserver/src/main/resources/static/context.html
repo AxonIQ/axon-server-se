@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -218,8 +218,10 @@
                     return;
                 }
                 this.currentContext.metaData[this.currentContext.metaDataLabel] = this.currentContext.metaDataValue;
-                this.currentContext.metaDataLabel = '';
                 this.currentContext.metaDataValue = '';
+                // setting the property value for the field with the suggestion box does not work, so set the new
+                // value on the suggestion box object
+                this.$refs.currentContextProperty.setText('');
             },
             deleteMetaDataFromCurrent(key) {
                 delete this.currentContext.metaData[key];
@@ -232,13 +234,10 @@
                 }
 
                 this.newContext.metaData[this.newContext.metaDataLabel] = this.newContext.metaDataValue;
-                this.newContext.metaDataLabel = '';
                 this.newContext.metaDataValue = '';
-                this.$forceUpdate()
-                this.$nextTick(() => {
-                    this.newContext.metaDataLabel = '';
-                    this.newContext.metaDataValue = '';
-                })
+                // setting the property value for the field with the suggestion box does not work, so set the new
+                // value on the suggestion box object
+                this.$refs.newContextProperty.setText('');
             }
         }
     });
@@ -354,6 +353,7 @@
                                 <span style="width: 60%">
                                 <component-suggestion-box :options="contextProperties"
                                                           :value="newContext.metaDataLabel"
+                                                          ref="newContextProperty"
                                                           @input="newContext.metaDataLabel = $event">
                                 </component-suggestion-box>
                                     </span>
@@ -407,7 +407,10 @@
                                     </tbody>
                                 </table>
                                 <span style="width: 60%">
-                                <component-suggestion-box :options="updatableContextProperties" :value="currentContext.metaDataLabel" @input="currentContext.metaDataLabel = $event">
+                                <component-suggestion-box :options="updatableContextProperties"
+                                                          :value="currentContext.metaDataLabel"
+                                                          ref="currentContextProperty"
+                                                          @input="currentContext.metaDataLabel = $event">
                                 </component-suggestion-box>
                                     </span>
                                 <span style="width: 30%;padding:5px;">
