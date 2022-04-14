@@ -438,7 +438,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 writePosition.buffer.putInt(writePosition.position, -1);
 
-                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence, (long)totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
+                WritableEventSource buffer = getOrOpenDatafile(writePosition.sequence,
+                                                               totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
                                                                true);
                 writePositionRef.set(writePosition.reset(buffer));
             }
@@ -452,9 +453,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return writePositionRef.get().sequence;
     }
 
-    protected WritableEventSource getOrOpenDatafile(long segment, long minSize, boolean canReplaceFile) {
+    protected WritableEventSource getOrOpenDatafile(long segment, int minSize, boolean canReplaceFile) {
         File file = storageProperties.dataFile(context, segment);
-        long size = Math.max(storageProperties.getSegmentSize(), minSize);
+        int size = Math.max(storageProperties.getSegmentSize(), minSize);
         if (file.exists()) {
             if (canReplaceFile && file.length() < minSize) {
                 ByteBufferEventSource s = readBuffers.remove(segment);
@@ -463,7 +464,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 }
                 FileUtils.delete(file);
             } else {
-                size = file.length();
+                size = (int) file.length();
             }
         }
         try (FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel()) {

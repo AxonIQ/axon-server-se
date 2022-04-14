@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,10 +12,11 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.plugin.PluginController;
 import io.axoniq.axonserver.plugin.PluginInfo;
 import io.axoniq.axonserver.plugin.PluginKey;
-import io.axoniq.axonserver.logging.AuditLog;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,7 +58,7 @@ public class PluginsRestController {
     }
 
     @GetMapping
-    public Iterable<PluginInfo> currentPlugins(@ApiIgnore Principal principal) {
+    public Iterable<PluginInfo> currentPlugins(@Parameter(hidden = true) Principal principal) {
         if (!pluginsEnabled) {
             throw new MessagingPlatformException(ErrorCode.PLUGINS_DISABLED, PLUGINS_DISABLED);
         }
@@ -69,7 +69,7 @@ public class PluginsRestController {
 
     @DeleteMapping
     public void uninstallPlugin(@RequestParam String name, @RequestParam String version,
-                                @ApiIgnore Principal principal) {
+                                @Parameter(hidden = true) Principal principal) {
         if (!pluginsEnabled) {
             throw new MessagingPlatformException(ErrorCode.PLUGINS_DISABLED, PLUGINS_DISABLED);
         }
@@ -84,7 +84,7 @@ public class PluginsRestController {
                              @RequestParam String version,
                              @RequestParam(required = false, name = "targetContext") String context,
                              @RequestParam boolean active,
-                             @ApiIgnore Principal principal) {
+                             @Parameter(hidden = true) Principal principal) {
         if (!pluginsEnabled) {
             throw new MessagingPlatformException(ErrorCode.PLUGINS_DISABLED, PLUGINS_DISABLED);
         }
@@ -100,7 +100,7 @@ public class PluginsRestController {
     public void unregisterPluginForContext(@RequestParam String name,
                                            @RequestParam String version,
                                            @RequestParam(required = false, name = "targetContext") String context,
-                                           @ApiIgnore Principal principal) {
+                                           @Parameter(hidden = true) Principal principal) {
         if (!pluginsEnabled) {
             throw new MessagingPlatformException(ErrorCode.PLUGINS_DISABLED, PLUGINS_DISABLED);
         }
@@ -117,7 +117,7 @@ public class PluginsRestController {
     public Iterable<PluginPropertyGroup> configuration(@RequestParam String name,
                                                        @RequestParam String version,
                                                        @RequestParam(required = false, name = "targetContext") String context,
-                                                       @ApiIgnore Principal principal) {
+                                                       @Parameter(hidden = true) Principal principal) {
         if (!pluginsEnabled) {
             throw new MessagingPlatformException(ErrorCode.PLUGINS_DISABLED, PLUGINS_DISABLED);
         }
@@ -129,7 +129,7 @@ public class PluginsRestController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public PluginKey installPlugin(@RequestPart("bundle") MultipartFile pluginBundle,
-                                   @ApiIgnore Principal principal)
+                                   @Parameter(hidden = true) Principal principal)
             throws IOException {
         if (!pluginsEnabled) {
             throw new MessagingPlatformException(ErrorCode.PLUGINS_DISABLED, PLUGINS_DISABLED);
@@ -161,7 +161,7 @@ public class PluginsRestController {
 
     @PostMapping("configuration")
     public void updateConfiguration(@RequestBody PluginConfigurationJSON configurationJSON,
-                                    @ApiIgnore Principal principal) {
+                                    @Parameter(hidden = true) Principal principal) {
         if (!pluginsEnabled) {
             throw new MessagingPlatformException(ErrorCode.PLUGINS_DISABLED, PLUGINS_DISABLED);
         }

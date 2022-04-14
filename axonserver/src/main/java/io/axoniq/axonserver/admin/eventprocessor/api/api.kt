@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.admin.eventprocessor.api
 
 import io.axoniq.axonserver.api.Authentication
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
@@ -99,6 +100,32 @@ interface EventProcessorAdminService {
      * @param authentication info about the authenticated user
      */
     fun move(identifier: EventProcessorId, segment: Int, target: String, authentication: Authentication): Mono<Result>
+
+    /**
+     * Balance the load for the specified event processor among the connected client.
+     *
+     * @param processor            the event processor name
+     * @param tokenStoreIdentifier the token store identifier of the event processor
+     * @param strategy         the strategy to be used to balance the load
+     */
+    fun loadBalance(processor: String, tokenStoreIdentifier: String, strategy: String, authentication: Authentication): Mono<Void>
+
+    /**
+     * Sets autoload balance for the specified event processor.
+     *
+     * @param processor            the event processor name
+     * @param tokenStoreIdentifier the token store identifier of the event processor
+     * @param strategy         the strategy to be used to balance the load
+     */
+    fun setAutoLoadBalanceStrategy(processor: String, tokenStoreIdentifier: String, strategy: String, authentication: Authentication): Mono<Void>
+
+    /**
+     * Returns available load balancing strategies.
+     *
+     * @param principal info about the authenticated user
+     * @return the available load balancing strategies
+     */
+    fun getBalancingStrategies( authentication: Authentication): Iterable<LoadBalancingStrategy?>
 }
 
 interface Result {

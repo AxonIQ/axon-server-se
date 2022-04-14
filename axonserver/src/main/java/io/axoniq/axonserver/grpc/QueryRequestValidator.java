@@ -11,7 +11,7 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.grpc.query.QueryRequest;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.message.query.QueryInstruction;
 import org.slf4j.Logger;
 
 /**
@@ -27,7 +27,7 @@ public interface QueryRequestValidator {
      * @param logger logger to log messages to
      * @return serialized query message to send if message is valid, null if message is not valid.
      */
-    default SerializedQuery validate(WrappedQuery message, QueryDispatcher queryDispatcher, Logger logger) {
+    default SerializedQuery validate(QueryInstruction.Query message, QueryDispatcher queryDispatcher, Logger logger) {
         SerializedQuery serializedQuery = message.queryRequest();
         QueryRequest request = serializedQuery.query();
         long messageTimeout = message.timeout();

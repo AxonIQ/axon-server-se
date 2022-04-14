@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -16,6 +16,10 @@ import io.axoniq.axonserver.admin.Result;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
+import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
+import io.axoniq.axonserver.component.processor.balancing.strategy.LoadBalanceStrategyRepository;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
@@ -25,7 +29,9 @@ import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import reactor.core.publisher.Flux;
@@ -40,8 +46,10 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Sara Pellegrini
@@ -102,6 +110,15 @@ public class LocalEventProcessorsAdminServiceTest {
         }).when(publisher).releaseSegment(anyString(), anyString(), anyString(), anyInt(), anyString());
     }
 
+    @Mock
+    LoadBalanceStrategyRepository strategyController;
+
+    @Mock
+    LoadBalancingStrategy loadBalancingStrategy;
+
+    @Mock
+    LoadBalancingOperation loadBalancingOperation;
+
     @Test
     public void pauseTest() {
         String processorName = "processorName";
@@ -113,7 +130,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         testSubject.pause(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         verify(publisher).pauseProcessorRequest(eq("default"), eq("Client-A"), eq(processorName), any());
@@ -132,7 +150,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         testSubject.start(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         verify(publisher).startProcessorRequest(eq("default"), eq("Client-A"), eq(processorName), any());
@@ -149,7 +168,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         StepVerifier.create(testSubject.pause(new EventProcessorIdentifier("anotherProcessor", tokenStore),
                                               () -> "authenticated-user"))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_NOT_FOUND))
@@ -166,7 +186,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         StepVerifier.create(testSubject.start(new EventProcessorIdentifier("anotherProcessor", tokenStore),
                                               () -> "authenticated-user"))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_NOT_FOUND))
@@ -191,7 +212,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         testSubject.split(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         verify(publisher).splitSegment(eq("default"), eq("Client-A"), eq(processorName), eq(0), any());
@@ -205,7 +227,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = Collections::emptyIterator;
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         StepVerifier.create(testSubject.split(new EventProcessorIdentifier(processorName, tokenStore),
                                               () -> "authenticated-user"))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_NOT_FOUND))
@@ -223,7 +246,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         testSubject.merge(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         // TODO: 10/02/2022 improve checking to ensure only one of client-a, client-b gets merge request and the other gets release request
@@ -251,7 +275,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         testSubject.merge(new EventProcessorIdentifier(processorName, tokenStore), () -> "authenticated-user")
                    .block();
         // TODO: 10/02/2022 improve checking to ensure only one of client-a, client-b gets merge request and the other gets release request
@@ -279,7 +304,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
                          () -> "authenticated-user").block();
         verify(publisher).releaseSegment(eq("default"), eq("Client-A"), eq(processorName), eq(2), any());
@@ -298,7 +324,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
                                              () -> "authenticated-user"))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_MOVE_NO_AVAILBLE_THREADS))
@@ -313,7 +340,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-B",
                                              () -> "authenticated-user"))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_MOVE_UNKNOWN_TARGET))
@@ -328,7 +356,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-A",
                                              () -> "authenticated-user"))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.OTHER))
@@ -345,7 +374,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName, tokenStore), 2, "Client-A",
                                              () -> "authenticated-user"))
                     .expectComplete()
@@ -368,7 +398,8 @@ public class LocalEventProcessorsAdminServiceTest {
         ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
         LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
                                                                                             processors,
-                                                                                            instructionCache);
+                                                                                            instructionCache,
+                                                                                            strategyController);
         Flux<String> clients = testSubject.eventProcessorsByComponent("component",
                                                                       () -> "authenticated-user")
                                           .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
@@ -377,6 +408,39 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(clients)
                     .expectNext("Client-A", "Client-B", "Client-E")
                     .verifyComplete();
+    }
+
+    @Test
+    public void loadBalance() {
+        ArgumentCaptor<TrackingEventProcessor> tepCaptor = ArgumentCaptor.forClass(TrackingEventProcessor.class);
+        String strategy = "threadNumber";
+
+        when(loadBalancingStrategy.balance(tepCaptor.capture())).thenReturn(loadBalancingOperation);
+        when(strategyController.findByName("threadNumber")).thenReturn(loadBalancingStrategy);
+
+        String processorName = "processorName";
+        String tokenStore = "tokenStore";
+        ClientProcessor clientA = new FakeClientProcessor("Client-A", processorName, tokenStore);
+        ClientProcessor clientB = new FakeClientProcessor("Client-B", processorName, tokenStore);
+        ClientProcessor clientC = new FakeClientProcessor("Client-C", "anotherProcessor", tokenStore);
+        ClientProcessor clientD = new FakeClientProcessor("Client-D", processorName, "anotherTokenStore");
+        ClientProcessor clientE = new FakeClientProcessor("Client-E", processorName, tokenStore);
+        ClientProcessors processors = () -> asList(clientA, clientB, clientC, clientD, clientE).iterator();
+
+        LocalEventProcessorsAdminService testSubject = new LocalEventProcessorsAdminService(publisher,
+                                                                                            processors,
+                                                                                            instructionCache,
+                                                                                            strategyController);
+
+        StepVerifier.create(testSubject.loadBalance(processorName, tokenStore, strategy, () -> "authenticated-user"))
+                    .verifyComplete();
+
+        TrackingEventProcessor tep = tepCaptor.getValue();
+        Assertions.assertEquals(tep.fullName(), processorName + "@" + tokenStore);
+        Assertions.assertEquals(tep.context(), "default");
+        Assertions.assertEquals(tep.tokenStoreIdentifier(), tokenStore);
+        verify(loadBalancingStrategy, times(3)).balance(any(TrackingEventProcessor.class));
+        verify(loadBalancingOperation, times(3)).perform();
     }
 
     @Nonnull

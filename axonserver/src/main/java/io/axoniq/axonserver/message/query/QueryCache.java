@@ -36,16 +36,15 @@ import static java.lang.String.format;
  *
  * @author Marc Gathier
  */
-@Component("QueryCache") //TODO evaluate to extend ActiveRequestCache
+@Component("QueryCache")
 public class QueryCache
-        implements ConstraintCache<String, QueryInformation> {
+        implements ConstraintCache<String, ActiveQuery> {
 
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
     private final long cacheCapacity;
     private final int QUERIES_PER_GB = 25000;
-    private final Map<String, QueryInformation> map = new ConcurrentHashMap<>();
-
+    private final Map<String, ActiveQuery> map = new ConcurrentHashMap<>();
 
     public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout,
                       @Value("${axoniq.axonserver.query-cache-capacity:0}") long cacheCapacity) {
@@ -59,19 +58,32 @@ public class QueryCache
         }
     }
 
-    public QueryInformation remove(String messagId) {
-        logger.debug("Remove messageId {}", messagId);
-        return map.remove(messagId);
+    @Override
+    public int size() {
+        return map.size();
+    }
+
+    public ActiveQuery remove(String messageId) {
+        logger.debug("Remove messageId {}", messageId);
+        return map.remove(messageId);
+    }
+
+    @Override
+    public ActiveQuery get(String key) {
+        return map.get(key);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
-        Set<Map.Entry<String, QueryInformation>> toDelete = entrySet().stream().filter(e -> e.getValue().getTimestamp()
-                < minTimestamp).collect(
-                Collectors.toSet());
-        if( ! toDelete.isEmpty()) {
+        Set<Map.Entry<String, ActiveQuery>> toDelete = entrySet().stream()
+                                                                 .filter(e -> e.getValue().getTimestamp()
+                                                                         < minTimestamp)
+                                                                 .filter(e -> !e.getValue()
+                                                                                .isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
+                                                                 .collect(Collectors.toSet());
+        if (!toDelete.isEmpty()) {
             logger.warn("Found {} waiting queries to delete", toDelete.size());
             toDelete.forEach(e -> {
                 logger.warn("Cancelling query {} sent by {}, waiting for reply from {}",
@@ -89,7 +101,7 @@ public class QueryCache
         map.forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClientStreamId()));
     }
 
-    private void completeForApplication(QueryInformation entry, String handlerClientStreamId) {
+    private void completeForApplication(ActiveQuery entry, String handlerClientStreamId) {
         if (entry.waitingFor(handlerClientStreamId) &&
                 entry.completeWithError(handlerClientStreamId,
                                         ErrorCode.CONNECTION_TO_HANDLER_LOST,
@@ -99,25 +111,16 @@ public class QueryCache
     }
 
     @Override
-    public QueryInformation put(@Nonnull String key, @Nonnull QueryInformation value) {
+    public ActiveQuery put(@Nonnull String key, @Nonnull ActiveQuery value) {
         checkCapacity();
         return map.put(key, value);
     }
 
     @Override
-    public int size() {
-        return map.size();
-    }
-
-    @Override
-    public QueryInformation get(String key) {
-        return map.get(key);
-    }
-
-    @Override
-    public Collection<Map.Entry<String, QueryInformation>> entrySet() {
+    public Collection<Map.Entry<String, ActiveQuery>> entrySet() {
         return map.entrySet();
     }
+
 
     private void checkCapacity() {
         if (map.size() >= cacheCapacity) {

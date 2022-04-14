@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -19,10 +19,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.Assert;
+import org.springframework.util.unit.DataSize;
 
-import javax.annotation.PostConstruct;
 import java.net.UnknownHostException;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
+import javax.annotation.PostConstruct;
 
 import static io.axoniq.axonserver.logging.AuditLog.enablement;
 
@@ -39,6 +44,9 @@ public class MessagingPlatformConfiguration {
     private static final int RESERVED = 10000;
     private static final int DEFAULT_MAX_TRANSACTION_SIZE = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE - RESERVED;
     public static final int DEFAULT_INTERNAL_GRPC_PORT = 8224;
+
+    public static final String ALLOW_EMPTY_DOMAIN = "allow-empty-domain";
+
     /**
      * gRPC port for axonserver platform
      */
@@ -77,15 +85,15 @@ public class MessagingPlatformConfiguration {
     /**
      * Timeout for keep alive messages on gRPC connections.
      */
-    private long keepAliveTimeout = 5000;
+    private Duration keepAliveTimeout = Duration.ofMillis(5000);
     /**
      * Interval at which AxonServer will send timeout messages. Set to 0 to disbable gRPC timeout checks
      */
-    private long keepAliveTime = 2500;
+    private Duration keepAliveTime = Duration.ofMillis(2500);
     /**
      * Minimum keep alive interval accepted by this end of the gRPC connection.
      */
-    private long minKeepAliveTime = 1000;
+    private Duration minKeepAliveTime = Duration.ofMillis(1000);
 
     /**
      * Set WebSocket CORS Allowed Origins
@@ -107,9 +115,16 @@ public class MessagingPlatformConfiguration {
     private int metricsSynchronizationRate;
 
     /**
+     * Whether to force applications to connect to Primary nodes or Messaging Only nodes.
+     * When false, all nodes for a context are eligible to accept client connections.
+     * <p>
+     * Defaults to false.
+     */
+    private boolean forceConnectionToPrimaryOrMessagingNode = false;
+    /**
      * Expiry interval (minutes) of metrics
      */
-    private int metricsInterval = 15;
+    private Duration metricsInterval = Duration.ofMinutes(15);
 
     private final SystemInfoProvider systemInfoProvider;
     /**
@@ -159,10 +174,24 @@ public class MessagingPlatformConfiguration {
      */
     private String pluginCleanPolicy = "onFirstInit";
 
+    /**
+     * The available features, keyed by name.
+     */
+    private final Map<String, Boolean> experimental = new HashMap<>();
+
     public MessagingPlatformConfiguration(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
 
+    /**
+     * Check the given hostname and domain. If the hostname is specified as an FQDN, its domain will override the
+     * configured domain and the hostname is truncated to just the first part.
+     *
+     * @param configHostname the configured hostname.
+     * @param configDomain   the configured domain.
+     * @param isInternal     if {@code true}, the configuration is for the internal hostname.
+     * @param updateSettings a {@link BiConsumer} to update the settings with potentially changed values.
+     */
     private void validateHostname(final String configHostname, final String configDomain, boolean isInternal,
                                   BiConsumer<String, String> updateSettings) {
         final String prefix = isInternal ? "internal " : "";
@@ -181,11 +210,11 @@ public class MessagingPlatformConfiguration {
 
                 if (StringUtils.isEmpty(configDomain)) {
                     logger.info("Configuring domain from {}hostname property: hostname={}, domain={}",
-                            prefix, actualHostname, actualDomain);
+                                prefix, actualHostname, actualDomain);
                     updateSettings.accept(actualHostname, actualDomain);
                 } else {
                     logger.warn("Ignoring domain part of the {}hostname '{}': hostname={}, domain={}",
-                            prefix, configHostname, actualHostname, configDomain);
+                                prefix, configHostname, actualHostname, configDomain);
                     updateSettings.accept(actualHostname, configDomain);
                 }
             }
@@ -195,20 +224,20 @@ public class MessagingPlatformConfiguration {
     @PostConstruct
     public void postConstruct() {
         validateHostname(getHostname(), getDomain(), false,
-                (h, d) -> {
-                    setHostname(h);
-                    setDomain(d);
-                });
+                         (h, d) -> {
+                             setHostname(h);
+                             setDomain(d);
+                         });
         validateHostname(getInternalHostname(), getInternalDomain(), true,
-                (h, d) -> {
-                    setInternalHostname(h);
-                    setInternalDomain(d);
-                });
+                         (h, d) -> {
+                             setInternalHostname(h);
+                             setInternalDomain(d);
+                         });
 
         if (auditLog.isInfoEnabled()) {
             auditLog.info("Configuration initialized with SSL {} and access control {}.",
-                    enablement(ssl.isEnabled()),
-                    enablement(accesscontrol.isEnabled()));
+                          enablement(ssl.isEnabled()),
+                          enablement(accesscontrol.isEnabled()));
         }
     }
 
@@ -291,7 +320,7 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getInternalDomain() {
-        if (StringUtils.isEmpty(internalDomain)) {
+        if ((internalDomain == null) || (StringUtils.isEmpty(internalDomain) && !isExperimentalFeatureEnabled(ALLOW_EMPTY_DOMAIN))) {
             internalDomain = getDomain();
         }
         return internalDomain;
@@ -309,16 +338,18 @@ public class MessagingPlatformConfiguration {
     }
 
     public String getFullyQualifiedHostname() {
-        if (!StringUtils.isEmpty(getDomain())) {
-            return getHostname() + "." + getDomain();
+        final String clientDomain = getDomain();
+        if (!StringUtils.isEmpty(clientDomain)) {
+            return getHostname() + "." + clientDomain;
         }
 
         return getHostname();
     }
 
     public String getFullyQualifiedInternalHostname() {
-        if (!StringUtils.isEmpty(getInternalDomain())) {
-            return getInternalHostname() + "." + getInternalDomain();
+        final String clusterDomain = getInternalDomain();
+        if (!StringUtils.isEmpty(clusterDomain)) {
+            return getInternalHostname() + "." + clusterDomain;
         }
 
         return getInternalHostname();
@@ -358,35 +389,43 @@ public class MessagingPlatformConfiguration {
         this.accesscontrol = accesscontrol;
     }
 
-    public int getMetricsInterval() {
+    public Duration getMetricsInterval() {
         return metricsInterval;
     }
 
-    public void setMetricsInterval(int metricsInterval) {
+    public void setMetricsInterval(Duration metricsInterval) {
         this.metricsInterval = metricsInterval;
     }
 
-    public long getKeepAliveTimeout() {
-        return keepAliveTimeout;
+    public boolean isForceConnectionToPrimaryOrMessagingNode() {
+        return forceConnectionToPrimaryOrMessagingNode;
     }
 
-    public void setKeepAliveTimeout(long keepAliveTimeout) {
+    public void setForceConnectionToPrimaryOrMessagingNode(boolean forceConnectionToPrimaryOrMessagingNode) {
+        this.forceConnectionToPrimaryOrMessagingNode = forceConnectionToPrimaryOrMessagingNode;
+    }
+
+    public long getKeepAliveTimeout() {
+        return keepAliveTimeout.toMillis();
+    }
+
+    public void setKeepAliveTimeout(Duration keepAliveTimeout) {
         this.keepAliveTimeout = keepAliveTimeout;
     }
 
     public long getKeepAliveTime() {
-        return keepAliveTime;
+        return keepAliveTime.toMillis();
     }
 
-    public void setKeepAliveTime(long keepAliveTime) {
+    public void setKeepAliveTime(Duration keepAliveTime) {
         this.keepAliveTime = keepAliveTime;
     }
 
     public long getMinKeepAliveTime() {
-        return minKeepAliveTime;
+        return minKeepAliveTime.toMillis();
     }
 
-    public void setMinKeepAliveTime(long minKeepAliveTime) {
+    public void setMinKeepAliveTime(Duration minKeepAliveTime) {
         this.minKeepAliveTime = minKeepAliveTime;
     }
 
@@ -402,8 +441,11 @@ public class MessagingPlatformConfiguration {
         return maxMessageSize;
     }
 
-    public void setMaxMessageSize(int maxMessageSize) {
-        this.maxMessageSize = maxMessageSize;
+    public void setMaxMessageSize(DataSize maxMessageSize) {
+        Assert.isTrue(maxMessageSize.toBytes() >= 0, "Max message size must be greater than 0");
+        Assert.isTrue(maxMessageSize.toBytes() <= Integer.MAX_VALUE,
+                      "Max message size must be less than " + Integer.MAX_VALUE);
+        this.maxMessageSize = (int) maxMessageSize.toBytes();
     }
 
     public int getMaxTransactionSize() {
@@ -496,5 +538,13 @@ public class MessagingPlatformConfiguration {
 
     public void setPluginPackageDirectory(String pluginPackageDirectory) {
         this.pluginPackageDirectory = pluginPackageDirectory;
+    }
+
+    public Map<String, Boolean> getExperimental() {
+        return experimental;
+    }
+
+    public boolean isExperimentalFeatureEnabled(final String name) {
+        return experimental.getOrDefault(name, false);
     }
 }

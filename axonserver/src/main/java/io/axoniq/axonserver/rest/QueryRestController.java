@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -22,8 +22,9 @@ import io.axoniq.axonserver.rest.json.QueryRequestJson;
 import io.axoniq.axonserver.rest.json.QueryResponseJson;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.ObjectUtils;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -36,14 +37,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import springfox.documentation.annotations.ApiIgnore;
 
+import javax.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -83,14 +83,13 @@ public class QueryRestController {
     }
 
     @PostMapping("queries/run")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public SseEmitter execute(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestBody @Valid QueryRequestJson query,
-            @ApiIgnore Authentication principal) {
+            @Parameter(hidden = true) Authentication principal) {
         SseEmitter sseEmitter = new SseEmitter();
         queryDispatcher.query(new SerializedQuery(context, query.asQueryRequest()),
                               ObjectUtils.getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),

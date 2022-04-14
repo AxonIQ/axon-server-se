@@ -16,11 +16,11 @@ import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorSegment;
 import io.axoniq.axonserver.admin.eventprocessor.api.FakeEvenProcessorInstance;
 import io.axoniq.axonserver.admin.eventprocessor.api.FakeEventProcessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.FakeEventProcessorSegment;
-import org.junit.*;
+import org.junit.Test;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Unit tests for {@link EventProcessorMapping}
