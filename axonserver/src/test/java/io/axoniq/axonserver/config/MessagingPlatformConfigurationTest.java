@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.config;
 
-import org.junit.*;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.unit.DataSize;
@@ -17,7 +17,7 @@ import org.springframework.util.unit.DataSize;
 import java.lang.invoke.MethodHandles;
 
 import static io.axoniq.axonserver.config.MessagingPlatformConfiguration.ALLOW_EMPTY_DOMAIN;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -239,13 +239,13 @@ public class MessagingPlatformConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testMaxMessageSizeTooLarge() {
-        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d");
+        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d", "e", "f", true);
         configuration.setMaxMessageSize(DataSize.ofBytes(Integer.MAX_VALUE + 1L));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testMaxMessageSizeTooSmall() {
-        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d");
+        MessagingPlatformConfiguration configuration = buildConfigWithHostname("a", "b", "c", "d", "e", "f", true);
         configuration.setMaxMessageSize(DataSize.ofBytes(-1));
     }
 
