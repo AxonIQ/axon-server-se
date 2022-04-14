@@ -15,6 +15,7 @@ import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.transport.rest.json.GenericProcessor;
 import io.axoniq.axonserver.transport.rest.json.StreamingProcessor;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 
@@ -54,7 +54,7 @@ public class EventProcessorRestController {
 
     @GetMapping("components/{component}/processors")
     public Flux<Printable> componentProcessors(@PathVariable("component") String component,
-                                               @ApiIgnore final Principal principal) {
+                                               @Parameter(hidden = true) final Principal principal) {
 
         return service.eventProcessorsByComponent(component, new PrincipalAuthentication(principal))
                       .map(p -> p.isStreaming() ? new StreamingProcessor(p) : new GenericProcessor(p));
@@ -70,7 +70,7 @@ public class EventProcessorRestController {
     @PatchMapping("components/{component}/processors/{processor}/pause")
     public Mono<ResponseEntity<RestResponse>> pause(@PathVariable("processor") String processor,
                                                     @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                                    @ApiIgnore final Principal principal) {
+                                                    @Parameter(hidden = true) final Principal principal) {
         return service.pause(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .thenReturn(ResponseEntityFactory.asAcceptedRequest(processor + " paused"))
@@ -80,7 +80,7 @@ public class EventProcessorRestController {
     @PatchMapping("components/{component}/processors/{processor}/start")
     public Mono<ResponseEntity<RestResponse>> start(@PathVariable("processor") String processor,
                                                     @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                                    @ApiIgnore final Principal principal) {
+                                                    @Parameter(hidden = true) final Principal principal) {
         return service.start(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .thenReturn(ResponseEntityFactory.asAcceptedRequest(processor + " started"))
@@ -92,7 +92,7 @@ public class EventProcessorRestController {
                                                           @PathVariable("segment") int segment,
                                                           @RequestParam("target") String target,
                                                           @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                                          @ApiIgnore final Principal principal) {
+                                                          @Parameter(hidden = true) final Principal principal) {
         return service.move(new EventProcessorIdentifier(processor, tokenStoreIdentifier), segment, target,
                             new PrincipalAuthentication(principal))
                       .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s segment %d moved",
@@ -110,7 +110,7 @@ public class EventProcessorRestController {
     @PatchMapping("components/{component}/processors/{processor}/segments/split")
     public Mono<ResponseEntity<RestResponse>> splitSegment(@PathVariable("processor") String processor,
                                                            @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                                           @ApiIgnore final Principal principal) {
+                                                           @Parameter(hidden = true) final Principal principal) {
         return service.split(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s split", processor)))
@@ -126,7 +126,7 @@ public class EventProcessorRestController {
     @PatchMapping("components/{component}/processors/{processor}/segments/merge")
     public Mono<ResponseEntity<RestResponse>> mergeSegment(@PathVariable("processor") String processor,
                                                            @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                                           @ApiIgnore final Principal principal) {
+                                                           @Parameter(hidden = true) final Principal principal) {
         return service.merge(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s merged", processor)))
@@ -145,7 +145,7 @@ public class EventProcessorRestController {
     public Flux<String> getClientInstancesFor(@PathVariable("processor") String processor,
                                               @RequestParam("context") String context,
                                               @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                              @ApiIgnore Principal principal) {
+                                              @Parameter(hidden = true) Principal principal) {
         return service.clientsBy(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
                                  new PrincipalAuthentication(principal));
     }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -12,6 +12,7 @@ package io.axoniq.axonserver;
 import io.axoniq.axonserver.grpc.GrpcFlowControlledDispatcherListener;
 import io.axoniq.axonserver.version.VersionInfo;
 import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -31,6 +32,7 @@ import javax.annotation.PreDestroy;
 @SpringBootApplication
 @EnableAsync
 @EnableScheduling
+@OpenAPIDefinition
 public class AxonServer {
     private final Logger logger = LoggerFactory.getLogger(AxonServer.class);
 

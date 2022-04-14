@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -16,17 +16,21 @@ import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.message.command.DirectCommandHandler;
 import io.axoniq.axonserver.serializer.GsonMedia;
-import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.FakeStreamObserver;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.runners.*;
+import io.axoniq.axonserver.topology.Topology;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Iterator;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Marc Gathier

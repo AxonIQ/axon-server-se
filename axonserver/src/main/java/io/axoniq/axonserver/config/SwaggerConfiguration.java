@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,33 +9,48 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import org.springdoc.core.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import springfox.documentation.builders.PathSelectors;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.service.Tag;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 /**
  * Specific configuration for Swagger pages.
  *
  * @author Marc Gathier
  */
-@EnableSwagger2
 @Profile("!production")
 @Configuration
 public class SwaggerConfiguration {
+
+    /**
+     * Returns the {@link GroupedOpenApi} definitions for the public services.
+     *
+     * @return the {@link GroupedOpenApi} definitions for the public services
+     */
     @Bean
-    public Docket api() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("io.axoniq"))
-                .paths(PathSelectors.any())
-                .build()
-                .tags(new Tag("internal", "Unstable APIs, may change in next versions"));
+    public GroupedOpenApi publicApi() {
+        return GroupedOpenApi.builder()
+                             .displayName("Axon Server API")
+                             .group("api")
+                             .pathsToMatch("/v1/**")
+                             .build();
     }
 
+    /**
+     * Creates an {@link OpenAPI} bean, with customized information for Axon Server.
+     *
+     * @param versionInfoProvider provides version information
+     * @return the {@link OpenAPI} bean.
+     */
+    @Bean
+    public OpenAPI axonServerOpenAPI(VersionInfoProvider versionInfoProvider) {
+        return new OpenAPI()
+                .info(new Info().title(versionInfoProvider.get().getProductName() + " API")
+                                .description("API for Axon Server http services.")
+                                .version(versionInfoProvider.get().getVersion()));
+    }
 }

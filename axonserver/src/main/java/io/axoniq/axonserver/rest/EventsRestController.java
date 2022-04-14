@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -25,8 +25,9 @@ import io.axoniq.axonserver.rest.json.SerializedObjectJson;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.ObjectUtils;
 import io.axoniq.axonserver.util.StringUtils;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -40,16 +41,15 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import springfox.documentation.annotations.ApiIgnore;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -75,16 +75,15 @@ public class EventsRestController {
     }
 
     @GetMapping(path = "snapshots")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, paramType = "header", dataTypeClass = String.class)
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public SseEmitter findSnapshots(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestParam(value = "aggregateId", required = true) String aggregateId,
             @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
             @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.info("[{}@{}] Request for list of snapshots of aggregate \"{}\", [{}-{}]",
                       AuditLog.username(principal), context, aggregateId, initialSequence, maxSequence);
 
@@ -116,9 +115,8 @@ public class EventsRestController {
 
 
     @GetMapping(path = "events")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public SseEmitter listAggregateEvents(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
@@ -127,7 +125,7 @@ public class EventsRestController {
             @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
             @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
             @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.info("[{}@{}] Request for an event-stream of aggregate \"{}\", starting at sequence {}, token {}.",
                       AuditLog.username(principal), context, aggregateId, initialSequence, trackingToken);
 
@@ -196,14 +194,13 @@ public class EventsRestController {
     }
 
     @PostMapping("events")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public Mono<Void> submitEvents(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @Valid @RequestBody JsonEventList jsonEvents,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         if (jsonEvents.messages.isEmpty()) {
             throw new IllegalArgumentException("Missing messages");
         }
@@ -224,15 +221,14 @@ public class EventsRestController {
      * @deprecated Use /v1/snapshots instead.
      */
     @PostMapping("snapshot")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     @Deprecated
     public Mono<Void> appendSnapshotOld(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.warn("[{}@{}] Request to append event(s) using deprecated API", AuditLog.username(principal), context);
 
         return appendSnapshot(context, jsonEvent, principal);
@@ -246,14 +242,13 @@ public class EventsRestController {
      * @return completable future that completes when snapshot is stored.
      */
     @PostMapping("snapshots")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public Mono<Void> appendSnapshot(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.info("[{}@{}] Request to append event(s)", AuditLog.username(principal), context);
 
         return eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),
