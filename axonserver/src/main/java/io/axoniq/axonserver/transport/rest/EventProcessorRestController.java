@@ -11,10 +11,12 @@ package io.axoniq.axonserver.transport.rest;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
+import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.transport.rest.json.GenericProcessor;
 import io.axoniq.axonserver.transport.rest.json.StreamingProcessor;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,8 +24,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.security.Principal;
+
+import static java.lang.String.format;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
@@ -63,29 +68,37 @@ public class EventProcessorRestController {
      * @param principal            the authenticated user
      */
     @PatchMapping("components/{component}/processors/{processor}/pause")
-    public void pause(@PathVariable("processor") String processor,
-                      @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                      @Parameter(hidden = true) final Principal principal) {
-        service.pause(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
-                      new PrincipalAuthentication(principal));
+    public Mono<ResponseEntity<RestResponse>> pause(@PathVariable("processor") String processor,
+                                                    @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                    @Parameter(hidden = true) final Principal principal) {
+        return service.pause(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(processor + " paused"))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     @PatchMapping("components/{component}/processors/{processor}/start")
-    public void start(@PathVariable("processor") String processor,
-                      @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                      @Parameter(hidden = true) final Principal principal) {
-        service.start(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
-                      new PrincipalAuthentication(principal));
+    public Mono<ResponseEntity<RestResponse>> start(@PathVariable("processor") String processor,
+                                                    @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                    @Parameter(hidden = true) final Principal principal) {
+        return service.start(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(processor + " started"))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     @PatchMapping("components/{component}/processors/{processor}/segments/{segment}/move")
-    public void moveSegment(@PathVariable("processor") String processor,
-                            @PathVariable("segment") int segment,
-                            @RequestParam("target") String target,
-                            @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                            @Parameter(hidden = true) final Principal principal) {
-        service.move(new EventProcessorIdentifier(processor, tokenStoreIdentifier), segment, target,
-                     new PrincipalAuthentication(principal));
+    public Mono<ResponseEntity<RestResponse>> moveSegment(@PathVariable("processor") String processor,
+                                                          @PathVariable("segment") int segment,
+                                                          @RequestParam("target") String target,
+                                                          @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                          @Parameter(hidden = true) final Principal principal) {
+        return service.move(new EventProcessorIdentifier(processor, tokenStoreIdentifier), segment, target,
+                            new PrincipalAuthentication(principal))
+                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s segment %d moved",
+                                                                                 processor,
+                                                                                 segment)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     /**
@@ -95,11 +108,13 @@ public class EventProcessorRestController {
      * @param tokenStoreIdentifier a {@link String} specifying the token store identifier of the Event Processor
      */
     @PatchMapping("components/{component}/processors/{processor}/segments/split")
-    public void splitSegment(@PathVariable("processor") String processor,
-                             @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                             @Parameter(hidden = true) final Principal principal) {
-        service.split(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
-                      new PrincipalAuthentication(principal));
+    public Mono<ResponseEntity<RestResponse>> splitSegment(@PathVariable("processor") String processor,
+                                                           @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                           @Parameter(hidden = true) final Principal principal) {
+        return service.split(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s split", processor)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     /**
@@ -109,11 +124,13 @@ public class EventProcessorRestController {
      * @param tokenStoreIdentifier a {@link String} specifying the token store identifier of the Event Processor
      */
     @PatchMapping("components/{component}/processors/{processor}/segments/merge")
-    public void mergeSegment(@PathVariable("processor") String processor,
-                             @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                             @Parameter(hidden = true) final Principal principal) {
-        service.merge(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
-                      new PrincipalAuthentication(principal));
+    public Mono<ResponseEntity<RestResponse>> mergeSegment(@PathVariable("processor") String processor,
+                                                           @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                           @Parameter(hidden = true) final Principal principal) {
+        return service.merge(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .thenReturn(ResponseEntityFactory.asAcceptedRequest(format("processor %s merged", processor)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     /**

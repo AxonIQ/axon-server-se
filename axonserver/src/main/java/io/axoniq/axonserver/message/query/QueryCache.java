@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -21,6 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,19 +31,20 @@ import javax.annotation.Nonnull;
 import static java.lang.String.format;
 
 /**
- * Cache for all active queries this instance of AS is involved into.
- * Extends a {@link ConcurrentHashMap} where the key represents the unique identifier of the query request message.
+ * Cache for all active queries this instance of AS is involved into. Extends a {@link ConcurrentHashMap} where the key
+ * represents the unique identifier of the query request message.
  *
  * @author Marc Gathier
  */
 @Component("QueryCache")
-public class QueryCache extends ConcurrentHashMap<String, ActiveQuery>
+public class QueryCache
         implements ConstraintCache<String, ActiveQuery> {
 
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
     private final long cacheCapacity;
     private final int QUERIES_PER_GB = 25000;
+    private final Map<String, ActiveQuery> map = new ConcurrentHashMap<>();
 
     public QueryCache(@Value("${axoniq.axonserver.default-query-timeout:300000}") long defaultQueryTimeout,
                       @Value("${axoniq.axonserver.query-cache-capacity:0}") long cacheCapacity) {
@@ -56,20 +58,32 @@ public class QueryCache extends ConcurrentHashMap<String, ActiveQuery>
         }
     }
 
-    private ActiveQuery remove(String messagId) {
-        logger.debug("Remove messageId {}", messagId);
-        return super.remove(messagId);
+    @Override
+    public int size() {
+        return map.size();
+    }
+
+    public ActiveQuery remove(String messageId) {
+        logger.debug("Remove messageId {}", messageId);
+        return map.remove(messageId);
+    }
+
+    @Override
+    public ActiveQuery get(String key) {
+        return map.get(key);
     }
 
     @Scheduled(fixedDelayString = "${axoniq.axonserver.cache-close-rate:5000}")
     public void clearOnTimeout() {
         logger.debug("Checking timed out queries");
         long minTimestamp = System.currentTimeMillis() - defaultQueryTimeout;
-        Set<Entry<String, ActiveQuery>> toDelete = entrySet().stream()
-                                                             .filter(e -> e.getValue().getTimestamp() < minTimestamp)
-                                                             .filter(e -> !e.getValue().isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
-                                                             .collect(Collectors.toSet());
-        if( ! toDelete.isEmpty()) {
+        Set<Map.Entry<String, ActiveQuery>> toDelete = entrySet().stream()
+                                                                 .filter(e -> e.getValue().getTimestamp()
+                                                                         < minTimestamp)
+                                                                 .filter(e -> !e.getValue()
+                                                                                .isStreaming()) // streaming queries can last theoretically forever, let's keep them in cache
+                                                                 .collect(Collectors.toSet());
+        if (!toDelete.isEmpty()) {
             logger.warn("Found {} waiting queries to delete", toDelete.size());
             toDelete.forEach(e -> {
                 logger.warn("Cancelling query {} sent by {}, waiting for reply from {}",
@@ -84,7 +98,7 @@ public class QueryCache extends ConcurrentHashMap<String, ActiveQuery>
 
     @EventListener
     public void on(TopologyEvents.QueryHandlerDisconnected queryHandlerDisconnected) {
-        forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClientStreamId()));
+        map.forEach((key, value) -> completeForApplication(value, queryHandlerDisconnected.getClientStreamId()));
     }
 
     private void completeForApplication(ActiveQuery entry, String handlerClientStreamId) {
@@ -99,26 +113,24 @@ public class QueryCache extends ConcurrentHashMap<String, ActiveQuery>
     @Override
     public ActiveQuery put(@Nonnull String key, @Nonnull ActiveQuery value) {
         checkCapacity();
-        return super.put(key, value);
+        return map.put(key, value);
     }
 
     @Override
-    public ActiveQuery putIfAbsent(String key, ActiveQuery value) {
-        checkCapacity();
-        return super.putIfAbsent(key, value);
+    public Collection<Map.Entry<String, ActiveQuery>> entrySet() {
+        return map.entrySet();
     }
 
-    @Override
-    public void putAll(Map<? extends String, ? extends ActiveQuery> m) {
-        checkCapacity();
-        super.putAll(m);
-    }
 
     private void checkCapacity() {
-        if (mappingCount() >= cacheCapacity) {
-            throw new InsufficientBufferCapacityException("Query buffer is full " + "("+cacheCapacity + "/" +cacheCapacity + ") "
-                    + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
+        if (map.size() >= cacheCapacity) {
+            throw new InsufficientBufferCapacityException(
+                    "Query buffer is full " + "(" + cacheCapacity + "/" + cacheCapacity + ") "
+                            + "Query handlers might be slow. Try increasing 'axoniq.axonserver.query-cache-capacity' property.");
         }
     }
 
+    public boolean isEmpty() {
+        return map.isEmpty();
+    }
 }

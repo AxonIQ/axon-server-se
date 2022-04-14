@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import org.springframework.util.Assert;
+import org.springframework.util.unit.DataSize;
 
 import java.io.File;
 import java.time.Duration;
@@ -47,7 +49,7 @@ public class StorageProperties implements Cloneable {
     /**
      * Size for new storage segments.
      */
-    private long segmentSize = 1024 * 1024 * 256L;
+    private int segmentSize = 1024 * 1024 * 256;
 
     /**
      * Location for segment files. Will create subdirectory per context.
@@ -166,12 +168,16 @@ public class StorageProperties implements Cloneable {
         this.bloomIndexSuffix = bloomIndexSuffix;
     }
 
-    public long getSegmentSize() {
+    public int getSegmentSize() {
         return segmentSize;
     }
 
-    public void setSegmentSize(long segmentSize) {
-        this.segmentSize = segmentSize;
+    public void setSegmentSize(DataSize segmentSize) {
+        Assert.isTrue(segmentSize.toBytes() <= Integer.MAX_VALUE,
+                      "Segment size must be less than " + Integer.MAX_VALUE);
+        Assert.isTrue(segmentSize.toBytes() > 0, "Segment size must be greater than 0");
+
+        this.segmentSize = (int) segmentSize.toBytes();
     }
 
     public void setStorage(String storage) {
@@ -365,7 +371,7 @@ public class StorageProperties implements Cloneable {
         }
     }
 
-    public StorageProperties withSegmentSize(long segmentSize) {
+    public StorageProperties withSegmentSize(int segmentSize) {
         StorageProperties clone = cloneProperties();
         clone.segmentSize = segmentSize;
         return clone;
