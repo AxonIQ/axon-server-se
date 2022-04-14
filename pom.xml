@@ -41,15 +41,7 @@
         <product.name>AxonServer</product.name>
 
         <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
-
-        <!--
-            Please note that there are dependencies between the gRPC and Netty TcNative versions.
-            gRPC is quite specific about the version of Netty TcNative, so check the dependencies on
-            https://github.com/grpc/grpc-java/blob/master/SECURITY.md
-        -->
-        <grpc.version>1.44.0</grpc.version>
-        <netty.tcnative.version>2.0.46.Final</netty.tcnative.version>
-        <netty.version>4.1.72.Final</netty.version>
+        <grpc.version>1.45.1</grpc.version>
         <axon.version>4.5.8</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>11.0.0</eclipse-collections.version>
@@ -73,37 +65,11 @@
                 <version>${axonserver-plugin-api.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-bom</artifactId>
-                <version>${netty.version}</version>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-tcnative-boringssl-static</artifactId>
-                <version>${netty.tcnative.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-protobuf</artifactId>
-                <version>${grpc.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.google.code.findbugs</groupId>
-                        <artifactId>jsr305</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-stub</artifactId>
-                <version>${grpc.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-netty</artifactId>
-                <version>${grpc.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.findbugs</groupId>
