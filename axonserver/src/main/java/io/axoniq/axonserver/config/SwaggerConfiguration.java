@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.version.VersionInfoProvider;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import org.springdoc.core.GroupedOpenApi;
@@ -21,19 +22,9 @@ import org.springframework.context.annotation.Profile;
  *
  * @author Marc Gathier
  */
-//@EnableSwagger2
 @Profile("!production")
 @Configuration
 public class SwaggerConfiguration {
-//    @Bean
-//    public Docket api() {
-//        return new Docket(DocumentationType.SWAGGER_2)
-//                .select()
-//                .apis(RequestHandlerSelectors.basePackage("io.axoniq"))
-//                .paths(PathSelectors.any())
-//                .build()
-//                .tags(new Tag("internal", "Unstable APIs, may change in next versions"));
-//    }
 
     @Bean
     public GroupedOpenApi publicApi() {
@@ -52,11 +43,11 @@ public class SwaggerConfiguration {
     }
 
     @Bean
-    public OpenAPI springShopOpenAPI() {
+    public OpenAPI springShopOpenAPI(VersionInfoProvider versionInfoProvider) {
         return new OpenAPI()
                 .info(new Info().title("Axon Server API")
                                 .description(
                                         "API consists of 2 groups, the public API and the internal API. Operations in the internal API are not guaranteed to be supported in subsequent versions of Axon Server")
-                                .version("v4.6.0"));
+                                .version(versionInfoProvider.get().getVersion()));
     }
 }
