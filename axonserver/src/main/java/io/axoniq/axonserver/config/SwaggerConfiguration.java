@@ -26,28 +26,31 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 public class SwaggerConfiguration {
 
+    /**
+     * Returns the {@link GroupedOpenApi} definitions for the public services.
+     *
+     * @return the {@link GroupedOpenApi} definitions for the public services
+     */
     @Bean
     public GroupedOpenApi publicApi() {
         return GroupedOpenApi.builder()
-                             .group("Axon Server API")
+                             .displayName("Axon Server API")
+                             .group("api")
                              .pathsToMatch("/v1/**")
                              .build();
     }
 
+    /**
+     * Creates an {@link OpenAPI} bean, with customized information for Axon Server.
+     *
+     * @param versionInfoProvider provides version information
+     * @return the {@link OpenAPI} bean.
+     */
     @Bean
-    public GroupedOpenApi internal() {
-        return GroupedOpenApi.builder()
-                             .group("Axon Server Internal API")
-                             .pathsToMatch("/internal/**")
-                             .build();
-    }
-
-    @Bean
-    public OpenAPI springShopOpenAPI(VersionInfoProvider versionInfoProvider) {
+    public OpenAPI axonServerOpenAPI(VersionInfoProvider versionInfoProvider) {
         return new OpenAPI()
-                .info(new Info().title("Axon Server API")
-                                .description(
-                                        "API consists of 2 groups, the public API and the internal API. Operations in the internal API are not guaranteed to be supported in subsequent versions of Axon Server")
+                .info(new Info().title(versionInfoProvider.get().getProductName() + " API")
+                                .description("API for Axon Server http services.")
                                 .version(versionInfoProvider.get().getVersion()));
     }
 }
