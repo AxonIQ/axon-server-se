@@ -23,6 +23,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.ByteArrayEntity;
@@ -223,6 +224,34 @@ public class AxonIQCliCommand {
 
         CloseableHttpResponse response = httpclient.execute(httpPost);
         if (!statusCodeCheck.test(response.getStatusLine().getStatusCode())) {
+            throw new CommandExecutionException(response.getStatusLine().getStatusCode(), url,
+                                                response.getStatusLine().toString() + " - "
+                                                        + responseBody(response));
+        }
+
+        if (responseClass.equals(String.class)) {
+            return (T) responseBody(response);
+        }
+
+        return objectMapper.readValue(response.getEntity().getContent(), responseClass);
+    }
+
+    protected static <T> T patchJSON(CloseableHttpClient httpclient, String url, Object value, int expectedStatusCode,
+                                    String token, Class<T> responseClass)
+            throws IOException {
+        HttpPatch httpPost = new HttpPatch(url);
+        if (token != null) {
+            httpPost.addHeader("AxonIQ-Access-Token", token);
+        }
+        ObjectMapper objectMapper = new ObjectMapper();
+        if (value != null) {
+            httpPost.addHeader("Content-Type", "application/json");
+            HttpEntity entity = new ByteArrayEntity(objectMapper.writeValueAsBytes(value));
+            httpPost.setEntity(entity);
+        }
+
+        CloseableHttpResponse response = httpclient.execute(httpPost);
+        if (response.getStatusLine().getStatusCode() != expectedStatusCode) {
             throw new CommandExecutionException(response.getStatusLine().getStatusCode(), url,
                                                 response.getStatusLine().toString() + " - "
                                                         + responseBody(response));

@@ -81,6 +81,7 @@ public class CommandDispatcher {
         executorMap.put("register-node", new CommandInformation(Group.CLUSTER, RegisterNode::run));
         executorMap.put("unregister-node", new CommandInformation(Group.CLUSTER, UnregisterNode::run));
         executorMap.put("register-context", new CommandInformation(Group.CONTEXT, RegisterContext::run));
+        executorMap.put("update-context", new CommandInformation(Group.CONTEXT, UpdateContextProperties::run));
         executorMap.put("delete-context", new CommandInformation(Group.CONTEXT, DeleteContext::run));
         executorMap.put("add-node-to-context", new CommandInformation(Group.CONTEXT, AddNodeToContext::run));
         executorMap.put("delete-node-from-context", new CommandInformation(Group.CONTEXT, DeleteNodeFromContext::run));

@@ -17,9 +17,8 @@ import java.net.UnknownHostException;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -50,19 +49,19 @@ public class MultipleSnapshotSegments {
                                                                                          .getAbsolutePath());
 
         IndexManager indexManager = new StandardIndexManager("default",
-                                                             storageProperties,
+                                                             () -> storageProperties,
                                                              EventType.SNAPSHOT,
                                                              meterFactory);
         InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
                                                                                                    EventType.SNAPSHOT),
                                                                               indexManager,
                                                                               new DefaultEventTransformerFactory(),
-                                                                              storageProperties,
+                                                                              () -> storageProperties,
                                                                               meterFactory);
         testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.SNAPSHOT),
                                             indexManager,
                                             new DefaultEventTransformerFactory(),
-                                            storageProperties,
+                                            () -> storageProperties,
                                             secondaryEventStore,
                                             meterFactory, fileSystemMonitor);
         testSubject.init(true);

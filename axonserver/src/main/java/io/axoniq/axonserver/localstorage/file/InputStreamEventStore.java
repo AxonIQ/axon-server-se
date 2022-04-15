@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.function.Supplier;
 
 /**
  * Manages the completed segments for the event store.
@@ -33,8 +34,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
     public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
                                  EventTransformerFactory eventTransformerFactory,
-                                 StorageProperties storageProperties, MeterFactory meterFactory) {
-        super(context, indexManager, storageProperties, meterFactory);
+                                 Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory) {
+        super(context, indexManager, storagePropertiesSupplier, meterFactory);
         this.eventTransformerFactory = eventTransformerFactory;
     }
 
@@ -66,6 +67,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
 
     private void removeSegment(long segment) {
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         if (segments.remove(segment) && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
                 !indexManager.remove(segment))) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
@@ -96,7 +98,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         }
 
         fileOpenMeter.increment();
-        return new InputStreamEventSource(storageProperties.dataFile(context, segment),
+        return new InputStreamEventSource(storagePropertiesSupplier.get().dataFile(context, segment),
                                           eventTransformerFactory);
     }
 

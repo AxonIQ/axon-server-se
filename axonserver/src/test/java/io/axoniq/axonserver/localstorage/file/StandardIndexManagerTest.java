@@ -50,7 +50,7 @@ public class StandardIndexManagerTest {
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        indexManager = new StandardIndexManager(context, storageProperties, EventType.EVENT, meterFactory);
+        indexManager = new StandardIndexManager(context, () -> storageProperties, EventType.EVENT, meterFactory);
     }
 
     @Test
