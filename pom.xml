@@ -50,7 +50,7 @@
         <grpc.version>1.42.2</grpc.version>
         <netty.tcnative.version>2.0.38.Final</netty.tcnative.version>
         <netty.version>4.1.63.Final</netty.version>
-        <axon.version>4.4</axon.version>
+        <axon.version>4.5.9</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <gson.version>2.8.6</gson.version>
@@ -62,6 +62,15 @@
 
     <dependencyManagement>
         <dependencies>
+
+            <dependency>
+                <groupId>org.axonframework</groupId>
+                <artifactId>axon-bom</artifactId>
+                <version>${axon.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <dependency>
                 <groupId>io.axoniq</groupId>
                 <artifactId>grpc-manual-flow-control</artifactId>
