@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.rest.svg.mapping;
 
+import java.util.Arrays;
+
 /**
  * Created by Sara Pellegrini on 02/05/2018.
  * sara.pellegrini@gmail.com
@@ -42,8 +44,8 @@ public class FakeApplication implements Application {
     }
 
     @Override
-    public String context() {
-        return context;
+    public Iterable<String> context() {
+        return Arrays.asList(context);
     }
 
     @Override

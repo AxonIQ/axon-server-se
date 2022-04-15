@@ -25,7 +25,8 @@
                     <div>{{instance.name}}</div>
                 </td>
                 <td>
-                    <div>{{instance.axonServerNode}}</div>
+                    <div>{{instance.axonServerNode}}<span style="color: gray;font-size: 13px;margin-left: 5px;"> &#8592; {{instance.context}}
+</span></div>
                 </td>
                 <td>
                     <ul>

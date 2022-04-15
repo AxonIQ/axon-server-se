@@ -65,6 +65,7 @@ public class GenericClient implements Client {
     public void printOn(Media media) {
         media.with("name", id())
              .with("componentName", componentName)
+             .with("context", context)
              .with("axonServerNode", axonServerNode)
              .with("tags", tags);
     }

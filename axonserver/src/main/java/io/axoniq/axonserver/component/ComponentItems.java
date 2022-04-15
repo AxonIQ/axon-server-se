@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.component;
 
+import io.axoniq.axonserver.util.StringUtils;
+
 import java.util.Iterator;
 
 import static java.util.stream.StreamSupport.stream;
@@ -34,7 +36,7 @@ public class ComponentItems<I extends ComponentItem> implements Iterable<I> {
     public Iterator<I> iterator() {
         return stream(delegate.spliterator(), false)
                 .filter(item -> item.belongsToComponent(component))
-                .filter(item -> item.belongsToContext(context))
+                .filter(item -> StringUtils.isEmpty(context) || context.equals("null") || item.belongsToContext(context))
                 .iterator();
     }
 }

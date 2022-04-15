@@ -15,11 +15,13 @@ import io.axoniq.axonserver.rest.svg.Fonts;
 import io.axoniq.axonserver.rest.svg.PositionMapping;
 import io.axoniq.axonserver.rest.svg.TextLine;
 import io.axoniq.axonserver.rest.svg.attribute.Position;
+import io.axoniq.axonserver.rest.svg.attribute.StyleClass;
 import io.axoniq.axonserver.rest.svg.decorator.Clickable;
 import io.axoniq.axonserver.rest.svg.decorator.DoubleLine;
 import io.axoniq.axonserver.rest.svg.element.TextBox;
 import io.axoniq.axonserver.rest.svg.jsfunction.ShowDetail;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -42,9 +44,13 @@ public class ApplicationBoxMapping implements PositionMapping<Application> {
 
     @Override
     public Element map(Application item, Position position) {
-        List<TextLine> lines = asList(new TextLine("Application", fonts.type(), "type"),
-                                          new TextLine(item.name(), fonts.component(), "component"),
-                                          new TextLine(item.instancesString(), fonts.client(), CLIENT));
+        List<TextLine> lines = new ArrayList<>(asList(new TextLine("Application", fonts.type(), "type"),
+                                          new TextLine(item.name(), fonts.component(), "component")));
+
+        item.context().forEach(context -> lines.add(new TextLine(context, fonts.client(), StyleClass.CLIENT)));
+
+        lines.add(new TextLine(item.instancesString(), fonts.client(), "instance"));
+
         ShowDetail showDetail = new ShowDetail(item.component(), CLIENT, item.context(), item.name());
         TextBox client = new TextBox(lines, position, CLIENT);
         item.connectedHubNodes().forEach(hubNode -> client.connectTo(hubNodes.get(hubNode), "applicationToHub"));

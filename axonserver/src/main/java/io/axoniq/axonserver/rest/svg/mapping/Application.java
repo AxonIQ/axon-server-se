@@ -19,7 +19,7 @@ public interface Application {
 
     String component();
 
-    String context();
+    Iterable<String> context();
 
     int instances();
 

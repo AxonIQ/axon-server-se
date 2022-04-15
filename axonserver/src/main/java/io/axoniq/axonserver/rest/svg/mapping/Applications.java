@@ -14,6 +14,8 @@ import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +26,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nonnull;
 
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -105,32 +107,38 @@ public class Applications implements Function<String, Stream<Application>> {
                     return v;
                 }).collect(Collectors.toList());
 
-        return sortedComponents.stream().map(entry -> (Application) new Application() {
-            @Override
-            public String name() {
-                return entry.getKey().toString(clusterController.isMultiContext());
-            }
+        return sortedComponents.stream().collect(groupingBy(it -> it.getKey().component))
+                .entrySet()
+                .stream().map(entry -> new Application() {
+                    @Override
+                    public String name() {
+                        return entry.getKey();
+                    }
 
-            @Override
-            public String component() {
-                return entry.getKey().component;
-            }
+                    @Override
+                    public String component() {
+                        return entry.getKey();
+                    }
 
-            @Override
-            public String context() {
-                return entry.getKey().context;
-            }
+                    @Override
+                    public Iterable<String> context() {
+                         try {
+                             return entry.getValue().stream().map(apps -> apps.getKey().context).sorted().collect(Collectors.toList());
+                        } catch (Exception e) {
+                            return Collections.emptyList();
+                        }
+                    }
 
-            @Override
-            public int instances() {
-                return entry.getValue().size();
-            }
+                    @Override
+                    public int instances() {
+                        return entry.getValue().stream().findFirst().map(apps->apps.getValue().size()).orElse(0);
+                    }
 
-            @Override
-            public Iterable<String> connectedHubNodes() {
-                return entry.getValue().stream().map(client -> client.axonHubServer).collect(toSet());
-            }
-        });
+                    @Override
+                    public Iterable<String> connectedHubNodes() {
+                        return entry.getValue().stream().flatMap(client -> client.getValue().stream().map(it -> it.axonHubServer)).collect(toSet());
+                    }
+                });
     }
 
     private static class ComponentContext implements Comparable<ComponentContext>{

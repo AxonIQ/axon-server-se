@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.rest.svg.jsfunction;
 
+import com.google.common.collect.Lists;
+
 import java.util.function.Supplier;
 
 /**
@@ -21,11 +23,11 @@ public class ShowDetail implements Supplier<String> {
 
     private final String nodeType;
 
-    private final String context;
+    private final Iterable<String> context;
 
     private final String title;
 
-    public ShowDetail(String popupName, String nodeType, String context, String title) {
+    public ShowDetail(String popupName, String nodeType, Iterable<String> context, String title) {
         this.popupName = popupName;
         this.nodeType = nodeType;
         this.context = context;
@@ -34,6 +36,6 @@ public class ShowDetail implements Supplier<String> {
 
     @Override
     public String get() {
-        return String.format("showArea(event,'%s', '%s', '%s', '%s')", popupName, nodeType, context, title);
+        return String.format("showArea(event,'%s', '%s', '%s', '%s')", popupName, nodeType, this.context == null || Lists.newArrayList(context.iterator()).size() > 1 ? null : context.iterator().next() , title);
     }
 }

@@ -47,7 +47,7 @@ module.exports = {
   }, methods: {
     loadComponentCommands() {
       axios.get("v1/components/" + encodeURIComponent(this.component) + "/commands?context=" + this.context).then(response => {
-        this.commands = response.data;
+        this.commands = response.data.filter((item, pos, self) => self.findIndex(v => v.name === item.name) === pos);
       });
     }
   }

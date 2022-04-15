@@ -91,7 +91,7 @@ public class AxonServersOverviewProvider {
             return wrapped.component();
         }
 
-        public String getContext() {
+        public Iterable<String> getContext() {
             return wrapped.context();
         }
 
