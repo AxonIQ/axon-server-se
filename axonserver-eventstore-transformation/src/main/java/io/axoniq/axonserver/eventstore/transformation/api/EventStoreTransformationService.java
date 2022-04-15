@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Optional;
 import javax.annotation.Nonnull;
 
 /**
@@ -30,10 +31,27 @@ public interface EventStoreTransformationService {
 
         String context();
 
+        int version();
+
+        Optional<Long> lastSequence();
+
         Status status();
 
-        enum Status {}
+        enum Status {
+            ACTIVE,
+            CANCELLING,
+            CANCELLED,
+            APPLYING,
+            APPLIED,
+            ROLLING_BACK,
+            ROLLED_BACK,
+            FAILED
+        }
     }
+
+    void init();
+
+    void destroy();
 
     Flux<Transformation> transformations();
 
@@ -104,13 +122,10 @@ public interface EventStoreTransformationService {
      * @param context          the name of the context
      * @param transformationId the identification of the transformation
      * @param sequence         the sequence of the last transformation request used to validate the requests chain
-     * @param keepOldVersions  option to keep old versions of the event store segments, so that the transformation can
-     *                         be rolled back
      * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when applying the transformation is started
      */
     Mono<Void> startApplying(String context, String transformationId, long sequence,
-                             boolean keepOldVersions,
                              @Nonnull Authentication authentication);
 
     /**

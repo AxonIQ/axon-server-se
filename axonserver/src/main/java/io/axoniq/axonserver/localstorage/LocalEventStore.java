@@ -30,6 +30,7 @@ import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.localstorage.transformation.LocalEventStoreTransformer;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -63,7 +64,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -86,7 +86,7 @@ import java.util.stream.Stream;
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore,
-        LocalEventStoreTransformer, LocalEventStoreInitializationObservable,
+        LocalEventStoreTransformer,
         SmartLifecycle {
 
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
@@ -99,8 +99,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final EventInterceptors eventInterceptors;
     private final int maxEventCount;
-    private final List<Consumer<String>> contextInitializedListeners = new CopyOnWriteArrayList<>();
-
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
      * events would be ignored due to blacklist, tracking tokens on client applications would never be updated.
@@ -918,12 +916,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public Mono<Void> rollback(String context, int version) {
         return workers(context).rollbackSegments(version);
     }
-
-    @Override
-    public void accept(Consumer<String> onContextInitializedCallback) {
-        this.contextInitializedListeners.add(onContextInitializedCallback);
-    }
-
     private class Workers {
 
         private final EventWriteStorage eventWriteStorage;
@@ -987,7 +979,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
                     initialized = true;
 
-                    contextInitializedListeners.forEach(listener -> listener.accept(context));
                     if (logger.isInfoEnabled()) {
                         logger.info("Workers[{}] for context {} has been initialized.",
                                     System.identityHashCode(this),

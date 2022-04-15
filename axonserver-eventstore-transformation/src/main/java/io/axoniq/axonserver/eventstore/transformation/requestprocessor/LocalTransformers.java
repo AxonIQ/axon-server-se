@@ -14,6 +14,9 @@ public class LocalTransformers implements Transformers {
     private final Map<String, ContextTransformer> transformers = new ConcurrentHashMap<>();
     private final EventStoreTransformationRepository transformationRepository;
     private final Function<String, EventProvider> eventProviderFactory;
+    private final Function<String, TransformationApplyTask> applyTaskFactory;
+    private final Function<String, TransformationRollBackTask> rollbackTaskFactory;
+
 
     public LocalTransformers(Function<String, EventProvider> eventProviderFactory,
                              EventStoreTransformationRepository eventStoreTransformationRepository) {

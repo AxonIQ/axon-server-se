@@ -49,8 +49,7 @@ public class TransformationAdminRestController {
                                     @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
                                     @ApiIgnore final Authentication principal
     ) {
-        eventStoreTransformationService.startApplying(context, id, lastToken, false,
-                                                      new PrincipalAuthentication(principal))
+        eventStoreTransformationService.startApplying(context, id, lastToken, new PrincipalAuthentication(principal))
                 .subscribe(v -> System.out.println("Done"), t -> t.printStackTrace());
     }
 

@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.localstorage;
+package io.axoniq.axonserver.localstorage.transformation;
 
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationRollbackExecutor;
 import org.slf4j.Logger;
@@ -8,14 +8,14 @@ import reactor.core.publisher.Mono;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-public class LocalTransformationRollbackExecutor implements TransformationRollbackExecutor {
+public class DefaultLocalTransformationRollbackExecutor implements LocalTransformationRollbackExecutor {
 
-    private static final Logger logger = LoggerFactory.getLogger(LocalTransformationRollbackExecutor.class);
+    private static final Logger logger = LoggerFactory.getLogger(DefaultLocalTransformationRollbackExecutor.class);
 
     private final LocalEventStoreTransformer localEventStoreTransformer;
     private final Set<String> rollingBackTransformations = new CopyOnWriteArraySet<>();
 
-    public LocalTransformationRollbackExecutor(LocalEventStoreTransformer localEventStoreTransformer) {
+    public DefaultLocalTransformationRollbackExecutor(LocalEventStoreTransformer localEventStoreTransformer) {
         this.localEventStoreTransformer = localEventStoreTransformer;
     }
 

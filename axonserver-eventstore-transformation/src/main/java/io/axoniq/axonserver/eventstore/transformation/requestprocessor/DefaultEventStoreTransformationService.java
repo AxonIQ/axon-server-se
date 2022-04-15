@@ -32,25 +32,46 @@ import static io.axoniq.axonserver.util.StringUtils.username;
 public class DefaultEventStoreTransformationService implements EventStoreTransformationService {
 
     private final Transformers transformers;
+    private final Transformations transformations;
     private final Logger auditLog;
+    private final TransformationApplyTask transformationApplyTask;
+    private final TransformationRollBackTask transformationRollBackTask;
 
-//    public DefaultEventStoreTransformationService(LocalEventStore localEventStore, EventStoreTransformationRepository repository) {
-//        this(new LocalTransformers(localEventStore::eventIterator, repository));
-//    }
-
-    public DefaultEventStoreTransformationService(Transformers transformers) {
-        this(transformers, LoggerFactory.getLogger("AUDIT." + DefaultEventStoreTransformationService.class.getName()));
+    @Override
+    public void init() {
+        transformationApplyTask.start();
+        transformationRollBackTask.start();
     }
 
-    public DefaultEventStoreTransformationService(Transformers transformers, Logger auditLog) {
+    @Override
+    public void destroy() {
+        transformationApplyTask.stop();
+        transformationRollBackTask.stop();
+    }
+
+    public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
+                                                  TransformationRollBackTask transformationRollBackTask,
+                                                  TransformationApplyTask transformationApplyTask) {
+        this(transformers,
+             transformations,
+             LoggerFactory.getLogger("AUDIT." + DefaultEventStoreTransformationService.class.getName()),
+             transformationApplyTask, transformationRollBackTask);
+    }
+
+    public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
+                                                  Logger auditLog,
+                                                  TransformationApplyTask transformationApplyTask,
+                                                  TransformationRollBackTask transformationRollBackTask) {
         this.transformers = transformers;
+        this.transformations = transformations;
         this.auditLog = auditLog;
+        this.transformationApplyTask = transformationApplyTask;
+        this.transformationRollBackTask = transformationRollBackTask;
     }
 
     @Override
     public Flux<Transformation> transformations() {
-        // TODO: 12/22/21
-        return Flux.empty();
+        return transformations.allTransformations();
     }
 
     @Override
@@ -94,13 +115,12 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
 
     @Override
     public Mono<Void> startApplying(String context, String transformationId, long sequence,
-                                    boolean keepOldVersions,
                                     @Nonnull Authentication authentication) {
         auditLog.info("{}@{}: Request to apply transformation {}",
                       username(authentication.username()),
                       sanitize(context),
                       sanitize(transformationId));
-        return transformerFor(context).startApplying(transformationId, sequence, keepOldVersions);
+        return transformerFor(context).startApplying(transformationId, sequence);
     }
 
     @Override

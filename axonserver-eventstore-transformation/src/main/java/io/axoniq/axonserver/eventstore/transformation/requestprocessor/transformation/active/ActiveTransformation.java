@@ -38,7 +38,7 @@ public class ActiveTransformation implements Transformation {
     }
 
     @Override
-    public Mono<TransformationState> startApplying(long sequence, boolean keepOldVersions) {
+    public Mono<TransformationState> startApplying(long sequence) {
         boolean valid = state.lastSequence()
                 .map(lastSequence -> lastSequence == sequence)
                 .orElse(true);

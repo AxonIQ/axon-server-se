@@ -177,7 +177,6 @@ public class EventStoreTransformationGrpcController
         eventStoreTransformationService.startApplying(context,
                                                       request.getTransformationId().getId(),
                                                       request.getLastSequence(),
-                                                      request.getKeepOldVersions(),
                                                       new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }

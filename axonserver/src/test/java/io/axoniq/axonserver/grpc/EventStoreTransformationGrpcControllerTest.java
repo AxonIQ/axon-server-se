@@ -119,7 +119,6 @@ public class EventStoreTransformationGrpcControllerTest {
 
             @Override
             public Mono<Void> startApplying(String context, String id, long lastEventToken,
-                                            boolean keepOldVersions,
                                             @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.create(sink -> {
                     if (id.equals(activeTransformations.get(context))) {

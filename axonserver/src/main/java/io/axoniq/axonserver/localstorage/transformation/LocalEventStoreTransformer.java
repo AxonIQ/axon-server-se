@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.localstorage;
+package io.axoniq.axonserver.localstorage.transformation;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
@@ -26,9 +26,6 @@ public interface LocalEventStoreTransformer {
      * Transforms events in the event store. Returns a {@link Flux} of progress objects where an object is published
      * when the transformation function reaches a certain milestone. The flux is completed when the transformation is
      * completed.
-     * <p>
-     * The {@code keepOldVersions} flag may be overridden at the event store level, if the keep old version flag is set
-     * globally or on the context.
      *
      * @param context           the name of the context for the event store
      * @param version           the new version number for the event store
