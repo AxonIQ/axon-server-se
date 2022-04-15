@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import reactor.core.publisher.Mono;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -125,5 +127,15 @@ public interface IndexManager {
 
     boolean remove(FileVersion fileVersion);
 
-    void activeVersion(long segment, int version);
+    default Mono<Void> activateVersion(FileVersion fileVersion) {
+        return activateVersion(fileVersion.segment(), fileVersion.version());
+    }
+
+    /**
+     * Rename the temporary index if it exists into the active version and active it.
+     *
+     */
+    Mono<Void> activateVersion(long segment, int version);
+
+    Mono<Void> rollbackToVersion(long segment, int currentVersion, int targetVersion);
 }

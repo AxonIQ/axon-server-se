@@ -23,13 +23,14 @@
         </license>
     </licenses>
 
-
     <modules>
         <module>axonserver</module>
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
-        <module>filestore</module>
+        <module>axonserver-filestore</module>
+        <module>axonserver-eventstore-transformation</module>
+        <module>axonserver-commons</module>
     </modules>
 
     <properties>
@@ -40,7 +41,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
-
+        <kotlin.version>1.5.31</kotlin.version>
         <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
 
         <!--
@@ -73,6 +74,21 @@
                 <groupId>io.axoniq</groupId>
                 <artifactId>axonserver-plugin-api</artifactId>
                 <version>${axonserver-plugin-api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-eventstore-transformation</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-filestore</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-commons</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>

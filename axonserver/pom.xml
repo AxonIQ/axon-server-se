@@ -24,17 +24,12 @@
         <timestamp>${maven.build.timestamp}</timestamp>
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
         <exec.plugin.version>1.6.0</exec.plugin.version>
-
-        <kotlin.version>1.5.31</kotlin.version>
-
         <frontend-maven-plugin.version>1.12.0</frontend-maven-plugin.version>
         <frontend-maven-plugin.nodeVersion>v9.7.1</frontend-maven-plugin.nodeVersion>
         <frontend-maven-plugin.npmVersion>5.6.0</frontend-maven-plugin.npmVersion>
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
-
         <mapdb.version>3.0.8</mapdb.version>
         <skip.integration.tests>false</skip.integration.tests>
-        <kotlin.version>1.5.21</kotlin.version>
     </properties>
 
     <dependencies>
@@ -44,12 +39,19 @@
         </dependency>
         <dependency>
             <groupId>io.axoniq.axonserver</groupId>
-            <artifactId>filestore</artifactId>
-            <version>4.6.0-SNAPSHOT</version>
+            <artifactId>axonserver-eventstore-transformation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-filestore</artifactId>
         </dependency>
         <dependency>
             <groupId>io.axoniq</groupId>
             <artifactId>axonserver-plugin-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.axoniq.axonserver</groupId>
+            <artifactId>axonserver-commons</artifactId>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
@@ -62,6 +64,12 @@
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty</artifactId>
+        </dependency>
+        <!-- TODO remove -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-services</artifactId>
+            <version>${grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>

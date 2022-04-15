@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.transport.grpc;
 
+import com.google.protobuf.Empty;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.grpc.stub.StreamObserver;
 import reactor.core.publisher.BaseSubscriber;
@@ -17,21 +18,18 @@ import javax.annotation.Nonnull;
 
 /**
  * @author Marc Gathier
- * @since
+ * @since 4.6.0
  */
-public class VoidStreamObserverSubscriber<T> extends BaseSubscriber<Void> {
+public class VoidStreamObserverSubscriber extends BaseSubscriber<Void> {
 
-    private final StreamObserver<T> responseObserver;
-    private final T response;
+    private final StreamObserver<Empty> responseObserver;
 
-    public VoidStreamObserverSubscriber(StreamObserver<T> responseObserver, T response) {
+    public VoidStreamObserverSubscriber(StreamObserver<Empty> responseObserver) {
         this.responseObserver = responseObserver;
-        this.response = response;
     }
 
     @Override
     protected void hookOnComplete() {
-        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 

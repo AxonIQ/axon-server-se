@@ -21,7 +21,7 @@ public class TransformationProgressUpdate implements TransformationProgress {
         this.lastTokenProcessed = lastTokenProcessed;
     }
 
-    public long lastTokenProcessed() {
+    public long eventsTransformed() {
         return lastTokenProcessed;
     }
 

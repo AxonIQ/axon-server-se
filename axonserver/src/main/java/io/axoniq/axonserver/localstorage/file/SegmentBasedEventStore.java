@@ -12,14 +12,10 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
-import io.axoniq.axonserver.localstorage.EventTransformationFunction;
-import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.Registration;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -35,9 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -271,90 +267,89 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
-    public void transformContents(long firstToken,
-                                  long lastToken,
-                                  boolean keepOldVersions,
-                                  int newVersion,
-                                  EventTransformationFunction transformationFunction,
-                                  Consumer<TransformationProgress> transformationProgressConsumer) {
-        long nextToken = Math.max(firstToken, getFirstToken());
-        long previousSegment = -1;
-        while (nextToken <= lastToken) {
-            long segment = getSegmentFor(nextToken);
-            if (segment == previousSegment) {
-                return;
-            }
-            nextToken = transformSegment(segment,
-                                         nextToken,
-                                         keepOldVersions,
-                                         newVersion,
-                                         transformationFunction,
-                                         transformationProgressConsumer);
-            previousSegment = segment;
-        }
+    public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
+        return Flux.usingWhen(Mono.empty(),
+                              v -> transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
+                                                    .flatMap(segmentedTransformedEvents -> transformSegment(
+                                                            segmentedTransformedEvents.key(),
+                                                            newVersion,
+                                                            segmentedTransformedEvents)),
+                              v -> activateTransformation());
+    }
+
+    private Mono<TransformationProgress> transformSegment(long segment,
+                                                          int newVersion,
+                                                          Flux<EventWithToken> transformedEventsInTheSegment) {
+        return Flux.usingWhen(Mono.fromCallable(() -> new DefaultSegmentTransformer(storageProperties,
+                                                                                    context,
+                                                                                    segment,
+                                                                                    newVersion, indexManager)),
+                              segmentTransformer -> transformedEventsInTheSegment.flatMap(segmentTransformer::transformEvent),
+                              SegmentTransformer::completeSegment,
+                              SegmentTransformer::rollback,
+                              SegmentTransformer::cancel)
+                   .last();
+    }
+
+    private Mono<Void> activateTransformation() {
+        return transformedFileVersions()
+                .flatMap(this::activateSegment)
+                .then();
+    }
+
+    private Flux<FileVersion> transformedFileVersions() {
+        return fileVersions(StorageProperties.TRANSFORMED_SUFFIX);
+    }
+
+    private Flux<FileVersion> rolledBackFileVersions() {
+        return fileVersions(StorageProperties.ROLLED_BACK_SUFFIX);
+    }
+
+
+    private Flux<FileVersion> fileVersions(String suffix) {
+        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storageProperties.getStorage(context)), suffix))
+                   .map(FileUtils::process);
+    }
+
+    private Mono<Void> activateSegment(FileVersion fileVersion) {
+        return renameTransformedSegmentIfNeeded(fileVersion).then(indexManager.activateVersion(fileVersion));
+    }
+
+    private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
+        return Mono.fromSupplier(() -> storageProperties.dataFile(context, fileVersion))
+                   .filter(dataFile -> !dataFile.exists())
+                   .flatMap(dataFile -> Mono.fromSupplier(() -> storageProperties.transformedDataFile(context, fileVersion))
+                                            .filter(File::exists)
+                                            .switchIfEmpty(Mono.error(new RuntimeException()))
+                                            .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
     }
 
     @Override
-    public void deleteOldVersions(int version) {
-        SortedSet<Long> mySegments = getSegments();
-        mySegments.forEach(s -> {
-            if (storageProperties.dataFile(context, new FileVersion(s, version)).exists()) {
-                int previousVersion = previousVersion(s, version);
-                if( previousVersion >= 0) {
-                    scheduleForDeletion(s, previousVersion);
-                }
-            }
-        });
-        if (next != null) {
-            next.deleteOldVersions(version);
-        }
+    public Mono<Void> deleteOldVersions() {
+        // TODO: 4/11/22 !!!
+        return Mono.empty();
     }
 
     @Override
-    public void rollbackSegments(int version) {
-        SortedSet<Long> mySegments = getSegments();
-        mySegments.forEach(s -> {
-            if (currentSegmentVersion(s) == version) {
-                int previousVersion = previousVersion(s, version);
-                if( previousVersion >= 0) {
-                    indexManager.activeVersion(s, previousVersion);
-                    activateSegmentVersion(s, previousVersion);
-                    scheduleForDeletion(s, version);
-                }
-            }
-        });
-
-        if (next != null) {
-            next.rollbackSegments(version);
-        }
+    public Mono<Void> rollbackSegments(int version) {
+        return Flux.fromIterable(getSegments())
+                   .filter(segment -> currentSegmentVersion(segment) == version)
+                   .flatMapSequential(segment -> hasPreviousVersion(segment, version).thenReturn(segment))
+                   .flatMapSequential(segment -> doesntHaveNextVersion(segment, version).thenReturn(segment))
+                   .then(Mono.justOrEmpty(next)
+                             .flatMap(n -> rollbackSegments(version)))
+                   .thenMany(Flux.fromIterable(getSegments()))
+                   .filter(segment -> currentSegmentVersion(segment) == version)
+                   .flatMapSequential(segment -> indexManager.rollbackToVersion(segment, version,version - 1).thenReturn(segment))
+                   .flatMapSequential(segment -> rollbackSegmentVersion(segment, version, version - 1))
+                   .then(deleteRolledBack());
     }
 
-    @Override
-    public LocalEventStoreTransformer.Result canRollbackTransformation(int version, long firstEventToken,
-                                                                       long lastEventToken) {
-        if (getSegments().stream().anyMatch(s -> currentSegmentVersion(s) == version && !hasPreviousVersion(s,
-                                                                                                            version))) {
-            return result(false, "Not all segments have previous version");
-        }
-
-        if (next != null) {
-            return next.canRollbackTransformation(version, firstEventToken, lastEventToken);
-        }
-        return result(true, null);
-    }
-
-    protected LocalEventStoreTransformer.Result result(boolean result, String reason) {
-        return new LocalEventStoreTransformer.Result() {
-            @Override
-            public boolean accepted() {
-                return result;
-            }
-
-            @Override
-            public String reason() {
-                return reason;
-            }
-        };
+    private Mono<Void> deleteRolledBack() {
+        return rolledBackFileVersions()
+                .map(fileVersion -> storageProperties.rolledBackIndex(context, fileVersion))
+                .map(FileUtils::delete)
+                .then();
     }
 
     @Override
@@ -366,10 +361,28 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return next == null ? version : Math.max(version, next.nextVersion());
     }
 
-    private boolean hasPreviousVersion(long segment, int version) {
-        return previousVersion(segment, version) >= 0;
+    private Mono<Void> hasPreviousVersion(long segment, int version) {
+        return hasVersion(segment, version - 1);
     }
 
+    private Mono<Void> doesntHaveNextVersion(long segment, int version) {
+        return hasVersion(segment, version + 1);
+    }
+
+    private Mono<Void> hasVersion(long segment, int version) {
+        return Mono.create(sink -> {
+            if (version == 0 && storageProperties.dataFile(context, segment).exists()) {
+                sink.success();
+            } else if (storageProperties.dataFile(context, new FileVersion(segment, version)).exists())  {
+                sink.success();
+            } else {
+                sink.error(new RuntimeException(version + " version for segment " + segment + " doesn't exist."));
+            }
+        });
+
+    }
+
+    // TODO: 4/7/22 remove?
     private int previousVersion(Long segment, int version) {
         int previous = version - 1;
         while (previous >= 0) {
@@ -381,101 +394,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return -1;
     }
 
-    private long transformSegment(long segment, long nextTokenToTransform, boolean keepOldVersion,
-                                  int newVersion,
-                                  EventTransformationFunction transformationFunction,
-                                  Consumer<TransformationProgress> transformationProgressConsumer) {
-        Map<String, List<IndexEntry>> indexEntriesMap;
-        boolean changed = false;
-        int currentVersion = currentSegmentVersion(segment);
-        if (currentVersion >= newVersion) {
-            return nextToken(segment);
-        }
-
-        File dataFile = storageProperties.dataFile(context, new FileVersion(segment, newVersion));
-        File tempFile = new File(dataFile.getAbsolutePath() + ".temp");
-        long token;
-        try (SegmentWriter segmentWriter = new StreamSegmentWriter(tempFile, segment, storageProperties.getFlags());
-             TransactionIterator transactionIterator = getTransactions(segment, segment)) {
-
-            while (transactionIterator.hasNext()) {
-                SerializedTransactionWithToken transaction = transactionIterator.next();
-                List<Event> updatedEvents = new ArrayList<>();
-                int i = 0;
-                for (SerializedEvent serializedEvent : transaction.getEvents()) {
-                    Event event = serializedEvent.asEvent();
-                    if (transaction.getToken() + i == nextTokenToTransform) {
-                        EventTransformationResult result = transformationFunction.apply(event,
-                                                                                        transaction.getToken() + i);
-                        if (!event.equals(result.event())) {
-                            changed = true;
-                            event = result.event();
-                        }
-                        nextTokenToTransform = Math.max(nextTokenToTransform + 1, result.nextToken());
-                    }
-                    updatedEvents.add(event);
-                    i++;
-                }
-
-                segmentWriter.write(updatedEvents);
-
-            }
-            segmentWriter.writeEndOfFile();
-            token = segmentWriter.lastToken();
-            indexEntriesMap = segmentWriter.indexEntries();
-        } catch (Exception e) {
-            FileUtils.delete(tempFile);
-            throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
-        }
-        if (changed) {
-            completeNewSegmentVersion(segment,
-                                      keepOldVersion,
-                                      newVersion,
-                                      indexEntriesMap,
-                                      currentVersion,
-                                      dataFile,
-                                      tempFile);
-        } else {
-            FileUtils.delete(tempFile);
-        }
-        transformationProgressConsumer.accept(new TransformationProgressUpdate(token));
-        return nextTokenToTransform;
-    }
-
-    private long nextToken(long segment) {
-        File dataFile = storageProperties.dataFile(context, new FileVersion(segment, currentSegmentVersion(segment)));
-        long token = segment;
-        try (TransactionIterator transactionIterator = getTransactions(segment, segment)) {
-            while (transactionIterator.hasNext()) {
-                SerializedTransactionWithToken transaction = transactionIterator.next();
-                token += transaction.getEventsCount();
-            }
-            return token;
-        } catch (Exception e) {
-            throw new RuntimeException(String.format("%s: transformation of segment %d failed", context, segment), e);
-        }
-    }
-
-    private void completeNewSegmentVersion(long segment, boolean keepOldVersion, int newVersion,
-                                           Map<String, List<IndexEntry>> indexEntriesMap, int currentVersion,
-                                           File dataFile,
-                                           File tempFile) {
-        indexManager.createNewVersion(segment, newVersion, indexEntriesMap);
-        try {
-            FileUtils.rename(tempFile, dataFile);
-            activateSegmentVersion(segment, newVersion);
-            if (!keepOldVersion) {
-                scheduleForDeletion(segment, currentVersion);
-            }
-        } catch (IOException e) {
-            indexManager.remove(new FileVersion(segment, newVersion));
-            throw new RuntimeException(String.format("%s: rename segment %s failed", context, tempFile), e);
-        }
-    }
 
     protected abstract Integer currentSegmentVersion(Long segment);
 
     protected abstract void activateSegmentVersion(long segment, int version);
+
+    protected abstract Mono<Void> rollbackSegmentVersion(long segment, int currentVersion, int targetVersion);
 
     protected void scheduleForDeletion(long segment, int version) {
         Executors.newSingleThreadScheduledExecutor().schedule(() -> {
@@ -544,11 +468,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
 
         return Optional.empty();
-    }
-
-    @Override
-    public boolean keepOldVersions() {
-        return storageProperties.isKeepOldVersions();
     }
 
     @Override

@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.topology;
 
-import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
@@ -27,24 +26,15 @@ import javax.annotation.PostConstruct;
 public class DefaultEventStoreLocator implements EventStoreLocator {
 
     private final LocalEventStore localEventStore;
-    private final TransformationProcessor transformationProcessor;
 
 
-    public DefaultEventStoreLocator(LocalEventStore localEventStore,
-                                    TransformationProcessor transformationProcessor) {
+    public DefaultEventStoreLocator(LocalEventStore localEventStore) {
         this.localEventStore = localEventStore;
-        this.transformationProcessor = transformationProcessor;
     }
 
     @PostConstruct
     public void init() {
         localEventStore.initContext(Topology.DEFAULT_CONTEXT, false);
-        transformationProcessor.restartApply(Topology.DEFAULT_CONTEXT)
-                .thenAccept(transformationId -> {
-                    if( transformationId != null) {
-                        transformationProcessor.complete(transformationId);
-                    }
-                });
     }
 
     @Override

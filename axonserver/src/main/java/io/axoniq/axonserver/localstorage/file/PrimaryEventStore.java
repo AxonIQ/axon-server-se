@@ -13,6 +13,7 @@ import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
@@ -26,6 +27,7 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.io.IOException;
@@ -315,12 +317,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void transformContents(long firstToken,
-                                  long lastToken,
-                                  boolean keepOldVersions,
-                                  int version,
-                                  EventTransformationFunction transformationFunction,
-                                  Consumer<TransformationProgress> transformationProgressConsumer) {
+    public Flux<TransformationProgress> transformContents(int version, Flux<EventWithToken> transformedEvents) {
 
         if (readBuffers.lastKey() > lastToken) {
             // all transformations in segments that are already closed or about to be closed
@@ -332,24 +329,8 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             forceNextSegment();
         }
         if (next != null) {
-            next.transformContents(firstToken, lastToken,
-                                   keepOldVersions,
-                                   version, transformationFunction, transformationProgressConsumer);
+            next.transformContents(version, transformedEvents);
         }
-    }
-
-    @Override
-    public LocalEventStoreTransformer.Result canRollbackTransformation(int version, long firstEventToken,
-                                                                       long lastEventToken) {
-        if (lastEventToken < getFirstToken()) {
-            return result(true, null);
-        }
-
-        if (lastEventToken > getLastToken()) {
-            return result(false, "Last token in transformation not in local event store");
-        }
-
-        return super.canRollbackTransformation(version, firstEventToken, lastEventToken);
     }
 
     @Override
@@ -360,6 +341,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     protected void activateSegmentVersion(long segment, int version) {
         // no-op, no versioning for primary segments
+        if (next != null){
+            next.activateSegmentVersion(segment, version);
+        }
     }
 
     private void forceNextSegment() {

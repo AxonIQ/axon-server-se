@@ -14,5 +14,10 @@ package io.axoniq.axonserver.localstorage.file;
  * @since
  */
 public interface TransformationProgress {
-    long lastTokenProcessed();
+
+    /**
+     * The number of transformed events, so far.
+     * @return The number of transformed events, so far
+     */
+    long eventsTransformed();
 }

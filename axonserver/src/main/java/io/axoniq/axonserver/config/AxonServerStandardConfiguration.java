@@ -13,10 +13,10 @@ import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
-import io.axoniq.axonserver.eventstore.transformation.impl.TransformationProcessor;
-import io.axoniq.axonserver.eventstore.transformation.impl.TransformationStateManager;
-import io.axoniq.axonserver.eventstore.transformation.impl.TransformationValidator;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationRepository;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
@@ -26,6 +26,8 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
+import io.axoniq.axonserver.localstorage.AutoCloseableEventProvider;
+import io.axoniq.axonserver.localstorage.ContextEventIteratorFactory;
 import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
 import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
@@ -69,9 +71,12 @@ import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
+import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.annotation.Nonnull;
 
@@ -132,20 +137,8 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EventStoreLocator.class)
-    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore,
-                                               TransformationProcessor transformationProcessor) {
-        return new DefaultEventStoreLocator(localEventStore, transformationProcessor);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(EventStoreTransformationService.class)
-    public EventStoreTransformationService eventStoreTransformationService(
-            TransformationStateManager transformationStateManager,
-            TransformationValidator transformationValidator,
-            TransformationProcessor transformationProcessor) {
-        return new DefaultEventStoreTransformationService(transformationStateManager,
-                                                          transformationValidator,
-                                                          transformationProcessor);
+    public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore) {
+        return new DefaultEventStoreLocator(localEventStore);
     }
 
     @Bean
@@ -195,8 +188,9 @@ public class AxonServerStandardConfiguration {
     }
 
     @Nonnull
-    private UserAdminService getUserAdminService(UserController userController, ApplicationEventPublisher eventPublisher) {
-        return new LocalUserAdminService(userController,eventPublisher);
+    private UserAdminService getUserAdminService(UserController userController,
+                                                 ApplicationEventPublisher eventPublisher) {
+        return new LocalUserAdminService(userController, eventPublisher);
     }
 
     @Bean
@@ -282,5 +276,4 @@ public class AxonServerStandardConfiguration {
         //using FileSystemMonitor instead
         return null;
     }
-
 }

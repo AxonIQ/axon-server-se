@@ -52,14 +52,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -79,6 +77,7 @@ import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+
 /**
  * Component that handles the actual interaction with the event store.
  *
@@ -87,7 +86,7 @@ import java.util.stream.Stream;
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore,
-        LocalEventStoreTransformer,
+        LocalEventStoreTransformer, LocalEventStoreInitializationObservable,
         SmartLifecycle {
 
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
@@ -100,6 +99,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final EventInterceptors eventInterceptors;
     private final int maxEventCount;
+    private final List<Consumer<String>> contextInitializedListeners = new CopyOnWriteArrayList<>();
 
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
@@ -116,8 +116,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private long newPermitsTimeout = 120000;
     @SuppressWarnings("FieldMayBeFinal") @Value("${axoniq.axonserver.check-sequence-nr-for-snapshots:true}")
     private boolean checkSequenceNrForSnapshots = true;
-
-    private final Collection<Consumer<String>> initialializedListeners = new CopyOnWriteArrayList<>();
 
     public LocalEventStore(EventStoreFactory eventStoreFactory,
                            MeterRegistry meterFactory,
@@ -234,22 +232,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers;
     }
 
-    public Flux<TransformationProgress> transformEvents(String context, long firstToken, long lastToken,
-                                                        boolean keepOldVersions,
+    @Override
+    public Flux<TransformationProgress> transformEvents(String context,
                                                         int version,
-                                                        EventTransformationFunction transformationFunction) {
-        Sinks.Many<TransformationProgress> sink = Sinks.many().unicast().onBackpressureBuffer();
-        runInDataFetcherPool(() -> {
-            Workers workers = workersMap.get(context);
-            workers.eventStorageEngine.transformContents(firstToken,
-                                                         lastToken,
-                                                         keepOldVersions || workers.keepOldVersions(),
-                                                         version,
-                                                         transformationFunction,
-                                                         sink::tryEmitNext);
-            sink.tryEmitComplete();
-        }, sink::tryEmitError);
-        return sink.asFlux();
+                                                        Flux<EventWithToken> transformedEvents) {
+        return workersMap.get(context)
+                .eventStorageEngine
+                .transformContents(version, transformedEvents)
+                .subscribeOn(Schedulers.fromExecutorService(dataFetcher));
     }
 
     @Override
@@ -815,10 +805,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotStorageEngine.getLastToken();
     }
 
-    public boolean keepOldVersions(String context) {
-        return workers(context).keepOldVersions();
-    }
-
     /**
      * Creates an iterator to iterate over event transactions, starting at transaction with token fromToken and ending
      * before toToken
@@ -924,18 +910,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public void deleteOldVersions(String context, int version) {
-        workers(context).deleteOldVersions(version);
+    public Mono<Void> deleteOldVersions(String context) {
+        return workers(context).deleteOldVersions();
     }
 
     @Override
-    public void rollbackSegments(String context, int version) {
-        workers(context).rollbackSegments(version);
+    public Mono<Void> rollback(String context, int version) {
+        return workers(context).rollbackSegments(version);
     }
 
     @Override
-    public Result canRollbackTransformation(String context, int version, long firstEventToken, long lastEventToken) {
-        return workers(context).canRollbackTransformation(version, firstEventToken, lastEventToken);
+    public void accept(Consumer<String> onContextInitializedCallback) {
+        this.contextInitializedListeners.add(onContextInitializedCallback);
     }
 
     private class Workers {
@@ -1000,7 +986,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                     eventStorageEngine.init(validate, defaultFirstEventIndex);
                     snapshotStorageEngine.init(validate, defaultFirstSnapshotIndex);
                     initialized = true;
-                    initialializedListeners.forEach(listener -> listener.accept(context));
+
+                    contextInitializedListeners.forEach(listener -> listener.accept(context));
                     if (logger.isInfoEnabled()) {
                         logger.info("Workers[{}] for context {} has been initialized.",
                                     System.identityHashCode(this),
@@ -1062,20 +1049,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             trackingEventManager.validateActiveConnections(minLastPermits);
         }
 
-        public void deleteOldVersions(int version) {
-            eventStorageEngine.deleteOldVersions(version);
+        public Mono<Void> deleteOldVersions() {
+            return eventStorageEngine.deleteOldVersions();
         }
 
-        public Result canRollbackTransformation(int version, long firstEventToken, long lastEventToken) {
-            return eventStorageEngine.canRollbackTransformation(version, firstEventToken, lastEventToken);
-        }
-
-        public void rollbackSegments(int version) {
-            eventStorageEngine.rollbackSegments(version);
-        }
-
-        public boolean keepOldVersions() {
-            return eventStorageEngine.keepOldVersions();
+        public Mono<Void> rollbackSegments(int version) {
+            return eventStorageEngine.rollbackSegments(version);
         }
     }
 

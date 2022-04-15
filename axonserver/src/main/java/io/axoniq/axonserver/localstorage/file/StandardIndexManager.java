@@ -23,6 +23,7 @@ import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
 import java.io.Closeable;
 import java.io.File;
@@ -137,7 +138,7 @@ public class StandardIndexManager implements IndexManager {
         if (positionsPerAggregate == null) {
             positionsPerAggregate = Collections.emptyMap();
         }
-        File tempFile = storageProperties.indexTemp(context, segment.segment());
+        File tempFile = storageProperties.transformedIndex(context, segment.segment());
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
@@ -279,8 +280,31 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public void activeVersion(long segment, int version) {
-        indexesDescending.put(segment, version);
+    public Mono<Void> activateVersion(long segment, int version) {
+        FileVersion fileVersion = new FileVersion(segment, version);
+        return Mono.fromSupplier(() -> storageProperties.index(context, fileVersion))
+                   .filter(indexFile -> !indexFile.exists())
+                   .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.transformedIndex(context, fileVersion))
+                                             .filter(File::exists)
+                                             .switchIfEmpty(Mono.error(new RuntimeException()))
+                                             .flatMap(tempIndex -> FileUtils.rename(tempIndex, indexFile)))
+                   .doOnSuccess(v -> indexesDescending.put(segment, version));
+    }
+
+    @Override
+    public Mono<Void> rollbackToVersion(long segment, int currentVersion, int targetVersion) {
+        FileVersion toVersion = new FileVersion(segment, targetVersion);
+        FileVersion fromVersion = new FileVersion(segment, currentVersion);
+        return Mono.fromSupplier(() -> storageProperties.index(context, toVersion))
+                   .filter(File::exists)
+                   .switchIfEmpty(Mono.error(new RuntimeException(
+                           "Cannot rollback to this version, the index doesn't exist.")))
+                   .doOnSuccess(v -> indexesDescending.put(segment, targetVersion))
+                   .then(Mono.fromSupplier(() -> storageProperties.index(context,fromVersion))
+                             .flatMap(current -> {
+                                 File rolledBack = storageProperties.rolledBackIndex(context, fromVersion);
+                                 return FileUtils.rename(current, rolledBack);
+                             }));
     }
 
     @Override
@@ -289,7 +313,7 @@ public class StandardIndexManager implements IndexManager {
         if (indexEntriesMap == null) {
             indexEntriesMap = Collections.emptyMap();
         }
-        File tempFile = storageProperties.index(context, newVersion);
+        File tempFile = storageProperties.transformedIndex(context, newVersion);
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
@@ -326,7 +350,7 @@ public class StandardIndexManager implements IndexManager {
         filter.insertAll(indexEntriesMap.keySet());
         filter.store();
 
-        indexesDescending.put(segment, version);
+    //    indexesDescending.put(segment, version);
     }
 
     /**

@@ -14,6 +14,7 @@ import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Optional;
@@ -238,35 +239,14 @@ public interface EventStorageEngine {
     default void validateTransaction(long token, List<SerializedEvent> eventList) {
     }
 
-    void transformContents(long firstToken, long lastToken, boolean keepOldVersions,
-                           int version, EventTransformationFunction transformationFunction,
-                           Consumer<TransformationProgress> transformationProgressConsumer);
+    Flux<TransformationProgress> transformContents(int version, Flux<EventWithToken> transformedEvents);
 
-    default void deleteOldVersions(int version) {
-        throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
+    default Mono<Void> deleteOldVersions() {
+        return Mono.error(new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine"));
     }
 
-    default LocalEventStoreTransformer.Result canRollbackTransformation(int version, long firstEventToken,
-                                                                        long lastEventToken) {
-        return new LocalEventStoreTransformer.Result() {
-            @Override
-            public boolean accepted() {
-                return false;
-            }
-
-            @Override
-            public String reason() {
-                return "Check not implemented";
-            }
-        };
-    }
-
-    default void rollbackSegments(int version) {
-        throw new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine");
-    }
-
-    default boolean keepOldVersions() {
-        return false;
+    default Mono<Void> rollbackSegments(int version) {
+        return Mono.error(new UnsupportedOperationException("rollbackSegments: Operation not supported by this EventStorageEngine"));
     }
 
     default int nextVersion() {

@@ -136,7 +136,7 @@ public class StandardIndexManagerTest {
     public void testTemporaryFileIsDeletedWhenCreatingIndex() throws IOException {
         long segment = 0L;
 
-        File tempFile = storageProperties.indexTemp(context, segment);
+        File tempFile = storageProperties.transformedIndex(context, segment);
         try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
             outputStream.write("mockDataToCreateIllegalFile".getBytes(StandardCharsets.UTF_8));
         }
@@ -146,7 +146,7 @@ public class StandardIndexManagerTest {
         indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
         indexManager.complete(segment);
 
-        assertFalse(storageProperties.indexTemp(context, segment).exists());
+        assertFalse(storageProperties.transformedIndex(context, segment).exists());
     }
 
     @Test(expected = MessagingPlatformException.class)
@@ -154,7 +154,7 @@ public class StandardIndexManagerTest {
         assumeTrue(systemInfoProvider.javaOnWindows());
         long segment = 0L;
 
-        File tempFile = storageProperties.indexTemp(context, segment);
+        File tempFile = storageProperties.transformedIndex(context, segment);
 
         String aggregateId = "aggregateId";
         IndexEntry positionInfo = new IndexEntry(0, 0, 0);
