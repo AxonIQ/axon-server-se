@@ -133,10 +133,11 @@ podTemplate(label: label,
                  * If we have Docker images and artifacts in Nexus, we can run Canary tests on them.
                  */
                 if (relevantBranch(gitBranch, dockerBranches) && relevantBranch(gitBranch, deployingBranches)) {
-                    def canaryTests = build job: 'axon-server-canary/master', propagate: false, wait: true,
+                    def canaryTests = build job: 'axon-server-canary/axonserver-4.5.x', propagate: false, wait: true,
                         parameters: [
                             string(name: 'serverEdition', value: 'se'),
                             string(name: 'projectVersion', value: pomVersion),
+                            string(name: 'frameworkVersion', value: pom.properties["axon.version"]),
                             string(name: 'cliVersion', value: pomVersion)
                         ]
                     if (canaryTests.result == "FAILURE") {
