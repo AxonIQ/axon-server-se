@@ -16,17 +16,11 @@
  *
  */
 
-/*
- * Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
- *
- *  Licensed under the AxonIQ Open Source License Agreement v1.0;
- *  you may not use this file except in compliance with the license.
- *
- */
-
 insert into PATHS_TO_FUNCTIONS
 values ('io.axoniq.axonserver.grpc.admin.ContextAdminService/CreateContext', 'CREATE_CONTEXT');
+
+insert into PATHS_TO_FUNCTIONS
+values ('io.axoniq.axonserver.grpc.admin.ContextAdminService/UpdateContextProperties', 'UPDATE_CONTEXT_PROPERTIES');
 
 insert into PATHS_TO_FUNCTIONS
 values ('io.axoniq.axonserver.grpc.admin.ContextAdminService/DeleteContext', 'DELETE_CONTEXT');
@@ -119,11 +113,15 @@ values ('io.axoniq.axonserver.grpc.admin.EventProcessorAdminService/LoadBalanceP
 
 insert into PATHS_TO_FUNCTIONS
 values ('io.axoniq.axonserver.grpc.admin.EventProcessorAdminService/SetAutoLoadBalanceStrategy',
-        'GET_EVENT_PROCESSORS_STRATEGIES');
+        'SET_EVENT_PROCESSOR_STRATEGY');
 
 insert into PATHS_TO_FUNCTIONS
 values ('io.axoniq.axonserver.grpc.admin.EventProcessorAdminService/GetBalancingStrategies',
         'GET_EVENT_PROCESSORS_STRATEGIES');
+
+insert into PATHS_TO_FUNCTIONS
+values ('PATCH:/v1/context/.*',
+        'UPDATE_CONTEXT_PROPERTIES');
 
 insert into FUNCTION_ROLES(function, role)
 values ('GET_EVENT_PROCESSORS', 'CONTEXT_ADMIN');
@@ -151,3 +149,7 @@ values ('GET_EVENT_PROCESSORS_STRATEGIES', 'USE_CONTEXT');
 
 insert into FUNCTION_ROLES(function, role)
 values ('GET_EVENT_PROCESSOR_STRATEGY', 'USE_CONTEXT');
+
+insert into FUNCTION_ROLES(function, role)
+values ('UPDATE_CONTEXT_PROPERTIES', 'ADMIN');
+
