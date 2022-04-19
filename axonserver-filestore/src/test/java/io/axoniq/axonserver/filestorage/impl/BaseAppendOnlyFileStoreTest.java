@@ -3,15 +3,25 @@ package io.axoniq.axonserver.filestorage.impl;
 import io.axoniq.axonserver.filestorage.FileStoreEntry;
 import org.junit.*;
 import org.junit.rules.*;
+import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
@@ -31,9 +41,10 @@ public class BaseAppendOnlyFileStoreTest {
     @Before
     public void setUp() throws Exception {
         storageProperties.setStorage(tempFolder.newFolder(UUID.randomUUID().toString()));
+        storageProperties.setSegmentSize(2_000);
         System.out.println(storageProperties.getStorage());
         baseFileStore = new BaseAppendOnlyFileStore(storageProperties, "test");
-        baseFileStore.open(false);
+        baseFileStore.open(false).block();
     }
 
     @After
@@ -41,7 +52,11 @@ public class BaseAppendOnlyFileStoreTest {
         for (File file : storageProperties.getStorage().listFiles()) {
             System.out.printf("%s: size = %d%n", file.getName(), file.length());
         }
-        baseFileStore.close();
+        try {
+            baseFileStore.delete();
+        } catch (Exception ignored) {
+
+        }
     }
 
     @Test
@@ -98,14 +113,9 @@ public class BaseAppendOnlyFileStoreTest {
         assertEquals(0, index.longValue());
         index = append("six", 2);
         assertEquals(5, index.longValue());
-//        try (CloseableIterator<FileStoreEntry> it = baseFileStore.iterator(0)) {
-//            while( it.hasNext()) {
-//                System.out.println(it.next());
-//            }
-//        }
         baseFileStore.close();
         baseFileStore = new BaseAppendOnlyFileStore(storageProperties, "test");
-        baseFileStore.open(false);
+        baseFileStore.open(false).block();
         try (CloseableIterator<FileStoreEntry> it = baseFileStore.iterator(0)) {
             while( it.hasNext()) {
                 System.out.println(it.next());
@@ -151,11 +161,84 @@ public class BaseAppendOnlyFileStoreTest {
     }
 
     @Test
+    public void reset() throws InterruptedException {
+        append("First entry", 9);
+        append("Second entry", 0);
+        append("Third entry", 0);
+        baseFileStore.reset(0L).block();
+        List<FileStoreEntry> entries = baseFileStore.stream(0).collect(Collectors.toList()).block();
+        assertEquals(1, entries.size());
+    }
+
+    @Test
+    public void resetCancelsStreams() throws InterruptedException {
+        append("First entry", 9);
+        append("Second entry", 0);
+        append("Third entry", 0);
+        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        baseFileStore.stream(0)
+                     .subscribeOn(Schedulers.boundedElastic())
+                     .subscribe(new BaseSubscriber<FileStoreEntry>() {
+            Subscription subscription;
+            @Override
+            protected void hookOnSubscribe(Subscription subscription) {
+                this.subscription = subscription;
+                subscription.request(1);
+            }
+
+            @Override
+            protected void hookOnNext(FileStoreEntry value) {
+                try {
+                    Thread.sleep(1_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                subscription.request(1);
+            }
+
+            @Override
+            protected void hookOnError(Throwable throwable) {
+                completableFuture.completeExceptionally(throwable);
+            }
+
+            @Override
+            protected void hookOnComplete() {
+                completableFuture.complete(null);
+            }
+        });
+        baseFileStore.reset(0L).block();
+        try {
+            completableFuture.get(5, TimeUnit.SECONDS);
+            fail("Unexpected complete");
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+            assertEquals(IllegalStateException.class, e.getCause().getClass());
+        } catch (TimeoutException e) {
+            fail("Unexpected timeout");
+        }
+    }
+
+    @Test
+    public void resetMultipleSegments() {
+        for (int i = 0; i < 1000; i++) {
+            append("An entry" + i, 9);
+        }
+
+        baseFileStore.reset(11L).block();
+        List<FileStoreEntry> entries = baseFileStore.stream(0)
+                                                    .collect(Collectors.toList())
+                                                    .block();
+        assertEquals(12, entries.size());
+    }
+
+    @Test
     public void stream() {
         append("First entry", 9);
         append("Second entry", 0);
         append("Third entry", 0);
-        List<FileStoreEntry> entries = baseFileStore.stream(1).collect(Collectors.toList()).block(Duration.ofSeconds(1));
+        List<FileStoreEntry> entries = baseFileStore.stream(1)
+                                                    .collect(Collectors.toList())
+                                                    .block(Duration.ofSeconds(1));
         assertNotNull(entries);
         assertEquals(2, entries.size());
     }

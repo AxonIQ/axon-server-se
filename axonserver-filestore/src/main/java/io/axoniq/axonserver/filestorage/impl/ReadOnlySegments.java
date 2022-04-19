@@ -94,6 +94,18 @@ public class ReadOnlySegments extends AbstractSegment {
         }
     }
 
+    protected void reset(long sequence) {
+        for (long segment : getSegments()) {
+            if (segment > sequence) {
+                removeSegment(segment);
+            }
+        }
+
+        if (segments.isEmpty() && next != null) {
+            next.reset(sequence);
+        }
+    }
+
     @Override
     public boolean isClosed() {
         return scheduledExecutorService.isShutdown() || scheduledExecutorService.isTerminated();

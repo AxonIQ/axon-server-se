@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.util.Arrays;
 
 /**
  * @author Marc Gathier
@@ -56,5 +57,16 @@ public class WritableEntrySource extends ByteBufferEntrySource {
 
     public void position(int startPosition) {
         getBuffer().position(startPosition);
+    }
+
+    public void clearFromPosition() {
+        byte[] bytes = new byte[10240];
+        Arrays.fill(bytes, (byte) 0);
+        ByteBuffer buffer = getBuffer();
+        int position = buffer.position();
+        while( buffer.remaining() > 0) {
+            buffer.put(bytes, 0, Math.min(bytes.length, buffer.remaining()));
+        }
+        buffer.position(position);
     }
 }

@@ -27,8 +27,8 @@ public class BufferEntryIterator implements CloseableIterator<FileStoreEntry> {
 
     /**
      * Creates the iterator.
-     *  @param source    the buffer mapped to the file, current position is the position of the first log entry to read
-     * @param segment
+     * @param source    the buffer mapped to the file, current position is the position of the first log entry to read
+     * @param segment   the segment number to iterate
      * @param nextIndex index of the first log entry to read
      */
     public BufferEntryIterator(ByteBufferEntrySource source, long segment, long nextIndex) {

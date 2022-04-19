@@ -32,12 +32,17 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static java.util.Arrays.asList;
+
 /**
  * @author Marc Gathier
  * @since 4.6.0
  */
 public class WritableSegment extends AbstractSegment {
 
+    private enum InitOptions {
+        CLEAR
+    };
     private static final Logger logger = LoggerFactory.getLogger(WritableSegment.class);
     private static final int HEADER_BYTES = 4 + 1; // Entry Size + Version byte
     private static final int TX_CHECKSUM_BYTES = 4;
@@ -49,7 +54,7 @@ public class WritableSegment extends AbstractSegment {
     private final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     private final AtomicLong lastIndex = new AtomicLong(0);
     private final ConcurrentNavigableMap<Long, Map<Long, Integer>> positionsPerSegmentMap = new ConcurrentSkipListMap<>();
-    private final Map<Long, ByteBufferEntrySource> readBuffers = new ConcurrentHashMap<>();
+    private final Map<Long, ByteBufferEntrySource> writeBuffers = new ConcurrentHashMap<>();
     private final AtomicReference<FileStoreEntry> lastEntry = new AtomicReference<>();
 
     public WritableSegment(String context,
@@ -66,7 +71,7 @@ public class WritableSegment extends AbstractSegment {
         logger.info("{}: Initializing log", context);
         File storageDir = storageProperties.getStorage();
         FileUtils.checkCreateDirectory(storageDir);
-        initLatestSegment(lastInitialized, storageDir);
+        initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir);
     }
 
     public CompletableFuture<Long> write(FileStoreEntry entry) {
@@ -113,7 +118,7 @@ public class WritableSegment extends AbstractSegment {
 
     @Override
     protected Optional<CloseableIterator<FileStoreEntry>> createIterator(long segment, long startIndex) {
-        ByteBufferEntrySource buffer = readBuffers.get(segment);
+        ByteBufferEntrySource buffer = writeBuffers.get(segment);
         if( buffer == null) {
             return Optional.empty();
         }
@@ -128,14 +133,14 @@ public class WritableSegment extends AbstractSegment {
         return super.validateSegment(segment);
     }
 
-    private void initLatestSegment(long lastInitialized, File storageDir) {
+    private void initLatestSegment(long lastInitialized, long lastIncluded, File storageDir, InitOptions... options) {
         long first = getFirstFile(lastInitialized, storageDir);
         WritableEntrySource buffer = getOrOpenDatafile(first, storageProperties.getSegmentSize(), false);
         long sequence = first;
         try (CloseableIterator<FileStoreEntry> iterator = new BufferEntryIterator(buffer, first, first)) {
             Map<Long, Integer> indexPositions = new ConcurrentHashMap<>();
             positionsPerSegmentMap.put(first, indexPositions);
-            while (iterator.hasNext()) {
+            while (iterator.hasNext() && sequence <= lastIncluded) {
                 lastEntry.set(iterator.next());
                 sequence++;
             }
@@ -147,6 +152,9 @@ public class WritableSegment extends AbstractSegment {
 
         WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
         writePositionRef.set(writePosition);
+        if (asList(options).contains(InitOptions.CLEAR)) {
+            buffer.clearFromPosition();
+        }
 
         if (next != null) {
             next.initSegments(first);
@@ -223,7 +231,7 @@ public class WritableSegment extends AbstractSegment {
     @Override
     public void cleanup(int delay) {
         synchronizer.shutdown(false);
-        readBuffers.forEach((s, source) -> source.clean(delay));
+        writeBuffers.forEach((s, source) -> source.clean(delay));
         if (next != null) {
             next.cleanup(delay);
         }
@@ -241,7 +249,7 @@ public class WritableSegment extends AbstractSegment {
     protected void removeSegment(long segment) {
         logger.info("{}: Removing {} segment", context, segment);
         positionsPerSegmentMap.remove(segment);
-        ByteBufferEntrySource eventSource = readBuffers.remove(segment);
+        ByteBufferEntrySource eventSource = writeBuffers.remove(segment);
         if (eventSource != null) {
             eventSource.clean(0);
         }
@@ -257,12 +265,14 @@ public class WritableSegment extends AbstractSegment {
         if (next != null) {
             next.handover(segment, () -> {
                 positionsPerSegmentMap.remove(segment);
-                ByteBufferEntrySource source = readBuffers.remove(segment);
-                logger.debug("{}: Handed over {}, remaining segments: {}",
-                             context,
-                             segment,
-                             positionsPerSegmentMap.keySet());
-                source.clean(storageProperties.getPrimaryCleanupDelay());
+                ByteBufferEntrySource source = writeBuffers.remove(segment);
+                if (source != null) {
+                    logger.debug("{}: Handed over {}, remaining segments: {}",
+                                 context,
+                                 segment,
+                                 positionsPerSegmentMap.keySet());
+                    source.clean(storageProperties.getPrimaryCleanupDelay());
+                }
             });
         }
     }
@@ -332,7 +342,7 @@ public class WritableSegment extends AbstractSegment {
         boolean exists = file.exists();
         if (exists) {
             if (recreate && file.length() < minSize) {
-                ByteBufferEntrySource buffer = readBuffers.remove(segment);
+                ByteBufferEntrySource buffer = writeBuffers.remove(segment);
                 if (buffer != null) {
                     buffer.clean(0);
                 }
@@ -374,7 +384,7 @@ public class WritableSegment extends AbstractSegment {
                                                                               storageProperties
                                                                                       .isForceClean(),
                                                                               segment);
-            readBuffers.put(segment, writableEventSource);
+            writeBuffers.put(segment, writableEventSource);
             return writableEventSource;
         } catch (IOException ioException) {
             throw new FileStoreException(FileStoreErrorCode.DATAFILE_READ_ERROR,
@@ -432,7 +442,7 @@ public class WritableSegment extends AbstractSegment {
     @Override
     public void close(boolean deleteData) {
         synchronizer.shutdown(true);
-        readBuffers.forEach((s, source) -> {
+        writeBuffers.forEach((s, source) -> {
             source.clean(0);
             if (deleteData) {
                 removeSegment(s);
@@ -454,5 +464,19 @@ public class WritableSegment extends AbstractSegment {
 
     public boolean isEmpty() {
         return lastIndex.get() <= storageProperties.getFirstIndex();
+    }
+
+    public void reset(long sequence) {
+        for (long segment : getSegments()) {
+            if (segment > sequence) {
+                removeSegment(segment);
+            }
+        }
+
+        if (positionsPerSegmentMap.isEmpty() && next != null) {
+            next.reset(sequence);
+        }
+
+        initLatestSegment(Long.MAX_VALUE, sequence, storageProperties.getStorage(), InitOptions.CLEAR);
     }
 }

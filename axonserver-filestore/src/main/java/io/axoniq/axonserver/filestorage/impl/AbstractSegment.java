@@ -161,4 +161,6 @@ public abstract class AbstractSegment {
     public abstract void close(boolean deleteData);
 
     protected abstract void removeSegment(long segment);
+
+    protected abstract void reset(long sequence);
 }
