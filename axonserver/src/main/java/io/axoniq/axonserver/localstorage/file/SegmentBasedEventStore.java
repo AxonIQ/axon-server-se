@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -52,6 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -77,7 +78,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final int MAX_TRANSACTION_SIZE = Integer.MAX_VALUE - FILE_HEADER_SIZE - FILE_FOOTER_SIZE;
     protected final String context;
     protected final IndexManager indexManager;
-    protected final StorageProperties storageProperties;
+    protected final Supplier<StorageProperties> storagePropertiesSupplier;
     protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
     private final Timer lastSequenceReadTimer;
@@ -87,25 +88,24 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private final DistributionSummary aggregateSegmentsCount;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                  StorageProperties storageProperties, MeterFactory meterFactory) {
-        this(eventTypeContext, indexManager, storageProperties, null, meterFactory);
+                                  Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory) {
+        this(eventTypeContext, indexManager, storagePropertiesSupplier, null, meterFactory);
     }
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                  StorageProperties storageProperties,
+                                  Supplier<StorageProperties> storagePropertiesSupplier,
                                   SegmentBasedEventStore nextSegmentsHandler,
                                   MeterFactory meterFactory) {
         this.type = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
-        this.storageProperties = storageProperties;
+        this.storagePropertiesSupplier = storagePropertiesSupplier;
         this.next = nextSegmentsHandler;
         Tags tags = Tags.of(MeterFactory.CONTEXT, context, "type", eventTypeContext.getEventType().name());
         this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
         this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
         this.aggregateSegmentsCount = meterFactory.distributionSummary
-                (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
-
+                                                          (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
     }
 
     public abstract void handover(Long segment, Runnable callback);
@@ -114,20 +114,23 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long firstSequence,
                                                     long lastSequence,
                                                     long minToken) {
-        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
-        //Map<segment, all positions in that segment>
-        SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
-                                                                                   firstSequence,
-                                                                                   lastSequence,
-                                                                                   Long.MAX_VALUE,
-                                                                                   minToken);
-        logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
-        aggregateSegmentsCount.record(positionInfos.size());
+        return Flux.defer(() -> {
+                       logger.debug("Reading index entries for aggregate {} started.", aggregateId);
 
-        return Flux.fromIterable(positionInfos.entrySet())
-                   .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),
-                           PREFETCH_SEGMENT_FILES,
-                           storageProperties.getEventsPerSegmentPrefetch())
+                       SortedMap<Long, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                                  firstSequence,
+                                                                                                  lastSequence,
+                                                                                                  Long.MAX_VALUE,
+                                                                                                  minToken);
+                       logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
+                       aggregateSegmentsCount.record(positionInfos.size());
+
+                       return Flux.fromIterable(positionInfos.entrySet());
+                   }).flatMapSequential(e -> eventsForPositions(e.getKey(),
+                                                                e.getValue(),
+                                                                storagePropertiesSupplier.get().getEventsPerSegmentPrefetch()),
+                                        PREFETCH_SEGMENT_FILES,
+                                        storagePropertiesSupplier.get().getEventsPerSegmentPrefetch())
                    .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence) //todo for safe guard, remove in 4.6
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
                    .name("event_stream")
@@ -137,19 +140,25 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .metrics();
     }
 
-    private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries) {
+    private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries, int prefetch) {
         return (!containsSegment(segment) && next != null) ?
-                next.eventsForPositions(segment, indexEntries) :
-                new EventSourceFlux(indexEntries, () -> eventSource(segment), segment, storageProperties.getEventsPerSegmentPrefetch()).get()
-                        .name("event_stream")
-                        .tag("context", context)
-                        .tag("stream", "aggregate_events")
-                        .tag("origin", "event_source")
-                        .metrics();
+                next.eventsForPositions(segment, indexEntries, prefetch) :
+                new EventSourceFlux(indexEntries,
+                                    () -> eventSource(segment),
+                                    segment,
+                                    prefetch).get()
+                                             .name("event_stream")
+                                             .tag("context", context)
+                                             .tag("stream",
+                                                  "aggregate_events")
+                                             .tag("origin",
+                                                  "event_source")
+                                             .metrics();
     }
 
     /**
-     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false}
+     * otherwise.
      *
      * @param segment the segment to check
      * @return {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
@@ -326,7 +335,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public void init(boolean validate, long defaultFirstToken) {
         initSegments(Long.MAX_VALUE, defaultFirstToken);
-        validate(validate ? storageProperties.getValidationSegments() : 2);
+        validate(validate ? storagePropertiesSupplier.get().getValidationSegments() : 2);
     }
 
 
@@ -475,6 +484,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {
         SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         File events = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(events);
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
@@ -528,6 +538,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         Stream<String> filenames = Stream.concat(getSegments().stream()
                                                               .filter(s -> s > lastSegmentBackedUp)
                                                               .map(s -> storageProperties.dataFile(context, s)
@@ -541,6 +552,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     protected void renameFileIfNecessary(long segment) {
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         File dataFile = storageProperties.oldDataFile(context, segment);
         if (dataFile.exists()) {
             if (!dataFile.renameTo(storageProperties.dataFile(context, segment))) {

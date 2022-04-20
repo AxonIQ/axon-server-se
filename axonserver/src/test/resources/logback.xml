@@ -18,11 +18,16 @@
 
     <logger name="io.axoniq" level="info"
             additivity="false">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <logger name="AUDIT" level="info"
+            additivity="false">
+        <appender-ref ref="STDOUT"/>
     </logger>
 
     <root level="warn">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="STDOUT"/>
     </root>
 
 </configuration>

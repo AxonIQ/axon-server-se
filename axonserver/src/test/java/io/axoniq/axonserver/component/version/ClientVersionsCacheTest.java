@@ -28,7 +28,7 @@ public class ClientVersionsCacheTest {
         assertEquals("4.2.3", testSubject.apply(new ClientStreamIdentification("context2", "D")));
         assertEquals("4.2.3", testSubject.apply(new ClientStreamIdentification("context2", "E")));
 
-        testSubject.on(new TopologyEvents.ApplicationDisconnected("context2", "componentName", "E"));
+        testSubject.on(new TopologyEvents.ApplicationDisconnected("context2", "componentName", "E", "test"));
         assertNull(testSubject.apply(new ClientStreamIdentification("E", "context2")));
     }
 }

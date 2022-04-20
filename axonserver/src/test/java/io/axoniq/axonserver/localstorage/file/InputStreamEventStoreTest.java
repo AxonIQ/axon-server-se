@@ -17,8 +17,8 @@ import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerF
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
-import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.test.TestUtils;
+import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 
@@ -45,14 +45,14 @@ public class InputStreamEventStoreTest {
         String context = Topology.DEFAULT_CONTEXT;
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getEvent,
                                                                      EventType.EVENT,
                                                                      meterFactory);
         indexManager.init();
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         testSubject = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
                                                 eventTransformerFactory,
-                                                embeddedDBProperties.getEvent(), meterFactory);
+                                                embeddedDBProperties::getEvent, meterFactory);
         testSubject.init(true);
     }
 

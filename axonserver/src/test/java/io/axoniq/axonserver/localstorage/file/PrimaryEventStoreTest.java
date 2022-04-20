@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -27,6 +27,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
 import org.springframework.data.util.CloseableIterator;
+import org.springframework.util.unit.DataSize;
 import reactor.test.StepVerifier;
 
 import java.nio.file.Path;
@@ -63,7 +64,7 @@ public class PrimaryEventStoreTest {
         });
         embeddedDBProperties.getEvent().setStorage(
                 tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID());
-        embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
+        embeddedDBProperties.getEvent().setSegmentSize(DataSize.ofKilobytes(512));
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
     }
@@ -75,7 +76,7 @@ public class PrimaryEventStoreTest {
     }
 
     private PrimaryEventStore primaryEventStore(EventType eventType) {
-        return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+        return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties::getEvent,
                                                           eventType,
                                                           meterFactory));
     }
@@ -85,7 +86,7 @@ public class PrimaryEventStoreTest {
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
-                                                                 embeddedDBProperties.getEvent(),
+                                                                 embeddedDBProperties::getEvent,
                                                                  meterFactory);
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
@@ -93,10 +94,9 @@ public class PrimaryEventStoreTest {
         PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                                               indexManager,
                                                               eventTransformerFactory,
-                                                              embeddedDBProperties.getEvent(),
+                                                              embeddedDBProperties::getEvent,
                                                               second,
-                                                              meterFactory, fileSystemMonitor,
-                                                              (short)10);
+                                                              meterFactory, fileSystemMonitor);
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));
         return testSubject;
@@ -205,7 +205,7 @@ public class PrimaryEventStoreTest {
     @Test
     public void largeTransactions() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
-        setupEvents(testSubject, 10, 23);
+        setupEvents(testSubject, 10, Short.MAX_VALUE + 5);
         Iterator<SerializedTransactionWithToken> transactionWithTokenIterator =
                 testSubject.transactionIterator(0, Long.MAX_VALUE);
 
@@ -215,23 +215,23 @@ public class PrimaryEventStoreTest {
             transactionWithTokenIterator.next();
         }
 
-        assertEquals(30, counter);
-        try (EventIterator iterator = testSubject.getEvents(0, 0)) {
+        assertEquals(20, counter);
+        try (CloseableIterator<SerializedEventWithToken> iterator = testSubject.getGlobalIterator(0)) {
             counter = 0;
             while (iterator.hasNext()) {
                 counter++;
                 iterator.next();
             }
-            assertEquals(230, counter);
+            assertEquals(10 * (Short.MAX_VALUE + 5), counter);
         }
 
         List<SerializedEvent> events = testSubject.eventsPerAggregate("Aggregate-4",
-                                                                            0,
+                                                                      0,
                                                                             Long.MAX_VALUE,
                                                                             0)
                                                         .collect(Collectors.toList())
                 .block();
-        assertEquals(23, events.size());
+        assertEquals(Short.MAX_VALUE + 5, events.size());
     }
 
     @Test

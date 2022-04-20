@@ -1,15 +1,29 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import junit.framework.TestCase;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.runners.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.matches;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class QueryCacheTest extends TestCase {
@@ -24,22 +38,22 @@ public class QueryCacheTest extends TestCase {
     @Test(expected = InsufficientBufferCapacityException.class)
     public void onFullCapacityThrowError() {
 
-        testSubject.put("1234", mock(QueryInformation.class));
-        testSubject.put("4567", mock(QueryInformation.class));
+        testSubject.put("1234", mock(ActiveQuery.class));
+        testSubject.put("4567", mock(ActiveQuery.class));
     }
 
     @Test
     public void cancelWithErrorOnTimeout() {
         QueryCache testSubject = new QueryCache(0, 1);
-        QueryInformation queryInformation = mock(QueryInformation.class);
+        ActiveQuery activeQuery = mock(ActiveQuery.class);
         QueryDefinition queryDefinition = mock(QueryDefinition.class);
         when(queryDefinition.getQueryName()).thenReturn("myQueryName");
-        when(queryInformation.getQuery()).thenReturn(queryDefinition);
-        when(queryInformation.getSourceClientId()).thenReturn("theRequester");
-        when(queryInformation.waitingFor()).thenReturn(Collections.singleton("theResponder"));
-        testSubject.put("myKey", queryInformation);
+        when(activeQuery.getQuery()).thenReturn(queryDefinition);
+        when(activeQuery.getSourceClientId()).thenReturn("theRequester");
+        when(activeQuery.waitingFor()).thenReturn(Collections.singleton("theResponder"));
+        testSubject.put("myKey", activeQuery);
         testSubject.clearOnTimeout();
-        verify(queryInformation).cancelWithError(eq(ErrorCode.QUERY_TIMEOUT),
-                                                 matches("Query cancelled due to timeout"));
+        verify(activeQuery).cancelWithError(eq(ErrorCode.QUERY_TIMEOUT),
+                                            matches("Query cancelled due to timeout"));
     }
 }

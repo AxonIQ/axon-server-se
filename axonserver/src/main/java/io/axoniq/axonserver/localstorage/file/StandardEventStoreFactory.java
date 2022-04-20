@@ -56,18 +56,18 @@ public class StandardEventStoreFactory implements EventStoreFactory {
      */
     @Override
     public EventStorageEngine createEventStorageEngine(String context) {
-        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getEvent(),
+        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getEvent,
                                                                      EventType.EVENT,
                                                                      meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
-                                                                 embeddedDBProperties.getEvent(),
+                                                                 embeddedDBProperties::getEvent,
                                                                  meterFactory);
         return new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                      indexManager,
                                      eventTransformerFactory,
-                                     embeddedDBProperties.getEvent(),
+                                     embeddedDBProperties::getEvent,
                                      second,
                                      meterFactory, fileSystemMonitor);
     }
@@ -79,16 +79,17 @@ public class StandardEventStoreFactory implements EventStoreFactory {
      */
     @Override
     public EventStorageEngine createSnapshotStorageEngine(String context) {
-        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties.getSnapshot(),
+        StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getSnapshot,
                                                                      EventType.SNAPSHOT,
                                                                      meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
-                                                                 embeddedDBProperties.getSnapshot(), meterFactory);
+                                                                 embeddedDBProperties::getSnapshot,
+                                                                 meterFactory);
         return new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                      indexManager,
                                      eventTransformerFactory,
-                                     embeddedDBProperties.getSnapshot(), second, meterFactory, fileSystemMonitor);
+                                     embeddedDBProperties::getSnapshot, second, meterFactory, fileSystemMonitor);
     }
 }

@@ -52,6 +52,14 @@ management:
   health:
     diskspace:
       threshold: 256MB
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    operationsSorter: alpha
+    tagsSorter: alpha
 
 
 info:

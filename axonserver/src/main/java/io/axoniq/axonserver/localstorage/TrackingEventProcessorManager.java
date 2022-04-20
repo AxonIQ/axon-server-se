@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -93,11 +92,11 @@ public class TrackingEventProcessorManager {
             while (runsWithoutChanges < 3) {
                 int sent = 0;
                 failedReplicators.clear();
-                for (EventTracker raftPeer : eventTrackerSet) {
+                for (EventTracker eventTracker : eventTrackerSet) {
                     try {
-                        sent += raftPeer.sendNext();
+                        sent += eventTracker.sendNext();
                     } catch (Throwable ex) {
-                        failedReplicators.add(raftPeer);
+                        failedReplicators.add(eventTracker);
                     }
                 }
                 if (!failedReplicators.isEmpty()) {
@@ -137,7 +136,7 @@ public class TrackingEventProcessorManager {
      * @return an EventTracker
      */
     EventTracker createEventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
-                                    StreamObserver<InputStream> eventStream) {
+                                    StreamObserver<SerializedEventWithToken> eventStream) {
         return new EventTracker(trackingToken, clientId, forceReadingFromLeader, eventStream);
     }
 
@@ -197,7 +196,7 @@ public class TrackingEventProcessorManager {
          * Keeps timestamp when the tracker last ran out of permits.
          */
         private final AtomicLong lastPermitTimestamp;
-        private final StreamObserver<InputStream> eventStream;
+        private final StreamObserver<SerializedEventWithToken> eventStream;
         private final String client;
         private volatile CloseableIterator<SerializedEventWithToken> eventIterator;
         private volatile boolean running = true;
@@ -206,7 +205,7 @@ public class TrackingEventProcessorManager {
         private final boolean forceReadingFromLeader;
 
         private EventTracker(long trackingToken, String clientId, boolean forceReadingFromLeader,
-                             StreamObserver<InputStream> eventStream) {
+                             StreamObserver<SerializedEventWithToken> eventStream) {
             client = clientId;
             lastPermitTimestamp = new AtomicLong(System.currentTimeMillis());
             nextToken = new AtomicLong(trackingToken);
@@ -232,7 +231,7 @@ public class TrackingEventProcessorManager {
                 ) {
                     SerializedEventWithToken next = eventIterator.next();
                     if( !blacklisted(next)) {
-                        eventStream.onNext(next.asInputStream());
+                        eventStream.onNext(next);
                         if (permits.decrementAndGet() == 0) {
                             lastPermitTimestamp.set(System.currentTimeMillis());
                         }

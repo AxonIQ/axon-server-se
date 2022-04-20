@@ -30,8 +30,8 @@
                             {{administrator(user)}}
                         </td>
                         <td v-if="admin">
-                            <span @click="deleteUser(user)" title="Delete"><i class="far fa-trash-alt"/></span>
-                            <span @click="selectUser(user)" title="Edit"><i class="fas fa-pencil-alt"/></span>
+                            <span @click="deleteUser(user)" title="Delete"><i class="far fa-trash-alt"></i></span>
+                            <span @click="selectUser(user)" title="Edit"><i class="fas fa-pencil-alt"></i></span>
                         </td>
                     </tr>
                 </tbody>
@@ -45,21 +45,21 @@
                 <ul>
                     <li>
                         <span class="narrow">Username</span>
-                        <input data-lpignore="true" v-model="user.userName"/></span>
+                        <input data-lpignore="true" v-model="user.userName"/>
                     </li>
                     <li>
                         <span class="narrow">Password</span>
                         <input data-lpignore="true" style="padding: 1px 2px" type="password"
-                               v-model="user.password"/></span>
+                               v-model="user.password"/>
                     </li>
                     <li>
                         <span class="narrow">Password Verification</span>
                         <input data-lpignore="true" style="padding: 1px 2px" type="password"
-                               v-model="user.password2"/></span>
+                               v-model="user.password2"/>
                     </li>
                     <li v-if="!isEnterprise()">
                         <span class="narrow">Administrator</span>
-                        <input type="checkbox" v-model="adminRole"/></span>
+                        <input type="checkbox" v-model="adminRole"/>
                     </li>
                     <li v-if="isEnterprise()">
                         <span class="narrow">Roles</span>
@@ -76,7 +76,7 @@
                                         <td class="context">{{user.context}}</td>
                                         <td class="role">{{user.role}}</td>
                                         <td class="buttons"><span @click="deleteContextRole(idx)" title="Delete">
-                                            <i class="far fa-trash-alt"/></span></td>
+                                            <i class="far fa-trash-alt"></i></span></td>
                                     </tr>
                                     <tr class="row">
                                         <td class="context">
@@ -90,7 +90,7 @@
                                             </select>
                                         </td>
                                         <td class="buttons"><span @click="addContextRole()" title="Add">
-                                            <i class="fas fa-plus"/></span></td>
+                                            <i class="fas fa-plus"></i></span></td>
                                     </tr>
                                 </tbody>
                             </table>

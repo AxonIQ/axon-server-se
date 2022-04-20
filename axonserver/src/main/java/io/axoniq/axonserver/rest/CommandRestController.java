@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -21,8 +21,9 @@ import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.rest.json.CommandRequestJson;
 import io.axoniq.axonserver.rest.json.CommandResponseJson;
 import io.axoniq.axonserver.topology.Topology;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import org.slf4j.Logger;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,8 +34,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
 
+import javax.validation.Valid;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
@@ -44,7 +45,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -75,7 +75,7 @@ public class CommandRestController {
     @GetMapping("/components/{component}/commands")
     public Iterable<ComponentCommand> getByComponent(@PathVariable("component") String component,
                                                      @RequestParam("context") String context,
-                                                     @ApiIgnore Principal principal) {
+                                                     @Parameter(hidden = true) Principal principal) {
         auditLog.info(
                 "[{}] Request to list all Commands for which component \"{}\" in context \"{}\" has a registered handler.",
                 AuditLog.username(principal),
@@ -86,7 +86,7 @@ public class CommandRestController {
     }
 
     @GetMapping("commands")
-    public List<JsonClientMapping> get(@ApiIgnore Principal principal) {
+    public List<JsonClientMapping> get(@Parameter(hidden = true) Principal principal) {
         auditLog.info("[{}] Request to list all Commands which have a registered handler.",
                       AuditLog.username(principal));
 
@@ -94,14 +94,13 @@ public class CommandRestController {
     }
 
     @PostMapping("commands/run")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public Future<CommandResponseJson> execute(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestBody @Valid CommandRequestJson command,
-            @ApiIgnore Authentication principal) {
+            @Parameter(hidden = true) Authentication principal) {
         auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
 
         CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
@@ -113,7 +112,7 @@ public class CommandRestController {
     }
 
     @GetMapping("commands/queues")
-    public List<JsonQueueInfo> queues(@ApiIgnore Principal principal) {
+    public List<JsonQueueInfo> queues(@Parameter(hidden = true) Principal principal) {
         auditLog.info("[{}] Request to list all CommandQueues.", AuditLog.username(principal));
 
         return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
@@ -121,7 +120,7 @@ public class CommandRestController {
     }
 
     @GetMapping("commands/count")
-    public int count(@ApiIgnore Principal principal) {
+    public int count(@Parameter(hidden = true) Principal principal) {
         if (auditLog.isDebugEnabled()) {
             auditLog.debug("[{}] Request for the active command count.", AuditLog.username(principal));
         }

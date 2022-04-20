@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -8,6 +8,8 @@
  */
 
 package io.axoniq.axonserver.config;
+
+import java.time.Duration;
 
 /**
  * Configuration properties related to Axon Server Access Control.
@@ -24,7 +26,7 @@ public class AccessControlConfiguration {
     /**
      * Timeout for authenticated tokens.
      */
-    private long cacheTtl = 30000;
+    private Duration cacheTtl = Duration.ofSeconds(30);
 
     /**
      * Token used to authenticate Axon Server instances in a cluster (only used by Enterprise Edition)
@@ -50,10 +52,10 @@ public class AccessControlConfiguration {
     }
 
     public long getCacheTtl() {
-        return cacheTtl;
+        return cacheTtl.toMillis();
     }
 
-    public void setCacheTtl(long cacheTtl) {
+    public void setCacheTtl(Duration cacheTtl) {
         this.cacheTtl = cacheTtl;
     }
 

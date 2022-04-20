@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -26,21 +26,28 @@ import io.axoniq.axonserver.interceptor.NoOpSubscriptionQueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
-import io.axoniq.axonserver.message.query.WrappedQuery;
+import io.axoniq.axonserver.message.query.QueryInstruction;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.DefaultTopology;
 import io.axoniq.axonserver.topology.Topology;
 import io.grpc.stub.StreamObserver;
-import org.junit.*;
-import org.mockito.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.isA;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -48,7 +55,7 @@ import static org.mockito.Mockito.*;
 public class QueryServiceTest {
     private QueryService testSubject;
     private QueryDispatcher queryDispatcher;
-    private FlowControlQueues<WrappedQuery> queryQueue;
+    private FlowControlQueues<QueryInstruction> queryQueue;
     private ApplicationEventPublisher eventPublisher;
     private String clientId = "name";
 
@@ -69,15 +76,19 @@ public class QueryServiceTest {
                                        eventPublisher,
                                        new DefaultInstructionAckSource<>(ack -> QueryProviderInbound.newBuilder()
                                                                                                     .setAck(ack)
-                                                                                                    .build()));
+                                                                                                    .build()),
+                                       Executors::newSingleThreadExecutor);
     }
 
     @Test
     public void flowControl() throws Exception {
         FakeStreamObserver<QueryProviderInbound> FakeStreamObserver = new FakeStreamObserver<>();
         StreamObserver<QueryProviderOutbound> requestStream = testSubject.openStream(FakeStreamObserver);
-        requestStream.onNext(QueryProviderOutbound.newBuilder().setFlowControl(FlowControl.newBuilder().setPermits(2)
-                                                                                          .setClientId("name").build())
+        requestStream.onNext(QueryProviderOutbound.newBuilder()
+                                                  .setFlowControl(FlowControl.newBuilder()
+                                                                             .setPermits(2)
+                                                                             .setClientId("name")
+                                                                             .build())
                                                   .build());
         Thread.sleep(250);
         assertEquals(1, queryQueue.getSegments().size());
@@ -85,19 +96,25 @@ public class QueryServiceTest {
         String clientStreamId = key.substring(0, key.lastIndexOf("."));
         ClientStreamIdentification clientStreamIdentification =
                 new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, clientStreamId);
-        queryQueue.put(clientStreamIdentification.toString(), new WrappedQuery(
-                clientStreamIdentification,
-                "name",
-                new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
-                                    QueryRequest.newBuilder()
-                                                .addProcessingInstructions(ProcessingInstructionHelper.timeout(10000))
-                                                .build()), System.currentTimeMillis() + 2000));
+        QueryInstruction.Query query1 = new QueryInstruction.Query(clientStreamIdentification,
+                                                                  "name",
+                                                                  new SerializedQuery(Topology.DEFAULT_CONTEXT, "name",
+                                                                                      QueryRequest.newBuilder()
+                                                                                                  .addProcessingInstructions(
+                                                                                                          ProcessingInstructionHelper.timeout(
+                                                                                                                  10000))
+                                                                                                  .build()),
+                                                                  System.currentTimeMillis() + 2000,
+                                                                  0,
+                                                                  false);
+        queryQueue.put(clientStreamIdentification.toString(), QueryInstruction.query(query1));
         Thread.sleep(150);
         assertEquals(1, FakeStreamObserver.values().size());
-        queryQueue.put(clientStreamIdentification.toString(), new WrappedQuery(
+        QueryInstruction.Query query2 = new QueryInstruction.Query(
                 clientStreamIdentification,
-                "name",new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()),
-                System.currentTimeMillis() - 2000));
+                "name", new SerializedQuery(Topology.DEFAULT_CONTEXT, "name", QueryRequest.newBuilder().build()),
+                System.currentTimeMillis() - 2000, 0, false);
+        queryQueue.put(clientStreamIdentification.toString(), QueryInstruction.query(query2));
         Thread.sleep(150);
         assertEquals(1, FakeStreamObserver.values().size());
         verify(queryDispatcher).removeFromCache(any(), any());
@@ -186,12 +203,13 @@ public class QueryServiceTest {
     @SuppressWarnings("unchecked")
     @Test
     public void dispatch()  {
+        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
+        responseObserver.setIsReady(true);
         doAnswer(invocationOnMock -> {
             Consumer<QueryResponse> callback = (Consumer<QueryResponse>) invocationOnMock.getArguments()[2];
             callback.accept(QueryResponse.newBuilder().build());
             return null;
         }).when(queryDispatcher).query(isA(SerializedQuery.class), any(), isA(Consumer.class), any());
-        FakeStreamObserver<QueryResponse> responseObserver = new FakeStreamObserver<>();
         testSubject.query(QueryRequest.newBuilder().build(), responseObserver);
         assertEquals(1, responseObserver.values().size());
     }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,18 +10,22 @@
 package io.axoniq.axonserver.access.user;
 
 import io.axoniq.axonserver.access.jpa.User;
-import org.junit.*;
+import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static io.axoniq.axonserver.access.user.UserController.PWD_NOLOGON;
+import static io.axoniq.axonserver.admin.user.requestprocessor.UserController.PWD_NOLOGON;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier

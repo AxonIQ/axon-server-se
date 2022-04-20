@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
 import java.time.Clock;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,14 +27,13 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 /**
- * Cache for pending commands.
- * Has a scheduled task to check for commands that are pending for longer than the configured timeout
- * and will cancel these commands when timeout occurs.
+ * Cache for pending commands. Has a scheduled task to check for commands that are pending for longer than the
+ * configured timeout and will cancel these commands when timeout occurs.
  *
  * @author Marc Gathier
  */
-@Component
-public class CommandCache extends ConcurrentHashMap<String, CommandInformation>
+@Component //TODO evaluate to extend ActiveRequestCache
+public class CommandCache
         implements ConstraintCache<String, CommandInformation> {
 
     private final Logger logger = LoggerFactory.getLogger(CommandCache.class);
@@ -41,6 +41,7 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation>
     private final Clock clock;
     private final long cacheCapacity;
     private final int COMMANDS_PER_GB = 25000;
+    private final Map<String, CommandInformation> map = new ConcurrentHashMap<>();
 
     @Autowired
     public CommandCache(@Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
@@ -65,7 +66,9 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation>
     public void clearOnTimeout() {
         logger.debug("Checking timed out commands");
         long minTimestamp = clock.millis() - defaultCommandTimeout;
-        Set<Entry<String, CommandInformation>> toDelete = entrySet().stream().filter(e -> e.getValue().getTimestamp() < minTimestamp).collect(
+        Set<Map.Entry<String, CommandInformation>> toDelete = map.entrySet().stream().filter(e -> e.getValue()
+                                                                                                   .getTimestamp()
+                < minTimestamp).collect(
                 Collectors.toSet());
         if( ! toDelete.isEmpty()) {
             logger.warn("Found {} waiting commands to delete", toDelete.size());
@@ -80,29 +83,38 @@ public class CommandCache extends ConcurrentHashMap<String, CommandInformation>
         }
     }
 
+
+    @Override
+    public int size() {
+        return map.size();
+    }
+
+    @Override
+    public CommandInformation remove(String key) {
+        return map.remove(key);
+    }
+
+    @Override
+    public CommandInformation get(String key) {
+        return map.get(key);
+    }
+
     @Override
     public CommandInformation put(@Nonnull String key, @Nonnull CommandInformation value) {
         checkCapacity();
-        return super.put(key, value);
-    }
-
-
-    @Override
-    public CommandInformation putIfAbsent(String key, CommandInformation value) {
-        checkCapacity();
-        return super.putIfAbsent(key, value);
+        return map.put(key, value);
     }
 
     @Override
-    public void putAll(Map<? extends String, ? extends CommandInformation> m) {
-        checkCapacity();
-        super.putAll(m);
+    public Collection<Map.Entry<String, CommandInformation>> entrySet() {
+        return map.entrySet();
     }
 
     private void checkCapacity() {
-        if (mappingCount() >= cacheCapacity) {
-            throw new InsufficientBufferCapacityException("Command buffer is full " + "("+ cacheCapacity + "/" + cacheCapacity + ") "
-            + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
+        if (map.size() >= cacheCapacity) {
+            throw new InsufficientBufferCapacityException(
+                    "Command buffer is full " + "(" + cacheCapacity + "/" + cacheCapacity + ") "
+                            + "Command handlers might be slow. Try increasing 'axoniq.axonserver.command-cache-capacity' property.");
         }
     }
 }

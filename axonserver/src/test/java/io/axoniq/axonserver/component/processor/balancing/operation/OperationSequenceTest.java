@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -18,8 +18,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 /**
- * Created by Sara Pellegrini on 20/08/2018.
- * sara.pellegrini@gmail.com
+ * Created by Sara Pellegrini on 20/08/2018. sara.pellegrini@gmail.com
  */
 public class OperationSequenceTest {
 
@@ -30,6 +29,6 @@ public class OperationSequenceTest {
                                                                      () -> operations.add("B"),
                                                                      () -> operations.add("C")));
         testSubject.perform();
-        assertEquals(asList("A","B","C"), operations);
+        assertEquals(asList("A", "B", "C"), operations);
     }
 }

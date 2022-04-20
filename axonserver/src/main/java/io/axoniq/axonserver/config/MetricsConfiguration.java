@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -17,7 +17,6 @@ import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCusto
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
@@ -46,8 +45,7 @@ public class MetricsConfiguration {
                                                                    PERCENTILE_NINETYNINE)
                                                       .minimumExpectedValue((double) TimeUnit.MILLISECONDS.toMillis(1))
                                                       .maximumExpectedValue((double) TimeUnit.SECONDS.toMillis(10))
-                                                      .expiry(Duration.ofMinutes(messagingPlatformConfiguration
-                                                                                         .getMetricsInterval()))
+                                                      .expiry(messagingPlatformConfiguration.getMetricsInterval())
                                                       .build()
                                                       .merge(config);
                 }

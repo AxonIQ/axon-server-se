@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,14 +9,11 @@
 
 package io.axoniq.axonserver.config;
 
-import io.axoniq.axonserver.access.jpa.User;
-import io.axoniq.axonserver.access.jpa.UserRole;
-import io.axoniq.axonserver.access.user.UserController;
-import io.axoniq.axonserver.access.user.UserControllerFacade;
-import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.access.roles.RoleController;
+import io.axoniq.axonserver.admin.user.api.UserAdminService;
+import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
+import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.exception.CriticalEventException;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -41,6 +38,7 @@ import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.plugin.AxonServerInformationProvider;
 import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
@@ -71,8 +69,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
 import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.annotation.Nonnull;
 
@@ -177,43 +175,18 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(UserControllerFacade.class)
-    public UserControllerFacade userControllerFacade(UserController userController,
-                                                     ApplicationEventPublisher eventPublisher) {
-        return new UserControllerFacade() {
-            @Override
-            public void updateUser(String userName, String password, Set<UserRole> roles) {
-                validateContexts(roles);
-                User updatedUser = userController.updateUser(userName, password, roles);
-                eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false));
+    @ConditionalOnMissingBean(UserAdminService.class)
+    public UserAdminService userAdminService(UserController userController,
+                                             ApplicationEventPublisher eventPublisher,
+                                             RoleController roleController) {
+        return getUserAdminService(userController, eventPublisher, roleController);
+    }
 
-            }
-
-            private void validateContexts(Set<UserRole> roles) {
-                if (roles == null) {
-                    return;
-                }
-                if (roles.stream().anyMatch(userRole -> !validContext(userRole.getContext()))) {
-                    throw new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                         "Only specify context default for standard edition");
-                }
-            }
-
-            private boolean validContext(String context) {
-                return context == null || context.equals(Topology.DEFAULT_CONTEXT) || context.equals("*");
-            }
-
-            @Override
-            public List<User> getUsers() {
-                return userController.getUsers();
-            }
-
-            @Override
-            public void deleteUser(String name) {
-                userController.deleteUser(name);
-                eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false));
-            }
-        };
+    @Nonnull
+    private UserAdminService getUserAdminService(UserController userController,
+                                                 ApplicationEventPublisher eventPublisher,
+                                                 RoleController roleController) {
+        return new LocalUserAdminService(userController, eventPublisher, roleController);
     }
 
     @Bean
@@ -291,6 +264,16 @@ public class AxonServerStandardConfiguration {
                 }
             }
         };
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AxonServerInformationProvider.class)
+    public AxonServerInformationProvider axonServerInformationProvider(VersionInfoProvider versionInfoProvider,
+                                                                       FeatureChecker featureChecker) {
+        Map<String, String> versionInfo = new HashMap<>();
+        versionInfo.put(AxonServerInformationProvider.EDITION, featureChecker.getEdition());
+        versionInfo.put(AxonServerInformationProvider.VERSION, versionInfoProvider.get().getVersion());
+        return () -> versionInfo;
     }
 
     @Bean
