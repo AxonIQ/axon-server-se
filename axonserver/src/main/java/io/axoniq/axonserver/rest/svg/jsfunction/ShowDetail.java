@@ -23,19 +23,19 @@ public class ShowDetail implements Supplier<String> {
 
     private final String nodeType;
 
-    private final Iterable<String> context;
+    private final Iterable<String> contexts;
 
     private final String title;
 
-    public ShowDetail(String popupName, String nodeType, Iterable<String> context, String title) {
+    public ShowDetail(String popupName, String nodeType, Iterable<String> contexts, String title) {
         this.popupName = popupName;
         this.nodeType = nodeType;
-        this.context = context;
+        this.contexts = contexts;
         this.title = title;
     }
 
     @Override
     public String get() {
-        return String.format("showArea(event,'%s', '%s', '%s', '%s')", popupName, nodeType, this.context == null || Lists.newArrayList(context.iterator()).size() > 1 ? null : context.iterator().next() , title);
+        return String.format("showArea(event,'%s', '%s', '%s', '%s')", popupName, nodeType, this.contexts == null || Lists.newArrayList(contexts.iterator()).size() > 1 ? null : contexts.iterator().next() , title);
     }
 }

@@ -75,7 +75,7 @@ public class OverviewModelTest {
         AxonServersOverviewProvider.ApplicationsAndNodes applicationsAndNodes = axonServersOverviewProvider
                 .applicationsAndNodes(null);
         assertEquals("app", applicationsAndNodes.getApplications().get(0).getName());
-        assertEquals("context", applicationsAndNodes.getApplications().get(0).getContext().iterator().next());
+        assertEquals("context", applicationsAndNodes.getApplications().get(0).getContexts().iterator().next());
         assertEquals(2, applicationsAndNodes.getApplications().get(0).getInstances());
 
         assertEquals("hub1", applicationsAndNodes.getNodes().get(0).getName());

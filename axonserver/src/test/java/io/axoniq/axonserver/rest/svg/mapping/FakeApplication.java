@@ -44,7 +44,7 @@ public class FakeApplication implements Application {
     }
 
     @Override
-    public Iterable<String> context() {
+    public Iterable<String> contexts() {
         return Arrays.asList(context);
     }
 

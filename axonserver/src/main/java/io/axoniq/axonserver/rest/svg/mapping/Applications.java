@@ -121,7 +121,7 @@ public class Applications implements Function<String, Stream<Application>> {
                     }
 
                     @Override
-                    public Iterable<String> context() {
+                    public Iterable<String> contexts() {
                          try {
                              return entry.getValue().stream().map(apps -> apps.getKey().context).sorted().collect(Collectors.toList());
                         } catch (Exception e) {

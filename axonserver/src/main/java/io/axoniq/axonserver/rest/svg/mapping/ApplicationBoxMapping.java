@@ -47,11 +47,11 @@ public class ApplicationBoxMapping implements PositionMapping<Application> {
         List<TextLine> lines = new ArrayList<>(asList(new TextLine("Application", fonts.type(), "type"),
                                           new TextLine(item.name(), fonts.component(), "component")));
 
-        item.context().forEach(context -> lines.add(new TextLine(context, fonts.client(), StyleClass.CLIENT)));
+        item.contexts().forEach(context -> lines.add(new TextLine(context, fonts.client(), StyleClass.CLIENT)));
 
         lines.add(new TextLine(item.instancesString(), fonts.client(), "instance"));
 
-        ShowDetail showDetail = new ShowDetail(item.component(), CLIENT, item.context(), item.name());
+        ShowDetail showDetail = new ShowDetail(item.component(), CLIENT, item.contexts(), item.name());
         TextBox client = new TextBox(lines, position, CLIENT);
         item.connectedHubNodes().forEach(hubNode -> client.connectTo(hubNodes.get(hubNode), "applicationToHub"));
         return new Clickable(new DoubleLine(client, item.instances()>1), showDetail);
