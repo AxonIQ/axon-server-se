@@ -58,7 +58,7 @@
                 let self = this;
               this.queries = []
                 axios.get(baseUrl+"/queries?context=" + this.context).then(response => {
-                    var queries = response.data;
+                    var queries = response.data.filter((item, pos, self) => self.findIndex(v => v.name === item.name) === pos);
                     queries.forEach(function (query, index) {
                         axios.get(baseUrl+"/subscription-query-metric/query/"+encodeURIComponent(query.name)+"?context=" + self.context)
                                 .then(metric => {
