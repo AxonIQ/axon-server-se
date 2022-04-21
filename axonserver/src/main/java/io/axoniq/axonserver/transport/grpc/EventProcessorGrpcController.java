@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -15,12 +15,14 @@ import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.Component;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
+import io.axoniq.axonserver.grpc.admin.AdminActionResult;
 import io.axoniq.axonserver.grpc.admin.EventProcessor;
 import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc.EventProcessorAdminServiceImplBase;
 import io.axoniq.axonserver.grpc.admin.EventProcessorIdentifier;
 import io.axoniq.axonserver.grpc.admin.LoadBalanceRequest;
 import io.axoniq.axonserver.grpc.admin.LoadBalancingStrategy;
 import io.axoniq.axonserver.grpc.admin.MoveSegment;
+import io.axoniq.axonserver.grpc.admin.Result;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorIdMessage;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorMapping;
 import io.grpc.stub.StreamObserver;
@@ -72,9 +74,12 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void pauseEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
+    public void pauseEventProcessor(EventProcessorIdentifier processorId,
+                                    StreamObserver<AdminActionResult> responseObserver) {
         service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
+               .subscribe(result -> success(result, responseObserver),
+                          onError(responseObserver),
+                          responseObserver::onCompleted);
     }
 
     /**
@@ -84,9 +89,12 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void startEventProcessor(EventProcessorIdentifier eventProcessorId, StreamObserver<Empty> responseObserver) {
+    public void startEventProcessor(EventProcessorIdentifier eventProcessorId,
+                                    StreamObserver<AdminActionResult> responseObserver) {
         service.start(new EventProcessorIdMessage(eventProcessorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
+               .subscribe(result -> success(result, responseObserver),
+                          onError(responseObserver),
+                          responseObserver::onCompleted);
     }
 
     /**
@@ -96,9 +104,12 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void splitEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
+    public void splitEventProcessor(EventProcessorIdentifier processorId,
+                                    StreamObserver<AdminActionResult> responseObserver) {
         service.split(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
+               .subscribe(result -> success(result, responseObserver),
+                          onError(responseObserver),
+                          responseObserver::onCompleted);
     }
 
     /**
@@ -108,9 +119,12 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void mergeEventProcessor(EventProcessorIdentifier processorId, StreamObserver<Empty> responseObserver) {
+    public void mergeEventProcessor(EventProcessorIdentifier processorId,
+                                    StreamObserver<AdminActionResult> responseObserver) {
         service.merge(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
+               .subscribe(result -> success(result, responseObserver),
+                          onError(responseObserver),
+                          responseObserver::onCompleted);
     }
 
     /**
@@ -120,12 +134,14 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      * @param responseObserver the grpc {@link StreamObserver}
      */
     @Override
-    public void moveEventProcessorSegment(MoveSegment request, StreamObserver<Empty> responseObserver) {
+    public void moveEventProcessorSegment(MoveSegment request, StreamObserver<AdminActionResult> responseObserver) {
         service.move(new EventProcessorIdMessage(request.getEventProcessor()),
                      request.getSegment(),
                      request.getTargetClientId(),
                      new GrpcAuthentication(authenticationProvider))
-               .subscribe(unused -> {}, onError(responseObserver), responseObserver::onCompleted);
+               .subscribe(result -> success(result, responseObserver),
+                          onError(responseObserver),
+                          responseObserver::onCompleted);
     }
 
     /**
@@ -191,5 +207,20 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
 
     private Consumer<Throwable> onError(StreamObserver<?> responseObserver) {
         return error -> responseObserver.onError(GrpcExceptionBuilder.build(error));
+    }
+
+    private void success(io.axoniq.axonserver.admin.eventprocessor.api.Result result,
+                         StreamObserver<AdminActionResult> responseObserver) {
+        responseObserver.onNext(AdminActionResult.newBuilder().setResult(map(result)).build());
+    }
+
+    private Result map(io.axoniq.axonserver.admin.eventprocessor.api.Result result) {
+        if (result.isSuccess()) {
+            return Result.SUCCESS;
+        }
+        if (result.isAccepted()) {
+            return Result.ACCEPTED;
+        }
+        return Result.UNRECOGNIZED;
     }
 }

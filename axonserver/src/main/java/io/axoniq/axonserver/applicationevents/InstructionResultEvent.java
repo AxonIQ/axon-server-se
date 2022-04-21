@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.applicationevents;
 
+import io.axoniq.axonserver.admin.Result;
+
 /**
  * Event published when an instruction result is received from an instruction handler.
  *
@@ -19,7 +21,7 @@ public class InstructionResultEvent implements AxonServerEvent {
 
     private final String instructionId;
     private final String clientId;
-    private final boolean success;
+    private final Result result;
     private final String errorCode;
     private final String errorMessage;
 
@@ -28,18 +30,19 @@ public class InstructionResultEvent implements AxonServerEvent {
      *
      * @param instructionId the unique id of the instruction
      * @param clientId      the id of the client that handled the instruction
-     * @param success       {@code true} if the instruction was handled successfully, {@code false} otherwise
+     * @param result        {@code SUCCESS} if the instruction was handled successfully, {@code ACK} if the instruction
+     *                      only is acknowledged and no final result is expected, {@code FAILURE} otherwise
      * @param errorCode     the error code in case of a failure during the handling of the instruction
      * @param errorMessage  the error message in case of a failure during the handling of the instruction
      */
     public InstructionResultEvent(String instructionId,
                                   String clientId,
-                                  boolean success,
+                                  Result result,
                                   String errorCode,
                                   String errorMessage) {
         this.instructionId = instructionId;
         this.clientId = clientId;
-        this.success = success;
+        this.result = result;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
     }
@@ -68,7 +71,11 @@ public class InstructionResultEvent implements AxonServerEvent {
      * @return {@code true} if the instruction was handled successfully, {@code false} otherwise
      */
     public boolean isSuccess() {
-        return success;
+        return Result.SUCCESS.equals(result);
+    }
+
+    public Result result() {
+        return result;
     }
 
     /**

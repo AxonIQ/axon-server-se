@@ -26,8 +26,14 @@ public class ResponseEntityFactory {
                                                     s));
     }
 
+    public static ResponseEntity<RestResponse> asSuccessResponse(String s) {
+        return ResponseEntity.ok()
+                             .body(new RestResponse(true,
+                                                    s));
+    }
+
     public static Mono<ResponseEntity<RestResponse>> asFailedResponse(Throwable ex) {
         return Mono.just(new RestResponse(false, ex.getMessage())
-                                 .asResponseEntity(ErrorCode.fromException((Exception) ex)));
+                                 .asResponseEntity(ErrorCode.fromException(ex)));
     }
 }

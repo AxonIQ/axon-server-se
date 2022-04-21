@@ -92,6 +92,7 @@ public enum ErrorCode {
 
     // Instruction handling errors
     INSTRUCTION_TIMEOUT("AXONIQ-11000", Status.DEADLINE_EXCEEDED, HttpStatus.GATEWAY_TIMEOUT),
+    INSTRUCTION_ACK_ONLY("AXONIQ-11001", Status.UNKNOWN, HttpStatus.ACCEPTED),
 
     NO_EVENTSTORE("AXONIQ-6000", Status.NOT_FOUND, HttpStatus.SERVICE_UNAVAILABLE),
     CLIENT_DISCONNECTED("AXONIQ-6001", Status.NOT_FOUND, HttpStatus.INTERNAL_SERVER_ERROR),
@@ -156,8 +157,13 @@ public enum ErrorCode {
         return ErrorCode.OTHER;
     }
 
-    public static ErrorCode fromException(Exception ex) {
-        if( ex instanceof MessagingPlatformException) return ((MessagingPlatformException) ex).getErrorCode();
+    public static ErrorCode fromException(Throwable ex) {
+        if (ex instanceof MessagingPlatformException) {
+            return ((MessagingPlatformException) ex).getErrorCode();
+        }
+        if (ex.getCause() != null) {
+            return fromException(ex.getCause());
+        }
         return ErrorCode.OTHER;
     }
 

@@ -57,7 +57,7 @@ interface EventProcessorAdminService {
      * @param identifier     the event processor identifier
      * @param authentication info about the authenticated user
      */
-    fun pause(identifier: EventProcessorId, authentication: Authentication): Mono<Void>
+    fun pause(identifier: EventProcessorId, authentication: Authentication): Mono<Result>
 
     /**
      * Handles a request to start a certain event processor.
@@ -67,7 +67,7 @@ interface EventProcessorAdminService {
      * @param identifier     the event processor identifier
      * @param authentication info about the authenticated user
      */
-    fun start(identifier: EventProcessorId, authentication: Authentication): Mono<Void>
+    fun start(identifier: EventProcessorId, authentication: Authentication): Mono<Result>
 
     /**
      * Handles a request to split the biggest segment of a certain event processor.
@@ -77,7 +77,7 @@ interface EventProcessorAdminService {
      * @param identifier     the event processor identifier
      * @param authentication info about the authenticated user
      */
-    fun split(identifier: EventProcessorId, authentication: Authentication): Mono<Void>
+    fun split(identifier: EventProcessorId, authentication: Authentication): Mono<Result>
 
     /**
      * Handles a request to merge the two smallest segments of a certain event processor.
@@ -87,7 +87,7 @@ interface EventProcessorAdminService {
      * @param identifier     the event processor identifier
      * @param authentication info about the authenticated user
      */
-    fun merge(identifier: EventProcessorId, authentication: Authentication): Mono<Void>
+    fun merge(identifier: EventProcessorId, authentication: Authentication): Mono<Result>
 
     /**
      * Handles a request to move a segment from the client that claimed it to the target client.
@@ -99,7 +99,7 @@ interface EventProcessorAdminService {
      * @param target         the client that should claim the segment
      * @param authentication info about the authenticated user
      */
-    fun move(identifier: EventProcessorId, segment: Int, target: String, authentication: Authentication): Mono<Void>
+    fun move(identifier: EventProcessorId, segment: Int, target: String, authentication: Authentication): Mono<Result>
 
     /**
      * Balance the load for the specified event processor among the connected client.
@@ -128,10 +128,17 @@ interface EventProcessorAdminService {
     fun getBalancingStrategies( authentication: Authentication): Iterable<LoadBalancingStrategy?>
 }
 
+interface Result {
+
+    fun isSuccess(): Boolean
+    fun isAccepted(): Boolean
+}
+
 /**
  * Identifier for event processor.
  */
 interface EventProcessorId {
+
     /**
      * Returns event processor name
      */
