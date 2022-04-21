@@ -1,8 +1,11 @@
 package io.axoniq.axonserver.filestorage.impl;
 
 import io.axoniq.axonserver.filestorage.FileStoreEntry;
-import org.junit.*;
-import org.junit.rules.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.BaseSubscriber;
@@ -10,7 +13,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.annotation.NonNull;
-import reactor.util.annotation.NonNullApi;
 
 import java.io.File;
 import java.time.Duration;
@@ -23,7 +25,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 /**
  * @author Marc Gathier
