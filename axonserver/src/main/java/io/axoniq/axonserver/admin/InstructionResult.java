@@ -26,9 +26,9 @@ public interface InstructionResult {
     String clientId();
 
     /**
-     * Returns {@code true} if the handler executed the instruction successfully, {@code false} otherwise
+     * Returns the {@link Result} of the execution of the instruction.
      *
-     * @return {@code true} if the handler executed the instruction successfully, {@code false} otherwise
+     * @return the {@link Result} of the execution of the instruction
      */
     Result result();
 

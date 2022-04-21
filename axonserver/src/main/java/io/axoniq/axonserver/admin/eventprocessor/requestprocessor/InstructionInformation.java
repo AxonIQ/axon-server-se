@@ -122,7 +122,7 @@ public class InstructionInformation implements Instruction {
 
             @Override
             public boolean isAccepted() {
-                return ACK.equals(result);
+                return SUCCESS.equals(result) || ACK.equals(result);
             }
         };
     }
