@@ -8,11 +8,11 @@ import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.annotation.NonNull;
+import reactor.util.annotation.NonNullApi;
 
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -21,14 +21,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
- * @since
  */
 public class BaseAppendOnlyFileStoreTest {
     @ClassRule
@@ -37,21 +35,16 @@ public class BaseAppendOnlyFileStoreTest {
     private BaseAppendOnlyFileStore baseFileStore;
     private final StorageProperties storageProperties = new StorageProperties();
 
-
     @Before
     public void setUp() throws Exception {
         storageProperties.setStorage(tempFolder.newFolder(UUID.randomUUID().toString()));
         storageProperties.setSegmentSize(2_000);
-        System.out.println(storageProperties.getStorage());
         baseFileStore = new BaseAppendOnlyFileStore(storageProperties, "test");
         baseFileStore.open(false).block();
     }
 
     @After
     public void tearDown()  {
-        for (File file : storageProperties.getStorage().listFiles()) {
-            System.out.printf("%s: size = %d%n", file.getName(), file.length());
-        }
         try {
             baseFileStore.delete();
         } catch (Exception ignored) {
@@ -113,7 +106,7 @@ public class BaseAppendOnlyFileStoreTest {
         assertEquals(0, index.longValue());
         index = append("six", 2);
         assertEquals(5, index.longValue());
-        baseFileStore.close();
+        baseFileStore.close().block();
         baseFileStore = new BaseAppendOnlyFileStore(storageProperties, "test");
         baseFileStore.open(false).block();
         try (CloseableIterator<FileStoreEntry> it = baseFileStore.iterator(0)) {
@@ -122,6 +115,7 @@ public class BaseAppendOnlyFileStoreTest {
             }
         }
         FileStoreEntry entry = baseFileStore.read(0).block();
+        assertNotNull(entry);
         assertEquals("one", new String(entry.bytes()));
     }
 
@@ -161,12 +155,13 @@ public class BaseAppendOnlyFileStoreTest {
     }
 
     @Test
-    public void reset() throws InterruptedException {
+    public void reset() {
         append("First entry", 9);
         append("Second entry", 0);
         append("Third entry", 0);
         baseFileStore.reset(0L).block();
         List<FileStoreEntry> entries = baseFileStore.stream(0).collect(Collectors.toList()).block();
+        assertNotNull(entries);
         assertEquals(1, entries.size());
     }
 
@@ -181,13 +176,13 @@ public class BaseAppendOnlyFileStoreTest {
                      .subscribe(new BaseSubscriber<FileStoreEntry>() {
             Subscription subscription;
             @Override
-            protected void hookOnSubscribe(Subscription subscription) {
+            protected void hookOnSubscribe(@NonNull Subscription subscription) {
                 this.subscription = subscription;
                 subscription.request(1);
             }
 
             @Override
-            protected void hookOnNext(FileStoreEntry value) {
+            protected void hookOnNext(@NonNull FileStoreEntry value) {
                 try {
                     Thread.sleep(1_000);
                 } catch (InterruptedException e) {
@@ -197,7 +192,7 @@ public class BaseAppendOnlyFileStoreTest {
             }
 
             @Override
-            protected void hookOnError(Throwable throwable) {
+            protected void hookOnError(@NonNull Throwable throwable) {
                 completableFuture.completeExceptionally(throwable);
             }
 
@@ -228,6 +223,7 @@ public class BaseAppendOnlyFileStoreTest {
         List<FileStoreEntry> entries = baseFileStore.stream(0)
                                                     .collect(Collectors.toList())
                                                     .block();
+        assertNotNull(entries);
         assertEquals(12, entries.size());
     }
 

@@ -17,4 +17,8 @@ public class FileStoreException extends RuntimeException {
         super(message, cause);
         this.errorCode = errorCode;
     }
+
+    public FileStoreErrorCode errorCode() {
+        return errorCode;
+    }
 }

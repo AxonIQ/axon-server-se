@@ -8,7 +8,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Marc Gathier
@@ -18,7 +17,7 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
 
     private final WritableSegment primary;
     private final Set<CloseableIterator<FileStoreEntry>> activeReaders = new CopyOnWriteArraySet<>();
-    private final AtomicBoolean resetting = new AtomicBoolean();
+    private final ResetLock resetLock = new ResetLock();
 
     public BaseAppendOnlyFileStore(StorageProperties storageProperties, String name) {
         this.primary = new WritableSegment(name,
@@ -29,52 +28,42 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
     @Override
     public Mono<Long> append(FileStoreEntry entry) {
         return Mono.fromCompletionStage(() -> primary.write(entry))
-                .doFirst(this::checkState);
-    }
-
-    private void checkState() {
-        if (resetting.get()) {
-            throw new FileStoreException(FileStoreErrorCode.RESET_IN_PROGRESS, "Reset in progress");
-        }
+                   .doFirst(resetLock::increaseActiveRequests)
+                   .doOnTerminate(resetLock::decreaseActiveRequests);
     }
 
     @Override
     public Mono<Long> append(Flux<FileStoreEntry> entryFlux) {
         return entryFlux.collectList()
-                        .flatMap(entries -> {
-                            checkState();
-                            return Mono.fromCompletionStage(primary.write(entries));
-                        });
+                        .flatMap(entries -> Mono.fromCompletionStage(primary.write(entries))
+                                                .doFirst(resetLock::increaseActiveRequests)
+                                                .doOnTerminate(resetLock::decreaseActiveRequests));
     }
 
     @Override
     public Mono<Void> reset(long sequence) {
         return Mono.create(sink -> {
             if (sequence > primary.getLastIndex()) {
-                sink.error(new FileStoreException(FileStoreErrorCode.NOT_FOUND, "Cannot reset to value higher than the last index"));
-            }
-            if (!resetting.compareAndSet(false, true)) {
-                sink.error( new FileStoreException(FileStoreErrorCode.RESET_IN_PROGRESS, "Reset in progress"));
-                return;
+                sink.error(new FileStoreException(FileStoreErrorCode.NOT_FOUND,
+                                                  "Cannot reset to value higher than the last index"));
             }
             try {
+                resetLock.startReset();
                 activeReaders.forEach(CloseableIterator::close);
                 activeReaders.clear();
                 primary.reset(sequence);
                 sink.success();
+            } catch (Exception e) {
+                sink.error(e.getCause());
             } finally {
-                resetting.set(false);
+                resetLock.stopReset();
             }
         });
     }
 
     @Override
     public Mono<FileStoreEntry> read(long sequence) {
-        return Mono.create(sink -> {
-            if (resetting.get()) {
-                sink.error(new FileStoreException(FileStoreErrorCode.RESET_IN_PROGRESS, "Reset in progress"));
-                return;
-            }
+        return Mono.<FileStoreEntry>create(sink -> {
             try (CloseableIterator<FileStoreEntry> it = primary.getEntryIterator(sequence)) {
                 if (it.hasNext()) {
                     sink.success(it.next());
@@ -84,12 +73,14 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
             } catch (Exception ex) {
                 sink.error(ex);
             }
-        });
+        }).doFirst(resetLock::increaseActiveRequests).doOnTerminate(resetLock::decreaseActiveRequests);
     }
 
     @Override
     public Flux<FileStoreEntry> stream(long fromSequence) {
-        checkState();
+        if (resetLock.resetting()) {
+            throw new FileStoreException(FileStoreErrorCode.RESET_IN_PROGRESS, "Reset in progress");
+        }
         CloseableIterator<FileStoreEntry> entryIterator = primary.getEntryIterator(fromSequence);
         activeReaders.add(entryIterator);
         return Flux.fromIterable(() -> entryIterator)
@@ -101,7 +92,9 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
 
     @Override
     public Flux<FileStoreEntry> stream(long fromSequence, long toSequence) {
-        checkState();
+        if (resetLock.resetting()) {
+            throw new FileStoreException(FileStoreErrorCode.RESET_IN_PROGRESS, "Reset in progress");
+        }
         CloseableIterator<FileStoreEntry> entryIterator = primary.getEntryIterator(fromSequence, toSequence);
         activeReaders.add(entryIterator);
         return Flux.fromIterable(() -> entryIterator)
@@ -114,13 +107,12 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
 
     @Override
     public Mono<Void> close() {
-        checkState();
         return Mono.fromRunnable(() -> primary.close(false));
     }
 
     @Override
     public Mono<Void> open(boolean validate) {
-        return Mono.<Void>fromRunnable(() -> primary.init(validate)).doOnSuccess(c -> resetting.set(false));
+        return Mono.<Void>fromRunnable(() -> primary.init(validate)).doOnSuccess(c -> resetLock.clear());
     }
 
     @Override
