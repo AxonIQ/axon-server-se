@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import springfox.documentation.annotations.ApiIgnore;
 
+import javax.sql.DataSource;
 import java.io.File;
 import java.security.Principal;
 import java.sql.Connection;
@@ -30,7 +31,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
 
 /**
  * REST Controller to retrieve files for backup and create backup of controldb.
@@ -57,6 +57,7 @@ public class BackupInfoRestController {
     }
 
     @GetMapping("/filenames")
+    @Deprecated
     public List<String> getFilenames(
             @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
@@ -68,8 +69,25 @@ public class BackupInfoRestController {
                       type);
 
         return localEventStore
-                .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp)
+                .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, false)
                 .collect(Collectors.toList());
+    }
+
+    @GetMapping("/eventstore")
+    public EventStoreBackupInfo eventStoreFilenames(
+            @RequestParam(value = "targetContext", defaultValue = Topology.DEFAULT_CONTEXT) String context,
+            @RequestParam(value = "type") String type,
+            @RequestParam(value = "lastClosedSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
+            @ApiIgnore Principal principal) {
+        auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
+                      AuditLog.username(principal),
+                      context,
+                      type);
+
+        return new EventStoreBackupInfo(localEventStore.getFirstCompletedSegment(context, EventType.valueOf(type)),
+                                                                             localEventStore
+                                                                                     .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, true)
+                                                                                     .collect(Collectors.toList()));
     }
 
     /**
@@ -93,5 +111,24 @@ public class BackupInfoRestController {
             }
         }
         return file.getAbsolutePath();
+    }
+
+    private class EventStoreBackupInfo {
+
+        private final long lastClosedSegment;
+        private final List<String> filenames;
+
+        public EventStoreBackupInfo(long lastClosedSegment, List<String> filenames) {
+            this.lastClosedSegment = lastClosedSegment;
+            this.filenames = filenames;
+        }
+
+        public long getLastClosedSegment() {
+            return lastClosedSegment;
+        }
+
+        public List<String> getFilenames() {
+            return filenames;
+        }
     }
 }

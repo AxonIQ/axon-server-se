@@ -48,6 +48,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
+import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
+
 /**
  * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
  * identifiers and the position of events for this aggregate and a bloom filter to quickly check if an aggregate occurs
@@ -488,8 +490,8 @@ public class StandardIndexManager implements IndexManager {
         return indexesDescending.stream()
                                 .filter(s -> s > lastSegmentBackedUp)
                                 .flatMap(s -> Stream.of(
-                                        storageProperties.index(context, s).getAbsolutePath(),
-                                        storageProperties.bloomFilter(context, s).getAbsolutePath()
+                                        name(storageProperties.index(context, s)),
+                                        name(storageProperties.bloomFilter(context, s))
                                 ));
     }
 
