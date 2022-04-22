@@ -2,7 +2,7 @@ import hudson.tasks.test.AbstractTestResultAction
 import hudson.model.Actionable
 
 properties([
-    [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', daysToKeepStr: '2', numToKeepStr: '2']]
+    [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', numToKeepStr: '5']]
 ])
 
 def label = "worker-${UUID.randomUUID().toString()}"
@@ -113,11 +113,11 @@ podTemplate(label: label,
                             sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore -DskipITs ${mavenTarget}"
 
                             if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
-                                slackReport = slackReport + "\nDeployed to Nexus"
+                                slackReport += "\n- Deployed to Nexus"
                              }
                         }
                         catch (err) {
-                            slackReport = slackReport + "\nMaven build FAILED!"             // This means build itself failed, not 'just' tests
+                            slackReport += "\n- Maven build FAILED!"             // This means build itself failed, not 'just' tests
                             throw err
                         }
                         finally {
@@ -139,43 +139,20 @@ podTemplate(label: label,
 
             stage ('Docker image builds') {
                 if (releaseBuild || relevantBranch(gitBranch, dockerBranches)) {
-                    try {
-                        def baseTag = "eu.gcr.io/axoniq-devops/axonserver"
-                        def images = "--temurin"
-                        def tags11 = "--tag-jdk"
-                        def tagsDef = "--tag-jdk"
-
-                        if (releaseBuild) {
-                            // For a release build, make all image variants
-                            images = images + " --prod --dev --nonroot"
-
-                            // For JDK 11, apart from ":<version>-jdk-11", also tag this build as ":latest", ":latest-jdk-11" and ":<version>"
-                            tags11 = tags11 + " --tag-latest --tag-latest-jdk --tag-version"
-                            // For other JDKs, apart from ":<version>-jdk-<jdk>", also tag this build as ":latest-jdk-<jdk>"
-                            tagsDef = tagsDef + " --no-tag-latest --tag-latest-jdk --no-tag-version"
+                    archiveArtifacts artifacts: 'axonserver/target/axonserver-*-exec.jar', fingerprint: true
+                    def imageJob = build job: 'axon-server-image-build/main', propagate: false, wait: true,
+                                            parameters: [
+                                                string(name: 'serverEdition', value: 'se'),
+                                                string(name: 'serverVersion', value: pomVersion),
+                                                string(name: 'cliVersion', value: pomVersion),
+                                                string(name: 'callerProject', value: env.JOB_NAME),
+                                                string(name: 'buildNumber', value: "${currentBuild.getNumber()}"),
+                                                string(name: 'buildVMimage', value: "true")
+                                            ]
+                    if (imageJob.result == "FAILURE") {
+                        slackReport += "\n- Image builds FAILED!"
                         } else {
-                            // For SNAPSHOT builds, only make "dev" and "nonroot" variants
-                            images = images + " --no-prod --dev --nonroot"
-
-                            // For JDK 11, apart from ":<version>-jdk-11", also tag this build as ":<version>"
-                            tags11 = tags11 + " --no-tag-latest --no-tag-latest-jdk --tag-version"
-                            // For other JDKs, apart from ":<version>-jdk-<jdk>", don't add additional tags
-                            tagsDef = tagsDef + " --no-tag-latest --no-tag-latest-jdk --no-tag-version"
-                        }
-
-                        container("docker") {
-                            sh """
-                                docker-credential-gcr config --token-source=env,store
-                                docker-credential-gcr configure-docker
-
-                                bin/build-docker-release.sh --local ${images} ${tagsDef} --jdk 8  --repo ${baseTag} --push ${pomVersion}
-                                bin/build-docker-release.sh --local ${images} ${tags11}  --jdk 11 --repo ${baseTag} --push ${pomVersion}
-                                bin/build-docker-release.sh --local ${images} ${tagsDef} --jdk 17 --repo ${baseTag} --push ${pomVersion}
-                            """
-                        }
-                        slackReport = slackReport + "\nNew Docker images pushed."
-                    } catch (err) {
-                        slackReport = slackReport + "\nFAILED to push Docker images."
+                        slackReport += "\n- New Docker and VM images pushed."
                     }
                 }
             }
@@ -184,15 +161,20 @@ podTemplate(label: label,
                 container("maven-jdk8") {
                     try {
                         // Again, ignore test failures, but this time, skip the Unit tests.
-                        sh "mvn \${MVN_BLD} -Dmaven.test.failure.ignore -DskipUTs -Pcoverage clean verify"
+                        sh """
+                            docker-credential-gcr config --token-source=env,store
+                            docker-credential-gcr configure-docker
+
+                            mvn \${MVN_BLD} -Dmaven.test.failure.ignore -DskipUTs -Pcoverage verify
+                        """
                     }
                     catch (err) {
-                        slackReport = slackReport + "\nIntegration tests FAILED!"
+                        slackReport += "\n- Integration tests FAILED!"
                         throw err
                     }
                     finally {
                         junit '**/target/failsafe-reports/TEST-*.xml'                   // Read the test results
-                        slackReport = slackReport + "\n" + getTestSummary()
+                        slackReport += "\n- " + getTestSummary()
                     }
                 }
             }
@@ -204,7 +186,7 @@ podTemplate(label: label,
                 }
                 container("maven-jdk11") {
                     sh "mvn \${MVN_BLD} -DskipTests ${sonarOptions}  -Psonar sonar:sonar"
-                    slackReport = slackReport + "\nSources analyzed in SonarQube."
+                    slackReport += "\n- Sources analyzed in SonarQube."
                 }
             }
 
@@ -217,7 +199,7 @@ podTemplate(label: label,
                             string(name: 'cliVersion', value: pomVersion)
                         ]
                     if (canaryTests.result == "FAILURE") {
-                        slackReport = slackReport + "\nCanary Tests FAILED!"
+                        slackReport += "\n- Canary Tests FAILED!"
                     }
                 }
             }
