@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.version;
 
 import static java.lang.Integer.parseInt;
@@ -73,7 +82,21 @@ public interface Version {
      * Returns {@code true} if this version can be considered greater or equal than the specified one.
      *
      * @param version the other version to compare with
-     * @return {@code true} if this version can be considered greater or equal than the specified one, {@code false} otherwise
+     * @return {@code true} if this version can be considered greater or equal than the specified one, {@code false}
+     * otherwise
      */
     boolean greaterOrEqualThan(Version version);
+
+    default boolean greaterOrEqualThan(Iterable<Version> versions) {
+        for (Version supportedVersion : versions) {
+            try {
+                if (this.greaterOrEqualThan(supportedVersion)) {
+                    return true;
+                }
+            } catch (UnsupportedOperationException e1) {
+                return false;
+            }
+        }
+        return false;
+    }
 }

@@ -15,18 +15,18 @@ import io.axoniq.axonserver.rest.svg.mapping.FakeApplication;
 import io.axoniq.axonserver.rest.svg.mapping.FakeAxonServer;
 import io.axoniq.axonserver.topology.SimpleAxonServerNode;
 import io.axoniq.axonserver.topology.Topology;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.HashSet;
-import java.util.Set;
-
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Marc Gathier
@@ -75,7 +75,7 @@ public class OverviewModelTest {
         AxonServersOverviewProvider.ApplicationsAndNodes applicationsAndNodes = axonServersOverviewProvider
                 .applicationsAndNodes(null);
         assertEquals("app", applicationsAndNodes.getApplications().get(0).getName());
-        assertEquals("context", applicationsAndNodes.getApplications().get(0).getContext());
+        assertEquals("context", applicationsAndNodes.getApplications().get(0).getContexts().iterator().next());
         assertEquals(2, applicationsAndNodes.getApplications().get(0).getInstances());
 
         assertEquals("hub1", applicationsAndNodes.getNodes().get(0).getName());

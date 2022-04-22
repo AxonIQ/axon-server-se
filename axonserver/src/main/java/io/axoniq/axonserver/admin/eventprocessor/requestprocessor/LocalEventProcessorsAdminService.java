@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,6 +14,7 @@ import io.axoniq.axonserver.admin.InstructionCache;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
+import io.axoniq.axonserver.admin.eventprocessor.api.Result;
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
@@ -148,7 +149,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Mono<Void> pause(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+    public Mono<Result> pause(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String requestDescription = "Pause " + processor;
         return eventProcessors
@@ -162,7 +163,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 })
                 .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
                 .collectList()
-                .flatMap(clients -> Mono.<Void>create(sink -> {
+                .flatMap(clients -> Mono.<Result>create(sink -> {
                     if (clients.isEmpty()) {
                         sink.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_NOT_FOUND,
                                                                   "Event processor not found"));
@@ -187,12 +188,16 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
     }
 
     private void logError(String description, Throwable err) {
-        logger.warn("{} failed", description, err);
+        if (ErrorCode.fromException(err).isClientException()) {
+            logger.info("{} failed", description, err);
+        } else {
+            logger.warn("{} failed", description, err);
+        }
     }
 
     @Nonnull
     @Override
-    public Mono<Void> start(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+    public Mono<Result> start(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String requestDescription = "Start " + processor;
         return eventProcessors
@@ -206,7 +211,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 })
                 .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
                 .collectList()
-                .flatMap(clients -> Mono.<Void>create(sink -> {
+                .flatMap(clients -> Mono.<Result>create(sink -> {
                     if (clients.isEmpty()) {
                         sink.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_NOT_FOUND,
                                                                   "Event processor not found"));
@@ -231,7 +236,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Mono<Void> split(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+    public Mono<Result> split(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String requestDescription = "Split " + processor;
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
@@ -254,7 +259,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 .reduce((segment, segment2) -> segment.onePartOf < segment2.onePartOf ? segment : segment2)
                 .switchIfEmpty(Mono.error(new MessagingPlatformException(ErrorCode.EVENT_PROCESSOR_NOT_FOUND,
                                                                          "Event processor not found")))
-                .flatMap(largestSegment -> Mono.<Void>create(sink -> {
+                .flatMap(largestSegment -> Mono.<Result>create(sink -> {
                     String instructionId = UUID.randomUUID().toString();
                     instructionCache.put(instructionId, new InstructionInformation(sink,
                                                                                    instructionId,
@@ -271,7 +276,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Mono<Void> merge(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
+    public Mono<Result> merge(@Nonnull EventProcessorId identifier, @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String requestDescription = "Merge " + processor;
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
@@ -292,7 +297,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                                                                   segmentStatus.getSegmentId(),
                                                                                   segmentStatus.getOnePartOf())))
                 .collectList()
-                .flatMap(segments -> Mono.<Void>create(sink -> {
+                .flatMap(segments -> Mono.<Result>create(sink -> {
                     String instructionId = UUID.randomUUID().toString();
                     Segment smallestSegment = segments.stream()
                                                       .reduce((s1, s2) -> s1.onePartOf > s2.onePartOf ? s1 : s2)
@@ -328,8 +333,8 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Mono<Void> move(@Nonnull EventProcessorId identifier, int segment, @Nonnull String target,
-                           @Nonnull Authentication authentication) {
+    public Mono<Result> move(@Nonnull EventProcessorId identifier, int segment, @Nonnull String target,
+                             @Nonnull Authentication authentication) {
         String processor = identifier.name();
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
         String requestDescription = "Move " + processor;
@@ -345,7 +350,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                 })
                 .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
                 .collectList()
-                .flatMap(clients -> Mono.<Void>create(sink -> {
+                .flatMap(clients -> Mono.<Result>create(sink -> {
                     Optional<ClientProcessor> targetEventProcessor = clients.stream()
                                                                             .filter(ep -> target.equals(ep.clientId()))
                                                                             .findFirst();

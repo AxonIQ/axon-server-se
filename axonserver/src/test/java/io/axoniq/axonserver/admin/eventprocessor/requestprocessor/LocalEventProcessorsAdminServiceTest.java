@@ -12,6 +12,7 @@ package io.axoniq.axonserver.admin.eventprocessor.requestprocessor;
 import io.axoniq.axonserver.admin.Instruction;
 import io.axoniq.axonserver.admin.InstructionCache;
 import io.axoniq.axonserver.admin.InstructionResult;
+import io.axoniq.axonserver.admin.Result;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
@@ -26,20 +27,29 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.*;
-import org.junit.jupiter.api.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.junit.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-import java.util.Collections;
 import javax.annotation.Nonnull;
+import java.util.Collections;
 
 import static java.util.Arrays.asList;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Sara Pellegrini
@@ -455,8 +465,8 @@ public class LocalEventProcessorsAdminServiceTest {
         }
 
         @Override
-        public boolean success() {
-            return true;
+        public Result result() {
+            return Result.SUCCESS;
         }
 
         @Override
