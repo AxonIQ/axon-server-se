@@ -32,6 +32,8 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.util.StringUtils.sanitize;
+
 /**
  * REST Controller to retrieve files for backup and create backup of controldb.
  *
@@ -63,10 +65,12 @@ public class BackupInfoRestController {
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
             @ApiIgnore Principal principal) {
-        auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
-                      AuditLog.username(principal),
-                      context,
-                      type);
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
+                          AuditLog.username(principal),
+                          sanitize(context),
+                          sanitize(type));
+        }
 
         return localEventStore
                 .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, false)
@@ -79,10 +83,12 @@ public class BackupInfoRestController {
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastClosedSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
             @ApiIgnore Principal principal) {
-        auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
-                      AuditLog.username(principal),
-                      context,
-                      type);
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
+                          AuditLog.username(principal),
+                          sanitize(context),
+                          sanitize(type));
+        }
 
         return new EventStoreBackupInfo(localEventStore.getFirstCompletedSegment(context, EventType.valueOf(type)),
                                                                              localEventStore
