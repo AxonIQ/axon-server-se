@@ -32,6 +32,8 @@ public class PluginPackage {
     private String version;
     private String filename;
 
+    private Boolean deleted;
+
     public long getId() {
         return id;
     }
@@ -66,5 +68,13 @@ public class PluginPackage {
 
     public PluginKey getKey() {
         return new PluginKey(name, version);
+    }
+
+    public boolean isDeleted() {
+        return deleted != null && deleted;
+    }
+
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
     }
 }
