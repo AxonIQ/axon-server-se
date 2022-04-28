@@ -64,4 +64,15 @@ public class FileUtils {
     public static void rename(File target, File currentLocation) throws IOException {
         Files.move(target.toPath(), currentLocation.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
+
+    public static String name(File file) {
+        try {
+            return file
+                    .getCanonicalFile()
+                    .getAbsolutePath();
+        } catch (IOException e) {
+            return file.getAbsolutePath();
+        }
+    }
+
 }

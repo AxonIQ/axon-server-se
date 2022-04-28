@@ -30,6 +30,7 @@ import java.util.stream.Stream;
  */
 public interface EventStorageEngine {
 
+
     enum SearchHint {
         RECENT_ONLY
     }
@@ -44,6 +45,10 @@ public interface EventStorageEngine {
     default void init(boolean validate) {
         init(validate, 0L);
     }
+
+    default long getFirstCompletedSegment() {
+        return -1;
+    };
 
     /**
      * Stores a number of events.
@@ -179,9 +184,10 @@ public interface EventStorageEngine {
     /**
      * Gets filenames to back up for this storage engine. Only relevant for file based storage.
      * @param lastSegmentBackedUp last segment backed up before
+     * @param includeActive
      * @return stream of filenames
      */
-    default Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive) {
         throw new UnsupportedOperationException();
     }
 

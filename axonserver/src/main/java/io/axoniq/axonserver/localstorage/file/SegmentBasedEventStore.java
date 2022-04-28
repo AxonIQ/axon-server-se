@@ -55,6 +55,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
+
 
 /**
  * @author Marc Gathier
@@ -326,6 +328,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         validate(validate ? storageProperties.getValidationSegments() : 2);
     }
 
+    @Override
+    public long getFirstCompletedSegment() {
+        if (getSegments().isEmpty()) {
+            return -1;
+        }
+        return getSegments().first();
+    }
 
     @Override
     public long getFirstToken() {
@@ -524,17 +533,16 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive) {
         Stream<String> filenames = Stream.concat(getSegments().stream()
                                                               .filter(s -> s > lastSegmentBackedUp)
-                                                              .map(s -> storageProperties.dataFile(context, s)
-                                                                                         .getAbsolutePath()),
+                                                              .map(s -> name(storageProperties.dataFile(context, s))),
                                                  indexManager.getBackupFilenames(lastSegmentBackedUp));
 
         if (next == null) {
             return filenames;
         }
-        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp));
+        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, includeActive));
     }
 
     protected void renameFileIfNecessary(long segment) {
