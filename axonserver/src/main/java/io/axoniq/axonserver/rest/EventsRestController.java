@@ -39,13 +39,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -125,6 +126,7 @@ public class EventsRestController {
             @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
             @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
             @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout,
+            @RequestParam(value = "maxEvents", defaultValue = "10000", required = false) long maxEvents,
             @Parameter(hidden = true) final Authentication principal) {
         auditLog.info("[{}@{}] Request for an event-stream of aggregate \"{}\", starting at sequence {}, token {}.",
                       AuditLog.username(principal), context, aggregateId, initialSequence, trackingToken);
@@ -139,27 +141,39 @@ public class EventsRestController {
                                                                          .build();
 
             ObjectMapper objectMapper = new ObjectMapper();
-            eventStoreClient.aggregateEvents(context,
-                                             getOrDefault(principal,
-                                                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                             request)
-                            .doOnError(sseEmitter::completeWithError)
-                            .doOnComplete(() -> completeEmitter(sseEmitter))
-                            .subscribe(event -> send(sseEmitter, objectMapper, event));
+            Disposable subscription = eventStoreClient.aggregateEvents(context,
+                                                                       getOrDefault(principal,
+                                                                                    GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                                                       request)
+                                                      .subscribe(event -> send(sseEmitter,
+                                                                               objectMapper,
+                                                                               event),
+                                                                 sseEmitter::completeWithError,
+                                                                 () -> completeEmitter(sseEmitter));
+            handleSseEvent(sseEmitter, subscription::dispose);
         } else {
             GetEventsRequest getEventsRequest = GetEventsRequest.newBuilder()
                                                                 .setTrackingToken(trackingToken)
-                                                                .setNumberOfPermits(10000)
+                                                                .setNumberOfPermits(maxEvents)
                                                                 .setClientId("REST")
                                                                 .build();
+            Sinks.Many<GetEventsRequest> requestsSink = Sinks.many().unicast().onBackpressureBuffer();
             eventStoreClient.events(context,
                                     getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                    Flux.just(getEventsRequest))
-                            .doOnError(sseEmitter::completeWithError)
-                            .doOnComplete(() -> completeEmitter(sseEmitter))
-                            .subscribe(serializedEventWithToken -> send(sseEmitter, serializedEventWithToken));
+                                    requestsSink.asFlux())
+                            .subscribe(serializedEventWithToken -> send(sseEmitter, serializedEventWithToken),
+                                       sseEmitter::completeWithError,
+                                       () -> completeEmitter(sseEmitter));
+            requestsSink.emitNext(getEventsRequest, Sinks.EmitFailureHandler.FAIL_FAST);
+            handleSseEvent(sseEmitter, () -> requestsSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST));
         }
         return sseEmitter;
+    }
+
+    private void handleSseEvent(SseEmitter sseEmitter, Runnable runnable) {
+        sseEmitter.onError(e -> runnable.run());
+        sseEmitter.onCompletion(runnable::run);
+        sseEmitter.onTimeout(runnable::run);
     }
 
     private void send(SseEmitter sseEmitter, ObjectMapper objectMapper, SerializedEvent event) {
@@ -168,7 +182,7 @@ public class EventsRestController {
                                       .data(objectMapper
                                                     .writeValueAsString(new JsonEvent(event.asEvent()))));
         } catch (Exception e) {
-            logger.warn("Exception on sending event - {}", e.getMessage(), e);
+            logger.debug("Exception on sending event - {}", e.getMessage(), e);
         }
     }
 
@@ -186,7 +200,7 @@ public class EventsRestController {
     private void completeEmitter(SseEmitter emitter) {
         try {
             emitter.send(SseEmitter.event().comment("End of stream"));
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.debug("Error on sending completed", e);
         } finally {
             emitter.complete();

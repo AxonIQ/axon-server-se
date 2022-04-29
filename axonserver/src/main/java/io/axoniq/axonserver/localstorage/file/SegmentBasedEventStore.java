@@ -56,6 +56,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
+
 
 /**
  * @author Marc Gathier
@@ -390,7 +392,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             ValidationResult nextResult = resultList.get(i + 1);
             if (thisResult.getLastToken() != nextResult.getSegment()) {
                 throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED,
-                                                     String.format(
+                                                     format(
                                                              "Validation exception: segment %d ending at token, %d, next segment starts at token %d",
                                                              thisResult.getSegment(),
                                                              thisResult.getLastToken() - 1,
@@ -440,7 +442,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public EventIterator getEvents(long segment, long token) {
         Optional<EventSource> reader = getEventSource(segment);
         return reader.map(eventSource -> createEventIterator(eventSource, segment, token))
-                     .orElseGet(() -> next.getEvents(segment, token));
+                     .orElseGet(() -> {
+                         if (next == null) {
+                             throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                                  format("%s: token %d before start of event store",
+                                                                         context,
+                                                                         token));
+                         }
+                         return next.getEvents(segment, token);
+                     });
     }
 
     public TransactionIterator getTransactions(long segment, long token) {
@@ -456,7 +466,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private TransactionIterator getTransactionsFromNext(long segment, long token, boolean validating) {
         if (next == null) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                 String.format(
+                                                 format(
                                                          "%s: unable to read transactions for segment %d, requested token %d",
                                                          context,
                                                          segment,
@@ -640,17 +650,17 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             if (transactionIterator.hasNext()) {
                 SerializedTransactionWithToken transaction = transactionIterator.next();
                 if (!transaction.getEvents().equals(eventList)) {
-                    throw new EventStoreValidationException(String.format(
+                    throw new EventStoreValidationException(format(
                             "%s: Replicated %s transaction %d does not match stored transaction",
                             context,
                             type.getEventType(),
                             token));
                 }
             } else {
-                throw new EventStoreValidationException(String.format("%s: Replicated %s transaction %d not found",
-                                                                      context,
-                                                                      type.getEventType(),
-                                                                      token));
+                throw new EventStoreValidationException(format("%s: Replicated %s transaction %d not found",
+                                                               context,
+                                                               type.getEventType(),
+                                                               token));
             }
         }
     }
