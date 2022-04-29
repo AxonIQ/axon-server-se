@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -31,8 +30,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toSet;
 
 /**
- * Created by Sara Pellegrini on 01/05/2018.
- * sara.pellegrini@gmail.com
+ * Created by Sara Pellegrini on 01/05/2018. sara.pellegrini@gmail.com
  */
 @Component
 public class Applications implements Function<String, Stream<Application>> {
@@ -77,71 +75,73 @@ public class Applications implements Function<String, Stream<Application>> {
     @Override
     @Nonnull
     public Stream<Application> apply(String context) {
-        List<Map.Entry<ComponentContext, Set<ConnectedClient>>> sortedComponents = clientsPerComponent.entrySet()
-                                                                                                      .stream()
-                                                                                                      .filter(c -> context
-                                                                                                              == null
-                                                                                                              || c
-                                                                                                              .getKey().context
-                                                                                                              .equals(context))
-                                                                                                      .filter(c -> clusterController
-                                                                                                              .validContext(
-                                                                                                                      c.getKey().context))
-                                                                                                      .sorted(
-                                                                                                              (o1, o2) -> {
-                                                                                                                  ConnectedClient client1 = o1
-                                                                                                                          .getValue()
-                                                                                                                          .stream()
-                                                                                                                          .min(Comparator
-                                                                                                                                       .comparing(
-                                                                                                                                               v -> v.axonHubServer))
-                                                                                                                          .orElse(new ConnectedClient(
-                                                                                                                                  "",
-                                                                                                                                  "ZZZZ"));
-                    ConnectedClient client2 = o2.getValue().stream().min(Comparator.comparing(v -> v.axonHubServer))
-                                                              .orElse(new ConnectedClient("", "ZZZZ"));
-                    int v = client1.axonHubServer.compareTo(client2.axonHubServer);
-                    if (v == 0) {
-                        return o1.getKey().compareTo(o2.getKey());
-                    }
-                    return v;
-                }).collect(Collectors.toList());
+        Stream<Map.Entry<ComponentContext, Set<ConnectedClient>>> sortedComponents =
+                clientsPerComponent.entrySet()
+                                   .stream()
+                                   .filter(c -> context == null || c.getKey().context.equals(context))
+                                   .filter(c -> clusterController.validContext(c.getKey().context));
 
-        return sortedComponents.stream().collect(groupingBy(it -> it.getKey().component))
-                .entrySet()
-                .stream().map(entry -> new Application() {
-                    @Override
-                    public String name() {
-                        return entry.getKey();
-                    }
+        return sortedComponents.collect(groupingBy(it -> it.getKey().component))
+                               .entrySet()
+                               .stream()
+                               .sorted((o1, o2) -> {
+                                   ConnectedClient client1 = o1
+                                           .getValue()
+                                           .stream()
+                                           .flatMap(s -> s.getValue().stream())
+                                           .min(Comparator
+                                                        .comparing(
+                                                                v -> v.axonHubServer))
+                                           .orElse(new ConnectedClient(
+                                                   "",
+                                                   "ZZZZ"));
+                                   ConnectedClient client2 = o2.getValue().stream()
+                                                               .flatMap(s -> s.getValue().stream())
+                                                               .min(Comparator.comparing(v -> v.axonHubServer))
+                                                               .orElse(new ConnectedClient("", "ZZZZ"));
+                                   int v = client1.axonHubServer.compareTo(client2.axonHubServer);
+                                   if (v == 0) {
+                                       return o1.getKey().compareTo(o2.getKey());
+                                   }
+                                   return v;
+                               })
+                               .map(entry -> new Application() {
+                                   @Override
+                                   public String name() {
+                                       return entry.getKey();
+                                   }
 
-                    @Override
-                    public String component() {
-                        return entry.getKey();
-                    }
+                                   @Override
+                                   public String component() {
+                                       return entry.getKey();
+                                   }
 
-                    @Override
-                    public Iterable<String> contexts() {
-                         try {
-                             return entry.getValue().stream().map(apps -> apps.getKey().context).sorted().collect(Collectors.toList());
-                        } catch (Exception e) {
-                            return Collections.emptyList();
-                        }
-                    }
+                                   @Override
+                                   public Iterable<String> contexts() {
+                                       try {
+                                           return entry.getValue().stream().map(apps -> apps.getKey().context).sorted()
+                                                       .collect(Collectors.toList());
+                                       } catch (Exception e) {
+                                           return Collections.emptyList();
+                                       }
+                                   }
 
-                    @Override
-                    public int instances() {
-                        return entry.getValue().stream().findFirst().map(apps->apps.getValue().size()).orElse(0);
-                    }
+                                   @Override
+                                   public int instances() {
+                                       return entry.getValue().stream().findFirst().map(apps -> apps.getValue().size())
+                                                   .orElse(0);
+                                   }
 
-                    @Override
-                    public Iterable<String> connectedHubNodes() {
-                        return entry.getValue().stream().flatMap(client -> client.getValue().stream().map(it -> it.axonHubServer)).collect(toSet());
-                    }
-                });
+                                   @Override
+                                   public Iterable<String> connectedHubNodes() {
+                                       return entry.getValue().stream().flatMap(client -> client.getValue().stream()
+                                                                                                .map(it -> it.axonHubServer))
+                                                   .collect(toSet());
+                                   }
+                               });
     }
 
-    private static class ComponentContext implements Comparable<ComponentContext>{
+    private static class ComponentContext implements Comparable<ComponentContext> {
 
         private final String component;
         private final String context;
@@ -172,16 +172,22 @@ public class Applications implements Function<String, Stream<Application>> {
 
         @Override
         public int compareTo(@Nonnull ComponentContext other) {
-            if( other.component.equals(component)) return context.compareTo(other.context);
+            if (other.component.equals(component)) {
+                return context.compareTo(other.context);
+            }
             return component.compareTo(other.component);
         }
 
         String toString(boolean isMultiContext) {
-            if( isMultiContext) return component + "@" + context;
+            if (isMultiContext) {
+                return component + "@" + context;
+            }
             return component;
         }
     }
-    private static class ConnectedClient  {
+
+    private static class ConnectedClient {
+
         final String client;
         final String axonHubServer;
 
@@ -206,6 +212,5 @@ public class Applications implements Function<String, Stream<Application>> {
         public int hashCode() {
             return Objects.hash(client);
         }
-
     }
 }
