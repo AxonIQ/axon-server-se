@@ -41,7 +41,7 @@
         <product.name>AxonServer</product.name>
 
         <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
-        <grpc.version>1.45.1</grpc.version>
+        <grpc.version>1.46.0</grpc.version>
         <axon.version>4.5.9</axon.version>
         <h2.version>1.4.197</h2.version>
         <eclipse-collections.version>11.0.0</eclipse-collections.version>
