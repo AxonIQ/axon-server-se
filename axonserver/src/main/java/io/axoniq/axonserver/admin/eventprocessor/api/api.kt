@@ -104,28 +104,28 @@ interface EventProcessorAdminService {
     /**
      * Balance the load for the specified event processor among the connected client.
      *
-     * @param processor            the event processor name
-     * @param tokenStoreIdentifier the token store identifier of the event processor
+     * @param identifier     the event processor identifier
      * @param strategy         the strategy to be used to balance the load
      */
-    fun loadBalance(processor: String, tokenStoreIdentifier: String, strategy: String, authentication: Authentication): Mono<Void>
+    fun loadBalance(identifier: EventProcessorId, strategy: String, authentication: Authentication): Mono<Void>
 
     /**
      * Sets autoload balance for the specified event processor.
      *
-     * @param processor            the event processor name
-     * @param tokenStoreIdentifier the token store identifier of the event processor
+     * @param identifier     the event processor identifier
      * @param strategy         the strategy to be used to balance the load
      */
-    fun setAutoLoadBalanceStrategy(processor: String, tokenStoreIdentifier: String, strategy: String, authentication: Authentication): Mono<Void>
+    fun setAutoLoadBalanceStrategy(identifier: EventProcessorId,
+                                   strategy: String,
+                                   authentication: Authentication): Mono<Void>
 
     /**
      * Returns available load balancing strategies.
      *
-     * @param principal info about the authenticated user
+     * @param authentication info about the authenticated user
      * @return the available load balancing strategies
      */
-    fun getBalancingStrategies( authentication: Authentication): Iterable<LoadBalancingStrategy?>
+    fun getBalancingStrategies(authentication: Authentication): Iterable<LoadBalancingStrategy?>
 }
 
 interface Result {
@@ -148,9 +148,16 @@ interface EventProcessorId {
      * Returns token store identifier
      */
     fun tokenStoreIdentifier(): String
+
+
+    /**
+     * Returns context
+     */
+    fun context(): String
 }
 
 interface EventProcessor {
+
     /**
      * Returns the event processor identifier
      */
@@ -170,11 +177,10 @@ interface EventProcessor {
      * Returns the instances that run the event processor, one for each client registered on AxonServer
      */
     fun instances(): Iterable<EventProcessorInstance>
-
-
 }
 
 interface EventProcessorInstance {
+
     /**
      * Returns the client identifier
      */
@@ -197,6 +203,7 @@ interface EventProcessorInstance {
 }
 
 interface EventProcessorSegment {
+
     /**
      * Returns the segment id.
      */

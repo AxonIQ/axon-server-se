@@ -1,7 +1,17 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc.eventprocessor;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.grpc.admin.EventProcessorIdentifier;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 
@@ -13,9 +23,11 @@ import javax.annotation.Nonnull;
  */
 public class EventProcessorIdMessage implements EventProcessorId {
 
+    private final String context;
     private final EventProcessorIdentifier grpcMessage;
 
-    public EventProcessorIdMessage(EventProcessorIdentifier grpcMessage) {
+    public EventProcessorIdMessage(String context, EventProcessorIdentifier grpcMessage) {
+        this.context = context;
         this.grpcMessage = grpcMessage;
     }
 
@@ -30,5 +42,11 @@ public class EventProcessorIdMessage implements EventProcessorId {
     @Override
     public String tokenStoreIdentifier() {
         return grpcMessage.getTokenStoreIdentifier();
+    }
+
+    @NotNull
+    @Override
+    public String context() {
+        return context;
     }
 }

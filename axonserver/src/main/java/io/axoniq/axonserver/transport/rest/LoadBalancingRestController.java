@@ -11,6 +11,7 @@ package io.axoniq.axonserver.transport.rest;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.admin.eventprocessor.requestprocessor.LocalEventProcessorsAdminService;
+import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.serializer.Printable;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,9 +57,12 @@ public class LoadBalancingRestController {
     @PatchMapping("processors/{processor}/loadbalance")
     public Mono<Void> balanceProcessorLoad(@PathVariable("processor") String processor,
                                            @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                           @RequestParam("context") String context,
                                            @RequestParam("strategy") String strategyName,
                                            @Parameter(hidden = true) final Principal principal) {
-        return eventProcessorAdminService.loadBalance(processor, tokenStoreIdentifier,
+        return eventProcessorAdminService.loadBalance(new EventProcessorIdentifier(processor,
+                                                                                   tokenStoreIdentifier,
+                                                                                   context),
                                                       strategyName,
                                                       new PrincipalAuthentication(principal));
     }

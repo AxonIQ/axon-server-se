@@ -1,19 +1,28 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import org.junit.*;
+import org.junit.Test;
 
 import java.util.Iterator;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 /**
  * @author Sara Pellegrini
- * @since
  */
 public class ClientsByEventProcessorTest {
 
@@ -32,13 +41,23 @@ public class ClientsByEventProcessorTest {
     private static final String BLUE_PROCESSOR = "Blue";
     private static final String GREEN_PROCESSOR = "Green";
     private static final String RED_PROCESSOR = "Red";
-    private final EventProcessorIdentifier blue1 = new EventProcessorIdentifier(BLUE_PROCESSOR, TOKEN_STORE_1);
-    private final EventProcessorIdentifier green1 = new EventProcessorIdentifier(GREEN_PROCESSOR, TOKEN_STORE_1);
-    private final EventProcessorIdentifier red1 = new EventProcessorIdentifier(RED_PROCESSOR, TOKEN_STORE_1);
+    private final EventProcessorIdentifier blue1 = new EventProcessorIdentifier(BLUE_PROCESSOR,
+                                                                                TOKEN_STORE_1,
+                                                                                "context");
+    private final EventProcessorIdentifier green1 = new EventProcessorIdentifier(GREEN_PROCESSOR,
+                                                                                 TOKEN_STORE_1,
+                                                                                 "context");
+    private final EventProcessorIdentifier red1 = new EventProcessorIdentifier(RED_PROCESSOR, TOKEN_STORE_1, "context");
 
-    private final EventProcessorIdentifier blue2 = new EventProcessorIdentifier(BLUE_PROCESSOR, TOKEN_STORE_2);
-    private final EventProcessorIdentifier green2 = new EventProcessorIdentifier(GREEN_PROCESSOR, TOKEN_STORE_2);
-    private final EventProcessorIdentifier red2 = new EventProcessorIdentifier(RED_PROCESSOR, TOKEN_STORE_2);
+    private final EventProcessorIdentifier blue2 = new EventProcessorIdentifier(BLUE_PROCESSOR,
+                                                                                TOKEN_STORE_2,
+                                                                                "context");
+    private final EventProcessorIdentifier green2 = new EventProcessorIdentifier(GREEN_PROCESSOR,
+                                                                                 TOKEN_STORE_2,
+                                                                                 "context");
+    private final EventProcessorIdentifier red2 = new EventProcessorIdentifier(RED_PROCESSOR,
+                                                                               TOKEN_STORE_2,
+                                                                               "anotherContext2");
 
     private final EventProcessorInfo blue1Info = EventProcessorInfo.newBuilder()
                                                                    .setProcessorName(BLUE_PROCESSOR)
@@ -121,7 +140,6 @@ public class ClientsByEventProcessorTest {
     @Test
     public void testIterator() {
         ClientsByEventProcessor testSubject = new ClientsByEventProcessor(blue1,
-                                                                          "context",
                                                                           clientProcessors);
         Iterator<String> iterator = testSubject.iterator();
         assertEquals(CLIENT_A, iterator.next());
@@ -129,13 +147,11 @@ public class ClientsByEventProcessorTest {
         assertFalse(iterator.hasNext());
 
         ClientsByEventProcessor testSubject2 = new ClientsByEventProcessor(red2,
-                                                                           "anotherContext2",
                                                                            clientProcessors);
         Iterator<String> iterator2 = testSubject2.iterator();
         assertFalse(iterator2.hasNext());
 
         ClientsByEventProcessor testSubject3 = new ClientsByEventProcessor(green2,
-                                                                           "context",
                                                                            clientProcessors);
         Iterator<String> iterator3 = testSubject3.iterator();
         assertEquals(CLIENT_D, iterator3.next());

@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
@@ -41,7 +50,7 @@ public class EventProcessorIdentifierProvider {
                     clientProcessor.belongsToContext(context) &&
                     clientProcessor.eventProcessorInfo().getProcessorName().equals(processorName)) {
                 String tokenStoreIdentifier = clientProcessor.eventProcessorInfo().getTokenStoreIdentifier();
-                return new EventProcessorIdentifier(processorName, tokenStoreIdentifier);
+                return new EventProcessorIdentifier(processorName, tokenStoreIdentifier, context);
             }
         }
         throw new IllegalArgumentException("Event processor not found.");

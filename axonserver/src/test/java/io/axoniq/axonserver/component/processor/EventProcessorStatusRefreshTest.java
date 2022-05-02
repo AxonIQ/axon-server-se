@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents.EventProcessorStatusUpdated;
@@ -5,18 +14,20 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.topology.Topology;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
+import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Unit tests for {@link EventProcessorStatusRefresh}.
@@ -26,23 +37,29 @@ import static org.junit.Assert.*;
 public class EventProcessorStatusRefreshTest {
 
     private final Duration timeout = Duration.ofMillis(200);
-    private EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA", "");
-    private EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB", "");
-    private EventProcessorIdentifier processorC = new EventProcessorIdentifier("processorC", "");
-    private ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA", true);
-    private ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB", true);
-    private ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB", true);
-    private ClientProcessor clientProcessor4 = new FakeClientProcessor("blueClient", false, "processorB", true);
-    private ClientProcessor clientProcessor5 = new FakeClientProcessor("blueClient", false, "processorC", true);
-    private List<ClientProcessor> clientProcessors = asList(clientProcessor1,
-                                                            clientProcessor2,
-                                                            clientProcessor3,
-                                                            clientProcessor4,
-                                                            clientProcessor5);
-    private List<Object> publishedInternalEvents = new LinkedList<>();
-    private EventProcessorStatusRefresh testSubject = new EventProcessorStatusRefresh(timeout,
-                                                                                      () -> clientProcessors.iterator(),
-                                                                                      publishedInternalEvents::add);
+    private final EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA",
+                                                                                     "",
+                                                                                     Topology.DEFAULT_CONTEXT);
+    private final EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB",
+                                                                                     "",
+                                                                                     Topology.DEFAULT_CONTEXT);
+    private final EventProcessorIdentifier processorC = new EventProcessorIdentifier("processorC",
+                                                                                     "",
+                                                                                     Topology.DEFAULT_CONTEXT);
+    private final ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA", true);
+    private final ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB", true);
+    private final ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB", true);
+    private final ClientProcessor clientProcessor4 = new FakeClientProcessor("blueClient", false, "processorB", true);
+    private final ClientProcessor clientProcessor5 = new FakeClientProcessor("blueClient", false, "processorC", true);
+    private final List<ClientProcessor> clientProcessors = asList(clientProcessor1,
+                                                                  clientProcessor2,
+                                                                  clientProcessor3,
+                                                                  clientProcessor4,
+                                                                  clientProcessor5);
+    private final List<Object> publishedInternalEvents = new LinkedList<>();
+    private final EventProcessorStatusRefresh testSubject = new EventProcessorStatusRefresh(timeout,
+                                                                                            clientProcessors::iterator,
+                                                                                            publishedInternalEvents::add);
 
     @Before
     public void setUp() throws Exception {
