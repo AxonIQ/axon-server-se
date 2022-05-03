@@ -13,6 +13,7 @@ import io.axoniq.axonserver.filestorage.FileStoreEntry;
 import org.springframework.data.util.CloseableIterator;
 
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -26,6 +27,7 @@ public class MultiSegmentIterator implements CloseableIterator<FileStoreEntry> {
     private final Function<Long, CloseableIterator<FileStoreEntry>> iteratorProvider;
     private final AtomicLong nextIndex = new AtomicLong();
     private final Supplier<Long> lastIndexProvider;
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     private volatile CloseableIterator<FileStoreEntry> iterator;
 
@@ -41,6 +43,9 @@ public class MultiSegmentIterator implements CloseableIterator<FileStoreEntry> {
 
     @Override
     public boolean hasNext() {
+        if (closed.get()) {
+            throw new IllegalStateException("Iterator already closed");
+        }
         return nextIndex.get() <= lastIndexProvider.get();
     }
 
@@ -60,6 +65,7 @@ public class MultiSegmentIterator implements CloseableIterator<FileStoreEntry> {
     @Override
     public void close() {
         if (iterator != null) {
+            closed.set(true);
             iterator.close();
         }
     }

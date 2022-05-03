@@ -3,22 +3,30 @@ package io.axoniq.axonserver.filestorage.impl;
 import io.axoniq.axonserver.filestorage.FileStoreEntry;
 import org.junit.*;
 import org.junit.rules.*;
+import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.annotation.NonNull;
+import reactor.util.annotation.NonNullApi;
 
 import java.io.File;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
- * @since
  */
 public class BaseAppendOnlyFileStoreTest {
     @ClassRule
@@ -27,21 +35,21 @@ public class BaseAppendOnlyFileStoreTest {
     private BaseAppendOnlyFileStore baseFileStore;
     private final StorageProperties storageProperties = new StorageProperties();
 
-
     @Before
     public void setUp() throws Exception {
         storageProperties.setStorage(tempFolder.newFolder(UUID.randomUUID().toString()));
-        System.out.println(storageProperties.getStorage());
+        storageProperties.setSegmentSize(2_000);
         baseFileStore = new BaseAppendOnlyFileStore(storageProperties, "test");
-        baseFileStore.open(false);
+        baseFileStore.open(false).block();
     }
 
     @After
     public void tearDown()  {
-        for (File file : storageProperties.getStorage().listFiles()) {
-            System.out.printf("%s: size = %d%n", file.getName(), file.length());
+        try {
+            baseFileStore.delete();
+        } catch (Exception ignored) {
+
         }
-        baseFileStore.close();
     }
 
     @Test
@@ -98,20 +106,16 @@ public class BaseAppendOnlyFileStoreTest {
         assertEquals(0, index.longValue());
         index = append("six", 2);
         assertEquals(5, index.longValue());
-//        try (CloseableIterator<FileStoreEntry> it = baseFileStore.iterator(0)) {
-//            while( it.hasNext()) {
-//                System.out.println(it.next());
-//            }
-//        }
-        baseFileStore.close();
+        baseFileStore.close().block();
         baseFileStore = new BaseAppendOnlyFileStore(storageProperties, "test");
-        baseFileStore.open(false);
+        baseFileStore.open(false).block();
         try (CloseableIterator<FileStoreEntry> it = baseFileStore.iterator(0)) {
             while( it.hasNext()) {
                 System.out.println(it.next());
             }
         }
         FileStoreEntry entry = baseFileStore.read(0).block();
+        assertNotNull(entry);
         assertEquals("one", new String(entry.bytes()));
     }
 
@@ -151,11 +155,86 @@ public class BaseAppendOnlyFileStoreTest {
     }
 
     @Test
+    public void reset() {
+        append("First entry", 9);
+        append("Second entry", 0);
+        append("Third entry", 0);
+        baseFileStore.reset(0L).block();
+        List<FileStoreEntry> entries = baseFileStore.stream(0).collect(Collectors.toList()).block();
+        assertNotNull(entries);
+        assertEquals(1, entries.size());
+    }
+
+    @Test
+    public void resetCancelsStreams() throws InterruptedException {
+        append("First entry", 9);
+        append("Second entry", 0);
+        append("Third entry", 0);
+        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+        baseFileStore.stream(0)
+                     .subscribeOn(Schedulers.boundedElastic())
+                     .subscribe(new BaseSubscriber<FileStoreEntry>() {
+            Subscription subscription;
+            @Override
+            protected void hookOnSubscribe(@NonNull Subscription subscription) {
+                this.subscription = subscription;
+                subscription.request(1);
+            }
+
+            @Override
+            protected void hookOnNext(@NonNull FileStoreEntry value) {
+                try {
+                    Thread.sleep(1_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                subscription.request(1);
+            }
+
+            @Override
+            protected void hookOnError(@NonNull Throwable throwable) {
+                completableFuture.completeExceptionally(throwable);
+            }
+
+            @Override
+            protected void hookOnComplete() {
+                completableFuture.complete(null);
+            }
+        });
+        baseFileStore.reset(0L).block();
+        try {
+            completableFuture.get(5, TimeUnit.SECONDS);
+            fail("Unexpected complete");
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+            assertEquals(IllegalStateException.class, e.getCause().getClass());
+        } catch (TimeoutException e) {
+            fail("Unexpected timeout");
+        }
+    }
+
+    @Test
+    public void resetMultipleSegments() {
+        for (int i = 0; i < 1000; i++) {
+            append("An entry" + i, 9);
+        }
+
+        baseFileStore.reset(11L).block();
+        List<FileStoreEntry> entries = baseFileStore.stream(0)
+                                                    .collect(Collectors.toList())
+                                                    .block();
+        assertNotNull(entries);
+        assertEquals(12, entries.size());
+    }
+
+    @Test
     public void stream() {
         append("First entry", 9);
         append("Second entry", 0);
         append("Third entry", 0);
-        List<FileStoreEntry> entries = baseFileStore.stream(1).collect(Collectors.toList()).block(Duration.ofSeconds(1));
+        List<FileStoreEntry> entries = baseFileStore.stream(1)
+                                                    .collect(Collectors.toList())
+                                                    .block(Duration.ofSeconds(1));
         assertNotNull(entries);
         assertEquals(2, entries.size());
     }

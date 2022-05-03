@@ -27,10 +27,13 @@ public interface AppendOnlyFileStore {
      */
     Mono<Long> append(Flux<FileStoreEntry> entriesPublisher);
 
-    default Mono<Void> reset(long sequence) {
-        //TODO
-        return Mono.empty();
-    }
+    /**
+     * Resets the file store to have {@code sequence} as the last entry.
+     * @todo Any open streams will be forcefully closed.
+     * @param sequence the last entry to keep in the file store
+     * @return mono when the reset is completed
+     */
+    Mono<Void> reset(long sequence);
 
     /**
      * Reads a single entry from the store.

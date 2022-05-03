@@ -7,5 +7,9 @@ package io.axoniq.axonserver.filestorage.impl;
 public enum FileStoreErrorCode {
     VALIDATION_FAILED,
     DIRECTORY_CREATION_FAILED,
-    INTERRUPTED, DATAFILE_READ_ERROR, PAYLOAD_TOO_LARGE, NOT_FOUND;
+    INTERRUPTED,
+    DATAFILE_READ_ERROR,
+    PAYLOAD_TOO_LARGE,
+    NOT_FOUND,
+    RESET_IN_PROGRESS;
 }

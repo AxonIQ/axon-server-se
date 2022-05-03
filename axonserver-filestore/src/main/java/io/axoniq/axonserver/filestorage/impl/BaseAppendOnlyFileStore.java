@@ -6,8 +6,8 @@ import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * @author Marc Gathier
@@ -16,6 +16,8 @@ import java.util.List;
 public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
 
     private final WritableSegment primary;
+    private final Set<CloseableIterator<FileStoreEntry>> activeReaders = new CopyOnWriteArraySet<>();
+    private final ResetLock resetLock = new ResetLock();
 
     public BaseAppendOnlyFileStore(StorageProperties storageProperties, String name) {
         this.primary = new WritableSegment(name,
@@ -25,29 +27,43 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
 
     @Override
     public Mono<Long> append(FileStoreEntry entry) {
-        return Mono.fromCompletionStage(() -> primary.write(entry));
+        return Mono.fromCompletionStage(() -> primary.write(entry))
+                   .doFirst(resetLock::increaseActiveRequests)
+                   .doOnTerminate(resetLock::decreaseActiveRequests);
     }
 
     @Override
     public Mono<Long> append(Flux<FileStoreEntry> entryFlux) {
+        return entryFlux.collectList()
+                        .flatMap(entries -> Mono.fromCompletionStage(primary.write(entries))
+                                                .doFirst(resetLock::increaseActiveRequests)
+                                                .doOnTerminate(resetLock::decreaseActiveRequests));
+    }
+
+    @Override
+    public Mono<Void> reset(long sequence) {
         return Mono.create(sink -> {
-            List<FileStoreEntry> entries = new LinkedList<>();
-            entryFlux.subscribe(entries::add,
-                                sink::error,
-                                () -> primary.write(entries)
-                                             .whenComplete((token, error) -> {
-                                                 if (error != null) {
-                                                     sink.error(error);
-                                                 } else {
-                                                     sink.success(token);
-                                                 }
-                                             }));
+            if (sequence > primary.getLastIndex()) {
+                sink.error(new FileStoreException(FileStoreErrorCode.NOT_FOUND,
+                                                  "Cannot reset to value higher than the last index"));
+            }
+            try {
+                resetLock.startReset();
+                activeReaders.forEach(CloseableIterator::close);
+                activeReaders.clear();
+                primary.reset(sequence);
+                sink.success();
+            } catch (Exception e) {
+                sink.error(e.getCause());
+            } finally {
+                resetLock.stopReset();
+            }
         });
     }
 
     @Override
     public Mono<FileStoreEntry> read(long sequence) {
-        return Mono.create(sink -> {
+        return Mono.<FileStoreEntry>create(sink -> {
             try (CloseableIterator<FileStoreEntry> it = primary.getEntryIterator(sequence)) {
                 if (it.hasNext()) {
                     sink.success(it.next());
@@ -57,19 +73,35 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
             } catch (Exception ex) {
                 sink.error(ex);
             }
-        });
+        }).doFirst(resetLock::increaseActiveRequests).doOnTerminate(resetLock::decreaseActiveRequests);
     }
 
     @Override
     public Flux<FileStoreEntry> stream(long fromSequence) {
+        if (resetLock.resetting()) {
+            throw new FileStoreException(FileStoreErrorCode.RESET_IN_PROGRESS, "Reset in progress");
+        }
         CloseableIterator<FileStoreEntry> entryIterator = primary.getEntryIterator(fromSequence);
-        return Flux.fromIterable(() -> entryIterator).doOnTerminate(entryIterator::close);
+        activeReaders.add(entryIterator);
+        return Flux.fromIterable(() -> entryIterator)
+                   .doOnTerminate(() -> {
+                       activeReaders.remove(entryIterator);
+                       entryIterator.close();
+                   });
     }
 
     @Override
     public Flux<FileStoreEntry> stream(long fromSequence, long toSequence) {
+        if (resetLock.resetting()) {
+            throw new FileStoreException(FileStoreErrorCode.RESET_IN_PROGRESS, "Reset in progress");
+        }
         CloseableIterator<FileStoreEntry> entryIterator = primary.getEntryIterator(fromSequence, toSequence);
-        return Flux.fromIterable(() -> entryIterator).doOnTerminate(entryIterator::close);
+        activeReaders.add(entryIterator);
+        return Flux.fromIterable(() -> entryIterator)
+                   .doOnTerminate(() -> {
+                       activeReaders.remove(entryIterator);
+                       entryIterator.close();
+                   });
     }
 
 
@@ -80,7 +112,7 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
 
     @Override
     public Mono<Void> open(boolean validate) {
-        return Mono.fromRunnable(() -> primary.init(validate));
+        return Mono.<Void>fromRunnable(() -> primary.init(validate)).doOnSuccess(c -> resetLock.clear());
     }
 
     @Override
