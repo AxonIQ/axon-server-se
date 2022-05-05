@@ -14,9 +14,16 @@ import javax.annotation.Nonnull;
 public class EventProcessorIdMessage implements EventProcessorId {
 
     private final EventProcessorIdentifier grpcMessage;
+    private final String context;
 
     public EventProcessorIdMessage(EventProcessorIdentifier grpcMessage) {
         this.grpcMessage = grpcMessage;
+        this.context = "";
+    }
+
+    public EventProcessorIdMessage(EventProcessorIdentifier grpcMessage, String context) {
+        this.grpcMessage = grpcMessage;
+        this.context = context;
     }
 
     @Nonnull
@@ -30,5 +37,11 @@ public class EventProcessorIdMessage implements EventProcessorId {
     @Override
     public String tokenStoreIdentifier() {
         return grpcMessage.getTokenStoreIdentifier();
+    }
+
+    @Nonnull
+    @Override
+    public String context() {
+        return context;
     }
 }

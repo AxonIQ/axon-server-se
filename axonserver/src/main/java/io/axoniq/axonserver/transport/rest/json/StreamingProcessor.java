@@ -16,6 +16,7 @@ import io.axoniq.axonserver.transport.rest.json.warning.DuplicatedTrackers;
 import io.axoniq.axonserver.transport.rest.json.warning.MissingTrackers;
 import io.axoniq.axonserver.transport.rest.json.warning.Warning;
 
+import javax.annotation.Nonnull;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -25,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 
 import static java.lang.Integer.min;
 import static java.util.Arrays.asList;
@@ -39,6 +39,7 @@ import static java.util.Arrays.asList;
 public class StreamingProcessor extends GenericProcessor implements Printable {
 
     private static final String TOKEN_STORE_IDENTIFIER = "tokenStoreIdentifier";
+    private static final String CONTEXT = "context";
     private static final String FREE_THREAD_INSTANCES_COUNT = "freeThreadInstances";
     private static final String ACTIVE_THREADS_COUNT = "activeThreads";
     private static final String CAN_PAUSE_KEY = "canPause";
@@ -66,6 +67,10 @@ public class StreamingProcessor extends GenericProcessor implements Printable {
 
     private String tokenStoreIdentifier() {
         return eventProcessor.id().tokenStoreIdentifier();
+    }
+
+    private String context() {
+        return eventProcessor.id().context();
     }
 
     @Override
@@ -100,6 +105,7 @@ public class StreamingProcessor extends GenericProcessor implements Printable {
         boolean canMerge = anyClientRunning.get() && largestSegmentFactor.get() != 1;
 
         media.with(TOKEN_STORE_IDENTIFIER, tokenStoreIdentifier())
+             .with(CONTEXT, context())
              .withStrings(FREE_THREAD_INSTANCES_COUNT, freeThreadInstances)
              .with(ACTIVE_THREADS_COUNT, activeThreads)
              .with(CAN_PAUSE_KEY, anyClientRunning.get())

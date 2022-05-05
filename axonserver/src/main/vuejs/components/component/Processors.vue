@@ -336,7 +336,7 @@
             },
             balanceLoad() {
                 axios.patch("v1/processors/" + encodeURIComponent(this.loadBalanceProcessor.name) +
-                                    "/loadbalance?context=" + encodeURIComponent(this.context) +
+                                    "/loadbalance?context=" + encodeURIComponent(this.loadBalanceProcessor.context) +
                                     "&strategy=" + encodeURIComponent(this.loadBalanceStrategy) +
                                     "&tokenStoreIdentifier=" + encodeURIComponent(this.loadBalanceProcessor.tokenStoreIdentifier)
                 ).then(response => {
@@ -366,7 +366,7 @@
             changeLoadBalancingStrategy(processor, strategy) {
                 console.log("strategy changed: " + strategy);
                 axios.put("v1/processors/" + encodeURIComponent(processor.name) +
-                                  "/autoloadbalance?context=" + encodeURIComponent(this.context) +
+                                  "/autoloadbalance?context=" + encodeURIComponent(processor.context) +
                                   "&strategy=" + encodeURIComponent(strategy) +
                                   "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                 ).then(
