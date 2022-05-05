@@ -105,11 +105,13 @@ public class CommandDispatcher {
                                      commandHandler,
                                      r -> {
                                          interceptedResponseObserver.accept(r);
-                                         metricRegistry.add(request.getCommand(),
-                                                            request.wrapped().getClientId(),
-                                                            commandHandler.getClientId(),
-                                                            context,
-                                                            System.currentTimeMillis() - start);
+                                         if (commandHandler != null) {
+                                             metricRegistry.add(request.getCommand(),
+                                                                request.wrapped().getClientId(),
+                                                                commandHandler.getClientId(),
+                                                                context,
+                                                                System.currentTimeMillis() - start);
+                                         }
                                      },
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
                                      "No Handler for command: " + interceptedRequest.getCommand()
