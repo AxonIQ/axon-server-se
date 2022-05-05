@@ -217,7 +217,7 @@
         }, methods: {
             showMoveSegment(tracker) {
                 axios.get("v1/processors/" + encodeURIComponent(this.selected.name) +
-                                  "/clients?context=" + this.context +
+                                  "/clients?context=" + this.selected.context +
                                   "&tokenStoreIdentifier=" + encodeURIComponent(this.selected.tokenStoreIdentifier))
                         .then(response => {
                     this.segmentDestinationOptions = response.data
@@ -237,7 +237,7 @@
                                     + "/processors/" + encodeURIComponent(this.selected.name)
                                     + "/segments/" + this.movingSegment.segmentId
                                     + "/move?target=" + encodeURIComponent(this.segmentDestination)
-                                    + "&context=" + this.context
+                                    + "&context=" + this.selected.context
                                     + "&tokenStoreIdentifier=" + encodeURIComponent(this.selected.tokenStoreIdentifier)
                 ).then(
                         response => {
@@ -278,7 +278,7 @@
                 if (confirm("Start processor " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/start?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                     ).then(
                             response => {
@@ -291,7 +291,7 @@
                 if (confirm("Pause processor " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/pause?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)).then(
                             response => {
                                 this.enableStatusLoader(processor);
@@ -303,7 +303,7 @@
                 if (confirm("Split segment for " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/segments/split?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                     ).then(
                             response => {
@@ -316,7 +316,7 @@
                 if (confirm("Merge segment for " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/segments/merge?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                     ).then(
                             response => {
