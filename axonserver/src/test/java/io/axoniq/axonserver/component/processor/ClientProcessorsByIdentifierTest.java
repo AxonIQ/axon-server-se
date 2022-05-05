@@ -4,12 +4,13 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import org.junit.*;
+import org.junit.Test;
 
 import java.util.Iterator;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 /**
  * Unit tests for {@link ClientProcessorsByIdentifier}
@@ -35,13 +36,13 @@ public class ClientProcessorsByIdentifierTest {
     private static final String RED_PROCESSOR = "Red";
     private static final boolean BELONGS_TO_COMPONENT = true;
     private static final boolean DOES_NOT_BELONG_TO_COMPONENT = false;
-    private final EventProcessorIdentifier blue1 = new EventProcessorIdentifier(BLUE_PROCESSOR, TOKEN_STORE_1);
-    private final EventProcessorIdentifier green1 = new EventProcessorIdentifier(GREEN_PROCESSOR, TOKEN_STORE_1);
-    private final EventProcessorIdentifier red1 = new EventProcessorIdentifier(RED_PROCESSOR, TOKEN_STORE_1);
+    private final EventProcessorIdentifier blue1 = new EventProcessorIdentifier(BLUE_PROCESSOR, "context", TOKEN_STORE_1);
+    private final EventProcessorIdentifier green1 = new EventProcessorIdentifier(GREEN_PROCESSOR,"context", TOKEN_STORE_1);
+    private final EventProcessorIdentifier red1 = new EventProcessorIdentifier(RED_PROCESSOR,"context", TOKEN_STORE_1);
 
-    private final EventProcessorIdentifier blue2 = new EventProcessorIdentifier(BLUE_PROCESSOR, TOKEN_STORE_2);
-    private final EventProcessorIdentifier green2 = new EventProcessorIdentifier(GREEN_PROCESSOR, TOKEN_STORE_2);
-    private final EventProcessorIdentifier red2 = new EventProcessorIdentifier(RED_PROCESSOR, TOKEN_STORE_2);
+    private final EventProcessorIdentifier blue2 = new EventProcessorIdentifier(BLUE_PROCESSOR, "context",TOKEN_STORE_2);
+    private final EventProcessorIdentifier green2 = new EventProcessorIdentifier(GREEN_PROCESSOR,"context", TOKEN_STORE_2);
+    private final EventProcessorIdentifier red2 = new EventProcessorIdentifier(RED_PROCESSOR,"context", TOKEN_STORE_2);
 
     private final EventProcessorInfo blue1Info = EventProcessorInfo.newBuilder()
                                                                    .setProcessorName(BLUE_PROCESSOR)

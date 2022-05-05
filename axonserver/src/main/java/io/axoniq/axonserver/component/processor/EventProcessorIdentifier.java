@@ -4,8 +4,8 @@ import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 
-import java.util.Objects;
 import javax.annotation.Nonnull;
+import java.util.Objects;
 
 /**
  * Identifies uniquely an event processor inside a specific context.
@@ -16,20 +16,28 @@ import javax.annotation.Nonnull;
 public final class EventProcessorIdentifier implements EventProcessorId {
 
     private final String name;
-
+    private final String context;
     private final String tokenStoreIdentifier;
 
     public EventProcessorIdentifier(ClientProcessor clientProcessor) {
         this(clientProcessor.eventProcessorInfo().getProcessorName(),
+             clientProcessor.context(),
              clientProcessor.eventProcessorInfo().getTokenStoreIdentifier());
     }
 
     public EventProcessorIdentifier(TrackingEventProcessor eventProcessor) {
-        this(eventProcessor.name(), eventProcessor.tokenStoreIdentifier());
+        this(eventProcessor.name(), eventProcessor.context() ,eventProcessor.tokenStoreIdentifier());
     }
 
     public EventProcessorIdentifier(String name, String tokenStoreIdentifier) {
         this.name = name;
+        this.context = "";
+        this.tokenStoreIdentifier = tokenStoreIdentifier;
+    }
+
+    public EventProcessorIdentifier(String name, String context, String tokenStoreIdentifier) {
+        this.name = name;
+        this.context = context;
         this.tokenStoreIdentifier = tokenStoreIdentifier;
     }
 
@@ -41,6 +49,10 @@ public final class EventProcessorIdentifier implements EventProcessorId {
     @Nonnull
     public String tokenStoreIdentifier() {
         return tokenStoreIdentifier;
+    }
+
+    public String context() {
+        return context;
     }
 
     public boolean equals(EventProcessorId id) {
@@ -71,6 +83,7 @@ public final class EventProcessorIdentifier implements EventProcessorId {
         return "EventProcessorIdentifier{" +
                 "name='" + name + '\'' +
                 ", tokenStoreIdentifier='" + tokenStoreIdentifier + '\'' +
+                ", context='" + context + '\'' +
                 '}';
     }
 }

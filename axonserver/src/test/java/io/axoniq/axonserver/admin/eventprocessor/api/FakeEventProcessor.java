@@ -11,8 +11,8 @@ package io.axoniq.axonserver.admin.eventprocessor.api;
 
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 
-import java.util.List;
 import javax.annotation.Nonnull;
+import java.util.List;
 
 /**
  * Fake implementation of {@link EventProcessor} for test purpose
@@ -31,7 +31,7 @@ public class FakeEventProcessor implements EventProcessor {
                               boolean streaming,
                               String mode,
                               List<EventProcessorInstance> instances) {
-        this(new EventProcessorIdentifier(processorName, tokenStoreIdentifier),
+        this(new EventProcessorIdentifier(processorName, "", tokenStoreIdentifier),
              streaming, mode, instances);
     }
 

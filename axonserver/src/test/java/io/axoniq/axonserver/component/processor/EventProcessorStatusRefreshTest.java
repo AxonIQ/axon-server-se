@@ -5,18 +5,20 @@ import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.topology.Topology;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
+import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Unit tests for {@link EventProcessorStatusRefresh}.
@@ -26,9 +28,9 @@ import static org.junit.Assert.*;
 public class EventProcessorStatusRefreshTest {
 
     private final Duration timeout = Duration.ofMillis(200);
-    private EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA", "");
-    private EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB", "");
-    private EventProcessorIdentifier processorC = new EventProcessorIdentifier("processorC", "");
+    private EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA", "default", "");
+    private EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB", "default","");
+    private EventProcessorIdentifier processorC = new EventProcessorIdentifier("processorC","default", "");
     private ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA", true);
     private ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB", true);
     private ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB", true);

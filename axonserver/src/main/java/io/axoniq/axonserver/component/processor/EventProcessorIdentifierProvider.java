@@ -41,7 +41,7 @@ public class EventProcessorIdentifierProvider {
                     clientProcessor.belongsToContext(context) &&
                     clientProcessor.eventProcessorInfo().getProcessorName().equals(processorName)) {
                 String tokenStoreIdentifier = clientProcessor.eventProcessorInfo().getTokenStoreIdentifier();
-                return new EventProcessorIdentifier(processorName, tokenStoreIdentifier);
+                return new EventProcessorIdentifier(processorName, context, tokenStoreIdentifier);
             }
         }
         throw new IllegalArgumentException("Event processor not found.");

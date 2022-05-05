@@ -38,6 +38,7 @@ public class GenericProcessor implements Printable {
     @Override
     public void printOn(Media media) {
         media.with("name", name())
+             .with("context", eventProcessor.id().context())
              .with("mode", eventProcessor.mode())
              .with("isStreaming", eventProcessor.isStreaming())
              .with("fullName", fullName())

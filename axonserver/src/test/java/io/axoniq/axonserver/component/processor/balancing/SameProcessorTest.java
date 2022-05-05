@@ -4,9 +4,10 @@ import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
 import io.axoniq.axonserver.component.processor.listener.FakeClientProcessor;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
-import org.junit.*;
+import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Unit tests for {@link SameProcessor}
@@ -17,7 +18,7 @@ public class SameProcessorTest {
 
     @Test
     public void testMatch() {
-        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "tokenStore");
+        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "context", "tokenStore");
         SameProcessor testSubject = new SameProcessor("context", id);
         ClientProcessor clientProcessor = new FakeClientProcessor("not-important",
                                                                   false, "context", EventProcessorInfo.newBuilder()
@@ -31,7 +32,7 @@ public class SameProcessorTest {
 
     @Test
     public void testNotMatch() {
-        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "tokenStore");
+        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "context", "tokenStore");
         SameProcessor testSubject = new SameProcessor("context", id);
         ClientProcessor clientProcessor1 = new FakeClientProcessor("not-important",
                                                                    false, "context", EventProcessorInfo.newBuilder()
