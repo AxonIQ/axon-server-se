@@ -57,7 +57,6 @@ public final class EventProcessorIdentifier implements EventProcessorId {
 
     public boolean equals(EventProcessorId id) {
         return Objects.equals(name, id.name()) &&
-             //   Objects.equals(context, id.context()) &&
                 Objects.equals(tokenStoreIdentifier, id.tokenStoreIdentifier());
     }
 
