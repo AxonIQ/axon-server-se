@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.eventstore.transformation.impl;
+package io.axoniq.axonserver.localstorage.transformation;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -23,10 +23,16 @@ import javax.persistence.Table;
 public class EventStoreTransformationProgressJpa {
     @Id
     private String transformationId;
-    private long lastTokenApplied;
-    private boolean completed;
+    private long lastSequenceApplied;
+    private boolean applied;
 
     public EventStoreTransformationProgressJpa() {
+    }
+
+    public EventStoreTransformationProgressJpa(String transformationId, long lastSequenceApplied, boolean applied) {
+        this.transformationId = transformationId;
+        this.lastSequenceApplied = lastSequenceApplied;
+        this.applied = applied;
     }
 
     public String getTransformationId() {
@@ -37,19 +43,19 @@ public class EventStoreTransformationProgressJpa {
         this.transformationId = transformationId;
     }
 
-    public long getLastTokenApplied() {
-        return lastTokenApplied;
+    public long getLastSequenceApplied() {
+        return lastSequenceApplied;
     }
 
-    public void setLastTokenApplied(long lastTokenApplied) {
-        this.lastTokenApplied = lastTokenApplied;
+    public void setLastSequenceApplied(long lastTokenApplied) {
+        this.lastSequenceApplied = lastTokenApplied;
     }
 
-    public boolean isCompleted() {
-        return completed;
+    public boolean isApplied() {
+        return applied;
     }
 
-    public void setCompleted(boolean completed) {
-        this.completed = completed;
+    public void setApplied(boolean completed) {
+        this.applied = completed;
     }
 }

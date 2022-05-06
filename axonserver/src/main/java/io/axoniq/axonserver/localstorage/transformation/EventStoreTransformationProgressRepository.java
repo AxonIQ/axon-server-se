@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.eventstore.transformation.impl;
+package io.axoniq.axonserver.localstorage.transformation;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
