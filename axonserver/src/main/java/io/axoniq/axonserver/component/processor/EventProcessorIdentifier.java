@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
@@ -21,18 +30,12 @@ public final class EventProcessorIdentifier implements EventProcessorId {
 
     public EventProcessorIdentifier(ClientProcessor clientProcessor) {
         this(clientProcessor.eventProcessorInfo().getProcessorName(),
-             clientProcessor.context(),
-             clientProcessor.eventProcessorInfo().getTokenStoreIdentifier());
+             clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(), clientProcessor.context()
+        );
     }
 
     public EventProcessorIdentifier(TrackingEventProcessor eventProcessor) {
-        this(eventProcessor.name(), eventProcessor.context() ,eventProcessor.tokenStoreIdentifier());
-    }
-
-    public EventProcessorIdentifier(String name, String tokenStoreIdentifier) {
-        this.name = name;
-        this.context = "";
-        this.tokenStoreIdentifier = tokenStoreIdentifier;
+        this(eventProcessor.name(), eventProcessor.context(), eventProcessor.tokenStoreIdentifier());
     }
 
     public EventProcessorIdentifier(String name, String context, String tokenStoreIdentifier) {
@@ -51,13 +54,15 @@ public final class EventProcessorIdentifier implements EventProcessorId {
         return tokenStoreIdentifier;
     }
 
+    @Nonnull
     public String context() {
         return context;
     }
 
     public boolean equals(EventProcessorId id) {
         return Objects.equals(name, id.name()) &&
-                Objects.equals(tokenStoreIdentifier, id.tokenStoreIdentifier());
+                Objects.equals(tokenStoreIdentifier, id.tokenStoreIdentifier()) &&
+                Objects.equals(context, id.context());
     }
 
     @Override
@@ -70,6 +75,7 @@ public final class EventProcessorIdentifier implements EventProcessorId {
         }
         EventProcessorIdentifier that = (EventProcessorIdentifier) o;
         return Objects.equals(name, that.name) &&
+                Objects.equals(context, that.context) &&
                 Objects.equals(tokenStoreIdentifier, that.tokenStoreIdentifier);
     }
 
@@ -86,4 +92,5 @@ public final class EventProcessorIdentifier implements EventProcessorId {
                 ", context='" + context + '\'' +
                 '}';
     }
+
 }

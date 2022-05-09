@@ -37,13 +37,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
@@ -109,9 +109,11 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                     "[{}] Request for a list of clients that contains the processor \"{}\" @ \"{}\"",
                     AuditLog.username(authentication.username()), sanitize(processor), sanitize(tokenStoreIdentifier));
         }
-        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor,
+                                                                   identifier.context(), tokenStoreIdentifier
+        );
         return eventProcessors
-                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                .filter(eventProcessor -> match(eventProcessor, id))
                 .map(ClientProcessor::clientId)
                 .distinct();
     }
@@ -161,7 +163,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                       sanitize(identifier.tokenStoreIdentifier()));
                     }
                 })
-                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .filter(eventProcessor -> match(eventProcessor, identifier))
                 .collectList()
                 .flatMap(clients -> Mono.<Result>create(sink -> {
                     if (clients.isEmpty()) {
@@ -209,7 +211,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                       sanitize(identifier.tokenStoreIdentifier()));
                     }
                 })
-                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .filter(eventProcessor -> match(eventProcessor, identifier))
                 .collectList()
                 .flatMap(clients -> Mono.<Result>create(sink -> {
                     if (clients.isEmpty()) {
@@ -249,7 +251,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                       sanitize(tokenStoreIdentifier));
                     }
                 })
-                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .filter(eventProcessor -> match(eventProcessor, identifier))
                 .flatMap(clientProcessor -> Flux.fromIterable(clientProcessor.eventProcessorInfo()
                                                                              .getSegmentStatusList())
                                                 .map(segmentStatus -> new Segment(clientProcessor.clientId(),
@@ -289,7 +291,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                       sanitize(tokenStoreIdentifier));
                     }
                 })
-                .filter(eventProcessor -> new EventProcessorIdentifier(eventProcessor).equals(identifier))
+                .filter(eventProcessor -> match(eventProcessor, identifier))
                 .flatMap(clientProcessor -> Flux.fromIterable(clientProcessor.eventProcessorInfo()
                                                                              .getSegmentStatusList())
                                                 .map(segmentStatus -> new Segment(clientProcessor.clientId(),
@@ -338,7 +340,9 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         String processor = identifier.name();
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
         String requestDescription = "Move " + processor;
-        EventProcessorIdentifier id = new EventProcessorIdentifier(processor, tokenStoreIdentifier);
+        EventProcessorIdentifier id = new EventProcessorIdentifier(processor,
+                                                                   identifier.context(), tokenStoreIdentifier
+        );
         return eventProcessors
                 .doFirst(() -> {
                     if (auditLog.isInfoEnabled()) {
@@ -348,7 +352,7 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                                       sanitize(identifier.tokenStoreIdentifier()));
                     }
                 })
-                .filter(eventProcessor -> id.equals(new EventProcessorIdentifier(eventProcessor)))
+                .filter(eventProcessor -> match(eventProcessor, id))
                 .collectList()
                 .flatMap(clients -> Mono.<Result>create(sink -> {
                     Optional<ClientProcessor> targetEventProcessor = clients.stream()
@@ -424,27 +428,37 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
 
     @Nonnull
     @Override
-    public Mono<Void> loadBalance(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
+    public Mono<Void> loadBalance(@Nonnull EventProcessorId processor, @Nonnull String strategy,
+                                  @Nonnull Authentication authentication) {
         return eventProcessors
-                .filter(eventProcessor -> eventProcessor.eventProcessorInfo().getProcessorName().equals(processor)
-                        && eventProcessor.eventProcessorInfo().getTokenStoreIdentifier().equals(tokenStoreIdentifier))
-                .map(ep -> new TrackingEventProcessor(processor, ep.context(), tokenStoreIdentifier))
-                .flatMap(ep -> Mono.fromRunnable(() -> strategyController.findByName(strategy).balance(ep).perform()).subscribeOn(Schedulers.boundedElastic())).then()
+                .filter(eventProcessor -> match(eventProcessor, processor))
+                .map(ep -> new TrackingEventProcessor(processor.name(), ep.context(), processor.tokenStoreIdentifier()))
+                .flatMap(ep -> Mono.fromRunnable(() -> strategyController.findByName(strategy).balance(ep).perform())
+                                   .subscribeOn(Schedulers.boundedElastic())).then()
                 .doFirst(() -> {
                     if (auditLog.isInfoEnabled()) {
                         auditLog.info("[{}] Request to set load-balancing strategy for processor \"{}\" to \"{}\".",
-                                AuditLog.username(authentication.username()), processor, strategy);
+                                      AuditLog.username(authentication.username()), processor, strategy);
                     }
                 });
     }
 
+    private boolean match(ClientProcessor eventProcessor, EventProcessorId processor) {
+        return eventProcessor.eventProcessorInfo().getProcessorName().equals(processor.name())
+                && eventProcessor.eventProcessorInfo().getTokenStoreIdentifier()
+                                 .equals(processor.tokenStoreIdentifier())
+                && eventProcessor.context().equals(processor.context());
+    }
+
     @Nonnull
     @Override
-    public Mono<Void> setAutoLoadBalanceStrategy(@Nonnull String processor, @Nonnull String tokenStoreIdentifier, @Nonnull String strategy, @Nonnull Authentication authentication) {
+    public Mono<Void> setAutoLoadBalanceStrategy(@Nonnull EventProcessorId processor,
+                                                 @Nonnull String strategy, @Nonnull Authentication authentication) {
         return Mono.error(new UnsupportedOperationException("Auto load balancing is not supported"));
     }
 
     @Override
+    @Nonnull
     public Iterable<LoadBalancingStrategy> getBalancingStrategies(@Nonnull Authentication authentication) {
         auditLog.debug("[{}] Request to list load-balancing strategies.", AuditLog.username(authentication.username()));
         return strategyController.findAll();

@@ -14,6 +14,7 @@ import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
 import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.Component;
+import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.admin.AdminActionResult;
 import io.axoniq.axonserver.grpc.admin.EventProcessor;
@@ -46,6 +47,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     private final EventProcessorAdminService service;
     private final AuthenticationProvider authenticationProvider;
     private final EventProcessorMapping eventProcessorMapping;
+    private ContextProvider contextProvider;
 
     /**
      * Constructor that specify the service to perform the requested operation and the authentication provider.
@@ -55,8 +57,10 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Autowired
     public EventProcessorGrpcController(EventProcessorAdminService service,
-                                        AuthenticationProvider authenticationProvider) {
+                                        AuthenticationProvider authenticationProvider,
+                                        ContextProvider contextProvider) {
         this(service, authenticationProvider, new EventProcessorMapping());
+        this.contextProvider = contextProvider;
     }
 
     public EventProcessorGrpcController(EventProcessorAdminService service,
@@ -76,7 +80,8 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void pauseEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.pause(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+        service.pause(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
+                      new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
@@ -91,7 +96,8 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void startEventProcessor(EventProcessorIdentifier eventProcessorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.start(new EventProcessorIdMessage(eventProcessorId), new GrpcAuthentication(authenticationProvider))
+        service.start(new EventProcessorIdMessage(contextProvider.getContext(), eventProcessorId),
+                      new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
@@ -106,7 +112,8 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void splitEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.split(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+        service.split(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
+                      new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
@@ -121,7 +128,8 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void mergeEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.merge(new EventProcessorIdMessage(processorId), new GrpcAuthentication(authenticationProvider))
+        service.merge(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
+                      new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
@@ -135,7 +143,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void moveEventProcessorSegment(MoveSegment request, StreamObserver<AdminActionResult> responseObserver) {
-        service.move(new EventProcessorIdMessage(request.getEventProcessor()),
+        service.move(new EventProcessorIdMessage(contextProvider.getContext(), request.getEventProcessor()),
                      request.getSegment(),
                      request.getTargetClientId(),
                      new GrpcAuthentication(authenticationProvider))
@@ -179,22 +187,21 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
      */
     @Override
     public void loadBalanceProcessor(LoadBalanceRequest request, StreamObserver<Empty> responseObserver) {
-        service.loadBalance(request.getProcessor().getProcessorName(),
-                        request.getProcessor().getTokenStoreIdentifier(),
-                        request.getStrategy(),
-                        new GrpcAuthentication(authenticationProvider))
-                .subscribe(unused -> {
-                }, onError(responseObserver), responseObserver::onCompleted);
+        service.loadBalance(new EventProcessorIdMessage(contextProvider.getContext(), request.getProcessor()),
+                            request.getStrategy(),
+                            new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {
+               }, onError(responseObserver), responseObserver::onCompleted);
     }
 
     @Override
     public void setAutoLoadBalanceStrategy(LoadBalanceRequest request, StreamObserver<Empty> responseObserver) {
-        service.setAutoLoadBalanceStrategy(request.getProcessor().getProcessorName(),
-                        request.getProcessor().getTokenStoreIdentifier(),
-                        request.getStrategy(),
-                        new GrpcAuthentication(authenticationProvider))
-                .subscribe(unused -> {
-                }, onError(responseObserver), responseObserver::onCompleted);
+        service.setAutoLoadBalanceStrategy(new EventProcessorIdMessage(contextProvider.getContext(),
+                                                                       request.getProcessor()),
+                                           request.getStrategy(),
+                                           new GrpcAuthentication(authenticationProvider))
+               .subscribe(unused -> {
+               }, onError(responseObserver), responseObserver::onCompleted);
     }
 
     @Override

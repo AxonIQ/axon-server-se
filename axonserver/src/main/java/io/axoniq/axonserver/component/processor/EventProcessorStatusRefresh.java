@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
@@ -84,7 +93,7 @@ public class EventProcessorStatusRefresh {
     public CompletableFuture<Void> run(String context, EventProcessorIdentifier processorId) {
         return CompletableFuture.runAsync(() -> {
 
-            ClientProcessorsByIdentifier matchingClients = new ClientProcessorsByIdentifier(all, context, processorId);
+            ClientProcessorsByIdentifier matchingClients = new ClientProcessorsByIdentifier(all, processorId);
             Set<String> clientIds = StreamSupport.stream(matchingClients.spliterator(), false)
                                                  .map(ClientProcessor::clientId)
                                                  .collect(Collectors.toSet());
