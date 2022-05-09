@@ -38,14 +38,14 @@ public class EventProcessorStatusRefreshTest {
 
     private final Duration timeout = Duration.ofMillis(200);
     private final EventProcessorIdentifier processorA = new EventProcessorIdentifier("processorA",
-                                                                                     "",
-                                                                                     Topology.DEFAULT_CONTEXT);
+                                                                                     Topology.DEFAULT_CONTEXT, ""
+    );
     private final EventProcessorIdentifier processorB = new EventProcessorIdentifier("processorB",
-                                                                                     "",
-                                                                                     Topology.DEFAULT_CONTEXT);
+                                                                                     Topology.DEFAULT_CONTEXT, ""
+    );
     private final EventProcessorIdentifier processorC = new EventProcessorIdentifier("processorC",
-                                                                                     "",
-                                                                                     Topology.DEFAULT_CONTEXT);
+                                                                                     Topology.DEFAULT_CONTEXT, ""
+    );
     private final ClientProcessor clientProcessor1 = new FakeClientProcessor("redClient", false, "processorA", true);
     private final ClientProcessor clientProcessor2 = new FakeClientProcessor("redClient", false, "processorB", true);
     private final ClientProcessor clientProcessor3 = new FakeClientProcessor("greenClient", false, "processorB", true);

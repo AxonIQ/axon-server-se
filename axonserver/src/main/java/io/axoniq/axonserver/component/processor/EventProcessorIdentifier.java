@@ -12,7 +12,6 @@ package io.axoniq.axonserver.component.processor;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.component.processor.balancing.TrackingEventProcessor;
 import io.axoniq.axonserver.component.processor.listener.ClientProcessor;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
@@ -29,30 +28,20 @@ public final class EventProcessorIdentifier implements EventProcessorId {
     private final String context;
     private final String tokenStoreIdentifier;
 
-    private final String context;
-
     public EventProcessorIdentifier(ClientProcessor clientProcessor) {
         this(clientProcessor.eventProcessorInfo().getProcessorName(),
-             clientProcessor.context(),
-             clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(),
-             clientProcessor.context());
+             clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(), clientProcessor.context()
+        );
     }
 
     public EventProcessorIdentifier(TrackingEventProcessor eventProcessor) {
-        this(eventProcessor.name(), eventProcessor.context() ,eventProcessor.tokenStoreIdentifier(), eventProcessor.context());
-    }
-
-    public EventProcessorIdentifier(String name, String tokenStoreIdentifier, String context) {
-        this.name = name;
-        this.context = "";
-        this.tokenStoreIdentifier = tokenStoreIdentifier;
+        this(eventProcessor.name(), eventProcessor.context(), eventProcessor.tokenStoreIdentifier());
     }
 
     public EventProcessorIdentifier(String name, String context, String tokenStoreIdentifier) {
         this.name = name;
         this.context = context;
         this.tokenStoreIdentifier = tokenStoreIdentifier;
-        this.context = context;
     }
 
     @Nonnull
@@ -65,6 +54,7 @@ public final class EventProcessorIdentifier implements EventProcessorId {
         return tokenStoreIdentifier;
     }
 
+    @Nonnull
     public String context() {
         return context;
     }
@@ -103,9 +93,4 @@ public final class EventProcessorIdentifier implements EventProcessorId {
                 '}';
     }
 
-    @NotNull
-    @Override
-    public String context() {
-        return context;
-    }
 }

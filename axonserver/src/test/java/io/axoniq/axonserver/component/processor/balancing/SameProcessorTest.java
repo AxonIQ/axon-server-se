@@ -27,7 +27,7 @@ public class SameProcessorTest {
 
     @Test
     public void testMatch() {
-        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "context", "tokenStore", "context");
+        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "context", "tokenStore");
         SameProcessor testSubject = new SameProcessor(id);
         ClientProcessor clientProcessor = new FakeClientProcessor("not-important",
                                                                   false, "context", EventProcessorInfo.newBuilder()
@@ -41,7 +41,7 @@ public class SameProcessorTest {
 
     @Test
     public void testNotMatch() {
-        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "context", "tokenStore", "context");
+        EventProcessorIdentifier id = new EventProcessorIdentifier("processorName", "tokenStore", "context");
         SameProcessor testSubject = new SameProcessor(id);
         ClientProcessor clientProcessor1 = new FakeClientProcessor("not-important",
                                                                    false, "context", EventProcessorInfo.newBuilder()

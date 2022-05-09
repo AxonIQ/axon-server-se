@@ -31,8 +31,8 @@ public class SameProcessor implements Predicate<ClientProcessor> {
      * @param processor the tracking event processor
      */
     public SameProcessor(TrackingEventProcessor processor) {
-        this(new EventProcessorIdentifier(processor.name(), processor.context(), processor.tokenStoreIdentifier(),
-                                          processor.context()));
+        this(new EventProcessorIdentifier(processor.name(), processor.context(), processor.tokenStoreIdentifier()
+        ));
     }
 
     /**
@@ -43,8 +43,8 @@ public class SameProcessor implements Predicate<ClientProcessor> {
     public SameProcessor(ClientProcessor clientProcessor) {
         this(new EventProcessorIdentifier(clientProcessor.eventProcessorInfo().getProcessorName(),
                                           clientProcessor.context(),
-                                                   clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(),
-                                          clientProcessor.context()));
+                                          clientProcessor.eventProcessorInfo().getTokenStoreIdentifier()
+        ));
     }
 
 
@@ -58,8 +58,8 @@ public class SameProcessor implements Predicate<ClientProcessor> {
     }
 
     /**
-     * Checks if the {@link ClientProcessor} belongs to the the correct event processor,
-     * verifying that both context and processor name match.
+     * Checks if the {@link ClientProcessor} belongs to the the correct event processor, verifying that both context and
+     * processor name match.
      *
      * @param processor the {@link ClientProcessor} to be tested
      * @return true if the {@link ClientProcessor} belongs to the the correct event processor, false otherwise.
@@ -67,8 +67,10 @@ public class SameProcessor implements Predicate<ClientProcessor> {
     @Override
     public boolean test(ClientProcessor processor) {
         EventProcessorInfo i = processor.eventProcessorInfo();
-        EventProcessorIdentifier id = new EventProcessorIdentifier(i.getProcessorName(), context, i.getTokenStoreIdentifier(),
-                                                                   processor.context());
+        EventProcessorIdentifier id = new EventProcessorIdentifier(i.getProcessorName(),
+                                                                   processor.context(),
+                                                                   i.getTokenStoreIdentifier()
+        );
         return id.equals(eventProcessorIdentifier);
     }
 }

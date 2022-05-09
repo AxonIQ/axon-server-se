@@ -32,7 +32,7 @@ public class FakeEventProcessor implements EventProcessor {
                               boolean streaming,
                               String mode,
                               List<EventProcessorInstance> instances) {
-        this(new EventProcessorIdentifier(processorName, "", tokenStoreIdentifier, Topology.DEFAULT_CONTEXT),
+        this(new EventProcessorIdentifier(processorName, Topology.DEFAULT_CONTEXT, tokenStoreIdentifier),
              streaming, mode, instances);
     }
 

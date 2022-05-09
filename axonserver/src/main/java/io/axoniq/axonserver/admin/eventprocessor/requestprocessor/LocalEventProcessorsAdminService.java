@@ -110,8 +110,8 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
                     AuditLog.username(authentication.username()), sanitize(processor), sanitize(tokenStoreIdentifier));
         }
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor,
-                                                                   tokenStoreIdentifier,
-                                                                   identifier.context());
+                                                                   identifier.context(), tokenStoreIdentifier
+        );
         return eventProcessors
                 .filter(eventProcessor -> match(eventProcessor, id))
                 .map(ClientProcessor::clientId)
@@ -341,8 +341,8 @@ public class LocalEventProcessorsAdminService implements EventProcessorAdminServ
         String tokenStoreIdentifier = identifier.tokenStoreIdentifier();
         String requestDescription = "Move " + processor;
         EventProcessorIdentifier id = new EventProcessorIdentifier(processor,
-                                                                   tokenStoreIdentifier,
-                                                                   identifier.context());
+                                                                   identifier.context(), tokenStoreIdentifier
+        );
         return eventProcessors
                 .doFirst(() -> {
                     if (auditLog.isInfoEnabled()) {

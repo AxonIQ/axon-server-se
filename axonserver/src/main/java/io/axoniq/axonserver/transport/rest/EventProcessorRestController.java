@@ -73,7 +73,7 @@ public class EventProcessorRestController {
                                                     @RequestParam("context") String context,
                                                     @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                                     @Parameter(hidden = true) final Principal principal) {
-        return service.pause(new EventProcessorIdentifier(processor, tokenStoreIdentifier, context),
+        return service.pause(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .map(result -> response(result, format("processor %s paused", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
@@ -84,7 +84,7 @@ public class EventProcessorRestController {
                                                     @RequestParam("context") String context,
                                                     @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                                     @Parameter(hidden = true) final Principal principal) {
-        return service.start(new EventProcessorIdentifier(processor, tokenStoreIdentifier, context),
+        return service.start(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .map(result -> response(result, format("processor %s started", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
@@ -97,7 +97,7 @@ public class EventProcessorRestController {
                                                           @RequestParam("context") String context,
                                                           @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                                           @Parameter(hidden = true) final Principal principal) {
-        return service.move(new EventProcessorIdentifier(processor, tokenStoreIdentifier, context), segment, target,
+        return service.move(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier), segment, target,
                             new PrincipalAuthentication(principal))
                       .map(result -> response(result, format("processor %s segment %d moved",
                                                              processor,
@@ -116,7 +116,7 @@ public class EventProcessorRestController {
                                                            @RequestParam("context") String context,
                                                            @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                                            @Parameter(hidden = true) final Principal principal) {
-        return service.split(new EventProcessorIdentifier(processor, tokenStoreIdentifier, context),
+        return service.split(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .map(result -> response(result, format("processor %s split", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
@@ -133,7 +133,7 @@ public class EventProcessorRestController {
                                                            @RequestParam("context") String context,
                                                            @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                                            @Parameter(hidden = true) final Principal principal) {
-        return service.merge(new EventProcessorIdentifier(processor, tokenStoreIdentifier, context),
+        return service.merge(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
                              new PrincipalAuthentication(principal))
                       .map(result -> response(result, format("processor %s merged", processor)))
                       .onErrorResume(ResponseEntityFactory::asFailedResponse);
@@ -152,7 +152,7 @@ public class EventProcessorRestController {
                                               @RequestParam("context") String context,
                                               @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
                                               @Parameter(hidden = true) Principal principal) {
-        return service.clientsBy(new EventProcessorIdentifier(processor, tokenStoreIdentifier, context),
+        return service.clientsBy(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
                                  new PrincipalAuthentication(principal));
     }
 

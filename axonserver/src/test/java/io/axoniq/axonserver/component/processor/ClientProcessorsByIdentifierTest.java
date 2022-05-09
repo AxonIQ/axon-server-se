@@ -46,20 +46,16 @@ public class ClientProcessorsByIdentifierTest {
     private static final boolean BELONGS_TO_COMPONENT = true;
     private static final boolean DOES_NOT_BELONG_TO_COMPONENT = false;
     private final EventProcessorIdentifier blue1 = new EventProcessorIdentifier(BLUE_PROCESSOR,
-                                                                               "context", TOKEN_STORE_1,
-                                                                                "context");
+                                                                                "context", TOKEN_STORE_1);
     private final EventProcessorIdentifier green1 = new EventProcessorIdentifier(GREEN_PROCESSOR,
-                                                                                "context", TOKEN_STORE_1,
-                                                                                 "context");
-    private final EventProcessorIdentifier red1 = new EventProcessorIdentifier(RED_PROCESSOR,"context", TOKEN_STORE_1, "context");
+                                                                                 "context", TOKEN_STORE_1);
+    private final EventProcessorIdentifier red1 = new EventProcessorIdentifier(RED_PROCESSOR, "context", TOKEN_STORE_1);
 
     private final EventProcessorIdentifier blue2 = new EventProcessorIdentifier(BLUE_PROCESSOR,
-                                                                                "context",TOKEN_STORE_2,
-                                                                                "context");
+                                                                                "context", TOKEN_STORE_2);
     private final EventProcessorIdentifier green2 = new EventProcessorIdentifier(GREEN_PROCESSOR,
-                                                                                "context", TOKEN_STORE_2,
-                                                                                 "context");
-    private final EventProcessorIdentifier red2 = new EventProcessorIdentifier(RED_PROCESSOR,"context", TOKEN_STORE_2, "context");
+                                                                                 "context", TOKEN_STORE_2);
+    private final EventProcessorIdentifier red2 = new EventProcessorIdentifier(RED_PROCESSOR, "context", TOKEN_STORE_2);
 
     private final EventProcessorInfo blue1Info = EventProcessorInfo.newBuilder()
                                                                    .setProcessorName(BLUE_PROCESSOR)

@@ -61,8 +61,8 @@ public class LoadBalancingRestController {
                                            @RequestParam("strategy") String strategyName,
                                            @Parameter(hidden = true) final Principal principal) {
         return eventProcessorAdminService.loadBalance(new EventProcessorIdentifier(processor,
-                                                                                   tokenStoreIdentifier,
-                                                                                   context),
+                                                                                   context, tokenStoreIdentifier
+                                                      ),
                                                       strategyName,
                                                       new PrincipalAuthentication(principal));
     }

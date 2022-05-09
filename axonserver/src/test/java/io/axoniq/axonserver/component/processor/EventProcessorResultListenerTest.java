@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.component.processor;
 
 import io.axoniq.axonserver.applicationevents.EventProcessorEvents;
-import io.axoniq.axonserver.topology.Topology;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,8 +33,9 @@ public class EventProcessorResultListenerTest {
 
     private final EventProcessorResultListener testSubject =
             new EventProcessorResultListener((context, processor) -> refreshed.add(processor),
-                                             (context, client, processor) -> new EventProcessorIdentifier(processor,context, "",
-                                                                                                          Topology.DEFAULT_CONTEXT));
+                                             (context, client, processor) -> new EventProcessorIdentifier(processor,
+                                                                                                          "",
+                                                                                                          context));
 
     @Before
     public void setUp() throws Exception {
@@ -47,7 +47,7 @@ public class EventProcessorResultListenerTest {
         assertTrue(refreshed.isEmpty());
         testSubject.on(new EventProcessorEvents.SplitSegmentsSucceeded(context, "clientA", "ProcessorA"));
         assertEquals(refreshed,
-                     singletonList(new EventProcessorIdentifier("ProcessorA", context,"", Topology.DEFAULT_CONTEXT)));
+                     singletonList(new EventProcessorIdentifier("ProcessorA", "", context)));
     }
 
     @Test
@@ -55,6 +55,6 @@ public class EventProcessorResultListenerTest {
         assertTrue(refreshed.isEmpty());
         testSubject.on(new EventProcessorEvents.MergeSegmentsSucceeded(context, "clientB", "ProcessorB"));
         assertEquals(refreshed,
-                     singletonList(new EventProcessorIdentifier("ProcessorB", context, "", Topology.DEFAULT_CONTEXT)));
+                     singletonList(new EventProcessorIdentifier("ProcessorB", "", context)));
     }
 }
