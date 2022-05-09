@@ -34,7 +34,7 @@ public class EventProcessorResultListenerTest {
 
     private final EventProcessorResultListener testSubject =
             new EventProcessorResultListener((context, processor) -> refreshed.add(processor),
-                                             (context, client, processor) -> new EventProcessorIdentifier(processor, "",
+                                             (context, client, processor) -> new EventProcessorIdentifier(processor,context, "",
                                                                                                           Topology.DEFAULT_CONTEXT));
 
     @Before
@@ -47,7 +47,7 @@ public class EventProcessorResultListenerTest {
         assertTrue(refreshed.isEmpty());
         testSubject.on(new EventProcessorEvents.SplitSegmentsSucceeded(context, "clientA", "ProcessorA"));
         assertEquals(refreshed,
-                     singletonList(new EventProcessorIdentifier("ProcessorA", "", Topology.DEFAULT_CONTEXT)));
+                     singletonList(new EventProcessorIdentifier("ProcessorA", context,"", Topology.DEFAULT_CONTEXT)));
     }
 
     @Test
@@ -55,6 +55,6 @@ public class EventProcessorResultListenerTest {
         assertTrue(refreshed.isEmpty());
         testSubject.on(new EventProcessorEvents.MergeSegmentsSucceeded(context, "clientB", "ProcessorB"));
         assertEquals(refreshed,
-                     singletonList(new EventProcessorIdentifier("ProcessorB", "", Topology.DEFAULT_CONTEXT)));
+                     singletonList(new EventProcessorIdentifier("ProcessorB", context, "", Topology.DEFAULT_CONTEXT)));
     }
 }

@@ -31,7 +31,7 @@ public class SameProcessor implements Predicate<ClientProcessor> {
      * @param processor the tracking event processor
      */
     public SameProcessor(TrackingEventProcessor processor) {
-        this(new EventProcessorIdentifier(processor.name(), processor.tokenStoreIdentifier(),
+        this(new EventProcessorIdentifier(processor.name(), processor.context(), processor.tokenStoreIdentifier(),
                                           processor.context()));
     }
 
@@ -42,7 +42,8 @@ public class SameProcessor implements Predicate<ClientProcessor> {
      */
     public SameProcessor(ClientProcessor clientProcessor) {
         this(new EventProcessorIdentifier(clientProcessor.eventProcessorInfo().getProcessorName(),
-                                          clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(),
+                                          clientProcessor.context(),
+                                                   clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(),
                                           clientProcessor.context()));
     }
 
@@ -66,7 +67,7 @@ public class SameProcessor implements Predicate<ClientProcessor> {
     @Override
     public boolean test(ClientProcessor processor) {
         EventProcessorInfo i = processor.eventProcessorInfo();
-        EventProcessorIdentifier id = new EventProcessorIdentifier(i.getProcessorName(), i.getTokenStoreIdentifier(),
+        EventProcessorIdentifier id = new EventProcessorIdentifier(i.getProcessorName(), context, i.getTokenStoreIdentifier(),
                                                                    processor.context());
         return id.equals(eventProcessorIdentifier);
     }

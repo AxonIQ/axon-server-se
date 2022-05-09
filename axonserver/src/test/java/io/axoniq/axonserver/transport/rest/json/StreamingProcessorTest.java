@@ -19,11 +19,12 @@ import io.axoniq.axonserver.admin.eventprocessor.api.FakeEvenProcessorInstance;
 import io.axoniq.axonserver.admin.eventprocessor.api.FakeEventProcessor;
 import io.axoniq.axonserver.admin.eventprocessor.api.FakeEventProcessorSegment;
 import io.axoniq.axonserver.serializer.GsonMedia;
-import org.junit.*;
+import org.junit.Test;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test class validating the {@link StreamingProcessor}.
@@ -36,6 +37,7 @@ public class StreamingProcessorTest {
     public void testPrintOnCreatesFullyFledgedJson() {
         String expectedJson =
                 "{\"name\":\"processor name\","
+                        + "\"context\":\"\","
                         + "\"mode\":\"tracking\","
                         + "\"isStreaming\":true,"
                         + "\"fullName\":\"processor name@TokenStoreIdentifier\","
@@ -91,6 +93,8 @@ public class StreamingProcessorTest {
     public void testPrintOnDisableCanMergeIfThereIsOnlyOneSegment() {
         String expectedJson =
                 "{\"name\":\"processor name\","
+                        + "\"context\":\"\","
+                        + "\"mode\":\"\","
                         + "\"mode\":\"tracking\","
                         + "\"isStreaming\":true,"
                         + "\"fullName\":\"processor name@TokenStoreIdentifier\","

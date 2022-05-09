@@ -149,11 +149,10 @@ interface EventProcessorId {
      */
     fun tokenStoreIdentifier(): String
 
-
     /**
-     * Returns context
+     * Returns context of the event processor
      */
-    fun context(): String
+    fun context(): String;
 }
 
 interface EventProcessor {

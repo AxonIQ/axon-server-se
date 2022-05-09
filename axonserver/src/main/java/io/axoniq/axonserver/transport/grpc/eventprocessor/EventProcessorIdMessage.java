@@ -31,6 +31,11 @@ public class EventProcessorIdMessage implements EventProcessorId {
         this.grpcMessage = grpcMessage;
     }
 
+    public EventProcessorIdMessage(EventProcessorIdentifier grpcMessage, String context) {
+        this.grpcMessage = grpcMessage;
+        this.context = context;
+    }
+
     @Nonnull
     @Override
     public String name() {
@@ -44,7 +49,7 @@ public class EventProcessorIdMessage implements EventProcessorId {
         return grpcMessage.getTokenStoreIdentifier();
     }
 
-    @NotNull
+    @Nonnull
     @Override
     public String context() {
         return context;

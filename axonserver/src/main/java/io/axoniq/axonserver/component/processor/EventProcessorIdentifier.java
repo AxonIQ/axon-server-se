@@ -26,23 +26,31 @@ import java.util.Objects;
 public final class EventProcessorIdentifier implements EventProcessorId {
 
     private final String name;
-
+    private final String context;
     private final String tokenStoreIdentifier;
 
     private final String context;
 
     public EventProcessorIdentifier(ClientProcessor clientProcessor) {
         this(clientProcessor.eventProcessorInfo().getProcessorName(),
+             clientProcessor.context(),
              clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(),
              clientProcessor.context());
     }
 
     public EventProcessorIdentifier(TrackingEventProcessor eventProcessor) {
-        this(eventProcessor.name(), eventProcessor.tokenStoreIdentifier(), eventProcessor.context());
+        this(eventProcessor.name(), eventProcessor.context() ,eventProcessor.tokenStoreIdentifier(), eventProcessor.context());
     }
 
     public EventProcessorIdentifier(String name, String tokenStoreIdentifier, String context) {
         this.name = name;
+        this.context = "";
+        this.tokenStoreIdentifier = tokenStoreIdentifier;
+    }
+
+    public EventProcessorIdentifier(String name, String context, String tokenStoreIdentifier) {
+        this.name = name;
+        this.context = context;
         this.tokenStoreIdentifier = tokenStoreIdentifier;
         this.context = context;
     }
@@ -55,6 +63,10 @@ public final class EventProcessorIdentifier implements EventProcessorId {
     @Nonnull
     public String tokenStoreIdentifier() {
         return tokenStoreIdentifier;
+    }
+
+    public String context() {
+        return context;
     }
 
     public boolean equals(EventProcessorId id) {
@@ -87,6 +99,7 @@ public final class EventProcessorIdentifier implements EventProcessorId {
         return "EventProcessorIdentifier{" +
                 "name='" + name + '\'' +
                 ", tokenStoreIdentifier='" + tokenStoreIdentifier + '\'' +
+                ", context='" + context + '\'' +
                 '}';
     }
 
