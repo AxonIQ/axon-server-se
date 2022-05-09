@@ -30,7 +30,8 @@ public final class EventProcessorIdentifier implements EventProcessorId {
 
     public EventProcessorIdentifier(ClientProcessor clientProcessor) {
         this(clientProcessor.eventProcessorInfo().getProcessorName(),
-             clientProcessor.eventProcessorInfo().getTokenStoreIdentifier(), clientProcessor.context()
+             clientProcessor.context(),
+             clientProcessor.eventProcessorInfo().getTokenStoreIdentifier()
         );
     }
 
@@ -92,5 +93,4 @@ public final class EventProcessorIdentifier implements EventProcessorId {
                 ", context='" + context + '\'' +
                 '}';
     }
-
 }
