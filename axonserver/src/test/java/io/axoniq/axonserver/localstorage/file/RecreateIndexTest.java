@@ -74,7 +74,7 @@ public class RecreateIndexTest {
     public void recreateIndex() {
         testSubject.init(true);
 
-        List<String> files = testSubject.getBackupFilenames(-1).collect(Collectors.toList());
+        List<String> files = testSubject.getBackupFilenames(-1, false).collect(Collectors.toList());
         assertEquals(6, files.size());
 
         AtomicInteger events = new AtomicInteger();

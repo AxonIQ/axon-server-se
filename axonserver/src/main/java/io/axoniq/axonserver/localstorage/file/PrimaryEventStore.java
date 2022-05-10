@@ -50,6 +50,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
+
 /**
  * Manages the writable segments of the event store. Once the segment is completed this class hands the segment over
  * to the next segment based event store.
@@ -316,11 +318,24 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        return next != null ? next.getBackupFilenames(lastSegmentBackedUp) : Stream.empty();
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive) {
+        if (includeActive) {
+            Stream<String> filenames = getSegments().stream()
+                                                                  .map(s -> name(storageProperties.dataFile(context, s)));
+            return next != null ?
+                    Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, includeActive)) :
+                    filenames;
+
+        }
+        return next != null ? next.getBackupFilenames(lastSegmentBackedUp, includeActive) : Stream.empty();
     }
 
     @Override
+    public long getFirstCompletedSegment() {
+         return next == null ? -1 : next.getFirstCompletedSegment();
+    }
+
+        @Override
     public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
 
         return new CloseableIterator<SerializedEventWithToken>() {

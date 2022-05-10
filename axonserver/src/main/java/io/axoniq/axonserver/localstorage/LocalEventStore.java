@@ -831,14 +831,15 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotWriteStorage.waitingTransactions();
     }
 
-    public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp) {
+    public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp,
+                                             boolean includeActive) {
         try {
             Workers workers = workers(context);
             if (eventType == EventType.SNAPSHOT) {
-                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp);
+                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
             }
 
-            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp);
+            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
         } catch (Exception ex) {
             logger.warn("Failed to get backup filenames", ex);
         }
@@ -860,6 +861,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public boolean activeContext(String context) {
         return workersMap.containsKey(context) && workersMap.get(context).initialized;
+    }
+
+    public long getFirstCompletedSegment(String context, EventType type) {
+        if( EventType.EVENT.equals(type)) {
+            return workers(context).eventStorageEngine.getFirstCompletedSegment();
+        }
+        return workers(context).snapshotStorageEngine.getFirstCompletedSegment();
     }
 
     private class Workers {
