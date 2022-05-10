@@ -36,41 +36,48 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     private final Logger auditLog;
     private final TransformationApplyTask transformationApplyTask;
     private final TransformationRollBackTask transformationRollBackTask;
+    private final TransformationCancelTask transformationCancelTask;
 
     @Override
     public void init() {
         transformationApplyTask.start();
         transformationRollBackTask.start();
+        transformationCancelTask.start();
     }
 
     @Override
     public void destroy() {
         transformationApplyTask.stop();
         transformationRollBackTask.stop();
+        transformationCancelTask.stop();
     }
 
     public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
                                                   TransformationRollBackTask transformationRollBackTask,
-                                                  TransformationApplyTask transformationApplyTask) {
+                                                  TransformationApplyTask transformationApplyTask,
+                                                  TransformationCancelTask transformationCancelTask) {
         this(transformers,
              transformations,
              LoggerFactory.getLogger("AUDIT." + DefaultEventStoreTransformationService.class.getName()),
-             transformationApplyTask, transformationRollBackTask);
+             transformationApplyTask, transformationRollBackTask, transformationCancelTask);
     }
 
     public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
                                                   Logger auditLog,
                                                   TransformationApplyTask transformationApplyTask,
-                                                  TransformationRollBackTask transformationRollBackTask) {
+                                                  TransformationRollBackTask transformationRollBackTask,
+                                                  TransformationCancelTask transformationCancelTask) {
         this.transformers = transformers;
         this.transformations = transformations;
         this.auditLog = auditLog;
         this.transformationApplyTask = transformationApplyTask;
         this.transformationRollBackTask = transformationRollBackTask;
+        this.transformationCancelTask = transformationCancelTask;
     }
 
     @Override
-    public Flux<Transformation> transformations() {
+    public Flux<Transformation> transformations(@Nonnull Authentication authentication) {
+        auditLog.info("{}: Request to list transformations", username(authentication.username()));
         return transformations.allTransformations();
     }
 
@@ -81,7 +88,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                       username(authentication.username()),
                       sanitize(context),
                       sanitize(description));
-        return transformerFor(context).start(description);
+        return transformerFor(context).flatMap(transformer -> transformer.start(description));
     }
 
     @Override
@@ -91,7 +98,9 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                        username(authentication.username()),
                        sanitize(context),
                        token);
-        return transformerFor(context).deleteEvent(transformationId, token, sequence);
+        return transformerFor(context).flatMap(transformer -> transformer.deleteEvent(transformationId,
+                                                                                      token,
+                                                                                      sequence));
     }
 
     @Override
@@ -101,16 +110,19 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                        username(authentication.username()),
                        sanitize(context),
                        token);
-        return transformerFor(context).replaceEvent(transformationId, token, event, sequence);
+        return transformerFor(context).flatMap(transformer -> transformer.replaceEvent(transformationId,
+                                                                                       token,
+                                                                                       event,
+                                                                                       sequence));
     }
 
     @Override
-    public Mono<Void> cancel(String context, String id, @Nonnull Authentication authentication) {
+    public Mono<Void> startCancelling(String context, String id, @Nonnull Authentication authentication) {
         auditLog.info("{}@{}: Request to cancel transformation {}",
                       username(authentication.username()),
                       sanitize(context),
                       sanitize(id));
-        return transformerFor(context).cancel(id);
+        return transformerFor(context).flatMap(transformer -> transformer.startCancelling(id));
     }
 
     @Override
@@ -120,7 +132,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                       username(authentication.username()),
                       sanitize(context),
                       sanitize(transformationId));
-        return transformerFor(context).startApplying(transformationId, sequence);
+        return transformerFor(context).flatMap(transformer -> transformer.startApplying(transformationId, sequence));
     }
 
     @Override
@@ -129,7 +141,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
                       username(authentication.username()),
                       sanitize(context),
                       sanitize(id));
-        return transformerFor(context).startRollingBack(id);
+        return transformerFor(context).flatMap(transformer -> transformer.startRollingBack(id));
     }
 
     @Override
@@ -137,10 +149,10 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
         auditLog.info("{}@{}: Request to delete old events.",
                       username(authentication.username()),
                       sanitize(context));
-        return transformerFor(context).deleteOldVersions();
+        return transformerFor(context).flatMap(ContextTransformer::deleteOldVersions);
     }
 
-    private ContextTransformer transformerFor(String context) {
+    private Mono<ContextTransformer> transformerFor(String context) {
         return transformers.transformerFor(context);
     }
 }

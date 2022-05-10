@@ -1,30 +1,24 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
-import reactor.core.publisher.Flux;
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.ROLLING_BACK;
-
 public class DefaultTransformationRollBackTask implements TransformationRollBackTask {
 
-    private final String context;
     private final TransformationRollbackExecutor rollbackExecutor;
-    private final ContextTransformationStore contextTransformationStore;
-    private final Flux<TransformationState> currentTransformations;
+    private final Transformations transformations;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     private final Transformers transformers;
 
-    public DefaultTransformationRollBackTask(String context,
-                                             TransformationRollbackExecutor rollbackExecutor,
-                                             ContextTransformationStore contextTransformationStore,
+    public DefaultTransformationRollBackTask(TransformationRollbackExecutor rollbackExecutor,
+                                             Transformations transformations,
                                              Transformers transformers) {
-        this.context = context;
         this.rollbackExecutor = rollbackExecutor;
-        this.contextTransformationStore = contextTransformationStore;
+        this.transformations = transformations;
         this.transformers = transformers;
     }
 
@@ -39,25 +33,21 @@ public class DefaultTransformationRollBackTask implements TransformationRollBack
     }
 
     private void rollback() {
-        currentTransformations
-                                  .filter(transformation -> transformation.status().equals(ROLLING_BACK))
-                                  .map(transformation -> rollbackExecutor.rollback(new Transformation(context,
-                                                                                                      transformation,
-                                                                                                      transformers)))
-                                  .doFinally(s -> scheduledExecutorService.schedule(this::rollback,
-                                                                                    10,
-                                                                                    TimeUnit.SECONDS))
-                                  .subscribe(/*TODO logger*/);
+        transformations.rollingBackTransformations()
+                       .map(transformation -> rollbackExecutor.rollback(new Transformation(transformation,
+                                                                                           transformers)))
+                       .doFinally(s -> scheduledExecutorService.schedule(this::rollback,
+                                                                         10,
+                                                                         TimeUnit.SECONDS))
+                       .subscribe(/*TODO logger*/);
     }
 
     static class Transformation implements TransformationRollbackExecutor.Transformation {
 
-        private final TransformationState state;
-        private final String context;
+        private final EventStoreTransformationService.Transformation state;
         private final Transformers transformers;
 
-        Transformation(String context, TransformationState state, Transformers transformers) {
-            this.context = context;
+        Transformation(EventStoreTransformationService.Transformation state, Transformers transformers) {
             this.state = state;
             this.transformers = transformers;
         }
@@ -69,13 +59,13 @@ public class DefaultTransformationRollBackTask implements TransformationRollBack
 
         @Override
         public String context() {
-            return context;
+            return state.context();
         }
 
         @Override
-        public Mono<Void> markRolledback() {
+        public Mono<Void> markRolledBack() {
             return transformers.transformerFor(context())
-                               .markRolledBack(id());
+                               .flatMap(transformer -> transformer.markRolledBack(id()));
         }
 
         @Override
@@ -87,7 +77,7 @@ public class DefaultTransformationRollBackTask implements TransformationRollBack
         public String toString() {
             return "ApplierTransformation{" +
                     "state=" + state +
-                    ", context='" + context + '\'' +
+                    ", context='" + context() + '\'' +
                     '}';
         }
     }

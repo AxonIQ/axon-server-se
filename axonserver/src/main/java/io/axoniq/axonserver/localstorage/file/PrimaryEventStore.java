@@ -314,23 +314,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public Flux<TransformationProgress> transformContents(int version, Flux<EventWithToken> transformedEvents) {
-
-        if (readBuffers.lastKey() > lastToken) {
-            // all transformations in segments that are already closed or about to be closed
-            if (readBuffers.firstKey() <= lastToken) {
-                // event store is closing a completed segment, wait until it is completed
-                waitForPendingFileCompletions();
-            }
-        } else {
-            forceNextSegment();
-        }
-        if (next != null) {
-            next.transformContents(version, transformedEvents);
-        }
-    }
-
-    @Override
     protected Integer currentSegmentVersion(Long segment) {
         return 0;
     }

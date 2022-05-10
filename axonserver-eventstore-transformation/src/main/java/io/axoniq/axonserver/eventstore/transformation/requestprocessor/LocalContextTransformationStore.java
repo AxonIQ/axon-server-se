@@ -65,7 +65,6 @@ public class LocalContextTransformationStore implements ContextTransformationSto
         jpa.setVersion(state.version());
         state.applied()
              .ifPresent(applied -> {
-                 jpa.setKeepingOldVersions(applied.keepingOldVersion());
                  jpa.setAppliedBy(applied.by());
                  jpa.setDateApplied(Date.from(applied.at()));
              });

@@ -53,15 +53,15 @@ public interface EventStoreTransformationService {
 
     void destroy();
 
-    Flux<Transformation> transformations();
+    Flux<Transformation> transformations(@Nonnull Authentication authentication);
 
-    default Mono<Transformation> transformationById(String id) {
-        return transformations().filter(transformation -> id.equals(transformation.id()))
-                                .next();
+    default Mono<Transformation> transformationById(String id, @Nonnull Authentication authentication) {
+        return transformations(authentication).filter(transformation -> id.equals(transformation.id()))
+                                              .next();
     }
 
-    default Flux<Transformation> transformationByContext(String context) {
-        return transformations().filter(transformation -> context.equals(transformation.context()));
+    default Flux<Transformation> transformationByContext(String context, @Nonnull Authentication authentication) {
+        return transformations(authentication).filter(transformation -> context.equals(transformation.context()));
     }
 
     /**
@@ -81,8 +81,8 @@ public interface EventStoreTransformationService {
      * @param context          the name of the context
      * @param transformationId the identification of the transformation
      * @param token            the token (global position) of the event to delete
-     * @param sequence         the sequence of the transformation request used to validate the request chain,
-     *                         -1 if it is the first one
+     * @param sequence         the sequence of the transformation request used to validate the request chain, -1 if it
+     *                         is the first one
      * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the delete event action is registered
      */
@@ -114,7 +114,7 @@ public interface EventStoreTransformationService {
      * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the transformation is cancelled
      */
-    Mono<Void> cancel(String context, String transformationId, @Nonnull Authentication authentication);
+    Mono<Void> startCancelling(String context, String transformationId, @Nonnull Authentication authentication);
 
     /**
      * Starts the apply process. The process runs in the background.
@@ -139,11 +139,11 @@ public interface EventStoreTransformationService {
     Mono<Void> startRollingBack(String context, String transformationId, @Nonnull Authentication authentication);
 
     /**
-     * Deletes old versions of segments updated by a transformation (if the transformation was applied with the {@code
-     * keepOldVersions} option)
+     * Deletes old versions of segments updated by a transformation (if the transformation was applied with the
+     * {@code keepOldVersions} option)
      *
-     * @param context          the name of the context
-     * @param authentication   authentication of the user/application requesting the service
+     * @param context        the name of the context
+     * @param authentication authentication of the user/application requesting the service
      * @return a mono that is completed when the operation is completed successfully
      */
     Mono<Void> deleteOldVersions(String context, @Nonnull Authentication authentication);

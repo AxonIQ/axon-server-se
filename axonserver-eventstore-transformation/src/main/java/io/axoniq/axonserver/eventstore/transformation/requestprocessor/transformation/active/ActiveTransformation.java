@@ -6,8 +6,7 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transform
 import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;
 
-import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.APPLYING;
-import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.CANCELLED;
+import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.*;
 
 
 public class ActiveTransformation implements Transformation {
@@ -33,7 +32,12 @@ public class ActiveTransformation implements Transformation {
     }
 
     @Override
-    public Mono<TransformationState> cancel() {
+    public Mono<TransformationState> startCancelling() {
+        return Mono.fromSupplier(() -> state.withStatus(CANCELLING));
+    }
+
+    @Override
+    public Mono<TransformationState> markCancelled() {
         return Mono.fromSupplier(() -> state.withStatus(CANCELLED));
     }
 

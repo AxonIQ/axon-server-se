@@ -11,7 +11,9 @@ public interface ContextTransformer {
 
     Mono<Void> replaceEvent(String transformationId, long token, Event event, long sequence);
 
-    Mono<Void> cancel(String transformationId);
+    Mono<Void> startCancelling(String transformationId);
+
+    Mono<Void> markAsCancelled(String transformationId);
 
     Mono<Void> startApplying(String transformationId, long sequence);
 

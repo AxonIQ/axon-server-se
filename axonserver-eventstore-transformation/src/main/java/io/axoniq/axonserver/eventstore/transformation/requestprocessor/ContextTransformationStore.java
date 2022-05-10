@@ -8,7 +8,5 @@ public interface ContextTransformationStore {
 
     Mono<TransformationState> transformation(String id);
 
-    Mono<TransformationState> current();
-
     Mono<Void> save(TransformationState transformation);
 }

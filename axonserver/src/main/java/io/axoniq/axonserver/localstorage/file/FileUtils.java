@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;

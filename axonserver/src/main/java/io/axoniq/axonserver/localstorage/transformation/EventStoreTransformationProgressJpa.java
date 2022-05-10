@@ -39,23 +39,12 @@ public class EventStoreTransformationProgressJpa {
         return transformationId;
     }
 
-    public void setTransformationId(String transformationId) {
-        this.transformationId = transformationId;
-    }
-
     public long getLastSequenceApplied() {
         return lastSequenceApplied;
-    }
-
-    public void setLastSequenceApplied(long lastTokenApplied) {
-        this.lastSequenceApplied = lastTokenApplied;
     }
 
     public boolean isApplied() {
         return applied;
     }
 
-    public void setApplied(boolean completed) {
-        this.applied = completed;
-    }
 }

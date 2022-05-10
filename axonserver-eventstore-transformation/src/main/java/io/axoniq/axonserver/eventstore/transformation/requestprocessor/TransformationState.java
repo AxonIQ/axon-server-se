@@ -40,7 +40,5 @@ public interface TransformationState {
         String by();
 
         Instant at();
-
-        Boolean keepingOldVersion();
     }
 }

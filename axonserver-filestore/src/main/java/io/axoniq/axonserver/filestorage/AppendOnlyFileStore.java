@@ -73,7 +73,7 @@ public interface AppendOnlyFileStore {
      * Deletes the file store.
      */
     // TODO: 12/30/21 Mono<Void>?
-    void delete();
+    Mono<Void> delete();
 
     /**
      * Open the file store. Initialize a file store if it does not exist.

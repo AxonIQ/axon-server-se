@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService.Transformation;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -55,7 +56,25 @@ class JPATransformation implements Transformation {
 
     @Override
     public Status status() {
-        // TODO: 4/15/22
-        return null;
+        switch (jpaEntity.getStatus()) {
+            case ROLLING_BACK:
+                return Status.ROLLING_BACK;
+            case APPLIED:
+                return Status.APPLIED;
+            case ACTIVE:
+                return Status.ACTIVE;
+            case ROLLED_BACK:
+                return Status.ROLLED_BACK;
+            case APPLYING:
+                return Status.APPLYING;
+            case CANCELLED:
+                return Status.CANCELLED;
+            case FAILED:
+                return Status.FAILED;
+            case CANCELLING:
+                return Status.CANCELLING;
+            default:
+                throw new RuntimeException("Unsupported transformation status");
+        }
     }
 }

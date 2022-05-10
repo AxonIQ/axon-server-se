@@ -10,12 +10,12 @@ import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformati
 
 public class DefaultTransformationApplyTask implements TransformationApplyTask {
 
-    private final TransformationApplier applier;
+    private final TransformationApplyExecutor applier;
     private final Transformers transformers;
     private final Transformations transformations;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    public DefaultTransformationApplyTask(TransformationApplier applier,
+    public DefaultTransformationApplyTask(TransformationApplyExecutor applier,
                                           Transformers transformers, Transformations transformations) {
         this.applier = applier;
         this.transformers = transformers;
@@ -40,7 +40,7 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
                        .subscribe(/* TODO logger*/);
     }
 
-    static class ApplierTransformation implements TransformationApplier.Transformation {
+    static class ApplierTransformation implements TransformationApplyExecutor.Transformation {
 
         private final Transformation state;
         private final Transformers transformers;
@@ -74,7 +74,7 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
         @Override
         public Mono<Void> markAsApplied() {
             return transformers.transformerFor(context())
-                               .markApplied(id());
+                               .flatMap(transformation -> transformation.markApplied(id()));
         }
 
         @Override

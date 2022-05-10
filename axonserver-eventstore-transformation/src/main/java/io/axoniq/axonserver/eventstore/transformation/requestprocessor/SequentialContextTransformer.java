@@ -60,9 +60,16 @@ public class SequentialContextTransformer implements ContextTransformer {
     }
 
     @Override
-    public Mono<Void> cancel(String transformationId) {
-        return perform(transformationId, "CANCEL_TRANSFORMATION", Transformation::cancel).then();
+    public Mono<Void> startCancelling(String transformationId) {
+        return perform(transformationId, "CANCEL_TRANSFORMATION", Transformation::startCancelling).then();
     }
+
+    @Override
+    public Mono<Void> markAsCancelled(String transformationId) {
+        return perform(transformationId,
+                       "MARK_AS_CANCELLED",
+                       Transformation::markCancelled);    }
+
 
     @Override
     public Mono<Void> startApplying(String transformationId, long sequence) {
@@ -126,41 +133,3 @@ public class SequentialContextTransformer implements ContextTransformer {
         });
     }
 }
-
-class RollbackTransformation implements TransformationRollbackExecutor.Transformation {
-
-    private final String context;
-    private final TransformationState state;
-
-    RollbackTransformation(String context, TransformationState state) {
-        this.context = context;
-        this.state = state;
-    }
-
-    @Override
-    public String id() {
-        return state.id();
-    }
-
-    @Override
-    public int version() {
-        return state.version();
-    }
-
-    @Override
-    public String context() {
-        return context;
-    }
-
-    @Override
-    public String toString() {
-        return "RollbackTransformation{" +
-                "context='" + context + '\'' +
-                ", state=" + state +
-                '}';
-    }
-}
-
-
-
-

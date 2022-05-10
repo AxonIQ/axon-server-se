@@ -68,11 +68,6 @@ public class JpaTransformationState implements TransformationState {
             public Instant at() {
                 return entity.getDateApplied().toInstant();
             }
-
-            @Override
-            public Boolean keepingOldVersion() {
-                return entity.isKeepingOldVersions();
-            }
         });
     }
 

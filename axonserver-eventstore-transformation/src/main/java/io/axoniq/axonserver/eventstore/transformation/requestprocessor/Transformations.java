@@ -26,4 +26,8 @@ public interface Transformations {
     default Flux<Transformation> rollingBackTransformations() {
         return allTransformations().filter(t -> ROLLING_BACK.equals(t.status()));
     }
+
+    default Flux<Transformation> cancellingTransformations() {
+        return allTransformations().filter(t -> CANCELLING.equals(t.status()));
+    }
 }

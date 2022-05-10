@@ -2,11 +2,9 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import reactor.core.publisher.Mono;
 
-public interface TransformationApplier {
+public interface TransformationApplyExecutor {
 
     interface Transformation {
-
-
 
         String id();
 
@@ -14,6 +12,11 @@ public interface TransformationApplier {
 
         int version();
 
+        /**
+         * Returns the last sequence contained in the transformation that needs to be applied.
+         *
+         * @return the last sequence contained in the transformation that needs to be applied.
+         */
         long lastSequence();
 
         Mono<Void> markAsApplied();

@@ -31,12 +31,18 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
 
     List<EventStoreTransformationJpa> findAllByStatus(EventStoreTransformationJpa.Status status);
 
-    Optional<EventStoreTransformationJpa> findEventStoreTransformationJpaByContextAndStatus(String context, EventStoreTransformationJpa.Status status);
+    Optional<EventStoreTransformationJpa> findEventStoreTransformationJpaByContextAndStatus(String context,
+                                                                                            EventStoreTransformationJpa.Status status);
 
     default Optional<EventStoreTransformationJpa> findActiveByContext(String context) {
         return findEventStoreTransformationJpaByContextAndStatus(context, EventStoreTransformationJpa.Status.ACTIVE);
     }
 
-    @Query("select max(version) from EventStoreTransformationJpa where context = ?1 and status = EventStoreTransformationJpa.Status.ACTIVE")
-    Optional<Integer> lastAppliedVersion(String context);
+    default Optional<Integer> lastAppliedVersion(String context) {
+        return findByContextAndStatus(context, EventStoreTransformationJpa.Status.APPLIED)
+                .map(EventStoreTransformationJpa::getVersion);
+    }
+
+    Optional<EventStoreTransformationJpa> findByContextAndStatus(String context,
+                                                                 EventStoreTransformationJpa.Status status);
 }

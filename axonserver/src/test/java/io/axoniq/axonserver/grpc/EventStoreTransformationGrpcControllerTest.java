@@ -63,7 +63,17 @@ public class EventStoreTransformationGrpcControllerTest {
             private final Map<String, String> activeTransformations = new HashMap<>();
 
             @Override
-            public Flux<Transformation> transformations() {
+            public void init() {
+                // nothing to init
+            }
+
+            @Override
+            public void destroy() {
+                // nothing to destroy
+            }
+
+            @Override
+            public Flux<Transformation> transformations(@Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Flux.empty();
             }
 
@@ -106,8 +116,8 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Mono<Void> cancel(String context, String id,
-                                     @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
+            public Mono<Void> startCancelling(String context, String id,
+                                              @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.create(sink -> {
                     if (id.equals(activeTransformations.get(context))) {
                         sink.success();

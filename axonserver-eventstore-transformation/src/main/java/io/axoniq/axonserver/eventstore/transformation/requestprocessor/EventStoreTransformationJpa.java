@@ -27,14 +27,6 @@ import javax.persistence.TemporalType;
 @Table(name = "event_store_transformations")
 public class EventStoreTransformationJpa {
 
-    public boolean isKeepingOldVersions() {
-        return keepingOldVersions;
-    }
-
-    public void setKeepingOldVersions(boolean keepOldVersions) {
-        this.keepingOldVersions = keepOldVersions;
-    }
-
     public enum Status {
         ACTIVE,
         CANCELLING,
@@ -52,8 +44,6 @@ public class EventStoreTransformationJpa {
 
     @Enumerated(EnumType.ORDINAL)
     private Status status;
-
-    private boolean keepingOldVersions;
 
     private int version;
 
@@ -83,7 +73,6 @@ public class EventStoreTransformationJpa {
         this.context = original.context;
         this.dateApplied = original.dateApplied;
         this.description = original.description;
-        this.keepingOldVersions = original.keepingOldVersions;
         this.lastSequence = original.lastSequence;
         this.status = original.status;
         this.version = original.version;
@@ -159,7 +148,6 @@ public class EventStoreTransformationJpa {
                 "transformationId='" + transformationId + '\'' +
                 ", context='" + context + '\'' +
                 ", status=" + status +
-                ", keepingOldVersions=" + keepingOldVersions +
                 ", version=" + version +
                 ", description='" + description + '\'' +
                 ", dateApplied=" + dateApplied +

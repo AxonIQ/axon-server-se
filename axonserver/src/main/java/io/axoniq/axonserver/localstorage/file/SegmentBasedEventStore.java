@@ -267,6 +267,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 MAX_SEGMENTS_FOR_SEQUENCE_NUMBER_CHECK : Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
+    @Override
     public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
         return Flux.usingWhen(Mono.empty(),
                               v -> transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
@@ -331,13 +332,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Mono<Void> rollbackSegments(int version) {
+    public Mono<Void> rollback(int version) {
         return Flux.fromIterable(getSegments())
                    .filter(segment -> currentSegmentVersion(segment) == version)
                    .flatMapSequential(segment -> hasPreviousVersion(segment, version).thenReturn(segment))
                    .flatMapSequential(segment -> doesntHaveNextVersion(segment, version).thenReturn(segment))
                    .then(Mono.justOrEmpty(next)
-                             .flatMap(n -> rollbackSegments(version)))
+                             .flatMap(n -> rollback(version)))
                    .thenMany(Flux.fromIterable(getSegments()))
                    .filter(segment -> currentSegmentVersion(segment) == version)
                    .flatMapSequential(segment -> indexManager.rollbackToVersion(segment, version,version - 1).thenReturn(segment))
@@ -399,7 +400,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected abstract void activateSegmentVersion(long segment, int version);
 
-    protected abstract Mono<Void> rollbackSegmentVersion(long segment, int currentVersion, int targetVersion);
+    protected Mono<Void> rollbackSegmentVersion(long segment, int currentVersion, int targetVersion) {
+        return Mono.error(new UnsupportedOperationException());
+    }
 
     protected void scheduleForDeletion(long segment, int version) {
         Executors.newSingleThreadScheduledExecutor().schedule(() -> {

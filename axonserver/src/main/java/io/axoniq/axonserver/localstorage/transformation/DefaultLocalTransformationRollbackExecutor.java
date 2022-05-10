@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.localstorage.transformation;
 
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationRollbackExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -22,11 +21,11 @@ public class DefaultLocalTransformationRollbackExecutor implements LocalTransfor
     @Override
     public Mono<Void> rollback(Transformation transformation) {
         return Mono.fromSupplier(() -> rollingBackTransformations.add(transformation.id()))
-                   .filter(inactive -> inactive)
+                   .filter(inactive -> inactive) // this filter is needed to avoid invoking rollback more than once
                    .switchIfEmpty(Mono.error(new RuntimeException("The rollback operation is already in progress")))
-                   .then(localEventStoreTransformer.rollback(transformation.context(), transformation.version())
-                                                   .doFinally(s -> rollingBackTransformations.remove(transformation.id())))
+                   .then(localEventStoreTransformer.rollback(transformation.context(), transformation.version()))
                    .doOnSuccess(v -> logger.info("Transformation {} rolled back successfully in local store.", transformation))
-                   .doOnError(t -> logger.info("Failed to rollback in the  local store the transformation {}", transformation));
+                   .doOnError(t -> logger.info("Failed to rollback in the  local store the transformation {}", transformation))
+                   .doFinally(s -> rollingBackTransformations.remove(transformation.id()));
     }
 }

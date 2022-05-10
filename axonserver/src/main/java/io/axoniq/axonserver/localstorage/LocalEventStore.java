@@ -1045,7 +1045,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
 
         public Mono<Void> rollbackSegments(int version) {
-            return eventStorageEngine.rollbackSegments(version);
+            return eventStorageEngine.rollback(version);
         }
     }
 

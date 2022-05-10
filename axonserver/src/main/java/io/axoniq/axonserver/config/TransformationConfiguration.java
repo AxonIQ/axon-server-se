@@ -4,32 +4,46 @@ import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformati
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.ApplyCompletedConsumer;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationApplyTask;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationCancelTask;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationEntryStoreSupplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationRollBackTask;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationRepository;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.JpaTransformations;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.RollbackCompletedConsumer;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.SegmentBasedTransformationEntryStore;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationApplier;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationApplyExecutor;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationApplyTask;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationCancelExecutor;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationCancelTask;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStore;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreSupplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationRollBackTask;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationRollbackExecutor;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
-import io.axoniq.axonserver.filestorage.AppendOnlyFileStore;
-import io.axoniq.axonserver.filestorage.impl.BaseAppendOnlyFileStore;
-import io.axoniq.axonserver.filestorage.impl.StorageProperties;
 import io.axoniq.axonserver.localstorage.AutoCloseableEventProvider;
 import io.axoniq.axonserver.localstorage.ContextEventIteratorFactory;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
-import io.axoniq.axonserver.localstorage.transformation.DefaultLocalTransformationApplier;
+import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
+import io.axoniq.axonserver.filestorage.impl.StorageProperties;
+import io.axoniq.axonserver.localstorage.transformation.DefaultLocalTransformationApplyExecutor;
+import io.axoniq.axonserver.localstorage.transformation.DefaultLocalTransformationCancelExecutor;
+import io.axoniq.axonserver.localstorage.transformation.DefaultLocalTransformationRollbackExecutor;
+import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformationProgressRepository;
+import io.axoniq.axonserver.localstorage.transformation.JpaLocalTransformationProgressStore;
 import io.axoniq.axonserver.localstorage.transformation.LocalEventStoreTransformer;
-import io.axoniq.axonserver.localstorage.transformation.LocalTransformationApplier;
+import io.axoniq.axonserver.localstorage.transformation.LocalTransformationApplyExecutor;
+import io.axoniq.axonserver.localstorage.transformation.LocalTransformationCancelExecutor;
 import io.axoniq.axonserver.localstorage.transformation.LocalTransformationProgressStore;
-import io.axoniq.axonserver.localstorage.transformation.StandardTransformationApplier;
+import io.axoniq.axonserver.localstorage.transformation.LocalTransformationRollbackExecutor;
+import io.axoniq.axonserver.localstorage.transformation.StandardTransformationApplyExecutor;
+import io.axoniq.axonserver.localstorage.transformation.StandardTransformationCancelExecutor;
+import io.axoniq.axonserver.localstorage.transformation.StandardTransformationRollbackExecutor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.nio.file.Paths;
 
 @Configuration
 public class TransformationConfiguration {
@@ -44,9 +58,22 @@ public class TransformationConfiguration {
     }
 
     @Bean
+    public TransformationEntryStoreSupplier transformationEntryStoreSupplier(EmbeddedDBProperties embeddedDBProperties) {
+        DefaultTransformationEntryStoreSupplier.StoragePropertiesSupplier storagePropertiesSupplier = context -> {
+            String baseDirectory = embeddedDBProperties.getEvent().getStorage(context);
+            StorageProperties storageProperties = new StorageProperties();
+            storageProperties.setStorage(Paths.get(baseDirectory).toFile());
+            storageProperties.setSuffix(".actions");
+            return storageProperties;
+        };
+        return new DefaultTransformationEntryStoreSupplier(storagePropertiesSupplier);
+    }
+
+    @Bean
     public Transformers transformers(EventStoreTransformationRepository repository,
-                                     ContextEventIteratorFactory iteratorFactory) {
-        return new LocalTransformers(iteratorFactory::createFrom, repository);
+                                     ContextEventIteratorFactory iteratorFactory,
+                                     TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
+        return new LocalTransformers(iteratorFactory::createFrom, repository, transformationEntryStoreSupplier);
     }
 
     @Bean
@@ -55,41 +82,74 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public TransformationEntryStore transformationEntryStore(StorageProperties storageProperties) {
-        AppendOnlyFileStore fileStore = new BaseAppendOnlyFileStore(storageProperties, "transformation");
-        return new SegmentBasedTransformationEntryStore(fileStore);
+    public LocalTransformationProgressStore localTransformationProgressStore(
+            EventStoreTransformationProgressRepository repository) {
+        return new JpaLocalTransformationProgressStore(repository);
     }
 
     @Bean
-    public LocalTransformationProgressStore localTransformationProgressStore() {
-        return ne
+    public LocalTransformationApplyExecutor localTransformationApplier(
+            TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+            LocalTransformationProgressStore localTransformationProgressStore,
+            LocalEventStoreTransformer localEventStoreTransformer) {
+        return new DefaultLocalTransformationApplyExecutor(transformationEntryStoreSupplier,
+                                                           localTransformationProgressStore,
+                                                           localEventStoreTransformer);
     }
 
     @Bean
-    public LocalTransformationApplier localTransformationApplier(TransformationEntryStore transformationEntryStore,
-                                                                 LocalTransformationProgressStore localTransformationProgressStore,
-                                                                 LocalEventStoreTransformer localEventStoreTransformer) {
-        return new DefaultLocalTransformationApplier(transformationEntryStore,
-                                                     localTransformationProgressStore,
-                                                     localEventStoreTransformer);
+    @ConditionalOnMissingBean(TransformationApplyExecutor.class)
+    public TransformationApplyExecutor transformationApplier(
+            LocalTransformationApplyExecutor localTransformationApplyExecutor) {
+        return new StandardTransformationApplyExecutor(localTransformationApplyExecutor);
     }
 
     @Bean
-    @ConditionalOnMissingBean(TransformationApplier.class)
-    public TransformationApplier transformationApplier(LocalTransformationApplier localTransformationApplier) {
-        return new StandardTransformationApplier(localTransformationApplier);
-    }
-
-    @Bean
-    public TransformationApplyTask transformationApplyTask(TransformationApplier applier,
+    public TransformationApplyTask transformationApplyTask(TransformationApplyExecutor applier,
                                                            Transformers transformers,
                                                            Transformations transformations) {
         return new DefaultTransformationApplyTask(applier, transformers, transformations);
     }
 
     @Bean
-    public TransformationRollBackTask transformationRollBackTask() {
-        return new DefaultTransformationRollBackTask();
+    public LocalTransformationRollbackExecutor localTransformationRollbackExecutor(
+            LocalEventStoreTransformer localEventStoreTransformer) {
+        return new DefaultLocalTransformationRollbackExecutor(localEventStoreTransformer);
+    }
+
+    @Bean
+    public TransformationRollbackExecutor transformationRollbackExecutor(
+            LocalTransformationRollbackExecutor localTransformationRollbackExecutor) {
+        return new StandardTransformationRollbackExecutor(localTransformationRollbackExecutor);
+    }
+
+    @Bean
+    public TransformationRollBackTask transformationRollBackTask(
+            TransformationRollbackExecutor transformationRollbackExecutor,
+            Transformations transformations,
+            Transformers transformers) {
+        return new DefaultTransformationRollBackTask(transformationRollbackExecutor, transformations, transformers);
+    }
+
+    @Bean
+    public LocalTransformationCancelExecutor localTransformationCancelExecutor(
+            TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
+        return new DefaultLocalTransformationCancelExecutor(
+                context -> transformationEntryStoreSupplier.supply(context)
+                                                           .flatMap(TransformationEntryStore::delete));
+    }
+
+    @Bean
+    public TransformationCancelExecutor transformationCancelExecutor(
+            LocalTransformationCancelExecutor localTransformationCancelExecutor) {
+        return new StandardTransformationCancelExecutor(localTransformationCancelExecutor);
+    }
+
+    @Bean
+    public TransformationCancelTask transformationCancelTask(TransformationCancelExecutor transformationCancelExecutor,
+                                                             Transformers transformers,
+                                                             Transformations transformations) {
+        return new DefaultTransformationCancelTask(transformationCancelExecutor, transformers, transformations);
     }
 
     @Bean
@@ -97,22 +157,28 @@ public class TransformationConfiguration {
     public EventStoreTransformationService eventStoreTransformationService(Transformers transformers,
                                                                            Transformations transformations,
                                                                            TransformationRollBackTask transformationRollBackTask,
-                                                                           TransformationApplyTask transformationApplyTask) {
+                                                                           TransformationApplyTask transformationApplyTask,
+                                                                           TransformationCancelTask transformationCancelTask) {
         return new DefaultEventStoreTransformationService(transformers,
                                                           transformations,
                                                           transformationRollBackTask,
-                                                          transformationApplyTask);
+                                                          transformationApplyTask,
+                                                          transformationCancelTask);
     }
 
     @Bean
     @ConditionalOnMissingBean(ApplyCompletedConsumer.class)
     public ApplyCompletedConsumer applyCompletedConsumer(Transformers transformers) {
-        return (context, transformationId) -> transformers.transformerFor(context).markApplied(transformationId);
+        return (context, transformationId) -> transformers.transformerFor(context)
+                                                          .flatMap(transformer -> transformer.markApplied(
+                                                                  transformationId));
     }
 
     @Bean
     @ConditionalOnMissingBean(ApplyCompletedConsumer.class)
     public RollbackCompletedConsumer rollbackCompletedConsumer(Transformers transformers) {
-        return (context, transformationId) -> transformers.transformerFor(context).markRolledBack(transformationId);
+        return (context, transformationId) -> transformers.transformerFor(context)
+                                                          .flatMap(transformer -> transformer.markRolledBack(
+                                                                  transformationId));
     }
 }

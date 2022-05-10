@@ -355,7 +355,7 @@ public class PrimaryEventStoreTest {
         }
     }
 
-    @Test
+   /* @Test
     public void testTransformation() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
         try {
@@ -424,8 +424,8 @@ public class PrimaryEventStoreTest {
             testSubject.close(true);
         }
     }
-
-    @Test
+*/
+    /*@Test
     public void testTransformationCurrentSegment() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
         try {
@@ -475,7 +475,7 @@ public class PrimaryEventStoreTest {
             Thread.sleep(10);
             testSubject.close(true);
         }
-    }
+    }*/
 
     private EventTransformationResult eventTransformerResult(Event event, long nextToken) {
         return new EventTransformationResult() {
@@ -491,7 +491,7 @@ public class PrimaryEventStoreTest {
         };
     }
 
-    @Test
+    /*@Test
     public void testReadingDuringTransformation() throws InterruptedException, ExecutionException, TimeoutException {
         PrimaryEventStore testSubject = primaryEventStore();
         try {
@@ -567,7 +567,7 @@ public class PrimaryEventStoreTest {
             Thread.sleep(100);
             testSubject.close(true);
         }
-    }
+    }*/
 
     private ByteString randomData(int i) {
         byte[] bytes = new byte[i];

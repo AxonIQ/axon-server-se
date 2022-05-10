@@ -20,4 +20,6 @@ public interface TransformationEntryStore {
     default Flux<TransformationEntry> readTo(long sequence) {
         return read().takeUntil(entry -> entry.sequence() < sequence);
     }
+
+    Mono<Void> delete();
 }
