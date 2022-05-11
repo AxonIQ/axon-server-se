@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.Executors;
@@ -7,6 +9,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class DefaultTransformationCancelTask implements TransformationCancelTask {
+
+    private static final Logger logger = LoggerFactory.getLogger(DefaultTransformationCancelTask.class);
 
     private final TransformationCancelExecutor executor;
     private final Transformers transformers;
@@ -54,7 +58,9 @@ public class DefaultTransformationCancelTask implements TransformationCancelTask
                                return transformers.transformerFor(context())
                                                   .flatMap(t -> t.markAsCancelled(id()));
                            }
-                       }))
-                       .subscribe(/* TODO logger */);
+                       }).doOnSuccess(v -> logger.info("Transformation {} cancelled.", transformation))
+                         .doOnError(t -> logger.error("Transformation {} errored.", transformation, t)))
+                       .doFinally(s -> scheduledExecutorService.schedule(this::cancel, 10, TimeUnit.SECONDS))
+                       .subscribe();
     }
 }

@@ -94,7 +94,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     @Override
     public Mono<Void> deleteEvent(String context, String transformationId, long token, long sequence,
                                   @Nonnull Authentication authentication) {
-        auditLog.debug("{}@{}: Request to delete event {}",
+        auditLog.info("{}@{}: Request to delete event {}",
                        username(authentication.username()),
                        sanitize(context),
                        token);
@@ -106,7 +106,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     @Override
     public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
                                    long sequence, @Nonnull Authentication authentication) {
-        auditLog.debug("{}@{}: Request to replace event {}",
+        auditLog.info("{}@{}: Request to replace event {}",
                        username(authentication.username()),
                        sanitize(context),
                        token);

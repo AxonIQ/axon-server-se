@@ -30,12 +30,12 @@ public class EventStoreTransformationJpa {
     public enum Status {
         ACTIVE,
         CANCELLING,
-        CANCELLED,
+        CANCELLED, // final state
         APPLYING,
-        APPLIED,
+        APPLIED, // final state
         ROLLING_BACK,
-        ROLLED_BACK,
-        FAILED
+        ROLLED_BACK, // final state
+        FAILED // final state
     }
 
     @Id
@@ -57,6 +57,8 @@ public class EventStoreTransformationJpa {
     // TODO: 12/28/21 name
     private Long lastSequence;
 
+    private Long lastEventToken;
+
     public EventStoreTransformationJpa() {
     }
 
@@ -74,6 +76,7 @@ public class EventStoreTransformationJpa {
         this.dateApplied = original.dateApplied;
         this.description = original.description;
         this.lastSequence = original.lastSequence;
+        this.lastEventToken = original.lastEventToken;
         this.status = original.status;
         this.version = original.version;
     }
@@ -142,6 +145,14 @@ public class EventStoreTransformationJpa {
         this.lastSequence = lastTransformationEntrySequence;
     }
 
+    public Long getLastEventToken() {
+        return lastEventToken;
+    }
+
+    public void setLastEventToken(Long lastEventToken) {
+        this.lastEventToken = lastEventToken;
+    }
+
     @Override
     public String toString() {
         return "EventStoreTransformationJpa{" +
@@ -153,6 +164,7 @@ public class EventStoreTransformationJpa {
                 ", dateApplied=" + dateApplied +
                 ", appliedBy='" + appliedBy + '\'' +
                 ", lastSequence=" + lastSequence +
+                ", lastEventToken=" + lastEventToken +
                 '}';
     }
 }

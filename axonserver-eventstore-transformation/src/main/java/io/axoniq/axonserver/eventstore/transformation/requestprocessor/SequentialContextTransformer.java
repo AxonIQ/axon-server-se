@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.grpc.event.Event;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -37,11 +38,19 @@ public class SequentialContextTransformer implements ContextTransformer {
                     .subscribe();
     }
 
+    private Mono<TransformationState> ongoingTransformation() {
+        return store.transformations()
+                    .filter(TransformationState::ongoing)
+                    .next();
+    }
+
     @Override
     public Mono<String> start(String description) {
-        return store.create()
-                    .map(TransformationState::id)
-                    .as(this::sequential);
+        return ongoingTransformation()
+                .<String>flatMap(transformation -> Mono.error(new RuntimeException("There is already ongoing transformation")))
+                .switchIfEmpty(store.create()
+                                    .map(TransformationState::id)
+                                    .as(this::sequential));
     }
 
     @Override
@@ -68,7 +77,8 @@ public class SequentialContextTransformer implements ContextTransformer {
     public Mono<Void> markAsCancelled(String transformationId) {
         return perform(transformationId,
                        "MARK_AS_CANCELLED",
-                       Transformation::markCancelled);    }
+                       Transformation::markCancelled);
+    }
 
 
     @Override
@@ -101,7 +111,7 @@ public class SequentialContextTransformer implements ContextTransformer {
 
     @Override
     public Mono<Void> deleteOldVersions() {
-        return Mono.<Void>fromRunnable(() -> {
+        return Mono.<Void>fromRunnable(() -> {// TODO: 5/11/22 !!!
         }).as(this::sequential);
     }
 

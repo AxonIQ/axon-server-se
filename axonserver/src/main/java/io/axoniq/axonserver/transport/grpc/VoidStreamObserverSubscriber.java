@@ -12,6 +12,8 @@ package io.axoniq.axonserver.transport.grpc;
 import com.google.protobuf.Empty;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.BaseSubscriber;
 
 import javax.annotation.Nonnull;
@@ -22,20 +24,29 @@ import javax.annotation.Nonnull;
  */
 public class VoidStreamObserverSubscriber extends BaseSubscriber<Void> {
 
+    private static final Logger logger = LoggerFactory.getLogger(VoidStreamObserverSubscriber.class);
+
+    private final String description;
     private final StreamObserver<Empty> responseObserver;
 
     public VoidStreamObserverSubscriber(StreamObserver<Empty> responseObserver) {
+        this(responseObserver, "");
+    }
+
+    public VoidStreamObserverSubscriber(StreamObserver<Empty> responseObserver, String description) {
         this.responseObserver = responseObserver;
+        this.description = description;
     }
 
     @Override
     protected void hookOnComplete() {
+        logger.trace(description + " completed.");
         responseObserver.onCompleted();
     }
 
     @Override
     protected void hookOnError(@Nonnull Throwable throwable) {
-        throwable.printStackTrace();
+        logger.error(description + " errored.", throwable);
         responseObserver.onError(GrpcExceptionBuilder.build(throwable));
     }
 }

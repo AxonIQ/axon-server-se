@@ -8,22 +8,21 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
 import javax.annotation.Nonnull;
 
-public class JpaTransformationState implements TransformationState {
+public class DefaultTransformationState implements TransformationState {
 
     private static final long INITIAL_SEQUENCE = -1L;
 
     private final List<TransformationEntry> stagedEntries;
     private final EventStoreTransformationJpa entity;
 
-    public JpaTransformationState(@Nonnull EventStoreTransformationJpa entity) {
+    public DefaultTransformationState(@Nonnull EventStoreTransformationJpa entity) {
         this(entity, Collections.emptyList());
     }
 
-    public JpaTransformationState(@Nonnull EventStoreTransformationJpa entity,
-                                  @Nonnull List<TransformationEntry> stagedEntries) {
+    public DefaultTransformationState(@Nonnull EventStoreTransformationJpa entity,
+                                      @Nonnull List<TransformationEntry> stagedEntries) {
         this.entity = entity;
         this.stagedEntries = new LinkedList<>(stagedEntries);
     }
@@ -50,7 +49,7 @@ public class JpaTransformationState implements TransformationState {
 
     @Override
     public Optional<Long> lastEventToken() {
-        return Optional.empty();
+        return Optional.ofNullable(entity.getLastEventToken());
     }
 
     @Override
@@ -79,10 +78,11 @@ public class JpaTransformationState implements TransformationState {
     @Override
     public TransformationState stage(TransformationAction entry) {
         List<TransformationEntry> staged = new ArrayList<>(stagedEntries);
-        staged.add((new ProtoTransformationEntry(lastSequence().orElse(INITIAL_SEQUENCE) + 1, entry)));
+        long sequence = lastSequence().orElse(INITIAL_SEQUENCE) + 1;
+        staged.add(new ProtoTransformationEntry(sequence, entry));
         EventStoreTransformationJpa jpa = new EventStoreTransformationJpa(entity);
-        jpa.setLastSequence(entity.getLastSequence() + 1);
-        return new JpaTransformationState(jpa, staged);
+        jpa.setLastSequence(sequence);
+        return new DefaultTransformationState(jpa, staged);
     }
 
     @Override
@@ -91,10 +91,17 @@ public class JpaTransformationState implements TransformationState {
     }
 
     @Override
-    public JpaTransformationState withStatus(EventStoreTransformationJpa.Status status) {
+    public DefaultTransformationState withStatus(EventStoreTransformationJpa.Status status) {
         EventStoreTransformationJpa jpa = new EventStoreTransformationJpa(entity);
         jpa.setStatus(status);
-        return new JpaTransformationState(jpa, stagedEntries);
+        return new DefaultTransformationState(jpa, stagedEntries);
+    }
+
+    @Override
+    public TransformationState withLastEventToken(long token) {
+        EventStoreTransformationJpa jpa = new EventStoreTransformationJpa(entity);
+        jpa.setLastEventToken(token);
+        return new DefaultTransformationState(jpa, stagedEntries);
     }
 
     @Override

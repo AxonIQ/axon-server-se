@@ -22,13 +22,21 @@ public class LocalContextTransformationStore implements ContextTransformationSto
     }
 
     @Override
+    public Flux<TransformationState> transformations() {
+        return Flux.fromStream(() -> repository.findAll()
+                                               .stream())
+                   .subscribeOn(Schedulers.boundedElastic())
+                   .map(DefaultTransformationState::new);
+    }
+
+    @Override
     public Mono<TransformationState> create() {
         return lastAppliedTransformation()
                 .map(lastVersion -> repository.save(new EventStoreTransformationJpa(UUID.randomUUID().toString(),
                                                                                     context,
                                                                                     lastVersion + 1)))
                 .subscribeOn(Schedulers.boundedElastic())
-                .map(JpaTransformationState::new);
+                .map(DefaultTransformationState::new);
     }
 
     @Override
@@ -36,7 +44,7 @@ public class LocalContextTransformationStore implements ContextTransformationSto
         return Mono.fromSupplier(() -> repository.findById(id))
                    .subscribeOn(Schedulers.boundedElastic())
                    .flatMap(Mono::justOrEmpty)
-                   .map(JpaTransformationState::new);
+                   .map(DefaultTransformationState::new);
     }
 
     private Mono<Integer> lastAppliedTransformation() {

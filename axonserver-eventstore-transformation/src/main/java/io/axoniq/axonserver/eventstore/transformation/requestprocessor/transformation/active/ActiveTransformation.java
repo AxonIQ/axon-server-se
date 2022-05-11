@@ -22,13 +22,13 @@ public class ActiveTransformation implements Transformation {
     @Override
     public Mono<TransformationState> deleteEvent(long tokenToDelete, long sequence) {
         DeleteEventAction action = new DeleteEventAction(tokenToDelete, resources);
-        return performAction(action, sequence);
+        return performEventAction(action, sequence, tokenToDelete);
     }
 
     @Override
     public Mono<TransformationState> replaceEvent(long token, Event event, long sequence) {
         ReplaceEventAction action = new ReplaceEventAction(token, event, resources);
-        return performAction(action, sequence);
+        return performEventAction(action, sequence, token);
     }
 
     @Override
@@ -44,22 +44,27 @@ public class ActiveTransformation implements Transformation {
     @Override
     public Mono<TransformationState> startApplying(long sequence) {
         boolean valid = state.lastSequence()
-                .map(lastSequence -> lastSequence == sequence)
-                .orElse(true);
+                             .map(lastSequence -> lastSequence == sequence)
+                             .orElse(true);
 
         return valid ? Mono.just(state.withStatus(APPLYING)) : Mono.error(new RuntimeException("Invalid sequence"));
     }
 
-    private Mono<TransformationState> performAction(ActiveTransformationAction action, long token) {
-        return validateChain(token)
-                .flatMap(v -> action.apply())
-                .map(state::stage);
+    private Mono<TransformationState> performEventAction(ActiveTransformationAction action, long sequence, long token) {
+        return validateSequence(sequence).then(validateEventsOrder(token)
+                                                       .then(action.apply())
+                                                       .map(state::stage)
+                                                       .map(state -> state.withLastEventToken(token)));
     }
 
-    private Mono<Void> validateChain(long token) {
+    private Mono<Void> validateEventsOrder(long token) {
         return state.lastEventToken()
                     .map(lastToken -> lastToken < token ? Mono.<Void>empty() : Mono.<Void>error(new RuntimeException(
                             "The token [%s] of the action for token doesn't match %s d")))
                     .orElse(Mono.empty());
+    }
+
+    private Mono<Void> validateSequence(long sequence) {
+        return Mono.empty();// TODO: 5/11/22 !!!
     }
 }
