@@ -320,8 +320,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive) {
         if (includeActive) {
+            StorageProperties storageProperties = storagePropertiesSupplier.get();
             Stream<String> filenames = getSegments().stream()
-                                                                  .map(s -> name(storageProperties.dataFile(context, s)));
+                                                    .map(s -> name(storageProperties.dataFile(context, s)));
             return next != null ?
                     Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, includeActive)) :
                     filenames;
