@@ -35,12 +35,24 @@ public interface TransformationState {
 
     TransformationState withStatus(EventStoreTransformationJpa.Status status);
 
+    TransformationState withLastEventToken(long token);
+
+    default boolean ongoing() {
+        switch (status()) {
+            case CANCELLING:
+            case APPLYING:
+            case ACTIVE:
+            case ROLLING_BACK:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     interface Applied {
 
         String by();
 
         Instant at();
-
-        Boolean keepingOldVersion();
     }
 }

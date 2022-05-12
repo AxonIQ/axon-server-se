@@ -13,11 +13,15 @@ public interface Transformation {
         return Mono.error(new RuntimeException("Unsupported operation."));
     }
 
-    default Mono<TransformationState> cancel() {
+    default Mono<TransformationState> startCancelling() {
         return Mono.error(new RuntimeException("Unsupported operation."));
     }
 
-    default Mono<TransformationState>  startApplying(long sequence, boolean keepOldVersions){
+    default Mono<TransformationState> markCancelled() {
+        return Mono.error(new RuntimeException("Unsupported operation."));
+    }
+
+    default Mono<TransformationState>  startApplying(long sequence){
         return Mono.error(new RuntimeException("Unsupported operation."));
     }
 

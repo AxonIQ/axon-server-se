@@ -1,11 +1,10 @@
-package io.axoniq.axonserver.localstorage;
+package io.axoniq.axonserver.localstorage.transformation;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.eventstore.transformation.ReplaceEvent;
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationApplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntry;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStore;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreSupplier;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.file.TransformationProgress;
@@ -17,19 +16,19 @@ import reactor.core.publisher.Mono;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-public class LocalTransformationApplier implements TransformationApplier {
+public class DefaultLocalTransformationApplyExecutor implements LocalTransformationApplyExecutor {
 
-    private static final Logger logger = LoggerFactory.getLogger(LocalTransformationApplier.class);
+    private static final Logger logger = LoggerFactory.getLogger(DefaultLocalTransformationApplyExecutor.class);
 
-    private final TransformationEntryStore transformationEntryStore;
+    private final TransformationEntryStoreSupplier transformationEntryStoreSupplier;
     private final LocalTransformationProgressStore stateRepo;
     private final LocalEventStoreTransformer transformer;
     private final Set<String> applyingTransformations = new CopyOnWriteArraySet<>();
 
-    public LocalTransformationApplier(TransformationEntryStore transformationEntryStore,
-                                      LocalTransformationProgressStore stateRepo,
-                                      LocalEventStoreTransformer transformer) {
-        this.transformationEntryStore = transformationEntryStore;
+    public DefaultLocalTransformationApplyExecutor(TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+                                                   LocalTransformationProgressStore stateRepo,
+                                                   LocalEventStoreTransformer transformer) {
+        this.transformationEntryStoreSupplier = transformationEntryStoreSupplier;
         this.stateRepo = stateRepo;
         this.transformer = transformer;
     }
@@ -39,8 +38,10 @@ public class LocalTransformationApplier implements TransformationApplier {
         Flux<EventWithToken> transformedEvents =
                 stateRepo.stateFor(transformation.id())
                          .map(state -> state.lastAppliedSequence() + 1)
-                         .flatMapMany(firstSequence -> transformationEntryStore.read(firstSequence,
-                                                                                     transformation.lastSequence()))
+                         .flatMapMany(firstSequence -> transformationEntryStoreSupplier.supply(transformation.context())
+                                                                                       .flatMapMany(store -> store.read(
+                                                                                               firstSequence,
+                                                                                               transformation.lastSequence())))
                          .map(TransformationEntry::payload)
                          .flatMapSequential(this::parseFrom)
                          .map(this::eventWithToken);
@@ -56,7 +57,8 @@ public class LocalTransformationApplier implements TransformationApplier {
                                             lastProcessedSequence))
                                     .then(stateRepo.markAsApplied(transformation.id()))
                                     .doFinally(onFinally -> applyingTransformations.remove(transformation.id())))
-                   .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.", transformation))
+                   .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",
+                                                 transformation))
                    .doOnError(t -> logger.info("Failed to apply to local store the transformation {}", transformation));
     }
 
@@ -100,26 +102,4 @@ public class LocalTransformationApplier implements TransformationApplier {
             }
         });
     }
-}
-
-interface LocalTransformationProgressStore {
-
-    /**
-     * It will never return an empty Mono, because if this is empty the default initial state is returned.
-     *
-     * @param transformationId the identifier of the transformation
-     * @return
-     */
-    Mono<TransformationApplyingState> stateFor(String transformationId);
-
-    Mono<Void> updateLastSequence(String transformationId, long lastProcessedSequence);
-
-    Mono<Void> markAsApplied(String transformationId);
-}
-
-interface TransformationApplyingState {
-
-    long lastAppliedSequence();
-
-    boolean applied();
 }

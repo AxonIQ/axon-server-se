@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
-public interface TransformationApplyTask {
+public interface TransformationCancelTask {
 
     void start();
 

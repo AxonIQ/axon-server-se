@@ -12,6 +12,7 @@ class DeleteEventAction implements ActiveTransformationAction {
 
     private final long tokenToDelete;
     private final TransformationResources resources;
+    private static final String lastEventTokenKey = "lastEventToken";
 
     public DeleteEventAction(long tokenToDelete,
                              TransformationResources resources) {
@@ -22,6 +23,7 @@ class DeleteEventAction implements ActiveTransformationAction {
     @Override
     public Mono<TransformationAction> apply() {
         return validateEvent()
+                .checkpoint("Event with token " + tokenToDelete + " validated for deletion ")
                 .then(Mono.fromSupplier(this::action));
     }
 

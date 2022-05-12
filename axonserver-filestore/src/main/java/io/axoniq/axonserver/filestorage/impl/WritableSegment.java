@@ -426,7 +426,7 @@ public class WritableSegment extends AbstractSegment {
         logger.info("{}: Deleting context.", context);
         clear(0);
         File storageDir = storageProperties.getStorage();
-        FileUtils.delete(storageDir);
+        FileUtils.delete(storageDir); //TODO the delete must be retried if it fails
         synchronizer.shutdown(true);
     }
 

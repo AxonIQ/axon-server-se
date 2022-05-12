@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.grpc.event.Event;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -15,9 +16,6 @@ import static java.lang.String.format;
 public class SequentialContextTransformer implements ContextTransformer {
 
     private final String context;
-    private final TransformationApplier applier;
-    private final TransformationRollbackExecutor rollbackExecutor;
-
     private final ContextTransformationStore store;
     private final TransformationStateConverter converter;
     private final Sinks.Many<Mono<?>> taskExecutor = Sinks.many()
@@ -27,11 +25,7 @@ public class SequentialContextTransformer implements ContextTransformer {
 
     public SequentialContextTransformer(String context,
                                         ContextTransformationStore store,
-                                        TransformationStateConverter converter,
-                                        TransformationApplier applier,
-                                        TransformationRollbackExecutor rollbackExecutor) {
-        this.applier = applier;
-        this.rollbackExecutor = rollbackExecutor;
+                                        TransformationStateConverter converter) {
         this.context = context;
         this.store = store;
         this.converter = converter;
@@ -44,25 +38,19 @@ public class SequentialContextTransformer implements ContextTransformer {
                     .subscribe();
     }
 
-    @Override
-    public Mono<Void> restart() {
-        return store.current()
-                    .flatMap(transformation -> {
-                        if (EventStoreTransformationJpa.Status.APPLYING.equals(transformation.status())) {
-                            return apply(transformation);
-                        } else if (EventStoreTransformationJpa.Status.ROLLING_BACK.equals(transformation.status())) {
-                            return rollback(transformation);
-                        }
-                        return Mono.empty();
-                    });
+    private Mono<TransformationState> ongoingTransformation() {
+        return store.transformations()
+                    .filter(TransformationState::ongoing)
+                    .next();
     }
-
 
     @Override
     public Mono<String> start(String description) {
-        return store.create()
-                    .map(TransformationState::id)
-                    .as(this::sequential);
+        return ongoingTransformation()
+                .<String>flatMap(transformation -> Mono.error(new RuntimeException("There is already ongoing transformation")))
+                .switchIfEmpty(store.create()
+                                    .map(TransformationState::id)
+                                    .as(this::sequential));
     }
 
     @Override
@@ -81,61 +69,61 @@ public class SequentialContextTransformer implements ContextTransformer {
     }
 
     @Override
-    public Mono<Void> cancel(String transformationId) {
-        return perform(transformationId, "CANCEL_TRANSFORMATION", Transformation::cancel).then();
+    public Mono<Void> startCancelling(String transformationId) {
+        return perform(transformationId, "CANCEL_TRANSFORMATION", Transformation::startCancelling).then();
     }
 
     @Override
-    public Mono<Void> startApplying(String transformationId, long sequence, boolean keepOldVersions) {
+    public Mono<Void> markAsCancelled(String transformationId) {
+        return perform(transformationId,
+                       "MARK_AS_CANCELLED",
+                       Transformation::markCancelled);
+    }
+
+
+    @Override
+    public Mono<Void> startApplying(String transformationId, long sequence) {
         return perform(transformationId,
                        "START_APPLYING_TRANSFORMATION",
-                       transformation -> transformation.startApplying(sequence, keepOldVersions))
-                .then();
+                       transformation -> transformation.startApplying(sequence));
     }
 
     @Override
-    public Mono<Void> apply(Transformation transformation) {
-        return applier.apply(new TransformationApplier.Transformation() {
-        }).then(
-                perform(transformation.id(),
+    public Mono<Void> markApplied(String transformationId) {
+        return perform(transformationId,
                        "MARK_AS_APPLIED",
-                       Transformation::markApplied))
-
-                .then();
+                       Transformation::markApplied);
     }
 
     @Override
     public Mono<Void> startRollingBack(String transformationId) {
         return perform(transformationId,
                        "START_ROLLING_BACK_TRANSFORMATION",
-                       Transformation::startRollingBack)
-                .flatMap(this::rollback);
+                       Transformation::startRollingBack);
     }
 
     @Override
     public Mono<Void> markRolledBack(String transformationId) {
-        return perform(state.id(),
-                                             "MARK_AS_ROLLED_BACK",
-                                             Transformation::markRolledBack))
-                               .then();
+        return perform(transformationId,
+                       "MARK_AS_ROLLED_BACK",
+                       Transformation::markRolledBack);
     }
 
     @Override
     public Mono<Void> deleteOldVersions() {
-        return Mono.<Void>fromRunnable(() -> {
+        return Mono.<Void>fromRunnable(() -> {// TODO: 5/11/22 !!!
         }).as(this::sequential);
     }
 
-    private Mono<TransformationState> perform(String transformationId,
-                                              String actionName,
-                                              Function<Transformation, Mono<TransformationState>> action) {
+    private Mono<Void> perform(String transformationId,
+                               String actionName,
+                               Function<Transformation, Mono<TransformationState>> action) {
         return store.transformation(transformationId) // state interface (implemented by jpa) #with(...)
                     .flatMap(converter::from)
                     .checkpoint(format("Starting %s action", actionName))
                     .flatMap(action)
                     .checkpoint(format("Action %s completed", actionName))
-                    .flatMap(state -> store.save(state)
-                                           .thenReturn(state))
+                    .flatMap(store::save)
                     .checkpoint(format("Transformation updated after %s", actionName))
                     .as(this::sequential);
     }
@@ -155,41 +143,3 @@ public class SequentialContextTransformer implements ContextTransformer {
         });
     }
 }
-
-class RollbackTransformation implements TransformationRollbackExecutor.Transformation {
-
-    private final String context;
-    private final TransformationState state;
-
-    RollbackTransformation(String context, TransformationState state) {
-        this.context = context;
-        this.state = state;
-    }
-
-    @Override
-    public String id() {
-        return state.id();
-    }
-
-    @Override
-    public int version() {
-        return state.version();
-    }
-
-    @Override
-    public String context() {
-        return context;
-    }
-
-    @Override
-    public String toString() {
-        return "RollbackTransformation{" +
-                "context='" + context + '\'' +
-                ", state=" + state +
-                '}';
-    }
-}
-
-
-
-

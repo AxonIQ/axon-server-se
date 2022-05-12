@@ -120,8 +120,8 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
         return primary.lastEntry();
     }
 
-    public void delete() {
-        primary.close(true);
+    public Mono<Void> delete() {
+        return Mono.fromRunnable(() -> primary.close(true));
     }
 
     public CloseableIterator<FileStoreEntry> iterator(int fromIndex) {

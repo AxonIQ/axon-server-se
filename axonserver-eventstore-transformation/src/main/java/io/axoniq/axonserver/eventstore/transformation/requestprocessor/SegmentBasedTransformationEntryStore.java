@@ -26,6 +26,11 @@ public class SegmentBasedTransformationEntryStore implements TransformationEntry
         return Flux.empty();
     }
 
+    @Override
+    public Mono<Void> delete() {
+        return appendOnlyFileStore.delete();
+    }
+
     private FileStoreEntry toFileStoreEntry(TransformationEntry entry) {
         return new FileStoreEntry() {
             @Override

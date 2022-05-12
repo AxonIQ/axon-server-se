@@ -27,23 +27,15 @@ import javax.persistence.TemporalType;
 @Table(name = "event_store_transformations")
 public class EventStoreTransformationJpa {
 
-    public boolean isKeepingOldVersions() {
-        return keepingOldVersions;
-    }
-
-    public void setKeepingOldVersions(boolean keepOldVersions) {
-        this.keepingOldVersions = keepOldVersions;
-    }
-
     public enum Status {
         ACTIVE,
         CANCELLING,
-        CANCELLED,
+        CANCELLED, // final state
         APPLYING,
-        APPLIED,
+        APPLIED, // final state
         ROLLING_BACK,
-        ROLLED_BACK,
-        FAILED
+        ROLLED_BACK, // final state
+        FAILED // final state
     }
 
     @Id
@@ -52,8 +44,6 @@ public class EventStoreTransformationJpa {
 
     @Enumerated(EnumType.ORDINAL)
     private Status status;
-
-    private boolean keepingOldVersions;
 
     private int version;
 
@@ -66,6 +56,8 @@ public class EventStoreTransformationJpa {
 
     // TODO: 12/28/21 name
     private Long lastSequence;
+
+    private Long lastEventToken;
 
     public EventStoreTransformationJpa() {
     }
@@ -83,8 +75,8 @@ public class EventStoreTransformationJpa {
         this.context = original.context;
         this.dateApplied = original.dateApplied;
         this.description = original.description;
-        this.keepingOldVersions = original.keepingOldVersions;
         this.lastSequence = original.lastSequence;
+        this.lastEventToken = original.lastEventToken;
         this.status = original.status;
         this.version = original.version;
     }
@@ -153,18 +145,26 @@ public class EventStoreTransformationJpa {
         this.lastSequence = lastTransformationEntrySequence;
     }
 
+    public Long getLastEventToken() {
+        return lastEventToken;
+    }
+
+    public void setLastEventToken(Long lastEventToken) {
+        this.lastEventToken = lastEventToken;
+    }
+
     @Override
     public String toString() {
         return "EventStoreTransformationJpa{" +
                 "transformationId='" + transformationId + '\'' +
                 ", context='" + context + '\'' +
                 ", status=" + status +
-                ", keepingOldVersions=" + keepingOldVersions +
                 ", version=" + version +
                 ", description='" + description + '\'' +
                 ", dateApplied=" + dateApplied +
                 ", appliedBy='" + appliedBy + '\'' +
                 ", lastSequence=" + lastSequence +
+                ", lastEventToken=" + lastEventToken +
                 '}';
     }
 }

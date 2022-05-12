@@ -20,7 +20,9 @@ import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
 import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
 import io.axoniq.axonserver.grpc.event.TransformRequest;
 import io.axoniq.axonserver.grpc.event.TransformRequestAck;
+import io.axoniq.axonserver.grpc.event.Transformation;
 import io.axoniq.axonserver.grpc.event.TransformationId;
+import io.axoniq.axonserver.grpc.event.TransformationState;
 import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.CallStreamObserver;
@@ -28,6 +30,8 @@ import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
@@ -62,6 +66,7 @@ public class EventStoreTransformationGrpcController
         eventStoreTransformationService.start(context,
                                               request.getDescription(),
                                               new GrpcAuthentication(authenticationProvider))
+                                       .doOnSuccess(s -> System.out.println("Transformation Created with id " + s))
                                        .subscribe(id -> responseObserver.onNext(transformationId(id)),
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
                                                           throwable)),
@@ -108,7 +113,7 @@ public class EventStoreTransformationGrpcController
                                                                     request.getDeleteEvent().getToken(),
                                                                     request.getSequence(),
                                                                     new GrpcAuthentication(authenticationProvider))
-                                .timeout(Duration.ofMinutes(1))
+                                                       .timeout(Duration.ofMinutes(1))
                                                        .subscribe(r -> responseObserver.onNext(ack(request.getEvent())),
                                                                   this::forwardError,
                                                                   this::handleRequestProcessed);
@@ -151,10 +156,10 @@ public class EventStoreTransformationGrpcController
         };
     }
 
-    private TransformRequestAck ack(TransformedEvent event){
-       return TransformRequestAck.newBuilder()
-                                 .setSequence(event.getToken())
-                                 .build();
+    private TransformRequestAck ack(TransformedEvent event) {
+        return TransformRequestAck.newBuilder()
+                                  .setSequence(event.getToken())
+                                  .build();
     }
 
     private String transformationId(TransformRequest request) {
@@ -165,9 +170,9 @@ public class EventStoreTransformationGrpcController
     @Override
     public void cancelTransformation(TransformationId request, StreamObserver<Empty> responseObserver) {
         String context = contextProvider.getContext();
-        eventStoreTransformationService.cancel(context,
-                                               request.getId(),
-                                               new GrpcAuthentication(authenticationProvider))
+        eventStoreTransformationService.startCancelling(context,
+                                                        request.getId(),
+                                                        new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }
 
@@ -177,7 +182,6 @@ public class EventStoreTransformationGrpcController
         eventStoreTransformationService.startApplying(context,
                                                       request.getTransformationId().getId(),
                                                       request.getLastSequence(),
-                                                      request.getKeepOldVersions(),
                                                       new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }
@@ -198,4 +202,31 @@ public class EventStoreTransformationGrpcController
                                                           new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }
+
+    @Override
+    public void transformations(Empty request, StreamObserver<Transformation> responseObserver) {
+        eventStoreTransformationService.transformations( new GrpcAuthentication(authenticationProvider))
+                                       .map(transformation -> Transformation.newBuilder()
+                                                                            .setTransformationId(TransformationId.newBuilder()
+                                                                                                                 .setId(transformation.id()))
+                                                                            .setState(statusMapping.get(transformation.status()))
+                                                                            .setSequence(transformation.lastSequence()
+                                                                                                       .orElse(-1L))
+                                                                            .build())
+                                       .subscribe(responseObserver::onNext,
+                                                  responseObserver::onError,
+                                                  responseObserver::onCompleted);
+    }
+
+
+    private final Map<EventStoreTransformationService.Transformation.Status, TransformationState> statusMapping
+            = new HashMap<EventStoreTransformationService.Transformation.Status, TransformationState>() {{
+        this.put(EventStoreTransformationService.Transformation.Status.ACTIVE, TransformationState.ACTIVE);
+        this.put(EventStoreTransformationService.Transformation.Status.APPLYING, TransformationState.APPLYING);
+        this.put(EventStoreTransformationService.Transformation.Status.APPLIED, TransformationState.APPLIED);
+        this.put(EventStoreTransformationService.Transformation.Status.CANCELLING, TransformationState.CANCELLING);
+        this.put(EventStoreTransformationService.Transformation.Status.CANCELLED, TransformationState.CANCELLED);
+        this.put(EventStoreTransformationService.Transformation.Status.ROLLING_BACK, TransformationState.ROLLING_BACK);
+        this.put(EventStoreTransformationService.Transformation.Status.ROLLED_BACK, TransformationState.ROLLED_BACK);
+    }};
 }

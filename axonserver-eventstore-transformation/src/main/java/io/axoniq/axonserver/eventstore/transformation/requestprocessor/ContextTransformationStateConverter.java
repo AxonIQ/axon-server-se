@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.CancellingTransformation;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.active.ActiveTransformation;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.AppliedTransformation;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.ApplyingTransformation;
@@ -27,6 +28,8 @@ public class ContextTransformationStateConverter implements TransformationStateC
                     return appliedTransformation(entity);
                 case ROLLING_BACK:
                     return rollingBackTransformation(entity);
+                case CANCELLING:
+                    return cancellingTransformation(entity);
                 case ROLLED_BACK:
                 case CANCELLED:
                 case FAILED:
@@ -51,6 +54,10 @@ public class ContextTransformationStateConverter implements TransformationStateC
 
     private  RollingBackTransformation rollingBackTransformation(TransformationState state) {
         return new RollingBackTransformation(state);
+    }
+
+    private CancellingTransformation cancellingTransformation(TransformationState state) {
+        return new CancellingTransformation(state);
     }
 
     private FinalTransformation finalTransformation() {

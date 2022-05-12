@@ -106,44 +106,4 @@ public class InputStreamEventStoreTest {
         assertTrue(segments.contains(14L));
         assertEquals(14, (long)segments.first());
     }
-
-    @Test
-    public void transform() {
-        testSubject.transformContents(0, Long.MAX_VALUE, false, 1, (event, token) -> {
-            if (event.getAggregateIdentifier().equals("abb070e9-943f-4947-8def-c50481b968c7")) {
-                return new EventTransformationResult() {
-
-                    @Override
-                    public Event event() {
-                        return Event.getDefaultInstance();
-                    }
-
-                    @Override
-                    public long nextToken() {
-                        return token + 1;
-                    }
-                };
-            }
-            return new EventTransformationResult() {
-
-                @Override
-                public Event event() {
-                    return event;
-                }
-
-                @Override
-                public long nextToken() {
-                    return token + 1;
-                }
-            };
-        }, progress -> {
-        });
-
-        SerializedEvent event = testSubject.eventsPerAggregate(
-                "abb070e9-943f-4947-8def-c50481b968c7",
-                0,
-                Long.MAX_VALUE,
-                0).blockLast();
-        assertNull(event);
-    }
 }

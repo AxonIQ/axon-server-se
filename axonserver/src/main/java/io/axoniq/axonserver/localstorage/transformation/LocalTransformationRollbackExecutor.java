@@ -1,8 +1,8 @@
-package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
+package io.axoniq.axonserver.localstorage.transformation;
 
 import reactor.core.publisher.Mono;
 
-public interface TransformationRollbackExecutor {
+public interface LocalTransformationRollbackExecutor {
 
     interface Transformation {
 
@@ -11,8 +11,6 @@ public interface TransformationRollbackExecutor {
         int version();
 
         String context();
-
-        Mono<Void> markRolledBack();
     }
 
     Mono<Void> rollback(Transformation transformation);

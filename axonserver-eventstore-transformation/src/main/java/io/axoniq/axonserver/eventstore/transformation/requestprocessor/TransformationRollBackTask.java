@@ -6,4 +6,3 @@ public interface TransformationRollBackTask {
 
     void stop();
 }
-

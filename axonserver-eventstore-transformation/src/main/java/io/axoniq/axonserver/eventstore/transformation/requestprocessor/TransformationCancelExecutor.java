@@ -2,18 +2,18 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import reactor.core.publisher.Mono;
 
-public interface TransformationRollbackExecutor {
+public interface TransformationCancelExecutor {
 
     interface Transformation {
 
         String id();
 
-        int version();
-
         String context();
 
-        Mono<Void> markRolledBack();
+        int version();
+
+        Mono<Void> markAsCancelled();
     }
 
-    Mono<Void> rollback(Transformation transformation);
+    Mono<Void> cancel(Transformation transformation);
 }

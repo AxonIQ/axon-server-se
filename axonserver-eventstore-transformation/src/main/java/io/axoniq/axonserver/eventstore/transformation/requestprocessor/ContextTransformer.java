@@ -11,9 +11,11 @@ public interface ContextTransformer {
 
     Mono<Void> replaceEvent(String transformationId, long token, Event event, long sequence);
 
-    Mono<Void> cancel(String transformationId);
+    Mono<Void> startCancelling(String transformationId);
 
-    Mono<Void> startApplying(String transformationId, long sequence, boolean keepOldVersions);
+    Mono<Void> markAsCancelled(String transformationId);
+
+    Mono<Void> startApplying(String transformationId, long sequence);
 
     Mono<Void> markApplied(String transformationId);
 
@@ -22,6 +24,4 @@ public interface ContextTransformer {
     Mono<Void> markRolledBack(String transformationId);
 
     Mono<Void> deleteOldVersions();
-
-    Mono<Void> restart();
 }

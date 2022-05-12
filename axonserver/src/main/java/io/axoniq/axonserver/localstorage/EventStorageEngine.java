@@ -245,8 +245,8 @@ public interface EventStorageEngine {
         return Mono.error(new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine"));
     }
 
-    default Mono<Void> rollbackSegments(int version) {
-        return Mono.error(new UnsupportedOperationException("rollbackSegments: Operation not supported by this EventStorageEngine"));
+    default Mono<Void> rollback(int version) {
+        return Mono.error(new UnsupportedOperationException("rollback: Operation not supported by this EventStorageEngine"));
     }
 
     default int nextVersion() {

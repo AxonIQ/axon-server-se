@@ -39,7 +39,7 @@ public class TransformationAdminRestController {
     public void cancelTransformation(@RequestParam("id") String id,
                                      @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
                                      @ApiIgnore final Principal principal) {
-        eventStoreTransformationService.cancel(context, id, new PrincipalAuthentication(principal))
+        eventStoreTransformationService.startCancelling(context, id, new PrincipalAuthentication(principal))
                                        .block();
     }
 
@@ -49,13 +49,12 @@ public class TransformationAdminRestController {
                                     @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
                                     @ApiIgnore final Authentication principal
     ) {
-        eventStoreTransformationService.startApplying(context, id, lastToken, false,
-                                                      new PrincipalAuthentication(principal))
+        eventStoreTransformationService.startApplying(context, id, lastToken, new PrincipalAuthentication(principal))
                 .subscribe(v -> System.out.println("Done"), t -> t.printStackTrace());
     }
 
     @GetMapping("v1/transformations")
-    public Flux<EventStoreTransformationService.Transformation> get() {
-        return eventStoreTransformationService.transformations();
+    public Flux<EventStoreTransformationService.Transformation> get(@ApiIgnore final Authentication principal) {
+        return eventStoreTransformationService.transformations(new PrincipalAuthentication(principal));
     }
 }

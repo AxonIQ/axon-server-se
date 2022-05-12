@@ -14,9 +14,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.EventTransformationFunction;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
@@ -51,7 +49,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -314,23 +311,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     protected boolean removeSegment(long segment, int version) {
         return true;
-    }
-
-    @Override
-    public Flux<TransformationProgress> transformContents(int version, Flux<EventWithToken> transformedEvents) {
-
-        if (readBuffers.lastKey() > lastToken) {
-            // all transformations in segments that are already closed or about to be closed
-            if (readBuffers.firstKey() <= lastToken) {
-                // event store is closing a completed segment, wait until it is completed
-                waitForPendingFileCompletions();
-            }
-        } else {
-            forceNextSegment();
-        }
-        if (next != null) {
-            next.transformContents(version, transformedEvents);
-        }
     }
 
     @Override
