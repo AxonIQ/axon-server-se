@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -16,21 +16,23 @@
         }
 
         rect.client {
-            stroke: #B133CC;
+            stroke: rgba(19, 116, 207, 1);
             stroke-width: 1;
             fill: #F9F9F9;
             filter: url(#f1);
+            cursor: pointer;
         }
 
         rect.axonserver {
-            stroke: #B133CC;
+            stroke: rgba(19, 116, 207, 1);
             stroke-width: 1;
             fill: #F9F9F9;
             filter: url(#f1);
+            cursor: pointer;
         }
 
         rect.axondb {
-            stroke: #B133CC;
+            stroke: rgba(19, 116, 207, 1);
             stroke-width: 1;
             fill: #F9F9F9;
             filter: url(#f1);
@@ -41,7 +43,7 @@
         }
 
         path.master {
-            fill: #B133CC;
+            fill: rgba(19, 116, 207, 1);
         }
 
         rect.down {
@@ -54,6 +56,7 @@
             font-weight: bold;
             font-style: normal;
             font-size: 9px;
+            cursor: pointer;
         }
 
         text.instance {
@@ -62,6 +65,7 @@
             font-style: normal;
             text-decoration: underline;
             font-size: 10px;
+            cursor: pointer;
         }
 
         text.component {
@@ -69,11 +73,13 @@
             font-weight: bold;
             font-style: normal;
             font-size: 12px;
+            cursor: pointer;
         }
         text.type {
             font-family: 'Montserrat', 'sans-serif';
             font-style: italic;
             font-size: 10px;
+            cursor: pointer;
         }
 
         text.axonserver {
@@ -81,6 +87,7 @@
             font-weight: bold;
             font-style: normal;
             font-size: 12px;
+            cursor: pointer;
         }
 
         text.axondb {
@@ -134,7 +141,7 @@
         }
 
         text.admin {
-            fill: #B133CC;
+            fill: rgba(19, 116, 207, 1);
         }
     </style>
 </defs>
@@ -172,7 +179,8 @@
 
     <div v-if="component">
         <h2>
-            <span @click="component = ''"><i class="fas fa-arrow-circle-left" ></i></span> Application details for {{title}}
+            <span @click="component = ''" class="icon"><i class="fas fa-arrow-circle-left"></i></span> Application
+            details for {{ title }}
         </h2>
 
         <component-subscription-metrics :component="component" :context="context"></component-subscription-metrics>
