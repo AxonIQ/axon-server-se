@@ -14,11 +14,11 @@ public interface TransformationEntryStore {
     }
 
     default Flux<TransformationEntry> read(long fromSequence, long toSequence) {
-        return readFrom(fromSequence).takeUntil(entry -> entry.sequence() < toSequence);
+        return readFrom(fromSequence).takeWhile(entry -> entry.sequence() < toSequence);
     }
 
     default Flux<TransformationEntry> readTo(long sequence) {
-        return read().takeUntil(entry -> entry.sequence() < sequence);
+        return read().takeWhile(entry -> entry.sequence() < sequence);
     }
 
     Mono<Void> delete();

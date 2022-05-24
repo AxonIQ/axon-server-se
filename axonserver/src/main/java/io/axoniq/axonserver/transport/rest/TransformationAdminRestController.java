@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.transport.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.topology.Topology;
 import org.springframework.security.core.Authentication;
@@ -50,11 +52,21 @@ public class TransformationAdminRestController {
                                     @ApiIgnore final Authentication principal
     ) {
         eventStoreTransformationService.startApplying(context, id, lastToken, new PrincipalAuthentication(principal))
-                .subscribe(v -> System.out.println("Done"), t -> t.printStackTrace());
+                                       .block();
     }
 
     @GetMapping("v1/transformations")
-    public Flux<EventStoreTransformationService.Transformation> get(@ApiIgnore final Authentication principal) {
-        return eventStoreTransformationService.transformations(new PrincipalAuthentication(principal));
+    public Flux<ObjectNode> get(@ApiIgnore final Authentication principal) {
+        return eventStoreTransformationService.transformations(new PrincipalAuthentication(principal))
+                                              .map(this::toJson);
+    }
+
+    private ObjectNode toJson(EventStoreTransformationService.Transformation t) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode node = mapper.createObjectNode();
+        node.put("id", t.id());
+        node.put("lastSequence", t.lastSequence().orElse(null));
+        node.put("status", t.status().name());
+        return node;
     }
 }

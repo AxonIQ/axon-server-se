@@ -15,21 +15,19 @@ import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformati
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
-import io.axoniq.axonserver.grpc.event.TransformRequest;
 import io.axoniq.axonserver.grpc.event.TransformationId;
-import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.transport.grpc.EventStoreTransformationGrpcController;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -37,9 +35,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import javax.annotation.Nonnull;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * @author Marc Gathier
@@ -73,7 +72,8 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Flux<Transformation> transformations(@Nonnull io.axoniq.axonserver.api.Authentication authentication) {
+            public Flux<Transformation> transformations(
+                    @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Flux.empty();
             }
 
@@ -225,6 +225,7 @@ public class EventStoreTransformationGrpcControllerTest {
         testSubject.cancelTransformation(transformationId, new CompletableFutureStreamObserver(futureConfirmation));
         futureConfirmation.get(1, TimeUnit.SECONDS);
     }
+
     @Test
     public void cancelTransformationError() throws InterruptedException {
         TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
@@ -242,7 +243,9 @@ public class EventStoreTransformationGrpcControllerTest {
     public void applyTransformation() throws ExecutionException, InterruptedException, TimeoutException {
         TransformationId transformationId = doStartTransformation();
         CompletableFuture<Void> futureConfirmation = new CompletableFuture<>();
-        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId).build(), new CompletableFutureStreamObserver(futureConfirmation));
+        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId)
+                                                                  .build(),
+                                        new CompletableFutureStreamObserver(futureConfirmation));
         futureConfirmation.get(1, TimeUnit.SECONDS);
     }
 
@@ -250,7 +253,9 @@ public class EventStoreTransformationGrpcControllerTest {
     public void applyTransformationError() throws InterruptedException {
         TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
         CompletableFuture<Void> futureConfirmation = new CompletableFuture<>();
-        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId).build(), new CompletableFutureStreamObserver(futureConfirmation));
+        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId)
+                                                                  .build(),
+                                        new CompletableFutureStreamObserver(futureConfirmation));
         try {
             futureConfirmation.get();
             fail("Expected exception");

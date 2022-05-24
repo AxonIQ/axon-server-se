@@ -1,8 +1,6 @@
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventProvider;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
@@ -48,7 +46,7 @@ public class AutoCloseableEventProvider {
 
             //todo possible optimization if the gap is very large
             while (iterator.hasNext() && next.getToken() < token) {
-                iterator.next();
+                next = iterator.next();
             }
 
             if (next.getToken() == token) {

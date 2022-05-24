@@ -20,7 +20,9 @@ public class JpaLocalTransformationProgressStore implements LocalTransformationP
             if (byId.isPresent()) {
                 sink.success(new JpaTransformationApplyingState(byId.get()));
             } else {
-                sink.success();
+                sink.success(new JpaTransformationApplyingState(new EventStoreTransformationProgressJpa(transformationId,
+                                                                                                        -1,
+                                                                                                        false)));
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

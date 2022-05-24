@@ -122,7 +122,7 @@ public class WritableSegment extends AbstractSegment {
         if( buffer == null) {
             return Optional.empty();
         }
-        return Optional.of(buffer.createEntryIterator(startIndex));
+        return Optional.of(new ReaderEventIterator(storageProperties.dataFile(segment), segment, startIndex));
     }
 
     @Override

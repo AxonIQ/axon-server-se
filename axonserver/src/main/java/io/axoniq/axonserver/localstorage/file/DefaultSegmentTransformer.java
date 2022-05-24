@@ -24,23 +24,26 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     private final AtomicReference<File> dataFileRef = new AtomicReference<>();
     private final AtomicReference<SerializedTransactionWithToken> originalTransactionRef = new AtomicReference<>();
     private final IndexManager indexManager;
+    private final Supplier<TransactionIterator> transactionIteratorSupplier;
     private final List<Event> transformedTransaction = new CopyOnWriteArrayList<>();
-
 
 
     DefaultSegmentTransformer(StorageProperties storageProperties,
                               String context,
                               long segment,
-                              int newVersion, IndexManager indexManager) {
+                              int newVersion,
+                              IndexManager indexManager,
+                              Supplier<TransactionIterator> transactionIteratorSupplier) {
         this.storageProperties = storageProperties;
         this.context = context;
         this.segment = segment;
         this.newVersion = newVersion;
         this.indexManager = indexManager;
+        this.transactionIteratorSupplier = transactionIteratorSupplier;
     }
 
     @Override
-    public Mono<Void> initialize() {
+    public Mono<SegmentTransformer> initialize() {
         return Mono.create(sink -> {
             try {
                 File tempFile = storageProperties.transformedDataFile(context, new FileVersion(segment, newVersion));
@@ -50,7 +53,8 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                                                                       segment,
                                                                       storageProperties.getFlags());
                 segmentWriterRef.set(segmentWriter);
-                sink.success();
+                transactionIteratorRef.set(transactionIteratorSupplier.get());
+                sink.success(this);
             } catch (Exception e) {
                 sink.error(e);
             }
@@ -71,6 +75,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     @Override
     public Mono<Void> rollback(Throwable e) {
         return Mono.fromRunnable(() -> {
+            closeTransactionIterator();
             File tempFile = tempFileRef.get();
             if (tempFile != null) {
                 FileUtils.delete(tempFile);
@@ -80,7 +85,15 @@ class DefaultSegmentTransformer implements SegmentTransformer {
 
     @Override
     public Mono<Void> cancel() {
-        return null;
+        closeTransactionIterator();
+        return Mono.empty();
+    }
+
+    private void closeTransactionIterator() {
+        TransactionIterator transactionIterator = transactionIteratorRef.getAndSet(null);
+        if (transactionIterator != null) {
+            transactionIterator.close();
+        }
     }
 
     private Mono<Void> process(Supplier<Optional<EventWithToken>> replacement) {
@@ -115,7 +128,9 @@ class DefaultSegmentTransformer implements SegmentTransformer {
 
                         if (!transactionIteratorRef.get().hasNext()) {
                             segmentWriter.writeEndOfFile();
+                            segmentWriter.close();
                             indexManager.createNewVersion(segment, newVersion, segmentWriter.indexEntries());
+                            closeTransactionIterator();
                             done = true;
                         }
                     }

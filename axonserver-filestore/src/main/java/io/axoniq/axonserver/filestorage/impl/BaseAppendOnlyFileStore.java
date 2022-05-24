@@ -121,6 +121,7 @@ public class BaseAppendOnlyFileStore implements AppendOnlyFileStore {
     }
 
     public Mono<Void> delete() {
+        activeReaders.forEach(CloseableIterator::close);
         return Mono.fromRunnable(() -> primary.close(true));
     }
 

@@ -5,7 +5,7 @@ import reactor.core.publisher.Mono;
 
 interface SegmentTransformer {
 
-    Mono<Void> initialize();
+    Mono<SegmentTransformer> initialize();
 
     Mono<TransformationProgress> transformEvent(EventWithToken transformedEvent);
 

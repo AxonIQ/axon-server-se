@@ -4,6 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.eventstore.transformation.ReplaceEvent;
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntry;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreSupplier;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -57,6 +58,8 @@ public class DefaultLocalTransformationApplyExecutor implements LocalTransformat
                                             lastProcessedSequence))
                                     .then(stateRepo.markAsApplied(transformation.id()))
                                     .doFinally(onFinally -> applyingTransformations.remove(transformation.id())))
+                   .then(transformationEntryStoreSupplier.supply(transformation.context()))
+                   .flatMap(TransformationEntryStore::delete)
                    .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",
                                                  transformation))
                    .doOnError(t -> logger.info("Failed to apply to local store the transformation {}", transformation));

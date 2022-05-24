@@ -269,7 +269,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
-        return Flux.usingWhen(Mono.empty(),
+//        return transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
+//                         .flatMap(segmentedTransformedEvents -> transformSegment(
+//                                 segmentedTransformedEvents.key(),
+//                                 newVersion,
+//                                 segmentedTransformedEvents))
+//                .doOnComplete(this::activateTransformation);
+//
+        return Flux.usingWhen(Mono.just(0L),
                               v -> transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
                                                     .flatMap(segmentedTransformedEvents -> transformSegment(
                                                             segmentedTransformedEvents.key(),
@@ -281,10 +288,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Mono<TransformationProgress> transformSegment(long segment,
                                                           int newVersion,
                                                           Flux<EventWithToken> transformedEventsInTheSegment) {
-        return Flux.usingWhen(Mono.fromCallable(() -> new DefaultSegmentTransformer(storageProperties,
-                                                                                    context,
-                                                                                    segment,
-                                                                                    newVersion, indexManager)),
+        return Flux.usingWhen(Mono.defer(() -> new DefaultSegmentTransformer(storageProperties,
+                                                                             context,
+                                                                             segment,
+                                                                             newVersion, indexManager,
+                                                                             () -> getTransactions(segment,
+                                                                                                   segment)).initialize()),
                               segmentTransformer -> transformedEventsInTheSegment.flatMap(segmentTransformer::transformEvent),
                               SegmentTransformer::completeSegment,
                               SegmentTransformer::rollback,
@@ -313,13 +322,16 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     private Mono<Void> activateSegment(FileVersion fileVersion) {
-        return renameTransformedSegmentIfNeeded(fileVersion).then(indexManager.activateVersion(fileVersion));
+        return renameTransformedSegmentIfNeeded(fileVersion)
+                .then(indexManager.activateVersion(fileVersion))
+                .then(Mono.fromRunnable(() -> activateSegmentVersion(fileVersion.segment(), fileVersion.version())));
     }
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
         return Mono.fromSupplier(() -> storageProperties.dataFile(context, fileVersion))
                    .filter(dataFile -> !dataFile.exists())
-                   .flatMap(dataFile -> Mono.fromSupplier(() -> storageProperties.transformedDataFile(context, fileVersion))
+                   .flatMap(dataFile -> Mono.fromSupplier(() -> storageProperties.transformedDataFile(context,
+                                                                                                      fileVersion))
                                             .filter(File::exists)
                                             .switchIfEmpty(Mono.error(new RuntimeException()))
                                             .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
@@ -341,7 +353,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                              .flatMap(n -> rollback(version)))
                    .thenMany(Flux.fromIterable(getSegments()))
                    .filter(segment -> currentSegmentVersion(segment) == version)
-                   .flatMapSequential(segment -> indexManager.rollbackToVersion(segment, version,version - 1).thenReturn(segment))
+                   .flatMapSequential(segment -> indexManager.rollbackToVersion(segment, version, version - 1)
+                                                             .thenReturn(segment))
                    .flatMapSequential(segment -> rollbackSegmentVersion(segment, version, version - 1))
                    .then(deleteRolledBack());
     }
@@ -374,13 +387,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return Mono.create(sink -> {
             if (version == 0 && storageProperties.dataFile(context, segment).exists()) {
                 sink.success();
-            } else if (storageProperties.dataFile(context, new FileVersion(segment, version)).exists())  {
+            } else if (storageProperties.dataFile(context, new FileVersion(segment, version)).exists()) {
                 sink.success();
             } else {
                 sink.error(new RuntimeException(version + " version for segment " + segment + " doesn't exist."));
             }
         });
-
     }
 
     // TODO: 4/7/22 remove?

@@ -5,6 +5,8 @@ import io.axoniq.axonserver.filestorage.FileStoreEntry;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class SegmentBasedTransformationEntryStore implements TransformationEntryStore {
 
     private final AppendOnlyFileStore appendOnlyFileStore;
@@ -21,9 +23,38 @@ public class SegmentBasedTransformationEntryStore implements TransformationEntry
     }
 
     @Override
+    public Flux<TransformationEntry> readFrom(long sequence) {
+        return Flux.deferContextual(c -> appendOnlyFileStore.stream(sequence)
+                                                            .doOnNext(System.out::println)
+                                                            .map(e -> {
+                                                                AtomicLong index = c.get("index");
+                                                                return map(e, index.getAndIncrement());
+                                                            }))
+                   .contextWrite(c -> c.put("index", new AtomicLong(sequence)));
+    }
+
+    private TransformationEntry map(FileStoreEntry entry, long sequence) {
+        return new TransformationEntry() {
+            @Override
+            public long sequence() {
+                return sequence;
+            }
+
+            @Override
+            public byte[] payload() {
+                return entry.bytes();
+            }
+
+            @Override
+            public byte version() {
+                return entry.version();
+            }
+        };
+    }
+
+    @Override
     public Flux<TransformationEntry> read() {
-        // TODO: 12/28/21
-        return Flux.empty();
+        return readFrom(0);
     }
 
     @Override

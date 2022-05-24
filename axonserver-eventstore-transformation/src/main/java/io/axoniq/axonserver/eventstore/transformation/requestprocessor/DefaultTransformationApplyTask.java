@@ -1,12 +1,11 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService.Transformation;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService.Transformation;
 
 public class DefaultTransformationApplyTask implements TransformationApplyTask {
 
@@ -52,7 +51,7 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
 
         @Override
         public String id() {
-            return state.context();
+            return state.id();
         }
 
         @Override

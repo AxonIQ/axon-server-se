@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,9 +39,11 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
 
     default Optional<Integer> lastAppliedVersion(String context) {
         return findByContextAndStatus(context, EventStoreTransformationJpa.Status.APPLIED)
-                .map(EventStoreTransformationJpa::getVersion);
+                .stream()
+                .map(EventStoreTransformationJpa::getVersion)
+                .max(Integer::compareTo);
     }
 
-    Optional<EventStoreTransformationJpa> findByContextAndStatus(String context,
-                                                                 EventStoreTransformationJpa.Status status);
+    List<EventStoreTransformationJpa> findByContextAndStatus(String context,
+                                                             EventStoreTransformationJpa.Status status);
 }

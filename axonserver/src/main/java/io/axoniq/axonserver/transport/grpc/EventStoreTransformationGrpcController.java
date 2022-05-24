@@ -23,18 +23,17 @@ import io.axoniq.axonserver.grpc.event.TransformRequestAck;
 import io.axoniq.axonserver.grpc.event.Transformation;
 import io.axoniq.axonserver.grpc.event.TransformationId;
 import io.axoniq.axonserver.grpc.event.TransformationState;
-import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.annotation.Nonnull;
 
 /**
  * GRPC endpoint for the event store transformation service.
@@ -102,9 +101,13 @@ public class EventStoreTransformationGrpcController
                                                                      request.getEvent().getEvent(),
                                                                      request.getSequence(),
                                                                      new GrpcAuthentication(authenticationProvider))
-                                                       .subscribe(r -> responseObserver.onNext(ack(request.getEvent())),
+                                                       .subscribe(r -> {
+                                                                  },
                                                                   this::forwardError,
-                                                                  this::handleRequestProcessed);
+                                                                  () -> {
+                                                                      responseObserver.onNext(ack(request.getSequence()));
+                                                                      handleRequestProcessed();
+                                                                  });
                         break;
                     case DELETE_EVENT:
                         pendingRequests.incrementAndGet();
@@ -114,9 +117,13 @@ public class EventStoreTransformationGrpcController
                                                                     request.getSequence(),
                                                                     new GrpcAuthentication(authenticationProvider))
                                                        .timeout(Duration.ofMinutes(1))
-                                                       .subscribe(r -> responseObserver.onNext(ack(request.getEvent())),
+                                                       .subscribe(r -> {
+                                                                  },
                                                                   this::forwardError,
-                                                                  this::handleRequestProcessed);
+                                                                  () -> {
+                                                                      responseObserver.onNext(ack(request.getSequence()));
+                                                                      handleRequestProcessed();
+                                                                  });
                         break;
                     case REQUEST_NOT_SET:
                         break;
@@ -156,9 +163,9 @@ public class EventStoreTransformationGrpcController
         };
     }
 
-    private TransformRequestAck ack(TransformedEvent event) {
+    private TransformRequestAck ack(long sequence) {
         return TransformRequestAck.newBuilder()
-                                  .setSequence(event.getToken())
+                                  .setSequence(sequence)
                                   .build();
     }
 

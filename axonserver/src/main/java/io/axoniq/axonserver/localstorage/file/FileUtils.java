@@ -81,6 +81,7 @@ public class FileUtils {
         return Mono.<Void>create(sink -> {
             try {
                 Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                sink.success();
             } catch (IOException e) {
                 sink.error(e);
             }

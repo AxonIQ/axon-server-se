@@ -2,11 +2,11 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor.transfor
 
 import io.axoniq.axonserver.eventstore.transformation.ReplaceEvent;
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.ProtoTransformationEntry;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationResources;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationState;
 import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;
+
+import static java.lang.String.format;
 
 class ReplaceEventAction implements ActiveTransformationAction {
 
@@ -32,7 +32,7 @@ class ReplaceEventAction implements ActiveTransformationAction {
         return resources.event(tokenToReplace)
                         .flatMap(this::validateAggregateSequenceNumber)
                         .flatMap(this::validateAggregateIdentifier)
-                        .switchIfEmpty(Mono.error(new RuntimeException()));
+                        .switchIfEmpty(Mono.error(new RuntimeException("Event not found: " + tokenToReplace)));
     }
 
 
@@ -40,14 +40,18 @@ class ReplaceEventAction implements ActiveTransformationAction {
         if (event.getAggregateSequenceNumber() == replacement.getAggregateSequenceNumber()) {
             return Mono.just(event);
         }
-        return Mono.error(new RuntimeException());
+        return Mono.error(new RuntimeException(format("Invalid aggregate sequence number: %d, expecting %d",
+                                                      replacement.getAggregateSequenceNumber(),
+                                                      event.getAggregateSequenceNumber())));
     }
 
     private Mono<Event> validateAggregateIdentifier(Event event) {
         if (event.getAggregateIdentifier().equals(replacement.getAggregateIdentifier())) {
             return Mono.just(event);
         }
-        return Mono.error(new RuntimeException());
+        return Mono.error(new RuntimeException(format("Invalid aggregate identifier: %s, expecting %s",
+                                                      replacement.getAggregateIdentifier(),
+                                                      event.getAggregateIdentifier())));
     }
 
     private TransformationAction action() {

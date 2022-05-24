@@ -321,9 +321,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     @Override
     protected void activateSegmentVersion(long segment, int version) {
         // no-op, no versioning for primary segments
-        if (next != null){
+        if (next != null) {
             next.activateSegmentVersion(segment, version);
         }
+    }
+
+    public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
+        forceNextSegment();
+        return super.transformContents(newVersion, transformedEvents);
     }
 
     private void forceNextSegment() {
@@ -331,7 +336,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 new WritePosition(0, (int) storageProperties.getSegmentSize(), 0),
                 (prev, x) -> prev.incrementedWith(x.sequence, x.position, x.version));
 
-        if (writePosition.isOverflow((int)storageProperties.getSegmentSize())) {
+        if (writePosition.isOverflow((int) storageProperties.getSegmentSize())) {
             // only one thread can be here
             logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
 
