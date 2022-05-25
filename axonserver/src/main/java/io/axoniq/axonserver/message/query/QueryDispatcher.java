@@ -99,7 +99,7 @@ public class QueryDispatcher {
                                                          clientId,
                                                          clientStream.getContext(),
                                                          responseTime);
-            if (activeQuery.forward(queryResponse, clientStreamId)) {
+            if (activeQuery.forward(queryResponse, clientStreamId) && activeQuery.isStreaming()) {
                 activeQuery.removeHandlersNotMatching(clientStreamId)
                            .forEach(h -> dispatchCancellation(h, activeQuery.getKey(), activeQuery.queryName()));
             }

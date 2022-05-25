@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,8 +13,6 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.message.FlowControlQueues;
-import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.SerializedQuery;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
 import io.axoniq.axonserver.grpc.query.QueryRequest;
@@ -23,16 +21,19 @@ import io.axoniq.axonserver.grpc.query.SubscriptionQueryRequest;
 import io.axoniq.axonserver.interceptor.NoOpQueryInterceptors;
 import io.axoniq.axonserver.interceptor.QueryInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.FailingStreamObserver;
 import io.micrometer.core.instrument.Metrics;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.junit.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -46,10 +47,15 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -82,9 +88,9 @@ public class QueryDispatcherTest {
         queryCache.put("1234", new ActiveQuery("1234",
                                                "Source",
                                                new QueryDefinition("c",
-                                                                        "q"),
-                                                    r -> dispatchCalled.incrementAndGet(),
-                                               (client) -> doneCalled.set(true), mockedQueryHandlers()));
+                                                                   "q"),
+                                               r -> dispatchCalled.incrementAndGet(),
+                                               (client) -> doneCalled.set(true), mockedQueryHandler()));
         testSubject.handleResponse(QueryResponse.newBuilder()
                                                 .setMessageIdentifier("12345")
                                                 .setRequestIdentifier("1234")
@@ -97,6 +103,34 @@ public class QueryDispatcherTest {
                                                 .setRequestIdentifier("1234")
                                                 .build(), "client", "clientId");
         testSubject.handleComplete("1234", "client", "clientId", false);
+        assertEquals(2, dispatchCalled.get());
+        assertTrue(doneCalled.get());
+    }
+
+    @Test
+    public void queryResponseScatterGather() {
+        AtomicInteger dispatchCalled = new AtomicInteger(0);
+        AtomicBoolean doneCalled = new AtomicBoolean(false);
+        queryCache.put("1234", new ActiveQuery("1234",
+                                               "Source",
+                                               new QueryDefinition("c",
+                                                                   "q"),
+                                               r -> dispatchCalled.incrementAndGet(),
+                                               (client) -> doneCalled.set(true), mockedQueryHandlers()));
+        testSubject.handleResponse(QueryResponse.newBuilder()
+                                                .setMessageIdentifier("12345")
+                                                .setRequestIdentifier("1234")
+                                                .build(), "client", "clientId1");
+        assertEquals(1, dispatchCalled.get());
+        assertFalse(doneCalled.get());
+        testSubject.handleComplete("1234", "client1", "clientId1", false);
+        assertFalse(doneCalled.get());
+
+        testSubject.handleResponse(QueryResponse.newBuilder()
+                                                .setMessageIdentifier("1234")
+                                                .setRequestIdentifier("1234")
+                                                .build(), "client2", "clientId2");
+        testSubject.handleComplete("1234", "client2", "clientId2", false);
         assertEquals(2, dispatchCalled.get());
         assertTrue(doneCalled.get());
     }
@@ -430,12 +464,20 @@ public class QueryDispatcherTest {
         }
     }
 
-    private Set<QueryHandler<?>> mockedQueryHandlers() {
+    private Set<QueryHandler<?>> mockedQueryHandler() {
         QueryHandler<?> handler = mock(QueryHandler.class);
         when(handler.getClientStreamId()).thenReturn("client");
         return Collections.singleton(handler);
     }
-        // TODO
+
+    private Set<QueryHandler<?>> mockedQueryHandlers() {
+        QueryHandler<?> handler1 = mock(QueryHandler.class);
+        when(handler1.getClientStreamId()).thenReturn("client1");
+        QueryHandler<?> handler2 = mock(QueryHandler.class);
+        when(handler2.getClientStreamId()).thenReturn("client2");
+        return new HashSet<>(asList(handler1, handler2));
+    }
+    // TODO
     //ErrorCode.TOO_MANY_REQUESTS
     //ErrorCode.OTHER
 }
