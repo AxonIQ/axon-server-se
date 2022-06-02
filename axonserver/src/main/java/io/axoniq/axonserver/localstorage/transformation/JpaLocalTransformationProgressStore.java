@@ -14,15 +14,20 @@ public class JpaLocalTransformationProgressStore implements LocalTransformationP
     }
 
     @Override
+    public Mono<TransformationApplyingState> initState(String transformationId) {
+        return Mono.just(new EventStoreTransformationProgressJpa(transformationId, -1, false))
+                   .doOnNext(repository::save)
+                   .map(JpaTransformationApplyingState::new);
+    }
+
+    @Override
     public Mono<TransformationApplyingState> stateFor(String transformationId) {
         return Mono.<TransformationApplyingState>create(sink -> {
             Optional<EventStoreTransformationProgressJpa> byId = repository.findById(transformationId);
             if (byId.isPresent()) {
                 sink.success(new JpaTransformationApplyingState(byId.get()));
             } else {
-                sink.success(new JpaTransformationApplyingState(new EventStoreTransformationProgressJpa(transformationId,
-                                                                                                        -1,
-                                                                                                        false)));
+                sink.success();
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }

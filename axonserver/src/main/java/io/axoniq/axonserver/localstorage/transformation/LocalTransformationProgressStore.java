@@ -4,6 +4,8 @@ import reactor.core.publisher.Mono;
 
 public interface LocalTransformationProgressStore {
 
+    Mono<TransformationApplyingState> initState(String transformationId);
+
     /**
      * It will never return an empty Mono, because if this is empty the default initial state is returned.
      *

@@ -269,13 +269,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
-//        return transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
-//                         .flatMap(segmentedTransformedEvents -> transformSegment(
-//                                 segmentedTransformedEvents.key(),
-//                                 newVersion,
-//                                 segmentedTransformedEvents))
-//                .doOnComplete(this::activateTransformation);
-//
         return Flux.usingWhen(Mono.just(0L),
                               v -> transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
                                                     .flatMap(segmentedTransformedEvents -> transformSegment(
@@ -288,13 +281,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Mono<TransformationProgress> transformSegment(long segment,
                                                           int newVersion,
                                                           Flux<EventWithToken> transformedEventsInTheSegment) {
-        return Flux.usingWhen(Mono.defer(() -> new DefaultSegmentTransformer(storageProperties,
+        return Flux.usingWhen(Mono.fromSupplier(() -> new DefaultSegmentTransformer(storageProperties,
                                                                              context,
                                                                              segment,
                                                                              newVersion, indexManager,
-                                                                             () -> getTransactions(segment,
-                                                                                                   segment)).initialize()),
-                              segmentTransformer -> transformedEventsInTheSegment.flatMap(segmentTransformer::transformEvent),
+                                                                             () -> getTransactions(segment, segment))),
+                              segmentTransformer -> segmentTransformer.initialize()
+                                                                      .thenMany(transformedEventsInTheSegment.flatMap(segmentTransformer::transformEvent)),
                               SegmentTransformer::completeSegment,
                               SegmentTransformer::rollback,
                               SegmentTransformer::cancel)

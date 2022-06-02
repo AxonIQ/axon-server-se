@@ -15,6 +15,7 @@ public class StandardTransformationApplyExecutor implements TransformationApplyE
     public Mono<Void> apply(Transformation transformation) {
         return localTransformationApplyExecutor.apply(map(transformation))
                                                .then(transformation.markAsApplied());
+        // TODO: 6/2/22 delete transformation actions
     }
 
     private LocalTransformationApplyExecutor.Transformation map(Transformation transformation) {

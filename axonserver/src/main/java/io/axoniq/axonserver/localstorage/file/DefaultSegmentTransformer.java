@@ -4,6 +4,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.File;
 import java.util.List;
@@ -43,7 +44,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     }
 
     @Override
-    public Mono<SegmentTransformer> initialize() {
+    public Mono<Void> initialize() {
         return Mono.create(sink -> {
             try {
                 File tempFile = storageProperties.transformedDataFile(context, new FileVersion(segment, newVersion));
@@ -54,7 +55,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                                                                       storageProperties.getFlags());
                 segmentWriterRef.set(segmentWriter);
                 transactionIteratorRef.set(transactionIteratorSupplier.get());
-                sink.success(this);
+                sink.success();
             } catch (Exception e) {
                 sink.error(e);
             }
@@ -97,7 +98,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     }
 
     private Mono<Void> process(Supplier<Optional<EventWithToken>> replacement) {
-        return Mono.create(sink -> {
+        return Mono.<Void>create(sink -> {
             try {
                 boolean done = false;
                 do {
@@ -139,6 +140,6 @@ class DefaultSegmentTransformer implements SegmentTransformer {
             } catch (Exception e) {
                 sink.error(e);
             }
-        });
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 }

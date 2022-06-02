@@ -38,6 +38,7 @@ public class DefaultLocalTransformationApplyExecutor implements LocalTransformat
     public Mono<Void> apply(Transformation transformation) {
         Flux<EventWithToken> transformedEvents =
                 stateRepo.stateFor(transformation.id())
+                        .switchIfEmpty(stateRepo.initState(transformation.id()))
                          .map(state -> state.lastAppliedSequence() + 1)
                          .flatMapMany(firstSequence -> transformationEntryStoreSupplier.supply(transformation.context())
                                                                                        .flatMapMany(store -> store.read(
@@ -58,8 +59,6 @@ public class DefaultLocalTransformationApplyExecutor implements LocalTransformat
                                             lastProcessedSequence))
                                     .then(stateRepo.markAsApplied(transformation.id()))
                                     .doFinally(onFinally -> applyingTransformations.remove(transformation.id())))
-                   .then(transformationEntryStoreSupplier.supply(transformation.context()))
-                   .flatMap(TransformationEntryStore::delete)
                    .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",
                                                  transformation))
                    .doOnError(t -> logger.info("Failed to apply to local store the transformation {}", transformation));
