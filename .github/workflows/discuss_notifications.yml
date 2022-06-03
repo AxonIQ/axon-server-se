@@ -30,7 +30,7 @@ jobs:
           --data-binary @- << EOF
           {
             "title": "${{ github.event.release.name }}",
-            "raw": "We have released a new version of the Axon Server.\n\n${{ github.event.release.body }}\n\nThe latest version can be downloaded from the [download](https://axoniq.io/product-overview/axon-server) page.",
+            "raw": "We have released a new version of the Axon Server.\n\n${{ github.event.release.body }}\n\nThe latest version can be downloaded from the [download](https://developer.axoniq.io/download) page.",
             "category": $CATEGORY,
             "tags": ["new-release"]
           }
