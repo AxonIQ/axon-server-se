@@ -21,7 +21,7 @@ import java.util.zip.CRC32;
  */
 public class Checksum {
 
-    private static final int oneMB = 1024 * 1024;
+    private static final int FOUR_MB = 1024 * 1024 * 4;
     private final CRC32 crc32;
     private final int batch;
 
@@ -29,7 +29,7 @@ public class Checksum {
      * Constructs an instance that updates the checksum value loading data in chucks of 4 MBs.
      */
     public Checksum() {
-        this(4 * oneMB);
+        this(FOUR_MB);
     }
 
     public Checksum(int batch) {
@@ -56,14 +56,20 @@ public class Checksum {
      * @return this instance, for fluent api
      */
     public Checksum update(ByteBuffer buffer, int position, int size) {
+        if (position < 0) {
+            throw new IllegalArgumentException("The position cannot be lower than 0");
+        }
+        if (size > buffer.limit() - position) {
+            throw new IllegalArgumentException("The ByteBuffer is smaller than expected");
+        }
+        byte[] bytes = new byte[batch];
         ByteBuffer b = (ByteBuffer) buffer.duplicate().position(position);
 
         int rem = size;
         while (rem > 0) {
             int batchSize = Math.min(batch, rem);
-            byte[] bytes = new byte[batchSize];
             b.get(bytes, 0, batchSize);
-            crc32.update(bytes);
+            crc32.update(bytes, 0, batchSize);
             rem -= batchSize;
         }
         return this;
