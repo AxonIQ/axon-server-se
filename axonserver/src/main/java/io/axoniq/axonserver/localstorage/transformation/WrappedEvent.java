@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -21,21 +21,18 @@ import java.util.Map;
 public class WrappedEvent implements ProcessedEvent {
 
     private final Event event;
-    private final byte[] dataForWrite;
-
-    public WrappedEvent(Event event, EventTransformer eventTransformer) {
+    public WrappedEvent(Event event) {
         this.event = event;
-        this.dataForWrite = eventTransformer.toStorage(event.toByteArray());
     }
 
     @Override
     public int getSerializedSize() {
-        return dataForWrite.length;
+        return event.getSerializedSize();
     }
 
     @Override
     public byte[] toByteArray() {
-        return dataForWrite;
+        return event.toByteArray();
     }
 
     @Override
