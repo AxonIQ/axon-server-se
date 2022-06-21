@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 import java.nio.ByteBuffer;
@@ -24,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 4.0
  */
 public class ByteBufferEventSource implements EventSource {
-    private final EventTransformer eventTransformer;
+
     private final Runnable onClose;
     private final ByteBuffer buffer;
     private final boolean main;
@@ -38,29 +37,24 @@ public class ByteBufferEventSource implements EventSource {
                                  StorageProperties storageProperties) {
         this.path = path;
         buffer.get();
-        int flags = buffer.getInt();
-        this.eventTransformer = eventTransformerFactory.get(flags);
         this.buffer = buffer;
         this.main = true;
         this.onClose = null;
         this.cleanerHack = storageProperties.isCleanRequired();
     }
 
-    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer,
+    protected ByteBufferEventSource(String path, ByteBuffer buffer,
                                     boolean cleanerHack, Runnable onClose) {
         this.path = path;
         this.buffer = buffer;
-        this.eventTransformer = eventTransformer;
         this.onClose = onClose;
         this.main = false;
         this.cleanerHack = cleanerHack;
     }
 
-    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer,
-                                    boolean cleanerHack) {
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, boolean cleanerHack) {
         this.path = path;
         this.buffer = buffer;
-        this.eventTransformer = eventTransformer;
         this.onClose = null;
         this.main = true;
         this.cleanerHack = cleanerHack;
@@ -70,14 +64,13 @@ public class ByteBufferEventSource implements EventSource {
         int size = buffer.getInt();
         byte[] bytes = new byte[size];
         buffer.get(bytes);
-        return new SerializedEvent(eventTransformer.fromStorage(bytes));
+        return new SerializedEvent(bytes);
     }
 
     public ByteBufferEventSource duplicate() {
         duplicatesCount.incrementAndGet();
         return new ByteBufferEventSource(path,
                                          buffer.duplicate(),
-                                         eventTransformer,
                                          cleanerHack,
                                          duplicatesCount::decrementAndGet);
     }

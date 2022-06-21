@@ -16,7 +16,6 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
@@ -68,7 +67,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected final AtomicLong lastToken = new AtomicLong(-1);
     //
     protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>();
-    protected EventTransformer eventTransformer;
     protected final FileSystemMonitor fileSystemMonitor;
 
     /**
@@ -94,7 +92,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         File storageDir = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
         indexManager.init();
-        eventTransformer = eventTransformerFactory.get(storageProperties.getFlags());
         initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir, defaultFirstIndex);
 
         fileSystemMonitor.registerPath(storeName(), storageDir.toPath());
@@ -457,7 +454,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             buffer.putInt(storageProperties.getFlags());
             WritableEventSource writableEventSource = new WritableEventSource(file.getAbsolutePath(),
                                                                               buffer,
-                                                                              eventTransformer,
                                                                               storageProperties.isCleanRequired());
             readBuffers.put(segment, writableEventSource);
             return writableEventSource;

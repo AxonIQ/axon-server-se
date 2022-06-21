@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,14 +20,15 @@ import java.util.Arrays;
  * @author Marc Gathier
  */
 public class WritableEventSource extends ByteBufferEventSource {
+
     private static final Logger logger = LoggerFactory.getLogger(WritableEventSource.class);
 
-    public WritableEventSource(String file, ByteBuffer buffer, EventTransformer eventTransformer, boolean cleanerHack) {
-        super(file, buffer, eventTransformer, cleanerHack);
+    public WritableEventSource(String file, ByteBuffer buffer, boolean cleanerHack) {
+        super(file, buffer, cleanerHack);
     }
 
     private MappedByteBuffer mappedByteBuffer() {
-        return (MappedByteBuffer)getBuffer();
+        return (MappedByteBuffer) getBuffer();
     }
 
     public int limit() {
