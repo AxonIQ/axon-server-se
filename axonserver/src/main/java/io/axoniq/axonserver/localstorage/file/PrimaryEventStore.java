@@ -16,7 +16,6 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.StorageCallback;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
 import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -61,7 +60,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     protected static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
 
-    protected final EventTransformerFactory eventTransformerFactory;
     protected final Synchronizer synchronizer;
     protected final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     protected final AtomicLong lastToken = new AtomicLong(-1);
@@ -70,19 +68,16 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected final FileSystemMonitor fileSystemMonitor;
 
     /**
-     * @param context                 the context and the content type (events or snapshots)
-     * @param indexManager            the index manager to use
-     * @param eventTransformerFactory the transformer factory
-     * @param storageProperties       configuration of the storage engine
-     * @param meterFactory            factory to create metrics meters
+     * @param context           the context and the content type (events or snapshots)
+     * @param indexManager      the index manager to use
+     * @param storageProperties configuration of the storage engine
+     * @param meterFactory      factory to create metrics meters
      * @param fileSystemMonitor
      */
-    public PrimaryEventStore(EventTypeContext context, IndexManager indexManager,
-                             EventTransformerFactory eventTransformerFactory, StorageProperties storageProperties,
+    public PrimaryEventStore(EventTypeContext context, IndexManager indexManager, StorageProperties storageProperties,
                              SegmentBasedEventStore completedSegmentsHandler,
                              MeterFactory meterFactory, FileSystemMonitor fileSystemMonitor) {
         super(context, indexManager, storageProperties, completedSegmentsHandler, meterFactory);
-        this.eventTransformerFactory = eventTransformerFactory;
         this.fileSystemMonitor = fileSystemMonitor;
         synchronizer = new Synchronizer(context, storageProperties, this::completeSegment);
     }

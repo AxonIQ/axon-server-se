@@ -12,7 +12,6 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,14 +28,13 @@ public class InputStreamEventSource implements EventSource {
     private volatile boolean closed;
 
 
-    public InputStreamEventSource(File dataFile,
-                                  EventTransformerFactory eventTransformerFactory) {
+    public InputStreamEventSource(File dataFile) {
         this.dataFile = dataFile;
         try {
             logger.debug("Open file {}", dataFile);
             dataInputStream = new PositionKeepingDataInputStream(dataFile);
             dataInputStream.readByte();
-            int modifiers = dataInputStream.readInt();
+            dataInputStream.readInt();
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
         }

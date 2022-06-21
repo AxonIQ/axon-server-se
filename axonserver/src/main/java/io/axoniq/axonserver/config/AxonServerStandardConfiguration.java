@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -14,9 +14,9 @@ import io.axoniq.axonserver.access.jpa.UserRole;
 import io.axoniq.axonserver.access.user.UserController;
 import io.axoniq.axonserver.access.user.UserControllerFacade;
 import io.axoniq.axonserver.applicationevents.UserEvents;
+import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -33,8 +33,6 @@ import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -94,21 +92,14 @@ public class AxonServerStandardConfiguration {
         return new DefaultStorageTransactionManagerFactory();
     }
 
-    @Bean
-    @ConditionalOnMissingBean(EventTransformerFactory.class)
-    public EventTransformerFactory eventTransformerFactory() {
-        return new DefaultEventTransformerFactory();
-    }
 
     @Bean
     @ConditionalOnMissingBean(EventStoreFactory.class)
     public EventStoreFactory eventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
-                                               EventTransformerFactory eventTransformerFactory,
                                                StorageTransactionManagerFactory storageTransactionManagerFactory,
                                                MeterFactory meterFactory,
                                                FileSystemMonitor fileSystemMonitor) {
         return new StandardEventStoreFactory(embeddedDBProperties,
-                                             eventTransformerFactory,
                                              storageTransactionManagerFactory,
                                              meterFactory, fileSystemMonitor);
     }

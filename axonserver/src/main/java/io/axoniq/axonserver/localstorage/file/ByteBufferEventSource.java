@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.localstorage.SerializedEvent;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,8 +32,7 @@ public class ByteBufferEventSource implements EventSource {
     private final boolean cleanerHack;
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory,
-                                 StorageProperties storageProperties) {
+    public ByteBufferEventSource(String path, ByteBuffer buffer, StorageProperties storageProperties) {
         this.path = path;
         buffer.get();
         this.buffer = buffer;
@@ -43,8 +41,7 @@ public class ByteBufferEventSource implements EventSource {
         this.cleanerHack = storageProperties.isCleanRequired();
     }
 
-    protected ByteBufferEventSource(String path, ByteBuffer buffer,
-                                    boolean cleanerHack, Runnable onClose) {
+    protected ByteBufferEventSource(String path, ByteBuffer buffer, boolean cleanerHack, Runnable onClose) {
         this.path = path;
         this.buffer = buffer;
         this.onClose = onClose;

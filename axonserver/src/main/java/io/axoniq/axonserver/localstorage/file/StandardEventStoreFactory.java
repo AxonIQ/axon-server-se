@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -15,7 +15,6 @@ import io.axoniq.axonserver.localstorage.EventStoreFactory;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
 /**
@@ -27,7 +26,6 @@ import io.axoniq.axonserver.metric.MeterFactory;
 public class StandardEventStoreFactory implements EventStoreFactory {
 
     protected final EmbeddedDBProperties embeddedDBProperties;
-    protected final EventTransformerFactory eventTransformerFactory;
     protected final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final MeterFactory meterFactory;
     private final FileSystemMonitor fileSystemMonitor;
@@ -39,11 +37,9 @@ public class StandardEventStoreFactory implements EventStoreFactory {
      * @param fileSystemMonitor
      */
     public StandardEventStoreFactory(EmbeddedDBProperties embeddedDBProperties,
-                                     EventTransformerFactory eventTransformerFactory,
                                      StorageTransactionManagerFactory storageTransactionManagerFactory,
                                      MeterFactory meterFactory, FileSystemMonitor fileSystemMonitor) {
         this.embeddedDBProperties = embeddedDBProperties;
-        this.eventTransformerFactory = eventTransformerFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
         this.meterFactory = meterFactory;
         this.fileSystemMonitor = fileSystemMonitor;
@@ -61,12 +57,10 @@ public class StandardEventStoreFactory implements EventStoreFactory {
                                                                      meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
-                                                                 eventTransformerFactory,
                                                                  embeddedDBProperties.getEvent(),
                                                                  meterFactory);
         return new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                      indexManager,
-                                     eventTransformerFactory,
                                      embeddedDBProperties.getEvent(),
                                      second,
                                      meterFactory, fileSystemMonitor);
@@ -84,11 +78,9 @@ public class StandardEventStoreFactory implements EventStoreFactory {
                                                                      meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                                  indexManager,
-                                                                 eventTransformerFactory,
                                                                  embeddedDBProperties.getSnapshot(), meterFactory);
         return new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                      indexManager,
-                                     eventTransformerFactory,
                                      embeddedDBProperties.getSnapshot(), second, meterFactory, fileSystemMonitor);
     }
 }

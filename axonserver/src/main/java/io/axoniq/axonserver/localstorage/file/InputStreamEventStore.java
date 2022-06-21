@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -12,7 +12,6 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
 import java.util.Comparator;
@@ -29,13 +28,10 @@ import java.util.concurrent.ConcurrentSkipListSet;
 public class InputStreamEventStore extends SegmentBasedEventStore implements ReadOnlySegmentsHandler {
 
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
-    private final EventTransformerFactory eventTransformerFactory;
 
     public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
-                                 EventTransformerFactory eventTransformerFactory,
                                  StorageProperties storageProperties, MeterFactory meterFactory) {
         super(context, indexManager, storageProperties, meterFactory);
-        this.eventTransformerFactory = eventTransformerFactory;
     }
 
     @Override
@@ -96,8 +92,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         }
 
         fileOpenMeter.increment();
-        return new InputStreamEventSource(storageProperties.dataFile(context, segment),
-                                          eventTransformerFactory);
+        return new InputStreamEventSource(storageProperties.dataFile(context, segment));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -14,12 +14,11 @@ import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore;
+import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -31,9 +30,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.IntStream;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -42,9 +40,9 @@ public class TestInputStreamStorageContainer {
 
     private final EventStorageEngine datafileManagerChain;
     private final EventStorageEngine snapshotManagerChain;
-    private EventWriteStorage eventWriter;
+    private final EventWriteStorage eventWriter;
 
-    private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
+    private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
 
     public TestInputStreamStorageContainer(File location) throws IOException {
@@ -60,7 +58,6 @@ public class TestInputStreamStorageContainer {
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
         EventStoreFactory eventStoreFactory = new StandardEventStoreFactory(embeddedDBProperties,
-                                                                            new DefaultEventTransformerFactory(),
                                                                             new DefaultStorageTransactionManagerFactory(),
                                                                             meterFactory, fileSystemMonitor);
         datafileManagerChain = eventStoreFactory.createEventStorageEngine("default");

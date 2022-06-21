@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -18,8 +18,6 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -58,7 +56,7 @@ public class PrimaryEventStoreTest {
         embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(
-                tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
+                tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID());
         embeddedDBProperties.getEvent().setSegmentSize(512 * 1024L);
         embeddedDBProperties.getSnapshot().setStorage(tempFolder.getRoot().getAbsolutePath());
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
@@ -77,10 +75,8 @@ public class PrimaryEventStoreTest {
     }
 
     private PrimaryEventStore primaryEventStore(IndexManager indexManager) {
-        EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
-                                                                 eventTransformerFactory,
                                                                  embeddedDBProperties.getEvent(),
                                                                  meterFactory);
 
@@ -88,7 +84,6 @@ public class PrimaryEventStoreTest {
 
         PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                             indexManager,
-                                            eventTransformerFactory,
                                             embeddedDBProperties.getEvent(),
                                             second,
                                             meterFactory, fileSystemMonitor);

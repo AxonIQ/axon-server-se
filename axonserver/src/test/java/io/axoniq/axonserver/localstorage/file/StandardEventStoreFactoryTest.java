@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -17,7 +17,6 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -34,9 +33,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -56,7 +54,7 @@ public class StandardEventStoreFactoryTest {
         EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(
-                tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID().toString());
+                tempFolder.getRoot().getAbsolutePath() + "/" + UUID.randomUUID());
         embeddedDBProperties.getEvent().setSegmentSize(10 * 1024L);
         embeddedDBProperties.getEvent().setPrimaryCleanupDelay(0);
         embeddedDBProperties.getEvent().setSecondaryCleanupDelay(0);
@@ -71,7 +69,6 @@ public class StandardEventStoreFactoryTest {
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
         testSubject = new StandardEventStoreFactory(embeddedDBProperties,
-                                                    new DefaultEventTransformerFactory(),
                                                     new DefaultStorageTransactionManagerFactory(), meterFactory, fileSystemMonitor);
     }
 

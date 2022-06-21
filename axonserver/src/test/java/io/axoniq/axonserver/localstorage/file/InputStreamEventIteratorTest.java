@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.test.TestUtils;
 import org.junit.*;
 
@@ -28,11 +27,11 @@ public class InputStreamEventIteratorTest {
     public void setUp() throws Exception {
 
         File file = new File(TestUtils
-                .fixPathOnWindows(InputStreamEventStore.class
-                                          .getResource(
-                                                  "/data/default/00000000000000000000.events")
-                                          .getFile()));
-        InputStreamEventSource eventSource = new InputStreamEventSource(file, new DefaultEventTransformerFactory());
+                                     .fixPathOnWindows(InputStreamEventStore.class
+                                                               .getResource(
+                                                                       "/data/default/00000000000000000000.events")
+                                                               .getFile()));
+        InputStreamEventSource eventSource = new InputStreamEventSource(file);
         testSubject = new InputStreamEventIterator(eventSource, 0, 0);
     }
 
