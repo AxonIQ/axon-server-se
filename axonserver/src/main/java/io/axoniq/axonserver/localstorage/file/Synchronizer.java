@@ -76,7 +76,7 @@ public class Synchronizer {
                     break;
                 }
 
-                if (writePosition.sequence > current.sequence + writePosition.entries) {
+                if (writePosition.sequence > current.sequence + writePosition.prevEntries) {
                     break;
                 }
 
@@ -84,7 +84,7 @@ public class Synchronizer {
                     updated.set(true);
 
                     if (canSyncAt(writePosition, current)) {
-                        syncAndCloseFile.add(currentRef.get());
+                        syncAndCloseFile.add(current);
                     }
                     iterator.remove();
                 }

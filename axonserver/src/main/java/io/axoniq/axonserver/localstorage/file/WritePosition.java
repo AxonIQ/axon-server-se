@@ -12,6 +12,8 @@ package io.axoniq.axonserver.localstorage.file;
 import java.util.Comparator;
 
 /**
+ * Describes a block where the event store can write a transaction.
+ *
  * @author Marc Gathier
  */
 public class WritePosition implements Comparable<WritePosition> {
@@ -24,25 +26,39 @@ public class WritePosition implements Comparable<WritePosition> {
     final int position;
     final WritableEventSource buffer;
     final Long segment;
-    public int entries;
+    public int prevEntries;
 
-    public WritePosition(long sequence, int position) {
-        this(sequence, position, null, null, 0);
+    public WritePosition(long prevEntries, int position) {
+        this(0, position, null, null, (int) prevEntries);
     }
 
-    public WritePosition(long sequence, int position, WritableEventSource buffer, Long segment, int entries) {
+    /**
+     * @param sequence the sequence number of the first event in this blcok
+     * @param position the position of the block in the file
+     * @param buffer the buffer for writing the block
+     * @param segment the segment number containing the block
+     * @param prevEntries the number of events in the previous transaction
+     */
+    public WritePosition(long sequence, int position, WritableEventSource buffer, Long segment, int prevEntries) {
         this.sequence = sequence;
         this.position = position;
         this.buffer = buffer;
         this.segment = segment;
+        this.prevEntries = prevEntries;
     }
 
+    /**
+     * Creates a new version of the {@link WritePosition} linking to a new write buffer. Position is the initial position
+     * in the segment to start writing event data.
+     * @param buffer the write buffer for the new segment
+     * @return updated write position
+     */
     public WritePosition reset(WritableEventSource buffer) {
         return new WritePosition(sequence,
                                  SegmentBasedEventStore.VERSION_BYTES + SegmentBasedEventStore.FILE_OPTIONS_BYTES,
                                  buffer,
                                  sequence,
-                                 entries);
+                                 prevEntries);
     }
 
     boolean isOverflow(int transactionLength) {
@@ -63,14 +79,14 @@ public class WritePosition implements Comparable<WritePosition> {
         return this != INVALID && buffer != null && position + transactionLength + 4 < buffer.capacity();
     }
 
-    WritePosition incrementedWith(long sequence, int position, int nrOfEvents) {
+    WritePosition incrementedWith(int entries, int position) {
         if (this == INVALID || this.position > buffer.capacity()) {
             return INVALID;
         }
         return new WritePosition(
-                this.sequence + sequence,
+                this.sequence + entries,
                 this.position + position,
-                this.buffer, this.segment, nrOfEvents);
+                this.buffer, this.segment, entries);
     }
 
     boolean isComplete() {

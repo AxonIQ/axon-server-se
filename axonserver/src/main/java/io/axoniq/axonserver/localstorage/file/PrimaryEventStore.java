@@ -423,7 +423,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         do {
             writePosition = writePositionRef.getAndAccumulate(
                     new WritePosition(nrOfEvents, totalSize),
-                    (prev, x) -> prev.incrementedWith(x.sequence, x.position, nrOfEvents));
+                    (prev, x) -> prev.incrementedWith(x.prevEntries, x.position));
 
             if (writePosition.isOverflow(totalSize)) {
                 // only one thread can be here
