@@ -69,20 +69,26 @@ public class Synchronizer {
                 Map.Entry<WritePosition, StorageCallback> writePositionEntry = iterator
                         .next();
 
+                WritePosition current = currentRef.get();
+
                 WritePosition writePosition = writePositionEntry.getKey();
                 if (!writePosition.isComplete()) {
+                    break;
+                }
+
+                if (writePosition.sequence > current.sequence + writePosition.entries) {
                     break;
                 }
 
                 if (writePositionEntry.getValue().onCompleted(writePosition.sequence)) {
                     updated.set(true);
 
-                    if (canSyncAt(writePosition)) {
+                    if (canSyncAt(writePosition, current)) {
                         syncAndCloseFile.add(currentRef.get());
                     }
-                    currentRef.set(writePosition);
                     iterator.remove();
                 }
+                currentRef.updateAndGet(old -> old.sequence < writePosition.sequence ? writePosition : old);
             }
         } catch (RuntimeException t) {
             writePositions.entrySet().iterator().forEachRemaining(e -> e.getValue().onError(t));
@@ -111,12 +117,14 @@ public class Synchronizer {
     }
 
 
-    private boolean canSyncAt(WritePosition writePosition) {
-        WritePosition current = currentRef.get();
-        if (current != null && !Objects.equals(current.segment, writePosition.segment)) {
+    private boolean canSyncAt(WritePosition writePosition, WritePosition current) {
+        if (current == null) {
+            return false;
+        }
+        if (!Objects.equals(current.segment, writePosition.segment)) {
             log.debug("can sync at {}: {}", writePosition.segment, current.segment);
         }
-        return current != null && !Objects.equals(current.segment, writePosition.segment);
+        return !Objects.equals(current.segment, writePosition.segment);
     }
 
     public synchronized void init(WritePosition writePosition) {

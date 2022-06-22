@@ -16,7 +16,7 @@ import java.util.Comparator;
  */
 public class WritePosition implements Comparable<WritePosition> {
 
-    static final WritePosition INVALID = new WritePosition(Long.MAX_VALUE, Integer.MAX_VALUE, null, null);
+    static final WritePosition INVALID = new WritePosition(Long.MAX_VALUE, Integer.MAX_VALUE, null, null, 0);
     private static final Comparator<WritePosition> writePositionComparator =
             Comparator.comparingLong(WritePosition::getSegment)
                       .thenComparingInt(WritePosition::getPosition);
@@ -24,12 +24,13 @@ public class WritePosition implements Comparable<WritePosition> {
     final int position;
     final WritableEventSource buffer;
     final Long segment;
+    public int entries;
 
     public WritePosition(long sequence, int position) {
-        this(sequence, position, null, null);
+        this(sequence, position, null, null, 0);
     }
 
-    public WritePosition(long sequence, int position, WritableEventSource buffer, Long segment) {
+    public WritePosition(long sequence, int position, WritableEventSource buffer, Long segment, int entries) {
         this.sequence = sequence;
         this.position = position;
         this.buffer = buffer;
@@ -40,7 +41,8 @@ public class WritePosition implements Comparable<WritePosition> {
         return new WritePosition(sequence,
                                  SegmentBasedEventStore.VERSION_BYTES + SegmentBasedEventStore.FILE_OPTIONS_BYTES,
                                  buffer,
-                                 sequence);
+                                 sequence,
+                                 entries);
     }
 
     boolean isOverflow(int transactionLength) {
@@ -61,14 +63,14 @@ public class WritePosition implements Comparable<WritePosition> {
         return this != INVALID && buffer != null && position + transactionLength + 4 < buffer.capacity();
     }
 
-    WritePosition incrementedWith(long sequence, int position) {
+    WritePosition incrementedWith(long sequence, int position, int nrOfEvents) {
         if (this == INVALID || this.position > buffer.capacity()) {
             return INVALID;
         }
         return new WritePosition(
                 this.sequence + sequence,
                 this.position + position,
-                this.buffer, this.segment);
+                this.buffer, this.segment, nrOfEvents);
     }
 
     boolean isComplete() {

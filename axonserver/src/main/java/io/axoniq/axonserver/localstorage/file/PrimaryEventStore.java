@@ -152,7 +152,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         indexManager.addToActiveSegment(first, loadedEntries);
 
         buffer.putInt(buffer.position(), 0);
-        WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
+        WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first, 0);
         writePositionRef.set(writePosition);
         synchronizer.init(writePosition);
     }
@@ -423,7 +423,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         do {
             writePosition = writePositionRef.getAndAccumulate(
                     new WritePosition(nrOfEvents, totalSize),
-                    (prev, x) -> prev.incrementedWith(x.sequence, x.position));
+                    (prev, x) -> prev.incrementedWith(x.sequence, x.position, nrOfEvents));
 
             if (writePosition.isOverflow(totalSize)) {
                 // only one thread can be here
