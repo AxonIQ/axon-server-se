@@ -71,7 +71,7 @@ public class CommandDispatcher {
                                                 queueCapacity,
                                                 BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
                                                 meterFactory,
-                                                ErrorCode.COMMAND_DISPATCH_ERROR);
+                                                ErrorCode.TOO_MANY_REQUESTS);
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
     }
 

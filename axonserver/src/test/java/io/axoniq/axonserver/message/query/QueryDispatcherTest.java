@@ -51,7 +51,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
@@ -180,7 +179,7 @@ public class QueryDispatcherTest {
         assertEquals(1, responseObserver.completedCount());
         assertTrue(queryCache.isEmpty());
         assertEquals(1, responseObserver.values().size());
-        assertNotEquals("", responseObserver.values().get(0).getErrorCode());
+        assertEquals(ErrorCode.TOO_MANY_REQUESTS.getCode(), responseObserver.values().get(0).getErrorCode());
         assertEquals(requestId, responseObserver.values().get(0).getRequestIdentifier());
     }
 

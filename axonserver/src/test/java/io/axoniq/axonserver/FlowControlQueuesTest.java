@@ -24,14 +24,16 @@ import static org.junit.Assert.*;
 public class FlowControlQueuesTest {
     private static final int SOFT_LIMIT_QUEUE_SIZE = 5;
     private FlowControlQueues<QueueElement> testSubject;
+    private ErrorCode errorCode;
 
     @Before
     public void setup() {
+        errorCode = ErrorCode.OTHER;
         testSubject = new FlowControlQueues<>(Comparator.comparing(QueueElement::getPrioKey),
                                               SOFT_LIMIT_QUEUE_SIZE,
                                               null,
                                               null,
-                                              ErrorCode.OTHER);
+                errorCode);
     }
 
     @Test
@@ -82,14 +84,15 @@ public class FlowControlQueuesTest {
         assertEquals("C", testSubject.take("one").prioKey);
     }
 
-    @Test(expected = MessagingPlatformException.class)
+    @Test
     public void queueSoftLimits() {
         testSubject.put("one", new QueueElement("A"));
         testSubject.put("one", new QueueElement("B"));
         testSubject.put("one", new QueueElement("C"));
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
-        testSubject.put("one", new QueueElement("F"), -1);
+
+        assertThrows(MessagingPlatformException.class, () -> testSubject.put("one", new QueueElement("F"), -1));
     }
 
     @Test(expected = MessagingPlatformException.class)
