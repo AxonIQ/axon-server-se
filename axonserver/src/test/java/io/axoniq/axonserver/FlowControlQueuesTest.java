@@ -24,16 +24,16 @@ import static org.junit.Assert.*;
 public class FlowControlQueuesTest {
     private static final int SOFT_LIMIT_QUEUE_SIZE = 5;
     private FlowControlQueues<QueueElement> testSubject;
-    private ErrorCode errorCode;
+    private ErrorCode configuredErrorCode;
 
     @Before
     public void setup() {
-        errorCode = ErrorCode.OTHER;
+        configuredErrorCode = ErrorCode.TOO_MANY_REQUESTS;
         testSubject = new FlowControlQueues<>(Comparator.comparing(QueueElement::getPrioKey),
                                               SOFT_LIMIT_QUEUE_SIZE,
                                               null,
                                               null,
-                errorCode);
+                configuredErrorCode);
     }
 
     @Test
@@ -92,10 +92,11 @@ public class FlowControlQueuesTest {
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
 
-        assertThrows(MessagingPlatformException.class, () -> testSubject.put("one", new QueueElement("F"), -1));
+        MessagingPlatformException exception = assertThrows(MessagingPlatformException.class, () -> testSubject.put("one", new QueueElement("F"), -1));
+        assertEquals(configuredErrorCode, exception.getErrorCode());
     }
 
-    @Test(expected = MessagingPlatformException.class)
+    @Test
     public void queueHardLimits() {
         testSubject.put("one", new QueueElement("A"));
         testSubject.put("one", new QueueElement("B"));
@@ -103,7 +104,8 @@ public class FlowControlQueuesTest {
         testSubject.put("one", new QueueElement("D"));
         testSubject.put("one", new QueueElement("E"));
         testSubject.put("one", new QueueElement("F"), 1);
-        testSubject.put("one", new QueueElement("G"), 1);
+        MessagingPlatformException exception = assertThrows(MessagingPlatformException.class, () -> testSubject.put("one", new QueueElement("G"), 1));
+        assertEquals(configuredErrorCode, exception.getErrorCode());
     }
 
     public static class QueueElement {
