@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -33,34 +33,41 @@ import static com.google.common.io.ByteStreams.toByteArray;
  */
 public class SerializedEvent {
 
-    private final byte[] serializedData;
+    private final DataSupplier dataSupplier;
+
+    public SerializedEvent(DataSupplier dataSupplier) {
+        this.dataSupplier = dataSupplier;
+    }
+
     private volatile Event event;
 
     public SerializedEvent(Event event) {
-        this.serializedData = event.toByteArray();
+        this.dataSupplier = event::toByteArray;
         this.event = event;
     }
 
     public SerializedEvent(byte[] eventFromFile) {
-        this.serializedData = eventFromFile;
+        this.dataSupplier = () -> eventFromFile;
     }
 
     public SerializedEvent(InputStream event) {
-        try {
-            this.serializedData = toByteArray(event);
-        } catch (IOException e) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
-        }
+        this.dataSupplier = () -> {
+            try {
+                return toByteArray(event);
+            } catch (IOException e) {
+                throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
+            }
+        };
     }
 
     public InputStream asInputStream() {
-        return new ByteArrayInputStream(serializedData);
+        return new ByteArrayInputStream(serializedData());
     }
 
     public Event asEvent() {
         if (event == null) {
             try {
-                event = Event.parseFrom(serializedData);
+                event = Event.parseFrom(serializedData());
             } catch (InvalidProtocolBufferException e) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR, e.getMessage(), e);
             }
@@ -69,11 +76,15 @@ public class SerializedEvent {
     }
 
     public int size() {
-        return serializedData.length;
+        return serializedData().length;
     }
 
     public byte[] serializedData() {
-        return serializedData;
+        return dataSupplier.get();
+    }
+
+    public boolean isDomainEvent() {
+        return !StringUtils.isEmpty(getAggregateType());
     }
 
     public long getAggregateSequenceNumber() {
@@ -104,8 +115,10 @@ public class SerializedEvent {
         return asEvent().getTimestamp();
     }
 
-    public boolean isDomainEvent() {
-        return ! StringUtils.isEmpty(getAggregateType());
+    public Map<String, Object> getMetaData() {
+        Map<String, Object> metaData = new HashMap<>();
+        asEvent().getMetaDataMap().forEach((key, value) -> metaData.put(key, asObject(value)));
+        return metaData;
     }
 
     public String getAggregateIdentifier() {
@@ -120,10 +133,16 @@ public class SerializedEvent {
         return asEvent().getAggregateType();
     }
 
-    public Map<String, Object> getMetaData() {
-        Map<String,Object> metaData = new HashMap<>();
-        asEvent().getMetaDataMap().forEach((key, value) -> metaData.put(key, asObject(value)));
-        return metaData;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SerializedEvent that = (SerializedEvent) o;
+        return Arrays.equals(serializedData(), that.serializedData());
     }
 
     private Object asObject(MetaDataValue value) {
@@ -143,24 +162,17 @@ public class SerializedEvent {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        SerializedEvent that = (SerializedEvent) o;
-        return Arrays.equals(serializedData, that.serializedData);
-    }
-
-    @Override
     public int hashCode() {
-        return Arrays.hashCode(serializedData);
+        return Arrays.hashCode(serializedData());
     }
 
     public ByteString asByteString() {
-        return ByteString.copyFrom(serializedData);
+        return ByteString.copyFrom(serializedData());
+    }
+
+    public interface DataSupplier {
+
+        byte[] get();
     }
 
     public SerializedEvent asSnapshot() {
