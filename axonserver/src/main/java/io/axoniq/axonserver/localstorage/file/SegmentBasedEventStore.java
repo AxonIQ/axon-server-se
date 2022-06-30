@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventType;
@@ -625,14 +626,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void validateTransaction(long token, List<SerializedEvent> eventList) {
-        try (CloseableIterator<SerializedTransactionWithToken> transactionIterator = transactionIterator(token,
-                                                                                                         token
-                                                                                                                 + eventList
-                                                                                                                 .size())) {
+    public void validateTransaction(long token, List<Event> eventList) {
+        try (CloseableIterator<SerializedTransactionWithToken> transactionIterator =
+                     transactionIterator(token,token + eventList.size())) {
             if (transactionIterator.hasNext()) {
                 SerializedTransactionWithToken transaction = transactionIterator.next();
-                if (!transaction.getEvents().equals(eventList)) {
+                if (!equals(transaction.getEvents(),eventList)) {
                     throw new EventStoreValidationException(String.format(
                             "%s: Replicated %s transaction %d does not match stored transaction",
                             context,
@@ -646,6 +645,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                       token));
             }
         }
+    }
+
+    private boolean equals(List<SerializedEvent> storedEvents, List<Event> eventList) {
+        for (int i = 0; i < storedEvents.size(); i++) {
+            if (!storedEvents.get(i).asEvent().equals(eventList.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private class TransactionWithTokenIterator implements CloseableIterator<SerializedTransactionWithToken> {

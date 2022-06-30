@@ -16,7 +16,6 @@ import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -33,7 +32,7 @@ public class SyncStorage {
         this.eventStore = eventStore;
     }
 
-    public void sync(long token, List<SerializedEvent> eventList) {
+    public void sync(long token, List<Event> eventList) {
         if( eventList.isEmpty()) return;
         if (token < eventStore.nextToken()) {
             eventStore.validateTransaction(token, eventList);
@@ -48,9 +47,7 @@ public class SyncStorage {
             throw new EventStoreValidationException("Received invalid token");
         }
         try {
-            List<Event> events = new ArrayList<>(eventList.size());
-            eventList.forEach(e -> events.add(e.asEvent()));
-            eventStore.store(events).get();
+            eventStore.store(eventList).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e);

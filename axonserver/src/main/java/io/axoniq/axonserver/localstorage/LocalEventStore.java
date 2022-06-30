@@ -667,12 +667,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
-    public long syncEvents(String context, SerializedTransactionWithToken value) {
+    public long syncEvents(String context, long token, List<Event> events) {
         try {
             Workers worker = workers(context);
-            worker.eventSyncStorage.sync(value.getToken(), value.getEvents());
+            worker.eventSyncStorage.sync(token, events);
             worker.triggerTrackerEventProcessors();
-            return value.getToken() + value.getEvents().size();
+            return token + events.size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
                 logger.warn("{}: cannot store in non-active event store", context);
@@ -683,11 +683,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
     }
 
-    public long syncSnapshots(String context, SerializedTransactionWithToken value) {
+    public long syncSnapshots(String context, long token, List<Event> snapshots) {
         try {
             SyncStorage writeStorage = workers(context).snapshotSyncStorage;
-            writeStorage.sync(value.getToken(), value.getEvents());
-            return value.getToken() + value.getEvents().size();
+            writeStorage.sync(token, snapshots);
+            return token + snapshots.size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
                 logger.warn("{}: cannot store snapshot in non-active event store", context);
