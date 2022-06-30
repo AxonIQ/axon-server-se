@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -64,6 +64,7 @@ public class Synchronizer {
 
     public void notifyWritePositions() {
         try {
+            boolean removed = false;
             for (Iterator<Map.Entry<WritePosition, StorageCallback>> iterator = writePositions
                     .entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<WritePosition, StorageCallback> writePositionEntry = iterator
@@ -80,18 +81,23 @@ public class Synchronizer {
                     break;
                 }
 
-                if (writePositionEntry.getValue().onCompleted(writePosition.sequence)) {
-                    updated.set(true);
-
-                    if (canSyncAt(writePosition, current)) {
-                        syncAndCloseFile.add(current);
-                    }
-                    iterator.remove();
+                if (!writePositionEntry.getValue().complete(writePosition.sequence)) {
+                    break;
                 }
+                updated.set(true);
+
+                if (canSyncAt(writePosition, current)) {
+                    syncAndCloseFile.add(current);
+                }
+                removed = true;
                 currentRef.updateAndGet(old -> old.sequence < writePosition.sequence ? writePosition : old);
+                iterator.remove();
+            }
+            if (removed) {
+                fsync.execute(this::notifyWritePositions);
             }
         } catch (RuntimeException t) {
-            writePositions.entrySet().iterator().forEachRemaining(e -> e.getValue().onError(t));
+            writePositions.entrySet().iterator().forEachRemaining(e -> e.getValue().error(t));
             log.error("Caught exception in the synchronizer for {}", context, t);
         }
     }
