@@ -28,12 +28,8 @@ public class WritePosition implements Comparable<WritePosition> {
     final Long segment;
     public int prevEntries;
 
-    public WritePosition(long prevEntries, int position) {
-        this(0, position, null, null, (int) prevEntries);
-    }
-
     /**
-     * @param sequence the sequence number of the first event in this blcok
+     * @param sequence the sequence number of the first event in this block
      * @param position the position of the block in the file
      * @param buffer the buffer for writing the block
      * @param segment the segment number containing the block
