@@ -26,7 +26,7 @@ public class WritePosition implements Comparable<WritePosition> {
     final int position;
     final WritableEventSource buffer;
     final Long segment;
-    public int prevEntries;
+    final int prevEntries;
 
     /**
      * @param sequence the sequence number of the first event in this block
