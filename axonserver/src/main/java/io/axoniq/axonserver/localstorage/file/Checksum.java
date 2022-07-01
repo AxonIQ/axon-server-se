@@ -21,21 +21,14 @@ import java.util.zip.CRC32;
  */
 public class Checksum {
 
-    private static final int FOUR_MB = 1024 * 1024 * 4;
     private final CRC32 crc32;
-    private final int batch;
 
     /**
      * Constructs an instance that updates the checksum value loading data in chucks of 4 MBs.
      */
     public Checksum() {
-        this(FOUR_MB);
-    }
-
-    public Checksum(int batch) {
         crc32 = new CRC32();
         crc32.reset();
-        this.batch = batch;
     }
 
     public int get() {
@@ -62,16 +55,11 @@ public class Checksum {
         if (size > buffer.limit() - position) {
             throw new IllegalArgumentException("The ByteBuffer is smaller than expected");
         }
-        byte[] bytes = new byte[batch];
-        ByteBuffer b = (ByteBuffer) buffer.duplicate().position(position);
 
-        int rem = size;
-        while (rem > 0) {
-            int batchSize = Math.min(batch, rem);
-            b.get(bytes, 0, batchSize);
-            crc32.update(bytes, 0, batchSize);
-            rem -= batchSize;
+        for( int i = 0 ; i < size ; i++) {
+            crc32.update( buffer.get(position+i));
         }
+
         return this;
     }
 
