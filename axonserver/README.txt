@@ -3,6 +3,12 @@ This is the Axon Server Standard Edition, version 4.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.5.13
+--------------------------------
+* Reduced memory consumption during transactions
+* Improved handling of out of memory exceptions
+* Fixed race condition in storing events that lead to delay in completing transactions
+
 Release Notes for version 4.5.12
 --------------------------------
 * Deprecated "/v1/backup/filenames" endpoint, use new endpoint /v1/backup/eventstore instead. The new endpoint returns all files
