@@ -235,7 +235,7 @@ public interface EventStorageEngine {
      * @param token     the token of the first event in the transaction
      * @param eventList the list of events
      */
-    default void validateTransaction(long token, List<SerializedEvent> eventList) {
+    default void validateTransaction(long token, List<Event> eventList) {
     }
 
 }

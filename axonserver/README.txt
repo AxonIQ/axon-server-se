@@ -9,6 +9,12 @@ Release Notes for version 4.6.0
   The endpoint for the Swagger UI has changed to /swagger-ui/index.html (just /swagger-ui no longer works)
   The generic endpoint for actuator is /actuator (/actuator/ no longer works)
 
+Release Notes for version 4.5.13
+--------------------------------
+* Reduced memory consumption during transactions
+* Improved handling of out of memory exceptions
+* Fixed race condition in storing events that lead to delay in completing transactions
+
 Release Notes for version 4.5.12
 --------------------------------
 * Deprecated "/v1/backup/filenames" endpoint, use new endpoint /v1/backup/eventstore instead. The new endpoint returns all files

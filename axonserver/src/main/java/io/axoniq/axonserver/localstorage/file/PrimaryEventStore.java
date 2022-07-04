@@ -177,7 +177,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         indexManager.addToActiveSegment(first, loadedEntries);
 
         buffer.putInt(buffer.position(), 0);
-        WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first);
+        WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first, 0);
         writePositionRef.set(writePosition);
         synchronizer.init(writePosition);
     }
@@ -239,11 +239,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
             WritePosition writePosition = preparedTransaction.getWritePosition();
 
             synchronizer.register(writePosition, new StorageCallback() {
-                private final AtomicBoolean execute = new AtomicBoolean(true);
+                private final AtomicBoolean running = new AtomicBoolean();
 
                 @Override
-                public boolean onCompleted(long firstToken) {
-                    if (execute.getAndSet(false)) {
+                public boolean complete(long firstToken) {
+                    if (running.compareAndSet(false, true)) {
                         indexManager.addToActiveSegment(writePosition.segment, indexEntries);
                         completableFuture.complete(firstToken);
                         lastToken.set(firstToken + preparedTransaction.getEventList().size() - 1);
@@ -253,7 +253,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 }
 
                 @Override
-                public void onError(Throwable cause) {
+                public void error(Throwable cause) {
                     completableFuture.completeExceptionally(cause);
                 }
             });
@@ -471,9 +471,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
         WritePosition writePosition;
         do {
-            writePosition = writePositionRef.getAndAccumulate(
-                    new WritePosition(nrOfEvents, totalSize),
-                    (prev, x) -> prev.incrementedWith(x.sequence, x.position));
+            writePosition = writePositionRef.getAndUpdate(prev -> prev.incrementedWith(nrOfEvents, totalSize));
 
             if (writePosition.isOverflow(totalSize)) {
                 // only one thread can be here
