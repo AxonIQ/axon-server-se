@@ -1,12 +1,22 @@
+/*
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.component.instance.ClientIdentifications;
 import io.axoniq.axonserver.component.instance.Clients;
-import io.axoniq.axonserver.grpc.InstructionPublisher;
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.grpc.Publisher;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +29,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction> {
 
+    private final Logger logger = LoggerFactory.getLogger(HeartbeatPublisher.class);
     private final ClientIdentifications clientsSupportingHeartbeat;
     private final ClientPublisher clientPublisher;
 
@@ -57,6 +68,7 @@ public class HeartbeatPublisher implements Publisher<PlatformOutboundInstruction
         for (ClientStreamIdentification client : clientsSupportingHeartbeat) {
             try {
                 clientPublisher.publish(client.getClientStreamId(), heartbeat);
+                logger.trace("HeartBeat sent to client {}", client);
             } catch (RuntimeException ignore) {
                 // failing to send heartbeat can be ignored
             }
