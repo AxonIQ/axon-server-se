@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.grpc.event.Event;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -22,8 +23,13 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface StorageTransactionManager {
 
+    @Deprecated
+    /**
+     * To be deprecated in favor of {@link #storeBatch(List)}
+     */
     CompletableFuture<Long> store(List<Event> eventList);
 
+    Mono<Long> storeBatch(List<Event> eventList);
     /**
      * Reserves the sequence numbers accordingly to the specified events and returns a {@link Runnable} to restore
      * the previous situation.

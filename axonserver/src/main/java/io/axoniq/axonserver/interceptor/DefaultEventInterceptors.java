@@ -85,7 +85,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
     @Override
     public void eventsPreCommit(List<Event> events,
-                                ExecutionContext executionContext) throws RequestRejectedException {
+                                ExecutionContext executionContext){
         List<ServiceWithInfo<PreCommitEventsHook>> servicesForContext = pluginContextFilter
                 .getServicesWithInfoForContext(
                         PreCommitEventsHook.class,
@@ -164,8 +164,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event appendSnapshot(Event snapshot, ExecutionContext executionContext)
-            throws RequestRejectedException {
+    public Event appendSnapshot(Event snapshot, ExecutionContext executionContext) {
         List<ServiceWithInfo<AppendSnapshotInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         AppendSnapshotInterceptor.class,

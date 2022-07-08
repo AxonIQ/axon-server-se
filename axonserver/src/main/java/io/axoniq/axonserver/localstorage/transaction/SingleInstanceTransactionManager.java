@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -29,9 +30,17 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
         eventStorageEngine.registerCloseListener(sequenceNumberCache::close);
     }
 
+    /**
+    To be deprecated in favor of {@link #storeBatch(List)}
+     */
     @Override
     public CompletableFuture<Long> store(List<Event> eventList) {
         return eventStorageEngine.store(eventList);
+    }
+
+    @Override
+    public Mono<Long> storeBatch(List<Event> eventList) {
+        return Mono.fromFuture(eventStorageEngine.store(eventList));
     }
 
     @Override

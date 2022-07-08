@@ -9,10 +9,8 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.exception.ConcurrencyExceptions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -53,8 +51,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import javax.annotation.Nonnull;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,12 +62,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -271,7 +267,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                                                          }
                                                      }
                                                  }));
-        } catch (RequestRejectedException requestRejectedException) {
+        } catch (Exception requestRejectedException) {
             executionContext.compensate(requestRejectedException);
             completableFuture
                     .completeExceptionally(new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
@@ -282,98 +278,50 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public Mono<Void> appendEvents(String context, Flux<SerializedEvent> events, Authentication authentication) {
-        return Mono.create(sink -> {
-            StreamObserver<SerializedEvent> inputStream =
-                    createAppendEventConnection(context, authentication, new StreamObserver<Confirmation>() {
-                        @Override
-                        public void onNext(Confirmation confirmation) {
-                            sink.success();
-                        }
-
-                        @Override
-                        public void onError(Throwable throwable) {
-                            sink.error(throwable);
-                        }
-
-                        @Override
-                        public void onCompleted() {
-                            // nothing to do, already completed on onNext
-                        }
-                    });
-            events.subscribe(inputStream::onNext, inputStream::onError, inputStream::onCompleted);
-        });
-    }
-
-    private StreamObserver<SerializedEvent> createAppendEventConnection(String context,
-                                                                        Authentication authentication,
-                                                                        StreamObserver<Confirmation> responseObserver) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
-        return new StreamObserver<SerializedEvent>() {
-            private final List<Event> eventList = new ArrayList<>();
-            private final AtomicBoolean closed = new AtomicBoolean();
-
-            @Override
-            public void onNext(SerializedEvent inputStream) {
-                try {
-                    eventList.add(inputStream.asEvent());
-                } catch (Exception e) {
-                    closed.set(true);
-                    responseObserver.onError(GrpcExceptionBuilder.build(e));
-                }
-            }
-
-            @Override
-            public void onError(Throwable cause) {
-                logger.warn("Error on connection to client while storing events", cause);
-            }
-
-            @Override
-            public void onCompleted() {
-                if (closed.get()) {
-                    return;
-                }
-                runInDataWriterPool(() -> {
-                    try {
-                        List<Event> interceptedEventList = eventList.stream().map(e -> eventInterceptors
-                                .appendEvent(e, executionContext)).collect(Collectors.toList());
-                        eventInterceptors.eventsPreCommit(interceptedEventList, executionContext);
-                        workers(context)
-                                .eventWriteStorage
-                                .store(interceptedEventList)
-                                .thenAccept(r -> eventInterceptors.eventsPostCommit(interceptedEventList,
-                                                                                    executionContext))
-                                .thenRun(this::confirm)
-                                .exceptionally(this::error);
-                    } catch (RequestRejectedException e) {
-                        executionContext.compensate(e);
-                        responseObserver.onError(new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
-                                                                                "Event rejected by interceptor",
-                                                                                e));
-                    } catch (Exception e) {
-                        executionContext.compensate(e);
-                        responseObserver.onError(GrpcExceptionBuilder.build(e));
-                    }
-                }, this::error);
-            }
-
-            private Void error(Throwable exception) {
-                exception = ConcurrencyExceptions.unwrap(exception);
-                if (isClientException(exception)) {
-                    logger.info("{}: Error while storing events: {}", context, exception.getMessage());
-                } else {
-                    logger.warn("{}: Error while storing events", context, exception);
-                }
-                executionContext.compensate(exception);
-                responseObserver.onError(exception);
-                return null;
-            }
-
-            private void confirm() {
-                responseObserver.onNext(CONFIRMATION);
-                responseObserver.onCompleted();
-            }
-        };
+        return events
+                .publishOn(Schedulers.fromExecutorService(dataWriter))
+                .map(SerializedEvent::asEvent)
+                .map(e -> eventInterceptors
+                        .appendEvent(e, executionContext))
+                .transform(serializedEvents -> prepareBatch(context, executionContext, serializedEvents))
+                .then()
+                .name("append_events")
+                .tag("context", context)
+                .tag("origin", "local_event_store")
+                .metrics();
     }
+
+    @Nonnull
+    private Flux<Void> prepareBatch(String context, DefaultExecutionContext executionContext, Flux<Event> serializedEvents) {
+        return serializedEvents
+                        .buffer()
+                        .transform(batches -> storeBatch(context, executionContext, batches))
+                        .transform(pipeline -> handleErrors(executionContext, pipeline));
+    }
+
+    @Nonnull
+    private Flux<Void> storeBatch(String context, DefaultExecutionContext executionContext, Flux<List<Event>> eventBatches) {
+        return eventBatches.doOnNext(interceptedEvents -> eventInterceptors.eventsPreCommit(interceptedEvents, executionContext))
+                .concatMap(interceptedEvents -> workers(context)
+                        .eventWriteStorage
+                        .storeBatch(interceptedEvents)
+                        .doOnSuccess(unused -> eventInterceptors.eventsPostCommit(interceptedEvents,
+                                executionContext))
+                );
+
+    }
+
+    @Nonnull
+    private Flux<Void> handleErrors(DefaultExecutionContext executionContext, Flux<Void> pipeline) {
+        return pipeline
+                .doOnError(executionContext::compensate)
+                .onErrorMap(RequestRejectedException.class, t -> new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
+                        "Event rejected by interceptor",
+                        t))
+                .onErrorMap(t -> !t.getClass().isAssignableFrom(MessagingPlatformException.class), MessagingPlatformException::create);
+    }
+
 
     @Override
     public Flux<SerializedEvent> aggregateEvents(String context,

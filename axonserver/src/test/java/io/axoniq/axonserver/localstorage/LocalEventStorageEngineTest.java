@@ -19,12 +19,14 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFa
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -35,7 +37,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Marc Gathier
@@ -53,6 +56,15 @@ public class LocalEventStorageEngineTest {
                 CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
                 pendingTransactions.add(pendingTransaction);
                 return pendingTransaction;
+            }
+
+            @Override
+            public Mono<Long> storeBatch(List<Event> eventList) {
+                return Mono.defer(()-> {
+                    CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
+                    pendingTransactions.add(pendingTransaction);
+                    return Mono.fromFuture(pendingTransaction);
+                });
             }
 
             @Override
@@ -96,17 +108,12 @@ public class LocalEventStorageEngineTest {
         Event event = Event.getDefaultInstance();
         Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, Flux.just(new SerializedEvent(event)), null);
 
-        Executors.newSingleThreadScheduledExecutor()
-                 .schedule(() -> {
-                     try {
-                         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
-                         testSubject.cancel(SAMPLE_CONTEXT);
-                     } catch (InterruptedException e) {
-                         fail("No pending transactions created.");
-                     }
-                 }, 100, TimeUnit.MILLISECONDS);
-
         StepVerifier.create(result)
+                .thenAwait(Duration.ofMillis(100))
+                .then(()->{
+                    assertEquals(1, pendingTransactions.size());
+                    testSubject.cancel(SAMPLE_CONTEXT);
+                })
                     .verifyErrorMessage("Transaction cancelled");
         assertTrue(pendingTransactions.get(0).isDone());
     }
@@ -142,20 +149,19 @@ public class LocalEventStorageEngineTest {
     }
 
     @Test
-    public void createAppendEventConnection() {
+    public void testAppendEvent() {
         Flux<SerializedEvent> events = Flux.just(new SerializedEvent(Event.getDefaultInstance()));
         Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
 
-        Executors.newSingleThreadScheduledExecutor()
-                 .schedule(() -> {
-                     try {
-                         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
-                         pendingTransactions.get(0).complete(100L);
-                     } catch (InterruptedException e) {
-                         fail("No pending transactions created.");
-                     }
-                 }, 100, TimeUnit.MILLISECONDS);
         StepVerifier.create(result)
+                .thenAwait(Duration.ofMillis(100))
+                .then(() -> {
+                    if (!pendingTransactions.isEmpty()) {
+                        assertEquals(1, pendingTransactions.size());
+                        pendingTransactions.get(0).complete(100L);
+                    }
+
+                })
                     .verifyComplete();
         assertTrue(pendingTransactions.get(0).isDone());
     }

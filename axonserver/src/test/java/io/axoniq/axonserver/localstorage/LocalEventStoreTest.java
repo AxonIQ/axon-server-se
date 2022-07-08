@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -19,11 +18,14 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
@@ -90,6 +92,11 @@ public class LocalEventStoreTest {
             }
 
             @Override
+            public Mono<Long> storeBatch(List<Event> eventList) {
+                return Mono.fromCompletionStage(eventStore.store(eventList));
+            }
+
+            @Override
             public Runnable reserveSequenceNumbers(List<Event> eventList) {
                 return () -> {
                 };
@@ -126,7 +133,7 @@ public class LocalEventStoreTest {
     }
 
     @Test
-    public void createAppendEventConnection() throws ExecutionException, InterruptedException {
+    public void teststoreBatch() throws ExecutionException, InterruptedException {
         Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 3)
                                                       .mapToObj(i -> new SerializedEvent(Event.getDefaultInstance())));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))

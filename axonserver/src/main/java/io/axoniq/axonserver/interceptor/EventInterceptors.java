@@ -9,9 +9,8 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.ExecutionContext;
-import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 
 import java.util.List;
 
@@ -39,9 +38,9 @@ public interface EventInterceptors {
      * @param executionContext the caller's context
      * @return the new event
      */
-    Event appendSnapshot(Event snapshot, ExecutionContext executionContext) throws RequestRejectedException;
+    Event appendSnapshot(Event snapshot, ExecutionContext executionContext);
 
-    void eventsPreCommit(List<Event> events, ExecutionContext executionContext) throws RequestRejectedException;
+    void eventsPreCommit(List<Event> events, ExecutionContext executionContext);
 
     void eventsPostCommit(List<Event> events, ExecutionContext executionContext);
 
