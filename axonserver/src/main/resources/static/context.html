@@ -1,12 +1,11 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~  under one or more contributor license agreements.
-  ~
-  ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
-  ~  you may not use this file except in compliance with the license.
-  ~
-  -->
-
+   ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+   ~  under one or more contributor license agreements.
+   ~
+   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
+   ~  you may not use this file except in compliance with the license.
+   ~
+   -->
 <script>
     //# sourceURL=context.js
     globals.pageView = new Vue({
@@ -18,13 +17,17 @@
             replicationGroups: [],
             contextProperties: [],
             updatableContextProperties: [],
+            availableTiers: [],
+            chosenEventTiers: [],
+            chosenSnapshotTiers: [],
             newContext: {
                 nodes: [],
                 selectedReplicationGroup: "",
                 replicationGroup: null,
                 metaData: {},
                 metaDataLabel: '',
-                metaDataValue: ''
+                metaDataValue: '',
+                tiers: []
             },
             currentContext: {
                 metaData: {},
@@ -59,6 +62,11 @@
                 this.contextProperties = response.data;
                 this.updatableContextProperties = this.contextProperties.filter(p => p.updatable);
             });
+            axios.get("v1/public/tier").then(response => {
+                this.availableTiers = response.data;
+                this.chosenEventTiers.push(this.availableTiers[0]);
+                this.chosenSnapshotTiers.push(this.availableTiers[0]);
+            });
             this.connect();
         }, beforeDestroy() {
             if (this.subscription) {
@@ -78,6 +86,7 @@
                         selectedRole: "none"
                     };
                 }
+                this.newContext.tiers = {};
                 this.$forceUpdate();
             },
             loadContexts() {
@@ -94,6 +103,10 @@
                     alert("Context " + this.newContext.context + " already exists");
                     return;
                 }
+
+                this.collectTierInfo('event');
+                this.collectTierInfo('snapshot');
+
                 let group = this.newContext.selectedReplicationGroup ? this.newContext.selectedReplicationGroup : this.newContext.replicationGroup;
                 let context = {
                     context: this.newContext.context,
@@ -105,9 +118,9 @@
                 for (var i = 0; i < this.newContext.nodes.length; i++) {
                     if (this.newContext.nodes[i].selectedRole !== "none") {
                         context.roles.push({
-                                                "node": this.newContext.nodes[i].name,
-                                                "role": this.newContext.nodes[i].selectedRole,
-                                            });
+                            "node": this.newContext.nodes[i].name,
+                            "role": this.newContext.nodes[i].selectedRole,
+                        });
                         if (this.newContext.nodes[i].selectedRole === "PRIMARY") {
                             primaryNode = true;
                         }
@@ -134,7 +147,7 @@
                 }
 
                 axios.patch("v1/context/" + this.currentContext.context,
-                            this.currentContext.metaData).then(response => {
+                    this.currentContext.metaData).then(response => {
                     this.showAdd = true;
                     this.showUpdate = false;
                     this.loadContexts();
@@ -164,11 +177,11 @@
             doDeleteContext() {
                 if (this.deleteContextData.context === this.deleteContextData.retypeContext) {
                     axios.delete("v1/context/" + this.deleteContextData.context + "?preserveEventStore="
-                                         + this.deleteContextData.preserveData).then(
-                            () => {
-                                this.loadContexts();
-                                this.hideModal('delete-context');
-                            }
+                        + this.deleteContextData.preserveData).then(
+                        () => {
+                            this.loadContexts();
+                            this.hideModal('delete-context');
+                        }
                     )
                 } else {
                     alert('Invalid context name');
@@ -240,226 +253,362 @@
                 // setting the property value for the field with the suggestion box does not work, so set the new
                 // value on the suggestion box object
                 this.$refs.newContextProperty.setText('');
+            },
+            addEventTier() {
+                let currentLevel = this.chosenEventTiers.length;
+                this.chosenEventTiers.push(this.showAvalibleTiers(currentLevel)[0]);
+            },
+            addSnapshotTier() {
+                let currentLevel = this.chosenSnapshotTiers.length;
+                this.chosenSnapshotTiers.push(this.showAvalibleTiers(currentLevel)[0]);
+            },
+            onTierSelect(e,tier,index,storage) {
+                let selectedTier = e.target.options[e.target.options.selectedIndex]._value;
+                let store = (storage === 'events') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+                store[index] = selectedTier;
+                this.$forceUpdate();
+            },
+            showTierPath(index,storage) {
+              let store = (storage === 'events') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+              return store[index].id === 'custom_path';
+            },
+            showAfterSelect(tierLevel) {
+                return tierLevel > 0;
+            },
+            showAvalibleTiers(index, storage) {
+                let store = (storage === 'events') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+
+                return this.availableTiers
+                    .filter(t => t.level === -1 || t.level <= (store.length - 1))
+                    .filter(t => !(index > 0 && t.id === 'default'))
+                //todo
+                    //add blackhole or secondary node as terminal
+                    // .filter(t => {
+                    //     if (store.length >= 2) {
+                    //
+                    //         console.log(('compare:'))
+                    //         console.log((t.id));
+                    //         console.log(store[index + 1].id);
+                    //
+                    //         return true;
+                    //     } else {
+                    //         return true;
+                    //     }
+                    // })
+            },
+            //todo remove duplicate properties from context properties
+            //todo add field validation
+            collectTierInfo(storageType) {
+                let lTier = 'event.tier';
+                let lStorage = 'event.storage';
+                let lRetentionTime = 'event.retention-time';
+                let lRetentionSize = 'event.retention-size';
+                let metaData = this.newContext.metaData;
+
+                let store = (storageType === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+
+                store
+                    .forEach((tier,index) => {
+                        let prefix = storageType.concat('.');
+                        let suffix = '';
+                        if (index > 0) {
+                            suffix = '.' + index;
+                        }
+
+                        let retentionTime = 0;
+                        let retentionSize = 0;
+
+                        switch (tier.retentionType) {
+                            case 'hours':
+                                retentionTime = tier.retentionAmount;
+                                break;
+                            case 'days':
+                                retentionTime = tier.retentionAmount * 24;
+                                break;
+                            case 'megabytes':
+                                retentionSize = this.retentionAmount;
+                                break;
+                            case 'gigabytes':
+                                retentionSize = this.retentionAmount * 1024;
+                                break;
+                            default:
+                        }
+
+                        metaData[prefix.concat(lTier.concat(suffix))] = tier.id;
+                        metaData[prefix.concat(lStorage.concat(suffix))] = tier.path;
+
+                        if (retentionTime > 0) metaData[prefix.concat(lRetentionTime.concat(suffix))] = retentionTime;
+                        if (retentionSize > 0) metaData[prefix.concat(lRetentionSize.concat(suffix))] = retentionSize;
+                    });
+
             }
         }
-                               });
+    });
 
 </script>
 <span id="context">
-    <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
-
-    <paginated-table :rows="contexts" name="contexts">
-            <template #header>
-                <th class="contextColumn">Context Name</th>
-                <th class="contextColumn">Replication Group Name</th>
-                <th class="nodesColumn">Context Options</th>
-            </template>
-                    <template #row="context">
-                <td>{{ context.context }}
-                    <span @click="deleteContext(context)" v-if="admin && !isInternalContext(context)"
-                          title="Delete Context">
-                        <i class="far fa-trash-alt"></i>
-                    </span>
-                    <span @click="updateContext(context)" v-if="admin && !isInternalContext(context)"
-                          title="Update Context">
-                        <i class="fas fa-pencil-alt"></i>
-                    </span>
-                </td>
-                <td>
-                    {{ context.replicationGroup }}
-                </td>
-                <td>
-                    <div v-for="key in Object.keys(context.metaData)">
-                        <span class="narrow">{{ key }}</span>
-                        <span>{{ context.metaData[key] }}</span>
-                    </div>
-                </td>
-                    </template>
-    </paginated-table>
-
-    </section>
-
-    <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
-        Multi-context is not allowed
-    </div>
-
-    <section id="newContextPanel" v-if="admin && hasFeature('MULTI_CONTEXT') && showAdd">
-    <div class="column configuration">
-        <form id="contextForm">
-                    <ul>
+   <section v-if="hasFeature('MULTI_CONTEXT')" id="applicationsOverview">
+      <paginated-table :rows="contexts" name="contexts">
+         <template #header>
+            <th class="contextColumn">Context Name</th>
+            <th class="contextColumn">Replication Group Name</th>
+            <th class="nodesColumn">Context Options</th>
+         </template>
+         <template #row="context">
+            <td>{{ context.context }}
+               <span v-if="admin && !isInternalContext(context)" title="Delete Context"
+                     @click="deleteContext(context)">
+               <i class="far fa-trash-alt"></i>
+               </span>
+               <span v-if="admin && !isInternalContext(context)" title="Update Context"
+                     @click="updateContext(context)">
+               <i class="fas fa-pencil-alt"></i>
+               </span>
+            </td>
+            <td>
+               {{ context.replicationGroup }}
+            </td>
+            <td>
+               <div v-for="key in Object.keys(context.metaData)">
+                  <span class="narrow">{{ key }}</span>
+                  <span>{{ context.metaData[key] }}</span>
+               </div>
+            </td>
+         </template>
+      </paginated-table>
+   </section>
+   <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
+      Multi-context is not allowed
+   </div>
+   <section v-if="admin && hasFeature('MULTI_CONTEXT') && showAdd" id="newContextPanel">
+      <div class="column configuration">
+         <form id="contextForm">
+            <ul>
+               <li>
+                  <span class="narrow">Context Name</span>
+                  <span><input v-model="newContext.context" autocomplete="none" class="nodeRoleName"
+                               data-lpignore="true"/></span>
+               </li>
+               <li>
+                  <span class="narrow">Replication Group</span>
+                  <span>
+                     <select v-model="newContext.selectedReplicationGroup" class="nodeRoleName">
+                        <option value="">-- create new --</option>
+                        <option v-for="n in replicationGroups" :value="n.name">{{ n.name }}</option>
+                     </select>
+                  </span>
+               </li>
+               <li v-if="createReplicationGroup(newContext)">
+                  <span class="narrow"></span>
+                  <span style="display: inline-block; border: 1px solid #CCC">
+                     <ul>
                         <li>
-                            <span class="narrow">Context Name</span>
-                            <span><input data-lpignore="true" autocomplete="none" class="nodeRoleName"
-                                         v-model="newContext.context"/></span>
-                        </li>
-                        <li>
-                            <span class="narrow">Replication Group</span>
-                            <span>
-                                    <select class="nodeRoleName" v-model="newContext.selectedReplicationGroup">
-                                        <option value="">-- create new --</option>
-                                        <option v-for="n in replicationGroups" :value="n.name">{{ n.name }}</option>
-                                    </select>
-                            </span>
-                        </li>
-                        <li v-if="createReplicationGroup(newContext)">
-                            <span class="narrow"></span>
-                            <span style="display: inline-block; border: 1px solid #CCC">
-                                <ul>
-                                    <li>
-                                        <span class="narrow">New Replication Group Name</span>
-                                        <span><input autocomplete="none" data-lpignore="true" class="nodeRoleName"
-                                                     v-model="newContext.replicationGroup"/></span>
-                                    </li>
-                                    <li>
-                                        <span class="narrow">Nodes</span>
-                                        <span>
-                                             <table class="nestedTable">
-                                                 <tr v-for="node in newContext.nodes">
-                                                     <td style="width: 60%">{{ node.name }}</td>
-                                                     <td>
-                                                        <select class="nodeRoleName" v-model="node.selectedRole">
-                                                            <option value="none">-- none --</option>
-                                                            <option v-for="n in roles" :value="n">{{ n }}</option>
-                                                        </select>
-                                                     </td>
-                                                 </tr>
-                                             </table>
-                                        </span>
-                                    </li>
-                                </ul>
-                            </span>
-                        </li>
-                        <li></li>
-                        <li>
-                            <span class="narrow">Context Properties</span>
-                            <span>
-                                <table class="nestedTable">
-                                    <tbody>
-                                        <tr v-for="key in Object.keys(newContext.metaData)">
-                                            <td style="width: 60%">{{ key }}</td>
-                                            <td><input class="propertyValue" data-lpignore="true"
-                                                       v-model="newContext.metaData[key]"></td>
-                                            <td style="width: 20px">
-                                                <span @click="deleteMetaData(key)" title="Delete Context Property">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <span style="width: 60%">
-                                <component-suggestion-box :options="contextProperties"
-                                                          :value="newContext.metaDataLabel"
-                                                          ref="newContextProperty"
-                                                          @input="newContext.metaDataLabel = $event">
-                                </component-suggestion-box>
-                                    </span>
-                                <span style="width: 30%;padding:5px;">
-                                                <input class="propertyValue" data-lpignore="true"
-                                                       v-model="newContext.metaDataValue">
-                                    </span>
-
-                                    <span style="width: 15px" @click="addMetaData()" title="Add Context Property">
-                                        <i class="fas fa-plus"></i>
-                                    </span>
-                            </span>
+                           <span class="narrow">New Replication Group Name</span>
+                           <span><input v-model="newContext.replicationGroup" autocomplete="none" class="nodeRoleName"
+                                        data-lpignore="true"/></span>
                         </li>
                         <li>
-                            <span class="narrow">&nbsp;</span>
-                            <span><button @click.prevent="createContext()" class="button">Save</button></span>
+                           <span class="narrow">Nodes</span>
+                           <span>
+                              <table class="nestedTable">
+                                 <tr v-for="node in newContext.nodes">
+                                    <td style="width: 60%">{{ node.name }}</td>
+                                    <td>
+                                       <select v-model="node.selectedRole" class="nodeRoleName">
+                                          <option value="none">-- none --</option>
+                                          <option v-for="n in roles" :value="n">{{ n }}</option>
+                                       </select>
+                                    </td>
+                                 </tr>
+                              </table>
+                           </span>
                         </li>
-                    </ul>
-                </form>
-            </div>
-    </section>
-
-    <section id="updateContextPanel" v-if="admin && hasFeature('MULTI_CONTEXT') && showUpdate">
-    <div class="column configuration">
-        <form id="updateContext">
-                    <ul>
-                        <li>
-                            <span class="narrow">Context Name</span>
-                            <span>{{ currentContext.context }}</span>
-                        </li>
-                        <li>
-                            <span class="narrow">Context Properties</span>
-                            <span>
-                                <table class="nestedTable">
-                                    <tbody>
-                                        <tr v-for="key in Object.keys(currentContext.metaData)">
-                                            <td style="width: 60%">{{ key }}</td>
-                                            <td>
-                                                <span v-if="isReadonly(key)">
-                                                    {{ currentContext.metaData[key] }}
-                                                </span>
-                                                <input v-if=!isReadonly(key) class="propertyValue" data-lpignore="true"
-                                                       v-model="currentContext.metaData[key]"
-                                                ></td>
-                                            <td style="width: 20px">
-                                                <span v-if=!isReadonly(key) @click="deleteMetaDataFromCurrent(key)"
-                                                      title="Delete Context Property">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <span style="width: 60%">
-                                <component-suggestion-box :options="updatableContextProperties"
-                                                          :value="currentContext.metaDataLabel"
-                                                          ref="currentContextProperty"
-                                                          @input="currentContext.metaDataLabel = $event">
-                                </component-suggestion-box>
-                                    </span>
-                                <span style="width: 30%;padding:5px;">
-                                                <input class="propertyValue" data-lpignore="true"
-                                                       v-model="currentContext.metaDataValue">
-                                    </span>
-
-                                    <span style="width: 15px" @click="addMetaDataToCurrent()"
-                                          title="Add Context Property">
-                                        <i class="fas fa-plus"></i>
-                                    </span>
-                            </span>
-                        </li>
-                        <li>
-                            <span class="narrow">&nbsp;</span>
-                            <span>
-                                <button @click.prevent="doUpdateContext()" class="button">Save</button>
-                                <button @click.prevent="cancelUpdate()" class="button">Cancel</button>
-                            </span>
-                        </li>
-                    </ul>
-                </form>
-            </div>
-    </section>
-
-    <modal name="delete-context" width="600" height="270">
-            <div class="column configuration modal">
-                <h2>Delete context {{ deleteContextData.context }}</h2>
-                <p>
-                    This will delete all data for this context. Please re-type the name of the context to delete to continue.
-                </p>
-                <form>
-                    <ul>
-                        <li>
-                            <span>Context Name</span>
-                            <span><input v-model="deleteContextData.retypeContext"/></span>
-                        </li>
-                        <li>
-                            <span>Preserve Event Store</span>
-                            <span><input type="checkbox" v-model="deleteContextData.preserveData"/></span>
-                        </li>
-                        <li>
-                            <span>&nbsp;</span>
-                            <span>
-                                <button @click.prevent="doDeleteContext()" class="button">Delete</button>
-                                <button @click.prevent="hideModal('delete-context')" class="button">Cancel</button>
-                            </span>
-                        </li>
-                    </ul>
-                </form>
-
-            </div>
-    </modal>
+                     </ul>
+                  </span>
+               </li>
+               <li></li>
+               <li>
+                  <span class="narrow">Context Properties</span>
+                  <span>
+                     <table class="nestedTable">
+                        <tbody>
+                           <tr v-for="key in Object.keys(newContext.metaData)">
+                              <td style="width: 60%">{{ key }}</td>
+                              <td><input v-model="newContext.metaData[key]" class="propertyValue"
+                                         data-lpignore="true"></td>
+                              <td style="width: 20px">
+                                 <span title="Delete Context Property" @click="deleteMetaData(key)">
+                                 <i class="far fa-trash-alt"></i>
+                                 </span>
+                              </td>
+                           </tr>
+                        </tbody>
+                     </table>
+                     <span style="width: 60%">
+                        <component-suggestion-box ref="newContextProperty"
+                                                  :options="contextProperties"
+                                                  :value="newContext.metaDataLabel"
+                                                  @input="newContext.metaDataLabel = $event">
+                        </component-suggestion-box>
+                     </span>
+                     <span style="width: 30%;padding:5px;">
+                     <input v-model="newContext.metaDataValue" class="propertyValue"
+                            data-lpignore="true">
+                     </span>
+                     <span style="width: 15px" title="Add Context Property" @click="addMetaData()">
+                     <i class="fas fa-plus"></i>
+                     </span>
+                  </span>
+               </li>
+               <li>
+                  <span class="narrow">Event storage</span>
+                  <span class="tier-holder">
+                     <table class="nestedTable">
+                        <tr v-for="(tier, index) in chosenEventTiers" :value="tier">
+                           <td>
+                              <select class="tierName"  @change="onTierSelect($event,tier,index,'events')">
+                                 <option v-for="n in showAvalibleTiers(index,'events')" :value="n">{{ n.name }}</option>
+                              </select>
+                           </td>
+                           <td><input v-model="chosenEventTiers[index].path" v-if="showTierPath(index,'events')" class="tierName" data-lpignore="true" placeholder="path">
+                           </td>
+                           <td>
+                              <input v-model="chosenEventTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                           </td>
+                           <td>
+                              <select v-model="chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                                 <option value="hours">HOURS (time based)</option>
+                                 <option value="days">DAYS (time based)</option>
+                                 <option value="megabytes">MEGABYTES (size based)</option>
+                                 <option value="gigabytes">GIGABYTES (size based)</option>
+                              </select>
+                           </td>
+                           <td style="width: 15px"><span class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addEventTier()"><i class="fas fa-plus"></i></span></td>
+                        </tr>
+                     </table>
+                  </span>
+               </li>
+               <li>
+                  <span class="narrow">Snapshot storage</span>
+                  <span class="tier-holder">
+                     <table class="nestedTable">
+                        <tr v-for="(tier, index) in chosenSnapshotTiers" :value="tier">
+                           <td>
+                              <select class="tierName" @change="onTierSelect($event,tier,index,'snapshots')">
+                                 <option v-for="n in showAvalibleTiers(index,'snapshots')" :value="n">{{ n.name }}</option>
+                              </select>
+                           </td>
+                           <td><input v-model="chosenSnapshotTiers[index].path" v-if="showTierPath(index,'snapshots')" class="tierName" data-lpignore="true" placeholder="path">
+                           </td>
+                           <td>
+                              <input v-model="chosenSnapshotTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                           </td>
+                           <td>
+                              <select v-model="chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                                 <option value="hours">HOURS (time based)</option>
+                                 <option value="days">DAYS (time based)</option>
+                                 <option value="megabytes">MEGABYTES (size based)</option>
+                                 <option value="gigabytes">GIGABYTES (size based)</option>
+                              </select>
+                           </td>
+                           <td style="width: 15px"><span class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addSnapshotTier()"><i class="fas fa-plus"></i></span></td>
+                        </tr>
+                     </table>
+                  </span>
+               </li>
+               <li>
+                  <span class="narrow">&nbsp;</span>
+                  <span><button class="button" @click.prevent="createContext()">Save</button></span>
+               </li>
+            </ul>
+         </form>
+      </div>
+   </section>
+   <section v-if="admin && hasFeature('MULTI_CONTEXT') && showUpdate" id="updateContextPanel">
+      <div class="column configuration">
+         <form id="updateContext">
+            <ul>
+               <li>
+                  <span class="narrow">Context Name</span>
+                  <span>{{ currentContext.context }}</span>
+               </li>
+               <li>
+                  <span class="narrow">Context Properties</span>
+                  <span>
+                     <table class="nestedTable">
+                        <tbody>
+                           <tr v-for="key in Object.keys(currentContext.metaData)">
+                              <td style="width: 60%">{{ key }}</td>
+                              <td>
+                                 <span v-if="isReadonly(key)">
+                                 {{ currentContext.metaData[key] }}
+                                 </span>
+                                 <input v-if=!isReadonly(key) v-model="currentContext.metaData[key]" class="propertyValue"
+                                        data-lpignore="true"
+                                 >
+                              </td>
+                              <td style="width: 20px">
+                                 <span v-if=!isReadonly(key) title="Delete Context Property"
+                                       @click="deleteMetaDataFromCurrent(key)">
+                                 <i class="far fa-trash-alt"></i>
+                                 </span>
+                              </td>
+                           </tr>
+                        </tbody>
+                     </table>
+                     <span style="width: 60%">
+                        <component-suggestion-box ref="currentContextProperty"
+                                                  :options="updatableContextProperties"
+                                                  :value="currentContext.metaDataLabel"
+                                                  @input="currentContext.metaDataLabel = $event">
+                        </component-suggestion-box>
+                     </span>
+                     <span style="width: 30%;padding:5px;">
+                     <input v-model="currentContext.metaDataValue" class="propertyValue"
+                            data-lpignore="true">
+                     </span>
+                     <span style="width: 15px" title="Add Context Property"
+                           @click="addMetaDataToCurrent()">
+                     <i class="fas fa-plus"></i>
+                     </span>
+                  </span>
+               </li>
+               <li>
+                  <span class="narrow">&nbsp;</span>
+                  <span>
+                  <button class="button" @click.prevent="doUpdateContext()">Save</button>
+                  <button class="button" @click.prevent="cancelUpdate()">Cancel</button>
+                  </span>
+               </li>
+            </ul>
+         </form>
+      </div>
+   </section>
+   <modal height="270" name="delete-context" width="600">
+      <div class="column configuration modal">
+         <h2>Delete context {{ deleteContextData.context }}</h2>
+         <p>
+            This will delete all data for this context. Please re-type the name of the context to delete to continue.
+         </p>
+         <form>
+            <ul>
+               <li>
+                  <span>Context Name</span>
+                  <span><input v-model="deleteContextData.retypeContext"/></span>
+               </li>
+               <li>
+                  <span>Preserve Event Store</span>
+                  <span><input v-model="deleteContextData.preserveData" type="checkbox"/></span>
+               </li>
+               <li>
+                  <span>&nbsp;</span>
+                  <span>
+                  <button class="button" @click.prevent="doDeleteContext()">Delete</button>
+                  <button class="button" @click.prevent="hideModal('delete-context')">Cancel</button>
+                  </span>
+               </li>
+            </ul>
+         </form>
+      </div>
+   </modal>
 </span>

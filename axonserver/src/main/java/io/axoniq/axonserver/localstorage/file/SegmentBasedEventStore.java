@@ -111,7 +111,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                           (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
     }
 
-    public abstract void handover(Long segment, Runnable callback);
+    public abstract void handover(Segment segment, Runnable callback);
 
     public Flux<SerializedEvent> eventsPerAggregate(String aggregateId,
                                                     long firstSequence,

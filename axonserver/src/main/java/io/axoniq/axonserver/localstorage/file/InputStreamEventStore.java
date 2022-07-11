@@ -40,8 +40,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    public void handover(Long segment, Runnable callback) {
-        segments.add(segment);
+    public void handover(Segment segment, Runnable callback) {
+        segments.add(segment.id());
         callback.run();
     }
 

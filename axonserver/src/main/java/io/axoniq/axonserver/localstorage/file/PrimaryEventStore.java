@@ -31,6 +31,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -114,7 +115,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     @Override
     public void initSegments(long lastInitialized, long defaultFirstIndex) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
+        StorageProperties storageProperties = storagePropertiesSupplier.get(); //todo check if override
         File storageDir = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(storageDir);
         indexManager.init();
@@ -267,7 +268,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     @Override
-    public void handover(Long segment, Runnable callback) {
+    public void handover(Segment segment, Runnable callback) {
         callback.run();
     }
 
@@ -401,16 +402,35 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected void completeSegment(WritePosition writePosition) {
         indexManager.complete(writePosition.segment);
         if (next != null) {
-            next.handover(writePosition.segment, () -> {
+            next.handover(new Segment() {
+                @Override
+                public Supplier<FileChannel> contentProvider() {
+                    return () -> fileChannel(writePosition.segment);
+                }
+
+                @Override
+                public long id() {
+                    return writePosition.segment;
+                }
+            }, () -> {
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
                 logger.debug("Handed over {}, remaining segments: {}",
-                             writePosition.segment,
-                             getSegments());
+                        writePosition.segment,
+                        getSegments());
                 if (source != null) {
                     source.clean(storagePropertiesSupplier.get()
-                                                          .getPrimaryCleanupDelay());
+                            .getPrimaryCleanupDelay());
                 }
             });
+        }
+    }
+
+    private FileChannel fileChannel(Long segmentId) {
+        try {
+            return FileChannel.open(storagePropertiesSupplier.get().dataFile(context, segmentId).toPath(),
+                    StandardOpenOption.READ);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

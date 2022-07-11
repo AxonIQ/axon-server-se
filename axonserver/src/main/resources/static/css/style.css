@@ -404,6 +404,21 @@ input[type="search"] {
 	width: 200px !important;
 }
 
+.tier-holder {
+	padding: 10px !important;
+	border-style: dotted;
+	border-width: medium;
+	border-color: lightgrey;
+	margin-bottom: 15px;
+}
+
+.tier-holder tbody tr:last-child .add-tier {
+	display: block !important;
+}
+
+.add-tier {
+}
+
 .contextColumn {
 	width: 160px !important;
 }
@@ -704,6 +719,14 @@ select {
 	float: none !important;
 	width: 200px;
 }
+
+.tierName {
+	display: inline-block !important;
+	float: left !important;
+	width: 200px;
+	margin-top: 3px;
+}
+
 .contextName {
 	display: inline-block !important;
 	float: none !important;
