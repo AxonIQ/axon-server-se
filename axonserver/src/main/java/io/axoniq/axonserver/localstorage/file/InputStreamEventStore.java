@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -40,14 +40,9 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    public void handover(Long segment, Runnable callback) {
-        segments.add(segment);
+    public void handover(Segment segment, Runnable callback) {
+        segments.add(segment.id());
         callback.run();
-    }
-
-    @Override
-    protected boolean containsSegment(long segment) {
-        return segments.contains(segment);
     }
 
     @Override
@@ -88,7 +83,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    protected SortedSet<Long> getSegments() {
+    public SortedSet<Long> getSegments() {
         return segments;
     }
 
@@ -105,7 +100,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     @Override
     protected void recreateIndex(long segment) {
         try (InputStreamEventSource is = get(segment, true);
-             EventIterator iterator = createEventIterator(is, segment, segment)) {
+             EventIterator iterator = is.createEventIterator(segment, segment)) {
             recreateIndexFromIterator(segment, iterator);
         }
     }

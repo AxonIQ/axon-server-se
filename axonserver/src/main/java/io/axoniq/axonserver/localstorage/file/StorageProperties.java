@@ -389,7 +389,7 @@ public class StorageProperties implements Cloneable {
 
     public long getRetentionTime(int tier) {
         if (tier < 0 || tier >= retentionTime.length) {
-            return System.currentTimeMillis();
+            return -1;
         }
         return retentionTime[tier].toMillis();
     }
