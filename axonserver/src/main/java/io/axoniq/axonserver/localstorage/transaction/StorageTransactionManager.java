@@ -13,21 +13,15 @@ import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Defines the interface for a transaction manager.
  *
  * @author Marc Gathier
+ * @author Stefan Dragisic
  * @since 4.0
  */
 public interface StorageTransactionManager {
-
-    @Deprecated
-    /**
-     * To be deprecated in favor of {@link #storeBatch(List)}
-     */
-    CompletableFuture<Long> store(List<Event> eventList);
 
     Mono<Long> storeBatch(List<Event> eventList);
     /**

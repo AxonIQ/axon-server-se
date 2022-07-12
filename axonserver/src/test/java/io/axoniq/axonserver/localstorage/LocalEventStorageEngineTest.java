@@ -30,13 +30,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -51,12 +49,6 @@ public class LocalEventStorageEngineTest {
     @Before
     public void setup() {
         StorageTransactionManagerFactory transactionManagerFactory = eventStore -> new StorageTransactionManager() {
-            @Override
-            public CompletableFuture<Long> store(List<Event> eventList) {
-                CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
-                pendingTransactions.add(pendingTransaction);
-                return pendingTransaction;
-            }
 
             @Override
             public Mono<Long> storeBatch(List<Event> eventList) {
@@ -119,17 +111,26 @@ public class LocalEventStorageEngineTest {
     }
 
     @Test
-    public void appendSnapshot() throws InterruptedException, TimeoutException, ExecutionException {
-        Mono<Void> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT,
+    public void appendSnapshot() {
+        Mono<Void> appendSnapshotOp = testSubject.appendSnapshot(SAMPLE_CONTEXT,
                                                          Event.newBuilder()
                                                               .setAggregateIdentifier(
                                                                       "AGGREGATE_WITH_ONE_EVENT")
                                                               .setAggregateSequenceNumber(0)
                                                               .build(),
                                                          null);
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, pendingTransactions.size()));
-        StepVerifier.create(snapshot.doOnSubscribe(s -> pendingTransactions.get(0).complete(100L)))
-                    .verifyComplete();
+
+        StepVerifier.create(appendSnapshotOp)
+                .thenAwait(Duration.ofMillis(100))
+                .then(()-> {
+                    if (!pendingTransactions.isEmpty()) {
+                        assertEquals(1, pendingTransactions.size());
+                        pendingTransactions.get(0).complete(100L);
+                    }
+                })
+                .verifyComplete();
+
+        assertTrue(pendingTransactions.get(0).isDone());
     }
 
     @Test

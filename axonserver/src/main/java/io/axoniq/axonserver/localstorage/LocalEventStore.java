@@ -72,6 +72,8 @@ import java.util.stream.Stream;
  * Component that handles the actual interaction with the event store.
  *
  * @author Marc Gathier
+ * @author Stefan Dragisic
+ *
  * @since 4.0
  */
 @Component
@@ -215,66 +217,63 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers;
     }
 
+    /*----------------------HANDLE APPEND SNAPSHOT----------------------*/
+
     @Override
     public Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication) {
-        return Mono.fromCompletionStage(appendSnapshot(context, authentication, snapshot))
-                   .then();
+        DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
+        return Mono.just(snapshot)
+                .publishOn(Schedulers.fromExecutorService(dataWriter))
+                .doFirst(() -> validateSnapshotSequence(context, snapshot))
+                .map(s -> eventInterceptors.interceptSnapshot(snapshot, executionContext))
+                .flatMap(interceptedSnapshot -> storeSnapshot(context, interceptedSnapshot))
+                .doOnSuccess(storedSnapshot -> eventInterceptors.interceptSnapshotPostCommit(storedSnapshot, executionContext))
+                .transform(pipeline -> handleStoreSnapshotErrors(context, executionContext, pipeline))
+                .transform(pipeline -> attachStoreSnapshotMetrics(context, pipeline))
+                .then();
     }
 
-    public CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication,
-                                                          Event snapshot) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        runInDataWriterPool(() -> doAppendSnapshot(context, authentication, snapshot, completableFuture),
-                            ex -> {
-                                logger.warn("{}: Append snapshot failed", context, ex);
-                                completableFuture.completeExceptionally(ex);
-                            });
-        return completableFuture;
-    }
-
-    private void doAppendSnapshot(String context, Authentication authentication, Event snapshot,
-                                  CompletableFuture<Confirmation> completableFuture) {
+    private void validateSnapshotSequence(String context, Event snapshot) {
         if (checkSequenceNrForSnapshots) {
             long seqNr = workers(context).aggregateReader.readHighestSequenceNr(snapshot.getAggregateIdentifier());
             if (seqNr < snapshot.getAggregateSequenceNumber()) {
-                String message = String.format(
-                        "Invalid sequence number while storing snapshot. Highest aggregate %s sequence number: %d, snapshot sequence %d.",
-                        snapshot.getAggregateIdentifier(),
-                        seqNr,
-                        snapshot.getAggregateSequenceNumber());
-                completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
-                                                                                       message));
-                return;
+                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                        String.format(
+                                "Invalid sequence number while storing snapshot. Highest aggregate %s sequence number: %d, snapshot sequence %d.",
+                                snapshot.getAggregateIdentifier(),
+                                seqNr,
+                                snapshot.getAggregateSequenceNumber()));
             }
         }
-        DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
-        try {
-            Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, executionContext);
-            workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
-                                                 .whenComplete(((confirmation, throwable) -> {
-                                                     if (throwable != null) {
-                                                         executionContext.compensate(throwable);
-                                                         completableFuture.completeExceptionally(throwable);
-                                                     } else {
-                                                         try {
-                                                             eventInterceptors.snapshotPostCommit(
-                                                                     snapshotAfterInterceptors,
-                                                                     executionContext);
-                                                             completableFuture.complete(confirmation);
-                                                         } catch (Exception ex) {
-                                                             executionContext.compensate(ex);
-                                                             completableFuture.completeExceptionally(ex);
-                                                         }
-                                                     }
-                                                 }));
-        } catch (Exception requestRejectedException) {
-            executionContext.compensate(requestRejectedException);
-            completableFuture
-                    .completeExceptionally(new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
-                                                                          "Snapshot rejected by interceptor",
-                                                                          requestRejectedException));
-        }
     }
+
+    @Nonnull
+    private Mono<Event> storeSnapshot(String context, Event snapshot) {
+        return workers(context).snapshotWriteStorage
+                .store(snapshot)
+                .thenReturn(snapshot);
+    }
+
+    private Mono<Event> handleStoreSnapshotErrors(String context, DefaultExecutionContext executionContext, Mono<Event> pipeline) {
+        return pipeline
+                .doOnError(t -> logger.error("{}: Append snapshot failed", context, t))
+                .doOnError(executionContext::compensate)
+                .onErrorMap(RequestRejectedException.class, t -> new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
+                        "Snapshot rejected by interceptor",
+                        t))
+                .onErrorMap(t -> !t.getClass().isAssignableFrom(MessagingPlatformException.class), MessagingPlatformException::create);
+    }
+
+    private Mono<Event> attachStoreSnapshotMetrics(String context, Mono<Event> pipeline) {
+        return pipeline
+                .name("append_stream")
+                .tag("context", context)
+                .tag("stream", "snapshots")
+                .tag("origin", "local_event_store")
+                .metrics();
+    }
+
+    /*----------------------HANDLE APPEND EVENT----------------------*/
 
     @Override
     public Mono<Void> appendEvents(String context, Flux<SerializedEvent> events, Authentication authentication) {
@@ -283,39 +282,35 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .publishOn(Schedulers.fromExecutorService(dataWriter))
                 .map(SerializedEvent::asEvent)
                 .map(e -> eventInterceptors
-                        .appendEvent(e, executionContext))
-                .transform(serializedEvents -> prepareBatch(context, executionContext, serializedEvents))
-                .then()
-                .name("append_events")
-                .tag("context", context)
-                .tag("origin", "local_event_store")
-                .metrics();
+                        .interceptEvent(e, executionContext))
+                .transform(serializedEvents -> prepareAndStoreBatch(context, executionContext, serializedEvents))
+                .transform(pipeline -> handleStoreEventErrors(executionContext, pipeline))
+                .transform(pipeline -> attachStoreEventMetrics(context, pipeline))
+                .then();
     }
 
     @Nonnull
-    private Flux<Void> prepareBatch(String context, DefaultExecutionContext executionContext, Flux<Event> serializedEvents) {
+    private Flux<Void> prepareAndStoreBatch(String context, DefaultExecutionContext executionContext, Flux<Event> serializedEvents) {
         return serializedEvents
-                        .buffer()
-                        .transform(batches -> storeBatch(context, executionContext, batches))
-                        .transform(pipeline -> handleErrors(executionContext, pipeline));
+                .buffer()
+                .transform(batches -> storeBatch(context, executionContext, batches));
     }
 
     @Nonnull
     private Flux<Void> storeBatch(String context, DefaultExecutionContext executionContext, Flux<List<Event>> eventBatches) {
-        return eventBatches.doOnNext(interceptedEvents -> eventInterceptors.eventsPreCommit(interceptedEvents, executionContext))
+        return eventBatches.doOnNext(interceptedEvents -> eventInterceptors.interceptEventsPreCommit(interceptedEvents, executionContext))
                 .concatMap(interceptedEvents -> workers(context)
                         .eventWriteStorage
                         .storeBatch(interceptedEvents)
-                        .doOnSuccess(unused -> eventInterceptors.eventsPostCommit(interceptedEvents,
+                        .doOnSuccess(unused -> eventInterceptors.interceptEventsPostCommit(interceptedEvents,
                                 executionContext))
                 );
-
     }
 
     @Nonnull
-    private Flux<Void> handleErrors(DefaultExecutionContext executionContext, Flux<Void> pipeline) {
+    private Flux<Void> handleStoreEventErrors(DefaultExecutionContext executionContext, Flux<Void> pipeline) {
         return pipeline
-                .doOnError(t-> logger.error("Error occurred durring store batch operation: ",t))
+                .doOnError(t -> logger.error("Error occurred during store batch operation: ", t))
                 .doOnError(executionContext::compensate)
                 .onErrorMap(RequestRejectedException.class, t -> new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
                         "Event rejected by interceptor",
@@ -323,6 +318,16 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .onErrorMap(t -> !t.getClass().isAssignableFrom(MessagingPlatformException.class), MessagingPlatformException::create);
     }
 
+    private Flux<Void> attachStoreEventMetrics(String context, Flux<Void> pipeline) {
+        return pipeline
+                .name("append_stream")
+                .tag("context", context)
+                .tag("stream", "events")
+                .tag("origin", "local_event_store")
+                .metrics();
+    }
+
+    /*---------------------- LIST EVENT----------------------*/
 
     @Override
     public Flux<SerializedEvent> aggregateEvents(String context,
@@ -367,10 +372,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {
         runInPool(dataFetcher, task, onError);
-    }
-
-    private void runInDataWriterPool(Runnable task, Consumer<Exception> onError) {
-        runInPool(dataWriter, task, onError);
     }
 
     private void runInPool(ExecutorService threadPool, Runnable task, Consumer<Exception> onError) {

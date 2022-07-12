@@ -86,10 +86,6 @@ public class LocalEventStoreTest {
         };
 
         StorageTransactionManagerFactory transactionManagerFactory = eventStore -> new StorageTransactionManager() {
-            @Override
-            public CompletableFuture<Long> store(List<Event> eventList) {
-                return eventStore.store(eventList);
-            }
 
             @Override
             public Mono<Long> storeBatch(List<Event> eventList) {
@@ -260,7 +256,7 @@ public class LocalEventStoreTest {
         List<String> compensations = new ArrayList<>();
 
         @Override
-        public Event appendEvent(Event event, ExecutionContext executionContext) {
+        public Event interceptEvent(Event event, ExecutionContext executionContext) {
             if (failAppend) {
                 throw new RuntimeException("appendEvent");
             }
@@ -270,7 +266,7 @@ public class LocalEventStoreTest {
         }
 
         @Override
-        public Event appendSnapshot(Event snapshot, ExecutionContext executionContext) {
+        public Event interceptSnapshot(Event snapshot, ExecutionContext executionContext) {
             if (failAppend) {
                 throw new RuntimeException("appendSnapshot");
             }
@@ -280,7 +276,7 @@ public class LocalEventStoreTest {
         }
 
         @Override
-        public void eventsPreCommit(List<Event> events, ExecutionContext executionContext) {
+        public void interceptEventsPreCommit(List<Event> events, ExecutionContext executionContext) {
             if (failPreCommit) {
                 throw new RuntimeException("eventsPreCommit");
             }
@@ -289,12 +285,12 @@ public class LocalEventStoreTest {
         }
 
         @Override
-        public void eventsPostCommit(List<Event> events, ExecutionContext executionContext) {
+        public void interceptEventsPostCommit(List<Event> events, ExecutionContext executionContext) {
             eventsPostCommit++;
         }
 
         @Override
-        public void snapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
+        public void interceptSnapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
             snapshotPostCommit++;
         }
 

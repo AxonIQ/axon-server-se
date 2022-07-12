@@ -53,7 +53,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event appendEvent(
+    public Event interceptEvent(
             Event event, ExecutionContext executionContext) {
         List<ServiceWithInfo<AppendEventInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
@@ -84,8 +84,8 @@ public class DefaultEventInterceptors implements EventInterceptors {
 
 
     @Override
-    public void eventsPreCommit(List<Event> events,
-                                ExecutionContext executionContext){
+    public void interceptEventsPreCommit(List<Event> events,
+                                         ExecutionContext executionContext){
         List<ServiceWithInfo<PreCommitEventsHook>> servicesForContext = pluginContextFilter
                 .getServicesWithInfoForContext(
                         PreCommitEventsHook.class,
@@ -117,7 +117,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public void eventsPostCommit(List<Event> events, ExecutionContext executionContext) {
+    public void interceptEventsPostCommit(List<Event> events, ExecutionContext executionContext) {
         List<ServiceWithInfo<PostCommitEventsHook>> servicesForContext = pluginContextFilter
                 .getServicesWithInfoForContext(
                         PostCommitEventsHook.class,
@@ -141,7 +141,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public void snapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
+    public void interceptSnapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
         List<ServiceWithInfo<PostCommitSnapshotHook>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         PostCommitSnapshotHook.class,
@@ -164,7 +164,7 @@ public class DefaultEventInterceptors implements EventInterceptors {
     }
 
     @Override
-    public Event appendSnapshot(Event snapshot, ExecutionContext executionContext) {
+    public Event interceptSnapshot(Event snapshot, ExecutionContext executionContext) {
         List<ServiceWithInfo<AppendSnapshotInterceptor>> interceptors = pluginContextFilter
                 .getServicesWithInfoForContext(
                         AppendSnapshotInterceptor.class,
