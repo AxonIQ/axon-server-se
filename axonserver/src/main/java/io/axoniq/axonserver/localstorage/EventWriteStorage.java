@@ -43,6 +43,7 @@ public class EventWriteStorage {
                 .flatMap(eventList -> {
                     Runnable releaseSequences = reserveSequences(eventList);
                     return storageTransactionManager.storeBatch(eventList)
+                            .doOnError(t-> logger.error("Error occurred while writing batch: ",t))
                             .doOnError(e -> releaseSequences.run())
                             .doOnSuccess(firstToken -> listeners.values()
                                     .forEach(consumer -> eventsStored(consumer, firstToken, eventList)));

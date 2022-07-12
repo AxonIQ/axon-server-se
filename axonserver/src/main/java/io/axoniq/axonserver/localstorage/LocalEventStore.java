@@ -315,6 +315,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     @Nonnull
     private Flux<Void> handleErrors(DefaultExecutionContext executionContext, Flux<Void> pipeline) {
         return pipeline
+                .doOnError(t-> logger.error("Error occurred durring store batch operation: ",t))
                 .doOnError(executionContext::compensate)
                 .onErrorMap(RequestRejectedException.class, t -> new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
                         "Event rejected by interceptor",
