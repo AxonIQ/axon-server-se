@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -11,11 +11,16 @@ globals.pageView = new Vue(
         {el: '#overview',
             data: {
                 component: null,
+                displayStyle: "diagram",
                 context: null,
                 title: null,
                 activeContext: "_all",
                 webSocketInfo: globals.webSocketInfo,
-                contexts: ["default"]
+                contexts: ["default"],
+                applications: [],
+                allContexts: [],
+                appsPageSize: 1,
+                appsCurrentPage: 1
             },
             mounted() {
                 let me = this;
@@ -39,9 +44,16 @@ globals.pageView = new Vue(
             methods: {
                 initOverview() {
                     let contextString = this.activeContext === "_all" ? "" : "?for-context=" + this.activeContext;
+                    let me = this;
                     $.getJSON("v1/public/overview" + contextString, function (node) {
                         $("svg").attr("width", node.width).attr("height", node.height);
                         $("g").html(node.svgObjects);
+                    });
+                    $.getJSON("v1/public/overview-list" + contextString, function (node) {
+                        me.applications = node;
+                    });
+                    $.getJSON("v1/public/context", function (node) {
+                        me.allContexts = node;
                     });
                 },
 
@@ -49,6 +61,13 @@ globals.pageView = new Vue(
                     this.component = component;
                     this.context = context;
                     this.title = title;
+                },
+
+                showDiagram() {
+                    return this.displayStyle === "diagram" && (this.component == null || this.component === "");
+                },
+                showList() {
+                    return this.displayStyle === "list" && (this.component == null || this.component === "");
                 },
 
                 deselectComponent() {

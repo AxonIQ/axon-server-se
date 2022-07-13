@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -219,50 +219,46 @@
 </script>
 <section id="plugins">
     <section id="pluginOverview">
-        <div class="results singleHeader">
-            <table :key="componentKey">
-                <thead>
-                <tr>
-                    <th style="width: 25%">Plugin Name</th>
-                    <th style="width: 10%">Version</th>
-                    <th style="width: 10%">Plugin Status</th>
-                    <th style="width: 35%" v-if="isEnterprise()">Status per Context</th>
-                    <th style="width: 35%" v-if="!isEnterprise()">Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr v-for="plugin in plugins">
-                    <td :title="plugin.filename">{{ plugin.name }}</td>
-                    <td>{{ plugin.version }}
-                        <span @click="deletePlugin(plugin)" title="Delete">
+        <paginated-table :rows="plugins" :key="componentKey">
+            <template #header>
+                <th style="width: 25%">Plugin Name</th>
+                <th style="width: 10%">Version</th>
+                <th style="width: 10%">Plugin Status</th>
+                <th style="width: 35%" v-if="isEnterprise()">Status per Context</th>
+                <th style="width: 35%" v-if="!isEnterprise()">Actions</th>
+            </template>
+            <template #row="plugin">
+                <td :title="plugin.filename">{{ plugin.name }}</td>
+                <td>{{ plugin.version }}
+                    <span @click="deletePlugin(plugin)" title="Delete">
                             <i class="far fa-trash-alt"></i>
                             </span>
-                    </td>
-                    <td>{{ plugin.pluginStatus }}</td>
+                </td>
+                <td>{{ plugin.pluginStatus }}</td>
 
-                    <td v-if="isEnterprise()">
-                        <table>
-                            <tr v-for="contextInfo in plugin.contextInfoList">
-                                <td style="padding: 0">{{ contextInfo.context }}</td>
-                                <td style="padding: 0">{{ contextInfo.active ? "Active" : "Registered" }}</td>
-                                <td style="padding: 0">
+                <td v-if="isEnterprise()">
+                    <table>
+                        <tr v-for="contextInfo in plugin.contextInfoList">
+                            <td style="padding: 0">{{ contextInfo.context }}</td>
+                            <td style="padding: 0">{{ contextInfo.active ? "Active" : "Registered" }}</td>
+                            <td style="padding: 0">
                                     <span v-if="admin"
                                           @click="unregisterPluginForContext(plugin, contextInfo.context)"
                                           title="Delete"><i
                                             class="far fa-trash-alt"></i></span>
-                                    <span @click="selectPlugin(plugin, contextInfo.context)" title="Edit">
+                                <span @click="selectPlugin(plugin, contextInfo.context)" title="Edit">
                                         <i class="fas fa-pencil-alt"></i></span>
-                                    <span v-if="admin && !contextInfo.active"
-                                          @click="start(plugin, contextInfo.context)" title="Start">
+                                <span v-if="admin && !contextInfo.active"
+                                      @click="start(plugin, contextInfo.context)" title="Start">
                                         <i class="far fa-play-circle"></i></span>
-                                    <span v-if="admin && contextInfo.active"
-                                          @click="stop(plugin, contextInfo.context)" title="Stop">
+                                <span v-if="admin && contextInfo.active"
+                                      @click="stop(plugin, contextInfo.context)" title="Stop">
                                         <i class="far fa-pause-circle"></i></span>
-                                     </td>
-                                 </tr>
-                             </table>
+                            </td>
+                        </tr>
+                    </table>
 
-                            <span v-if="admin">
+                    <span v-if="admin">
                                 <select v-model="plugin.newContext">
                                     <option v-for="n in contexts">{{ n }}</option>
                                 </select>
@@ -270,23 +266,21 @@
                                         class="fas fa-plus"></i></span>
                             </span>
 
-                        </td>
-                    <td v-if="!isEnterprise()">
+                </td>
+                <td v-if="!isEnterprise()">
                             <span @click="selectPlugin(plugin, 'default')" title="Edit"><i
                                     class="fas fa-pencil-alt"></i></span>
-                        <span v-if="admin && !isActiveSE(plugin)"
-                              @click="start(plugin, 'default')" title="Start"><i
-                                class="far fa-play-circle"></i></span>
-                        <span v-if="admin && isActiveSE(plugin)" @click="stop(plugin, 'default')"
-                              title="Stop"><i
-                                class="far fa-pause-circle"></i></span>
-                    </td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="buttons" style="padding-top: 10px" v-if="admin">
-                <button @click.prevent="install()" class="button">Upload</button>
-            </div>
+                    <span v-if="admin && !isActiveSE(plugin)"
+                          @click="start(plugin, 'default')" title="Start"><i
+                            class="far fa-play-circle"></i></span>
+                    <span v-if="admin && isActiveSE(plugin)" @click="stop(plugin, 'default')"
+                          title="Stop"><i
+                            class="far fa-pause-circle"></i></span>
+                </td>
+            </template>
+        </paginated-table>
+        <div class="buttons" style="padding-top: 10px" v-if="admin">
+            <button @click.prevent="install()" class="button">Upload</button>
         </div>
     </section>
 

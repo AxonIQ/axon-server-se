@@ -678,14 +678,19 @@ ul {
 }
 
 select {
-    font-family: Lato, sans-serif;
-    font-size: 14px;
+	font-family: Lato, sans-serif;
+	font-size: 14px;
 }
 
 #applicationDetails, #userDetails {
 	width: 100%;
 	padding-top: 50px;
 	padding-left: 6px;
+}
+
+.pager {
+	float: right;
+	font-size: smaller;
 }
 
 .nodeName {
@@ -695,9 +700,9 @@ select {
 }
 
 .nodeRoleName {
-    display: inline-block !important;
-    float: none !important;
-    width: 200px;
+	display: inline-block !important;
+	float: none !important;
+	width: 200px;
 }
 .contextName {
 	display: inline-block !important;
