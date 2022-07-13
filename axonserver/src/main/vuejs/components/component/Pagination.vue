@@ -33,7 +33,7 @@ module.exports = {
     }
   },
   watch: {
-    data: function (oldValue, newValue) {
+    data: function () {
       this.setRange();
     }
   },
