@@ -75,6 +75,7 @@
             font-size: 12px;
             cursor: pointer;
         }
+
         text.type {
             font-family: 'Montserrat', 'sans-serif';
             font-style: italic;
@@ -147,18 +148,23 @@
 </defs>
 
 <div id="overview">
-    <div class="contextSelector">
-        <span v-if="isEnterprise()" style="margin-left: 15px;">
+    <div>
+        <span v-if="isEnterprise()">
             Active context:
         <select v-model="activeContext" @change="initOverview">
             <option value="_all">All</option>
             <option v-for="n in contexts">{{ n }}</option>
         </select>
+            Display:
+        <select v-model="displayStyle">
+            <option value="diagram">Diagram</option>
+            <option value="list">List</option>
+        </select>
         </span>
     </div>
     <br/>
 
-    <svg v-show="!component || component === ''" width="900" height="600">
+    <svg v-show="showDiagram()" width="900" height="600">
 
         <filter id="f1" width="150%" height="150%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
@@ -176,6 +182,49 @@
 
         <g onclick="hidePopup()"/>
     </svg>
+
+    <div v-if="showList()">
+
+        <h3>Connected Applications</h3>
+        <paginated-table :rows="applications" selectable="true">
+            <template #header>
+                <th class="applicationName">Name</th>
+                <th class="instanceCount"># Instances</th>
+                <th class="contexts">Context(s)</th>
+                <th class="connectedTo">Connected to</th>
+            </template>
+            <template #row="app">
+                <td @click="selectComponent(app.name, app.contexts, app.name)">{{ app.name }}</td>
+                <td @click="selectComponent(app.name, app.contexts, app.name)">{{ app.instances }}</td>
+                <td @click="selectComponent(app.name, app.contexts, app.name)">
+                    <span v-for="ctx in app.contexts">{{ ctx }}<br></span>
+                </td>
+                <td @click="selectComponent(app.name, app.contexts, app.name)">
+                    <span v-for="node in app.connectedTo">{{ node }}<br></span>
+                </td>
+
+            </template>
+        </paginated-table>
+
+        <div v-if="isEnterprise()">
+            <h3>Context overview</h3>
+            <paginated-table :rows="allContexts">
+                <template #header>
+                    <th class="applicationName">Name</th>
+                    <th class="nodeName">Nodes</th>
+                    <th class="leader">Leader</th>
+                </template>
+                <template #row="ctx">
+                    <td>{{ ctx.context }}</td>
+                    <td>
+                        <span v-for="node in ctx.roles">{{ node.node }}<br></span>
+                    </td>
+                    <td>{{ ctx.leader }}</td>
+                </template>
+            </paginated-table>
+        </div>
+    </div>
+
 
     <div v-if="component">
         <h2>

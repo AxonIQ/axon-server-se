@@ -133,7 +133,8 @@
                     this.addMetaDataToCurrent()
                 }
 
-                axios.patch("v1/context/" + this.currentContext.context, this.currentContext.metaData).then(response => {
+                axios.patch("v1/context/" + this.currentContext.context,
+                            this.currentContext.metaData).then(response => {
                     this.showAdd = true;
                     this.showUpdate = false;
                     this.loadContexts();
@@ -163,7 +164,7 @@
             doDeleteContext() {
                 if (this.deleteContextData.context === this.deleteContextData.retypeContext) {
                     axios.delete("v1/context/" + this.deleteContextData.context + "?preserveEventStore="
-                                            + this.deleteContextData.preserveData).then(
+                                         + this.deleteContextData.preserveData).then(
                             () => {
                                 this.loadContexts();
                                 this.hideModal('delete-context');
@@ -195,16 +196,17 @@
                 this.$forceUpdate();
             },
             isReadonly(metaDataKey) {
-                let prop = this.contextProperties.find(v => v.key ===metaDataKey);
+                let prop = this.contextProperties.find(v => v.key === metaDataKey);
                 return prop ? !prop.updatable : false;
             },
             updateContext(context) {
                 this.showUpdate = true;
                 this.showAdd = false;
-                this.currentContext = {"context": context.context,
-                        "metaData": Object.assign({}, context.metaData),
-                        "metaDataLabel": '',
-                        "metaDataValue": ''
+                this.currentContext = {
+                    "context": context.context,
+                    "metaData": Object.assign({}, context.metaData),
+                    "metaDataLabel": '',
+                    "metaDataValue": ''
                 };
             },
             cancelUpdate() {
@@ -240,24 +242,20 @@
                 this.$refs.newContextProperty.setText('');
             }
         }
-    });
+                               });
 
 </script>
 <span id="context">
     <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
-                <div class="results singleHeader">
 
-        <table>
-            <thead>
-            <tr>
+    <paginated-table :rows="contexts">
+            <template #header>
                 <th class="contextColumn">Context Name</th>
                 <th class="contextColumn">Replication Group Name</th>
                 <th class="nodesColumn">Context Options</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="context in contexts">
-                <td>{{context.context}}
+            </template>
+                    <template #row="context">
+                <td>{{ context.context }}
                     <span @click="deleteContext(context)" v-if="admin && !isInternalContext(context)"
                           title="Delete Context">
                         <i class="far fa-trash-alt"></i>
@@ -268,19 +266,18 @@
                     </span>
                 </td>
                 <td>
-                    {{context.replicationGroup}}
+                    {{ context.replicationGroup }}
                 </td>
                 <td>
                     <div v-for="key in Object.keys(context.metaData)">
-                        <span class="narrow">{{key}}</span>
-                        <span>{{context.metaData[key]}}</span>
+                        <span class="narrow">{{ key }}</span>
+                        <span>{{ context.metaData[key] }}</span>
                     </div>
                 </td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
-</section>
+                    </template>
+    </paginated-table>
+
+    </section>
 
     <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
         Multi-context is not allowed
@@ -300,7 +297,7 @@
                             <span>
                                     <select class="nodeRoleName" v-model="newContext.selectedReplicationGroup">
                                         <option value="">-- create new --</option>
-                                        <option v-for="n in replicationGroups" :value="n.name">{{n.name}}</option>
+                                        <option v-for="n in replicationGroups" :value="n.name">{{ n.name }}</option>
                                     </select>
                             </span>
                         </li>
@@ -318,11 +315,11 @@
                                         <span>
                                              <table class="nestedTable">
                                                  <tr v-for="node in newContext.nodes">
-                                                     <td style="width: 60%">{{node.name}}</td>
+                                                     <td style="width: 60%">{{ node.name }}</td>
                                                      <td>
                                                         <select class="nodeRoleName" v-model="node.selectedRole">
                                                             <option value="none">-- none --</option>
-                                                            <option v-for="n in roles" :value="n">{{n}}</option>
+                                                            <option v-for="n in roles" :value="n">{{ n }}</option>
                                                         </select>
                                                      </td>
                                                  </tr>
@@ -339,7 +336,7 @@
                                 <table class="nestedTable">
                                     <tbody>
                                         <tr v-for="key in Object.keys(newContext.metaData)">
-                                            <td style="width: 60%">{{key}}</td>
+                                            <td style="width: 60%">{{ key }}</td>
                                             <td><input class="propertyValue" data-lpignore="true"
                                                        v-model="newContext.metaData[key]"></td>
                                             <td style="width: 20px">
@@ -382,7 +379,7 @@
                     <ul>
                         <li>
                             <span class="narrow">Context Name</span>
-                            <span>{{currentContext.context}}</span>
+                            <span>{{ currentContext.context }}</span>
                         </li>
                         <li>
                             <span class="narrow">Context Properties</span>
@@ -390,16 +387,17 @@
                                 <table class="nestedTable">
                                     <tbody>
                                         <tr v-for="key in Object.keys(currentContext.metaData)">
-                                            <td style="width: 60%">{{key}}</td>
+                                            <td style="width: 60%">{{ key }}</td>
                                             <td>
                                                 <span v-if="isReadonly(key)">
-                                                    {{currentContext.metaData[key]}}
+                                                    {{ currentContext.metaData[key] }}
                                                 </span>
                                                 <input v-if=!isReadonly(key) class="propertyValue" data-lpignore="true"
                                                        v-model="currentContext.metaData[key]"
                                                 ></td>
                                             <td style="width: 20px">
-                                                <span v-if=!isReadonly(key) @click="deleteMetaDataFromCurrent(key)" title="Delete Context Property">
+                                                <span v-if=!isReadonly(key) @click="deleteMetaDataFromCurrent(key)"
+                                                      title="Delete Context Property">
                                                     <i class="far fa-trash-alt"></i>
                                                 </span>
                                             </td>
@@ -418,7 +416,8 @@
                                                        v-model="currentContext.metaDataValue">
                                     </span>
 
-                                    <span style="width: 15px" @click="addMetaDataToCurrent()" title="Add Context Property">
+                                    <span style="width: 15px" @click="addMetaDataToCurrent()"
+                                          title="Add Context Property">
                                         <i class="fas fa-plus"></i>
                                     </span>
                             </span>
@@ -437,7 +436,7 @@
 
     <modal name="delete-context" width="600" height="270">
             <div class="column configuration modal">
-                <h2>Delete context {{deleteContextData.context}}</h2>
+                <h2>Delete context {{ deleteContextData.context }}</h2>
                 <p>
                     This will delete all data for this context. Please re-type the name of the context to delete to continue.
                 </p>

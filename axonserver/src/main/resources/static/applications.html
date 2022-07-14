@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -20,31 +20,26 @@
     <section id="applicationFeedback" class="msg info" v-if="feedback !== ''">{{feedback}}</section>
 
     <section id="applicationsOverview">
-        <div class="results singleHeader">
-            <table id="applicationTable">
-                <thead>
-                <tr>
+        <paginated-table :rows="applications">
+            <template #header>
                     <th class="applicationName">Name</th>
                     <th class="applicationDescription">Description</th>
                     <th class="roles">Roles</th>
-                </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="app in applications">
-                        <td>{{app.name}}</td>
-                        <td>{{app.description}}</td>
+            </template>
+            <template #row="app">
+                        <td>{{ app.name }}</td>
+                        <td>{{ app.description }}</td>
                         <td>
-                            <span v-for="role in app.workingRoles">{{role.context}}:{{role.role}}<br></span>
+                            <span v-for="role in app.workingRoles">{{ role.context }}:{{ role.role }}<br></span>
                         </td>
-                        <td  v-if="admin">
+                        <td v-if="admin">
                             <span @click="deleteApp(app)" title="Delete"><i class="far fa-trash-alt"></i></span>
-                            <span @click="renewToken(app)" title="Generate New Token"><i class="fas fa-redo-alt"></i></span>
+                            <span @click="renewToken(app)" title="Generate New Token"><i
+                                    class="fas fa-redo-alt"></i></span>
                             <span @click="selectApp(app)" title="Edit"><i class="fas fa-pencil-alt"></i></span>
                         </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+            </template>
+        </paginated-table>
     </section>
 
     <section id="applicationDetails" v-if="admin">

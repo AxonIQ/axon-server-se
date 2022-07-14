@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -11,32 +11,26 @@
 <div id="users">
     <section class="msg info" v-if="feedback !== ''">{{feedback}}</section>
     <section>
-        <div class="results singleHeader">
-            <table>
-                <thead>
-                <tr>
-                    <th>Username</th>
-                    <th v-if="isEnterprise()">Roles</th>
-                    <th v-if="!isEnterprise()">Administrator</th>
-                </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="user in users">
-                        <td>{{user.userName}}</td>
-                        <td v-if="isEnterprise()">
-                            <span v-for="role in user.roles">{{role}}<br></span>
-                        </td>
-                        <td v-if="!isEnterprise()">
-                            {{administrator(user)}}
-                        </td>
-                        <td v-if="admin">
-                            <span @click="deleteUser(user)" title="Delete"><i class="far fa-trash-alt"></i></span>
-                            <span @click="selectUser(user)" title="Edit"><i class="fas fa-pencil-alt"></i></span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <paginated-table :rows="users">
+            <template #header>
+                <th>Username</th>
+                <th v-if="isEnterprise()">Roles</th>
+                <th v-if="!isEnterprise()">Administrator</th>
+            </template>
+            <template #row="user">
+                <td>{{ user.userName }}</td>
+                <td v-if="isEnterprise()">
+                    <span v-for="role in user.roles">{{ role }}<br></span>
+                </td>
+                <td v-if="!isEnterprise()">
+                    {{ administrator(user) }}
+                </td>
+                <td v-if="admin">
+                    <span @click="deleteUser(user)" title="Delete"><i class="far fa-trash-alt"></i></span>
+                    <span @click="selectUser(user)" title="Edit"><i class="fas fa-pencil-alt"></i></span>
+                </td>
+            </template>
+        </paginated-table>
     </section>
 
     <section id="userDetails" v-if="admin">
