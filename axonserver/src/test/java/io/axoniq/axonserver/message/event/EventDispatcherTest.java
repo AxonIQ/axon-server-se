@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -11,34 +11,40 @@ package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.grpc.event.*;
+import io.axoniq.axonserver.grpc.event.Confirmation;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
+import io.axoniq.axonserver.grpc.event.GetEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
+import io.axoniq.axonserver.grpc.event.QueryEventsResponse;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.axoniq.axonserver.topology.Topology;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Metrics;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.*;
+import org.junit.runner.*;
+import org.mockito.*;
+import org.mockito.junit.*;
 import reactor.core.publisher.Flux;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -69,8 +75,8 @@ public class EventDispatcherTest {
                                           () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()),
-                Executors::newCachedThreadPool,
-                3,100, 50);
+                                          Executors::newCachedThreadPool,
+                                          3, 100, 50, 60_000);
     }
 
     @Test
@@ -238,5 +244,34 @@ public class EventDispatcherTest {
                                              .build());
         verify(eventStoreLocator).getEventStore(Topology.DEFAULT_CONTEXT, true);
         assertEquals(1, responseObserver.completedCount());
+    }
+
+    @Test
+    public void testTimeoutOnListAggregateEvents() throws InterruptedException {
+        Flux<SerializedEvent> flux = Flux.create(sink -> {});
+        EventStore eventStore = mock(EventStore.class);
+        when(eventStore.aggregateEvents(any(), any(), any())).thenReturn(flux);
+        EventDispatcher eventDispatcher = new EventDispatcher(context -> eventStore, () -> Topology.DEFAULT_CONTEXT,
+                                                              () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                                                              new MeterFactory(Metrics.globalRegistry,
+                                                                               new DefaultMetricCollector()),
+                                                              Executors::newCachedThreadPool,
+                                                              3, 100, 50, 3);
+
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<SerializedEvent>() {
+            @Override
+            public void onError(Throwable t) {
+                super.onError(t);
+                countDownLatch.countDown();
+            }
+        };
+
+        eventDispatcher.listAggregateEvents(GetAggregateEventsRequest.newBuilder().build(), responseObserver);
+        countDownLatch.await();
+        List<Throwable> errors = responseObserver.errors();
+        assertEquals(1, errors.size());
+        Throwable throwable = errors.get(0);
+        assertEquals(StatusRuntimeException.class, throwable.getClass());
     }
 }
