@@ -74,7 +74,7 @@ public class QueryDispatcher {
                                              queueCapacity,
                                              BaseMetricName.AXON_APPLICATION_QUERY_QUEUE_SIZE,
                                              meterFactory,
-                                             ErrorCode.QUERY_DISPATCH_ERROR);
+                                             ErrorCode.TOO_MANY_REQUESTS);
         queryMetricsRegistry.gauge(BaseMetricName.AXON_ACTIVE_QUERIES, queryCache, ConstraintCache::size);
     }
 
