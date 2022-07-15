@@ -8,14 +8,13 @@
   ~
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
 		<groupId>io.axoniq.axonserver</groupId>
 		<artifactId>axonserver-se</artifactId>
-        <version>4.6.0-SNAPSHOT</version>
+        <version>4.6.0</version>
     </parent>
     <artifactId>axonserver</artifactId>
     <name>AxonServer - Standard edition</name>
@@ -345,8 +344,8 @@
                         <phase>process-resources</phase>
                         <configuration>
                             <target>
-                                <delete dir="target/integration" failonerror="false"/>
-                                <mkdir dir="target/integration"/>
+                                <delete dir="target/integration" failonerror="false" />
+                                <mkdir dir="target/integration" />
                             </target>
                         </configuration>
                         <goals>
@@ -362,9 +361,8 @@
                         <phase>compile</phase>
                         <configuration>
                             <target>
-                                <echo message="${project.build.outputDirectory}/db/migration"/>
-                                <fixcrlf srcdir="${project.build.outputDirectory}/db/migration" eol="dos"
-                                         fixlast="false"/>
+                                <echo message="${project.build.outputDirectory}/db/migration" />
+                                <fixcrlf srcdir="${project.build.outputDirectory}/db/migration" eol="dos" fixlast="false" />
                             </target>
                         </configuration>
                         <goals>
