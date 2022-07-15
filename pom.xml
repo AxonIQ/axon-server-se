@@ -29,6 +29,7 @@
         <module>axonserver-cli</module>
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
+        <module>axonserver-command-processing-spi</module>
     </modules>
 
     <properties>
@@ -151,7 +152,7 @@
                 <configuration>
                     <useMissingFile>true</useMissingFile>
                     <thirdPartyFilename>third-party-licenses.txt</thirdPartyFilename>
-                    <fileTemplate>./third-party-template.ftl</fileTemplate>
+                    <fileTemplate>../third-party-template.ftl</fileTemplate>
                     <excludedGroups>
                         io.axoniq.axonserver|io.axoniq
                     </excludedGroups>
