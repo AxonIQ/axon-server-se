@@ -5,9 +5,32 @@ visit https://docs.axoniq.io.
 
 Release Notes for version 4.6.0
 -------------------------------
-* Updated Spring Boot version to 2.6.6
-  The endpoint for the Swagger UI has changed to /swagger-ui/index.html (just /swagger-ui no longer works)
-  The generic endpoint for actuator is /actuator (/actuator/ no longer works)
+
+New features:
+- Streaming queries (requires Axon Framework version 4.6.0). When returning a collection of results from a query, the results can be streamed instead of collecting
+  them in the query handler first.
+
+Enhancements:
+- Number of events per transaction is no longer limited to 32K.
+- Support for using the CLI when the caller is behind a proxy.
+- livenessstate and readinessstate probes are now included in the /actuator/health endpoint output by default
+- Properties now support more readable values using units
+- Changing event processor states through Axon Server now waits for a result from the client
+- Plugins can now use AxonServerInformationProvider to get information on the Axon Server version
+- UI updated
+- show complex metadata values in query results
+
+Dependency updates:
+- updated gRPC and Netty versions
+- updated Spring Boot version
+- moved to OpenAPI for Swagger support
+
+Bug fixes:
+- moved reading indexes from the gRPC thread to prevent blocking these threads
+
+Notes:
+- For the Swagger endpoint use  /swagger-ui.html or /swagger-ui/index.html.
+- The generic endpoint for actuator is /actuator (/actuator/ no longer works)
 
 Release Notes for version 4.5.13
 --------------------------------
