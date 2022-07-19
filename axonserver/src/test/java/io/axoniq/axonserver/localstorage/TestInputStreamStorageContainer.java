@@ -32,8 +32,9 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.IntStream;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Marc Gathier
@@ -85,7 +86,9 @@ public class TestInputStreamStorageContainer {
                                 SerializedObject
                                         .newBuilder().build()).build());
             });
-            eventWriter.store(newEvents).whenComplete((r,t) -> countDownLatch.countDown());
+            eventWriter.storeBatch(newEvents)
+                    .doOnSuccess(( s -> countDownLatch.countDown()))
+                    .subscribe();
         });
         try {
             countDownLatch.await();

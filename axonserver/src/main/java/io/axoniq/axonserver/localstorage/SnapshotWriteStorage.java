@@ -9,22 +9,22 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 /**
  * Handles write actions for aggregate snapshots.
  * @author Marc Gathier
+ * @author Stefan Dragisic
  * @since 4.0
  */
 public class SnapshotWriteStorage {
@@ -38,20 +38,16 @@ public class SnapshotWriteStorage {
         this.storageTransactionManager = storageTransactionManager;
     }
 
-    public CompletableFuture<Confirmation> store(Event snapshot) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        storageTransactionManager.store(Collections.singletonList(snapshot))
-                                 .whenComplete((firstToken, cause) -> {
-                                     if (cause == null) {
-                                         completableFuture.complete(Confirmation.newBuilder().setSuccess(true).build());
-                         if( ! listeners.isEmpty()) {
-                    listeners.values()
-                             .forEach(consumer -> snapshotStored(consumer, firstToken, snapshot));
-                }            } else {
-                                         completableFuture.completeExceptionally(cause);
-                                     }
-                                 });
-        return completableFuture;
+    public Mono<Void> store(Event snapshot) {
+        return storageTransactionManager.storeBatch(Collections.singletonList(snapshot))
+                .doOnSuccess(firstToken -> notifyListeners(snapshot, firstToken))
+                .doOnError(t -> logger.error("Error occurred while storing snapshot: ", t))
+                .then();
+    }
+
+    private void notifyListeners(Event snapshot, Long firstToken) {
+        listeners.values()
+                .forEach(consumer -> snapshotStored(consumer, firstToken, snapshot));
     }
 
     private void snapshotStored(
@@ -62,7 +58,6 @@ public class SnapshotWriteStorage {
         } catch(Exception ex) {
             logger.debug("Listener failed", ex);
         }
-
     }
 
     public Registration registerEventListener(BiConsumer<Long, Event> listener) {
