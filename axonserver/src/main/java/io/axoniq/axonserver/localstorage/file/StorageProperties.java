@@ -97,7 +97,7 @@ public class StorageProperties implements Cloneable {
     /**
      * Use memory mapped files for index files
      */
-    private Boolean useMmapIndex;
+    private boolean useMmapIndex = true;
     /**
      * When using memory mapped files for indexes, let mapdb forcefully close the memory mapped files on close
      */
@@ -339,13 +339,11 @@ public class StorageProperties implements Cloneable {
     public boolean isForceCleanMmapIndex() {
         return forceCleanMmapIndex != null ?
                 forceCleanMmapIndex :
-                systemInfoProvider.javaOnWindows() && !systemInfoProvider.javaWithModules();
+                systemInfoProvider.javaOnWindows();
     }
 
     public boolean isUseMmapIndex() {
-        return useMmapIndex != null ?
-                useMmapIndex :
-                !(systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
+        return useMmapIndex;
     }
 
     public boolean isCleanRequired() {
