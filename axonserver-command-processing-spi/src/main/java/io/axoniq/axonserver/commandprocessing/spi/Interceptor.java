@@ -8,4 +8,7 @@ package io.axoniq.axonserver.commandprocessing.spi;
  */
 public interface Interceptor {
 
+    default int priority() {
+        return 0;
+    }
 }

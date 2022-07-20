@@ -56,6 +56,11 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>io.axoniq.axonserver</groupId>
+                <artifactId>axonserver-command-processing-spi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.axoniq</groupId>
                 <artifactId>grpc-manual-flow-control</artifactId>
                 <version>${flow.control.version}</version>
@@ -152,7 +157,7 @@
                 <configuration>
                     <useMissingFile>true</useMissingFile>
                     <thirdPartyFilename>third-party-licenses.txt</thirdPartyFilename>
-                    <fileTemplate>../third-party-template.ftl</fileTemplate>
+                    <fileTemplate>./third-party-template.ftl</fileTemplate>
                     <excludedGroups>
                         io.axoniq.axonserver|io.axoniq
                     </excludedGroups>

@@ -22,9 +22,9 @@ public interface CommandResult extends Serializable {
      *
      * @return the unique identifier of the command which caused this result to happen
      */
-    String commandId(); // ???
+    String commandId();
 
-    Payload payload();
+    ResultPayload payload();
 
     Metadata metadata();
 }

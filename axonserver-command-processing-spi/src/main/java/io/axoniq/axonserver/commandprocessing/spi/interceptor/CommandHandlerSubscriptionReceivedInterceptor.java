@@ -8,6 +8,5 @@ import java.util.function.Function;
 
 public interface CommandHandlerSubscriptionReceivedInterceptor extends Interceptor {
 
-    Mono<Void> onCommandHandlerSubscriptionReceived(CommandHandler commandHandler,
-                                                    Function<CommandHandler, Mono<Void>> proceed);
+    Mono<CommandHandler> onCommandHandlerSubscriptionReceived(CommandHandler commandHandler);
 }

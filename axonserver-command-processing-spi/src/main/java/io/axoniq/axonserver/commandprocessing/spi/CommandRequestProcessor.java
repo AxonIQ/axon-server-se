@@ -4,7 +4,7 @@ import reactor.core.publisher.Mono;
 
 public interface CommandRequestProcessor {
 
-    Mono<Void> register(CommandHandlerSubscription handler);
+    Mono<Registration> register(CommandHandlerSubscription handler);
 
     Mono<Void> unregister(String handlerId);
 
