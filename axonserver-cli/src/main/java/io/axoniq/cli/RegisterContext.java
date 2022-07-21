@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -23,11 +23,14 @@ import java.util.List;
 import java.util.Set;
 
 import static io.axoniq.cli.CommandOptions.*;
+import static java.util.Arrays.asList;
 
 /**
  * @author Marc Gathier
  */
 public class RegisterContext extends AxonIQCliCommand {
+
+    private static final List<Integer> VALID_STATUS_CODES = asList(200, 202);
 
     public static void run(String[] args) throws IOException {
         // check args
@@ -73,7 +76,7 @@ public class RegisterContext extends AxonIQCliCommand {
         contextNode.setNodes(new ArrayList<>(definedNodes));
 
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            postJSON(httpclient, url, contextNode, 200, getToken(commandLine),
+            postJSON(httpclient, url, contextNode, VALID_STATUS_CODES::contains, getToken(commandLine),
                      RestResponse.class);
         }
     }

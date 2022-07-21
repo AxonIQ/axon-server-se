@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -174,25 +174,28 @@
 
     <section v-if="node.clustered" id="nodesOverview">
         <h2>Nodes</h2>
-        <div class="results singleHeader">
-            <table id="clusterTable">
-                <thead>
-                <tr>
-                    <th class="nodeName">Node Name</th>
-                    <th class="hostName">Host Name</th>
-                    <th class="httpPort">Http Port</th>
-                    <th class="grpcPort">GRPC Port</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr v-for="n in nodes">
-                    <td>{{n.name}}</td>
-                    <td>{{n.hostName}}</td>
-                    <td>{{n.httpPort}}</td>
-                    <td>{{n.grpcPort}}</td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
+
+        <paginated-table :rows="nodes">
+            <template #header>
+                <th style="width: 20px;"></th>
+                <th class="nodeName">Node Name</th>
+                <th class="hostName">Host Name</th>
+                <th class="httpPort">Http Port</th>
+                <th class="grpcPort">GRPC Port</th>
+                <th>Internal Host Name</th>
+                <th>Internal GRPC Port</th>
+            </template>
+            <template #row="n">
+                <td>
+                    <span class="icon" title="Not Connected" v-if="!n.connected"><i class="fas fa-bolt"></i></span>
+                </td>
+                <td>{{ n.name }}</td>
+                <td>{{ n.hostName }}</td>
+                <td>{{ n.httpPort }}</td>
+                <td>{{ n.grpcPort }}</td>
+                <td>{{ n.internalHostName }}</td>
+                <td>{{ n.grpcInternalPort }}</td>
+            </template>
+        </paginated-table>
     </section>
 </div>

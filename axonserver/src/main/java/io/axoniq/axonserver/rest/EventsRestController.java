@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -25,8 +25,9 @@ import io.axoniq.axonserver.rest.json.SerializedObjectJson;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.ObjectUtils;
 import io.axoniq.axonserver.util.StringUtils;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -38,18 +39,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import springfox.documentation.annotations.ApiIgnore;
+import reactor.core.publisher.Sinks;
 
-import java.io.IOException;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -75,16 +76,15 @@ public class EventsRestController {
     }
 
     @GetMapping(path = "snapshots")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, paramType = "header", dataTypeClass = String.class)
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public SseEmitter findSnapshots(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestParam(value = "aggregateId", required = true) String aggregateId,
             @RequestParam(value = "maxSequence", defaultValue = "-1", required = false) long maxSequence,
             @RequestParam(value = "initialSequence", defaultValue = "0", required = false) long initialSequence,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.info("[{}@{}] Request for list of snapshots of aggregate \"{}\", [{}-{}]",
                       AuditLog.username(principal), context, aggregateId, initialSequence, maxSequence);
 
@@ -116,9 +116,8 @@ public class EventsRestController {
 
 
     @GetMapping(path = "events")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public SseEmitter listAggregateEvents(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
@@ -127,7 +126,8 @@ public class EventsRestController {
             @RequestParam(value = "allowSnapshots", defaultValue = "true", required = false) boolean allowSnapshots,
             @RequestParam(value = "trackingToken", defaultValue = "0", required = false) long trackingToken,
             @RequestParam(value = "timeout", defaultValue = "3600", required = false) long timeout,
-            @ApiIgnore final Authentication principal) {
+            @RequestParam(value = "maxEvents", defaultValue = "10000", required = false) long maxEvents,
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.info("[{}@{}] Request for an event-stream of aggregate \"{}\", starting at sequence {}, token {}.",
                       AuditLog.username(principal), context, aggregateId, initialSequence, trackingToken);
 
@@ -141,27 +141,39 @@ public class EventsRestController {
                                                                          .build();
 
             ObjectMapper objectMapper = new ObjectMapper();
-            eventStoreClient.aggregateEvents(context,
-                                             getOrDefault(principal,
-                                                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                             request)
-                            .doOnError(sseEmitter::completeWithError)
-                            .doOnComplete(() -> completeEmitter(sseEmitter))
-                            .subscribe(event -> send(sseEmitter, objectMapper, event));
+            Disposable subscription = eventStoreClient.aggregateEvents(context,
+                                                                       getOrDefault(principal,
+                                                                                    GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
+                                                                       request)
+                                                      .subscribe(event -> send(sseEmitter,
+                                                                               objectMapper,
+                                                                               event),
+                                                                 sseEmitter::completeWithError,
+                                                                 () -> completeEmitter(sseEmitter));
+            handleSseEvent(sseEmitter, subscription::dispose);
         } else {
             GetEventsRequest getEventsRequest = GetEventsRequest.newBuilder()
                                                                 .setTrackingToken(trackingToken)
-                                                                .setNumberOfPermits(10000)
+                                                                .setNumberOfPermits(maxEvents)
                                                                 .setClientId("REST")
                                                                 .build();
+            Sinks.Many<GetEventsRequest> requestsSink = Sinks.many().unicast().onBackpressureBuffer();
             eventStoreClient.events(context,
                                     getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                    Flux.just(getEventsRequest))
-                            .doOnError(sseEmitter::completeWithError)
-                            .doOnComplete(() -> completeEmitter(sseEmitter))
-                            .subscribe(serializedEventWithToken -> send(sseEmitter, serializedEventWithToken));
+                                    requestsSink.asFlux())
+                            .subscribe(serializedEventWithToken -> send(sseEmitter, serializedEventWithToken),
+                                       sseEmitter::completeWithError,
+                                       () -> completeEmitter(sseEmitter));
+            requestsSink.emitNext(getEventsRequest, Sinks.EmitFailureHandler.FAIL_FAST);
+            handleSseEvent(sseEmitter, () -> requestsSink.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST));
         }
         return sseEmitter;
+    }
+
+    private void handleSseEvent(SseEmitter sseEmitter, Runnable runnable) {
+        sseEmitter.onError(e -> runnable.run());
+        sseEmitter.onCompletion(runnable::run);
+        sseEmitter.onTimeout(runnable::run);
     }
 
     private void send(SseEmitter sseEmitter, ObjectMapper objectMapper, SerializedEvent event) {
@@ -170,7 +182,7 @@ public class EventsRestController {
                                       .data(objectMapper
                                                     .writeValueAsString(new JsonEvent(event.asEvent()))));
         } catch (Exception e) {
-            logger.warn("Exception on sending event - {}", e.getMessage(), e);
+            logger.debug("Exception on sending event - {}", e.getMessage(), e);
         }
     }
 
@@ -188,7 +200,7 @@ public class EventsRestController {
     private void completeEmitter(SseEmitter emitter) {
         try {
             emitter.send(SseEmitter.event().comment("End of stream"));
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.debug("Error on sending completed", e);
         } finally {
             emitter.complete();
@@ -196,14 +208,13 @@ public class EventsRestController {
     }
 
     @PostMapping("events")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public Mono<Void> submitEvents(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @Valid @RequestBody JsonEventList jsonEvents,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         if (jsonEvents.messages.isEmpty()) {
             throw new IllegalArgumentException("Missing messages");
         }
@@ -224,15 +235,14 @@ public class EventsRestController {
      * @deprecated Use /v1/snapshots instead.
      */
     @PostMapping("snapshot")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     @Deprecated
     public Mono<Void> appendSnapshotOld(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.warn("[{}@{}] Request to append event(s) using deprecated API", AuditLog.username(principal), context);
 
         return appendSnapshot(context, jsonEvent, principal);
@@ -246,14 +256,13 @@ public class EventsRestController {
      * @return completable future that completes when snapshot is stored.
      */
     @PostMapping("snapshots")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = TOKEN_PARAM, value = "Access Token",
-                    required = false, dataTypeClass = String.class, paramType = "header")
+    @Parameters({
+            @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
     public Mono<Void> appendSnapshot(
             @RequestHeader(value = CONTEXT_PARAM, required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestBody @Valid JsonEvent jsonEvent,
-            @ApiIgnore final Authentication principal) {
+            @Parameter(hidden = true) final Authentication principal) {
         auditLog.info("[{}@{}] Request to append event(s)", AuditLog.username(principal), context);
 
         return eventStoreClient.appendSnapshot(StringUtils.getOrDefault(context, Topology.DEFAULT_CONTEXT),

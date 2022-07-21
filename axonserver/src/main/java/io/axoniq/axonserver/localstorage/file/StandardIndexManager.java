@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -45,7 +45,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
 
 /**
  * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
@@ -61,7 +64,7 @@ public class StandardIndexManager implements IndexManager {
     private static final String AGGREGATE_MAP = "aggregateMap";
     private static final ScheduledExecutorService scheduledExecutorService =
             Executors.newScheduledThreadPool(1, new DaemonThreadFactory("index-manager-"));
-    protected final StorageProperties storageProperties;
+    protected final Supplier<StorageProperties> storageProperties;
     protected final String context;
     private final EventType eventType;
     private final ConcurrentNavigableMap<Long, Map<String, IndexEntries>> activeIndexes = new ConcurrentSkipListMap<>();
@@ -82,7 +85,7 @@ public class StandardIndexManager implements IndexManager {
      * @param eventType         content type of the event store (events or snapshots)
      * @param meterFactory      factory to create metrics meter
      */
-    public StandardIndexManager(String context, StorageProperties storageProperties, EventType eventType,
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, EventType eventType,
                                 MeterFactory meterFactory) {
         this(context, storageProperties, eventType, null, meterFactory);
     }
@@ -94,7 +97,7 @@ public class StandardIndexManager implements IndexManager {
      * @param remoteIndexManager component that provides last sequence number for old aggregates
      * @param meterFactory       factory to create metrics meter
      */
-    public StandardIndexManager(String context, StorageProperties storageProperties, EventType eventType,
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, EventType eventType,
                                 RemoteAggregateSequenceNumberResolver remoteIndexManager,
                                 MeterFactory meterFactory) {
         this.storageProperties = storageProperties;
@@ -113,8 +116,9 @@ public class StandardIndexManager implements IndexManager {
      * Initializes the index manager.
      */
     public void init() {
-        String[] indexFiles = FileUtils.getFilesWithSuffix(new File(storageProperties.getStorage(context)),
-                                                           storageProperties.getIndexSuffix());
+        StorageProperties properties = storageProperties.get();
+        String[] indexFiles = FileUtils.getFilesWithSuffix(new File(properties.getStorage(context)),
+                                                           properties.getIndexSuffix());
         for (String indexFile : indexFiles) {
             FileVersion fileVersion = FileUtils.process(indexFile);
             if (storageProperties.dataFile(context, fileVersion).exists()) {
@@ -130,23 +134,24 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private void updateUseMmapAfterIndex() {
-        useMmapAfterIndex.set(indexesDescending.keySet().stream().skip(storageProperties.getMaxIndexesInMemory()).findFirst()
+        useMmapAfterIndex.set(indexesDescending.keySet().stream().skip(storageProperties.get().getMaxIndexesInMemory()).findFirst()
                                                .orElse(-1L));
     }
 
     private void createIndex(FileVersion segment, Map<String, IndexEntries> positionsPerAggregate) {
+        StorageProperties properties = storageProperties.get();
         if (positionsPerAggregate == null) {
             positionsPerAggregate = Collections.emptyMap();
         }
-        File tempFile = storageProperties.transformedIndex(context, segment.segment());
+        File tempFile = properties.indexTemp(context, segment.segment());
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
         }
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
-        if (storageProperties.isUseMmapIndex()) {
+        if (properties.isUseMmapIndex()) {
             maker.fileMmapEnable();
-            if (storageProperties.isForceCleanMmapIndex()) {
+            if (properties.isForceCleanMmapIndex()) {
                 maker.cleanerHackEnable();
             }
         } else {
@@ -161,19 +166,19 @@ public class StandardIndexManager implements IndexManager {
         db.close();
 
         try {
-            Files.move(tempFile.toPath(), storageProperties.index(context, segment).toPath(),
+            Files.move(tempFile.toPath(), properties.index(context, segment).toPath(),
                        StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
-                                                 "Failed to rename index file" + storageProperties
+                                                 "Failed to rename index file" + properties
                                                          .index(context, segment),
                                                  e);
         }
 
-        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, segment)
+        PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(context, segment)
                                                                                 .getAbsolutePath(),
                                                                positionsPerAggregate.keySet().size(),
-                                                               storageProperties.getBloomIndexFpp());
+                                                               properties.getBloomIndexFpp());
         filter.create();
         filter.insertAll(positionsPerAggregate.keySet());
         filter.store();
@@ -211,13 +216,14 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private void indexCleanup() {
-        while (indexMap.size() > storageProperties.getMaxIndexesInMemory()) {
+        StorageProperties properties = storageProperties.get();
+        while (indexMap.size() > properties.getMaxIndexesInMemory()) {
             Map.Entry<FileVersion, Index> entry = indexMap.pollFirstEntry();
             logger.debug("{}: Closing index {}", context, entry.getKey());
             cleanupTask = scheduledExecutorService.schedule(() -> entry.getValue().close(), 2, TimeUnit.SECONDS);
         }
 
-        while (bloomFilterPerSegment.size() > storageProperties.getMaxBloomFiltersInMemory()) {
+        while (bloomFilterPerSegment.size() > properties.getMaxBloomFiltersInMemory()) {
             Map.Entry<FileVersion, PersistedBloomFilter> removed = bloomFilterPerSegment.pollFirstEntry();
             logger.debug("{}: Removed bloom filter for {} from memory", context, removed.getKey());
             bloomFilterCloseMeter.increment();
@@ -232,8 +238,9 @@ public class StandardIndexManager implements IndexManager {
 
     private PersistedBloomFilter loadBloomFilter(FileVersion fileVersion) {
         logger.debug("{}: open bloom filter for {}", context, fileVersion.segment());
-        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, fileVersion)
-                                                                                .getAbsolutePath(), 0, 0.03f);
+        StorageProperties properties = storageProperties.get();
+        PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(context, fileVersion)
+                                                                         .getAbsolutePath(), 0, 0.03f);
         if (!filter.fileExists()) {
             return null;
         }
@@ -468,6 +475,7 @@ public class StandardIndexManager implements IndexManager {
      */
     @Override
     public boolean remove(long segment) {
+        StorageProperties properties = storageProperties.get();
         if (activeIndexes.remove(segment) == null) {
             Integer version = indexesDescending.remove(segment);
             if ( version != null) {
@@ -479,8 +487,8 @@ public class StandardIndexManager implements IndexManager {
                 bloomFilterPerSegment.remove(fileVersion);
             }
         }
-        return FileUtils.delete(storageProperties.index(context, segment)) &&
-                FileUtils.delete(storageProperties.bloomFilter(context, segment));
+        return FileUtils.delete(properties.index(context, segment)) &&
+                FileUtils.delete(properties.bloomFilter(context, segment));
     }
 
     @Override
@@ -580,12 +588,13 @@ public class StandardIndexManager implements IndexManager {
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
+        StorageProperties properties = storageProperties.get();
         return indexesDescending.entrySet()
                                 .stream()
                                 .filter(s -> s.getKey() > lastSegmentBackedUp || s.getValue() > lastVersionBackedUp)
                                 .flatMap(s -> Stream.of(
-                                        storageProperties.index(context, s.getKey()).getAbsolutePath(),
-                                        storageProperties.bloomFilter(context, s.getKey()).getAbsolutePath()
+                                        properties.index(context, s.getKey()).getAbsolutePath(),
+                                        properties.bloomFilter(context, s.getKey()).getAbsolutePath()
                                 ));
     }
 
@@ -608,7 +617,9 @@ public class StandardIndexManager implements IndexManager {
 
         @Override
         public void close() {
-            logger.debug("{}: close {}", segment, storageProperties.index(context, segment));
+            if( logger.isDebugEnabled()) {
+                logger.debug("{}: close {}", segment, storageProperties.get().index(context, segment));
+            }
             if (db != null && !db.isClosed()) {
                 indexCloseMeter.mark();
                 positions.close();
@@ -626,6 +637,7 @@ public class StandardIndexManager implements IndexManager {
                     return this;
                 }
 
+                StorageProperties properties = storageProperties.get();
                 File index = storageProperties.index(context, segment);
                 if (!index.exists()) {
                     throw new IndexNotFoundException("Index not found for segment: " + segment);
@@ -635,9 +647,9 @@ public class StandardIndexManager implements IndexManager {
                 DBMaker.Maker maker = DBMaker.fileDB(index)
                                              .readOnly()
                                              .fileLockDisable();
-                if (storageProperties.isUseMmapIndex() && segment.segment() > useMmapAfterIndex.get()) {
+                if (properties.isUseMmapIndex() && segment.segment() > useMmapAfterIndex.get()) {
                     maker.fileMmapEnable();
-                    if (storageProperties.isForceCleanMmapIndex()) {
+                    if (properties.isForceCleanMmapIndex()) {
                         maker.cleanerHackEnable();
                     }
                 } else {

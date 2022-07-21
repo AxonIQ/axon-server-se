@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -202,19 +202,14 @@
 </script>
 <span id="replicationGroups">
     <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
-                <div class="results singleHeader">
-
-        <table>
-            <thead>
-            <tr>
+        <paginated-table :rows="replicationGroups">
+            <template #header>
                 <th class="contextColumn">Replication Group Name</th>
                 <th class="nodesColumn">Nodes</th>
                 <th class="contextColumn">Contexts</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="replicationGroup in replicationGroups">
-                <td>{{replicationGroup.name}}
+            </template>
+            <template #row="replicationGroup">
+                <td>{{ replicationGroup.name }}
                     <span v-if="replicationGroup.changePending" title="Pending change"><i
                             class="fas fa-exclamation-circle"></i></span>
                     <span @click="deleteReplicationGroup(replicationGroup)"
@@ -247,16 +242,13 @@
                 <td>
                     <ul>
                         <li v-for="context in replicationGroup.contexts">
-                            <span class="nodeName">{{context.context}}</span>
+                            <span class="nodeName">{{ context.context }}</span>
                         </li>
                     </ul>
                 </td>
-
-            </tr>
-            </tbody>
-        </table>
-    </div>
-</section>
+            </template>
+        </paginated-table>
+    </section>
 
     <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
         Multi-context is not allowed

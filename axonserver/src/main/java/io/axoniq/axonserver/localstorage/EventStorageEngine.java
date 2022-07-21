@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -47,6 +47,10 @@ public interface EventStorageEngine {
         init(validate, 0L);
     }
 
+    default long getFirstCompletedSegment() {
+        return -1;
+    };
+
     /**
      * Stores a number of events. Completes the returned completable future when the write is confirmed.
      *
@@ -62,7 +66,6 @@ public interface EventStorageEngine {
         completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;
     }
-
 
     /**
      * Retrieves the last token confirmed in the event store.
@@ -186,9 +189,10 @@ public interface EventStorageEngine {
     /**
      * Gets filenames to back up for this storage engine. Only relevant for file based storage.
      * @param lastSegmentBackedUp last segment backed up before
+     * @param includeActive
      * @return stream of filenames
      */
-    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
+    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive, int lastVersionBackedUp) {
         throw new UnsupportedOperationException();
     }
 
@@ -236,7 +240,7 @@ public interface EventStorageEngine {
      * @param token     the token of the first event in the transaction
      * @param eventList the list of events
      */
-    default void validateTransaction(long token, List<SerializedEvent> eventList) {
+    default void validateTransaction(long token, List<Event> eventList) {
     }
 
     Flux<TransformationProgress> transformContents(int version, Flux<EventWithToken> transformedEvents);

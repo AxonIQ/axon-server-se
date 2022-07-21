@@ -81,14 +81,16 @@ public class FlowControlQueues<T> {
         BlockingQueue<DestinationNode> destinationSegment = segments.computeIfAbsent(filterValue,
                                                                                      this::newQueueWithMetrics);
         if (destinationSegment.size() >= hardLimit) {
-            logger.warn("Reached hard limit on queue size of {}, priority of item failed to be added {}, hard limit {}.",
+            logger.warn("Reached hard limit on queue {} of size {}, priority of item failed to be added {}, hard limit {}.",
+                        filterValue,
                         destinationSegment.size(),
                         priority,
                         hardLimit);
             throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
         }
         if (priority <= 0 && destinationSegment.size() >= softLimit) {
-            logger.warn("Reached soft limit on queue size of {}, priority of item failed to be added {}, soft limit {}.",
+            logger.warn("Reached soft limit on queue size {} of size {}, priority of item failed to be added {}, soft limit {}.",
+                        filterValue,
                         destinationSegment.size(),
                         priority,
                         softLimit);
@@ -96,7 +98,7 @@ public class FlowControlQueues<T> {
         }
         DestinationNode destinationNode = new DestinationNode(value);
         if (!destinationSegment.offer(destinationNode)) {
-            throw new MessagingPlatformException(ErrorCode.OTHER, "Failed to add request to queue " + filterValue);
+            throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
         }
 
         if (logger.isTraceEnabled()) {
@@ -124,7 +126,7 @@ public class FlowControlQueues<T> {
                     Thread.currentThread().interrupt();
                     logger.debug("Interrupt during move");
                     throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                         "Failed to add request to queue " + destination);
+                                                         "Failed to move request to queue " + destination);
                 }
             }
         });

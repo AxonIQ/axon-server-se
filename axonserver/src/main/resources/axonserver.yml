@@ -50,8 +50,20 @@ management:
     health:
       show-details: always
   health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
     diskspace:
       threshold: 256MB
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    operationsSorter: alpha
+    tagsSorter: alpha
 
 
 info:

@@ -1,6 +1,6 @@
 <!--
-  ~ Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  ~ under one or more contributor license agreements.
+  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
   ~  you may not use this file except in compliance with the license.
@@ -193,7 +193,7 @@
                             this.query = $("#query").val();
                             let effectiveQuery = this.query;
                             this.rows = [];
-                            target = this;
+                            let target = this;
                             if (source) {
                                 source.close();
                             }
@@ -221,15 +221,17 @@
 
                             source.addEventListener('row', function (event) {
                                 var d = JSON.parse(event.data);
-
+                                let rows = target.rows;
                                 if (d.idValues) {
                                     d.id = concatKey(d.idValues);
-                                    var row = findById(target.rows, d.id);
+                                    var row = findById(rows, d.id);
                                     if (row >= 0) {
                                         if( d.sortValues || d.deleted) {
-                                            target.rows.splice(row, 1);
+                                            rows.splice(row, 1)
+                                            target.rows = rows;
                                         } else {
-                                            target.rows.splice(row, 1, d);
+                                            rows.splice(row, 1, d)
+                                            target.rows = rows;
                                             return;
                                         }
                                         //Vue.set(target.rows, row, d);
@@ -245,21 +247,22 @@
                                 var rowIdx = 0;
                                 if (d.sortValues) {
                                     d.sortId = concatKey(d.sortValues);
-                                    while (rowIdx < target.rows.length && d.sortId < target.rows[rowIdx].sortId) {
+                                    while (rowIdx < rows.length && d.sortId < rows[rowIdx].sortId) {
                                         rowIdx++;
                                     }
 
                                 }
 
-                                target.rows.splice(rowIdx, 0, d);
+                                rows.splice(rowIdx, 0, d);
+                                target.rows = rows;
                             });
 
                             source.addEventListener('error', function (e) {
                                 target.working = false;
-                                console.log(e);
                                 if (e.readyState === EventSource.CLOSED) {
                                     // Connection was closed.
                                 } else {
+                                    console.log(e);
                                     if (e.data) {
                                         alert(e.data);
                                     }
@@ -410,25 +413,18 @@
     </section>
 
     <img id="working" v-if="working" src="img/loading.gif" height="25px"/>
-    <div class="results singleHeader">
-        <table summary="" id="results">
-            <caption></caption>
-            <thead>
-            <tr>
-                <th v-for="column in columns" :class="column">
-                    <div>{{column}}</div>
-                </th>
-            </tr>
-            </thead>
-            <tbody class="selectable">
-            <tr v-for="row in rows" @click="select(row)" :class="row.style">
-                <td v-for="column in columns">
-                    <div>{{ row.value[column] }}</div>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
+    <paginated-table :rows="rows" selectable="true" page="10">
+        <template #header>
+            <th v-for="column in columns" :class="column">
+                <div>{{ column }}</div>
+            </th>
+        </template>
+        <template #row="row">
+            <td v-for="column in columns" @click="select(row)">
+                <div>{{ row.value[column] }}</div>
+            </td>
+        </template>
+    </paginated-table>
 
     <div v-if="info" class="msg info">
         {{ info }}

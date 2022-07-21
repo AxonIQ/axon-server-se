@@ -1,6 +1,6 @@
 <!--
-  - Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  - under one or more contributor license agreements.
+  -  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  -  under one or more contributor license agreements.
   -
   -  Licensed under the AxonIQ Open Source License Agreement v1.0;
   -  you may not use this file except in compliance with the license.
@@ -19,13 +19,23 @@
                 <th>#Updates</th>
             </tr>
             </thead>
-            <tbody class="selectable">
+            <tbody>
             <tr v-for="query in queries">
-                <td><div>{{query.name}}</div></td>
-                <td><div v-for="response in query.responseTypes">{{response}}</div></td>
-                <td><div>{{query.metrics.totalSubscriptions}}</div></td>
-                <td><div>{{query.metrics.activeSubscriptions}}</div></td>
-                <td><div>{{query.metrics.updates}}</div></td>
+              <td>
+                <div>{{ query.name }}</div>
+              </td>
+              <td>
+                <div v-for="response in query.responseTypes">{{ response }}</div>
+              </td>
+              <td>
+                <div>{{ query.metrics.totalSubscriptions }}</div>
+              </td>
+              <td>
+                <div>{{ query.metrics.activeSubscriptions }}</div>
+              </td>
+              <td>
+                <div>{{ query.metrics.updates }}</div>
+              </td>
             </tr>
             </tbody>
         </table>
@@ -58,7 +68,7 @@
                 let self = this;
               this.queries = []
                 axios.get(baseUrl+"/queries?context=" + this.context).then(response => {
-                    var queries = response.data;
+                    var queries = response.data.filter((item, pos, self) => self.findIndex(v => v.name === item.name) === pos);
                     queries.forEach(function (query, index) {
                         axios.get(baseUrl+"/subscription-query-metric/query/"+encodeURIComponent(query.name)+"?context=" + self.context)
                                 .then(metric => {

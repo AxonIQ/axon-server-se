@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -9,10 +9,8 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.exception.ConcurrencyExceptions;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -55,10 +53,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.io.IOException;
-import java.io.InputStream;
+import javax.annotation.Nonnull;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -68,20 +64,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 
 /**
  * Component that handles the actual interaction with the event store.
  *
  * @author Marc Gathier
+ * @author Stefan Dragisic
+ *
  * @since 4.0
  */
 @Component
@@ -98,7 +92,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     private final MeterFactory meterFactory;
     private final StorageTransactionManagerFactory storageTransactionManagerFactory;
     private final EventInterceptors eventInterceptors;
-    private final int maxEventCount;
+
     /**
      * Maximum number of blacklisted events to be skipped before it will send a blacklisted event anyway. If almost all
      * events would be ignored due to blacklist, tracking tokens on client applications would never be updated.
@@ -125,7 +119,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
              storageTransactionManagerFactory,
              eventInterceptors,
              new DefaultEventDecorator(),
-             Integer.MAX_VALUE,
              1000,
              24,
              8);
@@ -137,7 +130,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                            StorageTransactionManagerFactory storageTransactionManagerFactory,
                            EventInterceptors eventInterceptors,
                            EventDecorator eventDecorator,
-                           @Value("${axoniq.axonserver.max-events-per-transaction:32767}") int maxEventCount,
                            @Value("${axoniq.axonserver.blacklisted-send-after:1000}") int blacklistedSendAfter,
                            @Value("${axoniq.axonserver.data-fetcher-threads:24}") int fetcherThreads,
                            @Value("${axoniq.axonserver.data-writer-threads:8}") int writerThreads) {
@@ -145,7 +137,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         this.meterFactory = meterFactory;
         this.storageTransactionManagerFactory = storageTransactionManagerFactory;
         this.eventInterceptors = eventInterceptors;
-        this.maxEventCount = Math.min(maxEventCount, Short.MAX_VALUE);
         this.blacklistedSendAfter = blacklistedSendAfter;
         this.dataFetcher = Executors.newFixedThreadPool(fetcherThreads, new CustomizableThreadFactory("data-fetcher-"));
         DataFetcherSchedulerProvider.setDataFetcher(dataFetcher);
@@ -240,174 +231,117 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                 .subscribeOn(Schedulers.fromExecutorService(dataFetcher));
     }
 
+    /*----------------------HANDLE APPEND SNAPSHOT----------------------*/
+
     @Override
     public Mono<Void> appendSnapshot(String context, Event snapshot, Authentication authentication) {
-        return Mono.fromCompletionStage(appendSnapshot(context, authentication, snapshot))
-                   .then();
+        DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
+        return Mono.just(snapshot)
+                .publishOn(Schedulers.fromExecutorService(dataWriter))
+                .doFirst(() -> validateSnapshotSequence(context, snapshot))
+                .map(s -> eventInterceptors.interceptSnapshot(snapshot, executionContext))
+                .flatMap(interceptedSnapshot -> storeSnapshot(context, interceptedSnapshot))
+                .doOnSuccess(storedSnapshot -> eventInterceptors.interceptSnapshotPostCommit(storedSnapshot, executionContext))
+                .transform(pipeline -> handleStoreSnapshotErrors(context, executionContext, pipeline))
+                .transform(pipeline -> attachStoreSnapshotMetrics(context, pipeline))
+                .then();
     }
 
-    public CompletableFuture<Confirmation> appendSnapshot(String context, Authentication authentication,
-                                                          Event snapshot) {
-        CompletableFuture<Confirmation> completableFuture = new CompletableFuture<>();
-        runInDataWriterPool(() -> doAppendSnapshot(context, authentication, snapshot, completableFuture),
-                            ex -> {
-                                logger.warn("{}: Append snapshot failed", context, ex);
-                                completableFuture.completeExceptionally(ex);
-                            });
-        return completableFuture;
-    }
-
-    private void doAppendSnapshot(String context, Authentication authentication, Event snapshot,
-                                  CompletableFuture<Confirmation> completableFuture) {
+    private void validateSnapshotSequence(String context, Event snapshot) {
         if (checkSequenceNrForSnapshots) {
             long seqNr = workers(context).aggregateReader.readHighestSequenceNr(snapshot.getAggregateIdentifier());
             if (seqNr < snapshot.getAggregateSequenceNumber()) {
-                String message = String.format(
-                        "Invalid sequence number while storing snapshot. Highest aggregate %s sequence number: %d, snapshot sequence %d.",
-                        snapshot.getAggregateIdentifier(),
-                        seqNr,
-                        snapshot.getAggregateSequenceNumber());
-                completableFuture.completeExceptionally(new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
-                                                                                       message));
-                return;
+                throw new MessagingPlatformException(ErrorCode.INVALID_SEQUENCE,
+                        String.format(
+                                "Invalid sequence number while storing snapshot. Highest aggregate %s sequence number: %d, snapshot sequence %d.",
+                                snapshot.getAggregateIdentifier(),
+                                seqNr,
+                                snapshot.getAggregateSequenceNumber()));
             }
         }
-        DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
-        try {
-            Event snapshotAfterInterceptors = eventInterceptors.appendSnapshot(snapshot, executionContext);
-            workers(context).snapshotWriteStorage.store(snapshotAfterInterceptors)
-                                                 .whenComplete(((confirmation, throwable) -> {
-                                                     if (throwable != null) {
-                                                         executionContext.compensate(throwable);
-                                                         completableFuture.completeExceptionally(throwable);
-                                                     } else {
-                                                         try {
-                                                             eventInterceptors.snapshotPostCommit(
-                                                                     snapshotAfterInterceptors,
-                                                                     executionContext);
-                                                             completableFuture.complete(confirmation);
-                                                         } catch (Exception ex) {
-                                                             executionContext.compensate(ex);
-                                                             completableFuture.completeExceptionally(ex);
-                                                         }
-                                                     }
-                                                 }));
-        } catch (RequestRejectedException requestRejectedException) {
-            executionContext.compensate(requestRejectedException);
-            completableFuture
-                    .completeExceptionally(new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
-                                                                          "Snapshot rejected by interceptor",
-                                                                          requestRejectedException));
-        }
     }
+
+    @Nonnull
+    private Mono<Event> storeSnapshot(String context, Event snapshot) {
+        return workers(context).snapshotWriteStorage
+                .store(snapshot)
+                .thenReturn(snapshot);
+    }
+
+    private Mono<Event> handleStoreSnapshotErrors(String context, DefaultExecutionContext executionContext, Mono<Event> pipeline) {
+        return pipeline
+                .doOnError(t -> logger.error("{}: Append snapshot failed", context, t))
+                .doOnError(executionContext::compensate)
+                .onErrorMap(RequestRejectedException.class, t -> new MessagingPlatformException(ErrorCode.SNAPSHOT_REJECTED_BY_INTERCEPTOR,
+                        "Snapshot rejected by interceptor",
+                        t))
+                .onErrorMap(t -> !t.getClass().isAssignableFrom(MessagingPlatformException.class), MessagingPlatformException::create);
+    }
+
+    private Mono<Event> attachStoreSnapshotMetrics(String context, Mono<Event> pipeline) {
+        return pipeline
+                .name("append_stream")
+                .tag("context", context)
+                .tag("stream", "snapshots")
+                .tag("origin", "local_event_store")
+                .metrics();
+    }
+
+    /*----------------------HANDLE APPEND EVENT----------------------*/
 
     @Override
     public Mono<Void> appendEvents(String context, Flux<SerializedEvent> events, Authentication authentication) {
-        return Mono.create(sink -> {
-            StreamObserver<SerializedEvent> inputStream =
-                    createAppendEventConnection(context, authentication, new StreamObserver<Confirmation>() {
-                        @Override
-                        public void onNext(Confirmation confirmation) {
-                            sink.success();
-                        }
-
-                        @Override
-                        public void onError(Throwable throwable) {
-                            sink.error(throwable);
-                        }
-
-                        @Override
-                        public void onCompleted() {
-                            // nothing to do, already completed on onNext
-                        }
-                    });
-            events.subscribe(inputStream::onNext, inputStream::onError, inputStream::onCompleted);
-        });
-    }
-
-    private StreamObserver<SerializedEvent> createAppendEventConnection(String context,
-                                                                        Authentication authentication,
-                                                                        StreamObserver<Confirmation> responseObserver) {
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
-        return new StreamObserver<SerializedEvent>() {
-            private final List<Event> eventList = new ArrayList<>();
-            private final AtomicBoolean closed = new AtomicBoolean();
-            private final AtomicLong eventCount = new AtomicLong();
-
-            @Override
-            public void onNext(SerializedEvent inputStream) {
-                if (checkMaxEventCount()) {
-                    try {
-                        eventList.add(inputStream.asEvent());
-                    } catch (Exception e) {
-                        closed.set(true);
-                        responseObserver.onError(GrpcExceptionBuilder.build(e));
-                    }
-                }
-            }
-
-            private boolean checkMaxEventCount() {
-                if (eventCount.incrementAndGet() < maxEventCount) {
-                    return true;
-                }
-                responseObserver.onError(GrpcExceptionBuilder.build(ErrorCode.TOO_MANY_EVENTS,
-                                                                    "Maximum number of events in transaction exceeded: "
-                                                                            + maxEventCount));
-                return false;
-            }
-
-            @Override
-            public void onError(Throwable cause) {
-                logger.warn("Error on connection to client while storing events", cause);
-            }
-
-            @Override
-            public void onCompleted() {
-                if (closed.get()) {
-                    return;
-                }
-                runInDataWriterPool(() -> {
-                    try {
-                        List<Event> interceptedEventList = eventList.stream().map(e -> eventInterceptors
-                                .appendEvent(e, executionContext)).collect(Collectors.toList());
-                        eventInterceptors.eventsPreCommit(interceptedEventList, executionContext);
-                        workers(context)
-                                .eventWriteStorage
-                                .store(interceptedEventList)
-                                .thenAccept(r -> eventInterceptors.eventsPostCommit(interceptedEventList,
-                                                                                    executionContext))
-                                .thenRun(this::confirm)
-                                .exceptionally(this::error);
-                    } catch (RequestRejectedException e) {
-                        executionContext.compensate(e);
-                        responseObserver.onError(new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
-                                                                                "Event rejected by interceptor",
-                                                                                e));
-                    } catch (Exception e) {
-                        executionContext.compensate(e);
-                        responseObserver.onError(GrpcExceptionBuilder.build(e));
-                    }
-                }, this::error);
-            }
-
-            private Void error(Throwable exception) {
-                exception = ConcurrencyExceptions.unwrap(exception);
-                if (isClientException(exception)) {
-                    logger.info("{}: Error while storing events: {}", context, exception.getMessage());
-                } else {
-                    logger.warn("{}: Error while storing events", context, exception);
-                }
-                executionContext.compensate(exception);
-                responseObserver.onError(exception);
-                return null;
-            }
-
-            private void confirm() {
-                responseObserver.onNext(CONFIRMATION);
-                responseObserver.onCompleted();
-            }
-        };
+        return events
+                .publishOn(Schedulers.fromExecutorService(dataWriter))
+                .map(SerializedEvent::asEvent)
+                .map(e -> eventInterceptors
+                        .interceptEvent(e, executionContext))
+                .transform(serializedEvents -> prepareAndStoreBatch(context, executionContext, serializedEvents))
+                .transform(pipeline -> handleStoreEventErrors(executionContext, pipeline))
+                .transform(pipeline -> attachStoreEventMetrics(context, pipeline))
+                .then();
     }
+
+    @Nonnull
+    private Flux<Void> prepareAndStoreBatch(String context, DefaultExecutionContext executionContext, Flux<Event> serializedEvents) {
+        return serializedEvents
+                .buffer()
+                .transform(batches -> storeBatch(context, executionContext, batches));
+    }
+
+    @Nonnull
+    private Flux<Void> storeBatch(String context, DefaultExecutionContext executionContext, Flux<List<Event>> eventBatches) {
+        return eventBatches.doOnNext(interceptedEvents -> eventInterceptors.interceptEventsPreCommit(interceptedEvents, executionContext))
+                .concatMap(interceptedEvents -> workers(context)
+                        .eventWriteStorage
+                        .storeBatch(interceptedEvents)
+                        .doOnSuccess(unused -> eventInterceptors.interceptEventsPostCommit(interceptedEvents,
+                                executionContext))
+                );
+    }
+
+    @Nonnull
+    private Flux<Void> handleStoreEventErrors(DefaultExecutionContext executionContext, Flux<Void> pipeline) {
+        return pipeline
+                .doOnError(t -> logger.error("Error occurred during store batch operation: ", t))
+                .doOnError(executionContext::compensate)
+                .onErrorMap(RequestRejectedException.class, t -> new MessagingPlatformException(ErrorCode.EVENT_REJECTED_BY_INTERCEPTOR,
+                        "Event rejected by interceptor",
+                        t))
+                .onErrorMap(t -> !t.getClass().isAssignableFrom(MessagingPlatformException.class), MessagingPlatformException::create);
+    }
+
+    private Flux<Void> attachStoreEventMetrics(String context, Flux<Void> pipeline) {
+        return pipeline
+                .name("append_stream")
+                .tag("context", context)
+                .tag("stream", "events")
+                .tag("origin", "local_event_store")
+                .metrics();
+    }
+
+    /*---------------------- LIST EVENT----------------------*/
 
     @Override
     public Flux<SerializedEvent> aggregateEvents(String context,
@@ -452,10 +386,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     private void runInDataFetcherPool(Runnable task, Consumer<Exception> onError) {
         runInPool(dataFetcher, task, onError);
-    }
-
-    private void runInDataWriterPool(Runnable task, Consumer<Exception> onError) {
-        runInPool(dataWriter, task, onError);
     }
 
     private void runInPool(ExecutorService threadPool, Runnable task, Consumer<Exception> onError) {
@@ -539,16 +469,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             StreamObserver<GetEventsRequest> requestStreamObserver =
                     listEvents(context,
                                authentication,
-                               new StreamObserver<InputStream>() {
+                               new StreamObserver<SerializedEventWithToken>() {
                                    @Override
-                                   public void onNext(InputStream inputStream) {
-                                       try {
-                                           SerializedEventWithToken event = new SerializedEventWithToken(EventWithToken.parseFrom(
-                                                   inputStream));
-                                           sink.next(event);
-                                       } catch (IOException e) {
-                                           sink.error(e);
-                                       }
+                                   public void onNext(SerializedEventWithToken event) {
+                                       sink.next(event);
                                    }
 
                                    @Override
@@ -568,7 +492,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     private StreamObserver<GetEventsRequest> listEvents(String context, Authentication authentication,
-                                                        StreamObserver<InputStream> responseStreamObserver) {
+                                                        StreamObserver<SerializedEventWithToken> responseStreamObserver) {
         return new StreamObserver<GetEventsRequest>() {
             private final AtomicReference<TrackingEventProcessorManager.EventTracker> controllerRef = new AtomicReference<>();
 
@@ -581,13 +505,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
                         return workers(context).createEventTracker(getEventsRequest.getTrackingToken(),
                                                                    getEventsRequest.getClientId(),
                                                                    getEventsRequest.getForceReadFromLeader(),
-                                                                   new StreamObserver<InputStream>() {
+                                                                   new StreamObserver<SerializedEventWithToken>() {
                                                                        @Override
-                                                                       public void onNext(InputStream inputStream) {
+                                                                       public void onNext(
+                                                                               SerializedEventWithToken eventWithToken) {
                                                                            responseStreamObserver.onNext(
                                                                                    activeEventDecorator
                                                                                            .decorateEventWithToken(
-                                                                                                   inputStream));
+                                                                                                   eventWithToken));
                                                                        }
 
                                                                        @Override
@@ -772,7 +697,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             // just stop waiting
             Thread.currentThread().interrupt();
         }
-        dataFetcher.shutdownNow();
     }
 
     @Override
@@ -836,12 +760,12 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
-    public long syncEvents(String context, SerializedTransactionWithToken value) {
+    public long syncEvents(String context, long token, List<Event> events) {
         try {
             Workers worker = workers(context);
-            worker.eventSyncStorage.sync(value.getToken(), value.getEventVersion(), value.getEvents());
+            worker.eventSyncStorage.sync(token, events);
             worker.triggerTrackerEventProcessors();
-            return value.getToken() + value.getEvents().size();
+            return token + events.size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
                 logger.warn("{}: cannot store in non-active event store", context);
@@ -852,11 +776,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
     }
 
-    public long syncSnapshots(String context, SerializedTransactionWithToken value) {
+    public long syncSnapshots(String context, long token, List<Event> snapshots) {
         try {
             SyncStorage writeStorage = workers(context).snapshotSyncStorage;
-            writeStorage.sync(value.getToken(), value.getEventVersion(), value.getEvents());
-            return value.getToken() + value.getEvents().size();
+            writeStorage.sync(token, snapshots);
+            return token + snapshots.size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
                 logger.warn("{}: cannot store snapshot in non-active event store", context);
@@ -876,14 +800,14 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp,
-                                             int lastVersionBackedUp) {
+                                             boolean includeActive) {
         try {
             Workers workers = workers(context);
             if (eventType == EventType.SNAPSHOT) {
-                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp);
+                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
             }
 
-            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp);
+            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
         } catch (Exception ex) {
             logger.warn("Failed to get backup filenames", ex);
         }
@@ -905,6 +829,13 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     public boolean activeContext(String context) {
         return workersMap.containsKey(context) && workersMap.get(context).initialized;
+    }
+
+    public long getFirstCompletedSegment(String context, EventType type) {
+        if( EventType.EVENT.equals(type)) {
+            return workers(context).eventStorageEngine.getFirstCompletedSegment();
+        }
+        return workers(context).snapshotStorageEngine.getFirstCompletedSegment();
     }
 
     @Override
@@ -1014,7 +945,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         private TrackingEventProcessorManager.EventTracker createEventTracker(long trackingToken,
                                                                               String clientId,
                                                                               boolean forceReadingFromLeader,
-                                                                              StreamObserver<InputStream> eventStream) {
+                                                                              StreamObserver<SerializedEventWithToken> eventStream) {
             return trackingEventManager.createEventTracker(trackingToken,
                                                            clientId,
                                                            forceReadingFromLeader,
@@ -1071,23 +1002,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
 
         @Override
-        public InputStream decorateEventWithToken(InputStream inputStream) {
+        public SerializedEventWithToken decorateEventWithToken(SerializedEventWithToken eventWithToken) {
             if (eventInterceptors.noEventReadInterceptors(unitOfWork.contextName())) {
-                return eventDecorator.decorateEventWithToken(inputStream);
+                return eventDecorator.decorateEventWithToken(eventWithToken);
             }
 
             try {
-                EventWithToken eventWithToken = EventWithToken.parseFrom(inputStream);
-                Event event = eventInterceptors.readEvent(eventWithToken.getEvent(), unitOfWork);
+                Event event = eventInterceptors.readEvent(eventWithToken.asEvent(), unitOfWork);
                 return eventDecorator.decorateEventWithToken(new SerializedEventWithToken(eventWithToken.getToken(),
-                                                                                          event)
-                                                                     .asInputStream());
+                                                                                          event));
             } catch (RuntimeException exception) {
                 unitOfWork.compensate(exception);
                 throw exception;
-            } catch (IOException ioException) {
-                unitOfWork.compensate(ioException);
-                throw new RuntimeException(ioException);
             }
         }
 

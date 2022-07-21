@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -145,9 +145,9 @@ header{
 		padding: 30px 0;
 		font-size: 0;
 		display: block;
-		width: 200px;
+		width: 300px;
 		height: 18px;
-		background: url('../img/logo-axondashboard.png') no-repeat left center;
+		background: url('../img/axon-server.png') no-repeat left center;
 		background-size: contain;
 
 	}
@@ -265,6 +265,7 @@ input[type="search"] {
 	background: #f35c00;
 	border: none;
 	color: #fff;
+	cursor: pointer;
 }
 
 .button-reset {
@@ -427,16 +428,17 @@ input[type="search"] {
 }
 
 
-				.number{
-					text-align: right;
-				}
+.number {
+	text-align: right;
+}
 
 
 .results {
 	margin: 20px 0;
 	position: relative;
 }
-.results:after{
+
+.results:after {
 	content: "";
 	width: 100%;
 	position: absolute;
@@ -444,19 +446,19 @@ input[type="search"] {
 	top: 55px;
 	height: 2px;
 	background: #006bae;
-	background: -webkit-gradient(linear, left top, right top, color-stop(0%, rgba(241,37,138, 1)), color-stop(100%, rgba(177,51,204, 1)));
-    background: -webkit-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-    background:    -moz-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-    background:     -ms-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-    background:      -o-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-    background:         linear-gradient(left, rgba(241,37,1382, 1) 0%, rgba(177,51,204, 1) 100%);
+	background: -webkit-gradient(linear, left top, right top, color-stop(0%, rgba(19, 116, 207, 1)), color-stop(100%, rgba(33, 37, 43, 1)));
+	background: -webkit-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: -moz-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: -ms-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: -o-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
 }
 
 .singleHeader:after {
 	top: 33px;
 }
 
-.nodes:after{
+.nodes:after {
 	content: "";
 	width: 100%;
 	position: absolute;
@@ -464,12 +466,12 @@ input[type="search"] {
 	top: 33px;
 	height: 2px;
 	background: #006bae;
-	background: -webkit-gradient(linear, left top, right top, color-stop(0%, rgba(241,37,138, 1)), color-stop(100%, rgba(177,51,204, 1)));
-	background: -webkit-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-	background:    -moz-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-	background:     -ms-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-	background:      -o-linear-gradient(left, rgba(241,37,138, 1) 0%, rgba(177,51,204, 1) 100%);
-	background:         linear-gradient(left, rgba(241,37,1382, 1) 0%, rgba(177,51,204, 1) 100%);
+	background: -webkit-gradient(linear, left top, right top, color-stop(0%, rgba(19, 116, 207, 1)), color-stop(100%, rgba(33, 37, 43, 1)));
+	background: -webkit-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: -moz-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: -ms-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: -o-linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
+	background: linear-gradient(left, rgba(19, 116, 207, 1) 0%, rgba(33, 37, 43, 1) 100%);
 }
 
 	table{
@@ -614,11 +616,11 @@ button:focus {outline:0 !important;}
 }
 
 input:checked + .slider {
-	background-color: #B133CC;
+	background-color: #1374CF;
 }
 
 input:focus + .slider {
-	box-shadow: 0 0 1px #B133CC;
+	box-shadow: 0 0 1px #1374CF;
 }
 
 input:checked + .slider:before {
@@ -676,14 +678,19 @@ ul {
 }
 
 select {
-    font-family: Lato, sans-serif;
-    font-size: 14px;
+	font-family: Lato, sans-serif;
+	font-size: 14px;
 }
 
 #applicationDetails, #userDetails {
 	width: 100%;
 	padding-top: 50px;
 	padding-left: 6px;
+}
+
+.pager {
+	float: right;
+	font-size: smaller;
 }
 
 .nodeName {
@@ -693,9 +700,9 @@ select {
 }
 
 .nodeRoleName {
-    display: inline-block !important;
-    float: none !important;
-    width: 200px;
+	display: inline-block !important;
+	float: none !important;
+	width: 200px;
 }
 .contextName {
 	display: inline-block !important;

@@ -9,9 +9,8 @@
 
 package io.axoniq.axonserver.interceptor;
 
-import io.axoniq.axonserver.plugin.ExecutionContext;
-import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 
 import java.util.List;
 
@@ -30,7 +29,7 @@ public interface EventInterceptors {
      * @param executionContext the caller's context
      * @return the new event
      */
-    Event appendEvent(Event event, ExecutionContext executionContext);
+    Event interceptEvent(Event event, ExecutionContext executionContext);
 
     /**
      * Intercepts an append snapshot action. The implementation of the interceptor can update the snapshot.
@@ -39,13 +38,13 @@ public interface EventInterceptors {
      * @param executionContext the caller's context
      * @return the new event
      */
-    Event appendSnapshot(Event snapshot, ExecutionContext executionContext) throws RequestRejectedException;
+    Event interceptSnapshot(Event snapshot, ExecutionContext executionContext);
 
-    void eventsPreCommit(List<Event> events, ExecutionContext executionContext) throws RequestRejectedException;
+    void interceptEventsPreCommit(List<Event> events, ExecutionContext executionContext);
 
-    void eventsPostCommit(List<Event> events, ExecutionContext executionContext);
+    void interceptEventsPostCommit(List<Event> events, ExecutionContext executionContext);
 
-    void snapshotPostCommit(Event snapshot, ExecutionContext executionContext);
+    void interceptSnapshotPostCommit(Event snapshot, ExecutionContext executionContext);
 
     /**
      * Intercepts a snapshot read from the event store. The implementation of the interceptor can update the snapshot.

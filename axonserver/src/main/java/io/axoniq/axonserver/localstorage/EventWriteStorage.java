@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -13,13 +13,12 @@ import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 /**
@@ -38,33 +37,17 @@ public class EventWriteStorage {
         this.storageTransactionManager = storageTransactionManager;
     }
 
-    public CompletableFuture<Void> store(List<Event> eventList) {
-        if (eventList.isEmpty()) {
-            return CompletableFuture.completedFuture(null);
-        }
-        CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-        AtomicReference<Runnable> unreserve = new AtomicReference<>(() -> {
-        });
-        try {
-            unreserve.set(reserveSequences(eventList));
-            storageTransactionManager.store(eventList).whenComplete((firstToken, cause) -> {
-                if (cause == null) {
-                    completableFuture.complete(null);
-
-                    if( ! listeners.isEmpty()) {
-                        listeners.values()
-                                 .forEach(consumer -> eventsStored(consumer, firstToken, eventList));
-                    }
-                } else {
-                    completableFuture.completeExceptionally(cause);
-                    unreserve.get().run();
-                }
-            });
-        } catch (RuntimeException cause) {
-            unreserve.get().run();
-            completableFuture.completeExceptionally(cause);
-        }
-        return completableFuture;
+    public Mono<Void> storeBatch(List<Event> batch) {
+        return Mono.just(batch)
+                .filter(b -> !b.isEmpty())
+                .flatMap(eventList -> {
+                    Runnable releaseSequences = reserveSequences(eventList);
+                    return storageTransactionManager.storeBatch(eventList)
+                            .doOnError(t-> logger.error("Error occurred while writing batch: ",t))
+                            .doOnError(e -> releaseSequences.run())
+                            .doOnSuccess(firstToken -> listeners.values()
+                                    .forEach(consumer -> eventsStored(consumer, firstToken, eventList)));
+                }).then();
     }
 
     private void eventsStored(

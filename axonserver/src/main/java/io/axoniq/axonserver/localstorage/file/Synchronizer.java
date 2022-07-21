@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -35,10 +35,12 @@ import java.util.function.Consumer;
 /**
  * Thread responsible to close the segment when it got full. Also confirms to writer when transaction blocks are close.
  * One instance per event-type (Event,Snapshot) per context
+ *
  * @author Zoltan Altfatter
  */
 
 public class Synchronizer {
+
     private final Logger log = LoggerFactory.getLogger(Synchronizer.class);
     private final SortedMap<WritePosition, StorageCallback> writePositions = new ConcurrentSkipListMap<>();
 
@@ -52,7 +54,8 @@ public class Synchronizer {
     private volatile ScheduledFuture<?> forceJob;
     private volatile ScheduledFuture<?> syncJob;
 
-    public Synchronizer(EventTypeContext context, StorageProperties storageProperties, Consumer<WritePosition> completeSegmentCallback) {
+    public Synchronizer(EventTypeContext context, StorageProperties storageProperties,
+                        Consumer<WritePosition> completeSegmentCallback) {
         this.context = context;
         this.storageProperties = storageProperties;
         this.completeSegmentCallback = completeSegmentCallback;
@@ -61,27 +64,40 @@ public class Synchronizer {
 
     public void notifyWritePositions() {
         try {
-                    for (Iterator<Map.Entry<WritePosition, StorageCallback>> iterator = writePositions
-                            .entrySet().iterator(); iterator.hasNext(); ) {
-                        Map.Entry<WritePosition, StorageCallback> writePositionEntry = iterator
-                                .next();
+            boolean removed = false;
+            for (Iterator<Map.Entry<WritePosition, StorageCallback>> iterator = writePositions
+                    .entrySet().iterator(); iterator.hasNext(); ) {
+                Map.Entry<WritePosition, StorageCallback> writePositionEntry = iterator
+                        .next();
 
-                        WritePosition writePosition = writePositionEntry.getKey();
-                        if (writePosition.isComplete() &&
-                                writePositionEntry.getValue().onCompleted(writePosition.sequence)) {
-                            updated.set(true);
+                WritePosition current = currentRef.get();
 
-                                if (canSyncAt(writePosition)) {
-                                    syncAndCloseFile.add(currentRef.get());
-                                }
-                                currentRef.set(writePosition);
-                                iterator.remove();
-                        } else {
-                            break;
-                        }
-                    }
+                WritePosition writePosition = writePositionEntry.getKey();
+                if (!writePosition.isComplete()) {
+                    break;
+                }
+
+                if (writePosition.sequence > current.sequence + writePosition.prevEntries) {
+                    break;
+                }
+
+                if (!writePositionEntry.getValue().complete(writePosition.sequence)) {
+                    break;
+                }
+                updated.set(true);
+
+                if (canSyncAt(writePosition, current)) {
+                    syncAndCloseFile.add(current);
+                }
+                removed = true;
+                currentRef.updateAndGet(old -> old.sequence < writePosition.sequence ? writePosition : old);
+                iterator.remove();
+            }
+            if (removed) {
+                fsync.execute(this::notifyWritePositions);
+            }
         } catch (RuntimeException t) {
-            writePositions.entrySet().iterator().forEachRemaining(e -> e.getValue().onError(t));
+            writePositions.entrySet().iterator().forEachRemaining(e -> e.getValue().error(t));
             log.error("Caught exception in the synchronizer for {}", context, t);
         }
     }
@@ -107,23 +123,31 @@ public class Synchronizer {
     }
 
 
-    private boolean canSyncAt(WritePosition writePosition) {
-        WritePosition current = currentRef.get();
-        if (current != null && !Objects.equals(current.segment, writePosition.segment)) {
+    private boolean canSyncAt(WritePosition writePosition, WritePosition current) {
+        if (current == null) {
+            return false;
+        }
+        if (!Objects.equals(current.segment, writePosition.segment)) {
             log.debug("can sync at {}: {}", writePosition.segment, current.segment);
         }
-        return current != null && !Objects.equals(current.segment, writePosition.segment);
+        return !Objects.equals(current.segment, writePosition.segment);
     }
 
     public synchronized void init(WritePosition writePosition) {
         currentRef.set(writePosition);
         log.debug("Initializing at {}", writePosition);
-        if( syncJob == null) {
-            syncJob = fsync.scheduleWithFixedDelay(this::syncAndCloseFile, storageProperties.getSyncInterval(), storageProperties.getSyncInterval(), TimeUnit.MILLISECONDS);
+        if (syncJob == null) {
+            syncJob = fsync.scheduleWithFixedDelay(this::syncAndCloseFile,
+                                                   storageProperties.getSyncInterval(),
+                                                   storageProperties.getSyncInterval(),
+                                                   TimeUnit.MILLISECONDS);
             log.debug("Scheduled syncJob");
         }
-        if( forceJob == null) {
-            forceJob = fsync.scheduleWithFixedDelay(this::forceCurrent, storageProperties.getForceInterval(), storageProperties.getForceInterval(), TimeUnit.MILLISECONDS);
+        if (forceJob == null) {
+            forceJob = fsync.scheduleWithFixedDelay(this::forceCurrent,
+                                                    storageProperties.getForceInterval(),
+                                                    storageProperties.getForceInterval(),
+                                                    TimeUnit.MILLISECONDS);
             log.debug("Scheduled forceJob");
         }
     }
@@ -138,18 +162,24 @@ public class Synchronizer {
     }
 
     public void shutdown(boolean shutdown) {
-        if( syncJob != null) syncJob.cancel(false);
-        if( forceJob != null) forceJob.cancel(false);
+        if (syncJob != null) {
+            syncJob.cancel(false);
+        }
+        if (forceJob != null) {
+            forceJob.cancel(false);
+        }
         syncJob = null;
         forceJob = null;
         waitForPendingWrites();
         boolean closeMore = true;
-        while( closeMore && ! syncAndCloseFile.isEmpty()) {
+        while (closeMore && !syncAndCloseFile.isEmpty()) {
             closeMore = syncAndCloseFile();
         }
-        if( shutdown) fsync.shutdown();
+        if (shutdown) {
+            fsync.shutdown();
+        }
         WritePosition writePosition = currentRef.getAndSet(null);
-        if( writePosition != null) {
+        if (writePosition != null) {
             writePosition.force();
         }
     }

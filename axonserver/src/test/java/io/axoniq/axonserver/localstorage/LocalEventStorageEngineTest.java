@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -19,25 +19,25 @@ import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFa
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.IntStream;
 
-import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Marc Gathier
@@ -50,11 +50,14 @@ public class LocalEventStorageEngineTest {
     @Before
     public void setup() {
         StorageTransactionManagerFactory transactionManagerFactory = eventStore -> new StorageTransactionManager() {
+
             @Override
-            public CompletableFuture<Long> store(List<Event> eventList) {
-                CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
-                pendingTransactions.add(pendingTransaction);
-                return pendingTransaction;
+            public Mono<Long> storeBatch(List<Event> eventList) {
+                return Mono.defer(()-> {
+                    CompletableFuture<Long> pendingTransaction = new CompletableFuture<>();
+                    pendingTransactions.add(pendingTransaction);
+                    return Mono.fromFuture(pendingTransaction);
+                });
             }
 
             @Override
@@ -83,7 +86,7 @@ public class LocalEventStorageEngineTest {
         }, new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()),
                                           transactionManagerFactory,
                                           new NoOpEventInterceptors(),
-                                          new DefaultEventDecorator(), 5, 1000, 10, 10);
+                                          new DefaultEventDecorator(), 1000, 10, 10);
         testSubject.initContext(SAMPLE_CONTEXT, false);
         testSubject.start();
     }
@@ -98,33 +101,37 @@ public class LocalEventStorageEngineTest {
         Event event = Event.getDefaultInstance();
         Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, Flux.just(new SerializedEvent(event)), null);
 
-        Executors.newSingleThreadScheduledExecutor()
-                 .schedule(() -> {
-                     try {
-                         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
-                         testSubject.cancel(SAMPLE_CONTEXT);
-                     } catch (InterruptedException e) {
-                         fail("No pending transactions created.");
-                     }
-                 }, 100, TimeUnit.MILLISECONDS);
-
         StepVerifier.create(result)
+                .thenAwait(Duration.ofMillis(100))
+                .then(()->{
+                    assertEquals(1, pendingTransactions.size());
+                    testSubject.cancel(SAMPLE_CONTEXT);
+                })
                     .verifyErrorMessage("Transaction cancelled");
         assertTrue(pendingTransactions.get(0).isDone());
     }
 
     @Test
-    public void appendSnapshot() throws InterruptedException, TimeoutException, ExecutionException {
-        Mono<Void> snapshot = testSubject.appendSnapshot(SAMPLE_CONTEXT,
+    public void appendSnapshot() {
+        Mono<Void> appendSnapshotOp = testSubject.appendSnapshot(SAMPLE_CONTEXT,
                                                          Event.newBuilder()
                                                               .setAggregateIdentifier(
                                                                       "AGGREGATE_WITH_ONE_EVENT")
                                                               .setAggregateSequenceNumber(0)
                                                               .build(),
                                                          null);
-        assertWithin(1, TimeUnit.SECONDS, () -> assertEquals(1, pendingTransactions.size()));
-        StepVerifier.create(snapshot.doOnSubscribe(s -> pendingTransactions.get(0).complete(100L)))
-                    .verifyComplete();
+
+        StepVerifier.create(appendSnapshotOp)
+                .thenAwait(Duration.ofMillis(100))
+                .then(()-> {
+                    if (!pendingTransactions.isEmpty()) {
+                        assertEquals(1, pendingTransactions.size());
+                        pendingTransactions.get(0).complete(100L);
+                    }
+                })
+                .verifyComplete();
+
+        assertTrue(pendingTransactions.get(0).isDone());
     }
 
     @Test
@@ -144,32 +151,21 @@ public class LocalEventStorageEngineTest {
     }
 
     @Test
-    public void createAppendEventConnection() {
+    public void testAppendEvent() {
         Flux<SerializedEvent> events = Flux.just(new SerializedEvent(Event.getDefaultInstance()));
         Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
 
-        Executors.newSingleThreadScheduledExecutor()
-                 .schedule(() -> {
-                     try {
-                         assertWithin(100, TimeUnit.MILLISECONDS, () -> assertEquals(1, pendingTransactions.size()));
-                         pendingTransactions.get(0).complete(100L);
-                     } catch (InterruptedException e) {
-                         fail("No pending transactions created.");
-                     }
-                 }, 100, TimeUnit.MILLISECONDS);
         StepVerifier.create(result)
+                .thenAwait(Duration.ofMillis(100))
+                .then(() -> {
+                    if (!pendingTransactions.isEmpty()) {
+                        assertEquals(1, pendingTransactions.size());
+                        pendingTransactions.get(0).complete(100L);
+                    }
+
+                })
                     .verifyComplete();
         assertTrue(pendingTransactions.get(0).isDone());
-    }
-
-    @Test
-    public void createAppendEventConnectionWithTooManyEvents() {
-        Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 10)
-                                                      .mapToObj(i -> new SerializedEvent(Event.getDefaultInstance())));
-        Mono<Void> result = testSubject.appendEvents(SAMPLE_CONTEXT, events, null);
-
-        StepVerifier.create(result)
-                    .verifyErrorMessage("INVALID_ARGUMENT: Maximum number of events in transaction exceeded: 5");
     }
 
     @Test

@@ -1,6 +1,6 @@
 <!--
-  - Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  - under one or more contributor license agreements.
+  -  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  -  under one or more contributor license agreements.
   -
   -  Licensed under the AxonIQ Open Source License Agreement v1.0;
   -  you may not use this file except in compliance with the license.
@@ -217,7 +217,7 @@
         }, methods: {
             showMoveSegment(tracker) {
                 axios.get("v1/processors/" + encodeURIComponent(this.selected.name) +
-                                  "/clients?context=" + this.context +
+                                  "/clients?context=" + this.selected.context +
                                   "&tokenStoreIdentifier=" + encodeURIComponent(this.selected.tokenStoreIdentifier))
                         .then(response => {
                     this.segmentDestinationOptions = response.data
@@ -237,7 +237,7 @@
                                     + "/processors/" + encodeURIComponent(this.selected.name)
                                     + "/segments/" + this.movingSegment.segmentId
                                     + "/move?target=" + encodeURIComponent(this.segmentDestination)
-                                    + "&context=" + this.context
+                                    + "&context=" + this.selected.context
                                     + "&tokenStoreIdentifier=" + encodeURIComponent(this.selected.tokenStoreIdentifier)
                 ).then(
                         response => {
@@ -268,17 +268,18 @@
                     this.loadBalancingStrategies = response.data;
                 });
                 if( this.hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING') ) {
-                    axios.get("v1/processors/autoloadbalance/strategies?context="
-                                      + encodeURIComponent(this.context)).then(response => {
+                  axios.get("v1/components/" + encodeURIComponent(this.component)
+                                + "/processors/loadbalance/strategies")
+                      .then(response => {
                         this.processorsLBStrategies = response.data;
-                    });
+                      });
                 }
             },
             startProcessor(processor) {
                 if (confirm("Start processor " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/start?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                     ).then(
                             response => {
@@ -291,7 +292,7 @@
                 if (confirm("Pause processor " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/pause?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)).then(
                             response => {
                                 this.enableStatusLoader(processor);
@@ -303,7 +304,7 @@
                 if (confirm("Split segment for " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/segments/split?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                     ).then(
                             response => {
@@ -316,7 +317,7 @@
                 if (confirm("Merge segment for " + processor.name + "?")) {
                     axios.patch("v1/components/" + encodeURIComponent(this.component) + "/processors/"
                                         + encodeURIComponent(processor.name) + "/segments/merge?" +
-                                        "context=" + encodeURIComponent(this.context) +
+                                        "context=" + encodeURIComponent(processor.context) +
                                         "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                     ).then(
                             response => {
@@ -336,7 +337,7 @@
             },
             balanceLoad() {
                 axios.patch("v1/processors/" + encodeURIComponent(this.loadBalanceProcessor.name) +
-                                    "/loadbalance?context=" + encodeURIComponent(this.context) +
+                                    "/loadbalance?context=" + encodeURIComponent(this.loadBalanceProcessor.context) +
                                     "&strategy=" + encodeURIComponent(this.loadBalanceStrategy) +
                                     "&tokenStoreIdentifier=" + encodeURIComponent(this.loadBalanceProcessor.tokenStoreIdentifier)
                 ).then(response => {
@@ -366,7 +367,7 @@
             changeLoadBalancingStrategy(processor, strategy) {
                 console.log("strategy changed: " + strategy);
                 axios.put("v1/processors/" + encodeURIComponent(processor.name) +
-                                  "/autoloadbalance?context=" + encodeURIComponent(this.context) +
+                                  "/autoloadbalance?context=" + encodeURIComponent(processor.context) +
                                   "&strategy=" + encodeURIComponent(strategy) +
                                   "&tokenStoreIdentifier=" + encodeURIComponent(processor.tokenStoreIdentifier)
                 ).then(

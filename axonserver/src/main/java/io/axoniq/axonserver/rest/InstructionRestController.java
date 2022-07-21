@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -11,12 +11,12 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.grpc.PlatformService;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
 
 import java.security.Principal;
 
@@ -40,7 +40,7 @@ public class InstructionRestController {
 
     @PatchMapping
     public String requestReconnect(@RequestParam(value = "client") String clientId,
-                                   @ApiIgnore final Principal principal) {
+                                   @Parameter(hidden = true) final Principal principal) {
         auditLog.info("[{}] Request client \"{}\" to reconnect.", AuditLog.username(principal), clientId);
 
         if (platformService.requestReconnect(clientId, "reconnect requested through REST interface")) {

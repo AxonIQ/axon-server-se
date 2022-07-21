@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,25 +10,26 @@
 package io.axoniq.axonserver.transport.rest;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorAdminService;
-import io.axoniq.axonserver.component.processor.ClientsByEventProcessor;
-import io.axoniq.axonserver.component.processor.ComponentEventProcessors;
-import io.axoniq.axonserver.component.processor.EventProcessor;
+import io.axoniq.axonserver.admin.eventprocessor.api.Result;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
-import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
-import io.axoniq.axonserver.component.processor.listener.ClientProcessors;
-import io.axoniq.axonserver.logging.AuditLog;
-import org.slf4j.Logger;
+import io.axoniq.axonserver.rest.json.RestResponse;
+import io.axoniq.axonserver.serializer.Printable;
+import io.axoniq.axonserver.transport.rest.json.GenericProcessor;
+import io.axoniq.axonserver.transport.rest.json.StreamingProcessor;
+import io.swagger.v3.oas.annotations.Parameter;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.security.Principal;
-import java.util.ArrayList;
-import java.util.List;
+
+import static java.lang.String.format;
 
 /**
  * REST endpoint to deal with operations applicable to an Event Processor.
@@ -40,37 +41,24 @@ import java.util.List;
 @RequestMapping("v1")
 public class EventProcessorRestController {
 
-    private static final Logger auditLog = AuditLog.getLogger();
-
-    private final ProcessorEventPublisher processorEventsSource;
-    private final ClientProcessors eventProcessors;
     private final EventProcessorAdminService service;
 
     /**
      * Instantiate a REST endpoint to open up several Event Processor operations, like start, stop and segment release,
      * to the Axon Server UI.
      *
-     * @param processorEventsSource the {@link ProcessorEventPublisher} used to publish specific application
-     *                              events for the provided endpoints
-     * @param eventProcessors       an {@link Iterable} of {@link io.axoniq.axonserver.component.processor.listener.ClientProcessor}
-     * @param service               the service that performs the operarions
+     * @param service the service that performs the operations
      */
-    public EventProcessorRestController(ProcessorEventPublisher processorEventsSource,
-                                        ClientProcessors eventProcessors,
-                                        EventProcessorAdminService service) {
-        this.processorEventsSource = processorEventsSource;
-        this.eventProcessors = eventProcessors;
+    public EventProcessorRestController(EventProcessorAdminService service) {
         this.service = service;
     }
 
     @GetMapping("components/{component}/processors")
-    public Iterable<EventProcessor> componentProcessors(@PathVariable("component") String component,
-                                                        @RequestParam("context") String context,
-                                                        @ApiIgnore final Principal principal) {
-        auditLog.debug("[{}@{}] Request to list Event processors in component \"{}\".",
-                       AuditLog.username(principal), context, component);
+    public Flux<Printable> componentProcessors(@PathVariable("component") String component,
+                                               @Parameter(hidden = true) final Principal principal) {
 
-        return new ComponentEventProcessors(component, context, eventProcessors);
+        return service.eventProcessorsByComponent(component, new PrincipalAuthentication(principal))
+                      .map(p -> p.isStreaming() ? new StreamingProcessor(p) : new GenericProcessor(p));
     }
 
     /**
@@ -81,114 +69,97 @@ public class EventProcessorRestController {
      * @param principal            the authenticated user
      */
     @PatchMapping("components/{component}/processors/{processor}/pause")
-    public void pause(@PathVariable("processor") String processor,
-                      @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                      @ApiIgnore final Principal principal) {
-        service.pause(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
-                      new PrincipalAuthentication(principal));
+    public Mono<ResponseEntity<RestResponse>> pause(@PathVariable("processor") String processor,
+                                                    @RequestParam("context") String context,
+                                                    @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                    @Parameter(hidden = true) final Principal principal) {
+        return service.pause(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .map(result -> response(result, format("processor %s paused", processor)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     @PatchMapping("components/{component}/processors/{processor}/start")
-    public void start(@PathVariable("processor") String processor,
-                      @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                      @ApiIgnore final Principal principal) {
-        service.start(new EventProcessorIdentifier(processor, tokenStoreIdentifier),
-                      new PrincipalAuthentication(principal));
+    public Mono<ResponseEntity<RestResponse>> start(@PathVariable("processor") String processor,
+                                                    @RequestParam("context") String context,
+                                                    @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                    @Parameter(hidden = true) final Principal principal) {
+        return service.start(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .map(result -> response(result, format("processor %s started", processor)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     @PatchMapping("components/{component}/processors/{processor}/segments/{segment}/move")
-    public void moveSegment(@PathVariable("component") String component,
-                            @PathVariable("processor") String processor,
-                            @PathVariable("segment") int segment,
-                            @RequestParam("target") String target,
-                            @RequestParam("context") String context,
-                            @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                            @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to move segment {} of event processor \"{}\" in component \"{}\" to \"{}\".",
-                      AuditLog.username(principal), context, segment, processor, component, target);
-        clientsByEventProcessor(context, processor, tokenStoreIdentifier).forEach(clientId -> {
-            if (!target.equals(clientId)) {
-                processorEventsSource.releaseSegment(context, clientId, processor, segment);
-            }
-        });
+    public Mono<ResponseEntity<RestResponse>> moveSegment(@PathVariable("processor") String processor,
+                                                          @PathVariable("segment") int segment,
+                                                          @RequestParam("target") String target,
+                                                          @RequestParam("context") String context,
+                                                          @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                          @Parameter(hidden = true) final Principal principal) {
+        return service.move(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier), segment, target,
+                            new PrincipalAuthentication(principal))
+                      .map(result -> response(result, format("processor %s segment %d moved",
+                                                             processor,
+                                                             segment)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     /**
-     * Split the smallest segment of the Event Processor with the given {@code processorName}.
+     * Split the biggest segment of the Event Processor with the given {@code processorName}.
      *
-     * @param component            a {@link String} specifying the component for which this operation should be
-     *                             performed
-     * @param processorName        a {@link String} specifying the specific Event Processor to split a segment from
-     * @param context              a {@link String} defining the context within which this operation should occur
+     * @param processor            a {@link String} specifying the specific Event Processor to split a segment from
      * @param tokenStoreIdentifier a {@link String} specifying the token store identifier of the Event Processor
      */
     @PatchMapping("components/{component}/processors/{processor}/segments/split")
-    public void splitSegment(@PathVariable("component") String component,
-                             @PathVariable("processor") String processorName,
-                             @RequestParam("context") String context,
-                             @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                             @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to split segment of event processor \"{}\" in component \"{}\".",
-                      AuditLog.username(principal), context, processorName, component);
-        Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        processorEventsSource.splitSegment(context, list(clientIds), processorName);
+    public Mono<ResponseEntity<RestResponse>> splitSegment(@PathVariable("processor") String processor,
+                                                           @RequestParam("context") String context,
+                                                           @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                           @Parameter(hidden = true) final Principal principal) {
+        return service.split(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .map(result -> response(result, format("processor %s split", processor)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     /**
-     * Merge the biggest segment of the Event Processor with the given {@code processorName}.
+     * Merge the smallest two segments of the Event Processor with the given {@code processorName}.
      *
-     * @param component            a {@link String} specifying the component for which this operation should be
-     *                             performed
-     * @param processorName        a {@link String} specifying the specific Event Processor to merge a segment from
-     * @param context              a {@link String} defining the context within which this operation should occur
+     * @param processor            a {@link String} specifying the specific Event Processor to merge a segment from
      * @param tokenStoreIdentifier a {@link String} specifying the token store identifier of the Event Processor
      */
     @PatchMapping("components/{component}/processors/{processor}/segments/merge")
-    public void mergeSegment(@PathVariable("component") String component,
-                             @PathVariable("processor") String processorName,
-                             @RequestParam("context") String context,
-                             @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                             @ApiIgnore final Principal principal) {
-        auditLog.info("[{}@{}] Request to merge segment of event processor \"{}\" in component \"{}\".",
-                      AuditLog.username(principal), context, processorName, component);
-        Iterable<String> clientIds = clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
-        processorEventsSource.mergeSegment(context, list(clientIds), processorName);
-    }
-
-    private List<String> list(Iterable<String> clientNames) {
-        List<String> result = new ArrayList<>();
-        clientNames.forEach(result::add);
-        return result;
+    public Mono<ResponseEntity<RestResponse>> mergeSegment(@PathVariable("processor") String processor,
+                                                           @RequestParam("context") String context,
+                                                           @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                                           @Parameter(hidden = true) final Principal principal) {
+        return service.merge(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
+                             new PrincipalAuthentication(principal))
+                      .map(result -> response(result, format("processor %s merged", processor)))
+                      .onErrorResume(ResponseEntityFactory::asFailedResponse);
     }
 
     /**
      * This method retrieve instances of client application that contains a specific Tracking Event Processor.
      *
-     * @param processorName        the name of the tracking event processor
+     * @param processor            the name of the tracking event processor
      * @param context              the context of the client
      * @param tokenStoreIdentifier the token store identifier of the tracking event processor
      * @return the list of clients in the specified context that run specified tracking event processor
      */
     @GetMapping("/processors/{processor}/clients")
-    public Iterable<String> getClientInstancesFor(@PathVariable("processor") String processorName,
-                                                  @RequestParam("context") String context,
-                                                  @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
-                                                  @ApiIgnore Principal principal) {
-        auditLog.info(
-                "[{}] Request for a list of clients for context=\"{}\" that contains the processor \"{}\" @ \"{}\"",
-                AuditLog.username(principal),
-                context,
-                processorName,
-                tokenStoreIdentifier);
-
-        return clientsByEventProcessor(context, processorName, tokenStoreIdentifier);
+    public Flux<String> getClientInstancesFor(@PathVariable("processor") String processor,
+                                              @RequestParam("context") String context,
+                                              @RequestParam("tokenStoreIdentifier") String tokenStoreIdentifier,
+                                              @Parameter(hidden = true) Principal principal) {
+        return service.clientsBy(new EventProcessorIdentifier(processor, context, tokenStoreIdentifier),
+                                 new PrincipalAuthentication(principal));
     }
 
-    private ClientsByEventProcessor clientsByEventProcessor(String context,
-                                                            String processorName,
-                                                            String tokenStoreIdentifier) {
-        return new ClientsByEventProcessor(new EventProcessorIdentifier(processorName, tokenStoreIdentifier),
-                                           context,
-                                           eventProcessors);
+    private ResponseEntity<RestResponse> response(Result result, String format) {
+        if (result.isSuccess()) {
+            return ResponseEntityFactory.asSuccessResponse(format);
+        }
+        return ResponseEntityFactory.asAcceptedRequest(format);
     }
 }

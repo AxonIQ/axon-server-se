@@ -87,4 +87,15 @@ public class FileUtils {
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
+
+    public static String name(File file) {
+        try {
+            return file
+                    .getCanonicalFile()
+                    .getAbsolutePath();
+        } catch (IOException e) {
+            return file.getAbsolutePath();
+        }
+    }
+
 }

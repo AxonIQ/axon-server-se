@@ -11,8 +11,13 @@ package io.axoniq.axonserver.interceptor;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.PluginKey;
+import io.axoniq.axonserver.grpc.MetaDataValue;
+import io.axoniq.axonserver.grpc.SerializedObject;
+import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.metric.DefaultMetricCollector;
+import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.plugin.ExecutionContext;
+import io.axoniq.axonserver.plugin.PluginKey;
 import io.axoniq.axonserver.plugin.PostCommitHookException;
 import io.axoniq.axonserver.plugin.RequestRejectedException;
 import io.axoniq.axonserver.plugin.ServiceWithInfo;
@@ -23,19 +28,14 @@ import io.axoniq.axonserver.plugin.interceptor.AppendEventInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.AppendSnapshotInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.ReadEventInterceptor;
 import io.axoniq.axonserver.plugin.interceptor.ReadSnapshotInterceptor;
-import io.axoniq.axonserver.grpc.MetaDataValue;
-import io.axoniq.axonserver.grpc.SerializedObject;
-import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.metric.DefaultMetricCollector;
-import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
+import org.junit.Test;
 
+import javax.annotation.Nonnull;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.util.StringUtils.getOrDefault;
 import static java.util.Arrays.asList;
@@ -70,12 +70,12 @@ public class DefaultEventInterceptorsTest {
 
         Event orgEvent = event("aggregate1", 0);
 
-        Event intercepted = testSubject.appendEvent(orgEvent, new TestExecutionContext("default"));
+        Event intercepted = testSubject.interceptEvent(orgEvent, new TestExecutionContext("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        intercepted = testSubject.appendEvent(orgEvent, new TestExecutionContext("default"));
+        intercepted = testSubject.interceptEvent(orgEvent, new TestExecutionContext("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());
@@ -92,13 +92,13 @@ public class DefaultEventInterceptorsTest {
                 hookCalled.incrementAndGet(), PLUGIN_KEY));
 
         TestExecutionContext executionContext = new TestExecutionContext("default");
-        testSubject.eventsPreCommit(asList(event("aggrId1", 0),
+        testSubject.interceptEventsPreCommit(asList(event("aggrId1", 0),
                                            event("aggrId1", 1)),
                                     executionContext);
         assertEquals(0, hookCalled.get());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        testSubject.eventsPreCommit(asList(event("aggrId1", 0),
+        testSubject.interceptEventsPreCommit(asList(event("aggrId1", 0),
                                            event("aggrId1", 1)),
                                     executionContext);
         assertEquals(1, hookCalled.get());
@@ -115,7 +115,7 @@ public class DefaultEventInterceptorsTest {
         TestExecutionContext executionContext = new TestExecutionContext("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         try {
-            testSubject.eventsPreCommit(asList(event("aggrId1", 0),
+            testSubject.interceptEventsPreCommit(asList(event("aggrId1", 0),
                                                event("aggrId1", 1)),
                                         executionContext);
             fail("pre commit fails when hook tries to change event list");
@@ -130,13 +130,13 @@ public class DefaultEventInterceptorsTest {
                 hookCalled.incrementAndGet(), PLUGIN_KEY));
 
         TestExecutionContext executionContext = new TestExecutionContext("default");
-        testSubject.eventsPostCommit(asList(event("aggrId1", 0),
+        testSubject.interceptEventsPostCommit(asList(event("aggrId1", 0),
                                             event("aggrId1", 1)),
                                      executionContext);
         assertEquals(0, hookCalled.get());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        testSubject.eventsPostCommit(asList(event("aggrId1", 0),
+        testSubject.interceptEventsPostCommit(asList(event("aggrId1", 0),
                                             event("aggrId1", 1)),
                                      executionContext);
         assertEquals(1, hookCalled.get());
@@ -151,7 +151,7 @@ public class DefaultEventInterceptorsTest {
         TestExecutionContext executionContext = new TestExecutionContext("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         try {
-            testSubject.eventsPostCommit(asList(event("aggrId1", 0),
+            testSubject.interceptEventsPostCommit(asList(event("aggrId1", 0),
                                                 event("aggrId1", 1)),
                                          executionContext);
             fail("Expected PostCommitHookException");
@@ -169,7 +169,7 @@ public class DefaultEventInterceptorsTest {
         TestExecutionContext executionContext = new TestExecutionContext("default");
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
         try {
-            testSubject.snapshotPostCommit(event("aggrId1", 0), executionContext);
+            testSubject.interceptSnapshotPostCommit(event("aggrId1", 0), executionContext);
             fail("Expected PostCommitHookException");
         } catch (PostCommitHookException ex) {
             // expected
@@ -183,11 +183,11 @@ public class DefaultEventInterceptorsTest {
                 .incrementAndGet(), PLUGIN_KEY));
 
         TestExecutionContext executionContext = new TestExecutionContext("default");
-        testSubject.snapshotPostCommit(event("aggrId1", 0), executionContext);
+        testSubject.interceptSnapshotPostCommit(event("aggrId1", 0), executionContext);
         assertEquals(0, hookCalled.get());
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        testSubject.snapshotPostCommit(event("aggrId1", 0), executionContext);
+        testSubject.interceptSnapshotPostCommit(event("aggrId1", 0), executionContext);
         assertEquals(1, hookCalled.get());
     }
 
@@ -204,12 +204,12 @@ public class DefaultEventInterceptorsTest {
 
         Event orgEvent = event("aggregate1", 0, true);
 
-        Event intercepted = testSubject.appendSnapshot(orgEvent, new TestExecutionContext("default"));
+        Event intercepted = testSubject.interceptSnapshot(orgEvent, new TestExecutionContext("default"));
         assertEquals("sampleData", intercepted.getPayload().getData().toStringUtf8());
         assertFalse(intercepted.containsMetaData("demo"));
 
         pluginContextFilter.on(new PluginEnabledEvent("default", PLUGIN_KEY, null, true));
-        intercepted = testSubject.appendSnapshot(orgEvent, new TestExecutionContext("default"));
+        intercepted = testSubject.interceptSnapshot(orgEvent, new TestExecutionContext("default"));
 
         assertEquals(orgEvent.getAggregateIdentifier(), intercepted.getAggregateIdentifier());
         assertEquals(orgEvent.getMessageIdentifier(), intercepted.getMessageIdentifier());

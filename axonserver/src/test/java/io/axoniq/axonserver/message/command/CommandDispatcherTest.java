@@ -142,7 +142,7 @@ public class CommandDispatcherTest {
                                        responseObserver.onCompleted();
                                    });
         assertEquals(1, responseObserver.values().size());
-        assertNotEquals("", responseObserver.values().get(0).getErrorCode());
+        assertEquals(ErrorCode.TOO_MANY_REQUESTS.getCode(), responseObserver.values().get(0).getErrorCode());
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -12,6 +12,7 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventType;
@@ -55,8 +56,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.lang.String.format;
+
+import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
 
 
 /**
@@ -80,7 +86,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final int MAX_TRANSACTION_SIZE = Integer.MAX_VALUE - FILE_HEADER_SIZE - FILE_FOOTER_SIZE;
     protected final String context;
     protected final IndexManager indexManager;
-    protected final StorageProperties storageProperties;
+    protected final Supplier<StorageProperties> storagePropertiesSupplier;
     protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
     private final Timer lastSequenceReadTimer;
@@ -90,18 +96,18 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private final DistributionSummary aggregateSegmentsCount;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                  StorageProperties storageProperties, MeterFactory meterFactory) {
-        this(eventTypeContext, indexManager, storageProperties, null, meterFactory);
+                                  Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory) {
+        this(eventTypeContext, indexManager, storagePropertiesSupplier, null, meterFactory);
     }
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                  StorageProperties storageProperties,
+                                  Supplier<StorageProperties> storagePropertiesSupplier,
                                   SegmentBasedEventStore nextSegmentsHandler,
                                   MeterFactory meterFactory) {
         this.type = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
-        this.storageProperties = storageProperties;
+        this.storagePropertiesSupplier = storagePropertiesSupplier;
         this.next = nextSegmentsHandler;
         Tags tags = Tags.of(MeterFactory.CONTEXT, context, "type", eventTypeContext.getEventType().name());
         this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
@@ -116,22 +122,24 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                     long firstSequence,
                                                     long lastSequence,
                                                     long minToken) {
-        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
-        //Map<segment, all positions in that segment>
-        SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
-                                                                                          firstSequence,
-                                                                                          lastSequence,
-                                                                                          Long.MAX_VALUE,
-                                                                                          minToken);
-        logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
-        aggregateSegmentsCount.record(positionInfos.size());
+        return Flux.defer(() -> {
+                       logger.debug("Reading index entries for aggregate {} started.", aggregateId);
 
-        return Flux.fromIterable(positionInfos.entrySet())
-                   .flatMapSequential(e -> eventsForPositions(e.getKey(), e.getValue()),
-                                      PREFETCH_SEGMENT_FILES,
-                                      storageProperties.getEventsPerSegmentPrefetch())
-                   .skipUntil(se -> se.getAggregateSequenceNumber()
-                           >= firstSequence) //todo for safe guard, remove in 4.6
+                       SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                                  firstSequence,
+                                                                                                  lastSequence,
+                                                                                                  Long.MAX_VALUE,
+                                                                                                  minToken);
+                       logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
+                       aggregateSegmentsCount.record(positionInfos.size());
+
+                       return Flux.fromIterable(positionInfos.entrySet());
+                   }).flatMapSequential(e -> eventsForPositions(e.getKey(),
+                                                                e.getValue(),
+                                                                storagePropertiesSupplier.get().getEventsPerSegmentPrefetch()),
+                                        PREFETCH_SEGMENT_FILES,
+                                        storagePropertiesSupplier.get().getEventsPerSegmentPrefetch())
+                   .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence) //todo for safe guard, remove in 4.6
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
                    .name("event_stream")
                    .tag("context", context)
@@ -140,18 +148,20 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .metrics();
     }
 
-    private Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries) {
+    private Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch) {
         return (!containsSegment(segment.segment()) && next != null) ?
-                next.eventsForPositions(segment, indexEntries) :
+                next.eventsForPositions(segment, indexEntries, prefetch) :
                 new EventSourceFlux(indexEntries,
                                     () -> eventSource(segment),
                                     segment.segment(),
-                                    storageProperties.getEventsPerSegmentPrefetch()).get()
-                                                                                    .name("event_stream")
-                                                                                    .tag("context", context)
-                                                                                    .tag("stream", "aggregate_events")
-                                                                                    .tag("origin", "event_source")
-                                                                                    .metrics();
+                                    prefetch).get()
+                                             .name("event_stream")
+                                             .tag("context", context)
+                                             .tag("stream",
+                                                  "aggregate_events")
+                                             .tag("origin",
+                                                  "event_source")
+                                             .metrics();
     }
 
     /**
@@ -481,9 +491,16 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public void init(boolean validate, long defaultFirstToken) {
         initSegments(Long.MAX_VALUE, defaultFirstToken);
-        validate(validate ? storageProperties.getValidationSegments() : 2);
+        validate(validate ? storagePropertiesSupplier.get().getValidationSegments() : 2);
     }
 
+    @Override
+    public long getFirstCompletedSegment() {
+        if (getSegments().isEmpty()) {
+            return -1;
+        }
+        return getSegments().first();
+    }
 
     @Override
     public long getFirstToken() {
@@ -536,7 +553,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             ValidationResult nextResult = resultList.get(i + 1);
             if (thisResult.getLastToken() != nextResult.getSegment()) {
                 throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED,
-                                                     String.format(
+                                                     format(
                                                              "Validation exception: segment %d ending at token, %d, next segment starts at token %d",
                                                              thisResult.getSegment(),
                                                              thisResult.getLastToken() - 1,
@@ -585,8 +602,16 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public EventIterator getEvents(long segment, long token) {
         Optional<EventSource> reader = getEventSource(segment);
-        return reader.map(eventSource -> eventSource.createEventIterator(token))
-                     .orElseGet(() -> next.getEvents(segment, token));
+        return reader.map(eventSource -> createEventIterator(eventSource, segment, token))
+                     .orElseGet(() -> {
+                         if (next == null) {
+                             throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                                  format("%s: token %d before start of event store",
+                                                                         context,
+                                                                         token));
+                         }
+                         return next.getEvents(segment, token);
+                     });
     }
 
     public TransactionIterator getTransactions(long segment, long token) {
@@ -595,14 +620,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected TransactionIterator getTransactions(long segment, long token, boolean validating) {
         Optional<EventSource> reader = getEventSource(segment);
-        return reader.map(r -> r.createTransactionIterator(token, validating))
+        return reader.map(r -> createTransactionIterator(r, segment, token, validating))
                      .orElseGet(() -> getTransactionsFromNext(segment, token, validating));
     }
 
     private TransactionIterator getTransactionsFromNext(long segment, long token, boolean validating) {
         if (next == null) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                 String.format(
+                                                 format(
                                                          "%s: unable to read transactions for segment %d, requested token %d",
                                                          context,
                                                          segment,
@@ -625,6 +650,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected Map<Long, Integer> prepareSegmentStore(long lastInitialized) {
         NavigableMap<Long, Integer> segments = new TreeMap<>(Comparator.reverseOrder());
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         File events = new File(storageProperties.getStorage(context));
         FileUtils.checkCreateDirectory(events);
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
@@ -687,7 +713,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive) {
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         Stream<String> filenames = Stream.concat(getSegments().stream()
                                                               .filter(s -> (s > lastSegmentBackedUp
                                                                       || currentSegmentVersion(s)
@@ -703,10 +730,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         if (next == null) {
             return filenames;
         }
-        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp));
+        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, includeActive));
     }
 
     protected void renameFileIfNecessary(long segment) {
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         File dataFile = storageProperties.oldDataFile(context, segment);
         if (dataFile.exists()) {
             if (!dataFile.renameTo(storageProperties.dataFile(context, segment))) {
@@ -786,27 +814,34 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public void validateTransaction(long token, List<SerializedEvent> eventList) {
-        try (CloseableIterator<SerializedTransactionWithToken> transactionIterator = transactionIterator(token,
-                                                                                                         token
-                                                                                                                 + eventList
-                                                                                                                 .size())) {
+    public void validateTransaction(long token, List<Event> eventList) {
+        try (CloseableIterator<SerializedTransactionWithToken> transactionIterator =
+                     transactionIterator(token,token + eventList.size())) {
             if (transactionIterator.hasNext()) {
                 SerializedTransactionWithToken transaction = transactionIterator.next();
-                if (!transaction.getEvents().equals(eventList)) {
-                    throw new EventStoreValidationException(String.format(
+                if (!equals(transaction.getEvents(),eventList)) {
+                    throw new EventStoreValidationException(format(
                             "%s: Replicated %s transaction %d does not match stored transaction",
                             context,
                             type.getEventType(),
                             token));
                 }
             } else {
-                throw new EventStoreValidationException(String.format("%s: Replicated %s transaction %d not found",
-                                                                      context,
-                                                                      type.getEventType(),
-                                                                      token));
+                throw new EventStoreValidationException(format("%s: Replicated %s transaction %d not found",
+                                                               context,
+                                                               type.getEventType(),
+                                                               token));
             }
         }
+    }
+
+    private boolean equals(List<SerializedEvent> storedEvents, List<Event> eventList) {
+        for (int i = 0; i < storedEvents.size(); i++) {
+            if (!storedEvents.get(i).asEvent().equals(eventList.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private class TransactionWithTokenIterator implements CloseableIterator<SerializedTransactionWithToken> {

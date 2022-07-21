@@ -19,13 +19,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
+import javax.transaction.Transactional;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Optional;
-import javax.transaction.Transactional;
 
 /**
  * Manages the installed plugins.
@@ -79,6 +79,10 @@ public class PluginPackageManager implements SmartLifecycle {
 
     private void startPlugin(PluginPackage pluginPackage) {
         try {
+            if (pluginPackage.isDeleted()) {
+                removePlugin(pluginPackage);
+                return;
+            }
             osgiController.startPlugin(
                     bundleDirectory + File.separatorChar + pluginPackage
                             .getFilename());
@@ -111,11 +115,13 @@ public class PluginPackageManager implements SmartLifecycle {
         synchronized (pluginPackageRepository) {
             pluginPackageRepository.findByNameAndVersion(
                     pluginKey.getSymbolicName(),
-                    pluginKey.getVersion()).ifPresent(p -> {
-                pluginPackageRepository.deleteById(p.getId());
-                FileUtils.delete(new File(bundleDirectory + File.separatorChar + p.getFilename()));
-            });
+                    pluginKey.getVersion()).ifPresent(this::removePlugin);
         }
+    }
+
+    private void removePlugin(PluginPackage p) {
+        pluginPackageRepository.deleteById(p.getId());
+        FileUtils.delete(new File(bundleDirectory + File.separatorChar + p.getFilename()));
     }
 
     @Transactional

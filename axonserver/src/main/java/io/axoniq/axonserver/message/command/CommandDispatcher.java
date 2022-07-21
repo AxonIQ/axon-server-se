@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -30,6 +30,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nonnull;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 
 /**
  * Responsible for managing command subscriptions and processing commands.
@@ -71,7 +71,7 @@ public class CommandDispatcher {
                                                 queueCapacity,
                                                 BaseMetricName.AXON_APPLICATION_COMMAND_QUEUE_SIZE,
                                                 meterFactory,
-                                                ErrorCode.COMMAND_DISPATCH_ERROR);
+                                                ErrorCode.TOO_MANY_REQUESTS);
         metricRegistry.gauge(BaseMetricName.AXON_ACTIVE_COMMANDS, commandCache, ConstraintCache::size);
     }
 
@@ -90,21 +90,31 @@ public class CommandDispatcher {
 
     public void dispatch(String context, Authentication authentication, SerializedCommand request,
                          Consumer<SerializedCommandResponse> responseObserver) {
+        long start = System.currentTimeMillis();
         DefaultExecutionContext executionContext = new DefaultExecutionContext(context, authentication);
         Consumer<SerializedCommandResponse> interceptedResponseObserver = r -> intercept(executionContext,
                                                                                          r,
                                                                                          responseObserver);
         try {
-            request = commandInterceptors.commandRequest(request, executionContext);
+            SerializedCommand interceptedRequest = commandInterceptors.commandRequest(request, executionContext);
             commandRate(context).mark();
             CommandHandler<?> commandHandler = registrations.getHandlerForCommand(context,
-                                                                                  request.wrapped(),
-                                                                                  request.getRoutingKey());
-            dispatchToCommandHandler(request,
+                                                                                  interceptedRequest.wrapped(),
+                                                                                  interceptedRequest.getRoutingKey());
+            dispatchToCommandHandler(interceptedRequest,
                                      commandHandler,
-                                     interceptedResponseObserver,
+                                     r -> {
+                                         interceptedResponseObserver.accept(r);
+                                         if (commandHandler != null) {
+                                             metricRegistry.add(request.getCommand(),
+                                                                request.wrapped().getClientId(),
+                                                                commandHandler.getClientId(),
+                                                                context,
+                                                                System.currentTimeMillis() - start);
+                                         }
+                                     },
                                      ErrorCode.NO_HANDLER_FOR_COMMAND,
-                                     "No Handler for command: " + request.getCommand()
+                                     "No Handler for command: " + interceptedRequest.getCommand()
             );
         } catch (MessagingPlatformException other) {
             logger.warn("{}: Exception dispatching command {}", context, request.getCommand(), other);
@@ -205,13 +215,6 @@ public class CommandDispatcher {
         CommandInformation toPublisher = commandCache.remove(commandResponse.getRequestIdentifier());
         if (toPublisher != null) {
             logger.debug("Sending response to: {}", toPublisher);
-            if (!proxied) {
-                metricRegistry.add(toPublisher.getRequestIdentifier(),
-                                   toPublisher.getSourceClientId(),
-                                   toPublisher.getTargetClientId(),
-                                   toPublisher.getClientStreamIdentification().getContext(),
-                                   System.currentTimeMillis() - toPublisher.getTimestamp());
-            }
             toPublisher.getResponseConsumer().accept(commandResponse);
         } else {
             logger.info("Could not find command request: {}", commandResponse.getRequestIdentifier());

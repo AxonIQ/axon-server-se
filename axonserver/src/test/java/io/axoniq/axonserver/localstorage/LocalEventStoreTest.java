@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.localstorage;
 
-import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -19,11 +18,14 @@ import io.axoniq.axonserver.grpc.event.QueryEventsRequest;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManager;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
@@ -84,9 +86,10 @@ public class LocalEventStoreTest {
         };
 
         StorageTransactionManagerFactory transactionManagerFactory = eventStore -> new StorageTransactionManager() {
+
             @Override
-            public CompletableFuture<Long> store(List<Event> eventList) {
-                return eventStore.store(eventList);
+            public Mono<Long> storeBatch(List<Event> eventList) {
+                return Mono.fromCompletionStage(eventStore.store(eventList));
             }
 
             @Override
@@ -126,7 +129,7 @@ public class LocalEventStoreTest {
     }
 
     @Test
-    public void createAppendEventConnection() throws ExecutionException, InterruptedException {
+    public void teststoreBatch() throws ExecutionException, InterruptedException {
         Flux<SerializedEvent> events = Flux.fromStream(IntStream.range(0, 3)
                                                       .mapToObj(i -> new SerializedEvent(Event.getDefaultInstance())));
         StepVerifier.create(testSubject.appendEvents("demo", events, null))
@@ -253,7 +256,7 @@ public class LocalEventStoreTest {
         List<String> compensations = new ArrayList<>();
 
         @Override
-        public Event appendEvent(Event event, ExecutionContext executionContext) {
+        public Event interceptEvent(Event event, ExecutionContext executionContext) {
             if (failAppend) {
                 throw new RuntimeException("appendEvent");
             }
@@ -263,7 +266,7 @@ public class LocalEventStoreTest {
         }
 
         @Override
-        public Event appendSnapshot(Event snapshot, ExecutionContext executionContext) {
+        public Event interceptSnapshot(Event snapshot, ExecutionContext executionContext) {
             if (failAppend) {
                 throw new RuntimeException("appendSnapshot");
             }
@@ -273,7 +276,7 @@ public class LocalEventStoreTest {
         }
 
         @Override
-        public void eventsPreCommit(List<Event> events, ExecutionContext executionContext) {
+        public void interceptEventsPreCommit(List<Event> events, ExecutionContext executionContext) {
             if (failPreCommit) {
                 throw new RuntimeException("eventsPreCommit");
             }
@@ -282,12 +285,12 @@ public class LocalEventStoreTest {
         }
 
         @Override
-        public void eventsPostCommit(List<Event> events, ExecutionContext executionContext) {
+        public void interceptEventsPostCommit(List<Event> events, ExecutionContext executionContext) {
             eventsPostCommit++;
         }
 
         @Override
-        public void snapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
+        public void interceptSnapshotPostCommit(Event snapshot, ExecutionContext executionContext) {
             snapshotPostCommit++;
         }
 

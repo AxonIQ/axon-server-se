@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -23,16 +23,19 @@ import io.axoniq.axonserver.rest.svg.mapping.ApplicationBoxMapping;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServer;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServerBoxMapping;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServerPopupMapping;
+import io.axoniq.axonserver.serializer.Media;
+import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.topology.Topology;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.security.Principal;
+import java.util.Iterator;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -61,7 +64,7 @@ public class OverviewModel {
     }
 
     @GetMapping("/v1/public/overview")
-    public SvgOverview overview(@ApiIgnore final Principal principal,
+    public SvgOverview overview(@Parameter(hidden = true) final Principal principal,
                                 @RequestParam(value = "for-context", required = false) String context) {
         auditLog.debug("[{}] Request to render an SVG cluster overview.", AuditLog.username(principal));
 
@@ -89,7 +92,16 @@ public class OverviewModel {
         return new SvgOverview(new Elements(background, components));
     }
 
+    @GetMapping("/v1/public/overview-list")
+    public Iterator<ApplicationJsonInfo> overviewList(@Parameter(hidden = true) final Principal principal,
+                                                      @RequestParam(value = "for-context", required = false) String context) {
+        auditLog.debug("[{}] Request to render an SVG cluster overview.", AuditLog.username(principal));
+
+        return applicationProvider.apply(context).map(a -> new ApplicationJsonInfo(a)).iterator();
+    }
+
     public static class SvgOverview {
+
         private final Element element;
 
         SvgOverview(Element element) {
@@ -101,12 +113,30 @@ public class OverviewModel {
             element.printOn(new PrintWriter(stringWriter));
             return stringWriter.toString();
         }
+
         public int getWidth() {
             return element.dimension().width();
         }
+
         public int getHeight() {
             return element.dimension().height();
         }
     }
 
+    private static class ApplicationJsonInfo implements Printable {
+
+        private final Application application;
+
+        public ApplicationJsonInfo(Application application) {
+            this.application = application;
+        }
+
+        @Override
+        public void printOn(Media media) {
+            media.with("name", application.name())
+                 .with("instances", application.instances())
+                 .withStrings("contexts", application.contexts())
+                 .withStrings("connectedTo", application.connectedHubNodes());
+        }
+    }
 }

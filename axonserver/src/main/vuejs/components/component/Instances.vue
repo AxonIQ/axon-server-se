@@ -1,6 +1,6 @@
 <!--
-  - Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
-  - under one or more contributor license agreements.
+  -  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  -  under one or more contributor license agreements.
   -
   -  Licensed under the AxonIQ Open Source License Agreement v1.0;
   -  you may not use this file except in compliance with the license.
@@ -19,16 +19,17 @@
                 </th>
             </tr>
             </thead>
-            <tbody class="selectable">
+            <tbody>
             <tr v-for="instance in instances">
-                <td>
-                    <div>{{instance.name}}</div>
-                </td>
-                <td>
-                    <div>{{instance.axonServerNode}}</div>
-                </td>
-                <td>
-                    <ul>
+              <td>
+                <div>{{ instance.name }}</div>
+              </td>
+              <td>
+                <div>{{ instance.axonServerNode }}<span style="color: gray;font-size: 13px;margin-left: 5px;"> &#8592; {{ instance.context }}
+</span></div>
+              </td>
+              <td>
+                <ul>
                         <li v-for="tag in Object.keys(instance.tags)">{{tag}}={{instance.tags[tag]}}</li>
                     </ul>
                 </td>

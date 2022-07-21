@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -16,7 +16,6 @@ import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -33,7 +32,7 @@ public class SyncStorage {
         this.eventStore = eventStore;
     }
 
-    public void sync(long token, int eventVersion, List<SerializedEvent> eventList) {
+    public void sync(long token, int eventVersion, List<Event> eventList) {
         if (eventList.isEmpty()) {
             return;
         }
@@ -50,8 +49,6 @@ public class SyncStorage {
             throw new EventStoreValidationException("Received invalid token");
         }
         try {
-            List<Event> events = new ArrayList<>(eventList.size());
-            eventList.forEach(e -> events.add(e.asEvent()));
             eventStore.store(events, eventVersion).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

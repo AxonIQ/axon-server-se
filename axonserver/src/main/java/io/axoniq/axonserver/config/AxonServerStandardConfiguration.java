@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
@@ -44,6 +45,7 @@ import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.metric.MetricCollector;
+import io.axoniq.axonserver.plugin.AxonServerInformationProvider;
 import io.axoniq.axonserver.taskscheduler.ScheduledTaskExecutor;
 import io.axoniq.axonserver.taskscheduler.StandaloneTaskManager;
 import io.axoniq.axonserver.taskscheduler.TaskPayloadSerializer;
@@ -75,8 +77,8 @@ import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.annotation.Nonnull;
 
@@ -183,14 +185,16 @@ public class AxonServerStandardConfiguration {
     @Bean
     @ConditionalOnMissingBean(UserAdminService.class)
     public UserAdminService userAdminService(UserController userController,
-                                             ApplicationEventPublisher eventPublisher) {
-        return getUserAdminService(userController, eventPublisher);
+                                             ApplicationEventPublisher eventPublisher,
+                                             RoleController roleController) {
+        return getUserAdminService(userController, eventPublisher, roleController);
     }
 
     @Nonnull
     private UserAdminService getUserAdminService(UserController userController,
-                                                 ApplicationEventPublisher eventPublisher) {
-        return new LocalUserAdminService(userController, eventPublisher);
+                                                 ApplicationEventPublisher eventPublisher,
+                                                 RoleController roleController) {
+        return new LocalUserAdminService(userController, eventPublisher, roleController);
     }
 
     @Bean
@@ -268,6 +272,16 @@ public class AxonServerStandardConfiguration {
                 }
             }
         };
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AxonServerInformationProvider.class)
+    public AxonServerInformationProvider axonServerInformationProvider(VersionInfoProvider versionInfoProvider,
+                                                                       FeatureChecker featureChecker) {
+        Map<String, String> versionInfo = new HashMap<>();
+        versionInfo.put(AxonServerInformationProvider.EDITION, featureChecker.getEdition());
+        versionInfo.put(AxonServerInformationProvider.VERSION, versionInfoProvider.get().getVersion());
+        return () -> versionInfo;
     }
 
     @Bean

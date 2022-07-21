@@ -88,16 +88,7 @@ public class SubscriptionQueryITCase {
                 axonServerQueryBus.subscriptionQuery(query);
         initialResult.add(result.initialResult().block(Duration.ofSeconds(2)).getPayload());
         result.updates().subscribe(message -> updates.add(message.getPayload()));
-        return getDefaultSubscriptionQueryResult(result);
+        return result;
     }
 
-    private Object getDefaultSubscriptionQueryResult(SubscriptionQueryResult result) {
-        try {
-            Field delegateField = result.getClass().getDeclaredField("delegate");
-            delegateField.setAccessible(true);
-            return delegateField.get(result);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 }

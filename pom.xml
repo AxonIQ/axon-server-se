@@ -5,7 +5,7 @@
     <groupId>io.axoniq.axonserver</groupId>
     <artifactId>axonserver-se</artifactId>
     <packaging>pom</packaging>
-    <version>4.6.0-SNAPSHOT</version>
+    <version>2023.0.0-SNAPSHOT</version>
 
     <name>AxonIQ Axon Server SE</name>
     <inceptionYear>2019</inceptionYear>
@@ -41,26 +41,17 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <pushChanges>false</pushChanges>
         <product.name>AxonServer</product.name>
-        <kotlin.version>1.5.31</kotlin.version>
-        <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
 
-        <!--
-            Please note that there are dependencies between the gRPC and Netty TcNative versions.
-            gRPC is quite specific about the version of Netty TcNative, so check the dependencies on
-            https://github.com/grpc/grpc-java/blob/master/SECURITY.md
-        -->
-        <grpc.version>1.42.0</grpc.version>
-        <netty.tcnative.version>2.0.38.Final</netty.tcnative.version>
-        <netty.version>4.1.63.Final</netty.version>
-        <axon.version>4.5.3</axon.version>
+        <jacoco-maven-plugin.version>0.8.8</jacoco-maven-plugin.version>
+        <grpc.version>1.47.0</grpc.version>
+        <axon.version>4.5.9</axon.version>
         <h2.version>1.4.197</h2.version>
-        <eclipse-collections.version>10.4.0</eclipse-collections.version>
-        <gson.version>2.8.7</gson.version>
-        <axonserver-plugin-api.version>4.6-TRANSFORMATION-SNAPSHOT</axonserver-plugin-api.version>
-        <axonserver.api.version>4.6.0-SNAPSHOT</axonserver.api.version>
-        <axonserver.api.version>4.6.0-SNAPSHOT</axonserver.api.version>
+        <eclipse-collections.version>11.0.0</eclipse-collections.version>
+        <gson.version>2.9.0</gson.version>
+        <axonserver-plugin-api.version>4.6.0</axonserver-plugin-api.version>
+        <axonserver.api.version>4.6.0</axonserver.api.version>
         <flow.control.version>1.0</flow.control.version>
-        <spring-boot.version>2.5.3</spring-boot.version>
+        <spring-boot.version>2.7.1</spring-boot.version>
     </properties>
 
     <dependencyManagement>
@@ -91,47 +82,16 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-bom</artifactId>
-                <version>${netty.version}</version>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-tcnative-boringssl-static</artifactId>
-                <version>${netty.tcnative.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-protobuf</artifactId>
-                <version>${grpc.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.google.code.findbugs</groupId>
-                        <artifactId>jsr305</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-stub</artifactId>
-                <version>${grpc.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-netty</artifactId>
-                <version>${grpc.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.findbugs</groupId>
                 <artifactId>jsr305</artifactId>
                 <version>3.0.2</version>
-            </dependency>
-            <dependency>
-                <groupId>io.axoniq</groupId>
-                <artifactId>axon-server-api</artifactId>
-                <version>${axonserver.api.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -179,7 +139,7 @@
             <dependency>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>org.apache.felix.framework</artifactId>
-                <version>7.0.1</version>
+                <version>7.0.3</version>
             </dependency>
 
             <dependency>
