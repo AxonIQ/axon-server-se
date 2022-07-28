@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.component.tags;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
@@ -48,6 +57,22 @@ public class ClientTagsCache implements Function<ClientStreamIdentification, Map
         }
         return Collections.unmodifiableMap(
                 tags.getOrDefault(client, Collections.emptyMap()));
+    }
+
+    public Map<String, String> get(String client, String context) {
+        try {
+            ClientStreamIdentification clientStreamIdentification = new ClientStreamIdentification(context,
+                                                                                                   clientIdRegistry.streamIdFor(
+                                                                                                           new ClientContext(
+                                                                                                                   client,
+                                                                                                                   context),
+                                                                                                           ClientIdRegistry.ConnectionType.PLATFORM));
+            return Collections.unmodifiableMap(
+                    tags.getOrDefault(clientStreamIdentification, Collections.emptyMap()));
+        } catch (IllegalStateException state) {
+            state.printStackTrace();
+            return Collections.emptyMap();
+        }
     }
 
     /**

@@ -10,6 +10,13 @@ import java.io.Serializable;
  */
 public interface Command extends Serializable {
 
+    String ROUTING_KEY = "__routingkey";
+    String PRIORITY = "__priority";
+
+    String PRINCIPAL = "__principal";
+    String CLIENT_ID = "__clientId";
+    String COMPONENT_NAME = "__componentName";
+
     /**
      * The unique identifier of this command.
      *

@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface CommandResultReceivedInterceptor extends Interceptor {
 
-    Mono<CommandResult> onCommandResultReceived(CommandResult commandResult);
+    Mono<CommandResult> onCommandResultReceived(Mono<CommandResult> commandResult);
 }

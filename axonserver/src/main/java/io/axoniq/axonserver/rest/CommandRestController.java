@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.component.ComponentItems;
+import io.axoniq.axonserver.component.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
@@ -35,7 +36,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -66,10 +67,15 @@ public class CommandRestController {
     private final CommandDispatcher commandDispatcher;
     private final CommandRegistrationCache registrationCache;
 
+    private final CommandSubscriptionCache commandSubscriptionCache;
 
-    public CommandRestController(CommandDispatcher commandDispatcher, CommandRegistrationCache registrationCache) {
+
+    public CommandRestController(CommandDispatcher commandDispatcher,
+                                 CommandRegistrationCache registrationCache,
+                                 CommandSubscriptionCache commandSubscriptionCache) {
         this.commandDispatcher = commandDispatcher;
         this.registrationCache = registrationCache;
+        this.commandSubscriptionCache = commandSubscriptionCache;
     }
 
     @GetMapping("/components/{component}/commands")
@@ -82,7 +88,7 @@ public class CommandRestController {
                 component,
                 sanitize(context));
 
-        return new ComponentItems<>(component, context, new DefaultCommands(registrationCache));
+        return new ComponentItems<>(component, context, new DefaultCommands(commandSubscriptionCache, component));
     }
 
     @GetMapping("commands")

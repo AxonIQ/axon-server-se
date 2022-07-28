@@ -5,6 +5,12 @@ import java.io.Serializable;
 
 public interface CommandHandler extends Serializable {
 
+    String LOAD_FACTOR = "__loadfactor";
+    String COMPONENT_NAME = "__component";
+    String CLIENT_ID = "__clientId";
+
+    String PROXIED = "__proxied";
+
     /**
      * The unique identifier of the command handler.
      *

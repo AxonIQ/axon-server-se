@@ -30,6 +30,7 @@
         <module>axonserver-query-parser</module>
         <module>axonserver-test-utils</module>
         <module>axonserver-command-processing-spi</module>
+        <module>axonserver-command-processing</module>
     </modules>
 
     <properties>

@@ -47,10 +47,10 @@ public class CommandRestControllerTest {
         commandRegistationCache.add("DoIt",
                                     new DirectCommandHandler(new FakeStreamObserver<>(),
                                                              new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,
-                                                                                      "client"),
-                                                            "client",
+                                                                                            "client"),
+                                                             "client",
                                                              "component"));
-        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache);
+        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache, null);
     }
 
     @Test

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -49,16 +49,14 @@ import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
 import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
- * GRPC service to handle command bus requests from Axon Application
- * Client can sent two requests:
- * dispatch: sends a singe command to AxonServer
- * openStream: used by application providing command handlers, maintains an open bi directional connection between the
- * application and AxonServer
+ * GRPC service to handle command bus requests from Axon Application Client can sent two requests: dispatch: sends a
+ * singe command to AxonServer openStream: used by application providing command handlers, maintains an open bi
+ * directional connection between the application and AxonServer
  *
  * @author Marc Gathier
  */
 @Service("CommandService")
-public class CommandService implements AxonServerClientService {
+public class CommandService {
 
     private static final MethodDescriptor<byte[], SerializedCommandResponse> METHOD_DISPATCH =
             CommandServiceGrpc.getDispatchMethod().toBuilder(ByteArrayMarshaller.instance(),
@@ -114,7 +112,7 @@ public class CommandService implements AxonServerClientService {
         return new HashSet<>(dispatcherListeners.values());
     }
 
-    @Override
+    //    @Override
     public final ServerServiceDefinition bindService() {
         return ServerServiceDefinition.builder(CommandServiceGrpc.SERVICE_NAME)
                                       .addMethod(

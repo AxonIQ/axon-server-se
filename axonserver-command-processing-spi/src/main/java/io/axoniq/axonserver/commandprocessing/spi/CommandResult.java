@@ -10,6 +10,8 @@ import java.io.Serializable;
  */
 public interface CommandResult extends Serializable {
 
+    String CLIENT_ID = "clientId";
+
     /**
      * The unique identifier of the command result.
      *

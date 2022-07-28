@@ -13,6 +13,16 @@ import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandler;
+import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
+import io.axoniq.axonserver.commandprocesing.imp.DirectCommandDispatcher;
+import io.axoniq.axonserver.commandprocesing.imp.HandlerSelector;
+import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocesing.imp.MetaDataBasedHandlerSelector;
+import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
+import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
+import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
@@ -68,8 +78,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.annotation.Nonnull;
@@ -187,6 +199,34 @@ public class AxonServerStandardConfiguration {
                                                  ApplicationEventPublisher eventPublisher,
                                                  RoleController roleController) {
         return new LocalUserAdminService(userController, eventPublisher, roleController);
+    }
+
+    @Bean
+    public ConsistentHashHandler consistentHashHandler() {
+        return new ConsistentHashHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CommandHandlerRegistry.class)
+    public CommandHandlerRegistry commandHandlerRegistry(ConsistentHashHandler consistentHashHandler) {
+        List<HandlerSelector> handlerSelectorList = new ArrayList<>();
+        handlerSelectorList.add(new MetaDataBasedHandlerSelector());
+        handlerSelectorList.add(consistentHashHandler);
+        return new InMemoryCommandHandlerRegistry(handlerSelectorList);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CommandRequestProcessor.class)
+    public CommandRequestProcessor commandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry,
+                                                           ConsistentHashHandler consistentHashHandler) {
+
+        DefaultCommandRequestProcessor defaultCommandRequestProcessor = new DefaultCommandRequestProcessor(
+                commandHandlerRegistry, new DirectCommandDispatcher());
+        defaultCommandRequestProcessor.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
+                                                           consistentHashHandler);
+        defaultCommandRequestProcessor.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class,
+                                                           consistentHashHandler);
+        return defaultCommandRequestProcessor;
     }
 
     @Bean
