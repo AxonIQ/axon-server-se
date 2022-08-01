@@ -34,6 +34,10 @@ Notes:
 
 Release Notes for version 4.5.13
 --------------------------------
+* Security update: updated control database settings
+
+Release Notes for version 4.5.13
+--------------------------------
 * Reduced memory consumption during transactions
 * Improved handling of out of memory exceptions
 * Fixed race condition in storing events that lead to delay in completing transactions
