@@ -15,11 +15,15 @@ import org.apache.commons.cli.Option;
 import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
+import java.util.List;
+
+import static java.util.Arrays.asList;
 
 /**
  * @author Marc Gathier
  */
 public class InitNode extends AxonIQCliCommand {
+    private static final List<Integer> VALID_STATUS_CODES = asList(200, 202);
 
     public static void run(String[] args) throws IOException {
         CommandLine commandLine = processCommandLine(args[0],
@@ -33,7 +37,7 @@ public class InitNode extends AxonIQCliCommand {
 
         // get http client
         try (CloseableHttpClient httpclient = createClient(commandLine)) {
-            postJSON(httpclient, url, null, 200, getToken(commandLine), RestResponse.class);
+            postJSON(httpclient, url, null, VALID_STATUS_CODES::contains, getToken(commandLine), RestResponse.class);
         }
     }
 }
