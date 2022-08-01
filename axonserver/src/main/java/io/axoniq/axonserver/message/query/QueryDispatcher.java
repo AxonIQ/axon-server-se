@@ -227,8 +227,20 @@ public class QueryDispatcher {
                                                           interceptedCallback,
                                                           onCompleted,
                                                           handlers, isStreamingQuery(query));
-                queryCache.put(query.getMessageIdentifier(), activeQuery);
-                handlers.forEach(h -> dispatchQuery(h, serializedQuery2, timeout));
+                if (queryCache.get(query.getMessageIdentifier())!=null){    //TODO decide if we want to expose a contains method
+                    callback.accept(QueryResponse.newBuilder()
+                                                 .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
+                                                 .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                 .setMessageIdentifier(UUID.randomUUID().toString())
+                                                 .setErrorMessage(ErrorMessageFactory
+                                                                          .build("Query with supplied ID already present"))
+                                                 .build());
+                    onCompleted.accept("DuplicateId");
+                }
+                else{
+                    queryCache.put(query.getMessageIdentifier(), activeQuery);
+                    handlers.forEach(h -> dispatchQuery(h, serializedQuery2, timeout));
+                }
             }
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
