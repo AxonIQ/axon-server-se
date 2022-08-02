@@ -4,7 +4,7 @@ FROM busybox as source
 # to create the home directory for Axon Server and its volumes.
 RUN mkdir -p /axonserver/config /axonserver/data /axonserver/events /axonserver/plugins
 
-FROM openjdk:11
+FROM __BASE_IMG__
 
 COPY --from=source /axonserver /axonserver
 COPY axonserver.jar axonserver.properties *.txt /axonserver/
