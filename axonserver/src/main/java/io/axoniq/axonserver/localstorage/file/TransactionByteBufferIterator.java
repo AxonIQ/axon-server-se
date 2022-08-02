@@ -32,10 +32,10 @@ public class TransactionByteBufferIterator implements TransactionIterator {
     private SerializedTransactionWithToken next;
 
 
-    public TransactionByteBufferIterator(ByteBufferEventSource eventSource, long token, boolean validating) {
+    public TransactionByteBufferIterator(ByteBufferEventSource eventSource, long segment, long token, boolean validating) {
         this.eventSource = eventSource;
         this.reader = eventSource.getBuffer();
-        this.currentSequenceNumber = eventSource.segment();
+        this.currentSequenceNumber = segment;
         this.validating = validating;
         forwardTo(token);
         readTransaction();

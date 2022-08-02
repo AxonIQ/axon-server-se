@@ -14,7 +14,6 @@ import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.grpc.Server;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.protobuf.services.ProtoReflectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -103,7 +102,6 @@ public class Gateway implements SmartLifecycle {
         }
 
         axonServerClientServices.forEach(serverBuilder::addService);
-        serverBuilder.addService(ProtoReflectionService.newInstance());
 
         // Note that the last interceptor is executed first
         serverBuilder.intercept(new GrpcBufferingInterceptor(routingConfiguration.getGrpcBufferedMessages()));

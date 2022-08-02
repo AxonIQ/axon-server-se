@@ -31,10 +31,10 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     private final boolean validating;
     private SerializedTransactionWithToken next;
 
-    public InputStreamTransactionIterator(InputStreamEventSource eventSource, long start, boolean validating) {
+    public InputStreamTransactionIterator(InputStreamEventSource eventSource, long segment, long start, boolean validating) {
         this.eventSource = eventSource;
         this.reader = eventSource.getStream();
-        this.currentSequenceNumber = eventSource.segment();
+        this.currentSequenceNumber = segment;
         this.validating = validating;
         try {
             forwardTo(start);

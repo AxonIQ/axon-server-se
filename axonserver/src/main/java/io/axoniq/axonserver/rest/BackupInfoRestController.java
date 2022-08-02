@@ -64,6 +64,7 @@ public class BackupInfoRestController {
             @RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
+            @RequestParam(value = "lastVersionBackedUp", required = false, defaultValue = "0") int lastVersionBackedUp,
             @Parameter(hidden = true) Principal principal) {
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
@@ -73,7 +74,7 @@ public class BackupInfoRestController {
         }
 
         return localEventStore
-                .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, false)
+                .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, lastVersionBackedUp, false)
                 .collect(Collectors.toList());
     }
 
@@ -82,6 +83,7 @@ public class BackupInfoRestController {
             @RequestParam(value = "targetContext", defaultValue = Topology.DEFAULT_CONTEXT) String context,
             @RequestParam(value = "type") String type,
             @RequestParam(value = "lastClosedSegmentBackedUp", required = false, defaultValue = "-1") long lastSegmentBackedUp,
+            @RequestParam(value = "lastClosedVersionBackedUp", required = false, defaultValue = "0") int lastVersionBackedUp,
             @Parameter(hidden = true) Principal principal) {
         if (auditLog.isInfoEnabled()) {
             auditLog.info("[{}] Request for event store backup filenames. Context=\"{}\", type=\"{}\"",
@@ -92,7 +94,7 @@ public class BackupInfoRestController {
 
         return new EventStoreBackupInfo(localEventStore.getFirstCompletedSegment(context, EventType.valueOf(type)),
                                                                              localEventStore
-                                                                                     .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, true)
+                                                                                     .getBackupFilenames(context, EventType.valueOf(type), lastSegmentBackedUp, lastVersionBackedUp, true)
                                                                                      .collect(Collectors.toList()));
     }
 

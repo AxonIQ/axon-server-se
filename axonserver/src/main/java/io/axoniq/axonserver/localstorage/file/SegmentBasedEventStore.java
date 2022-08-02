@@ -291,7 +291,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Mono<TransformationProgress> transformSegment(long segment,
                                                           int newVersion,
                                                           Flux<EventWithToken> transformedEventsInTheSegment) {
-        return Flux.usingWhen(Mono.fromSupplier(() -> new DefaultSegmentTransformer(storageProperties,
+        return Flux.usingWhen(Mono.fromSupplier(() -> new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
                                                                              context,
                                                                              segment,
                                                                              newVersion, indexManager,
@@ -320,7 +320,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
 
     private Flux<FileVersion> fileVersions(String suffix) {
-        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storageProperties.getStorage(context)), suffix))
+        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePropertiesSupplier.get()
+                                                                                             .getStorage(context)), suffix))
                    .map(FileUtils::process);
     }
 
@@ -331,6 +332,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         return Mono.fromSupplier(() -> storageProperties.dataFile(context, fileVersion))
                    .filter(dataFile -> !dataFile.exists())
                    .flatMap(dataFile -> Mono.fromSupplier(() -> storageProperties.transformedDataFile(context,
@@ -364,7 +366,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     private Mono<Void> deleteRolledBack() {
         return rolledBackFileVersions()
-                .map(fileVersion -> storageProperties.rolledBackIndex(context, fileVersion))
+                .map(fileVersion -> storagePropertiesSupplier.get().rolledBackIndex(context, fileVersion))
                 .map(FileUtils::delete)
                 .then();
     }
@@ -388,6 +390,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     private Mono<Void> hasVersion(long segment, int version) {
         return Mono.create(sink -> {
+            StorageProperties storageProperties = storagePropertiesSupplier.get();
             if (version == 0 && storageProperties.dataFile(context, segment).exists()) {
                 sink.success();
             } else if (storageProperties.dataFile(context, new FileVersion(segment, version)).exists()) {
@@ -402,7 +405,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private int previousVersion(Long segment, int version) {
         int previous = version - 1;
         while (previous >= 0) {
-            if (storageProperties.dataFile(context, new FileVersion(segment, previous)).exists()) {
+            if (storagePropertiesSupplier.get().dataFile(context, new FileVersion(segment, previous)).exists()) {
                 return previous;
             }
             previous--;
@@ -425,7 +428,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                       scheduleForDeletion(segment, version);
                                                                   }
                                                               },
-                                                              storageProperties.getSecondaryCleanupDelay(),
+                                                              storagePropertiesSupplier.get().getSecondaryCleanupDelay(),
                                                               TimeUnit.SECONDS);
     }
 
@@ -602,7 +605,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public EventIterator getEvents(long segment, long token) {
         Optional<EventSource> reader = getEventSource(segment);
-        return reader.map(eventSource -> createEventIterator(eventSource, segment, token))
+        return reader.map(eventSource -> createEventIterator(eventSource, token))
                      .orElseGet(() -> {
                          if (next == null) {
                              throw new MessagingPlatformException(ErrorCode.OTHER,
@@ -634,6 +637,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                          token));
         }
         return next.getTransactions(segment, token, validating);
+    }
+
+    protected TransactionIterator createTransactionIterator(EventSource eventSource, long segment, long token,
+                                                            boolean validating) {
+        return eventSource.createTransactionIterator(segment, token, validating);
     }
 
     public long getSegmentFor(long token) {

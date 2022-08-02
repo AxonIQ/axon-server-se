@@ -68,8 +68,8 @@ public class InputStreamEventSource implements EventSource {
     }
 
     @Override
-    public TransactionIterator createTransactionIterator(long token, boolean validating) {
-        return new InputStreamTransactionIterator(this, token, validating);
+    public TransactionIterator createTransactionIterator(long segment, long token, boolean validating) {
+        return new InputStreamTransactionIterator(this, segment, token, validating);
     }
 
     @Override

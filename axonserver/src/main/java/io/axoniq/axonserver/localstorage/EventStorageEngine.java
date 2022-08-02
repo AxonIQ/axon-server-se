@@ -188,11 +188,12 @@ public interface EventStorageEngine {
 
     /**
      * Gets filenames to back up for this storage engine. Only relevant for file based storage.
+     *
      * @param lastSegmentBackedUp last segment backed up before
      * @param includeActive
      * @return stream of filenames
      */
-    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive, int lastVersionBackedUp) {
+    default Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive) {
         throw new UnsupportedOperationException();
     }
 

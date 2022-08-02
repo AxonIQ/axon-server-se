@@ -138,7 +138,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         indexManager.remove(first);
         long sequence = first.segment();
         Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
-        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first.getSegment(), first.getSegment())) {
+        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first.segment())) {
             while (sequence < nextToken && iterator.hasNext()) {
                 EventInformation event = iterator.next();
                 if (event.isDomainEvent()) {
@@ -211,7 +211,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         return new FileVersion(token, 0);
     }
 
-    private FileVersion getFirstFile(long lastInitialized, File events, FileVersion defaultFirstIndex
+    private FileVersion getFirstFile(long lastInitialized, File events, FileVersion defaultFirstIndex,
                               StorageProperties storageProperties) {
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
 
@@ -343,54 +343,56 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
-        forceNextSegment();
+        // TODO: 7/26/22 revisit this approach!!!
+//        forceNextSegment();
         return super.transformContents(newVersion, transformedEvents);
     }
 
-    private void forceNextSegment() {
-        WritePosition writePosition = writePositionRef.getAndAccumulate(
-                new WritePosition(0, (int) storageProperties.getSegmentSize(), 0),
-                (prev, x) -> prev.incrementedWith(x.sequence, x.position, x.version));
+//    private void forceNextSegment() {
+//        StorageProperties storageProperties = storagePropertiesSupplier.get();
+//        WritePosition writePosition = writePositionRef.getAndAccumulate(
+//                new WritePosition(0, (int) storageProperties.getSegmentSize(), 0),
+//                (prev, x) -> prev.incrementedWith(x.sequence, x.position, x.version));
+//
+//        if (writePosition.isOverflow((int) storageProperties.getSegmentSize())) {
+//            // only one thread can be here
+//            logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
+//
+//            writePosition.buffer.putInt(writePosition.position, -1);
+//
+//            WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
+//                                                           storageProperties.getSegmentSize(),
+//                                                           false);
+//            writePositionRef.set(writePosition.reset(buffer, 0));
+//            synchronizer.register(new WritePosition(writePosition.sequence, 0, 0, buffer, writePosition.sequence),
+//                                  new StorageCallback() {
+//                                      @Override
+//                                      public boolean complete(long firstToken) {
+//                                          logger.warn("Ready for transformation");
+//                                          return true;
+//                                      }
+//
+//                                      @Override
+//                                      public void error(Throwable cause) {
+//
+//                                      }
+//                                  });
+//            synchronizer.notifyWritePositions();
+//            waitForPendingFileCompletions();
+//        }
+//    }
 
-        if (writePosition.isOverflow((int) storageProperties.getSegmentSize())) {
-            // only one thread can be here
-            logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
-
-            writePosition.buffer.putInt(writePosition.position, -1);
-
-            WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
-                                                           storageProperties.getSegmentSize(),
-                                                           false);
-            writePositionRef.set(writePosition.reset(buffer, 0));
-            synchronizer.register(new WritePosition(writePosition.sequence, 0, 0, buffer, writePosition.sequence),
-                                  new StorageCallback() {
-                                      @Override
-                                      public boolean onCompleted(long firstToken) {
-                                          logger.warn("Ready for transformation");
-                                          return true;
-                                      }
-
-                                      @Override
-                                      public void onError(Throwable cause) {
-
-                                      }
-                                  });
-            synchronizer.notifyWritePositions();
-            waitForPendingFileCompletions();
-        }
-    }
-
-    private void waitForPendingFileCompletions() {
-        while ( readBuffers.size() != 1) {
-            try {
-                //noinspection BusyWait
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
-        }
-    }
+//    private void waitForPendingFileCompletions() {
+//        while ( readBuffers.size() != 1) {
+//            try {
+//                //noinspection BusyWait
+//                Thread.sleep(10);
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt();
+//                throw new RuntimeException(e);
+//            }
+//        }
+//    }
 
     @Override
     public long getLastToken() {
@@ -408,7 +410,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                     filenames;
 
         }
-        return next != null ? next.getBackupFilenames(lastSegmentBackedUp, includeActive) : Stream.empty();
+        return next != null ? next.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, includeActive) : Stream.empty();
     }
 
     @Override

@@ -49,7 +49,7 @@ public class SyncStorage {
             throw new EventStoreValidationException("Received invalid token");
         }
         try {
-            eventStore.store(events, eventVersion).get();
+            eventStore.store(eventList, eventVersion).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e);

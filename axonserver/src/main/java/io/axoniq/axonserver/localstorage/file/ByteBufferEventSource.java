@@ -112,8 +112,8 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     @Override
-    public TransactionIterator createTransactionIterator(long token, boolean validating) {
-        return new TransactionByteBufferIterator(this, token, validating);
+    public TransactionIterator createTransactionIterator(long segment, long token, boolean validating) {
+        return new TransactionByteBufferIterator(this, segment, token, validating);
     }
 
     @Override

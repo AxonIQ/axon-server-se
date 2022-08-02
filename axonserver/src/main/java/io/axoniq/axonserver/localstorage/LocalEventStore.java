@@ -760,10 +760,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
-    public long syncEvents(String context, long token, List<Event> events) {
+    public long syncEvents(String context, long token, int version, List<Event> events) {
         try {
             Workers worker = workers(context);
-            worker.eventSyncStorage.sync(token, events);
+            worker.eventSyncStorage.sync(token, version, events);
             worker.triggerTrackerEventProcessors();
             return token + events.size();
         } catch (MessagingPlatformException ex) {
@@ -776,10 +776,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
     }
 
-    public long syncSnapshots(String context, long token, List<Event> snapshots) {
+    public long syncSnapshots(String context, long token, int version, List<Event> snapshots) {
         try {
             SyncStorage writeStorage = workers(context).snapshotSyncStorage;
-            writeStorage.sync(token, snapshots);
+            writeStorage.sync(token, version, snapshots);
             return token + snapshots.size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {
@@ -800,14 +800,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     public Stream<String> getBackupFilenames(String context, EventType eventType, long lastSegmentBackedUp,
-                                             boolean includeActive) {
+                                             int lastVersionBackedUp, boolean includeActive) {
         try {
             Workers workers = workers(context);
             if (eventType == EventType.SNAPSHOT) {
-                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
+                return workers.snapshotStorageEngine.getBackupFilenames(lastSegmentBackedUp,
+                                                                        lastVersionBackedUp,
+                                                                        includeActive);
             }
 
-            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp, includeActive);
+            return workers.eventStorageEngine.getBackupFilenames(lastSegmentBackedUp,
+                                                                 lastVersionBackedUp,
+                                                                 includeActive);
         } catch (Exception ex) {
             logger.warn("Failed to get backup filenames", ex);
         }

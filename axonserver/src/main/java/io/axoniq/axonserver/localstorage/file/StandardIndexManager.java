@@ -121,7 +121,7 @@ public class StandardIndexManager implements IndexManager {
                                                            properties.getIndexSuffix());
         for (String indexFile : indexFiles) {
             FileVersion fileVersion = FileUtils.process(indexFile);
-            if (storageProperties.dataFile(context, fileVersion).exists()) {
+            if (properties.dataFile(context, fileVersion).exists()) {
                 indexesDescending.compute(fileVersion.segment(),
                                           (s, old) -> old == null ? fileVersion.version() : Math.max(
                                                   fileVersion.version(), old));
@@ -143,7 +143,7 @@ public class StandardIndexManager implements IndexManager {
         if (positionsPerAggregate == null) {
             positionsPerAggregate = Collections.emptyMap();
         }
-        File tempFile = properties.indexTemp(context, segment.segment());
+        File tempFile = properties.transformedIndex(context, segment.segment());
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
@@ -289,9 +289,9 @@ public class StandardIndexManager implements IndexManager {
     @Override
     public Mono<Void> activateVersion(long segment, int version) {
         FileVersion fileVersion = new FileVersion(segment, version);
-        return Mono.fromSupplier(() -> storageProperties.index(context, fileVersion))
+        return Mono.fromSupplier(() -> storageProperties.get().index(context, fileVersion))
                    .filter(indexFile -> !indexFile.exists())
-                   .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.transformedIndex(context, fileVersion))
+                   .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.get().transformedIndex(context, fileVersion))
                                              .filter(File::exists)
                                              .switchIfEmpty(Mono.error(new RuntimeException()))
                                              .flatMap(tempIndex -> FileUtils.rename(tempIndex, indexFile)))
@@ -302,14 +302,14 @@ public class StandardIndexManager implements IndexManager {
     public Mono<Void> rollbackToVersion(long segment, int currentVersion, int targetVersion) {
         FileVersion toVersion = new FileVersion(segment, targetVersion);
         FileVersion fromVersion = new FileVersion(segment, currentVersion);
-        return Mono.fromSupplier(() -> storageProperties.index(context, toVersion))
+        return Mono.fromSupplier(() -> storageProperties.get().index(context, toVersion))
                    .filter(File::exists)
                    .switchIfEmpty(Mono.error(new RuntimeException(
                            "Cannot rollback to this version, the index doesn't exist.")))
                    .doOnSuccess(v -> indexesDescending.put(segment, targetVersion))
-                   .then(Mono.fromSupplier(() -> storageProperties.index(context,fromVersion))
+                   .then(Mono.fromSupplier(() -> storageProperties.get().index(context,fromVersion))
                              .flatMap(current -> {
-                                 File rolledBack = storageProperties.rolledBackIndex(context, fromVersion);
+                                 File rolledBack = storageProperties.get().rolledBackIndex(context, fromVersion);
                                  return FileUtils.rename(current, rolledBack);
                              }));
     }
@@ -320,15 +320,15 @@ public class StandardIndexManager implements IndexManager {
         if (indexEntriesMap == null) {
             indexEntriesMap = Collections.emptyMap();
         }
-        File tempFile = storageProperties.transformedIndex(context, newVersion);
+        File tempFile = storageProperties.get().transformedIndex(context, newVersion);
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
         }
         DBMaker.Maker maker = DBMaker.fileDB(tempFile);
-        if (storageProperties.isUseMmapIndex()) {
+        if (storageProperties.get().isUseMmapIndex()) {
             maker.fileMmapEnable();
-            if (storageProperties.isForceCleanMmapIndex()) {
+            if (storageProperties.get().isForceCleanMmapIndex()) {
                 maker.cleanerHackEnable();
             }
         } else {
@@ -349,10 +349,10 @@ public class StandardIndexManager implements IndexManager {
             });
         }
         db.close();
-        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.bloomFilter(context, newVersion)
+        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.get().bloomFilter(context, newVersion)
                                                                                 .getAbsolutePath(),
                                                                indexEntriesMap.keySet().size(),
-                                                               storageProperties.getBloomIndexFpp());
+                                                               storageProperties.get().getBloomIndexFpp());
         filter.create();
         filter.insertAll(indexEntriesMap.keySet());
         filter.store();
@@ -498,8 +498,8 @@ public class StandardIndexManager implements IndexManager {
             index.close();
         }
         bloomFilterPerSegment.remove(fileVersion);
-        return FileUtils.delete(storageProperties.index(context, fileVersion)) &&
-                FileUtils.delete(storageProperties.bloomFilter(context, fileVersion));
+        return FileUtils.delete(storageProperties.get().index(context, fileVersion)) &&
+                FileUtils.delete(storageProperties.get().bloomFilter(context, fileVersion));
     }
 
     /**
@@ -638,7 +638,7 @@ public class StandardIndexManager implements IndexManager {
                 }
 
                 StorageProperties properties = storageProperties.get();
-                File index = storageProperties.index(context, segment);
+                File index = storageProperties.get().index(context, segment);
                 if (!index.exists()) {
                     throw new IndexNotFoundException("Index not found for segment: " + segment);
                 }

@@ -22,7 +22,7 @@ public interface EventSource extends AutoCloseable {
         // no-action
     }
 
-    TransactionIterator createTransactionIterator(long token, boolean validating);
+    TransactionIterator createTransactionIterator(long segment, long token, boolean validating);
 
     EventIterator createEventIterator(long startToken);
 
