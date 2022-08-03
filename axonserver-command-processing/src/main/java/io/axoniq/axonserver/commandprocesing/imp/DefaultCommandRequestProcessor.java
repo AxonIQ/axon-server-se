@@ -97,12 +97,12 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                                                                commandFailed(commandRequest.command(), throwable),
                                                                CommandFailedInterceptor::onCommandFailed)
                         .then(Mono.error(throwable)))
-                .metrics()
+                .name("commandDispatch")
                 .tag("command", commandRequest.command().commandName())
                 .tag("context", commandRequest.command().context())
                 .tag("source",
-                     (String) commandRequest.command().metadata().metadataValue(Command.CLIENT_ID, "NO-SOURCE"))
-                .name("commandDispatch")
+                     commandRequest.command().metadata().metadataValue(Command.CLIENT_ID, "NO-SOURCE"))
+                .metrics()
                 .then();
     }
 

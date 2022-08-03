@@ -53,7 +53,7 @@ public class CommandMetricsWebSocket {
         }
         commandRegistrationCache.all()
                                 .map(this::asCommandMetric)
-                                .doOnEach(commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric))
+                                .doOnNext(commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric))
                                 .subscribe();
     }
 
