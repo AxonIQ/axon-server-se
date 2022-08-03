@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandlerUnsubscribedInterceptor {
@@ -65,7 +66,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
     private class CommandQueue {
 
         private final Sinks.Many<CommandAndHandler> processor;
-        private Subscription subscription;
+        private AtomicReference<Subscription> clientSubscription = new AtomicReference<>();
         private final Map<String, Sinks.One<CommandResult>> resultMap = new ConcurrentHashMap<>();
         private final PriorityBlockingQueue<CommandAndHandler> queue = new PriorityBlockingQueue<>(100,
                                                                                                    Comparator.comparingInt(
@@ -80,27 +81,44 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         };
 
         CommandQueue() {
-            processor = Sinks.many().unicast().onBackpressureBuffer(queue);
+            processor = Sinks.many().unicast()
+                    .onBackpressureBuffer(queue, () -> logger.warn("CommandQueue executor has terminated and will no longer execute commands."));
             processor.asFlux()
-                     .subscribeOn(executor)
-                     .subscribe(new BaseSubscriber<>() {
+                    .limitRate(1)
+                    .concatMap(cmd -> cmd.dispatch()
+                            .doOnSuccess(result -> signalSuccess(cmd.id(), result))
+                            .doOnError(e -> signalError(cmd.id(), e)),0)
+                    .subscribeOn(executor)
+                    .subscribe(clientSubscription());
+        }
 
-                         @Override
-                         protected void hookOnSubscribe(Subscription subscription) {
-                             CommandQueue.this.subscription = subscription;
-                         }
+        private BaseSubscriber<CommandResult> clientSubscription() {
+            return new BaseSubscriber<>() {
 
-                         @Override
-                         protected void hookOnNext(CommandAndHandler value) {
-                             logger.warn("Dispatch: {}", value.id());
-                             value.handler.dispatch(value.commandRequest).subscribe(commandResult -> {
-                                 Sinks.One<CommandResult> resultMono = resultMap.remove(value.id());
-                                 if (resultMono != null) {
-                                     resultMono.tryEmitValue(commandResult);
-                                 }
-                             });
-                         }
-                     });
+                @Override
+                protected void hookOnSubscribe(Subscription subscription) {
+                    CommandQueue.this.clientSubscription.set(subscription);
+                }
+
+            };
+        }
+
+        private void signalSuccess(String id, CommandResult cr) {
+            Sinks.One<CommandResult> resultMono = resultMap.remove(id);
+            if (resultMono != null) {
+                if (cr != null) {
+                    resultMono.tryEmitValue(cr);
+                } else {
+                    resultMono.tryEmitEmpty();
+                }
+            }
+        }
+
+        private void signalError(String id, Throwable e) {
+            Sinks.One<CommandResult> resultMono = resultMap.remove(id);
+            if (resultMono != null) {
+                resultMono.tryEmitError(e);
+            }
         }
 
         public Mono<CommandResult> enqueue(CommandAndHandler commandRequest) {
@@ -115,7 +133,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         }
 
         public void request(long count) {
-            subscription.request(count);
+            clientSubscription.get().request(count);
         }
 
         public void cancel(String context, String commandName) {
@@ -135,9 +153,9 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
 
         private final Command commandRequest;
         private final CommandHandlerSubscription handler;
+        //todo duration how long can it be enqueued?
 
         public CommandAndHandler(Command commandRequest, CommandHandlerSubscription handler) {
-
             this.commandRequest = commandRequest;
             this.handler = handler;
         }
@@ -148,6 +166,10 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
 
         public String id() {
             return commandRequest.id();
+        }
+
+        public Mono<CommandResult> dispatch() {
+            return handler.dispatch(commandRequest);
         }
     }
 }

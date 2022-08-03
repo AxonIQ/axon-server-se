@@ -18,9 +18,10 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class QueuedCommandDispatcherTest {
 
@@ -47,6 +48,23 @@ public class QueuedCommandDispatcherTest {
     }
 
     @Test
+    public void dispatchWithTimeout() {
+        dispatched.set(false);
+        CommandHandlerSubscription handler = commandHandlerSubscription();
+        Command request = request("request1");
+
+        StepVerifier.create(testSubject.dispatch(handler, request).timeout(Duration.ofSeconds(1))
+                        .onErrorResume(TimeoutException.class, e -> Mono.empty()))
+                .expectSubscription()
+                .thenAwait(Duration.ofSeconds(2))
+                .then(() -> testSubject.request("clientId", 10))
+                .expectNextCount(0)
+                .verifyComplete();
+
+        assertFalse(dispatched.get());
+    }
+
+    @Test
     public void unsubscribe() throws InterruptedException {
         CommandHandlerSubscription handler = commandHandlerSubscription();
         Command request = request("request1");
@@ -62,6 +80,7 @@ public class QueuedCommandDispatcherTest {
         }
     }
 
+    AtomicBoolean dispatched = new AtomicBoolean();
     private CommandHandlerSubscription commandHandlerSubscription() {
         return new CommandHandlerSubscription() {
             @Override
@@ -106,7 +125,7 @@ public class QueuedCommandDispatcherTest {
 
             @Override
             public Mono<CommandResult> dispatch(Command command) {
-                CommandResult commandResult = new CommandResult() {
+                return Mono.just(new CommandResult() {
                     @Override
                     public String id() {
                         return "resultId";
@@ -126,8 +145,7 @@ public class QueuedCommandDispatcherTest {
                     public Metadata metadata() {
                         return null;
                     }
-                };
-                return Mono.just(commandResult);
+                });
             }
         };
     }
