@@ -6,12 +6,12 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class MetaDataBasedHandlerSelector implements HandlerSelector {
@@ -33,20 +33,19 @@ public class MetaDataBasedHandlerSelector implements HandlerSelector {
         return getHighestScore(scorePerClient);
     }
 
-    private int score(Metadata metaDataMap, CommandHandler client) {
+    private Integer score(Metadata metaDataMap, CommandHandler client) {
         Metadata clientTags = client.metadata();
         return metaDataMap.metadataKeys()
-                          .filter(k -> !k.startsWith("__"))
-                          .reduce(0, (score, key) -> Mono.zip(metaDataMap.metadataValue(key),
-                                                              clientTags.metadataValue(key),
-                                                              (v1, v2) -> score + match(v1, v2))
-                                                         .block()
-                          )
+                          .filter(k -> !Metadata.isInternal(k))
+                          .reduce(0,
+                                  (score, key) -> score + match(metaDataMap.metadataValue(key),
+                                                                clientTags.metadataValue(key)))
                           .block();
     }
 
-    private int match(Serializable requestValue, Serializable handlerValue) {
-        return requestValue == null || handlerValue == null ? 0 : matchValues(requestValue, handlerValue);
+    private int match(Optional<Serializable> requestValue, Optional<Serializable> handlerValue) {
+        return !requestValue.isPresent() || !handlerValue.isPresent() ? 0 : matchValues(requestValue.get(),
+                                                                                        handlerValue.get());
     }
 
     private int matchValues(Serializable value, Serializable metaDataValue) {

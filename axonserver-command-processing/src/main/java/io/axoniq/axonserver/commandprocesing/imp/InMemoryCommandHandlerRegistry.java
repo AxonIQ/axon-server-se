@@ -9,7 +9,6 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -53,12 +52,12 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
 
     @Override
     public Mono<CommandHandlerSubscription> handler(Command command) {
-        return Mono.fromCallable(() -> {
+        return Mono.defer(() -> {
             Set<CommandHandlerSubscription> handlers =
                     handlersPerCommand.getOrDefault(new CommandIdentifier(command.commandName(),
                                                                           command.context()),
                                                     Collections.emptySet());
-            return selectSubscription(handlers, command).orElseThrow(NoHandlerFoundException::new);
+            return selectSubscription(handlers, command);
         });
     }
 
@@ -67,33 +66,24 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
         return Flux.fromIterable(handlers.values()).map(CommandHandlerSubscription::commandHandler);
     }
 
-    private Optional<CommandHandlerSubscription> selectSubscription(Set<CommandHandlerSubscription> handlers,
-                                                                    Command command) {
-        if (handlers.isEmpty()) {
-            return Optional.empty();
+    private Mono<CommandHandlerSubscription> selectSubscription(Set<CommandHandlerSubscription> handlers,
+                                                                Command command) {
+        return Flux.fromIterable(handlerSelectorList)
+                   .reduce(handlers, (h, selector) -> apply(command, selector, h))
+                   .map(this::first);
+    }
+
+    private Set<CommandHandlerSubscription> apply(Command command, HandlerSelector selector,
+                                                  Set<CommandHandlerSubscription> handlers) {
+        if (handlers.size() <= 1) {
+            return handlers;
         }
-
-        if (handlers.size() == 1) {
-            return Optional.of(first(handlers));
-        }
-
-        for (HandlerSelector selector : handlerSelectorList) {
-            handlers = selector.select(handlers, command);
-            if (handlers.isEmpty()) {
-                return Optional.empty();
-            }
-
-            if (handlers.size() == 1) {
-                return Optional.of(first(handlers));
-            }
-        }
-
-        return Optional.of(first(handlers));
+        return selector.select(handlers, command);
     }
 
     private CommandHandlerSubscription first(Set<CommandHandlerSubscription> handlers) {
         if (handlers.isEmpty()) {
-            throw new IllegalStateException();
+            throw new NoHandlerFoundException();
         }
         return handlers.iterator().next();
     }

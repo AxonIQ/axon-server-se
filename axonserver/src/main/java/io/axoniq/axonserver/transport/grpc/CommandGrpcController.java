@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.transport.grpc;
 
+import io.axoniq.axonserver.commandprocesing.imp.QueuedCommandDispatcher;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
@@ -45,6 +46,7 @@ import reactor.core.publisher.MonoSink;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -59,16 +61,20 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
     private final AuthenticationProvider authenticationProvider;
     private final CommandRequestProcessor commandRequestProcessor;
 
+    private final QueuedCommandDispatcher queuedCommandDispatcher;
     private final ClientTagsCache clientTagsCache;
 
 
     private final Map<UUID, CommandHandlerStream> commandHandlers = new ConcurrentHashMap<>();
 
     public CommandGrpcController(ContextProvider contextProvider, AuthenticationProvider authenticationProvider,
-                                 CommandRequestProcessor commandRequestProcessor, ClientTagsCache clientTagsCache) {
+                                 CommandRequestProcessor commandRequestProcessor,
+                                 QueuedCommandDispatcher queuedCommandDispatcher,
+                                 ClientTagsCache clientTagsCache) {
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
         this.commandRequestProcessor = commandRequestProcessor;
+        this.queuedCommandDispatcher = queuedCommandDispatcher;
         this.clientTagsCache = clientTagsCache;
     }
 
@@ -229,7 +235,7 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
         }
 
         public void flowControl(FlowControl flowControl) {
-
+            queuedCommandDispatcher.request(clientId, flowControl.getPermits());
         }
 
         public void commandResponse(CommandResponse commandResponse) {
@@ -305,11 +311,8 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
                         }
 
                         @Override
-                        public Mono<Serializable> metadataValue(String metadataKey) {
-                            if (clientMetadata.containsKey(metadataKey)) {
-                                return Mono.just(clientMetadata.get(metadataKey));
-                            }
-                            return Mono.empty();
+                        public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                            return Optional.ofNullable((R) clientMetadata.get(metadataKey));
                         }
                     };
                 }

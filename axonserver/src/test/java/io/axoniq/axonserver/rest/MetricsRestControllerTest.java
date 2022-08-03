@@ -36,6 +36,7 @@ import java.io.Serializable;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -93,16 +94,16 @@ public class MetricsRestControllerTest {
                             }
 
                             @Override
-                            public Mono<Serializable> metadataValue(String metadataKey) {
+                            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
                                 if (io.axoniq.axonserver.commandprocessing.spi.CommandHandler.COMPONENT_NAME.equals(
                                         metadataKey)) {
-                                    return Mono.just("testcomponent");
+                                    return Optional.of((R) "testcomponent");
                                 }
                                 if (io.axoniq.axonserver.commandprocessing.spi.CommandHandler.CLIENT_ID.equals(
                                         metadataKey)) {
-                                    return Mono.just("Target");
+                                    return Optional.of((R) "Target");
                                 }
-                                return Mono.empty();
+                                return Optional.empty();
                             }
                         };
                     }

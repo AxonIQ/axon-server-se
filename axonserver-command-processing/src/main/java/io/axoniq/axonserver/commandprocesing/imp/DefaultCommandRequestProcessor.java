@@ -5,6 +5,7 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
+import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Interceptor;
 import io.axoniq.axonserver.commandprocessing.spi.Registration;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
@@ -89,11 +90,19 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                 .flatMap(commandResult -> invokeInterceptors(CommandResultReceivedInterceptor.class,
                                                              commandResult,
                                                              CommandResultReceivedInterceptor::onCommandResultReceived))
+                .flatMap(commandResult -> Mono.just(commandResult).tag("target", commandResult.metadata().metadataValue(
+                        CommandResult.CLIENT_ID, "NO-TARGET")))
                 .flatMap(commandRequest::complete)
                 .onErrorResume(throwable -> invokeInterceptors(CommandFailedInterceptor.class,
                                                                commandFailed(commandRequest.command(), throwable),
-                                                               CommandFailedInterceptor::onCommandFailed).then(Mono.error(
-                        throwable)))
+                                                               CommandFailedInterceptor::onCommandFailed)
+                        .then(Mono.error(throwable)))
+                .metrics()
+                .tag("command", commandRequest.command().commandName())
+                .tag("context", commandRequest.command().context())
+                .tag("source",
+                     (String) commandRequest.command().metadata().metadataValue(Command.CLIENT_ID, "NO-SOURCE"))
+                .name("commandDispatch")
                 .then();
     }
 

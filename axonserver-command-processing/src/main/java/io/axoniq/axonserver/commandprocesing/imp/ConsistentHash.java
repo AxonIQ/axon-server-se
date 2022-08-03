@@ -185,14 +185,6 @@ public class ConsistentHash {
             return member;
         }
 
-        /**
-         * Returns this member's segment count which relates to the relative load factor of the member.
-         *
-         * @return the member's segment count
-         */
-        public int segmentCount() {
-            return segmentCount;
-        }
 
         /**
          * Returns the hashes covered by the member. If the hash of the routing key matches with one of the returned

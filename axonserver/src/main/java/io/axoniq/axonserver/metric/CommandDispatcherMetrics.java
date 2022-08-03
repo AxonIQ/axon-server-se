@@ -27,11 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class CommandDispatcherMetrics {
 
-    public static final String NO_TARGET_VALUE = "NO-TARGET";
+    public static final String NO_TARGET = "NO-TARGET";
 
-    public static final Mono<String> NO_TARGET = Mono.just(NO_TARGET_VALUE);
-    public static final Mono<String> NO_SOURCE = Mono.just("NO-SOURCE");
-    public static final Mono<String> NO_COMPONENT_NAME = Mono.just("NO-COMPONENT-NAME");
+    public static final String NO_SOURCE = "NO-SOURCE";
     private final CommandMetricsRegistry metricRegistry;
     private final Map<String, ActiveCommand> activeCommands = new ConcurrentHashMap<>();
 
@@ -50,7 +48,7 @@ public class CommandDispatcherMetrics {
             if (activeCommand != null) {
                 metricRegistry.add(activeCommand.commandName,
                                    activeCommand.client,
-                                   NO_TARGET_VALUE,
+                                   NO_TARGET,
                                    activeCommand.context,
                                    now - activeCommand.start);
             }
@@ -58,40 +56,30 @@ public class CommandDispatcherMetrics {
     }
 
     private Mono<CommandResult> resultReceived(Mono<CommandResult> commandResultMono) {
-        return commandResultMono.flatMap(commandResult -> {
+        return commandResultMono.doOnNext(commandResult -> {
             ActiveCommand activeCommand = activeCommands.remove(commandResult.commandId());
             long now = System.currentTimeMillis();
             if (activeCommand == null) {
-                return Mono.just(commandResult);
+                return;
             }
 
-            return commandResult.metadata()
-                                .metadataValue(CommandResult.CLIENT_ID)
-                                .switchIfEmpty(NO_TARGET)
-                                .map(target -> {
-                                    metricRegistry.add(activeCommand.commandName,
-                                                       activeCommand.client,
-                                                       (String) target,
-                                                       activeCommand.context,
-                                                       now - activeCommand.start);
-                                    return commandResult;
-                                });
+            String clientId = commandResult.metadata().metadataValue(CommandResult.CLIENT_ID, NO_TARGET);
+            metricRegistry.add(activeCommand.commandName,
+                               activeCommand.client,
+                               clientId,
+                               activeCommand.context,
+                               now - activeCommand.start);
         });
     }
 
     private Mono<Command> commandReceived(Mono<Command> commandMono) {
-        return commandMono.flatMap(command -> {
+        return commandMono.doOnNext(command -> {
             Metadata metadata = command.metadata();
-            return Mono.zip(metadata.metadataValue(Command.CLIENT_ID).switchIfEmpty(NO_SOURCE),
-                            metadata.metadataValue(Command.COMPONENT_NAME).switchIfEmpty(NO_COMPONENT_NAME),
-                            (clientId, componentName) -> {
-                                activeCommands.put(command.id(), new ActiveCommand(command.commandName(),
-                                                                                   command.context(),
-                                                                                   (String) clientId,
-                                                                                   (String) componentName,
-                                                                                   System.currentTimeMillis()));
-                                return command;
-                            });
+            String clientId = metadata.metadataValue(Command.CLIENT_ID, NO_SOURCE);
+            activeCommands.put(command.id(), new ActiveCommand(command.commandName(),
+                                                               command.context(),
+                                                               clientId,
+                                                               System.currentTimeMillis()));
         });
     }
 
@@ -100,14 +88,12 @@ public class CommandDispatcherMetrics {
         private final String commandName;
         private final String context;
         private final String client;
-        private final String component;
         private final long start;
 
-        public ActiveCommand(String commandName, String context, String client, String component, long start) {
+        public ActiveCommand(String commandName, String context, String client, long start) {
             this.commandName = commandName;
             this.context = context;
             this.client = client;
-            this.component = component;
             this.start = start;
         }
     }

@@ -8,6 +8,7 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
+import io.axoniq.axonserver.commandprocessing.spi.Registration;
 import io.axoniq.axonserver.commandprocessing.spi.ResultPayload;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
@@ -15,6 +16,7 @@ import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsu
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -22,6 +24,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -102,9 +105,7 @@ public class DefaultCommandRequestProcessorTest {
 
     @Test
     public void dispatch() {
-
         AtomicReference<CommandResult> result = new AtomicReference<>();
-
         testSubject.register(handler)
                    .then(testSubject.dispatch(new CommandRequest() {
                        @Override
@@ -134,6 +135,31 @@ public class DefaultCommandRequestProcessorTest {
                    .block();
 
         assertNotNull(result.get());
+    }
+
+    @Test
+    public void dispatchNoHandler() {
+        StepVerifier.create(testSubject.dispatch(new CommandRequest() {
+            @Override
+            public Command command() {
+                return new GrpcCommand(COMMAND_NAME, "Other context", payload("Request payload"), Map.of());
+            }
+
+            @Override
+            public Mono<Void> complete() {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> complete(CommandResult r) {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> completeExceptionally(Throwable t) {
+                return Mono.empty();
+            }
+        })).expectError(NoHandlerFoundException.class).verify();
     }
 
     @Test
@@ -186,27 +212,30 @@ public class DefaultCommandRequestProcessorTest {
     @Test
     public void registerInterceptor() {
         List<String> actions = new ArrayList<>();
-        testSubject.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
-                                        new CommandHandlerSubscribedInterceptor() {
-                                            @Override
-                                            public Mono<Void> onCommandHandlerSubscribed(
-                                                    CommandHandler commandHandler) {
-                                                actions.add("first");
-                                                return Mono.empty();
-                                            }
+        Registration registration1 = testSubject.registerInterceptor(
+                CommandHandlerSubscribedInterceptor.class,
+                new CommandHandlerSubscribedInterceptor() {
+                    @Override
+                    public Mono<Void> onCommandHandlerSubscribed(
+                            CommandHandler commandHandler) {
+                        actions.add("first");
+                        return Mono.empty();
+                    }
 
-                                            @Override
-                                            public int priority() {
-                                                return LOWER_PRIORITY;
-                                            }
-                                        });
-        testSubject.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
-                                        commandHandler -> {
-                                            actions.add("second");
-                                            return Mono.empty();
-                                        });
+                    @Override
+                    public int priority() {
+                        return LOWER_PRIORITY;
+                    }
+                });
+        Registration registration2 = testSubject.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
+                                                                     commandHandler -> {
+                                                                         actions.add("second");
+                                                                         return Mono.empty();
+                                                                     });
         testSubject.register(handler).block();
         assertEquals(List.of("second", "first"), actions);
+        registration1.cancel().block();
+        registration2.cancel().block();
     }
 
     @Test
@@ -335,8 +364,8 @@ public class DefaultCommandRequestProcessorTest {
             }
 
             @Override
-            public Mono<Serializable> metadataValue(String metadataKey) {
-                return Mono.justOrEmpty(metadata.get(metadataKey));
+            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                return Optional.ofNullable((R) metadata.get(metadataKey));
             }
         };
     }

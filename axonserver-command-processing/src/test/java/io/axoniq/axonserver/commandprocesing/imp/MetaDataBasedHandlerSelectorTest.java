@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -177,8 +178,8 @@ public class MetaDataBasedHandlerSelectorTest {
             }
 
             @Override
-            public Mono<Serializable> metadataValue(String metadataKey) {
-                return Mono.justOrEmpty(metadata.get(metadataKey));
+            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                return Optional.ofNullable((R) metadata.get(metadataKey));
             }
         };
     }

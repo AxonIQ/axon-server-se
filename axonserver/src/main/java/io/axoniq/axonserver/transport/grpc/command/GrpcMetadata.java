@@ -12,10 +12,10 @@ package io.axoniq.axonserver.transport.grpc.command;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Optional;
 
 public class GrpcMetadata implements Metadata {
 
@@ -31,7 +31,7 @@ public class GrpcMetadata implements Metadata {
     }
 
     @Override
-    public Mono<Serializable> metadataValue(String metadataKey) {
+    public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
         MetaDataValue value = metaDataMap.getOrDefault(metadataKey, MetaDataValue.getDefaultInstance());
         Serializable serializable = null;
         switch (value.getDataCase()) {
@@ -53,6 +53,6 @@ public class GrpcMetadata implements Metadata {
             case DATA_NOT_SET:
                 break;
         }
-        return Mono.justOrEmpty(serializable);
+        return Optional.ofNullable((R) serializable);
     }
 }

@@ -19,7 +19,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
-import reactor.core.publisher.Mono;
 
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -53,7 +52,7 @@ public class CommandMetricsWebSocket {
             return;
         }
         commandRegistrationCache.all()
-                                .flatMap(this::asCommandMetric)
+                                .map(this::asCommandMetric)
                                 .doOnEach(commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric))
                                 .subscribe();
     }
@@ -72,20 +71,14 @@ public class CommandMetricsWebSocket {
         subscriptions.remove(new SubscriptionKey(sha));
     }
 
-    private Mono<CommandMetricsRegistry.CommandMetric> asCommandMetric(CommandHandler commandHandler) {
-        return Mono.zip(commandHandler.metadata()
-                                      .metadataValue(CommandHandler.CLIENT_ID)
-                                      .switchIfEmpty(
-                                              Mono.just("UNKNOWN")),
-                        commandHandler.metadata()
-                                      .metadataValue(CommandHandler.COMPONENT_NAME)
-                                      .switchIfEmpty(Mono.just("UNKNOWN")),
-                        (clientId, componentName) ->
-                                commandMetricsRegistry
-                                        .commandMetric(commandHandler.commandName(),
-                                                       (String) clientId,
-                                                       commandHandler.context(),
-                                                       (String) componentName)
-        );
+    private CommandMetricsRegistry.CommandMetric asCommandMetric(CommandHandler commandHandler) {
+        String clientId = commandHandler.metadata()
+                                        .metadataValue(CommandHandler.CLIENT_ID, "UNKNOWN");
+        String componentName = commandHandler.metadata()
+                                             .metadataValue(CommandHandler.COMPONENT_NAME, "UNKNOWN");
+        return commandMetricsRegistry.commandMetric(commandHandler.commandName(),
+                                                    clientId,
+                                                    commandHandler.context(),
+                                                    componentName);
     }
 }

@@ -25,6 +25,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Component
 public class CommandSubscriptionCache {
 
+    private static final String NO_COMPONENT = "NO-COMPONENT";
     private final Map<String, Set<CommandHandler>> commandHandlerMap = new ConcurrentHashMap<>();
 
     public CommandSubscriptionCache(CommandRequestProcessor commandRequestProcessor) {
@@ -33,18 +34,22 @@ public class CommandSubscriptionCache {
     }
 
     private Mono<Void> unsubscribed(CommandHandler commandHandler) {
-        return commandHandler.metadata().metadataValue(CommandHandler.COMPONENT_NAME)
-                             .doOnNext(componentName -> commandHandlerMap.get(String.valueOf(componentName))
-                                                                         .remove(commandHandler))
-                             .then();
+        return Mono.fromRunnable(() -> {
+            String componentName = commandHandler.metadata().metadataValue(CommandHandler.COMPONENT_NAME,
+                                                                           NO_COMPONENT);
+            commandHandlerMap.get(componentName)
+                             .remove(commandHandler);
+        });
     }
 
     private Mono<Void> subscribed(CommandHandler commandHandler) {
-        return commandHandler.metadata().metadataValue(CommandHandler.COMPONENT_NAME)
-                             .doOnNext(componentName -> commandHandlerMap.computeIfAbsent(String.valueOf(componentName),
-                                                                                          c -> new CopyOnWriteArraySet<>())
-                                                                         .add(commandHandler))
-                             .then();
+        return Mono.fromRunnable(() -> {
+            String componentName = commandHandler.metadata()
+                                                 .metadataValue(CommandHandler.COMPONENT_NAME, NO_COMPONENT);
+            commandHandlerMap.computeIfAbsent(componentName,
+                                              c -> new CopyOnWriteArraySet<>())
+                             .add(commandHandler);
+        });
     }
 
     public Set<CommandHandler> get(String component) {

@@ -16,10 +16,12 @@ import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandler;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
-import io.axoniq.axonserver.commandprocesing.imp.DirectCommandDispatcher;
 import io.axoniq.axonserver.commandprocesing.imp.HandlerSelector;
 import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocesing.imp.MetaDataBasedHandlerSelector;
+import io.axoniq.axonserver.commandprocesing.imp.QueuedCommandDispatcher;
+import io.axoniq.axonserver.commandprocessing.spi.Command;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
@@ -76,6 +78,7 @@ import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -203,7 +206,9 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     public ConsistentHashHandler consistentHashHandler() {
-        return new ConsistentHashHandler();
+        return new ConsistentHashHandler(commandHandler -> commandHandler.metadata()
+                                                                         .metadataValue(CommandHandler.LOAD_FACTOR),
+                                         command -> command.metadata().metadataValue(Command.ROUTING_KEY));
     }
 
     @Bean
@@ -216,12 +221,21 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
+    public QueuedCommandDispatcher queuedCommandDispatcher() {
+        return new QueuedCommandDispatcher(Schedulers.boundedElastic(),
+                                           commandHandler -> commandHandler.metadata()
+                                                                           .metadataValue(CommandHandler.CLIENT_ID));
+    }
+
+
+    @Bean
     @ConditionalOnMissingBean(CommandRequestProcessor.class)
     public CommandRequestProcessor commandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry,
-                                                           ConsistentHashHandler consistentHashHandler) {
+                                                           ConsistentHashHandler consistentHashHandler,
+                                                           QueuedCommandDispatcher queuedCommandDispatcher) {
 
         DefaultCommandRequestProcessor defaultCommandRequestProcessor = new DefaultCommandRequestProcessor(
-                commandHandlerRegistry, new DirectCommandDispatcher());
+                commandHandlerRegistry, queuedCommandDispatcher);
         defaultCommandRequestProcessor.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
                                                            consistentHashHandler);
         defaultCommandRequestProcessor.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class,

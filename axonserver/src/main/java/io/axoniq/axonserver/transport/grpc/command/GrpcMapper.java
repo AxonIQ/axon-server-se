@@ -47,8 +47,7 @@ public class GrpcMapper {
     private static Map<String, MetaDataValue> map(Metadata metadata) {
         Map<String, MetaDataValue> values = new HashMap<>();
         metadata.metadataKeys().filter(GrpcMapper::isNotInternal)
-                .doOnNext(key -> metadata.metadataValue(key).doOnNext(s -> values.put(key, mapMetaDataValue(s))))
-                .then()
+                .collectMap(key -> key, k -> mapMetaDataValue(metadata.metadataValue(k).orElse(null)))
                 .block();
         return values;
     }

@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.security.Principal;
 import java.util.ArrayList;
@@ -39,9 +38,7 @@ import java.util.stream.Collectors;
  *
  * @author Marc Gathier
  */
-@RestController
-@RequestMapping("/v1/public")
-public class MetricsRestController {
+@RestController @RequestMapping("/v1/public") public class MetricsRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
 
@@ -67,21 +64,18 @@ public class MetricsRestController {
         auditLog.debug("[{}] Request to list command metrics.", AuditLog.username(principal));
 
 
-        return commandHandlerRegistry.all()
-                                     .flatMap(this::getMetrics);
+        return commandHandlerRegistry.all().map(this::getMetrics);
     }
 
-    private Mono<CommandMetricsRegistry.CommandMetric> getMetrics(CommandHandler commandHandler) {
-        return Mono.zip(commandHandler.metadata()
-                                      .metadataValue(CommandHandler.CLIENT_ID)
-                                      .switchIfEmpty(Mono.just("UNKNOWN")),
-                        commandHandler.metadata()
-                                      .metadataValue(CommandHandler.COMPONENT_NAME)
-                                      .switchIfEmpty(Mono.just("UNKNOWN")),
-                        (clientId, componentName) -> commandMetricsRegistry.commandMetric(commandHandler.commandName(),
-                                                                                          (String) clientId,
-                                                                                          commandHandler.context(),
-                                                                                          (String) componentName));
+    private CommandMetricsRegistry.CommandMetric getMetrics(CommandHandler commandHandler) {
+        String clientId = commandHandler.metadata()
+                                        .metadataValue(CommandHandler.CLIENT_ID, "UNKNOWN");
+        String componentName = commandHandler.metadata()
+                                             .metadataValue(CommandHandler.COMPONENT_NAME, "UNKNOWN");
+        return commandMetricsRegistry.commandMetric(commandHandler.commandName(),
+                                                    clientId,
+                                                    commandHandler.context(),
+                                                    componentName);
     }
 
     @GetMapping("/query-metrics")
@@ -89,26 +83,21 @@ public class MetricsRestController {
         auditLog.debug("[{}] Request to list query metrics.", AuditLog.username(principal));
 
         List<QueryMetricsRegistry.QueryMetric> metrics = new ArrayList<>();
-        queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics
-                .addAll(getQueryMetrics(queryDefinition, handlersPerComponent)));
+        queryRegistrationCache.getAll().forEach((queryDefinition, handlersPerComponent) -> metrics.addAll(
+                getQueryMetrics(queryDefinition, handlersPerComponent)));
         return metrics;
     }
 
     private List<QueryMetricsRegistry.QueryMetric> getQueryMetrics(QueryDefinition queryDefinition,
                                                                    Map<String, Set<QueryHandler<?>>> handlersPerComponent) {
-        return handlersPerComponent.entrySet()
-                                   .stream()
-                                   .map(queryHandlers -> queryHandlers
-                                           .getValue()
-                                           .stream()
-                                           .map(queryHandler -> queryMetricsRegistry
-                                                   .queryMetric(
-                                                           queryDefinition,
-                                                           queryHandler.getClientId(),
-                                                           queryHandler.getClientStreamIdentification().getContext(),
-                                                           queryHandlers.getKey())
-                                           ).collect(Collectors.toList()))
-                                   .flatMap(Collection::stream)
-                                   .collect(Collectors.toList());
+        return handlersPerComponent.entrySet().stream().map(queryHandlers -> queryHandlers.getValue().stream()
+                                                                                          .map(queryHandler -> queryMetricsRegistry.queryMetric(
+                                                                                                  queryDefinition,
+                                                                                                  queryHandler.getClientId(),
+                                                                                                  queryHandler.getClientStreamIdentification()
+                                                                                                              .getContext(),
+                                                                                                  queryHandlers.getKey()))
+                                                                                          .collect(Collectors.toList()))
+                                   .flatMap(Collection::stream).collect(Collectors.toList());
     }
 }
