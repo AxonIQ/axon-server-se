@@ -12,7 +12,7 @@ package io.axoniq.axonserver.message.query;
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
-import io.axoniq.axonserver.util.ConstraintCache;
+import io.axoniq.axonserver.util.NonReplacingConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,12 +21,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
+import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 
 import static java.lang.String.format;
 
@@ -38,7 +38,7 @@ import static java.lang.String.format;
  */
 @Component("QueryCache")
 public class QueryCache
-        implements ConstraintCache<String, ActiveQuery> {
+        implements NonReplacingConstraintCache<String, ActiveQuery> {
 
     private final Logger logger = LoggerFactory.getLogger(QueryCache.class);
     private final long defaultQueryTimeout;
@@ -115,6 +115,16 @@ public class QueryCache
         checkCapacity();
         return map.put(key, value);
     }
+
+    /**
+     * This operation is performed atomically w.r.t. the insert itself, not the constraints.
+     */
+    @Override
+    public ActiveQuery putIfAbsent(String key, ActiveQuery value){
+        checkCapacity();
+        return map.putIfAbsent(key, value);
+    }
+
 
     @Override
     public Collection<Map.Entry<String, ActiveQuery>> entrySet() {

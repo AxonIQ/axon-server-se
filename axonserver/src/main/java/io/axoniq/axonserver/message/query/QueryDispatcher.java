@@ -25,6 +25,7 @@ import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.ConstraintCache;
+import io.axoniq.axonserver.util.NonReplacingConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,14 +55,14 @@ public class QueryDispatcher {
 
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
-    private final ConstraintCache<String, ActiveQuery> queryCache;
+    private final NonReplacingConstraintCache<String, ActiveQuery> queryCache;
     private final QueryInterceptors queryInterceptors;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<QueryInstruction> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache,
-                           ConstraintCache<String, ActiveQuery> queryCache,
+                           NonReplacingConstraintCache<String, ActiveQuery> queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
                            QueryInterceptors queryInterceptors,
                            MeterFactory meterFactory,
@@ -227,7 +228,7 @@ public class QueryDispatcher {
                                                           interceptedCallback,
                                                           onCompleted,
                                                           handlers, isStreamingQuery(query));
-                if (queryCache.get(query.getMessageIdentifier())!=null){    //TODO decide if we want to expose a contains method
+                if(queryCache.putIfAbsent(query.getMessageIdentifier(), activeQuery)!=null){
                     callback.accept(QueryResponse.newBuilder()
                                                  .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
                                                  .setRequestIdentifier(serializedQuery.getMessageIdentifier())
@@ -238,7 +239,6 @@ public class QueryDispatcher {
                     onCompleted.accept("DuplicateId");
                 }
                 else{
-                    queryCache.put(query.getMessageIdentifier(), activeQuery);
                     handlers.forEach(h -> dispatchQuery(h, serializedQuery2, timeout));
                 }
             }

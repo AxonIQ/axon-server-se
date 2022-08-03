@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.util.ConstraintCache;
+import io.axoniq.axonserver.util.NonReplacingConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,13 +18,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
+import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
 
 /**
  * Cache for pending commands. Has a scheduled task to check for commands that are pending for longer than the
@@ -34,7 +34,7 @@ import javax.annotation.Nonnull;
  */
 @Component //TODO evaluate to extend ActiveRequestCache
 public class CommandCache
-        implements ConstraintCache<String, CommandInformation> {
+        implements NonReplacingConstraintCache<String, CommandInformation> {
 
     private final Logger logger = LoggerFactory.getLogger(CommandCache.class);
     private final long defaultCommandTimeout;
@@ -103,6 +103,15 @@ public class CommandCache
     public CommandInformation put(@Nonnull String key, @Nonnull CommandInformation value) {
         checkCapacity();
         return map.put(key, value);
+    }
+
+    /**
+     * This operation is performed atomically w.r.t. the insert itself, not the constraints.
+     */
+    @Override
+    public CommandInformation putIfAbsent(String key, CommandInformation value){
+        checkCapacity();
+        return map.putIfAbsent(key, value);
     }
 
     @Override
