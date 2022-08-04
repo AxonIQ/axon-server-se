@@ -41,6 +41,7 @@ import io.axoniq.axonserver.queryparser.FunctionExpr;
 import io.axoniq.axonserver.queryparser.Numeric;
 import io.axoniq.axonserver.queryparser.Query;
 import io.axoniq.axonserver.queryparser.QueryElement;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -351,7 +352,6 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     @Override
     public void onCompleted() {
         close();
-        this.responseObserver.onCompleted();
     }
 
     private void close() {
@@ -359,6 +359,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         pipeLine = null;
         Optional.ofNullable(senderRef.get())
                 .ifPresent(Sender::stop);
+        StreamObserverUtils.complete(responseObserver);
     }
 
     private class Sender {
