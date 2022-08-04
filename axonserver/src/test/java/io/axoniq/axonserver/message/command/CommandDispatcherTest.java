@@ -116,7 +116,7 @@ public class CommandDispatcherTest {
                                    });
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(0)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -168,7 +168,7 @@ public class CommandDispatcherTest {
                                    });
         assertEquals(1, responseObserver.values().size());
         assertEquals("AXONIQ-4000", responseObserver.values().get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(0)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -211,7 +211,7 @@ public class CommandDispatcherTest {
                                           new SerializedCommand(request),
                                           responseObserver::onNext);
         assertEquals(1, responseObserver.values().size());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(0)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -328,7 +328,7 @@ public class CommandDispatcherTest {
     }
 
     @Test
-    public void duplicateCommandGetsRejected() throws ExecutionException, InterruptedException {
+    public void duplicateCommandGetsRejected() throws ExecutionException, InterruptedException, TimeoutException {
         // See QueryDispatcherTest.queryDuplicated for explanation
         String duplicatedId = "duplicatedId";
 
@@ -339,7 +339,7 @@ public class CommandDispatcherTest {
                                                                        originalFutureResponse::complete,
                                                                        new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,"client"),"component");
 
-        commandCache.put(duplicatedId,commandInformation);
+        commandCache.putIfAbsent(duplicatedId,commandInformation);
 
         commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,new NoOpCommandInterceptors(), 10_000);
 
@@ -360,12 +360,8 @@ public class CommandDispatcherTest {
                                                                                       .setRequestIdentifier(duplicatedId)
                                                                                       .build()), false);
 
-        try {
-            SerializedCommandResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
-            assertEquals(duplicatedId, originalResponse.getRequestIdentifier());
-        } catch (TimeoutException e) {
-            fail();
-        }
+        SerializedCommandResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
+        assertEquals(duplicatedId, originalResponse.getRequestIdentifier());
 
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(response.getErrorCode(), ErrorCode.COMMAND_DUPLICATED.getCode());

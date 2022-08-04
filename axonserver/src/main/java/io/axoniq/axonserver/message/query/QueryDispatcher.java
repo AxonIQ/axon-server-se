@@ -403,8 +403,19 @@ public class QueryDispatcher {
                                                       singleton(queryHandler),
                                                       isStreamingQuery(query));
             try {
-                queryCache.put(key, activeQuery);
-                dispatchQuery(queryHandler, serializedQuery, timeout, streaming);
+                if(queryCache.putIfAbsent(key, activeQuery)!=null){
+                    callback.accept(QueryResponse.newBuilder()
+                                                 .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
+                                                 .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                 .setMessageIdentifier(UUID.randomUUID().toString())
+                                                 .setErrorMessage(ErrorMessageFactory
+                                                                          .build("Query with supplied ID already present"))
+                                                 .build());
+                    onCompleted.accept("DuplicateId");
+                }
+                else{
+                    dispatchQuery(queryHandler, serializedQuery, timeout, streaming);
+                }
             } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 activeQuery.completeWithError(queryHandler.getClientId(),
                                               ErrorCode.QUERY_DISPATCH_ERROR,

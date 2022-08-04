@@ -110,11 +110,6 @@ public class QueryCache
         }
     }
 
-    @Override
-    public ActiveQuery put(@Nonnull String key, @Nonnull ActiveQuery value) {
-        checkCapacity();
-        return map.put(key, value);
-    }
 
     /**
      * This operation is performed atomically w.r.t. the insert itself, not the constraints.

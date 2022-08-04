@@ -99,12 +99,6 @@ public class CommandCache
         return map.get(key);
     }
 
-    @Override
-    public CommandInformation put(@Nonnull String key, @Nonnull CommandInformation value) {
-        checkCapacity();
-        return map.put(key, value);
-    }
-
     /**
      * This operation is performed atomically w.r.t. the insert itself, not the constraints.
      */

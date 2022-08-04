@@ -82,7 +82,7 @@ public class QueryDispatcherTest {
     public void queryResponse() {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
-        queryCache.put("1234", new ActiveQuery("1234",
+        queryCache.putIfAbsent("1234", new ActiveQuery("1234",
                                                "Source",
                                                new QueryDefinition("c",
                                                                    "q"),
@@ -108,7 +108,7 @@ public class QueryDispatcherTest {
     public void queryResponseScatterGather() {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
-        queryCache.put("1234", new ActiveQuery("1234",
+        queryCache.putIfAbsent("1234", new ActiveQuery("1234",
                                                "Source",
                                                new QueryDefinition("c",
                                                                    "q"),
@@ -438,7 +438,7 @@ public class QueryDispatcherTest {
     }
 
     @Test
-    public void queryDuplicated() throws ExecutionException, InterruptedException {
+    public void queryDuplicated() throws ExecutionException, InterruptedException, TimeoutException {
 
         String requestId = "AAAAA";
         // futures for the original request, in normal operation, these should both complete
@@ -455,7 +455,7 @@ public class QueryDispatcherTest {
 
 
         // this query might have been created earlier and already is in the cache
-        queryCache.put(requestId, new ActiveQuery(requestId,
+        queryCache.putIfAbsent(requestId, new ActiveQuery(requestId,
                                                "Source",
                                                new QueryDefinition("c","q"),
                                                   originalFutureResponse::complete,
@@ -492,13 +492,9 @@ public class QueryDispatcherTest {
         testSubject.handleComplete(requestId, "client", "clientId", false);
 
         // would not finish, if AS would override query in query cache
-        try {
-            QueryResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
-            assertTrue(originalFutureCompleted.get(1, TimeUnit.SECONDS));
-            assertEquals(requestId, originalResponse.getRequestIdentifier());
-        } catch (TimeoutException e) {
-            fail();
-        }
+        QueryResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
+        assertTrue(originalFutureCompleted.get(1, TimeUnit.SECONDS));
+        assertEquals(requestId, originalResponse.getRequestIdentifier());
 
         assertTrue(futureCompleted.get());
         QueryResponse response = futureResponse.get();
