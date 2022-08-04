@@ -351,6 +351,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     @Override
     public void onCompleted() {
         close();
+        this.responseObserver.onCompleted();
     }
 
     private void close() {
