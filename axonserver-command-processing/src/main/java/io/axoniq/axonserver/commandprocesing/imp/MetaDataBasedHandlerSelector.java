@@ -20,40 +20,6 @@ public class MetaDataBasedHandlerSelector implements HandlerSelector {
 
     private static final Logger logger = LoggerFactory.getLogger(MetaDataBasedHandlerSelector.class);
 
-    @Override
-    public Flux<CommandHandlerSubscription> select(Flux<CommandHandlerSubscription> candidates, Command command) {
-        return candidates
-                .doFirst(() -> {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("{}[{}] Selecting based on metadata", command.commandName(),
-                                command.context());
-                    }
-                })
-                .map(candidate -> matchScoreForCandidate(command, candidate))
-                .flatMap(this::resolveScore)
-                .transform(MetaDataBasedHandlerSelector::selectHighestScore)
-                .map(score -> score.commandHandlerSubscription);
-    }
-
-    private ScoreHandlerMono matchScoreForCandidate(Command command, CommandHandlerSubscription c) {
-        return new ScoreHandlerMono(c, calculateScore(command.metadata(), c.commandHandler()));
-    }
-
-    private Mono<ScoreHandler> resolveScore(ScoreHandlerMono score) {
-        return score
-                .scoreMono
-                .map(sc -> new ScoreHandler(score.commandHandlerSubscription, sc));
-    }
-
-    private Mono<Integer> calculateScore(Metadata metaDataMap, CommandHandler client) {
-        Metadata clientTags = client.metadata();
-        return metaDataMap.metadataKeys()
-                .filter(k -> !Metadata.isInternal(k))
-                .reduce(0,
-                        (score, key) -> score + match(metaDataMap.metadataValue(key),
-                                clientTags.metadataValue(key)));
-    }
-
     private static Publisher<ScoreHandler> selectHighestScore(Flux<ScoreHandler> scores) {
         AtomicInteger highestSoFarState = new AtomicInteger(Integer.MIN_VALUE);
         AtomicReference<ScoreHandler> windowState = new AtomicReference<>();
@@ -70,6 +36,39 @@ public class MetaDataBasedHandlerSelector implements HandlerSelector {
                 .flatMapIterable(Function.identity());
     }
 
+    @Override
+    public Flux<CommandHandlerSubscription> select(Flux<CommandHandlerSubscription> candidates, Command command) {
+        return candidates
+                .doFirst(() -> {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("{}[{}] Selecting based on metadata", command.commandName(),
+                                command.context());
+                    }
+                })
+                .map(candidate -> matchScoreForCandidate(command, candidate))
+                .flatMap(this::resolveScore)
+                .transform(MetaDataBasedHandlerSelector::selectHighestScore)
+                .map(score -> score.commandHandlerSubscription);
+    }
+
+    private ScoreHandlerMono matchScoreForCandidate(Command command, CommandHandlerSubscription commandHandlerSubscription) {
+        return new ScoreHandlerMono(commandHandlerSubscription, calculateScore(command.metadata(), commandHandlerSubscription.commandHandler()));
+    }
+
+    private Mono<ScoreHandler> resolveScore(ScoreHandlerMono score) {
+        return score
+                .scoreMono
+                .map(sc -> new ScoreHandler(score.commandHandlerSubscription, sc));
+    }
+
+    private Mono<Integer> calculateScore(Metadata metaDataMap, CommandHandler client) {
+        Metadata clientTags = client.metadata();
+        return metaDataMap.metadataKeys()
+                .filter(k -> !Metadata.isInternal(k))
+                .reduce(0,
+                        (score, key) -> score + match(metaDataMap.metadataValue(key),
+                                clientTags.metadataValue(key)));
+    }
 
     private int match(Optional<Serializable> requestValue, Optional<Serializable> handlerValue) {
         return !requestValue.isPresent() || !handlerValue.isPresent() ? 0 : matchValues(requestValue.get(),
