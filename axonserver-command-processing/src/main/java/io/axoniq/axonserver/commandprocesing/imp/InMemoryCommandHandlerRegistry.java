@@ -27,8 +27,8 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
     public Mono<Void> register(CommandHandlerSubscription handler) {
         return Mono.fromRunnable(() -> {
             handlersPerCommand.computeIfAbsent(new CommandIdentifier(handler.commandHandler().commandName(),
-                                                                     handler.commandHandler().context()),
-                                               h -> new CopyOnWriteArraySet<>()).add(handler);
+                            handler.commandHandler().context()),
+                    h -> new CopyOnWriteArraySet<>()).add(handler);
             handlers.put(handler.commandHandler().id(), handler);
         });
     }
@@ -41,24 +41,20 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
                 return null;
             }
             handlersPerCommand.computeIfPresent(new CommandIdentifier(handler.commandHandler().commandName(),
-                                                                      handler.commandHandler().context()),
-                                                (key, old) -> {
-                                                    old.remove(handler);
-                                                    return old.isEmpty() ? null : old;
-                                                });
+                            handler.commandHandler().context()),
+                    (key, old) -> {
+                        old.remove(handler);
+                        return old.isEmpty() ? null : old;
+                    });
             return handler.commandHandler();
         });
     }
 
     @Override
     public Mono<CommandHandlerSubscription> handler(Command command) {
-        return Mono.defer(() -> {
-            Set<CommandHandlerSubscription> handlers =
-                    handlersPerCommand.getOrDefault(new CommandIdentifier(command.commandName(),
-                                                                          command.context()),
-                                                    Collections.emptySet());
-            return selectSubscription(handlers, command);
-        });
+        return selectSubscription(Flux.fromIterable(handlersPerCommand.getOrDefault(new CommandIdentifier(command.commandName(),
+                        command.context()),
+                Collections.emptySet())), command);
     }
 
     @Override
@@ -66,25 +62,10 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
         return Flux.fromIterable(handlers.values()).map(CommandHandlerSubscription::commandHandler);
     }
 
-    private Mono<CommandHandlerSubscription> selectSubscription(Set<CommandHandlerSubscription> handlers,
+    private Mono<CommandHandlerSubscription> selectSubscription(Flux<CommandHandlerSubscription> handlers,
                                                                 Command command) {
         return Flux.fromIterable(handlerSelectorList)
-                   .reduce(handlers, (h, selector) -> apply(command, selector, h))
-                   .map(this::first);
-    }
-
-    private Set<CommandHandlerSubscription> apply(Command command, HandlerSelector selector,
-                                                  Set<CommandHandlerSubscription> handlers) {
-        if (handlers.size() <= 1) {
-            return handlers;
-        }
-        return selector.select(handlers, command);
-    }
-
-    private CommandHandlerSubscription first(Set<CommandHandlerSubscription> handlers) {
-        if (handlers.isEmpty()) {
-            throw new NoHandlerFoundException();
-        }
-        return handlers.iterator().next();
+                .flatMap(selector -> selector.select(handlers, command))
+                .next();
     }
 }

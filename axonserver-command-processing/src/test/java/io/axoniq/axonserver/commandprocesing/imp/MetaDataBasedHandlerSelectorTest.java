@@ -10,13 +10,11 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
 
 public class MetaDataBasedHandlerSelectorTest {
 
@@ -31,18 +29,21 @@ public class MetaDataBasedHandlerSelectorTest {
         Command command = command(Map.of("country", "NL"));
 
         CommandHandlerSubscription subscription1 = commandHandlerSubscription("target1",
-                                                                              Map.of("region", "Europe",
-                                                                                     "priority", 100,
-                                                                                     "country", "NL"));
+                Map.of("region", "Europe",
+                        "priority", 100,
+                        "country", "NL"));
         CommandHandlerSubscription subscription2 = commandHandlerSubscription("target2",
-                                                                              Map.of("region", "Europe",
-                                                                                     "priority", 10,
-                                                                                     "country", "IT"));
-        Set<CommandHandlerSubscription> candidates = Set.of(subscription1, subscription2);
-        Set<CommandHandlerSubscription> result = testSubject.select(
+                Map.of("region", "Europe",
+                        "priority", 10,
+                        "country", "IT"));
+        Flux<CommandHandlerSubscription> candidates = Flux.just(subscription1, subscription2);
+        Flux<CommandHandlerSubscription> result = testSubject.select(
                 candidates,
                 command);
-        assertEquals(1, result.size());
+
+        StepVerifier.create(result)
+                .expectNextCount(1)
+                .verifyComplete();
     }
 
     @Test
@@ -50,18 +51,22 @@ public class MetaDataBasedHandlerSelectorTest {
         Command command = command(Map.of("region", "Europe"));
 
         CommandHandlerSubscription subscription1 = commandHandlerSubscription("target1",
-                                                                              Map.of("region", "Europe",
-                                                                                     "priority", 100,
-                                                                                     "country", "NL"));
+                Map.of("region", "Europe",
+                        "priority", 100,
+                        "country", "NL"));
         CommandHandlerSubscription subscription2 = commandHandlerSubscription("target2",
-                                                                              Map.of("region", "Europe",
-                                                                                     "priority", 10,
-                                                                                     "country", "IT"));
-        Set<CommandHandlerSubscription> candidates = Set.of(subscription1, subscription2);
-        Set<CommandHandlerSubscription> result = testSubject.select(
+                Map.of("region", "Europe",
+                        "priority", 10,
+                        "country", "IT"));
+        Flux<CommandHandlerSubscription> candidates = Flux.just(subscription2, subscription1);
+        Flux<CommandHandlerSubscription> result = testSubject.select(
                 candidates,
                 command);
-        assertEquals(2, result.size());
+
+        StepVerifier.create(result)
+                .expectNextCount(2)
+                .verifyComplete();
+
     }
 
     @Test
@@ -76,11 +81,14 @@ public class MetaDataBasedHandlerSelectorTest {
                                                                               Map.of("region", "Europe",
                                                                                      "priority", 10,
                                                                                      "country", "IT"));
-        Set<CommandHandlerSubscription> candidates = Set.of(subscription1, subscription2);
-        Set<CommandHandlerSubscription> result = testSubject.select(
+        Flux<CommandHandlerSubscription> candidates = Flux.just(subscription1, subscription2);
+        Flux<CommandHandlerSubscription> result = testSubject.select(
                 candidates,
                 command);
-        assertEquals(1, result.size());
+
+        StepVerifier.create(result)
+                .expectNextCount(1)
+                .verifyComplete();
     }
 
     @Test
@@ -95,11 +103,14 @@ public class MetaDataBasedHandlerSelectorTest {
                                                                               Map.of("region", "Europe",
                                                                                      "priority", 10,
                                                                                      "country", "IT"));
-        Set<CommandHandlerSubscription> candidates = Set.of(subscription1, subscription2);
-        Set<CommandHandlerSubscription> result = testSubject.select(
+        Flux<CommandHandlerSubscription> candidates = Flux.just(subscription1, subscription2);
+        Flux<CommandHandlerSubscription> result = testSubject.select(
                 candidates,
                 command);
-        assertEquals(2, result.size());
+
+        StepVerifier.create(result)
+                .expectNextCount(2)
+                .verifyComplete();
     }
 
     private Command command(Map<String, Serializable> metadata) {

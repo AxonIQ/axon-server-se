@@ -7,15 +7,13 @@ import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubs
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class ConsistentHashHandler implements HandlerSelector, CommandHandlerSubscribedInterceptor,
         CommandHandlerUnsubscribedInterceptor {
@@ -52,7 +50,7 @@ public class ConsistentHashHandler implements HandlerSelector, CommandHandlerSub
     @Override
     public Mono<Void> onCommandHandlerUnsubscribed(CommandHandler commandHandler) {
         return Mono.fromRunnable(() -> {
-            logger.debug("{}[{}] ({}) unsubscribed", commandHandler.commandName(),
+            logger.debug("{}[{}] ({}) unsubscribed%n", commandHandler.commandName(),
                          commandHandler.context(), commandHandler.id());
             CommandIdentifier key = new CommandIdentifier(commandHandler.commandName(),
                                                           commandHandler.context());
@@ -64,31 +62,35 @@ public class ConsistentHashHandler implements HandlerSelector, CommandHandlerSub
     }
 
     @Override
-    public Set<CommandHandlerSubscription> select(Set<CommandHandlerSubscription> candidates, Command command) {
-        ConsistentHash consistentHash = consistentHashes.get(new CommandIdentifier(command.commandName(),
-                                                                                   command.context()));
-        if (consistentHash == null) {
-            return candidates;
-        }
+    public Flux<CommandHandlerSubscription> select(Flux<CommandHandlerSubscription> candidates, Command command) {
+        return Mono.justOrEmpty(consistentHashes.get(new CommandIdentifier(command.commandName(),
+                        command.context())))
+                .flatMapMany(consistentHash -> selectBasedOnCache(candidates, command, consistentHash))
+                .switchIfEmpty(candidates);
+    }
 
-        logger.debug("{}[{}] Selecting based on consistent hash -  {} candidates", command.commandName(),
-                     command.context(), candidates.size());
-        Map<String, CommandHandlerSubscription> keys = candidates.stream()
-                                                                 .collect(Collectors.toMap(s -> s.commandHandler().id(),
-                                                                                           s -> s));
+    private Mono<CommandHandlerSubscription> selectBasedOnCache(Flux<CommandHandlerSubscription> candidates, Command command, ConsistentHash consistentHash) {
         String routingKey = routingKeyProvider.apply(command).orElse(null);
         if (routingKey == null) {
-            return candidates;
+            return Mono.empty();
         }
-        CommandHandlerSubscription member = consistentHash.getMember(routingKey,
-                                                                     keys.keySet())
-                                                          .map(m -> keys.get(m.getClient()))
-                                                          .orElse(null);
-        if (member != null) {
-            logger.debug("{}[{}] Selected {} - {}", command.commandName(),
-                         command.context(), member.commandHandler().id(), routingKey);
-            return Collections.singleton(member);
-        }
-        return candidates;
+
+        logger.debug("{}[{}] Selecting based on consistent hash", command.commandName(),
+                command.context());
+
+        return candidatesMap(candidates)
+                .flatMap(candidatesEntries -> getClient(consistentHash, routingKey, candidatesEntries))
+                .doOnNext(member -> logger.debug("{}[{}] Selected {} - {}", command.commandName(),
+                        command.context(), member.commandHandler().id(), routingKey));
+    }
+
+    private Mono<CommandHandlerSubscription> getClient(ConsistentHash consistentHash, String routingKey, Map<String, CommandHandlerSubscription> candidatesEntries) {
+        return Mono.justOrEmpty(consistentHash.getMember(routingKey,
+                        candidatesEntries.keySet()))
+                .map(m -> candidatesEntries.get(m.getClient()));
+    }
+
+    private Mono<Map<String, CommandHandlerSubscription>> candidatesMap(Flux<CommandHandlerSubscription> candidates) {
+        return candidates.collectMap(s -> s.commandHandler().id(), s -> s);
     }
 }

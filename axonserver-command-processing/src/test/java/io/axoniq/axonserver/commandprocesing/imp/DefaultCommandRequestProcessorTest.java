@@ -25,14 +25,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class DefaultCommandRequestProcessorTest {
 
@@ -422,8 +418,8 @@ public class DefaultCommandRequestProcessorTest {
         }
 
         @Override
-        public Set<CommandHandlerSubscription> select(Set<CommandHandlerSubscription> candidates, Command command) {
-            return null;
+        public Flux<CommandHandlerSubscription> select(Flux<CommandHandlerSubscription> candidates, Command command) {
+            return Flux.empty();
         }
 
         @Override

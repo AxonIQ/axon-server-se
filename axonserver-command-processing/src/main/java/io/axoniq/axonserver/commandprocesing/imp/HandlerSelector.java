@@ -2,10 +2,9 @@ package io.axoniq.axonserver.commandprocesing.imp;
 
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
-
-import java.util.Set;
+import reactor.core.publisher.Flux;
 
 public interface HandlerSelector {
 
-    Set<CommandHandlerSubscription> select(Set<CommandHandlerSubscription> candidates, Command command);
+    Flux<CommandHandlerSubscription> select(Flux<CommandHandlerSubscription> candidates, Command command);
 }
