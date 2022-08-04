@@ -52,7 +52,7 @@ public class ConsistentHashHandler implements HandlerSelector, CommandHandlerSub
     @Override
     public Mono<Void> onCommandHandlerUnsubscribed(CommandHandler commandHandler) {
         return Mono.fromRunnable(() -> {
-            logger.debug("{}[{}] ({}) unsubscribed%n", commandHandler.commandName(),
+            logger.debug("{}[{}] ({}) unsubscribed", commandHandler.commandName(),
                          commandHandler.context(), commandHandler.id());
             CommandIdentifier key = new CommandIdentifier(commandHandler.commandName(),
                                                           commandHandler.context());
@@ -71,7 +71,7 @@ public class ConsistentHashHandler implements HandlerSelector, CommandHandlerSub
             return candidates;
         }
 
-        logger.debug("{}[{}] Selecting based on consistent hash -  {} candidates%n", command.commandName(),
+        logger.debug("{}[{}] Selecting based on consistent hash -  {} candidates", command.commandName(),
                      command.context(), candidates.size());
         Map<String, CommandHandlerSubscription> keys = candidates.stream()
                                                                  .collect(Collectors.toMap(s -> s.commandHandler().id(),

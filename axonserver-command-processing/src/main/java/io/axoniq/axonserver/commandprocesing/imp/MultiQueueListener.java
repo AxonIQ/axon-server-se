@@ -40,22 +40,27 @@ public class MultiQueueListener<T> {
 
     public void sender() {
         try {
+            checkAndSendMessages();
             while (true) {
                 synchronized (queues) {
                     logger.debug("Waiting for notification");
                     queues.wait();
                 }
                 logger.debug("received notification");
-                queues.forEach((queueName, queue) -> {
-                    while (queue.size() > 0 && remainingRequests.getOrDefault(queueName, NO_REQUESTS).get() > 0) {
-                        T message = queue.poll();
-                        remainingRequests.get(queueName).decrementAndGet();
-                        logger.debug("{} -> {}", message, queueName);
-                    }
-                });
+                checkAndSendMessages();
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void checkAndSendMessages() {
+        queues.forEach((queueName, queue) -> {
+            while (queue.size() > 0 && remainingRequests.getOrDefault(queueName, NO_REQUESTS).get() > 0) {
+                T message = queue.poll();
+                remainingRequests.get(queueName).decrementAndGet();
+                logger.debug("{} -> {}", message, queueName);
+            }
+        });
     }
 }

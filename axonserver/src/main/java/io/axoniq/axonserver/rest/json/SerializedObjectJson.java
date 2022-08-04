@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -10,13 +10,17 @@
 package io.axoniq.axonserver.rest.json;
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.util.StringUtils;
+
+import java.io.ByteArrayOutputStream;
 
 /**
  * @author Marc Gathier
  */
 public class SerializedObjectJson {
+
     private String type;
     private String data;
     private String revision;
@@ -24,10 +28,19 @@ public class SerializedObjectJson {
     public SerializedObjectJson() {
 
     }
+
     public SerializedObjectJson(SerializedObject payload) {
         type = payload.getType();
         data = payload.getData().toStringUtf8();
         revision = payload.getRevision();
+    }
+
+    public SerializedObjectJson(Payload payload) {
+        type = payload.type();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        payload.data().toIterable().forEach(outputStream::write);
+        data = outputStream.toString();
+        revision = null;
     }
 
     public SerializedObject asSerializedObject() {

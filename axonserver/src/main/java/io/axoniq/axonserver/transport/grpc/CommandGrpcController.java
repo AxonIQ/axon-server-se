@@ -9,7 +9,7 @@
 
 package io.axoniq.axonserver.transport.grpc;
 
-import io.axoniq.axonserver.commandprocesing.imp.QueuedCommandDispatcher;
+import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
@@ -22,6 +22,7 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
+import io.axoniq.axonserver.grpc.ErrorMessage;
 import io.axoniq.axonserver.grpc.FlowControl;
 import io.axoniq.axonserver.grpc.InstructionAck;
 import io.axoniq.axonserver.grpc.MetaDataValue;
@@ -61,7 +62,7 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
     private final AuthenticationProvider authenticationProvider;
     private final CommandRequestProcessor commandRequestProcessor;
 
-    private final QueuedCommandDispatcher queuedCommandDispatcher;
+    private final CommandDispatcher queuedCommandDispatcher;
     private final ClientTagsCache clientTagsCache;
 
 
@@ -69,7 +70,7 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
 
     public CommandGrpcController(ContextProvider contextProvider, AuthenticationProvider authenticationProvider,
                                  CommandRequestProcessor commandRequestProcessor,
-                                 QueuedCommandDispatcher queuedCommandDispatcher,
+                                 CommandDispatcher queuedCommandDispatcher,
                                  ClientTagsCache clientTagsCache) {
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
@@ -192,7 +193,21 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             public Mono<Void> completeExceptionally(Throwable t) {
                 return null;
             }
-        }).doOnError(e -> e.printStackTrace()).subscribe();
+        }).subscribe(ignore -> {
+        }, e -> returnError(responseObserver, request, e));
+    }
+
+    private void returnError(StreamObserver<CommandResponse> responseObserver, Command request, Throwable e) {
+        e.printStackTrace();
+        CommandResponse commandResponse = CommandResponse.newBuilder()
+                                                         .setRequestIdentifier(request.getMessageIdentifier())
+                                                         .setMessageIdentifier(UUID.randomUUID().toString())
+                                                         .setErrorMessage(ErrorMessage.newBuilder()
+                                                                                      .setMessage(e.toString()))
+                                                         .build();
+
+        responseObserver.onNext(commandResponse);
+        responseObserver.onCompleted();
     }
 
     private class CommandHandlerStream {

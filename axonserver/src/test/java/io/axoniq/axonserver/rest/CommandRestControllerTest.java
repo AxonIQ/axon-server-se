@@ -50,7 +50,8 @@ public class CommandRestControllerTest {
                                                                                             "client"),
                                                              "client",
                                                              "component"));
-        testSubject = new CommandRestController(commandDispatcher, commandRegistationCache, null);
+        testSubject = new CommandRestController(commandDispatcher, null,
+                                                commandRegistationCache, null);
     }
 
     @Test

@@ -13,7 +13,6 @@ public class MultiQueueListenerTest {
     public void send() throws InterruptedException {
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.execute(testSubject::sender);
-        Thread.sleep(10);
         testSubject.addQueue("sample", 0);
         testSubject.addQueue("sample2", 10);
         testSubject.enqueue("sample", "message1");

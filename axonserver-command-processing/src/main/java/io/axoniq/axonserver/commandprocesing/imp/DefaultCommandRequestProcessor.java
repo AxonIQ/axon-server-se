@@ -5,7 +5,6 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
-import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Interceptor;
 import io.axoniq.axonserver.commandprocessing.spi.Registration;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
@@ -85,24 +84,64 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                                   Mono.just(commandRequest.command()),
                                   CommandReceivedInterceptor::onCommandReceived)
                 .flatMap(command -> commandHandlerRegistry.handler(command)
-                                                          .map(subscription -> commandDispatcher.dispatch(subscription,
-                                                                                                          command)))
-                .flatMap(commandResult -> invokeInterceptors(CommandResultReceivedInterceptor.class,
-                                                             commandResult,
-                                                             CommandResultReceivedInterceptor::onCommandResultReceived))
-                .flatMap(commandResult -> Mono.just(commandResult).tag("target", commandResult.metadata().metadataValue(
-                        CommandResult.CLIENT_ID, "NO-TARGET")))
-                .flatMap(commandRequest::complete)
-                .onErrorResume(throwable -> invokeInterceptors(CommandFailedInterceptor.class,
-                                                               commandFailed(commandRequest.command(), throwable),
-                                                               CommandFailedInterceptor::onCommandFailed)
-                        .then(Mono.error(throwable)))
-                .name("commandDispatch")
-                .tag("command", commandRequest.command().commandName())
-                .tag("context", commandRequest.command().context())
-                .tag("source",
-                     commandRequest.command().metadata().metadataValue(Command.CLIENT_ID, "NO-SOURCE"))
-                .metrics()
+                                                          .flatMap(subscription -> commandDispatcher.dispatch(
+                                                                                                            subscription,
+                                                                                                            command)
+                                                                                                    .flatMap(
+                                                                                                            commandResult -> invokeInterceptors(
+                                                                                                                    CommandResultReceivedInterceptor.class,
+                                                                                                                    Mono.just(
+                                                                                                                            commandResult),
+                                                                                                                    CommandResultReceivedInterceptor::onCommandResultReceived))
+                                                                                                    .flatMap(
+                                                                                                            commandRequest::complete)
+                                                                                                    .name("commandDispatch")
+                                                                                                    .tag("command",
+                                                                                                         commandRequest.command()
+                                                                                                                       .commandName())
+                                                                                                    .tag("context",
+                                                                                                         commandRequest.command()
+                                                                                                                       .context())
+                                                                                                    .tag("source",
+                                                                                                         commandRequest.command()
+                                                                                                                       .metadata()
+                                                                                                                       .metadataValue(
+                                                                                                                               Command.CLIENT_ID,
+                                                                                                                               "NO-SOURCE"))
+                                                                                                    .tag("target",
+                                                                                                         subscription.commandHandler()
+                                                                                                                     .metadata()
+                                                                                                                     .metadataValue(
+                                                                                                                             Command.CLIENT_ID,
+                                                                                                                             "NO-SOURCE"))
+                                                                                                    .metrics()
+
+                                                          ))
+                .onErrorResume(
+                        throwable -> invokeInterceptors(
+                                CommandFailedInterceptor.class,
+                                commandFailed(
+                                        commandRequest.command(),
+                                        throwable),
+                                CommandFailedInterceptor::onCommandFailed)
+                                .name("commandDispatchErrors")
+                                .tag("command",
+                                     commandRequest.command()
+                                                   .commandName())
+                                .tag("context",
+                                     commandRequest.command()
+                                                   .context())
+                                .tag("source",
+                                     commandRequest.command()
+                                                   .metadata()
+                                                   .metadataValue(
+                                                           Command.CLIENT_ID,
+                                                           "NO-SOURCE"))
+                                .tag("error", throwable.toString())
+                                .metrics()
+                                .then(Mono.error(
+                                        throwable)))
+
                 .then();
     }
 

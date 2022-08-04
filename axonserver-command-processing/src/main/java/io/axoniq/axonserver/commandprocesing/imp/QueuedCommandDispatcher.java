@@ -40,12 +40,12 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         return Mono.fromCallable(() -> commandQueueMap.computeIfAbsent(queueNameProvider.apply(handler.commandHandler())
                                                                                         .orElseThrow(() -> new RuntimeException(
                                                                                                 "cannot determine queue name for handler")),
-                                                                       id -> new CommandQueue()))
+                                                                       CommandQueue::new))
                    .flatMap(q -> q.enqueue(new CommandAndHandler(commandRequest, handler)));
     }
 
     public void request(String clientId, long count) {
-        commandQueueMap.computeIfAbsent(clientId, id -> new CommandQueue())
+        commandQueueMap.computeIfAbsent(clientId, CommandQueue::new)
                        .request(count);
     }
 
@@ -66,30 +66,26 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
     private class CommandQueue {
 
         private final Sinks.Many<CommandAndHandler> processor;
+        private final String queueName;
         private AtomicReference<Subscription> clientSubscription = new AtomicReference<>();
         private final Map<String, Sinks.One<CommandResult>> resultMap = new ConcurrentHashMap<>();
         private final PriorityBlockingQueue<CommandAndHandler> queue = new PriorityBlockingQueue<>(100,
-                                                                                                   Comparator.comparingInt(
-                                                                                                           CommandAndHandler::priority)) {
-            @Override
-            public boolean offer(CommandAndHandler o) {
-                logger.debug("Size: {}: Offer: {}", this.size(), o.id());
-                boolean result = super.offer(o);
-                logger.debug("Size: {}: Result: {}", this.size(), result);
-                return result;
-            }
-        };
+                                                                                                   Comparator.comparingLong(
+                                                                                                           CommandAndHandler::priority));
 
-        CommandQueue() {
+        public CommandQueue(String queueName) {
+            this.queueName = queueName;
             processor = Sinks.many().unicast()
-                    .onBackpressureBuffer(queue, () -> logger.warn("CommandQueue executor has terminated and will no longer execute commands."));
+                             .onBackpressureBuffer(queue,
+                                                   () -> logger.warn(
+                                                           "CommandQueue executor has terminated and will no longer execute commands."));
             processor.asFlux()
-                    .limitRate(1)
-                    .concatMap(cmd -> cmd.dispatch()
-                            .doOnSuccess(result -> signalSuccess(cmd.id(), result))
-                            .doOnError(e -> signalError(cmd.id(), e)),0)
-                    .subscribeOn(executor)
-                    .subscribe(clientSubscription());
+                     .limitRate(1)
+                     .concatMap(cmd -> cmd.dispatch()
+                                          .doOnSuccess(result -> signalSuccess(cmd.id(), result))
+                                          .doOnError(e -> signalError(cmd.id(), e)), 0)
+                     .subscribeOn(executor)
+                     .subscribe(clientSubscription());
         }
 
         private BaseSubscriber<CommandResult> clientSubscription() {
@@ -122,7 +118,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         }
 
         public Mono<CommandResult> enqueue(CommandAndHandler commandRequest) {
-            logger.debug("Enqueue: {}", commandRequest.id());
+            logger.debug("{}: Enqueue: {}, queueSize: {}", queueName, commandRequest.id(), queue.size());
             Sinks.One<CommandResult> sink = Sinks.one();
             resultMap.put(commandRequest.id(), sink);
             processor.emitNext(commandRequest, (signalType, emitResult) -> {
@@ -154,14 +150,16 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         private final Command commandRequest;
         private final CommandHandlerSubscription handler;
         //todo duration how long can it be enqueued?
+        private final long priority;
 
         public CommandAndHandler(Command commandRequest, CommandHandlerSubscription handler) {
             this.commandRequest = commandRequest;
             this.handler = handler;
+            priority = commandRequest.metadata().metadataValue(Command.PRIORITY, 0L);
         }
 
-        public int priority() {
-            return 0;
+        public long priority() {
+            return priority;
         }
 
         public String id() {

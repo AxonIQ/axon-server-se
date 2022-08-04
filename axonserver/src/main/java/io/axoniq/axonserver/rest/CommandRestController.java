@@ -9,12 +9,17 @@
 
 package io.axoniq.axonserver.rest;
 
+import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.commandprocessing.spi.Command;
+import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
+import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
+import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
+import io.axoniq.axonserver.commandprocessing.spi.Metadata;
+import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
-import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
-import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.command.CommandHandler;
@@ -35,11 +40,15 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
+import java.io.Serializable;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -49,7 +58,6 @@ import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
-import static io.axoniq.axonserver.util.ObjectUtils.getOrDefault;
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
 /**
@@ -65,15 +73,18 @@ public class CommandRestController {
     private static final Logger auditLog = AuditLog.getLogger();
 
     private final CommandDispatcher commandDispatcher;
+    private final CommandRequestProcessor commandRequestProcessor;
     private final CommandRegistrationCache registrationCache;
 
     private final CommandSubscriptionCache commandSubscriptionCache;
 
 
     public CommandRestController(CommandDispatcher commandDispatcher,
+                                 CommandRequestProcessor commandRequestProcessor,
                                  CommandRegistrationCache registrationCache,
                                  CommandSubscriptionCache commandSubscriptionCache) {
         this.commandDispatcher = commandDispatcher;
+        this.commandRequestProcessor = commandRequestProcessor;
         this.registrationCache = registrationCache;
         this.commandSubscriptionCache = commandSubscriptionCache;
     }
@@ -108,13 +119,84 @@ public class CommandRestController {
             @RequestBody @Valid CommandRequestJson command,
             @Parameter(hidden = true) Authentication principal) {
         auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
+        CompletableFuture<CommandResponseJson> futureResult = new CompletableFuture<>();
+        commandRequestProcessor.dispatch(new CommandRequest() {
+            @Override
+            public Command command() {
+                return new Command() {
+                    @Override
+                    public String id() {
+                        return command.getMessageIdentifier();
+                    }
 
-        CompletableFuture<CommandResponseJson> result = new CompletableFuture<>();
-        commandDispatcher.dispatch(context,
-                                   getOrDefault(principal, GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL),
-                                   new SerializedCommand(command.asCommand()),
-                                   r -> result.complete(new CommandResponseJson(r.wrapped())));
-        return result;
+                    @Override
+                    public String commandName() {
+                        return command.getName();
+                    }
+
+                    @Override
+                    public String context() {
+                        return context;
+                    }
+
+                    @Override
+                    public Payload payload() {
+                        return new Payload() {
+                            @Override
+                            public String type() {
+                                return command.getPayload().getType();
+                            }
+
+                            @Override
+                            public String contentType() {
+                                return null;
+                            }
+
+                            @Override
+                            public Flux<Byte> data() {
+                                return Flux.fromIterable(ByteString.copyFromUtf8(command.getPayload().getData()));
+                            }
+                        };
+                    }
+
+                    @Override
+                    public Metadata metadata() {
+                        return new Metadata() {
+                            @Override
+                            public Flux<String> metadataKeys() {
+                                return Flux.fromIterable(command.getMetaData().keySet());
+                            }
+
+                            @Override
+                            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                                return Optional.ofNullable((R) command.getMetaData().get(metadataKey));
+                            }
+                        };
+                    }
+                };
+            }
+
+            @Override
+            public Mono<Void> complete() {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> complete(CommandResult result) {
+                futureResult.complete(new CommandResponseJson(result));
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<Void> completeExceptionally(Throwable t) {
+                futureResult.completeExceptionally(t);
+                return Mono.error(t);
+            }
+        }).subscribe(ignore -> {
+                     },
+                     e -> futureResult.complete(new CommandResponseJson(command.getMessageIdentifier(), e)));
+
+        return futureResult;
     }
 
     @GetMapping("commands/queues")
@@ -134,6 +216,7 @@ public class CommandRestController {
     }
 
     public static class JsonClientMapping {
+
         private String client;
         private String component;
         private String proxy;
@@ -164,20 +247,22 @@ public class CommandRestController {
             return jsonCommandMapping;
         }
 
-        static JsonClientMapping from(Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
+        static JsonClientMapping from(
+                Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
             JsonClientMapping jsonCommandMapping = new JsonClientMapping();
             CommandHandler commandHandler = entry.getKey();
             jsonCommandMapping.client = commandHandler.getClientStreamIdentification().toString();
             jsonCommandMapping.component = commandHandler.getComponentName();
             jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
 
-            jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand()).collect(Collectors.toSet());
+            jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand())
+                                               .collect(Collectors.toSet());
             return jsonCommandMapping;
         }
-
     }
 
     private static class JsonQueueInfo {
+
         private final String client;
         private final int count;
 

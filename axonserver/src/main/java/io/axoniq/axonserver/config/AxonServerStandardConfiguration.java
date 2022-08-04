@@ -13,6 +13,7 @@ import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
+import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandler;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
@@ -221,7 +222,8 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
-    public QueuedCommandDispatcher queuedCommandDispatcher() {
+    @ConditionalOnMissingBean(CommandDispatcher.class)
+    public CommandDispatcher queuedCommandDispatcher() {
         return new QueuedCommandDispatcher(Schedulers.boundedElastic(),
                                            commandHandler -> commandHandler.metadata()
                                                                            .metadataValue(CommandHandler.CLIENT_ID));
@@ -232,7 +234,7 @@ public class AxonServerStandardConfiguration {
     @ConditionalOnMissingBean(CommandRequestProcessor.class)
     public CommandRequestProcessor commandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry,
                                                            ConsistentHashHandler consistentHashHandler,
-                                                           QueuedCommandDispatcher queuedCommandDispatcher) {
+                                                           CommandDispatcher queuedCommandDispatcher) {
 
         DefaultCommandRequestProcessor defaultCommandRequestProcessor = new DefaultCommandRequestProcessor(
                 commandHandlerRegistry, queuedCommandDispatcher);
