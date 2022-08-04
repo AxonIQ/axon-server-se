@@ -18,10 +18,10 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class QueuedCommandDispatcherTest {
 
@@ -45,23 +45,6 @@ public class QueuedCommandDispatcherTest {
                     .expectSubscription()
                     .expectNextMatches(response -> response.commandId().equals(request2.id()))
                     .verifyComplete();
-    }
-
-    @Test
-    public void dispatchWithTimeout() {
-        dispatched.set(false);
-        CommandHandlerSubscription handler = commandHandlerSubscription();
-        Command request = request("request1");
-
-        StepVerifier.create(testSubject.dispatch(handler, request).timeout(Duration.ofSeconds(1))
-                        .onErrorResume(TimeoutException.class, e -> Mono.empty()))
-                .expectSubscription()
-                .thenAwait(Duration.ofSeconds(2))
-                .then(() -> testSubject.request("clientId", 10))
-                .expectNextCount(0)
-                .verifyComplete();
-
-        assertFalse(dispatched.get());
     }
 
     @Test
