@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -418,8 +419,8 @@ public class DefaultCommandRequestProcessorTest {
         }
 
         @Override
-        public Flux<CommandHandlerSubscription> select(Flux<CommandHandlerSubscription> candidates, Command command) {
-            return Flux.empty();
+        public Set<CommandHandlerSubscription> select(Set<CommandHandlerSubscription> candidates, Command command) {
+            return null;
         }
 
         @Override

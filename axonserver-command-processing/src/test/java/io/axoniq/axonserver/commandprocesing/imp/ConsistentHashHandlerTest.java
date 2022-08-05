@@ -9,10 +9,12 @@ import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 import java.io.Serializable;
 import java.util.Optional;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
 
 public class ConsistentHashHandlerTest {
 
@@ -27,14 +29,12 @@ public class ConsistentHashHandlerTest {
         consistentHashHandler.onCommandHandlerSubscribed(commandHandler1).block();
         consistentHashHandler.onCommandHandlerSubscribed(commandHandler2).block();
 
-        Flux<CommandHandlerSubscription> handlers = consistentHashHandler.select(Flux.just(commandHandlerSubscription(
+        Set<CommandHandlerSubscription> handlers = consistentHashHandler.select(Set.of(commandHandlerSubscription(
                                                                                                commandHandler1),
                                                                                        commandHandlerSubscription(
                                                                                                commandHandler2)),
                                                                                 command("routingKey1"));
-        StepVerifier.create(handlers)
-                .expectNextCount(1)
-                .verifyComplete();
+        assertEquals(1, handlers.size());
     }
 
     private Command command(String routingKey1) {
