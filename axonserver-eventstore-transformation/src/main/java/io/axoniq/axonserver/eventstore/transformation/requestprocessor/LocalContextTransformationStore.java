@@ -76,6 +76,8 @@ public class LocalContextTransformationStore implements ContextTransformationSto
                  jpa.setAppliedBy(applied.by());
                  jpa.setDateApplied(Date.from(applied.at()));
              });
+        state.lastEventToken()
+             .ifPresent(jpa::setLastEventToken);
         return jpa;
     }
 }

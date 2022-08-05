@@ -82,7 +82,7 @@ public class FileUtils {
             try {
                 Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 sink.success();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 sink.error(e);
             }
         }).subscribeOn(Schedulers.boundedElastic());

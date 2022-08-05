@@ -60,6 +60,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.axoniq.axonserver.localstorage.file.StorageProperties.ROLLED_BACK_SUFFIX;
+import static io.axoniq.axonserver.localstorage.file.StorageProperties.TRANSFORMED_SUFFIX;
 import static java.lang.String.format;
 
 import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
@@ -281,7 +283,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
         return Flux.usingWhen(Mono.just(0L),
                               v -> transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
-                                                    .flatMap(segmentedTransformedEvents -> transformSegment(
+                                                    .concatMap(segmentedTransformedEvents -> transformSegment(
                                                             segmentedTransformedEvents.key(),
                                                             newVersion,
                                                             segmentedTransformedEvents)),
@@ -297,7 +299,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                              newVersion, indexManager,
                                                                              () -> getTransactions(segment, segment))),
                               segmentTransformer -> segmentTransformer.initialize()
-                                                                      .thenMany(transformedEventsInTheSegment.flatMap(segmentTransformer::transformEvent)),
+                                                                      .thenMany(transformedEventsInTheSegment.concatMap(segmentTransformer::transformEvent)),
                               SegmentTransformer::completeSegment,
                               SegmentTransformer::rollback,
                               SegmentTransformer::cancel)
@@ -305,19 +307,19 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     private Mono<Void> activateTransformation() {
-        return transformedFileVersions()
+        return transformedSegmentVersions()
                 .flatMap(this::activateSegment)
                 .then();
     }
 
-    private Flux<FileVersion> transformedFileVersions() {
-        return fileVersions(StorageProperties.TRANSFORMED_SUFFIX);
-    }
-
     private Flux<FileVersion> rolledBackFileVersions() {
-        return fileVersions(StorageProperties.ROLLED_BACK_SUFFIX);
+        return fileVersions(ROLLED_BACK_SUFFIX);
     }
 
+    private Flux<FileVersion> transformedSegmentVersions() {
+        String transformedEventsSuffix = storagePropertiesSupplier.get().getEventsSuffix() + TRANSFORMED_SUFFIX;
+        return fileVersions(transformedEventsSuffix);
+    }
 
     private Flux<FileVersion> fileVersions(String suffix) {
         return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePropertiesSupplier.get()
@@ -338,7 +340,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .flatMap(dataFile -> Mono.fromSupplier(() -> storageProperties.transformedDataFile(context,
                                                                                                       fileVersion))
                                             .filter(File::exists)
-                                            .switchIfEmpty(Mono.error(new RuntimeException()))
+                                            .switchIfEmpty(Mono.error(new RuntimeException("File does not exist.")))
                                             .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
     }
 

@@ -25,7 +25,6 @@ public class SegmentBasedTransformationEntryStore implements TransformationEntry
     @Override
     public Flux<TransformationEntry> readFrom(long sequence) {
         return Flux.deferContextual(c -> appendOnlyFileStore.stream(sequence)
-                                                            .doOnNext(System.out::println)
                                                             .map(e -> {
                                                                 AtomicLong index = c.get("index");
                                                                 return map(e, index.getAndIncrement());

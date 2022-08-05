@@ -41,7 +41,7 @@ public class DefaultLocalTransformationApplyExecutor implements LocalTransformat
                         .switchIfEmpty(stateRepo.initState(transformation.id()))
                          .map(state -> state.lastAppliedSequence() + 1)
                          .flatMapMany(firstSequence -> transformationEntryStoreSupplier.supply(transformation.context())
-                                                                                       .flatMapMany(store -> store.read(
+                                                                                       .flatMapMany(store -> store.readClosed(
                                                                                                firstSequence,
                                                                                                transformation.lastSequence())))
                          .map(TransformationEntry::payload)

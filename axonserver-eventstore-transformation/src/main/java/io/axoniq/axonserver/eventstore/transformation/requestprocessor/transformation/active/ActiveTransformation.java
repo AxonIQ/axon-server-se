@@ -7,6 +7,7 @@ import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;
 
 import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.*;
+import static java.lang.String.format;
 
 
 public class ActiveTransformation implements Transformation {
@@ -60,7 +61,7 @@ public class ActiveTransformation implements Transformation {
     private Mono<Void> validateEventsOrder(long token) {
         return state.lastEventToken()
                     .map(lastToken -> lastToken < token ? Mono.<Void>empty() : Mono.<Void>error(new RuntimeException(
-                            "The token [%s] of the action for token doesn't match %s d")))
+                            format("The token [%d] is lower or equals than last modified token [%d] of this transformation.", token, lastToken))))
                     .orElse(Mono.empty());
     }
 

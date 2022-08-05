@@ -17,6 +17,10 @@ public interface TransformationEntryStore {
         return readFrom(fromSequence).takeWhile(entry -> entry.sequence() < toSequence);
     }
 
+    default Flux<TransformationEntry> readClosed(long fromSequence, long toSequence) {
+        return readFrom(fromSequence).takeWhile(entry -> entry.sequence() <= toSequence);
+    }
+
     default Flux<TransformationEntry> readTo(long sequence) {
         return read().takeWhile(entry -> entry.sequence() < sequence);
     }
