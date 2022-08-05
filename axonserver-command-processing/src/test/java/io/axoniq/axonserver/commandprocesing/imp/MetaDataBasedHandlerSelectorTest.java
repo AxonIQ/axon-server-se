@@ -92,34 +92,6 @@ public class MetaDataBasedHandlerSelectorTest {
     }
 
     @Test
-    public void selectMultipleScore() {
-        Command command = command(Map.of("region", "Europe", "priority", "100"));
-
-        CommandHandlerSubscription subscription1 = commandHandlerSubscription("target1",
-                Map.of("region", "Europe",
-                        "priority", 100,
-                        "country", "NL"));
-        CommandHandlerSubscription subscription2 = commandHandlerSubscription("target2",
-                Map.of("region", "Europe",
-                        "priority", 10,
-                        "country", "IT"));
-        CommandHandlerSubscription subscription3 = commandHandlerSubscription("target3",
-                Map.of("region", "Europe",
-                        "priority", 100,
-                        "country", "IT"));
-        Flux<CommandHandlerSubscription> candidates = Flux.just(subscription1, subscription2, subscription3);
-        Flux<CommandHandlerSubscription> result = testSubject.select(
-                candidates,
-                command);
-
-        StepVerifier.create(result)
-                .expectNextMatches(next -> next.commandHandler().id().equals("target1"))
-                .expectNextMatches(next -> next.commandHandler().id().equals("target3"))
-                .verifyComplete();
-    }
-
-
-    @Test
     public void selectNoMetadata() {
         Command command = command(Map.of());
 
