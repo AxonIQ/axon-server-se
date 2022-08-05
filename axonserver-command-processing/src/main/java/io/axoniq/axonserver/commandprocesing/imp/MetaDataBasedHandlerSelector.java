@@ -30,7 +30,10 @@ public class MetaDataBasedHandlerSelector implements HandlerSelector {
                         highestSoFarState.set(v.score);
                         return true;
                     }
-                    return v.score == highestSoFar;
+                    if (v.score == highestSoFar) {
+                        return true;
+                    }
+                    return false;
                 })
                 .bufferUntil(i -> i != windowState.getAndSet(i), true)
                 .flatMapIterable(Function.identity());
