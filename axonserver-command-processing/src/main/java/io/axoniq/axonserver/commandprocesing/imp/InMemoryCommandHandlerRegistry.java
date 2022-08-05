@@ -65,7 +65,8 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
     private Mono<CommandHandlerSubscription> selectSubscription(Flux<CommandHandlerSubscription> handlers,
                                                                 Command command) {
         return Flux.fromIterable(handlerSelectorList)
-                .flatMap(selector -> selector.select(handlers, command))
-                .next();
+                   .reduce(handlers, (remainingHandlers, selector) ->
+                           selector.select(remainingHandlers, command))
+                   .flatMap(Flux::next);
     }
 }
