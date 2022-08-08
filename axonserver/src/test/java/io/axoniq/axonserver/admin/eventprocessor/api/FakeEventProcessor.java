@@ -10,7 +10,9 @@
 package io.axoniq.axonserver.admin.eventprocessor.api;
 
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
+import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.topology.Topology;
+import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -65,5 +67,11 @@ public class FakeEventProcessor implements EventProcessor {
     @Override
     public Iterable<EventProcessorInstance> instances() {
         return instances;
+    }
+
+    @Nullable
+    @Override
+    public String loadBalancingStrategyName() {
+        return null;
     }
 }

@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 
 /**
@@ -72,6 +73,12 @@ public class DistributedEventProcessor implements EventProcessor {
         Optional<Boolean> streaming = clientProcessors.stream().map(ClientProcessor::eventProcessorInfo).map(
                 EventProcessorInfo::getIsStreamingProcessor).reduce(Boolean::logicalAnd);
         return streaming.orElse(Boolean.FALSE);
+    }
+
+    @Nullable
+    @Override
+    public String loadBalancingStrategyName() {
+        return null;
     }
 
     private static class ClientInstance implements EventProcessorInstance {
