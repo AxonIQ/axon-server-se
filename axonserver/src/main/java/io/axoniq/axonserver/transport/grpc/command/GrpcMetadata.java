@@ -11,7 +11,6 @@ package io.axoniq.axonserver.transport.grpc.command;
 
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.grpc.MetaDataValue;
-import reactor.core.publisher.Flux;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -26,8 +25,8 @@ public class GrpcMetadata implements Metadata {
     }
 
     @Override
-    public Flux<String> metadataKeys() {
-        return Flux.fromIterable(metaDataMap.keySet());
+    public Iterable<String> metadataKeys() {
+        return metaDataMap.keySet();
     }
 
     @Override

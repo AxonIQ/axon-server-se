@@ -29,7 +29,6 @@ import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
@@ -89,7 +88,7 @@ public class MetricsRestControllerTest {
                     public Metadata metadata() {
                         return new Metadata() {
                             @Override
-                            public Flux<String> metadataKeys() {
+                            public Iterable<String> metadataKeys() {
                                 return null;
                             }
 

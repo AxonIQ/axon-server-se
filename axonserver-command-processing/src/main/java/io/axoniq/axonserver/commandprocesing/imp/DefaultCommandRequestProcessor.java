@@ -5,6 +5,7 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
+import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Interceptor;
 import io.axoniq.axonserver.commandprocessing.spi.Registration;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
@@ -79,7 +80,7 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
     }
 
     @Override
-    public Mono<Void> dispatch(CommandRequest commandRequest) {
+    public Mono<CommandResult> dispatch(CommandRequest commandRequest) {
         return invokeInterceptors(CommandReceivedInterceptor.class,
                                   Mono.just(commandRequest.command()),
                                   CommandReceivedInterceptor::onCommandReceived)
@@ -92,9 +93,8 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                                                                                                                     CommandResultReceivedInterceptor.class,
                                                                                                                     Mono.just(
                                                                                                                             commandResult),
-                                                                                                                    CommandResultReceivedInterceptor::onCommandResultReceived))
-                                                                                                    .flatMap(
-                                                                                                            commandRequest::complete)
+                                                                                                                    CommandResultReceivedInterceptor::onCommandResultReceived)
+                                                                                                                    .thenReturn(commandResult))
                                                                                                     .name("commandDispatch")
                                                                                                     .tag("command",
                                                                                                          commandRequest.command()
@@ -140,9 +140,7 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                                 .tag("error", throwable.toString())
                                 .metrics()
                                 .then(Mono.error(
-                                        throwable)))
-
-                .then();
+                                        throwable)));
     }
 
     private Mono<CommandException> commandFailed(Command command, Throwable throwable) {

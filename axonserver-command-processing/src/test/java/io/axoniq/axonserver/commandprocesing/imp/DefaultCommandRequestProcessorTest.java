@@ -27,9 +27,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DefaultCommandRequestProcessorTest {
 
@@ -99,192 +99,6 @@ public class DefaultCommandRequestProcessorTest {
         }
     };
 
-
-    @Test
-    public void dispatch() {
-        AtomicReference<CommandResult> result = new AtomicReference<>();
-        testSubject.register(handler)
-                   .then(testSubject.dispatch(new CommandRequest() {
-                       @Override
-                       public Command command() {
-                           return new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of());
-                       }
-
-                       @Override
-                       public Mono<Void> complete() {
-                           result.set(null);
-                           return Mono.empty();
-                       }
-
-                       @Override
-                       public Mono<Void> complete(CommandResult r) {
-                           result.set(r);
-                           return Mono.empty();
-                       }
-
-                       @Override
-                       public Mono<Void> completeExceptionally(Throwable t) {
-                           t.printStackTrace();
-                           return Mono.empty();
-                       }
-                   }))
-                   .then(testSubject.unregister(handler.commandHandler().id()))
-                   .block();
-
-        assertNotNull(result.get());
-    }
-
-    @Test
-    public void dispatchNoHandler() {
-        StepVerifier.create(testSubject.dispatch(new CommandRequest() {
-            @Override
-            public Command command() {
-                return new GrpcCommand(COMMAND_NAME, "Other context", payload("Request payload"), Map.of());
-            }
-
-            @Override
-            public Mono<Void> complete() {
-                return Mono.empty();
-            }
-
-            @Override
-            public Mono<Void> complete(CommandResult r) {
-                return Mono.empty();
-            }
-
-            @Override
-            public Mono<Void> completeExceptionally(Throwable t) {
-                return Mono.empty();
-            }
-        })).expectError(NoHandlerFoundException.class).verify();
-    }
-
-    @Test
-    public void dispatchReturnEmpty() {
-
-        AtomicReference<CommandResult> result = new AtomicReference<>();
-
-        CommandHandlerSubscription handler2 = new CommandHandlerSubscription() {
-            @Override
-            public CommandHandler commandHandler() {
-                return new GrpcCommandHandler(COMMAND_NAME, CONTEXT, Map.of());
-            }
-
-            @Override
-            public Mono<CommandResult> dispatch(Command command) {
-                return Mono.empty();
-            }
-        };
-        testSubject.register(handler2)
-                   .then(testSubject.dispatch(new CommandRequest() {
-                       @Override
-                       public Command command() {
-                           return new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of());
-                       }
-
-                       @Override
-                       public Mono<Void> complete() {
-                           result.set(null);
-                           return Mono.empty();
-                       }
-
-                       @Override
-                       public Mono<Void> complete(CommandResult r) {
-                           result.set(r);
-                           return Mono.empty();
-                       }
-
-                       @Override
-                       public Mono<Void> completeExceptionally(Throwable t) {
-                           t.printStackTrace();
-                           return Mono.empty();
-                       }
-                   }))
-                   .then(testSubject.unregister(handler.commandHandler().id()))
-                   .block();
-
-        assertNull(result.get());
-    }
-
-    @Test
-    public void registerInterceptor() {
-        List<String> actions = new ArrayList<>();
-        Registration registration1 = testSubject.registerInterceptor(
-                CommandHandlerSubscribedInterceptor.class,
-                new CommandHandlerSubscribedInterceptor() {
-                    @Override
-                    public Mono<Void> onCommandHandlerSubscribed(
-                            CommandHandler commandHandler) {
-                        actions.add("first");
-                        return Mono.empty();
-                    }
-
-                    @Override
-                    public int priority() {
-                        return LOWER_PRIORITY;
-                    }
-                });
-        Registration registration2 = testSubject.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
-                                                                     commandHandler -> {
-                                                                         actions.add("second");
-                                                                         return Mono.empty();
-                                                                     });
-        testSubject.register(handler).block();
-        assertEquals(List.of("second", "first"), actions);
-        registration1.cancel().block();
-        registration2.cancel().block();
-    }
-
-    @Test
-    public void interceptorsExecuted() {
-        SimpleHandlerSelector simpleHandlerSelector = new SimpleHandlerSelector();
-        DefaultCommandRequestProcessor testSubject2 = new DefaultCommandRequestProcessor(List.of(simpleHandlerSelector));
-        testSubject2.registerInterceptor(CommandHandlerSubscribedInterceptor.class, simpleHandlerSelector);
-        testSubject2.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class, simpleHandlerSelector);
-        testSubject2.register(handler).block();
-        assertTrue(simpleHandlerSelector.subscribedInterceptorCalled());
-        testSubject2.unregister(handler.commandHandler().id()).block();
-        assertTrue(simpleHandlerSelector.unsubscribedInterceptorCalled());
-    }
-
-    @Test
-    public void dispatchReturnError() {
-        AtomicReference<CommandResult> result = new AtomicReference<>();
-        List<CommandException> commandExceptions = new LinkedList<>();
-        testSubject.registerInterceptor(CommandFailedInterceptor.class,
-                                        commandException -> commandException.doOnNext(commandExceptions::add));
-        testSubject.register(handler)
-                   .then(testSubject.dispatch(new CommandRequest() {
-                       @Override
-                       public Command command() {
-                           return new GrpcCommand(COMMAND_NAME, "anotherContext", payload("String"), Map.of());
-                       }
-
-                       @Override
-                       public Mono<Void> complete() {
-                           result.set(null);
-                           return Mono.empty();
-                       }
-
-                       @Override
-                       public Mono<Void> complete(CommandResult r) {
-                           result.set(r);
-                           return Mono.empty();
-                       }
-
-                       @Override
-                       public Mono<Void> completeExceptionally(Throwable t) {
-                           return Mono.error(t);
-                       }
-                   }))
-                   .then(testSubject.unregister(handler.commandHandler().id()))
-                   .onErrorResume(e -> Mono.empty())
-                   .block();
-
-        assertNull(result.get());
-        assertEquals(1, commandExceptions.size());
-    }
-
     private static Payload payload(String string) {
         return new Payload() {
             @Override
@@ -308,6 +122,114 @@ public class DefaultCommandRequestProcessorTest {
                 });
             }
         };
+    }
+
+    private static Metadata metadata(Map<String, Serializable> metadata) {
+        return new Metadata() {
+            @Override
+            public Iterable<String> metadataKeys() {
+                return metadata.keySet();
+            }
+
+            @Override
+            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                return Optional.ofNullable((R) metadata.get(metadataKey));
+            }
+        };
+    }
+
+    @Test
+    public void dispatch() {
+        testSubject.register(handler)
+                .then(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of()))
+                        .flatMap(result -> testSubject.unregister(handler.commandHandler().id())
+                                .thenReturn(result)))
+                .as(StepVerifier::create)
+                .expectNextCount(1)
+                .verifyComplete();
+    }
+
+    @Test
+    public void dispatchNoHandler() {
+        StepVerifier.create(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, "Other context", payload("Request payload"), Map.of())))
+                .expectError(NoHandlerFoundException.class)
+                .verify();
+    }
+
+    @Test
+    public void dispatchReturnEmpty() {
+        CommandHandlerSubscription handler2 = new CommandHandlerSubscription() {
+            @Override
+            public CommandHandler commandHandler() {
+                return new GrpcCommandHandler(COMMAND_NAME, CONTEXT, Map.of());
+            }
+
+            @Override
+            public Mono<CommandResult> dispatch(Command command) {
+                return Mono.empty();
+            }
+        };
+        testSubject.register(handler2)
+                .then(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of())))
+                .then(testSubject.unregister(handler.commandHandler().id()))
+                .as(StepVerifier::create)
+                .verifyComplete();
+    }
+
+    @Test
+    public void registerInterceptor() {
+        List<String> actions = new ArrayList<>();
+        Registration registration1 = testSubject.registerInterceptor(
+                CommandHandlerSubscribedInterceptor.class,
+                new CommandHandlerSubscribedInterceptor() {
+                    @Override
+                    public Mono<Void> onCommandHandlerSubscribed(
+                            CommandHandler commandHandler) {
+                        actions.add("first");
+                        return Mono.empty();
+                    }
+
+                    @Override
+                    public int priority() {
+                        return LOWER_PRIORITY;
+                    }
+                });
+        Registration registration2 = testSubject.registerInterceptor(CommandHandlerSubscribedInterceptor.class,
+                commandHandler -> {
+                    actions.add("second");
+                    return Mono.empty();
+                });
+        testSubject.register(handler).block();
+        assertEquals(List.of("second", "first"), actions);
+        registration1.cancel().block();
+        registration2.cancel().block();
+    }
+
+    @Test
+    public void interceptorsExecuted() {
+        SimpleHandlerSelector simpleHandlerSelector = new SimpleHandlerSelector();
+        DefaultCommandRequestProcessor testSubject2 = new DefaultCommandRequestProcessor(List.of(simpleHandlerSelector));
+        testSubject2.registerInterceptor(CommandHandlerSubscribedInterceptor.class, simpleHandlerSelector);
+        testSubject2.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class, simpleHandlerSelector);
+        testSubject2.register(handler).block();
+        assertTrue(simpleHandlerSelector.subscribedInterceptorCalled());
+        testSubject2.unregister(handler.commandHandler().id()).block();
+        assertTrue(simpleHandlerSelector.unsubscribedInterceptorCalled());
+    }
+
+    @Test
+    public void dispatchReturnError() {
+        List<CommandException> commandExceptions = new LinkedList<>();
+        testSubject.registerInterceptor(CommandFailedInterceptor.class,
+                commandException -> commandException.doOnNext(commandExceptions::add));
+        testSubject.register(handler)
+                .then(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, "anotherContext", payload("String"), Map.of())))
+                .then(testSubject.unregister(handler.commandHandler().id()))
+                .onErrorResume(e -> Mono.empty())
+                .as(StepVerifier::create)
+                .verifyComplete();
+
+        assertEquals(1, commandExceptions.size());
     }
 
     private static class GrpcCommand implements Command {
@@ -350,21 +272,6 @@ public class DefaultCommandRequestProcessorTest {
         public Metadata metadata() {
             return metadata;
         }
-    }
-
-
-    private static Metadata metadata(Map<String, Serializable> metadata) {
-        return new Metadata() {
-            @Override
-            public Iterable<String> metadataKeys() {
-                return metadata.keySet();
-            }
-
-            @Override
-            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
-                return Optional.ofNullable((R) metadata.get(metadataKey));
-            }
-        };
     }
 
     private static class GrpcCommandHandler implements CommandHandler {

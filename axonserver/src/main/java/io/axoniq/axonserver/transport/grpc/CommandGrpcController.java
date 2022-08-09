@@ -40,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
 
@@ -161,44 +160,17 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
     public void dispatch(Command request, StreamObserver<CommandResponse> responseObserver) {
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
-        commandRequestProcessor.dispatch(new CommandRequest() {
-            private final io.axoniq.axonserver.commandprocessing.spi.Command command = new GrpcCommand(request,
-                                                                                                       context,
-                                                                                                       new GrpcAuthentication(
-                                                                                                               () -> authentication));
-
-            @Override
-            public io.axoniq.axonserver.commandprocessing.spi.Command command() {
-                return command;
-            }
-
-            @Override
-            public Mono<Void> complete() {
-                return Mono.fromRunnable(responseObserver::onCompleted);
-            }
-
-            @Override
-            public Mono<Void> complete(CommandResult result) {
-                return Mono.fromRunnable(() -> {
-                    logger.debug("{}: Sending result for {}: {}",
-                                 command.context(),
-                                 command.commandName(),
-                                 command.id());
-                    responseObserver.onNext(GrpcMapper.map(result));
-                    responseObserver.onCompleted();
-                });
-            }
-
-            @Override
-            public Mono<Void> completeExceptionally(Throwable t) {
-                return null;
-            }
-        }).subscribe(ignore -> {
-        }, e -> returnError(responseObserver, request, e));
+        commandRequestProcessor.dispatch((CommandRequest) () ->  new GrpcCommand(request,
+                        context,
+                        new GrpcAuthentication(
+                                () -> authentication)))
+                .subscribe(
+                        result -> responseObserver.onNext(GrpcMapper.map(result)),
+                        error -> returnError(responseObserver,request,error),
+                        responseObserver::onCompleted);
     }
 
     private void returnError(StreamObserver<CommandResponse> responseObserver, Command request, Throwable e) {
-        e.printStackTrace();
         CommandResponse commandResponse = CommandResponse.newBuilder()
                                                          .setRequestIdentifier(request.getMessageIdentifier())
                                                          .setMessageIdentifier(UUID.randomUUID().toString())
@@ -321,8 +293,8 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
                     clientMetadata.put(COMPONENT_NAME, subscribe.getComponentName());
                     return new Metadata() {
                         @Override
-                        public Flux<String> metadataKeys() {
-                            return Flux.fromIterable(clientMetadata.keySet());
+                        public Iterable<String> metadataKeys() {
+                            return clientMetadata.keySet();
                         }
 
                         @Override

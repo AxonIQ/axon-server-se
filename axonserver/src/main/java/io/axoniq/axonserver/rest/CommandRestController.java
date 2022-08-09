@@ -13,7 +13,6 @@ import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
-import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.component.ComponentItems;
@@ -43,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.io.Serializable;
 import java.security.Principal;
 import java.util.Collections;
@@ -51,10 +51,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -114,89 +111,64 @@ public class CommandRestController {
     @Parameters({
             @Parameter(name = TOKEN_PARAM, description = "Access Token", in = ParameterIn.HEADER)
     })
-    public Future<CommandResponseJson> execute(
+    public Mono<CommandResponseJson> execute(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context,
             @RequestBody @Valid CommandRequestJson command,
             @Parameter(hidden = true) Authentication principal) {
         auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
-        CompletableFuture<CommandResponseJson> futureResult = new CompletableFuture<>();
-        commandRequestProcessor.dispatch(new CommandRequest() {
+        return commandRequestProcessor.dispatch((CommandRequest) () -> new Command() {
             @Override
-            public Command command() {
-                return new Command() {
+            public String id() {
+                return command.getMessageIdentifier();
+            }
+
+            @Override
+            public String commandName() {
+                return command.getName();
+            }
+
+            @Override
+            public String context() {
+                return context;
+            }
+
+            @Override
+            public Payload payload() {
+                return new Payload() {
                     @Override
-                    public String id() {
-                        return command.getMessageIdentifier();
+                    public String type() {
+                        return command.getPayload().getType();
                     }
 
                     @Override
-                    public String commandName() {
-                        return command.getName();
+                    public String contentType() {
+                        return null;
                     }
 
                     @Override
-                    public String context() {
-                        return context;
-                    }
-
-                    @Override
-                    public Payload payload() {
-                        return new Payload() {
-                            @Override
-                            public String type() {
-                                return command.getPayload().getType();
-                            }
-
-                            @Override
-                            public String contentType() {
-                                return null;
-                            }
-
-                            @Override
-                            public Flux<Byte> data() {
-                                return Flux.fromIterable(ByteString.copyFromUtf8(command.getPayload().getData()));
-                            }
-                        };
-                    }
-
-                    @Override
-                    public Metadata metadata() {
-                        return new Metadata() {
-                            @Override
-                            public Flux<String> metadataKeys() {
-                                return Flux.fromIterable(command.getMetaData().keySet());
-                            }
-
-                            @Override
-                            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
-                                return Optional.ofNullable((R) command.getMetaData().get(metadataKey));
-                            }
-                        };
+                    public Flux<Byte> data() {
+                        return Flux.fromIterable(ByteString.copyFromUtf8(command.getPayload().getData()));
                     }
                 };
             }
 
             @Override
-            public Mono<Void> complete() {
-                return Mono.empty();
-            }
+            public Metadata metadata() {
+                return new Metadata() {
+                    @Override
+                    public Iterable<String> metadataKeys() {
+                        return command.getMetaData().keySet();
+                    }
 
-            @Override
-            public Mono<Void> complete(CommandResult result) {
-                futureResult.complete(new CommandResponseJson(result));
-                return Mono.empty();
+                    @Override
+                    public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                        return Optional.ofNullable((R) command.getMetaData().get(metadataKey));
+                    }
+                };
             }
-
-            @Override
-            public Mono<Void> completeExceptionally(Throwable t) {
-                futureResult.completeExceptionally(t);
-                return Mono.error(t);
-            }
-        }).subscribe(ignore -> {
-                     },
-                     e -> futureResult.complete(new CommandResponseJson(command.getMessageIdentifier(), e)));
-
-        return futureResult;
+                })
+                .map(CommandResponseJson::new)
+                .onErrorResume(e -> Mono.just(new CommandResponseJson(command.getMessageIdentifier(), e)));
     }
 
     @GetMapping("commands/queues")

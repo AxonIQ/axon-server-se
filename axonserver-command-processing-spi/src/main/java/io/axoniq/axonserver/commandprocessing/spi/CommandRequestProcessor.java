@@ -8,7 +8,7 @@ public interface CommandRequestProcessor {
 
     Mono<Void> unregister(String handlerId);
 
-    Mono<Void> dispatch(CommandRequest command);
+    Mono<CommandResult> dispatch(CommandRequest command);
 
     <T extends Interceptor> Registration registerInterceptor(Class<T> type, T interceptor);
 }
