@@ -356,8 +356,8 @@ public class DefaultCommandRequestProcessorTest {
     private static Metadata metadata(Map<String, Serializable> metadata) {
         return new Metadata() {
             @Override
-            public Flux<String> metadataKeys() {
-                return Flux.fromIterable(metadata.keySet());
+            public Iterable<String> metadataKeys() {
+                return metadata.keySet();
             }
 
             @Override

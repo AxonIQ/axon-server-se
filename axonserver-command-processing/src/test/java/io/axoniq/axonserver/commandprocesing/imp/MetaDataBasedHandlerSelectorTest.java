@@ -8,7 +8,6 @@ import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import org.junit.Before;
 import org.junit.Test;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
@@ -173,8 +172,8 @@ public class MetaDataBasedHandlerSelectorTest {
     private static Metadata metadata(Map<String, Serializable> metadata) {
         return new Metadata() {
             @Override
-            public Flux<String> metadataKeys() {
-                return Flux.fromIterable(metadata.keySet());
+            public Iterable<String> metadataKeys() {
+                return metadata.keySet();
             }
 
             @Override

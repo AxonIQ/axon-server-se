@@ -53,9 +53,7 @@ public class MetaDataJson extends HashMap<String,Object> {
 
     public MetaDataJson(Metadata metadata) {
         super();
-        metadata.metadataKeys().doOnNext(key -> {
-            metadata.metadataValue(key).ifPresent(value -> put(key, value));
-        }).then().block();
+        metadata.metadataKeys().forEach(key -> metadata.metadataValue(key).ifPresent(value -> put(key, value)));
     }
 
     public Map<String, MetaDataValue> asMetaDataValueMap() {

@@ -7,13 +7,13 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import org.junit.Test;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
 import java.util.Optional;
 import java.util.Set;
 
+import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 
 public class ConsistentHashHandlerTest {
@@ -63,7 +63,7 @@ public class ConsistentHashHandlerTest {
             public Metadata metadata() {
                 return new Metadata() {
                     @Override
-                    public Flux<String> metadataKeys() {
+                    public Iterable<String> metadataKeys() {
                         return null;
                     }
 
@@ -119,8 +119,8 @@ public class ConsistentHashHandlerTest {
             public Metadata metadata() {
                 return new Metadata() {
                     @Override
-                    public Flux<String> metadataKeys() {
-                        return Flux.empty();
+                    public Iterable<String> metadataKeys() {
+                        return emptyList();
                     }
 
                     @Override

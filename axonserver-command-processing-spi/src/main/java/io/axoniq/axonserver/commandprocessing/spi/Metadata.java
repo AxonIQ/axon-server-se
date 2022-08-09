@@ -1,14 +1,12 @@
 package io.axoniq.axonserver.commandprocessing.spi;
 
-import reactor.core.publisher.Flux;
-
 import java.io.Serializable;
 import java.util.Optional;
 
 public interface Metadata {
 
 
-    Flux<String> metadataKeys();
+    Iterable<String> metadataKeys();
 
     <R extends Serializable> Optional<R> metadataValue(String metadataKey);
 

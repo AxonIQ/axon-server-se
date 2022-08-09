@@ -22,8 +22,10 @@ import io.axoniq.axonserver.grpc.command.CommandResponse;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import static java.util.stream.StreamSupport.stream;
 
 public class GrpcMapper {
 
@@ -45,11 +47,8 @@ public class GrpcMapper {
     }
 
     private static Map<String, MetaDataValue> map(Metadata metadata) {
-        Map<String, MetaDataValue> values = new HashMap<>();
-        metadata.metadataKeys().filter(GrpcMapper::isNotInternal)
-                .collectMap(key -> key, k -> mapMetaDataValue(metadata.metadataValue(k).orElse(null)))
-                .block();
-        return values;
+        return stream(metadata.metadataKeys().spliterator(), false).filter(GrpcMapper::isNotInternal)
+                .collect(Collectors.toMap(key -> key, k -> mapMetaDataValue(metadata.metadataValue(k).orElse(null))));
     }
 
     private static MetaDataValue mapMetaDataValue(Serializable s) {

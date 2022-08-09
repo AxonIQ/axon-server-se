@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 
 public class MetaDataBasedHandlerSelector implements HandlerSelector {
 
@@ -35,12 +36,12 @@ public class MetaDataBasedHandlerSelector implements HandlerSelector {
 
     private Integer score(Metadata metaDataMap, CommandHandler client) {
         Metadata clientTags = client.metadata();
-        return metaDataMap.metadataKeys()
-                          .filter(k -> !Metadata.isInternal(k))
-                          .reduce(0,
-                                  (score, key) -> score + match(metaDataMap.metadataValue(key),
-                                                                clientTags.metadataValue(key)))
-                          .block();
+
+        return StreamSupport.stream(metaDataMap.metadataKeys().spliterator(), false)
+                .filter(k -> !Metadata.isInternal(k))
+                .reduce(0,
+                        (score, key) -> score + match(metaDataMap.metadataValue(key),
+                                clientTags.metadataValue(key)), Integer::sum );
     }
 
     private int match(Optional<Serializable> requestValue, Optional<Serializable> handlerValue) {

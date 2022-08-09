@@ -8,7 +8,6 @@ import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.commandprocessing.spi.ResultPayload;
 import org.junit.Test;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
@@ -20,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -93,8 +93,8 @@ public class QueuedCommandDispatcherTest {
                     public Metadata metadata() {
                         return new Metadata() {
                             @Override
-                            public Flux<String> metadataKeys() {
-                                return Flux.empty();
+                            public Iterable<String> metadataKeys() {
+                                return emptyList();
                             }
 
                             @Override
