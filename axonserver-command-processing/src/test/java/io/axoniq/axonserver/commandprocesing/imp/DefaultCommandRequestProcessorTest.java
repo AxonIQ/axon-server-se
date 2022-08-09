@@ -4,7 +4,6 @@ import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
-import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
@@ -141,7 +140,7 @@ public class DefaultCommandRequestProcessorTest {
     @Test
     public void dispatch() {
         testSubject.register(handler)
-                .then(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of()))
+                .then(testSubject.dispatch(new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of()))
                         .flatMap(result -> testSubject.unregister(handler.commandHandler().id())
                                 .thenReturn(result)))
                 .as(StepVerifier::create)
@@ -151,7 +150,7 @@ public class DefaultCommandRequestProcessorTest {
 
     @Test
     public void dispatchNoHandler() {
-        StepVerifier.create(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, "Other context", payload("Request payload"), Map.of())))
+        StepVerifier.create(testSubject.dispatch(new GrpcCommand(COMMAND_NAME, "Other context", payload("Request payload"), Map.of())))
                 .expectError(NoHandlerFoundException.class)
                 .verify();
     }
@@ -170,7 +169,7 @@ public class DefaultCommandRequestProcessorTest {
             }
         };
         testSubject.register(handler2)
-                .then(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of())))
+                .then(testSubject.dispatch(new GrpcCommand(COMMAND_NAME, CONTEXT, payload("Request payload"), Map.of())))
                 .then(testSubject.unregister(handler.commandHandler().id()))
                 .as(StepVerifier::create)
                 .verifyComplete();
@@ -223,7 +222,7 @@ public class DefaultCommandRequestProcessorTest {
         testSubject.registerInterceptor(CommandFailedInterceptor.class,
                 commandException -> commandException.doOnNext(commandExceptions::add));
         testSubject.register(handler)
-                .then(testSubject.dispatch((CommandRequest) () -> new GrpcCommand(COMMAND_NAME, "anotherContext", payload("String"), Map.of())))
+                .then(testSubject.dispatch(new GrpcCommand(COMMAND_NAME, "anotherContext", payload("String"), Map.of())))
                 .then(testSubject.unregister(handler.commandHandler().id()))
                 .onErrorResume(e -> Mono.empty())
                 .as(StepVerifier::create)

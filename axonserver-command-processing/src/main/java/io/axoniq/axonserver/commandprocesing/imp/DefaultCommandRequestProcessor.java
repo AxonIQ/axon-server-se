@@ -3,7 +3,6 @@ package io.axoniq.axonserver.commandprocesing.imp;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
-import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Interceptor;
@@ -80,9 +79,9 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
     }
 
     @Override
-    public Mono<CommandResult> dispatch(CommandRequest commandRequest) {
+    public Mono<CommandResult> dispatch(Command commandRequest) {
         return invokeInterceptors(CommandReceivedInterceptor.class,
-                                  Mono.just(commandRequest.command()),
+                                  Mono.just(commandRequest),
                                   CommandReceivedInterceptor::onCommandReceived)
                 .flatMap(command -> commandHandlerRegistry.handler(command)
                                                           .flatMap(subscription -> commandDispatcher.dispatch(
@@ -97,13 +96,13 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                                                                                                                     .thenReturn(commandResult))
                                                                                                     .name("commandDispatch")
                                                                                                     .tag("command",
-                                                                                                         commandRequest.command()
+                                                                                                        command
                                                                                                                        .commandName())
                                                                                                     .tag("context",
-                                                                                                         commandRequest.command()
+                                                                                                            command
                                                                                                                        .context())
                                                                                                     .tag("source",
-                                                                                                         commandRequest.command()
+                                                                                                            command
                                                                                                                        .metadata()
                                                                                                                        .metadataValue(
                                                                                                                                Command.CLIENT_ID,
@@ -121,18 +120,18 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                         throwable -> invokeInterceptors(
                                 CommandFailedInterceptor.class,
                                 commandFailed(
-                                        commandRequest.command(),
+                                        commandRequest,
                                         throwable),
                                 CommandFailedInterceptor::onCommandFailed)
                                 .name("commandDispatchErrors")
                                 .tag("command",
-                                     commandRequest.command()
+                                        commandRequest
                                                    .commandName())
                                 .tag("context",
-                                     commandRequest.command()
+                                        commandRequest
                                                    .context())
                                 .tag("source",
-                                     commandRequest.command()
+                                        commandRequest
                                                    .metadata()
                                                    .metadataValue(
                                                            Command.CLIENT_ID,

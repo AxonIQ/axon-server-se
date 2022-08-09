@@ -11,7 +11,6 @@ package io.axoniq.axonserver.rest;
 
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
-import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
@@ -116,7 +115,7 @@ public class CommandRestController {
             @RequestBody @Valid CommandRequestJson command,
             @Parameter(hidden = true) Authentication principal) {
         auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
-        return commandRequestProcessor.dispatch((CommandRequest) () -> new Command() {
+        return commandRequestProcessor.dispatch(new Command() {
             @Override
             public String id() {
                 return command.getMessageIdentifier();

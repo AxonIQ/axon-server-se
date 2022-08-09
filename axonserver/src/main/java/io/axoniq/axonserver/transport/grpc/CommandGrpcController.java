@@ -12,7 +12,6 @@ package io.axoniq.axonserver.transport.grpc;
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
-import io.axoniq.axonserver.commandprocessing.spi.CommandRequest;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
@@ -160,13 +159,13 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
     public void dispatch(Command request, StreamObserver<CommandResponse> responseObserver) {
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
-        commandRequestProcessor.dispatch((CommandRequest) () ->  new GrpcCommand(request,
+        commandRequestProcessor.dispatch(new GrpcCommand(request,
                         context,
                         new GrpcAuthentication(
                                 () -> authentication)))
                 .subscribe(
                         result -> responseObserver.onNext(GrpcMapper.map(result)),
-                        error -> returnError(responseObserver,request,error),
+                        error -> returnError(responseObserver, request, error),
                         responseObserver::onCompleted);
     }
 
