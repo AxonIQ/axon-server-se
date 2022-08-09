@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.event.Event;
@@ -70,7 +79,19 @@ class DefaultSegmentTransformer implements SegmentTransformer {
 
     @Override
     public Mono<Void> completeSegment() {
-        return process(Optional::empty);
+        return process(Optional::empty).then(
+                Mono.create(sink -> {
+                    try {
+                        SegmentWriter segmentWriter = segmentWriterRef.get();
+                        segmentWriter.writeEndOfFile();
+                        segmentWriter.close();
+                        indexManager.createNewVersion(segment, newVersion, segmentWriter.indexEntries());
+                        closeTransactionIterator();
+                        sink.success();
+                    } catch (Exception e) {
+                        sink.error(e);
+                    }
+                }));
     }
 
     @Override
@@ -118,6 +139,8 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                             event = transformedEvent.getEvent();
                             done = true;
                         }
+                    } else if (!transactionIteratorRef.get().hasNext()) {
+                        done = true;
                     }
                     transformedTransaction.add(event);
 
@@ -126,14 +149,6 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                         segmentWriter.write(transformedTransaction);
                         originalTransactionRef.set(null);
                         transformedTransaction.clear();
-
-                        if (!transactionIteratorRef.get().hasNext()) {
-                            segmentWriter.writeEndOfFile();
-                            segmentWriter.close();
-                            indexManager.createNewVersion(segment, newVersion, segmentWriter.indexEntries());
-                            closeTransactionIterator();
-                            done = true;
-                        }
                     }
                 } while (!done);
                 sink.success();
