@@ -13,11 +13,10 @@ public class DirectCommandDispatcher implements CommandDispatcher {
 
     @Override
     public Mono<CommandResult> dispatch(CommandHandlerSubscription handler, Command commandRequest) {
-        logger.debug("{}: dispatch {} ({}) to {}", commandRequest.context(), commandRequest.commandName(),
-                     commandRequest.id(), handler.commandHandler().id());
-        return handler.dispatch(commandRequest).doOnNext(r -> {
-            logger.debug("{}: received result for {} ({})", commandRequest.context(), commandRequest.commandName(),
-                         commandRequest.id());
-        });
+        return handler.dispatch(commandRequest)
+                .doFirst(() -> logger.debug("{}: dispatch {} ({}) to {}", commandRequest.context(), commandRequest.commandName(),
+                        commandRequest.id(), handler.commandHandler().id()))
+                .doOnNext(r -> logger.debug("{}: received result for {} ({})", commandRequest.context(), commandRequest.commandName(),
+                        commandRequest.id()));
     }
 }

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.Function;
 
 public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
 
@@ -35,7 +36,7 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
 
     @Override
     public Mono<CommandHandler> unregister(String handlerId) {
-        return Mono.fromSupplier(() -> {
+        return Mono.fromCallable(() -> {
             CommandHandlerSubscription handler = handlers.remove(handlerId);
             if (handler == null) {
                 return null;
@@ -69,22 +70,18 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
     private Mono<CommandHandlerSubscription> selectSubscription(Set<CommandHandlerSubscription> handlers,
                                                                 Command command) {
         return Flux.fromIterable(handlerSelectorList)
-                   .reduce(handlers, (h, selector) -> apply(command, selector, h))
-                   .map(this::first);
+                   .reduce(handlers, (handlerSubscriptionSet, selector) ->
+                           applySelector(command, selector, handlerSubscriptionSet))
+                   .flatMapIterable(Function.identity())
+                   .next()
+                   .switchIfEmpty(Mono.error(new NoHandlerFoundException()));
     }
 
-    private Set<CommandHandlerSubscription> apply(Command command, HandlerSelector selector,
-                                                  Set<CommandHandlerSubscription> handlers) {
+    private Set<CommandHandlerSubscription> applySelector(Command command, HandlerSelector selector,
+                                                          Set<CommandHandlerSubscription> handlers) {
         if (handlers.size() <= 1) {
             return handlers;
         }
         return selector.select(handlers, command);
-    }
-
-    private CommandHandlerSubscription first(Set<CommandHandlerSubscription> handlers) {
-        if (handlers.isEmpty()) {
-            throw new NoHandlerFoundException();
-        }
-        return handlers.iterator().next();
     }
 }

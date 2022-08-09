@@ -118,14 +118,16 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         }
 
         public Mono<CommandResult> enqueue(CommandAndHandler commandRequest) {
-            logger.debug("{}: Enqueue: {}, queueSize: {}", queueName, commandRequest.id(), queue.size());
-            Sinks.One<CommandResult> sink = Sinks.one();
-            resultMap.put(commandRequest.id(), sink);
-            processor.emitNext(commandRequest, (signalType, emitResult) -> {
-                logger.warn("Failed to emit command: {}", signalType);
-                return false;
+            return Mono.defer(()->{
+                logger.debug("{}: Enqueue: {}, queueSize: {}", queueName, commandRequest.id(), queue.size());
+                Sinks.One<CommandResult> sink = Sinks.one();
+                resultMap.put(commandRequest.id(), sink);
+                processor.emitNext(commandRequest, (signalType, emitResult) -> {
+                    logger.warn("Failed to emit command: {}", signalType);
+                    return false;
+                });
+                return sink.asMono();
             });
-            return sink.asMono();
         }
 
         public void request(long count) {
@@ -138,8 +140,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                 if (commandAndHandler.handler.commandHandler().commandName().equals(commandName) &&
                         commandAndHandler.handler.commandHandler().context().equals(context)) {
                     it.remove();
-                    Sinks.One<CommandResult> sink = resultMap.remove(commandAndHandler.commandRequest.id());
-                    sink.tryEmitError(new RequestDequeuedException());
+                    signalError(commandAndHandler.commandRequest.id(),new RequestDequeuedException());
                 }
             }
         }
