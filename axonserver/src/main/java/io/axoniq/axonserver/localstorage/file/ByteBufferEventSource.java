@@ -90,8 +90,12 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     public SerializedEvent readEvent(int position) {
-        buffer.position(position);
-        return readEvent();
+        try {
+            buffer.position(position);
+            return readEvent();
+        } catch (OutOfMemoryError oom) {
+            throw new RuntimeException(oom);
+        }
     }
 
     @Override
