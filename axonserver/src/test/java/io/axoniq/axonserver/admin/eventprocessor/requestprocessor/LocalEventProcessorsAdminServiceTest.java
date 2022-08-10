@@ -14,7 +14,6 @@ import io.axoniq.axonserver.admin.InstructionCache;
 import io.axoniq.axonserver.admin.InstructionResult;
 import io.axoniq.axonserver.admin.Result;
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorInstance;
-import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.component.processor.ProcessorEventPublisher;
 import io.axoniq.axonserver.component.processor.balancing.LoadBalancingOperation;
@@ -29,7 +28,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import io.axoniq.axonserver.topology.Topology;
-import org.jetbrains.annotations.NotNull;
+import io.axoniq.axonserver.util.AuthenticatedUser;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
@@ -507,31 +506,6 @@ public class LocalEventProcessorsAdminServiceTest {
         @Override
         public String errorMessage() {
             return null;
-        }
-    }
-
-    private static class AuthenticatedUser implements Authentication {
-
-        private final String user;
-
-        public AuthenticatedUser(String user) {
-            this.user = user;
-        }
-
-        @NotNull
-        @Override
-        public String username() {
-            return user;
-        }
-
-        @Override
-        public boolean hasRole(@NotNull String role, @NotNull String context) {
-            return true;
-        }
-
-        @Override
-        public boolean application() {
-            return false;
         }
     }
 }
