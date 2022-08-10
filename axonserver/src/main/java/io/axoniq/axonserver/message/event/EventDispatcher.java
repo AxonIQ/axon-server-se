@@ -64,10 +64,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static io.axoniq.axonserver.exception.ErrorCode.LIST_AGGREGATE_EVENTS_TIMEOUT;
 import static io.axoniq.axonserver.exception.ErrorCode.NO_EVENTSTORE;
 import static io.grpc.stub.ServerCalls.*;
 
@@ -114,6 +116,7 @@ public class EventDispatcher implements AxonServerClientService {
     private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
     private final RetryBackoffSpec retrySpec;
     private final int aggregateEventsPrefetch;
+    private final long listEventsTimeoutMillis;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            ContextProvider contextProvider,
@@ -122,7 +125,8 @@ public class EventDispatcher implements AxonServerClientService {
                            GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
                            @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
-                           @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch) {
+                           @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch,
+                           @Value("${axoniq.axonserver.event.aggregate.timeout:30000}") long listEventsTimeoutMillis) {
         this.contextProvider = contextProvider;
         this.eventStoreLocator = eventStoreLocator;
         this.authenticationProvider = authenticationProvider;
@@ -130,6 +134,7 @@ public class EventDispatcher implements AxonServerClientService {
         this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
         this.aggregateEventsPrefetch = aggregateEventsPrefetch;
+        this.listEventsTimeoutMillis = listEventsTimeoutMillis;
     }
 
 
@@ -277,6 +282,9 @@ public class EventDispatcher implements AxonServerClientService {
                                         .set(signal.get().getAggregateSequenceNumber());
                             }
                         })
+                        .timeout(Duration.ofSeconds(listEventsTimeoutMillis))
+                        .onErrorMap(TimeoutException.class, e -> new MessagingPlatformException(LIST_AGGREGATE_EVENTS_TIMEOUT,
+                                "Timeout exception: No events were emitted from event store in last " + listEventsTimeoutMillis + "ms. Check the logs for virtual machine errors like OutOfMemoryError."))
                         .retryWhen(retrySpec
                                 .doBeforeRetry(t ->logger.warn("Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
                                         t.failure().getClass().getName() ,t.failure().getMessage(), request.getAggregateId())))

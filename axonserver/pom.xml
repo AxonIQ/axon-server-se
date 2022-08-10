@@ -31,6 +31,8 @@
 
         <mapdb.version>3.0.8</mapdb.version>
         <skip.integration.tests>true</skip.integration.tests>
+
+        <reactor.version>3.4.22</reactor.version>
     </properties>
 
     <dependencies>
@@ -242,6 +244,7 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
+            <version>${reactor.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
