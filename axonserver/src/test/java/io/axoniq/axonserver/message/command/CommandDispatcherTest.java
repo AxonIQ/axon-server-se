@@ -14,7 +14,6 @@ import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisco
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.grpc.SerializedCommand;
 import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
 import io.axoniq.axonserver.grpc.SerializedCommandResponse;
@@ -25,17 +24,22 @@ import io.axoniq.axonserver.interceptor.NoOpCommandInterceptors;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.plugin.ExecutionContext;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.junit.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.time.Clock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.*;
@@ -90,7 +94,7 @@ public class CommandDispatcherTest {
                                    });
         assertEquals(1, commandDispatcher.getCommandQueues().getSegments().get(client.toString()).size());
         assertEquals(0, responseObserver.values().size());
-        Mockito.verify(commandCache, times(1)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -112,7 +116,7 @@ public class CommandDispatcherTest {
                                    });
         assertEquals(1, responseObserver.values().size());
         assertNotEquals("", responseObserver.values().get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(0)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -164,7 +168,7 @@ public class CommandDispatcherTest {
                                    });
         assertEquals(1, responseObserver.values().size());
         assertEquals("AXONIQ-4000", responseObserver.values().get(0).getErrorCode());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(0)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -191,7 +195,7 @@ public class CommandDispatcherTest {
         assertEquals("12", commandDispatcher.getCommandQueues().take(clientIdentification.toString()).command()
                                             .getMessageIdentifier());
         assertEquals(0, responseObserver.values().size());
-        Mockito.verify(commandCache, times(1)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(1)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -207,7 +211,7 @@ public class CommandDispatcherTest {
                                           new SerializedCommand(request),
                                           responseObserver::onNext);
         assertEquals(1, responseObserver.values().size());
-        Mockito.verify(commandCache, times(0)).put(eq("12"), any());
+        Mockito.verify(commandCache, times(0)).putIfAbsent(eq("12"), any());
     }
 
     @Test
@@ -321,5 +325,45 @@ public class CommandDispatcherTest {
                                                                                       .build()), false);
         SerializedCommandResponse response = futureResponse.get();
         assertEquals(ErrorCode.EXCEPTION_IN_INTERCEPTOR.getCode(), response.getErrorCode());
+    }
+
+    @Test
+    public void duplicateCommandGetsRejected() throws ExecutionException, InterruptedException, TimeoutException {
+        // See QueryDispatcherTest.queryDuplicated for explanation
+        String duplicatedId = "duplicatedId";
+
+        commandCache = new CommandCache(10000, Clock.systemUTC(), 100000);
+
+        CompletableFuture<SerializedCommandResponse> originalFutureResponse = new CompletableFuture<>();
+        CommandInformation commandInformation = new CommandInformation(duplicatedId,"","",
+                                                                       originalFutureResponse::complete,
+                                                                       new ClientStreamIdentification(Topology.DEFAULT_CONTEXT,"client"),"component");
+
+        commandCache.putIfAbsent(duplicatedId,commandInformation);
+
+        commandDispatcher = new CommandDispatcher(registrations, commandCache, metricsRegistry, meterFactory,new NoOpCommandInterceptors(), 10_000);
+
+        FakeStreamObserver<SerializedCommandProviderInbound> commandProviderInbound = new FakeStreamObserver<>();
+        ClientStreamIdentification client = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client");
+        DirectCommandHandler result = new DirectCommandHandler(commandProviderInbound,
+                                                               client, "client", "component");
+        when(registrations.getHandlerForCommand(eq(Topology.DEFAULT_CONTEXT), any(), any())).thenReturn(result);
+
+        CompletableFuture<SerializedCommandResponse> futureResponse = new CompletableFuture<>();
+        commandDispatcher.dispatch(Topology.DEFAULT_CONTEXT, null,
+                                   new SerializedCommand(Command.newBuilder()
+                                                                .setMessageIdentifier(duplicatedId)
+                                                                .build()), futureResponse::complete);
+
+
+        commandDispatcher.handleResponse(new SerializedCommandResponse(CommandResponse.newBuilder()
+                                                                                      .setRequestIdentifier(duplicatedId)
+                                                                                      .build()), false);
+
+        SerializedCommandResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
+        assertEquals(duplicatedId, originalResponse.getRequestIdentifier());
+
+        SerializedCommandResponse response = futureResponse.get();
+        assertEquals(response.getErrorCode(), ErrorCode.COMMAND_DUPLICATED.getCode());
     }
 }
