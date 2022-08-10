@@ -38,8 +38,8 @@ public class QueryCacheTest extends TestCase {
     @Test(expected = InsufficientBufferCapacityException.class)
     public void onFullCapacityThrowError() {
 
-        testSubject.put("1234", mock(ActiveQuery.class));
-        testSubject.put("4567", mock(ActiveQuery.class));
+        testSubject.putIfAbsent("1234", mock(ActiveQuery.class));
+        testSubject.putIfAbsent("4567", mock(ActiveQuery.class));
     }
 
     @Test
@@ -51,7 +51,7 @@ public class QueryCacheTest extends TestCase {
         when(activeQuery.getQuery()).thenReturn(queryDefinition);
         when(activeQuery.getSourceClientId()).thenReturn("theRequester");
         when(activeQuery.waitingFor()).thenReturn(Collections.singleton("theResponder"));
-        testSubject.put("myKey", activeQuery);
+        testSubject.putIfAbsent("myKey", activeQuery);
         testSubject.clearOnTimeout();
         verify(activeQuery).cancelWithError(eq(ErrorCode.QUERY_TIMEOUT),
                                             matches("Query cancelled due to timeout"));
