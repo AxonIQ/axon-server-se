@@ -76,6 +76,11 @@ public class QueryEventsRequestStreamObserverTest {
     }
 
     @Test
+    public void completedByCaller() throws ExecutionException, InterruptedException, TimeoutException {
+        testSubject.onCompleted();
+        completableResult.get(1, TimeUnit.SECONDS);
+    }
+    @Test
     public void onNextEvent() throws InterruptedException, ExecutionException, TimeoutException {
         doAnswer(invocation -> {
             String aggregateId = invocation.getArgument(0);
