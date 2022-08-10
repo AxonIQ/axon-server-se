@@ -63,10 +63,12 @@ import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.DaemonThreadFactory;
 import io.axoniq.axonserver.version.DefaultVersionInfoProvider;
 import io.axoniq.axonserver.version.VersionInfoProvider;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanCreationNotAllowedException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.system.DiskSpaceHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEvent;
@@ -223,10 +225,17 @@ public class AxonServerStandardConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(CommandDispatcher.class)
-    public CommandDispatcher queuedCommandDispatcher() {
+    public CommandDispatcher queuedCommandDispatcher(
+            @Value("${axoniq.axonserver.command-queue-capacity-per-client:10000}") int queueCapacity,
+            @Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
+            MeterRegistry meterRegistry) {
         return new QueuedCommandDispatcher(Schedulers.boundedElastic(),
                                            commandHandler -> commandHandler.metadata()
-                                                                           .metadataValue(CommandHandler.CLIENT_ID));
+                                                                           .metadataValue(CommandHandler.CLIENT_ID),
+                                           queueCapacity,
+                                           defaultCommandTimeout,
+                                           meterRegistry
+        );
     }
 
 
@@ -242,6 +251,8 @@ public class AxonServerStandardConfiguration {
                                                            consistentHashHandler);
         defaultCommandRequestProcessor.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class,
                                                            consistentHashHandler);
+        defaultCommandRequestProcessor.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class,
+                                                           queuedCommandDispatcher);
         return defaultCommandRequestProcessor;
     }
 
@@ -338,5 +349,4 @@ public class AxonServerStandardConfiguration {
         //using FileSystemMonitor instead
         return null;
     }
-
 }

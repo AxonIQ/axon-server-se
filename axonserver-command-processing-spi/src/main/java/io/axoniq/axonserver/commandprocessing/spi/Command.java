@@ -16,6 +16,7 @@ public interface Command extends Serializable {
     String PRINCIPAL = "__principal";
     String CLIENT_ID = "__clientId";
     String COMPONENT_NAME = "__componentName";
+    String TIMEOUT = "__timeout";
 
     /**
      * The unique identifier of this command.

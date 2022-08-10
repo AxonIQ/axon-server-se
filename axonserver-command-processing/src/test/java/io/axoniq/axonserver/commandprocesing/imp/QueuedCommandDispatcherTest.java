@@ -7,6 +7,7 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.commandprocessing.spi.ResultPayload;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -14,6 +15,7 @@ import reactor.test.StepVerifier;
 
 import java.io.Serializable;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -26,7 +28,10 @@ import static org.junit.Assert.fail;
 public class QueuedCommandDispatcherTest {
 
     private final QueuedCommandDispatcher testSubject = new QueuedCommandDispatcher(Schedulers.boundedElastic(),
-                                                                                    h -> Optional.of("clientId"));
+                                                                                    h -> Optional.of("clientId"),
+                                                                                    100,
+                                                                                    5000,
+                                                                                    new SimpleMeterRegistry());
 
     @Test
     public void dispatch() throws InterruptedException {
@@ -45,6 +50,19 @@ public class QueuedCommandDispatcherTest {
                     .expectSubscription()
                     .expectNextMatches(response -> response.commandId().equals(request2.id()))
                     .verifyComplete();
+    }
+
+    @Test
+    public void dispatchTimeout() throws InterruptedException {
+        CommandHandlerSubscription handler = commandHandlerSubscription();
+        Command request = request("request1");
+        testSubject.dispatch(handler, request)
+                   .subscribe(r -> {
+                   }, Throwable::printStackTrace);
+        Thread.sleep(100);
+        testSubject.timeout();
+        testSubject.request("clientId", 10);
+        Thread.sleep(100);
     }
 
     @Test
@@ -108,6 +126,7 @@ public class QueuedCommandDispatcherTest {
 
             @Override
             public Mono<CommandResult> dispatch(Command command) {
+                System.out.println("Dispatch: " + command.id());
                 return Mono.just(new CommandResult() {
                     @Override
                     public String id() {
@@ -126,7 +145,17 @@ public class QueuedCommandDispatcherTest {
 
                     @Override
                     public Metadata metadata() {
-                        return null;
+                        return new Metadata() {
+                            @Override
+                            public Iterable<String> metadataKeys() {
+                                return Collections.emptySet();
+                            }
+
+                            @Override
+                            public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                                return Optional.empty();
+                            }
+                        };
                     }
                 });
             }
@@ -157,7 +186,17 @@ public class QueuedCommandDispatcherTest {
 
             @Override
             public Metadata metadata() {
-                return null;
+                return new Metadata() {
+                    @Override
+                    public Iterable<String> metadataKeys() {
+                        return Collections.singleton(Command.TIMEOUT);
+                    }
+
+                    @Override
+                    public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                        return Command.TIMEOUT.equals(metadataKey) ? (Optional<R>) Optional.of(10L) : Optional.empty();
+                    }
+                };
             }
         };
     }
