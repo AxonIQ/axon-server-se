@@ -74,7 +74,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     @Override
     public Mono<TransformationProgress> transformEvent(EventWithToken transformedEvent) {
         return process(() -> Optional.of(transformedEvent))
-                .thenReturn(new TransformationProgressUpdate(transformedEvent.getToken()));
+                .thenReturn(new TransformationProgressUpdate(1));
     }
 
     @Override
@@ -121,9 +121,14 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     private Mono<Void> process(Supplier<Optional<EventWithToken>> replacement) {
         return Mono.<Void>create(sink -> {
             try {
+                //todo to be simplified
                 boolean done = false;
                 do {
                     if (originalTransactionRef.get() == null) {
+                        if (!transactionIteratorRef.get().hasNext()) {
+                            sink.success();
+                            return;
+                        }
                         originalTransactionRef.set(transactionIteratorRef.get().next());
                     }
 

@@ -15,20 +15,20 @@ package io.axoniq.axonserver.localstorage.file;
  */
 public class TransformationProgressUpdate implements TransformationProgress {
 
-    private final long lastTokenProcessed;
+    private final long transformationActionProcessed;
 
-    public TransformationProgressUpdate(long lastTokenProcessed) {
-        this.lastTokenProcessed = lastTokenProcessed;
+    public TransformationProgressUpdate(long transformationActionProcessed) {
+        this.transformationActionProcessed = transformationActionProcessed;
     }
 
     public long eventsTransformed() {
-        return lastTokenProcessed;
+        return transformationActionProcessed;
     }
 
     @Override
     public String toString() {
         return "TransformationProgressUpdate{" +
-                "lastTokenProcessed=" + lastTokenProcessed +
+                "transformationActionProcessed=" + transformationActionProcessed +
                 '}';
     }
 }

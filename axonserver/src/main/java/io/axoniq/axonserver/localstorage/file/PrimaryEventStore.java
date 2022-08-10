@@ -205,7 +205,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
                 token++;
             }
         } finally {
-            readBuffers.remove(latestSegment);
+            readBuffers.remove(latestSegment.segment());
             buffer.close();
         }
         return new FileVersion(token, 0);

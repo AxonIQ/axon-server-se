@@ -57,6 +57,8 @@ public class DefaultLocalTransformationApplyExecutor implements LocalTransformat
                                     .flatMapSequential(lastProcessedSequence -> stateRepo.updateLastSequence(
                                             transformation.id(),
                                             lastProcessedSequence))
+                                    .then(transformationEntryStoreSupplier.supply(transformation.context()))
+                                    .flatMap(TransformationEntryStore::delete)
                                     .then(stateRepo.markAsApplied(transformation.id()))
                                     .doFinally(onFinally -> applyingTransformations.remove(transformation.id())))
                    .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",

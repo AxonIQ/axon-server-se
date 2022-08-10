@@ -294,16 +294,19 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                           int newVersion,
                                                           Flux<EventWithToken> transformedEventsInTheSegment) {
         return Flux.usingWhen(Mono.fromSupplier(() -> new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
-                                                                             context,
-                                                                             segment,
-                                                                             newVersion, indexManager,
-                                                                             () -> getTransactions(segment, segment))),
+                                                                                    context,
+                                                                                    segment,
+                                                                                    newVersion, indexManager,
+                                                                                    () -> getTransactions(segment,
+                                                                                                          segment))),
                               segmentTransformer -> segmentTransformer.initialize()
-                                                                      .thenMany(transformedEventsInTheSegment.concatMap(segmentTransformer::transformEvent)),
+                                                                      .thenMany(transformedEventsInTheSegment.concatMap(
+                                                                              segmentTransformer::transformEvent)),
                               SegmentTransformer::completeSegment,
                               SegmentTransformer::rollback,
                               SegmentTransformer::cancel)
-                   .last();
+                   .reduce((p1, p2) -> new TransformationProgressUpdate(
+                           p1.eventsTransformed() + p2.eventsTransformed()));
     }
 
     private Mono<Void> activateTransformation() {
