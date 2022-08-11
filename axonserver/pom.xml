@@ -37,6 +37,8 @@
         <skipTests>false</skipTests>
         <skipITs>${skipTests}</skipITs>
         <skipUTs>${skipTests}</skipUTs>
+
+        <reactor.version>3.4.22</reactor.version>
     </properties>
 
     <dependencies>
@@ -237,6 +239,7 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
+            <version>${reactor.version}</version>
         </dependency>
 
         <dependency>

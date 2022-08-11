@@ -11,6 +11,7 @@ package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.access.jpa.User;
 import io.axoniq.axonserver.access.roles.RoleController;
+import io.axoniq.axonserver.util.AuthenticatedUser;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.applicationevents.UserEvents;
@@ -42,7 +43,7 @@ public class AxonServerStandardConfigurationTest {
         UserController userController = mock(UserController.class);
         UserAdminService facade = testSubject.userAdminService(userController,
                                                                applicationEventPublisher, roleController);
-        facade.deleteUser("User", () -> "junit");
+        facade.deleteUser("User", new AuthenticatedUser("junit"));
         verify(applicationEventPublisher).publishEvent(argThat(new ArgumentMatcher<Object>() {
             @Override
             public boolean matches(Object o) {
@@ -62,7 +63,7 @@ public class AxonServerStandardConfigurationTest {
         UserAdminService facade = testSubject.userAdminService(userController,
                                                                applicationEventPublisher,
                                                                roleController);
-        facade.createOrUpdateUser("User", "Password", Collections.emptySet(), () -> "junit");
+        facade.createOrUpdateUser("User", "Password", Collections.emptySet(), new AuthenticatedUser("junit"));
         verify(applicationEventPublisher).publishEvent(argThat(new ArgumentMatcher<Object>() {
             @Override
             public boolean matches(Object o) {

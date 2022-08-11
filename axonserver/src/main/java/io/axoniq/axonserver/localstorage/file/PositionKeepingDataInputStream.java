@@ -49,13 +49,17 @@ public class PositionKeepingDataInputStream {
     }
 
     private byte[] readBytes(int size) throws IOException {
-        byte[] bytes = new byte[size];
-        int total = reader.read(bytes);
-        while( total < size ) {
-            total += reader.read(bytes, total, size-total);
+        try {
+            byte[] bytes = new byte[size];
+            int total = reader.read(bytes);
+            while( total < size ) {
+                total += reader.read(bytes, total, size-total);
+            }
+            position  += size;
+            return bytes;
+        } catch (OutOfMemoryError oom) {
+            throw new RuntimeException(oom);
         }
-        position  += size;
-        return bytes;
     }
 
     public void close() throws IOException {
