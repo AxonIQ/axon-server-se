@@ -3,11 +3,11 @@ This is the Axon Server Standard Edition, version 4.5
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
-Release Notes for version 4.5.14
+Release Notes for version 4.5.15
 --------------------------------
 * Fix: reading aggregate events hangs on JVM Error
 
-Release Notes for version 4.5.13
+Release Notes for version 4.5.14
 --------------------------------
 * Security update: updated control database settings
 
