@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -112,7 +113,7 @@ public class EventDispatcherTest {
         testSubject = new EventDispatcher(eventStoreLocator,
                                           new MeterFactory(Metrics.globalRegistry,
                                                            new DefaultMetricCollector()),
-                                          3, 100, 50);
+                                          3, 100, 50, 30_000);
     }
 
     @Test
@@ -295,5 +296,34 @@ public class EventDispatcherTest {
                     .expectNextCount(1L)
                     .verifyComplete();
         assertEquals(1, eventStoreWithoutLeaderCalls.get());
+    }
+
+    @Test
+    public void testTimeoutOnListAggregateEvents() throws InterruptedException {
+        Flux<SerializedEvent> flux = Flux.create(sink -> {});
+        EventStore eventStore = mock(EventStore.class);
+        when(eventStore.aggregateEvents(any(), any(), any())).thenReturn(flux);
+        EventDispatcher eventDispatcher = new EventDispatcher(context -> eventStore, () -> Topology.DEFAULT_CONTEXT,
+                () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                new MeterFactory(Metrics.globalRegistry,
+                        new DefaultMetricCollector()),
+                Executors::newCachedThreadPool,
+                3, 100, 50, 3);
+
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<SerializedEvent>() {
+            @Override
+            public void onError(Throwable t) {
+                super.onError(t);
+                countDownLatch.countDown();
+            }
+        };
+
+        eventDispatcher.listAggregateEvents(GetAggregateEventsRequest.newBuilder().build(), responseObserver);
+        countDownLatch.await();
+        List<Throwable> errors = responseObserver.errors();
+        assertEquals(1, errors.size());
+        Throwable throwable = errors.get(0);
+        assertEquals(StatusRuntimeException.class, throwable.getClass());
     }
 }

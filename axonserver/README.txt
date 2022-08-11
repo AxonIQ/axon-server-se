@@ -32,7 +32,11 @@ Notes:
 - For the Swagger endpoint use  /swagger-ui.html or /swagger-ui/index.html.
 - The generic endpoint for actuator is /actuator (/actuator/ no longer works)
 
-Release Notes for version 4.5.13
+Release Notes for version 4.5.15
+--------------------------------
+* Fix: reading aggregate events hangs on JVM Error
+
+Release Notes for version 4.5.14
 --------------------------------
 * Security update: updated control database settings
 

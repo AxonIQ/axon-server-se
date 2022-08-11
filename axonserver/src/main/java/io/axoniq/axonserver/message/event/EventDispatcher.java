@@ -44,9 +44,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static io.axoniq.axonserver.exception.ErrorCode.LIST_AGGREGATE_EVENTS_TIMEOUT;
+import static io.axoniq.axonserver.exception.ErrorCode.NO_EVENTSTORE;
+import static io.grpc.stub.ServerCalls.*;
 
 /**
  * @author Marc Gathier
@@ -70,16 +76,19 @@ public class EventDispatcher {
     private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
     private final RetryBackoffSpec retrySpec;
     private final int aggregateEventsPrefetch;
+    private final long listEventsTimeoutMillis;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            MeterFactory meterFactory,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
                            @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
-                           @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch) {
+                           @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch,
+                           @Value("${axoniq.axonserver.event.aggregate.timeout:30000}") long listEventsTimeoutMillis) {
         this.eventStoreLocator = eventStoreLocator;
         this.meterFactory = meterFactory;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
         this.aggregateEventsPrefetch = aggregateEventsPrefetch;
+        this.listEventsTimeoutMillis = listEventsTimeoutMillis;
     }
 
 
@@ -160,7 +169,10 @@ public class EventDispatcher {
                                                         .set(signal.get().getAggregateSequenceNumber());
                                             }
                                         })
-                                        .retryWhen(retrySpec
+                                        .timeout(Duration.ofSeconds(listEventsTimeoutMillis))
+                        .onErrorMap(TimeoutException.class, e -> new MessagingPlatformException(LIST_AGGREGATE_EVENTS_TIMEOUT,
+                                "Timeout exception: No events were emitted from event store in last " + listEventsTimeoutMillis + "ms. Check the logs for virtual machine errors like OutOfMemoryError."))
+                        .retryWhen(retrySpec
                                                            .doBeforeRetry(t -> logger.warn(
                                                                    "Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
                                                                    t.failure().getClass().getName(),
