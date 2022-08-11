@@ -10,7 +10,7 @@ public interface TransformationEntryStore {
     Flux<TransformationEntry> read();
 
     default Flux<TransformationEntry> readFrom(long sequence) {
-        return read().skipUntil(entry -> entry.sequence() < sequence);
+        return read().skipUntil(entry -> entry.sequence() >= sequence);
     }
 
     default Flux<TransformationEntry> read(long fromSequence, long toSequence) {

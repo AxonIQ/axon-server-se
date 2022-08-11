@@ -56,9 +56,16 @@ public class SegmentBasedTransformationEntryStore implements TransformationEntry
         return readFrom(0);
     }
 
+    private volatile boolean closed = false;
+
     @Override
     public Mono<Void> delete() {
+        closed = true;
         return appendOnlyFileStore.delete();
+    }
+
+    public boolean isClosed(){
+        return closed;
     }
 
     private FileStoreEntry toFileStoreEntry(TransformationEntry entry) {
