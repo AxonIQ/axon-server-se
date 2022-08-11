@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -23,10 +24,11 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.EventStoreLocator;
 import io.micrometer.core.instrument.Metrics;
-import org.junit.*;
-import org.junit.runner.*;
-import org.mockito.*;
-import org.mockito.junit.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -38,7 +40,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -46,8 +47,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.axoniq.axonserver.config.GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
 import static io.axoniq.axonserver.topology.Topology.DEFAULT_CONTEXT;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -229,9 +237,6 @@ public class EventDispatcherTest {
 
         otherContexts.put("retryContext", eventStore);
 
-        FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<>();
-        responseObserver.setIsReady(true);
-
         CompletableFuture<Void> completableFuture = new CompletableFuture<>();
         testSubject.aggregateEvents("retryContext", DEFAULT_PRINCIPAL,
                                     GetAggregateEventsRequest.newBuilder().setAggregateId("retryAggregateId").build())
@@ -301,29 +306,14 @@ public class EventDispatcherTest {
     @Test
     public void testTimeoutOnListAggregateEvents() throws InterruptedException {
         Flux<SerializedEvent> flux = Flux.create(sink -> {});
-        EventStore eventStore = mock(EventStore.class);
-        when(eventStore.aggregateEvents(any(), any(), any())).thenReturn(flux);
-        EventDispatcher eventDispatcher = new EventDispatcher(context -> eventStore, () -> Topology.DEFAULT_CONTEXT,
-                () -> GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
-                new MeterFactory(Metrics.globalRegistry,
-                        new DefaultMetricCollector()),
-                Executors::newCachedThreadPool,
-                3, 100, 50, 3);
+        when(eventStoreClient.aggregateEvents(any(), any(), any())).thenReturn(flux);
+        EventDispatcher eventDispatcher = new EventDispatcher(eventStoreLocator,
+                                                              new MeterFactory(Metrics.globalRegistry,
+                                                                               new DefaultMetricCollector()),
+                                                              3, 100, 50, 3);
 
-        CountDownLatch countDownLatch = new CountDownLatch(1);
-        FakeStreamObserver<SerializedEvent> responseObserver = new FakeStreamObserver<SerializedEvent>() {
-            @Override
-            public void onError(Throwable t) {
-                super.onError(t);
-                countDownLatch.countDown();
-            }
-        };
-
-        eventDispatcher.listAggregateEvents(GetAggregateEventsRequest.newBuilder().build(), responseObserver);
-        countDownLatch.await();
-        List<Throwable> errors = responseObserver.errors();
-        assertEquals(1, errors.size());
-        Throwable throwable = errors.get(0);
-        assertEquals(StatusRuntimeException.class, throwable.getClass());
+        StepVerifier.create(eventDispatcher.aggregateEvents(DEFAULT_CONTEXT, DEFAULT_PRINCIPAL,GetAggregateEventsRequest.newBuilder().build()))
+                .expectError(MessagingPlatformException.class)
+                .verify();
     }
 }
