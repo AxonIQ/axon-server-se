@@ -1,7 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.grpc.event.Event;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -35,6 +34,7 @@ public class SequentialContextTransformer implements ContextTransformer {
     private void startListening() {
         taskExecutor.asFlux()
                     .concatMap(Function.identity())
+                    .onErrorContinue((error, o) -> {})
                     .subscribe();
     }
 
