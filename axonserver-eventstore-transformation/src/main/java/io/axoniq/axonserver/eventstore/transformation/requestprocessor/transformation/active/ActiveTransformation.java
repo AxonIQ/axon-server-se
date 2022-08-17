@@ -28,14 +28,16 @@ public class ActiveTransformation implements Transformation {
     public Mono<TransformationState> deleteEvent(long tokenToDelete, long sequence) {
         DeleteEventAction action = new DeleteEventAction(tokenToDelete, resources);
         return performEventAction(action, sequence, tokenToDelete)
-                .doOnSuccess(s -> logger.trace("Replacing event with token: {}", tokenToDelete));
+                .doOnSuccess(s -> logger.trace("Deleting event with token: {}", tokenToDelete))
+                .doOnError(e -> logger.warn("Failure deleting event with token: {}", tokenToDelete, e));
     }
 
     @Override
     public Mono<TransformationState> replaceEvent(long token, Event event, long sequence) {
         ReplaceEventAction action = new ReplaceEventAction(token, event, resources);
         return performEventAction(action, sequence, token)
-                .doOnSuccess(s -> logger.trace("Replacing event with token: {}", token));
+                .doOnSuccess(s -> logger.trace("Replacing event with token: {}", token))
+                .doOnError(e -> logger.warn("Failure replacing event with token: {}", token, e));
     }
 
     @Override
@@ -67,7 +69,9 @@ public class ActiveTransformation implements Transformation {
     private Mono<Void> validateEventsOrder(long token) {
         return state.lastEventToken()
                     .map(lastToken -> lastToken < token ? Mono.<Void>empty() : Mono.<Void>error(new RuntimeException(
-                            format("The token [%d] is lower or equals than last modified token [%d] of this transformation.", token, lastToken))))
+                            format("The token [%d] is lower or equals than last modified token [%d] of this transformation.",
+                                   token,
+                                   lastToken))))
                     .orElse(Mono.empty());
     }
 
