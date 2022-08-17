@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -28,12 +28,12 @@ import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Nonnull;
 import java.time.Duration;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.Nonnull;
 
 /**
  * GRPC endpoint for the event store transformation service.
@@ -227,7 +227,8 @@ public class EventStoreTransformationGrpcController
 
 
     private final Map<EventStoreTransformationService.Transformation.Status, TransformationState> statusMapping
-            = new HashMap<EventStoreTransformationService.Transformation.Status, TransformationState>() {{
+            = new EnumMap<EventStoreTransformationService.Transformation.Status, TransformationState>(
+            EventStoreTransformationService.Transformation.Status.class) {{
         this.put(EventStoreTransformationService.Transformation.Status.ACTIVE, TransformationState.ACTIVE);
         this.put(EventStoreTransformationService.Transformation.Status.APPLYING, TransformationState.APPLYING);
         this.put(EventStoreTransformationService.Transformation.Status.APPLIED, TransformationState.APPLIED);

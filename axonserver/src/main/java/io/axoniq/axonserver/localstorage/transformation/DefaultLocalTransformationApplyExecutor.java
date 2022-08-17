@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage.transformation;
 
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -62,7 +71,7 @@ public class DefaultLocalTransformationApplyExecutor implements LocalTransformat
                                     .then(stateRepo.markAsApplied(transformation.id()))
                                     .doFinally(onFinally -> applyingTransformations.remove(transformation.id())))
                    .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",
-                                                 transformation))
+                                                 transformation.id()))
                    .doOnError(t -> logger.info("Failed to apply to local store the transformation {}", transformation));
     }
 

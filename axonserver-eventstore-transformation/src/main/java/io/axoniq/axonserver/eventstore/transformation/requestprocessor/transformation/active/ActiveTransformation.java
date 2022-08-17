@@ -4,6 +4,8 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transform
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationResources;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationState;
 import io.axoniq.axonserver.grpc.event.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.*;
@@ -11,6 +13,8 @@ import static java.lang.String.format;
 
 
 public class ActiveTransformation implements Transformation {
+
+    private static final Logger logger = LoggerFactory.getLogger(ActiveTransformation.class);
 
     private final TransformationResources resources;
     private final TransformationState state;
@@ -23,13 +27,15 @@ public class ActiveTransformation implements Transformation {
     @Override
     public Mono<TransformationState> deleteEvent(long tokenToDelete, long sequence) {
         DeleteEventAction action = new DeleteEventAction(tokenToDelete, resources);
-        return performEventAction(action, sequence, tokenToDelete);
+        return performEventAction(action, sequence, tokenToDelete)
+                .doOnSuccess(s -> logger.trace("Replacing event with token: {}", tokenToDelete));
     }
 
     @Override
     public Mono<TransformationState> replaceEvent(long token, Event event, long sequence) {
         ReplaceEventAction action = new ReplaceEventAction(token, event, resources);
-        return performEventAction(action, sequence, token);
+        return performEventAction(action, sequence, token)
+                .doOnSuccess(s -> logger.trace("Replacing event with token: {}", token));
     }
 
     @Override
