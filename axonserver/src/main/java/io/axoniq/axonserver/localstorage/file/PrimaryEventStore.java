@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.io.IOException;
@@ -344,55 +345,65 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
     public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
         // TODO: 7/26/22 revisit this approach!!!
-//        forceNextSegment();
-        return super.transformContents(newVersion, transformedEvents);
+        return Mono.fromRunnable(this::forceNextSegment)
+                   .thenMany(super.transformContents(newVersion, transformedEvents));
     }
 
-//    private void forceNextSegment() {
-//        StorageProperties storageProperties = storagePropertiesSupplier.get();
-//        WritePosition writePosition = writePositionRef.getAndAccumulate(
-//                new WritePosition(0, (int) storageProperties.getSegmentSize(), 0),
-//                (prev, x) -> prev.incrementedWith(x.sequence, x.position, x.version));
-//
-//        if (writePosition.isOverflow((int) storageProperties.getSegmentSize())) {
-//            // only one thread can be here
-//            logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
-//
-//            writePosition.buffer.putInt(writePosition.position, -1);
-//
-//            WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
-//                                                           storageProperties.getSegmentSize(),
-//                                                           false);
-//            writePositionRef.set(writePosition.reset(buffer, 0));
-//            synchronizer.register(new WritePosition(writePosition.sequence, 0, 0, buffer, writePosition.sequence),
-//                                  new StorageCallback() {
-//                                      @Override
-//                                      public boolean complete(long firstToken) {
-//                                          logger.warn("Ready for transformation");
-//                                          return true;
-//                                      }
-//
-//                                      @Override
-//                                      public void error(Throwable cause) {
-//
-//                                      }
-//                                  });
-//            synchronizer.notifyWritePositions();
-//            waitForPendingFileCompletions();
-//        }
-//    }
+    private void forceNextSegment() {
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
+        WritePosition writePosition = writePositionRef //replace the reference with a fake write position
+                                                       .getAndUpdate(prev -> prev.incrementedWith(0,
+                                                                                                  storageProperties.getSegmentSize(),
+                                                                                                  0));
+        //this if is needed to allow only 1 thread to enter (the others will have the fake write position)
+        if (writePosition.isOverflow(storageProperties.getSegmentSize())) {
+            // only one thread can be here
+            logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
 
-//    private void waitForPendingFileCompletions() {
-//        while ( readBuffers.size() != 1) {
-//            try {
-//                //noinspection BusyWait
-//                Thread.sleep(10);
-//            } catch (InterruptedException e) {
-//                Thread.currentThread().interrupt();
-//                throw new RuntimeException(e);
-//            }
-//        }
-//    }
+            writePosition.buffer.putInt(writePosition.position, -1); //writePosition.writeEndOfFile();
+
+            //create new file
+            WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
+                                                           storageProperties.getSegmentSize(),
+                                                           false);
+            //replace the reference with a valid write position
+            writePositionRef.set(writePosition.reset(buffer, 0));
+
+            //the synchronizer close the previous one
+            synchronizer.register(new WritePosition(writePosition.sequence,
+                                                    0,
+                                                    0,
+                                                    buffer,
+                                                    writePosition.sequence,
+                                                    writePosition.prevEntries),
+                                  new StorageCallback() {
+                                      @Override
+                                      public boolean complete(long firstToken) {
+                                          logger.warn("Ready for transformation");
+                                          return true;
+                                      }
+
+                                      @Override
+                                      public void error(Throwable cause) {
+
+                                      }
+                                  });
+            synchronizer.notifyWritePositions();
+            waitForPendingFileCompletions();
+        }
+    }
+
+    private void waitForPendingFileCompletions() {
+        while (readBuffers.size() != 1) {
+            try {
+                //noinspection BusyWait
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
     @Override
     public long getLastToken() {

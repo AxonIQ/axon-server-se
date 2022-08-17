@@ -32,6 +32,7 @@ public class DefaultTransformationEntryStoreSupplier implements TransformationEn
                 storagePropertiesSupplier.storagePropertiesFor(context), context))).cache());
     }
 
+    // TODO: 8/12/22 extract to a separate class
     private TransformationEntryStore autoOpen(Supplier<AppendOnlyFileStore> storeSupplier) {
         return new TransformationEntryStore() {
 

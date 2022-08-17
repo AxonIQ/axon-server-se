@@ -64,8 +64,6 @@ import static io.axoniq.axonserver.localstorage.file.StorageProperties.ROLLED_BA
 import static io.axoniq.axonserver.localstorage.file.StorageProperties.TRANSFORMED_SUFFIX;
 import static java.lang.String.format;
 
-import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
-
 
 /**
  * @author Marc Gathier

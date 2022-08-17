@@ -31,7 +31,6 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     private final AtomicReference<TransactionIterator> transactionIteratorRef = new AtomicReference<>();
     private final AtomicReference<SegmentWriter> segmentWriterRef = new AtomicReference<>();
     private final AtomicReference<File> tempFileRef = new AtomicReference<>();
-    private final AtomicReference<File> dataFileRef = new AtomicReference<>();
     private final AtomicReference<SerializedTransactionWithToken> originalTransactionRef = new AtomicReference<>();
     private final IndexManager indexManager;
     private final Supplier<TransactionIterator> transactionIteratorSupplier;
