@@ -150,6 +150,18 @@ public class PrimaryEventStoreTest {
     }
 
     @Test
+    public void aggregateEventsReusedAggregateIdentifier() throws InterruptedException {
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 10000, 20);
+        setupEvents(testSubject, 1, 5);
+
+        List<SerializedEvent> events = testSubject.eventsPerAggregate("aggregate-0", 5, Long.MAX_VALUE, 0)
+                                                  .collectList().block();
+        assertNotNull(events);
+        assertEquals(0, events.size());
+    }
+
+    @Test
     public void transactionsIterator() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
         setupEvents(testSubject, 1000, 2);
@@ -183,7 +195,7 @@ public class PrimaryEventStoreTest {
     private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents) throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
-            String aggId = UUID.randomUUID().toString();
+            String aggId = "aggregate-" + j;
             List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, numOfEvents).forEach(i -> {
                 newEvents.add(Event.newBuilder().setAggregateIdentifier(aggId)
@@ -194,14 +206,7 @@ public class PrimaryEventStoreTest {
             testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });
 
-        latch.await(5, TimeUnit.SECONDS);
-    }
-
-    private void storeEvent(PrimaryEventStore testSubject) {
-        CountDownLatch latch = new CountDownLatch(1);
-        Event newEvent = Event.newBuilder().setAggregateIdentifier("11111").setAggregateSequenceNumber(0)
-                              .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build()).build();
-        testSubject.store(singletonList(newEvent)).thenAccept(t -> latch.countDown());
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
     }
 
     @Test
@@ -219,7 +224,7 @@ public class PrimaryEventStoreTest {
             testSubject.store(newEvents).thenAccept(t -> latch.countDown());
         });
 
-        latch.await(5, TimeUnit.SECONDS);
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
         try (CloseableIterator<SerializedEventWithToken> iterator = testSubject
                 .getGlobalIterator(0)) {
             SerializedEventWithToken serializedEventWithToken = null;
