@@ -57,9 +57,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.lang.String.format;
-
 import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
+import static java.lang.String.format;
 
 
 /**
@@ -267,7 +266,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
         return getLastSequenceNumber(aggregateIdentifier, contains(hints, SearchHint.RECENT_ONLY) ?
-                storageProperties.segmentsForSequenceNumberCheck() : Integer.MAX_VALUE, Long.MAX_VALUE);
+                storagePropertiesSupplier.get().segmentsForSequenceNumberCheck() : Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
     private <T> boolean contains(T[] values, T value) {
