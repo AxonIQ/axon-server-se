@@ -43,9 +43,21 @@ Notes:
 - For the Swagger endpoint use  /swagger-ui.html or /swagger-ui/index.html.
 - The generic endpoint for actuator is /actuator (/actuator/ no longer works)
 
+Release Notes for version 4.5.16
+--------------------------------
+* Fix: reading aggregate events searches for older events when the last event sequence number
+  is the same as the snapshot sequence number
+* New property for index, axoniq.axonserver.event.segments-for-sequence-number-check, defines the number of segments
+  that Axon Server will check for events on an aggregate when an event with sequence number 0
+  is stored. The default value for this property is 10.
+  For performance reasons, if you increase this property to a value higher than 100 it is recommended
+  to also increase the axoniq.axonserver.event.max-bloom-filters-in-memory property.
+
 Release Notes for version 4.5.15
 --------------------------------
-* Fix: reading aggregate events hangs on JVM Error
+* Fix: reading aggregate events hangs on JVM Error, this includes a new property
+"axoniq.axonserver.event.aggregate.timeout" to set the timeout between two events returned by Axon Server.
+The default value for this property is 30 seconds.
 
 Release Notes for version 4.5.14
 --------------------------------
