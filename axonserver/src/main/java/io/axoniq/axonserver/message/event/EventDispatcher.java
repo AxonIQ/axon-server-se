@@ -282,7 +282,7 @@ public class EventDispatcher implements AxonServerClientService {
                                         .set(signal.get().getAggregateSequenceNumber());
                             }
                         })
-                        .timeout(Duration.ofSeconds(listEventsTimeoutMillis))
+                        .timeout(Duration.ofMillis(listEventsTimeoutMillis))
                         .onErrorMap(TimeoutException.class, e -> new MessagingPlatformException(LIST_AGGREGATE_EVENTS_TIMEOUT,
                                 "Timeout exception: No events were emitted from event store in last " + listEventsTimeoutMillis + "ms. Check the logs for virtual machine errors like OutOfMemoryError."))
                         .retryWhen(retrySpec
