@@ -76,6 +76,11 @@ public class FakeClientProcessor implements ClientProcessor {
     }
 
     @Override
+    public String component() {
+        return "component";
+    }
+
+    @Override
     public EventProcessorInfo eventProcessorInfo() {
         return eventProcessorInfo;
     }

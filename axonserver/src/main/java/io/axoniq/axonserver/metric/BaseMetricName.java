@@ -57,6 +57,15 @@ public enum BaseMetricName implements MetricName {
      * Metric for the rate of snapshots stored (tags: context)
      */
     AXON_SNAPSHOTS("axon.snapshot", "Number of snapshots stored"),
+    /**
+     * Metrics for tracking event processors in client applications. Tags: context, component, name
+     */
+    AXON_EVENT_PROCESSOR_SEGMENTS_UNCLAIMED("axon.processor.segments.unclaimed", "Percentage of segments that are unclaimed"),
+    AXON_EVENT_PROCESSOR_EVENT_POSITION("axon.processor.events.position", "Minimum token position of all claimed segments"),
+    AXON_EVENT_PROCESSOR_EVENT_LAG("axon.processor.events.lag", "How many events the projection is behind the head, based on the minimum token position for all segments"),
+    AXON_EVENT_PROCESSOR_THREADS_ACTIVE("axon.processor.threads.active", "Number of threads active for the processor"),
+    AXON_EVENT_PROCESSOR_THREADS_AVAILABLE("axon.processor.threads.available", "Number of threads available for the processor"),
+
     AXON_GLOBAL_SUBSCRIPTION_TOTAL("axon.GlobalSubscriptionMetricRegistry.total",
                                    "Total number of subscription queries subscribed"),
     AXON_GLOBAL_SUBSCRIPTION_UPDATES("axon.GlobalSubscriptionMetricRegistry.updates",

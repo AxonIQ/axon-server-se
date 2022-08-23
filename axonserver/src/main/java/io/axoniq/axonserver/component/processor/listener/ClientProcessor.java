@@ -31,6 +31,13 @@ public interface ClientProcessor extends ComponentItem, Iterable<SegmentStatus> 
      */
     String context();
 
+    /**
+     * Returns the component name of the client that is connected
+     *
+     * @return The component name of the client that is connected
+     */
+    String component();
+
     EventProcessorInfo eventProcessorInfo();
 
     default boolean running() {

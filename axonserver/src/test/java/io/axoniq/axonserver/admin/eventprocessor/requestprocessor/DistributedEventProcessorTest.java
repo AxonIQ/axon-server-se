@@ -61,6 +61,11 @@ public class DistributedEventProcessorTest {
             }
 
             @Override
+            public String component() {
+                return "component";
+            }
+
+            @Override
             public EventProcessorInfo eventProcessorInfo() {
                 return EventProcessorInfo.newBuilder()
                                          .setMode(mode)

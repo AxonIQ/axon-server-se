@@ -20,14 +20,16 @@ public class ClientEventProcessorInfo {
     private final String clientId;
     private final String clientStreamId;
     private final String context;
+    private final String component;
     private final EventProcessorInfo eventProcessorInfo;
 
     public ClientEventProcessorInfo(String clientId, String clientStreamId, String context,
-                                    EventProcessorInfo eventProcessorInfo) {
+                                    String component, EventProcessorInfo eventProcessorInfo) {
 
         this.clientId = clientId;
         this.clientStreamId = clientStreamId;
         this.context = context;
+        this.component = component;
         this.eventProcessorInfo = eventProcessorInfo;
     }
 
@@ -41,6 +43,10 @@ public class ClientEventProcessorInfo {
 
     public String getContext() {
         return context;
+    }
+
+    public String getComponent() {
+        return component;
     }
 
     public EventProcessorInfo getEventProcessorInfo() {

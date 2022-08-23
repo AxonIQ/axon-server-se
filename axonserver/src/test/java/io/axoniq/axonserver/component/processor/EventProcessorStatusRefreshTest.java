@@ -125,6 +125,7 @@ public class EventProcessorStatusRefreshTest {
                         client,
                         client,
                         "context",
+                        "component",
                         EventProcessorInfo.newBuilder().setProcessorName(processorName).build()),
                 false);
     }

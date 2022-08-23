@@ -73,10 +73,12 @@ public class ProcessorEventPublisher {
 
     private void publishEventProcessorStatus(PlatformService.ClientComponent clientComponent,
                                              PlatformInboundInstruction inboundInstruction) {
-        ClientEventProcessorInfo processorStatus =
-                new ClientEventProcessorInfo(clientComponent.getClientId(),
-                                             clientComponent.getClientStreamId(),
-                                             clientComponent.getContext(), inboundInstruction.getEventProcessorInfo());
+        ClientEventProcessorInfo processorStatus = new ClientEventProcessorInfo(
+                clientComponent.getClientId(),
+                clientComponent.getClientStreamId(),
+                clientComponent.getContext(),
+                clientComponent.getComponent(),
+                inboundInstruction.getEventProcessorInfo());
         applicationEventPublisher.publishEvent(new EventProcessorStatusUpdate(processorStatus));
     }
 

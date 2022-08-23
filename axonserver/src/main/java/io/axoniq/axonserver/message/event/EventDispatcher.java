@@ -293,7 +293,7 @@ public class EventDispatcher {
         trackingEventProcessors.forEach((client, infos) -> {
             if (client.getContext().equals(context)) {
                 List<Long> status = infos.stream().map(EventTrackerInfo::getLastToken).collect(Collectors.toList());
-                trackers.put(client.toString(), status);
+                trackers.put(client.getClientStreamId(), status);
             }
         });
         return trackers;

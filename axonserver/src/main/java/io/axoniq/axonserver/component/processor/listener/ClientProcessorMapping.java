@@ -32,6 +32,11 @@ public interface ClientProcessorMapping {
             }
 
             @Override
+            public String component() {
+                return component;
+            }
+
+            @Override
             public EventProcessorInfo eventProcessorInfo() {
                 return eventProcessorInfo;
             }

@@ -37,13 +37,13 @@ public class ProcessorsInfoTargetTest {
                                                              .setProcessorName("Name")
                                                              .build();
         ClientEventProcessorInfo clientEventProcessorInfo = new ClientEventProcessorInfo("client", "client",
-                                                                                         "context",
-                                                                                         processorInfo);
+                                                                                         "context", "component", processorInfo);
         EventProcessorStatusUpdate event = new EventProcessorStatusUpdate(clientEventProcessorInfo);
         EventProcessorEvents.EventProcessorStatusUpdated updatedEvent = testSubject
                 .onEventProcessorStatusChange(event);
         assertEquals("client", updatedEvent.eventProcessorStatus().getClientId());
         assertEquals("context", updatedEvent.eventProcessorStatus().getContext());
+        assertEquals("component", updatedEvent.eventProcessorStatus().getComponent());
         ClientProcessor clientProcessor = StreamSupport.stream(Spliterators.spliterator(testSubject.iterator(), 100, 0),
                                                                false).
                                                                filter(cp -> cp.clientId().equals("client"))
