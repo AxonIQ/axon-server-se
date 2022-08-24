@@ -28,20 +28,21 @@ import javax.annotation.Nullable;
 
 
 /**
- * {@link io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor} implementation based on a collection of {@link
- * ClientProcessor}s
+ * {@link io.axoniq.axonserver.admin.eventprocessor.api.EventProcessor} implementation based on a collection of
+ * {@link ClientProcessor}s
  *
  * @author Sara Pellegrini
  * @since 4.6.0
  */
 public class DistributedEventProcessor implements EventProcessor {
 
+    private static final String TRACKING_EVENT_PROCESSOR_MODE = "Tracking";
+
     private final EventProcessorId id;
     private final List<ClientProcessor> clientProcessors;
 
     /**
-     * Constructs an instance based on the name of the event processor
-     * * @param clientProcessors
+     * Constructs an instance based on the name of the event processor * @param clientProcessors
      */
     public DistributedEventProcessor(EventProcessorId id, List<ClientProcessor> clientProcessors) {
         this.id = id;
@@ -70,9 +71,16 @@ public class DistributedEventProcessor implements EventProcessor {
 
     @Override
     public boolean isStreaming() {
-        Optional<Boolean> streaming = clientProcessors.stream().map(ClientProcessor::eventProcessorInfo).map(
-                EventProcessorInfo::getIsStreamingProcessor).reduce(Boolean::logicalAnd);
-        return streaming.orElse(Boolean.FALSE);
+        return clientProcessors.stream()
+                               .map(ClientProcessor::eventProcessorInfo)
+                               .map(this::isStreamingProcessor)
+                               .reduce(Boolean::logicalAnd)
+                               .orElse(Boolean.FALSE);
+    }
+
+    private boolean isStreamingProcessor(EventProcessorInfo eventProcessorInfo) {
+        return eventProcessorInfo.getIsStreamingProcessor()
+                || TRACKING_EVENT_PROCESSOR_MODE.equals(eventProcessorInfo.getMode());
     }
 
     @Nullable

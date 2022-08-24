@@ -434,8 +434,8 @@ public class StandardIndexManager implements IndexManager {
             }
             IndexEntries entries = activeIndexes.getOrDefault(segment, Collections.emptyMap()).get(aggregateId);
             if (entries != null) {
-                entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, segment, entries);
-                maxResults -= entries.size();
+                int nrOfEntries = addToResult(firstSequenceNumber, lastSequenceNumber, results, segment, entries);
+                maxResults -= nrOfEntries;
                 if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
                     return results;
                 }
@@ -450,8 +450,8 @@ public class StandardIndexManager implements IndexManager {
             IndexEntries entries = getPositions(index, aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
             if (entries != null) {
-                entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, index, entries);
-                maxResults -= entries.size();
+                int nrOfEntries = addToResult(firstSequenceNumber, lastSequenceNumber, results, index, entries);
+                maxResults -= nrOfEntries;
                 if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
                     return results;
                 }
@@ -462,13 +462,13 @@ public class StandardIndexManager implements IndexManager {
         return results;
     }
 
-    private IndexEntries addToResult(long firstSequenceNumber, long lastSequenceNumber,
+    private int addToResult(long firstSequenceNumber, long lastSequenceNumber,
                                      SortedMap<Long, IndexEntries> results, Long segment, IndexEntries entries) {
         entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
         if (!entries.isEmpty()) {
             results.put(segment, entries);
         }
-        return entries;
+        return entries.size();
     }
 
     private boolean allEntriesFound(long firstSequenceNumber, long maxResults, IndexEntries entries) {

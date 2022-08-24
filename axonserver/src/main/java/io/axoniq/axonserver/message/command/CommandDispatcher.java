@@ -23,6 +23,7 @@ import io.axoniq.axonserver.message.FlowControlQueues;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.ConstraintCache;
+import io.axoniq.axonserver.util.NonReplacingConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +51,7 @@ import java.util.stream.Collectors;
 public class CommandDispatcher {
 
     private final CommandRegistrationCache registrations;
-    private final ConstraintCache<String, CommandInformation> commandCache;
+    private final NonReplacingConstraintCache<String, CommandInformation> commandCache;
     private final CommandMetricsRegistry metricRegistry;
     private final Logger logger = LoggerFactory.getLogger(CommandDispatcher.class);
     private final FlowControlQueues<WrappedCommand> commandQueues;
@@ -58,7 +59,7 @@ public class CommandDispatcher {
     private final CommandInterceptors commandInterceptors;
 
     public CommandDispatcher(CommandRegistrationCache registrations,
-                             ConstraintCache<String, CommandInformation> commandCache,
+                             NonReplacingConstraintCache<String, CommandInformation> commandCache,
                              CommandMetricsRegistry metricRegistry,
                              MeterFactory meterFactory,
                              CommandInterceptors commandInterceptors,
@@ -191,7 +192,12 @@ public class CommandDispatcher {
                                                                            commandHandler
                                                                                    .getClientStreamIdentification(),
                                                                            commandHandler.getComponentName());
-            commandCache.put(command.getMessageIdentifier(), commandInformation);
+            if(commandCache.putIfAbsent(command.getMessageIdentifier(), commandInformation)!=null){
+                responseObserver.accept(errorCommandResponse(command.getMessageIdentifier(),
+                                                             ErrorCode.COMMAND_DUPLICATED,
+                                                             String.format("command id %s duplicated",command.getMessageIdentifier())));
+                return;
+            }
             WrappedCommand wrappedCommand = new WrappedCommand(commandHandler.getClientStreamIdentification(),
                                                                commandHandler.getClientId(),
                                                                command);

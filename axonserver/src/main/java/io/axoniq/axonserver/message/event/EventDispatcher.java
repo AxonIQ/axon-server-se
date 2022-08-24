@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.message.event;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
 import io.axoniq.axonserver.grpc.event.GetAggregateSnapshotsRequest;
@@ -44,9 +45,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static io.axoniq.axonserver.exception.ErrorCode.LIST_AGGREGATE_EVENTS_TIMEOUT;
 
 /**
  * @author Marc Gathier
@@ -70,16 +74,19 @@ public class EventDispatcher {
     private SequenceValidationStrategy sequenceValidationStrategy = SequenceValidationStrategy.LOG;
     private final RetryBackoffSpec retrySpec;
     private final int aggregateEventsPrefetch;
+    private final long listEventsTimeoutMillis;
 
     public EventDispatcher(EventStoreLocator eventStoreLocator,
                            MeterFactory meterFactory,
                            @Value("${axoniq.axonserver.event.aggregate.retry.attempts:3}") int maxRetryAttempts,
                            @Value("${axoniq.axonserver.event.aggregate.retry.delay:100}") long retryDelayMillis,
-                           @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch) {
+                           @Value("${axoniq.axonserver.event.aggregate.prefetch:5}") int aggregateEventsPrefetch,
+                           @Value("${axoniq.axonserver.event.aggregate.timeout:30000}") long listEventsTimeoutMillis) {
         this.eventStoreLocator = eventStoreLocator;
         this.meterFactory = meterFactory;
         retrySpec = Retry.backoff(maxRetryAttempts, Duration.ofMillis(retryDelayMillis));
         this.aggregateEventsPrefetch = aggregateEventsPrefetch;
+        this.listEventsTimeoutMillis = listEventsTimeoutMillis;
     }
 
 
@@ -90,13 +97,13 @@ public class EventDispatcher {
             auditLog.debug("[{}@{}] Request to append events.", AuditLog.username(authentication), context);
         }
 
-        return eventStoreLocator.eventStore(context).flatMap(eventStore ->  {
-                                                                Flux<SerializedEvent> countingFlux =
-                                                                        eventFlux.doOnNext(event ->  eventsCounter(context,
-                                                                                                                   eventsCounter,
-                                                                                                                   BaseMetricName.AXON_EVENTS).mark());
-                                                                return eventStore.appendEvents(context,countingFlux,authentication);
-                                                         });
+        return eventStoreLocator.eventStore(context).flatMap(eventStore -> {
+            Flux<SerializedEvent> countingFlux =
+                    eventFlux.doOnNext(event -> eventsCounter(context,
+                                                              eventsCounter,
+                                                              BaseMetricName.AXON_EVENTS).mark());
+            return eventStore.appendEvents(context, countingFlux, authentication);
+        });
     }
 
     private MeterFactory.RateMeter eventsCounter(String context, Map<String, MeterFactory.RateMeter> eventsCounter,
@@ -127,63 +134,76 @@ public class EventDispatcher {
     public Flux<SerializedEvent> aggregateEvents(String context,
                                                  Authentication authentication,
                                                  GetAggregateEventsRequest request) {
-        if( auditLog.isDebugEnabled()) {
-            auditLog.debug("[{}@{}] Request to list events for {}.", AuditLog.username(authentication), context, request.getAggregateId());
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug("[{}@{}] Request to list events for {}.",
+                           AuditLog.username(authentication),
+                           context,
+                           request.getAggregateId());
         }
 
         return eventStoreLocator.eventStore(context)
-                         .flatMapMany(eventStore -> {
-                             final String LAST_SEQ_KEY = "__LAST_SEQ";
-                             return Flux.deferContextual(contextView -> {
-                                                             AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
-                                                             boolean allowedSnapshot =
-                                                                     request.getAllowSnapshots()
-                                                                             && lastSeq.get() == -1;
+                                .flatMapMany(eventStore -> {
+                                    final String LAST_SEQ_KEY = "__LAST_SEQ";
+                                    return Flux.deferContextual(contextView -> {
+                                                                    AtomicLong lastSeq = contextView.get(LAST_SEQ_KEY);
+                                                                    boolean allowedSnapshot =
+                                                                            request.getAllowSnapshots()
+                                                                                    && lastSeq.get() == -1;
 
-                                                             GetAggregateEventsRequest newRequest = request
-                                                                     .toBuilder()
-                                                                     .setAllowSnapshots(allowedSnapshot)
-                                                                     .setInitialSequence(lastSeq.get() + 1)
-                                                                     .build();
+                                                                    GetAggregateEventsRequest newRequest = request
+                                                                            .toBuilder()
+                                                                            .setAllowSnapshots(allowedSnapshot)
+                                                                            .setInitialSequence(lastSeq.get() + 1)
+                                                                            .build();
 
-                                                             logger.debug("Reading events from seq#{} for aggregate {}",
-                                                                          lastSeq.get() + 1,
-                                                                          request.getAggregateId());
-                                                             return eventStore
-                                                                     .aggregateEvents(context, authentication, newRequest);
-                                                         }
-                                        )
-                                        .limitRate(aggregateEventsPrefetch * 5, aggregateEventsPrefetch)
-                                        .doOnEach(signal -> {
-                                            if (signal.hasValue()) {
-                                                ((AtomicLong) signal.getContextView().get(LAST_SEQ_KEY))
-                                                        .set(signal.get().getAggregateSequenceNumber());
-                                            }
-                                        })
-                                        .retryWhen(retrySpec
-                                                           .doBeforeRetry(t -> logger.warn(
-                                                                   "Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
-                                                                   t.failure().getClass().getName(),
-                                                                   t.failure().getMessage(),
-                                                                   request.getAggregateId())))
-                                     .onErrorMap(ex -> {
-                                         if (Exceptions.isRetryExhausted(ex)) {
-                                             return ex.getCause();
-                                         }
-                                         return ex;
-                                     })
-                                        .doOnError(t -> logger.error("Error during reading aggregate events. ", t))
-                                        .doOnNext(m -> logger.trace("event {} for aggregate {}", m, request.getAggregateId()))
-                                        .contextWrite(c -> c.put(LAST_SEQ_KEY,
-                                                                 new AtomicLong(request.getInitialSequence() - 1)))
-                                        .name("event_stream")
-                                        .tag("context", context)
-                                        .tag("stream", "aggregate_events")
-                                        .tag("origin", "client_request")
-                                        .metrics();
-                         })
-                .onErrorResume(Flux::error);
-
+                                                                    logger.debug("Reading events from seq#{} for aggregate {}",
+                                                                                 lastSeq.get() + 1,
+                                                                                 request.getAggregateId());
+                                                                    return eventStore
+                                                                            .aggregateEvents(context, authentication, newRequest);
+                                                                }
+                                               )
+                                               .limitRate(aggregateEventsPrefetch * 5, aggregateEventsPrefetch)
+                                               .doOnEach(signal -> {
+                                                   if (signal.hasValue()) {
+                                                       ((AtomicLong) signal.getContextView().get(LAST_SEQ_KEY))
+                                                               .set(signal.get().getAggregateSequenceNumber());
+                                                   }
+                                               })
+                                               .timeout(Duration.ofMillis(listEventsTimeoutMillis))
+                                               .onErrorMap(TimeoutException.class,
+                                                           e -> new MessagingPlatformException(
+                                                                   LIST_AGGREGATE_EVENTS_TIMEOUT,
+                                                                   "Timeout exception: No events were emitted from event store in last "
+                                                                           + listEventsTimeoutMillis
+                                                                           + "ms. Check the logs for virtual machine errors like OutOfMemoryError."))
+                                               .retryWhen(retrySpec
+                                                                  .doBeforeRetry(t -> logger.warn(
+                                                                          "Retrying to read events aggregate stream due to {}:{}, for aggregate: {}",
+                                                                          t.failure().getClass().getName(),
+                                                                          t.failure().getMessage(),
+                                                                          request.getAggregateId())))
+                                               .onErrorMap(ex -> {
+                                                   if (Exceptions.isRetryExhausted(ex)) {
+                                                       return ex.getCause();
+                                                   }
+                                                   return ex;
+                                               })
+                                               .doOnError(t -> logger.error("Error during reading aggregate events. ",
+                                                                            t))
+                                               .doOnNext(m -> logger.trace("event {} for aggregate {}",
+                                                                           m,
+                                                                           request.getAggregateId()))
+                                               .contextWrite(c -> c.put(LAST_SEQ_KEY,
+                                                                        new AtomicLong(
+                                                                                request.getInitialSequence() - 1)))
+                                               .name("event_stream")
+                                               .tag("context", context)
+                                               .tag("stream", "aggregate_events")
+                                               .tag("origin", "client_request")
+                                               .metrics();
+                                })
+                                .onErrorResume(Flux::error);
     }
 
     public Flux<SerializedEventWithToken> events(String context, Authentication principal,
@@ -242,7 +262,7 @@ public class EventDispatcher {
     @EventListener
     public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
         List<EventTrackerInfo> trackers = trackingEventProcessors.remove(applicationDisconnected
-                                                                                      .clientIdentification());
+                                                                                 .clientIdentification());
         logger.debug("application disconnected: {}, eventsStreams: {}",
                      applicationDisconnected.getClientStreamId(),
                      trackers);
