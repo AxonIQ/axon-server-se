@@ -201,6 +201,12 @@ podTemplate(label: label,
                     if (canaryTests.result == "FAILURE") {
                         slackReport += "\n- Canary Tests FAILED!"
                     }
+                } else if (releaseBuild) {
+                    slackReport += "\n- Skipped Canary tests (already run for this release)"
+                } else if (!relevantBranch(gitBranch, dockerBranches)) {
+                    slackReport += "\n- Skipped Canary tests (no Docker images for this branch)"
+                } else if (!relevantBranch(gitBranch, deployingBranches)) {
+                    slackReport += "\n- Skipped Canary tests (no JAR file deployed for this branch)"
                 }
             }
             slackSend(message: slackReport)
