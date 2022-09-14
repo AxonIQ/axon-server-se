@@ -70,7 +70,6 @@ public class ClientTagsCache implements Function<ClientStreamIdentification, Map
             return Collections.unmodifiableMap(
                     tags.getOrDefault(clientStreamIdentification, Collections.emptyMap()));
         } catch (IllegalStateException state) {
-            state.printStackTrace();
             return Collections.emptyMap();
         }
     }

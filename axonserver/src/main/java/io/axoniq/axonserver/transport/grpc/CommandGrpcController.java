@@ -122,6 +122,7 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             private void sendAck(String instructionId) {
                 responseObserver.onNext(CommandProviderInbound.newBuilder()
                                                               .setAck(InstructionAck.newBuilder()
+                                                                                    .setSuccess(true)
                                                                                     .setInstructionId(instructionId)
                                                                                     .build())
                                                               .build());
@@ -160,13 +161,13 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
         String context = contextProvider.getContext();
         Authentication authentication = authenticationProvider.get();
         commandRequestProcessor.dispatch(new GrpcCommand(request,
-                        context,
-                        new GrpcAuthentication(
-                                () -> authentication)))
-                .subscribe(
-                        result -> responseObserver.onNext(GrpcMapper.map(result)),
-                        error -> returnError(responseObserver, request, error),
-                        responseObserver::onCompleted);
+                                                         context,
+                                                         new GrpcAuthentication(
+                                                                 () -> authentication)))
+                               .subscribe(
+                                       result -> responseObserver.onNext(GrpcMapper.map(result)),
+                                       error -> returnError(responseObserver, request, error),
+                                       responseObserver::onCompleted);
     }
 
     private void returnError(StreamObserver<CommandResponse> responseObserver, Command request, Throwable e) {
@@ -201,9 +202,8 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             GrpcCommandHandlerSubscription handler = new GrpcCommandHandlerSubscription(subscribe,
                                                                                         clientId,
                                                                                         context,
-                                                                                        () -> clientTagsCache.get(
-                                                                                                clientId,
-                                                                                                context),
+                                                                                        () -> tags(clientId,
+                                                                                                   context),
                                                                                         this::dispatch
             );
             return commandRequestProcessor.register(handler)
@@ -247,6 +247,10 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
                                                              .build());
             });
         }
+    }
+
+    private Map<String, String> tags(String clientId, String context) {
+        return clientTagsCache.get(clientId, context);
     }
 
     private class GrpcCommandHandlerSubscription implements CommandHandlerSubscription {
