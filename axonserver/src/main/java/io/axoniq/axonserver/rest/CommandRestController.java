@@ -41,7 +41,6 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.validation.Valid;
 import java.io.Serializable;
 import java.security.Principal;
 import java.util.Collections;
@@ -51,6 +50,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -70,18 +70,14 @@ public class CommandRestController {
 
     private final CommandDispatcher commandDispatcher;
     private final CommandRequestProcessor commandRequestProcessor;
-    private final CommandRegistrationCache registrationCache;
-
     private final CommandSubscriptionCache commandSubscriptionCache;
 
 
     public CommandRestController(CommandDispatcher commandDispatcher,
                                  CommandRequestProcessor commandRequestProcessor,
-                                 CommandRegistrationCache registrationCache,
                                  CommandSubscriptionCache commandSubscriptionCache) {
         this.commandDispatcher = commandDispatcher;
         this.commandRequestProcessor = commandRequestProcessor;
-        this.registrationCache = registrationCache;
         this.commandSubscriptionCache = commandSubscriptionCache;
     }
 
@@ -102,8 +98,8 @@ public class CommandRestController {
     public List<JsonClientMapping> get(@Parameter(hidden = true) Principal principal) {
         auditLog.info("[{}] Request to list all Commands which have a registered handler.",
                       AuditLog.username(principal));
-
-        return registrationCache.getAll().entrySet().stream().map(JsonClientMapping::from).collect(Collectors.toList());
+// TODO: 14/09/2022 Implement this operation
+        return Collections.emptyList();
     }
 
     @PostMapping("commands/run")

@@ -16,6 +16,8 @@ import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 
+import java.io.Serializable;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,6 +30,12 @@ public class GrpcCommand implements Command {
     private final String context;
 
     public GrpcCommand(io.axoniq.axonserver.grpc.command.Command wrapped, String context,
+                       Authentication authentication) {
+        this(wrapped, context, Collections.emptyMap(), authentication);
+    }
+
+    public GrpcCommand(io.axoniq.axonserver.grpc.command.Command wrapped, String context,
+                       Map<String, Serializable> internalMetadata,
                        Authentication authentication) {
         this.wrapped = wrapped;
         this.context = context;
@@ -51,7 +59,7 @@ public class GrpcCommand implements Command {
         requestMetadata.put(COMPONENT_NAME, MetaDataValue.newBuilder()
                                                          .setTextValue(wrapped().getComponentName())
                                                          .build());
-        metadata = new GrpcMetadata(requestMetadata);
+        metadata = new GrpcMetadata(requestMetadata, internalMetadata);
     }
 
     @Override

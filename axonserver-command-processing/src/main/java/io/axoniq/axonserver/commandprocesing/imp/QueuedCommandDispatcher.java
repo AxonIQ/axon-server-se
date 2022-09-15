@@ -15,6 +15,7 @@ import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
+import reactor.util.annotation.NonNull;
 
 import java.util.Comparator;
 import java.util.Iterator;
@@ -29,7 +30,7 @@ import java.util.function.Function;
 
 public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandlerUnsubscribedInterceptor {
 
-    private final static Logger logger = LoggerFactory.getLogger(QueuedCommandDispatcher.class);
+    private static final Logger logger = LoggerFactory.getLogger(QueuedCommandDispatcher.class);
 
     private final Map<String, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
     private final Scheduler executor;
@@ -66,6 +67,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                    .flatMap(q -> q.enqueue(new CommandAndHandler(commandRequest, handler)));
     }
 
+    @Override
     public void request(String clientId, long count) {
         commandQueueMap.computeIfAbsent(clientId, CommandQueue::new)
                        .request(count);
@@ -111,10 +113,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                                                    () -> logger.warn(
                                                            "CommandQueue executor has terminated and will no longer execute commands."));
             processor.asFlux()
-                     .limitRate(1)
-                     .concatMap(cmd -> cmd.dispatch()
-                                          .doOnSuccess(result -> signalSuccess(cmd.id(), result))
-                                          .doOnError(e -> signalError(cmd.id(), e)), 0)
+//                     .limitRate(1)
                      .subscribeOn(executor)
                      .subscribe(clientSubscription());
             gauge = Gauge.builder("commands.queued", queueName, q -> queue.size())
@@ -122,12 +121,19 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                          .register(meterRegistry);
         }
 
-        private BaseSubscriber<CommandResult> clientSubscription() {
+        private BaseSubscriber<CommandAndHandler> clientSubscription() {
             return new BaseSubscriber<>() {
 
                 @Override
-                protected void hookOnSubscribe(Subscription subscription) {
+                protected void hookOnSubscribe(@NonNull Subscription subscription) {
                     CommandQueue.this.clientSubscription.set(subscription);
+                }
+
+                @Override
+                protected void hookOnNext(@NonNull CommandAndHandler cmd) {
+                    cmd.dispatch()
+                       .subscribe(result -> signalSuccess(cmd.id(), result),
+                                  e -> signalError(cmd.id(), e));
                 }
             };
         }
@@ -176,10 +182,10 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                     return sink.asMono();
                 }
                 resultMap.put(commandRequest.id(), sink);
-                processor.emitNext(commandRequest, (signalType, emitResult) -> {
-                    logger.warn("Failed to emit command: {}", signalType);
-                    return false;
-                });
+                synchronized (processor) {
+                    processor.emitNext(commandRequest, (signalType, emitResult) ->
+                            emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED));
+                }
                 return sink.asMono();
             });
         }

@@ -13,24 +13,38 @@ import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.grpc.MetaDataValue;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class GrpcMetadata implements Metadata {
 
     private final Map<String, MetaDataValue> metaDataMap;
+    private final Map<String, Serializable> internalMetadata;
 
     public GrpcMetadata(Map<String, MetaDataValue> metaDataMap) {
+        this(metaDataMap, Collections.emptyMap());
+    }
+
+    public GrpcMetadata(Map<String, MetaDataValue> metaDataMap, Map<String, Serializable> internalMetadata) {
         this.metaDataMap = metaDataMap;
+        this.internalMetadata = internalMetadata;
     }
 
     @Override
     public Iterable<String> metadataKeys() {
-        return metaDataMap.keySet();
+        return Stream.concat(metaDataMap.keySet().stream(), internalMetadata.keySet().stream())
+                     .collect(Collectors.toList());
     }
 
     @Override
     public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+        if (internalMetadata.containsKey(metadataKey)) {
+            //noinspection unchecked
+            return Optional.ofNullable((R) internalMetadata.get(metadataKey));
+        }
         MetaDataValue value = metaDataMap.getOrDefault(metadataKey, MetaDataValue.getDefaultInstance());
         Serializable serializable = null;
         switch (value.getDataCase()) {
@@ -52,6 +66,7 @@ public class GrpcMetadata implements Metadata {
             case DATA_NOT_SET:
                 break;
         }
+        //noinspection unchecked
         return Optional.ofNullable((R) serializable);
     }
 }

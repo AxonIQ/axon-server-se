@@ -27,8 +27,12 @@ import io.axoniq.axonserver.transport.grpc.command.GrpcMapper;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static io.axoniq.axonserver.commandprocessing.spi.Metadata.isInternal;
 
 @Component
 public class CommandPluginHandler {
@@ -69,9 +73,15 @@ public class CommandPluginHandler {
         return commandMono.map(command -> {
             DefaultExecutionContext context = new DefaultExecutionContext(command.context(), null);
             executionContextMap.put(command.id(), context);
+            Map<String, Serializable> internalMetadata = new HashMap<>();
+            command.metadata().metadataKeys().forEach(key -> {
+                if (isInternal(key)) {
+                    command.metadata().metadataValue(key).ifPresent(value -> internalMetadata.put(key, value));
+                }
+            });
             SerializedCommand response = commandInterceptors.commandRequest(new SerializedCommand(GrpcMapper.map(
                     command)), context);
-            return new GrpcCommand(response.wrapped(), command.context(), null);
+            return new GrpcCommand(response.wrapped(), command.context(), internalMetadata, null);
         });
     }
 }
