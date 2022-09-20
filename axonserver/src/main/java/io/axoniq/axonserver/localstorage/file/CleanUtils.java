@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.util.DaemonThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -29,7 +29,7 @@ import java.util.function.BooleanSupplier;
  */
 public class CleanUtils {
     private static final Logger logger = LoggerFactory.getLogger(CleanUtils.class);
-    private static final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("fileCleaner") {
+    private static final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor(new DaemonThreadFactory("fileCleaner") {
         @Override
         public Thread newThread(Runnable runnable) {
             Thread thread = super.newThread(runnable);
