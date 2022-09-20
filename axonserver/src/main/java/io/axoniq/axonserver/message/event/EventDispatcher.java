@@ -282,8 +282,9 @@ public class EventDispatcher {
 
 
     public long getNrOfEvents(String context) {
-        Long lastEventToken = eventStoreLocator.getEventStore(context)
-                                               .lastEventToken(context)
+        Long lastEventToken = eventStoreLocator.eventStore(context)
+                                               .flatMap(eventStore -> eventStore.lastEventToken(context))
+                                               .switchIfEmpty(Mono.just(-1L))
                                                .block();
         return lastEventToken != null ? lastEventToken : -1;
     }
