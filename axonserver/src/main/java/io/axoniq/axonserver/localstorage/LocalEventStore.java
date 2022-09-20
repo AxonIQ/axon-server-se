@@ -726,6 +726,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public void stop() {
         running = false;
         dataFetcher.shutdown();
+        dataWriter.shutdown();
         workersMap.forEach((k, workers) -> workers.close(false));
         try {
             dataFetcher.awaitTermination(10, TimeUnit.SECONDS);
