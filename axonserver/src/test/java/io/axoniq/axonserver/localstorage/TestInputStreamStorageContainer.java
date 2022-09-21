@@ -51,9 +51,12 @@ public class TestInputStreamStorageContainer {
     private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     public TestInputStreamStorageContainer(File location) throws IOException {
-        this(location, e-> e);
+        this(location, e -> e);
     }
-    public TestInputStreamStorageContainer(File location, Function<EmbeddedDBProperties, EmbeddedDBProperties> propertiesCustomizer) throws IOException {
+
+    public TestInputStreamStorageContainer(File location,
+                                           Function<EmbeddedDBProperties, EmbeddedDBProperties> propertiesCustomizer)
+            throws IOException {
         EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(location.getAbsolutePath());
@@ -81,6 +84,7 @@ public class TestInputStreamStorageContainer {
     public void createDummyEvents(int transactions, int transactionSize) {
         createDummyEvents(transactions, transactionSize, "");
     }
+
     public void createDummyEvents(int transactions, int transactionSize, String prefix) {
         CountDownLatch countDownLatch = new CountDownLatch(transactions);
         AtomicReference<Throwable> error = new AtomicReference<>();
@@ -95,13 +99,12 @@ public class TestInputStreamStorageContainer {
                                         .newBuilder().build()).build());
             });
             eventWriter.storeBatch(newEvents)
-                    .doOnSuccess(( s -> {
-                if (t != null) {
-                    error.set(t);
-                }
-                countDownLatch.countDown();
-            }))
-                    .subscribe();
+                       .doOnSuccess((s -> countDownLatch.countDown()))
+                       .doOnError(t -> {
+                           error.set(t);
+                           countDownLatch.countDown();
+                       })
+                       .subscribe();
         });
         try {
             countDownLatch.await();
@@ -131,7 +134,7 @@ public class TestInputStreamStorageContainer {
     }
 
     public SegmentBasedEventStore getPrimary() {
-        return (SegmentBasedEventStore)datafileManagerChain;
+        return (SegmentBasedEventStore) datafileManagerChain;
     }
 
     public void close() {
