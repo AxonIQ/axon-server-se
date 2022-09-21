@@ -38,4 +38,9 @@ public class SingleInstanceTransactionManager implements StorageTransactionManag
     public Runnable reserveSequenceNumbers(List<Event> eventList) {
         return sequenceNumberCache.reserveSequenceNumbers(eventList, false);
     }
+
+    @Override
+    public void clearSequenceNumberCache() {
+        sequenceNumberCache.clear();
+    }
 }

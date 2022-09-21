@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.access.ApplicationBinding;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
@@ -159,7 +160,7 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
 
         @Override
         public Object getPrincipal() {
-            return "Connected Application";
+            return new ApplicationBinding("Connected Application");
         }
 
         @Override

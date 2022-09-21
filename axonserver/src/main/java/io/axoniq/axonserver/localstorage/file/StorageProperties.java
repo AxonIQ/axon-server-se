@@ -122,6 +122,8 @@ public class StorageProperties implements Cloneable {
             Duration.ofDays(7)
     };
     private String indexFormat;
+    private int segmentsForSequenceNumberCheck = 10;
+
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
@@ -350,6 +352,9 @@ public class StorageProperties implements Cloneable {
         return systemInfoProvider.javaOnWindows();
     }
 
+    public void setSegmentsForSequenceNumberCheck(int segmentsForSequenceNumberCheck) {
+        this.segmentsForSequenceNumberCheck = segmentsForSequenceNumberCheck;
+    }
 
     public void setFlags(int flags) {
         this.flags = flags;
@@ -416,5 +421,9 @@ public class StorageProperties implements Cloneable {
         StorageProperties clone = cloneProperties();
         clone.retentionTime = retentionTime;
         return clone;
+    }
+
+    public int segmentsForSequenceNumberCheck() {
+        return segmentsForSequenceNumberCheck;
     }
 }
