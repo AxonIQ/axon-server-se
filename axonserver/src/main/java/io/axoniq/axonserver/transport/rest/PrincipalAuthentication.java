@@ -1,8 +1,8 @@
 package io.axoniq.axonserver.transport.rest;
 
+import io.axoniq.axonserver.access.ApplicationBinding;
 import io.axoniq.axonserver.api.Authentication;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import java.security.Principal;
 import javax.annotation.Nonnull;
@@ -42,6 +42,7 @@ public class PrincipalAuthentication implements Authentication {
 
     @Override
     public boolean application() {
-        return ! (principal instanceof UsernamePasswordAuthenticationToken);
+        return (principal instanceof org.springframework.security.core.Authentication
+                && ((org.springframework.security.core.Authentication)principal).getPrincipal() instanceof ApplicationBinding);
     }
 }

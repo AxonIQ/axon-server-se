@@ -24,7 +24,7 @@
                     <tr>
                         <th><div>Processor Name</div></th>
                         <th><div>Processing Mode</div></th>
-                        <th><div>Active Threads</div></th>
+                        <th><div>Active Segments</div></th>
                         <th><div>Processor Operations</div></th>
                         <th v-if="hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')" style="text-align: center"><div>Auto Load Balancing</div></th>
                         <th><div></div></th>
