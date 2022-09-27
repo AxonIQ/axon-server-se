@@ -3,6 +3,11 @@ This is the Axon Server Standard Edition, version 4.6
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.4
+-------------------------------
+* Fix: change column name in event processor overview to "Active Segments"
+* Fix: null pointer exception popup in dashboard
+
 Release Notes for version 4.6.3
 -------------------------------
 * Fix: reading aggregate events searches for older events when the last event sequence number
