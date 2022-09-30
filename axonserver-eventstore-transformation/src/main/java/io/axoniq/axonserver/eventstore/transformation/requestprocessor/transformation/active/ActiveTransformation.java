@@ -53,11 +53,12 @@ public class ActiveTransformation implements Transformation {
 
     @Override
     public Mono<TransformationState> startApplying(long sequence, String applier) {
-        boolean valid = state.lastSequence()
-                             .map(lastSequence -> lastSequence == sequence)
-                             .orElse(true);
-
-        return valid ? Mono.just(state.applying(applier)) : Mono.error(new RuntimeException("Invalid sequence"));
+        return Mono.defer(() -> Mono.justOrEmpty(state.lastSequence()))
+                   .switchIfEmpty(Mono.error(new RuntimeException("Cannot apply an empty transformation")))
+                   .map(lastSequence -> lastSequence == sequence)
+                   .filter(valid -> valid)
+                   .switchIfEmpty(Mono.error(new RuntimeException("Invalid sequence")))
+                   .map(notUsed -> state.applying(applier));
     }
 
     private Mono<TransformationState> performEventAction(ActiveTransformationAction action, long sequence, long token) {
@@ -77,6 +78,12 @@ public class ActiveTransformation implements Transformation {
     }
 
     private Mono<Void> validateSequence(long sequence) {
-        return Mono.empty();// TODO: 5/11/22 !!!
+        return state.lastSequence()
+                    .map(lastSequence -> lastSequence + 1 == sequence ? Mono.<Void>empty() :
+                            Mono.<Void>error(new RuntimeException(format(
+                                    "The sequence [%d] is different from the expected one [%d]",
+                                    sequence,
+                                    lastSequence + 1))))
+                    .orElse(Mono.empty());
     }
 }
