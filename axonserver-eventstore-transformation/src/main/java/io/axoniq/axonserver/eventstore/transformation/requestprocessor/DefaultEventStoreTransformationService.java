@@ -77,30 +77,31 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
 
     @Override
     public Flux<Transformation> transformations(@Nonnull Authentication authentication) {
-        auditLog.info("{}: Request to list transformations", username(authentication.username()));
-        return transformations.allTransformations();
+        return transformations.allTransformations()
+                              .doFirst(() -> auditLog.info("{}: Request to list transformations",
+                                                           username(authentication.username())));
     }
 
     @Override
     public Mono<String> start(String context, String description,
                               @Nonnull Authentication authentication) {
-        auditLog.info("{}@{}: Request to start transformation - {}",
-                      username(authentication.username()),
-                      sanitize(context),
-                      sanitize(description));
-        return transformerFor(context).flatMap(transformer -> transformer.start(description));
+        return transformerFor(context).flatMap(transformer -> transformer.start(description))
+                                      .doFirst(() -> auditLog.info("{}@{}: Request to start transformation - {}",
+                                                                   username(authentication.username()),
+                                                                   sanitize(context),
+                                                                   sanitize(description)));
     }
 
     @Override
     public Mono<Void> deleteEvent(String context, String transformationId, long token, long sequence,
                                   @Nonnull Authentication authentication) {
-        auditLog.info("{}@{}: Request to delete event {}",
-                       username(authentication.username()),
-                       sanitize(context),
-                       token);
         return transformerFor(context).flatMap(transformer -> transformer.deleteEvent(transformationId,
                                                                                       token,
-                                                                                      sequence));
+                                                                                      sequence))
+                                      .doFirst(() -> auditLog.info("{}@{}: Request to delete event {}",
+                                                                   username(authentication.username()),
+                                                                   sanitize(context),
+                                                                   token));
     }
 
     @Override
