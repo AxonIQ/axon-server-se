@@ -7,7 +7,7 @@ public interface ContextTransformationStore {
 
     Flux<TransformationState> transformations();
 
-    Mono<TransformationState> create();
+    Mono<TransformationState> create(String description);
 
     Mono<TransformationState> transformation(String id);
 

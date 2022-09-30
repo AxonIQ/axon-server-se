@@ -24,7 +24,9 @@ public interface TransformationState {
 
     Optional<Long> lastEventToken();
 
-    Optional<Applied> applied();
+    Optional<String> applier();
+
+    Optional<Instant> appliedAt();
 
     // TODO: 12/30/21 separate this
     EventStoreTransformationJpa.Status status();
@@ -32,6 +34,10 @@ public interface TransformationState {
     TransformationState stage(TransformationAction entry);
 
     List<TransformationEntry> staged();
+
+    TransformationState applying(String requester);
+
+    TransformationState applied();
 
     TransformationState withStatus(EventStoreTransformationJpa.Status status);
 
@@ -47,12 +53,5 @@ public interface TransformationState {
             default:
                 return false;
         }
-    }
-
-    interface Applied {
-
-        String by();
-
-        Instant at();
     }
 }

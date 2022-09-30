@@ -128,11 +128,14 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     @Override
     public Mono<Void> startApplying(String context, String transformationId, long sequence,
                                     @Nonnull Authentication authentication) {
+        String applier = username(authentication.username());
         auditLog.info("{}@{}: Request to apply transformation {}",
-                      username(authentication.username()),
+                      applier,
                       sanitize(context),
                       sanitize(transformationId));
-        return transformerFor(context).flatMap(transformer -> transformer.startApplying(transformationId, sequence));
+        return transformerFor(context).flatMap(transformer -> transformer.startApplying(transformationId,
+                                                                                        sequence,
+                                                                                        applier));
     }
 
     @Override

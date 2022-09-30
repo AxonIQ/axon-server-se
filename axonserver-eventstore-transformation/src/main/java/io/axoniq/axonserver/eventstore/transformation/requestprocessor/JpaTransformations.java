@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
-import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService.Transformation;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -42,6 +41,11 @@ class JPATransformation implements Transformation {
     @Override
     public String context() {
         return jpaEntity.getContext();
+    }
+
+    @Override
+    public String description() {
+        return jpaEntity.getDescription();
     }
 
     @Override

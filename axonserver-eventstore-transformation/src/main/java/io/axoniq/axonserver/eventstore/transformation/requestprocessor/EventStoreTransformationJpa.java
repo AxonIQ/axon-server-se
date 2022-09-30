@@ -42,7 +42,7 @@ public class EventStoreTransformationJpa {
     private String transformationId;
     private String context;
 
-    @Enumerated(EnumType.ORDINAL)
+    @Enumerated(EnumType.STRING)
     private Status status;
 
     private int version;
@@ -52,7 +52,7 @@ public class EventStoreTransformationJpa {
     @Temporal(TemporalType.TIMESTAMP)
     private Date dateApplied;
 
-    private String appliedBy;
+    private String applier;
 
     // TODO: 12/28/21 name
     private Long lastSequence;
@@ -62,16 +62,20 @@ public class EventStoreTransformationJpa {
     public EventStoreTransformationJpa() {
     }
 
-    public EventStoreTransformationJpa(String transformationId, String context, int version) {
+    public EventStoreTransformationJpa(String transformationId,
+                                       String description,
+                                       String context,
+                                       int version) {
         this.transformationId = transformationId;
         this.context = context;
         this.version = version;
+        this.description = description;
         this.status = Status.ACTIVE;
     }
 
-    public EventStoreTransformationJpa(EventStoreTransformationJpa original)  {
+    public EventStoreTransformationJpa(EventStoreTransformationJpa original) {
         this.transformationId = original.transformationId;
-        this.appliedBy = original.appliedBy;
+        this.applier = original.applier;
         this.context = original.context;
         this.dateApplied = original.dateApplied;
         this.description = original.description;
@@ -129,12 +133,12 @@ public class EventStoreTransformationJpa {
         this.dateApplied = dateApplied;
     }
 
-    public String getAppliedBy() {
-        return appliedBy;
+    public String getApplier() {
+        return applier;
     }
 
-    public void setAppliedBy(String appliedBy) {
-        this.appliedBy = appliedBy;
+    public void setApplier(String appliedBy) {
+        this.applier = appliedBy;
     }
 
     public Long getLastSequence() {
@@ -162,7 +166,7 @@ public class EventStoreTransformationJpa {
                 ", version=" + version +
                 ", description='" + description + '\'' +
                 ", dateApplied=" + dateApplied +
-                ", appliedBy='" + appliedBy + '\'' +
+                ", appliedBy='" + applier + '\'' +
                 ", lastSequence=" + lastSequence +
                 ", lastEventToken=" + lastEventToken +
                 '}';

@@ -7,16 +7,17 @@
  *
  */
 
-create table event_store_transformations (
+create table event_store_transformations
+(
     transformation_id varchar(255) not null primary key,
-    context varchar(255) not null,
-    status int,
-    version int,
-    description varchar(4000),
-    date_applied date,
-    applied_by varchar(255),
-    last_sequence long,
-    last_event_token long
+    context           varchar(255) not null,
+    status            varchar(255) not null,
+    version           int,
+    description       varchar(4000),
+    date_applied      date,
+    applied_by        varchar(255),
+    last_sequence     long,
+    last_event_token  long
 );
 
 create table event_store_transformation_progress (

@@ -31,6 +31,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
@@ -212,14 +213,20 @@ public class EventStoreTransformationGrpcController
 
     @Override
     public void transformations(Empty request, StreamObserver<Transformation> responseObserver) {
-        eventStoreTransformationService.transformations( new GrpcAuthentication(authenticationProvider))
-                                       .map(transformation -> Transformation.newBuilder()
-                                                                            .setTransformationId(TransformationId.newBuilder()
-                                                                                                                 .setId(transformation.id()))
-                                                                            .setState(statusMapping.get(transformation.status()))
-                                                                            .setSequence(transformation.lastSequence()
-                                                                                                       .orElse(-1L))
-                                                                            .build())
+        eventStoreTransformationService.transformations(new GrpcAuthentication(authenticationProvider))
+                                       .map(transformation -> {
+                                           String description = Objects.toString(transformation.description(), "");
+                                           String context = Objects.toString(transformation.context());
+                                           return Transformation.newBuilder()
+                                                                .setTransformationId(TransformationId.newBuilder()
+                                                                                                     .setId(transformation.id()))
+                                                                .setDescription(description)
+                                                                .setContext(context)
+                                                                .setState(statusMapping.get(transformation.status()))
+                                                                .setSequence(transformation.lastSequence()
+                                                                                           .orElse(-1L))
+                                                                .build();
+                                       })
                                        .subscribe(responseObserver::onNext,
                                                   responseObserver::onError,
                                                   responseObserver::onCompleted);

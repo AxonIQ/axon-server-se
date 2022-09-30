@@ -30,11 +30,13 @@ public class LocalContextTransformationStore implements ContextTransformationSto
     }
 
     @Override
-    public Mono<TransformationState> create() {
+    public Mono<TransformationState> create(String description) {
         return lastAppliedTransformation()
-                .map(lastVersion -> repository.save(new EventStoreTransformationJpa(UUID.randomUUID().toString(),
-                                                                                    context,
-                                                                                    lastVersion + 1)))
+                .map(lastVersion -> new EventStoreTransformationJpa(UUID.randomUUID().toString(),
+                                                                    description,
+                                                                    context,
+                                                                    lastVersion + 1))
+                .map(repository::save)
                 .subscribeOn(Schedulers.boundedElastic())
                 .map(DefaultTransformationState::new);
     }
@@ -71,11 +73,10 @@ public class LocalContextTransformationStore implements ContextTransformationSto
         state.lastSequence()
              .ifPresent(jpa::setLastSequence);
         jpa.setVersion(state.version());
-        state.applied()
-             .ifPresent(applied -> {
-                 jpa.setAppliedBy(applied.by());
-                 jpa.setDateApplied(Date.from(applied.at()));
-             });
+        state.applier()
+             .ifPresent(jpa::setApplier);
+        state.appliedAt()
+             .ifPresent(appliedAt -> jpa.setDateApplied(Date.from(appliedAt)));
         state.lastEventToken()
              .ifPresent(jpa::setLastEventToken);
         return jpa;

@@ -5,6 +5,7 @@ import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -52,22 +53,15 @@ public class DefaultTransformationState implements TransformationState {
         return Optional.ofNullable(entity.getLastEventToken());
     }
 
-    @Override
-    public Optional<Applied> applied() {
-        if (entity.getAppliedBy() == null) {
-            return Optional.empty();
-        }
-        return Optional.of(new Applied() {
-            @Override
-            public String by() {
-                return entity.getAppliedBy();
-            }
 
-            @Override
-            public Instant at() {
-                return entity.getDateApplied().toInstant();
-            }
-        });
+    @Override
+    public Optional<String> applier() {
+        return Optional.ofNullable(entity.getApplier());
+    }
+
+    @Override
+    public Optional<Instant> appliedAt() {
+        return Optional.ofNullable(entity.getDateApplied().toInstant());
     }
 
     @Override
@@ -91,7 +85,24 @@ public class DefaultTransformationState implements TransformationState {
     }
 
     @Override
+    public TransformationState applying(String requester) {
+        EventStoreTransformationJpa jpa = new EventStoreTransformationJpa(entity);
+        jpa.setStatus(EventStoreTransformationJpa.Status.APPLYING);
+        jpa.setApplier(requester);
+        return new DefaultTransformationState(jpa, stagedEntries);
+    }
+
+    @Override
+    public TransformationState applied() {
+        EventStoreTransformationJpa jpa = new EventStoreTransformationJpa(entity);
+        jpa.setStatus(EventStoreTransformationJpa.Status.APPLIED);
+        jpa.setDateApplied(new Date());
+        return new DefaultTransformationState(jpa, stagedEntries);
+    }
+
+    @Override
     public DefaultTransformationState withStatus(EventStoreTransformationJpa.Status status) {
+        //todo remove JPA status from interface
         EventStoreTransformationJpa jpa = new EventStoreTransformationJpa(entity);
         jpa.setStatus(status);
         return new DefaultTransformationState(jpa, stagedEntries);

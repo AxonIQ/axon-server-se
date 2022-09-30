@@ -21,7 +21,7 @@ public interface Transformation {
         return Mono.error(new RuntimeException("Unsupported operation."));
     }
 
-    default Mono<TransformationState>  startApplying(long sequence){
+    default Mono<TransformationState> startApplying(long sequence, String applier) {
         return Mono.error(new RuntimeException("Unsupported operation."));
     }
 

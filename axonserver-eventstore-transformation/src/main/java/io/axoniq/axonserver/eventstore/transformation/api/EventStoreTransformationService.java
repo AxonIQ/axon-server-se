@@ -31,6 +31,8 @@ public interface EventStoreTransformationService {
 
         String context();
 
+        String description();
+
         int version();
 
         Optional<Long> lastSequence();

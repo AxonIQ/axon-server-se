@@ -47,8 +47,9 @@ public class SequentialContextTransformer implements ContextTransformer {
     @Override
     public Mono<String> start(String description) {
         return ongoingTransformation()
-                .<String>flatMap(transformation -> Mono.error(new RuntimeException("There is already ongoing transformation")))
-                .switchIfEmpty(store.create()
+                .<String>flatMap(transformation -> Mono.error(new RuntimeException(
+                        "There is already ongoing transformation")))
+                .switchIfEmpty(store.create(description)
                                     .map(TransformationState::id)
                                     .as(this::sequential));
     }
@@ -82,10 +83,10 @@ public class SequentialContextTransformer implements ContextTransformer {
 
 
     @Override
-    public Mono<Void> startApplying(String transformationId, long sequence) {
+    public Mono<Void> startApplying(String transformationId, long sequence, String applier) {
         return perform(transformationId,
                        "START_APPLYING_TRANSFORMATION",
-                       transformation -> transformation.startApplying(sequence));
+                       transformation -> transformation.startApplying(sequence, applier));
     }
 
     @Override

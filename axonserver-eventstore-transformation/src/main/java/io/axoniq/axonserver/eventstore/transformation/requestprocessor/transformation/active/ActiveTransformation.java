@@ -8,7 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
-import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.*;
+import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.CANCELLED;
+import static io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationJpa.Status.CANCELLING;
 import static java.lang.String.format;
 
 
@@ -51,12 +52,12 @@ public class ActiveTransformation implements Transformation {
     }
 
     @Override
-    public Mono<TransformationState> startApplying(long sequence) {
+    public Mono<TransformationState> startApplying(long sequence, String applier) {
         boolean valid = state.lastSequence()
                              .map(lastSequence -> lastSequence == sequence)
                              .orElse(true);
 
-        return valid ? Mono.just(state.withStatus(APPLYING)) : Mono.error(new RuntimeException("Invalid sequence"));
+        return valid ? Mono.just(state.applying(applier)) : Mono.error(new RuntimeException("Invalid sequence"));
     }
 
     private Mono<TransformationState> performEventAction(ActiveTransformationAction action, long sequence, long token) {

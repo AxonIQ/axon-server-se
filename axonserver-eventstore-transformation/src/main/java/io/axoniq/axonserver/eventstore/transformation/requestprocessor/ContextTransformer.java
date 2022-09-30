@@ -15,7 +15,7 @@ public interface ContextTransformer {
 
     Mono<Void> markAsCancelled(String transformationId);
 
-    Mono<Void> startApplying(String transformationId, long sequence);
+    Mono<Void> startApplying(String transformationId, long sequence, String applier);
 
     Mono<Void> markApplied(String transformationId);
 
