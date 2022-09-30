@@ -106,53 +106,53 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     @Override
     public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
                                    long sequence, @Nonnull Authentication authentication) {
-        auditLog.info("{}@{}: Request to replace event {}",
-                       username(authentication.username()),
-                       sanitize(context),
-                       token);
         return transformerFor(context).flatMap(transformer -> transformer.replaceEvent(transformationId,
                                                                                        token,
                                                                                        event,
-                                                                                       sequence));
+                                                                                       sequence))
+                                      .doFirst(() -> auditLog.info("{}@{}: Request to replace event {}",
+                                                                   username(authentication.username()),
+                                                                   sanitize(context),
+                                                                   token));
     }
 
     @Override
     public Mono<Void> startCancelling(String context, String id, @Nonnull Authentication authentication) {
-        auditLog.info("{}@{}: Request to cancel transformation {}",
-                      username(authentication.username()),
-                      sanitize(context),
-                      sanitize(id));
-        return transformerFor(context).flatMap(transformer -> transformer.startCancelling(id));
+        return transformerFor(context).flatMap(transformer -> transformer.startCancelling(id))
+                                      .doFirst(() -> auditLog.info("{}@{}: Request to cancel transformation {}",
+                                                                   username(authentication.username()),
+                                                                   sanitize(context),
+                                                                   sanitize(id)));
     }
 
     @Override
     public Mono<Void> startApplying(String context, String transformationId, long sequence,
                                     @Nonnull Authentication authentication) {
         String applier = username(authentication.username());
-        auditLog.info("{}@{}: Request to apply transformation {}",
-                      applier,
-                      sanitize(context),
-                      sanitize(transformationId));
         return transformerFor(context).flatMap(transformer -> transformer.startApplying(transformationId,
                                                                                         sequence,
-                                                                                        applier));
+                                                                                        applier))
+                                      .doFirst(() -> auditLog.info("{}@{}: Request to apply transformation {}",
+                                                                   applier,
+                                                                   sanitize(context),
+                                                                   sanitize(transformationId)));
     }
 
     @Override
     public Mono<Void> startRollingBack(String context, String id, @Nonnull Authentication authentication) {
-        auditLog.info("{}@{}: Request to rollback transformation {}",
-                      username(authentication.username()),
-                      sanitize(context),
-                      sanitize(id));
-        return transformerFor(context).flatMap(transformer -> transformer.startRollingBack(id));
+        return transformerFor(context).flatMap(transformer -> transformer.startRollingBack(id))
+                                      .doFirst(() -> auditLog.info("{}@{}: Request to rollback transformation {}",
+                                                                   username(authentication.username()),
+                                                                   sanitize(context),
+                                                                   sanitize(id)));
     }
 
     @Override
     public Mono<Void> deleteOldVersions(String context, @Nonnull Authentication authentication) {
-        auditLog.info("{}@{}: Request to delete old events.",
-                      username(authentication.username()),
-                      sanitize(context));
-        return transformerFor(context).flatMap(ContextTransformer::deleteOldVersions);
+        return transformerFor(context).flatMap(ContextTransformer::deleteOldVersions)
+                                      .doFirst(() -> auditLog.info("{}@{}: Request to delete old events.",
+                                                                   username(authentication.username()),
+                                                                   sanitize(context)));
     }
 
     private Mono<ContextTransformer> transformerFor(String context) {
