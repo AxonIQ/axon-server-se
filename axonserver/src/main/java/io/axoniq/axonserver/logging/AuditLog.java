@@ -41,15 +41,14 @@ public class AuditLog {
 
     @EventListener
     public void on(AbstractAuthenticationEvent event) {
-        if (auditLog.isDebugEnabled()) {
-            auditLog.debug(event.toString());
-        }
         if (event instanceof InteractiveAuthenticationSuccessEvent) {
             // ignores to prevent duplicate logging with AuthenticationSuccessEvent
             return;
         }
         Authentication authentication = event.getAuthentication();
-        if ((event instanceof AuthenticationSuccessEvent) && authentication.isAuthenticated()) {
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug(event.toString());
+        } else if ((event instanceof AuthenticationSuccessEvent) && authentication.isAuthenticated()) {
             auditLog.info("Login with username \"{}\".", authentication.getName());
         } else if (event instanceof AbstractAuthenticationFailureEvent) {
             AbstractAuthenticationFailureEvent failure = (AbstractAuthenticationFailureEvent) event;
