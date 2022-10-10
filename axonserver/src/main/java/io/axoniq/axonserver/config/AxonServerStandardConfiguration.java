@@ -15,11 +15,11 @@ import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
-import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandler;
+import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandlerStrategy;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
-import io.axoniq.axonserver.commandprocesing.imp.HandlerSelector;
+import io.axoniq.axonserver.commandprocesing.imp.HandlerSelectorStrategy;
 import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
-import io.axoniq.axonserver.commandprocesing.imp.MetaDataBasedHandlerSelector;
+import io.axoniq.axonserver.commandprocesing.imp.MetaDataBasedHandlerSelectorStrategy;
 import io.axoniq.axonserver.commandprocesing.imp.QueuedCommandDispatcher;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
@@ -83,6 +83,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import reactor.core.scheduler.Schedulers;
 
+import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -90,7 +91,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
-import javax.annotation.Nonnull;
 
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 
@@ -208,19 +208,19 @@ public class AxonServerStandardConfiguration {
     }
 
     @Bean
-    public ConsistentHashHandler consistentHashHandler() {
-        return new ConsistentHashHandler(commandHandler -> commandHandler.metadata()
+    public ConsistentHashHandlerStrategy consistentHashHandler() {
+        return new ConsistentHashHandlerStrategy(commandHandler -> commandHandler.metadata()
                                                                          .metadataValue(CommandHandler.LOAD_FACTOR),
                                          command -> command.metadata().metadataValue(Command.ROUTING_KEY));
     }
 
     @Bean
     @ConditionalOnMissingBean(CommandHandlerRegistry.class)
-    public CommandHandlerRegistry commandHandlerRegistry(ConsistentHashHandler consistentHashHandler) {
-        List<HandlerSelector> handlerSelectorList = new ArrayList<>();
-        handlerSelectorList.add(new MetaDataBasedHandlerSelector());
-        handlerSelectorList.add(consistentHashHandler);
-        return new InMemoryCommandHandlerRegistry(handlerSelectorList);
+    public CommandHandlerRegistry commandHandlerRegistry(ConsistentHashHandlerStrategy consistentHashHandler) {
+        List<HandlerSelectorStrategy> handlerSelectorStrategyList = new ArrayList<>();
+        handlerSelectorStrategyList.add(new MetaDataBasedHandlerSelectorStrategy());
+        handlerSelectorStrategyList.add(consistentHashHandler);
+        return new InMemoryCommandHandlerRegistry(handlerSelectorStrategyList);
     }
 
     @Bean
@@ -242,7 +242,7 @@ public class AxonServerStandardConfiguration {
     @Bean
     @ConditionalOnMissingBean(CommandRequestProcessor.class)
     public CommandRequestProcessor commandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry,
-                                                           ConsistentHashHandler consistentHashHandler,
+                                                           ConsistentHashHandlerStrategy consistentHashHandler,
                                                            CommandDispatcher queuedCommandDispatcher) {
 
         DefaultCommandRequestProcessor defaultCommandRequestProcessor = new DefaultCommandRequestProcessor(

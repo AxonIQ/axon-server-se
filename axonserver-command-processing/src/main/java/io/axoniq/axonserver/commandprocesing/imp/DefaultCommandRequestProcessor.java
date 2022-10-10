@@ -38,8 +38,8 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
         this(Collections.emptyList());
     }
 
-    public DefaultCommandRequestProcessor(List<HandlerSelector> handlerSelectorList) {
-        this(new InMemoryCommandHandlerRegistry(handlerSelectorList), new DirectCommandDispatcher());
+    public DefaultCommandRequestProcessor(List<HandlerSelectorStrategy> handlerSelectorStrategyList) {//todo rename HandlerSelectorStrategy
+        this(new InMemoryCommandHandlerRegistry(handlerSelectorStrategyList), new DirectCommandDispatcher());
     }
 
     public DefaultCommandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry,

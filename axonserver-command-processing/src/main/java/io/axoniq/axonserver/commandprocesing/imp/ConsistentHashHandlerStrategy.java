@@ -17,17 +17,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class ConsistentHashHandler implements HandlerSelector, CommandHandlerSubscribedInterceptor,
+public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, CommandHandlerSubscribedInterceptor,
         CommandHandlerUnsubscribedInterceptor {
 
-    private final static Logger logger = LoggerFactory.getLogger(ConsistentHashHandler.class);
+    private final static Logger logger = LoggerFactory.getLogger(ConsistentHashHandlerStrategy.class);
 
     private final Map<CommandIdentifier, ConsistentHash> consistentHashes = new ConcurrentHashMap<>();
     private final Function<CommandHandler, Optional<Number>> loadFactorProvider;
     private final Function<Command, Optional<String>> routingKeyProvider;
 
-    public ConsistentHashHandler(Function<CommandHandler, Optional<Number>> loadFactorProvider,
-                                 Function<Command, Optional<String>> routingKeyProvider) {
+    public ConsistentHashHandlerStrategy(Function<CommandHandler, Optional<Number>> loadFactorProvider,
+                                         Function<Command, Optional<String>> routingKeyProvider) {
         this.loadFactorProvider = loadFactorProvider;
         this.routingKeyProvider = routingKeyProvider;
     }

@@ -11,17 +11,18 @@ package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.message.ClientStreamIdentification;
 import io.axoniq.axonserver.topology.Topology;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author Marc Gathier
  */
-public class RoundRobinQueryHandlerSelectorTest {
+public class RoundRobinQueryHandlerSelectorStrategyTest {
     private RoundRobinQueryHandlerSelector testSubject;
 
     @Before

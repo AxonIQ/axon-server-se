@@ -206,7 +206,7 @@ public class DefaultCommandRequestProcessorTest {
 
     @Test
     public void interceptorsExecuted() {
-        SimpleHandlerSelector simpleHandlerSelector = new SimpleHandlerSelector();
+        SimpleHandlerSelectorStrategy simpleHandlerSelector = new SimpleHandlerSelectorStrategy();
         DefaultCommandRequestProcessor testSubject2 = new DefaultCommandRequestProcessor(List.of(simpleHandlerSelector));
         testSubject2.registerInterceptor(CommandHandlerSubscribedInterceptor.class, simpleHandlerSelector);
         testSubject2.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class, simpleHandlerSelector);
@@ -313,7 +313,7 @@ public class DefaultCommandRequestProcessorTest {
         }
     }
 
-    private static class SimpleHandlerSelector implements HandlerSelector,
+    private static class SimpleHandlerSelectorStrategy implements HandlerSelectorStrategy,
             CommandHandlerSubscribedInterceptor,
             CommandHandlerUnsubscribedInterceptor {
 

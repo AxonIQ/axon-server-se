@@ -18,10 +18,10 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
 
     private final Map<CommandIdentifier, Set<CommandHandlerSubscription>> handlersPerCommand = new ConcurrentHashMap<>();
     private final Map<String, CommandHandlerSubscription> handlers = new ConcurrentHashMap<>();
-    private final List<HandlerSelector> handlerSelectorList;
+    private final List<HandlerSelectorStrategy> handlerSelectorStrategyList;
 
-    public InMemoryCommandHandlerRegistry(List<HandlerSelector> handlerSelectorList) {
-        this.handlerSelectorList = handlerSelectorList;
+    public InMemoryCommandHandlerRegistry(List<HandlerSelectorStrategy> handlerSelectorStrategyList) {
+        this.handlerSelectorStrategyList = handlerSelectorStrategyList;
     }
 
     @Override
@@ -69,7 +69,7 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
 
     private Mono<CommandHandlerSubscription> selectSubscription(Set<CommandHandlerSubscription> handlers,
                                                                 Command command) {
-        return Flux.fromIterable(handlerSelectorList)
+        return Flux.fromIterable(handlerSelectorStrategyList)
                    .reduce(handlers, (handlerSubscriptionSet, selector) ->
                            applySelector(command, selector, handlerSubscriptionSet))
                    .flatMapIterable(Function.identity())
@@ -77,7 +77,7 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
                    .switchIfEmpty(Mono.error(new NoHandlerFoundException()));
     }
 
-    private Set<CommandHandlerSubscription> applySelector(Command command, HandlerSelector selector,
+    private Set<CommandHandlerSubscription> applySelector(Command command, HandlerSelectorStrategy selector,
                                                           Set<CommandHandlerSubscription> handlers) {
         if (handlers.size() <= 1) {
             return handlers;

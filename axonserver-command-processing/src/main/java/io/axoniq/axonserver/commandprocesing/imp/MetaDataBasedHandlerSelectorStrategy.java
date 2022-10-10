@@ -15,9 +15,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
-public class MetaDataBasedHandlerSelector implements HandlerSelector {
+public class MetaDataBasedHandlerSelectorStrategy implements HandlerSelectorStrategy {
 
-    private static final Logger logger = LoggerFactory.getLogger(MetaDataBasedHandlerSelector.class);
+    private static final Logger logger = LoggerFactory.getLogger(MetaDataBasedHandlerSelectorStrategy.class);
 
     @Override
     public Set<CommandHandlerSubscription> select(Set<CommandHandlerSubscription> candidates, Command command) {

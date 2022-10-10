@@ -17,9 +17,9 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class MetaDataBasedHandlerSelectorTest {
+public class MetaDataBasedHandlerSelectorStrategyTest {
 
-    private final MetaDataBasedHandlerSelector testSubject = new MetaDataBasedHandlerSelector();
+    private final MetaDataBasedHandlerSelectorStrategy testSubject = new MetaDataBasedHandlerSelectorStrategy();
 
     @Before
     public void setUp() throws Exception {
@@ -125,7 +125,7 @@ public class MetaDataBasedHandlerSelectorTest {
 
             @Override
             public Metadata metadata() {
-                return MetaDataBasedHandlerSelectorTest.metadata(metadata);
+                return MetaDataBasedHandlerSelectorStrategyTest.metadata(metadata);
             }
         };
     }
@@ -157,7 +157,7 @@ public class MetaDataBasedHandlerSelectorTest {
 
                     @Override
                     public Metadata metadata() {
-                        return MetaDataBasedHandlerSelectorTest.metadata(metadata);
+                        return MetaDataBasedHandlerSelectorStrategyTest.metadata(metadata);
                     }
                 };
             }

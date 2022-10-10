@@ -23,9 +23,9 @@ import static reactor.core.publisher.Mono.when;
  */
 public class InMemoryCommandHandlerRegistryTest {
 
-    List<HandlerSelector> handlerSelectorList = List.of(new MetaDataBasedHandlerSelector());
+    List<HandlerSelectorStrategy> handlerSelectorStrategyList = List.of(new MetaDataBasedHandlerSelectorStrategy());
 
-    private final InMemoryCommandHandlerRegistry testSubject = new InMemoryCommandHandlerRegistry(handlerSelectorList);
+    private final InMemoryCommandHandlerRegistry testSubject = new InMemoryCommandHandlerRegistry(handlerSelectorStrategyList);
 
     @Before
     public void setUp() throws Exception {

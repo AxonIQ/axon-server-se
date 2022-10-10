@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.io.Serializable;
 import java.security.Principal;
 import java.util.Collections;
@@ -50,7 +51,6 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -111,60 +111,12 @@ public class CommandRestController {
             @RequestBody @Valid CommandRequestJson command,
             @Parameter(hidden = true) Authentication principal) {
         auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
-        return commandRequestProcessor.dispatch(new Command() {
-            @Override
-            public String id() {
-                return command.getMessageIdentifier();
-            }
-
-            @Override
-            public String commandName() {
-                return command.getName();
-            }
-
-            @Override
-            public String context() {
-                return context;
-            }
-
-            @Override
-            public Payload payload() {
-                return new Payload() {
-                    @Override
-                    public String type() {
-                        return command.getPayload().getType();
-                    }
-
-                    @Override
-                    public String contentType() {
-                        return null;
-                    }
-
-                    @Override
-                    public Flux<Byte> data() {
-                        return Flux.fromIterable(ByteString.copyFromUtf8(command.getPayload().getData()));
-                    }
-                };
-            }
-
-            @Override
-            public Metadata metadata() {
-                return new Metadata() {
-                    @Override
-                    public Iterable<String> metadataKeys() {
-                        return command.getMetaData().keySet();
-                    }
-
-                    @Override
-                    public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
-                        return Optional.ofNullable((R) command.getMetaData().get(metadataKey));
-                    }
-                };
-            }
-                })
+        return commandRequestProcessor.dispatch(new WrappedJsonCommand(command, context))
                 .map(CommandResponseJson::new)
                 .onErrorResume(e -> Mono.just(new CommandResponseJson(command.getMessageIdentifier(), e)));
     }
+
+
 
     @GetMapping("commands/queues")
     public List<JsonQueueInfo> queues(@Parameter(hidden = true) Principal principal) {
@@ -250,4 +202,66 @@ public class CommandRestController {
             return new JsonQueueInfo(segment.getKey(), segment.getValue().size());
         }
     }
+
+    private static class WrappedJsonCommand implements Command {
+
+        private final CommandRequestJson command;
+        private final String context;
+
+        public WrappedJsonCommand(CommandRequestJson commandRequestJson, String context) {
+            command = commandRequestJson;
+            this.context = context;
+        }
+
+
+        @Override
+        public String id() {
+            return command.getMessageIdentifier();
+        }
+
+        @Override
+        public String commandName() {
+            return command.getName();
+        }
+
+        @Override
+        public String context() {
+            return context;
+        }
+
+        @Override
+        public Payload payload() {
+            return new Payload() {
+                @Override
+                public String type() {
+                    return command.getPayload().getType();
+                }
+
+                @Override
+                public String contentType() {
+                    return null;
+                }
+
+                @Override
+                public Flux<Byte> data() {
+                    return Flux.fromIterable(ByteString.copyFromUtf8(command.getPayload().getData()));//todo check data buffers reactive
+                }
+            };
+        }
+
+        @Override
+        public Metadata metadata() {
+            return new Metadata() {
+                @Override
+                public Iterable<String> metadataKeys() {
+                    return command.getMetaData().keySet();
+                }
+
+                @Override
+                public <R extends Serializable> Optional<R> metadataValue(String metadataKey) {
+                    return Optional.ofNullable((R) command.getMetaData().get(metadataKey));
+                }
+            };
+        }
+    };
 }

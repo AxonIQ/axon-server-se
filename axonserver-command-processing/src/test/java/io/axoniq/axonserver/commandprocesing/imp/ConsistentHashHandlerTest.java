@@ -18,7 +18,7 @@ import static org.junit.Assert.assertEquals;
 
 public class ConsistentHashHandlerTest {
 
-    private final ConsistentHashHandler consistentHashHandler = new ConsistentHashHandler(commandHandler -> Optional.empty(),
+    private final ConsistentHashHandlerStrategy consistentHashHandler = new ConsistentHashHandlerStrategy(commandHandler -> Optional.empty(),
                                                                                           command -> Optional.of(
                                                                                                   "routingKey1"));
 
