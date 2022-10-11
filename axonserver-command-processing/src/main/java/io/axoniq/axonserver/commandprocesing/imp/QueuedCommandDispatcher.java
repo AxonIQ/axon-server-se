@@ -21,8 +21,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -97,7 +97,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         private final String queueName;
         private final AtomicReference<Subscription> clientSubscription = new AtomicReference<>();
         private final Map<String, Sinks.One<CommandResult>> resultMap = new ConcurrentHashMap<>();
-        private final PriorityBlockingQueue<CommandAndHandler> queue = new PriorityBlockingQueue<>(100,
+        private final PriorityQueue<CommandAndHandler> queue = new PriorityQueue<>(100,
                                                                                                    Comparator.comparingLong(
                                                                                                                      CommandAndHandler::priority)
                                                                                                              .thenComparingLong(
@@ -113,7 +113,6 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                                                    () -> logger.warn(
                                                            "CommandQueue executor has terminated and will no longer execute commands."));
             processor.asFlux()
-//                     .limitRate(1)
                      .subscribeOn(executor)
                      .subscribe(clientSubscription());
             gauge = Gauge.builder("commands.queued", queueName, q -> queue.size())
@@ -182,10 +181,10 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                     return sink.asMono();
                 }
                 resultMap.put(commandRequest.id(), sink);
-                synchronized (processor) {
-                    processor.emitNext(commandRequest, (signalType, emitResult) ->
-                            emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED));
-                }
+
+                processor.emitNext(commandRequest, (signalType, emitResult) ->
+                        emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED));
+
                 return sink.asMono();
             });
         }
@@ -227,7 +226,6 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
 
         private final Command commandRequest;
         private final CommandHandlerSubscription handler;
-        //todo duration how long can it be enqueued?
         private final long priority;
 
         private final long timeout;

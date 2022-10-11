@@ -64,12 +64,14 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
     }
 
 
+    @SuppressWarnings("unchecked")
     private <T> Flux<Void> invokeHooks(Class<T> clazz, Function<T, Mono<Void>> interceptor) {
         return Flux.fromIterable(interceptorMap.getOrDefault(clazz,
                                                              Collections.emptyList()))
                    .concatMap(i -> interceptor.apply((T) i));
     }
 
+    @SuppressWarnings("unchecked")
     private <T, R> Mono<R> invokeInterceptors(Class<T> clazz, Mono<R> initial,
                                               BiFunction<T, Mono<R>, Mono<R>> interceptor) {
         return Flux.fromIterable(interceptorMap.getOrDefault(clazz,
@@ -81,65 +83,78 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
     @Override
     public Mono<CommandResult> dispatch(Command commandRequest) {
         return invokeInterceptors(CommandReceivedInterceptor.class,
-                                  Mono.just(commandRequest),
-                                  CommandReceivedInterceptor::onCommandReceived)
+                Mono.just(commandRequest),
+                CommandReceivedInterceptor::onCommandReceived)
                 .flatMap(command -> commandHandlerRegistry.handler(command)
-                                                          .flatMap(subscription -> commandDispatcher.dispatch(
-                                                                                                            subscription,
-                                                                                                            command)
-                                                                                                    .flatMap(
-                                                                                                            commandResult -> invokeInterceptors(
-                                                                                                                    CommandResultReceivedInterceptor.class,
-                                                                                                                    Mono.just(
-                                                                                                                            commandResult),
-                                                                                                                    CommandResultReceivedInterceptor::onCommandResultReceived)
-                                                                                                                    .thenReturn(commandResult))
-                                                                                                    .name("commandDispatch")
-                                                                                                    .tag("command",
-                                                                                                        command
-                                                                                                                       .commandName())
-                                                                                                    .tag("context",
-                                                                                                            command
-                                                                                                                       .context())
-                                                                                                    .tag("source",
-                                                                                                            command
-                                                                                                                       .metadata()
-                                                                                                                       .metadataValue(
-                                                                                                                               Command.CLIENT_ID,
-                                                                                                                               "NO-SOURCE"))
-                                                                                                    .tag("target",
-                                                                                                         subscription.commandHandler()
-                                                                                                                     .metadata()
-                                                                                                                     .metadataValue(
-                                                                                                                             Command.CLIENT_ID,
-                                                                                                                             "NO-SOURCE"))
-                                                                                                    .metrics()
+                        .flatMap(commandHandlerSubscription -> commandDispatcher.dispatch(commandHandlerSubscription, command)
+                                .transform(this::invokeResultInterceptors)
+                                .transform(pipeline -> recordSuccessMetrics(pipeline, commandRequest, commandHandlerSubscription))
+                        ))
+                .onErrorResume(interceptErrorAndContinue(commandRequest));
+    }
 
-                                                          ))
-                .onErrorResume(
-                        throwable -> invokeInterceptors(
-                                CommandFailedInterceptor.class,
-                                commandFailed(
-                                        commandRequest,
-                                        throwable),
-                                CommandFailedInterceptor::onCommandFailed)
-                                .name("commandDispatchErrors")
-                                .tag("command",
-                                        commandRequest
-                                                   .commandName())
-                                .tag("context",
-                                        commandRequest
-                                                   .context())
-                                .tag("source",
-                                        commandRequest
-                                                   .metadata()
-                                                   .metadataValue(
-                                                           Command.CLIENT_ID,
-                                                           "NO-SOURCE"))
-                                .tag("error", throwable.toString())
-                                .metrics()
-                                .then(Mono.error(
-                                        throwable)));
+    private Function<Throwable, Mono<? extends CommandResult>> interceptErrorAndContinue(Command commandRequest) {
+        return throwable -> invokeInterceptors(
+                CommandFailedInterceptor.class,
+                commandFailed(
+                        commandRequest,
+                        throwable),
+                CommandFailedInterceptor::onCommandFailed)
+                .transform(pipeline -> recordErrorMetrics(pipeline, commandRequest, throwable))
+                .then(Mono.error(throwable));
+    }
+
+    private Mono<CommandException> recordErrorMetrics(Mono<CommandException> pipeline, Command commandRequest, Throwable throwable) {
+        return pipeline.name("commandDispatchErrors")
+                .tag("command",
+                        commandRequest
+                                .commandName())
+                .tag("context",
+                        commandRequest
+                                .context())
+                .tag("source",
+                        commandRequest
+                                .metadata()
+                                .metadataValue(
+                                        Command.CLIENT_ID,
+                                        "NO-SOURCE"))
+                .tag("error", throwable.toString())
+                .metrics();
+    }
+
+    private Mono<CommandResult> invokeResultInterceptors(Mono<CommandResult> commandResultMono) {
+        return commandResultMono
+                .flatMap(commandResult -> invokeInterceptors(
+                        CommandResultReceivedInterceptor.class,
+                        Mono.just(commandResult),
+                        CommandResultReceivedInterceptor::onCommandResultReceived)
+                        .thenReturn(commandResult));
+    }
+
+    private Mono<CommandResult> recordSuccessMetrics(Mono<CommandResult> dispatchPipeline,
+                                                     Command commandRequest,
+                                                     CommandHandlerSubscription commandHandlerSubscription) {
+        return dispatchPipeline
+                .name("commandDispatch")
+                .tag("command",
+                        commandRequest
+                                .commandName())
+                .tag("context",
+                        commandRequest
+                                .context())
+                .tag("source",
+                        commandRequest
+                                .metadata()
+                                .metadataValue(
+                                        Command.CLIENT_ID,
+                                        "NO-SOURCE"))
+                .tag("target",
+                        commandHandlerSubscription.commandHandler()
+                                .metadata()
+                                .metadataValue(
+                                        Command.CLIENT_ID,
+                                        "NO-SOURCE"))
+                .metrics();
     }
 
     private Mono<CommandException> commandFailed(Command command, Throwable throwable) {

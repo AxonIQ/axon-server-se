@@ -63,7 +63,6 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
     private final CommandDispatcher queuedCommandDispatcher;
     private final ClientTagsCache clientTagsCache;
 
-
     private final Map<UUID, CommandHandlerStream> commandHandlers = new ConcurrentHashMap<>();
 
     public CommandGrpcController(ContextProvider contextProvider, AuthenticationProvider authenticationProvider,
@@ -182,14 +181,14 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
         responseObserver.onCompleted();
     }
 
-    private class CommandHandlerStream {
+    private class CommandHandlerStream {//todo needs to be reworked - more simple
 
         private final String context;
         private final String clientId;
         private final StreamObserver<CommandProviderInbound> streamToHandler;
 
         private final Map<String, String> registrations = new ConcurrentHashMap<>();
-        private final Map<String, MonoSink<CommandResponse>> activeCommands = new ConcurrentHashMap<>();
+        private final Map<String, MonoSink<CommandResponse>> activeCommands = new ConcurrentHashMap<>(); //todo probably remove
 
         public CommandHandlerStream(String context, String clientId,
                                     StreamObserver<CommandProviderInbound> streamToHandler) {
@@ -213,11 +212,13 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
         }
 
         public Mono<Void> unsubscribe(CommandSubscription unsubscribe) {
-            String handlerId = registrations.remove(unsubscribe.getCommand());
-            if (handlerId != null) {
-                return commandRequestProcessor.unregister(handlerId);
-            }
-            return Mono.empty();
+            return Mono.defer(()-> {
+                String handlerId = registrations.remove(unsubscribe.getCommand());
+                if (handlerId != null) {
+                    return commandRequestProcessor.unregister(handlerId);
+                }
+                return Mono.empty();
+            });
         }
 
         public void flowControl(FlowControl flowControl) {
@@ -266,11 +267,10 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
                                               Function<Command, Mono<CommandResponse>> dispatchOperation) {
             this.clientId = clientId;
             this.commandHandler = new CommandHandler() {
-                private final String id = UUID.randomUUID().toString();
 
                 @Override
                 public String id() {
-                    return id;
+                    return subscribe.getCommand() + "@" + subscribe.getClientId();
                 }
 
                 @Override
