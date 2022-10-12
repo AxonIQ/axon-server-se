@@ -21,8 +21,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -97,7 +97,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         private final String queueName;
         private final AtomicReference<Subscription> clientSubscription = new AtomicReference<>();
         private final Map<String, Sinks.One<CommandResult>> resultMap = new ConcurrentHashMap<>();
-        private final PriorityQueue<CommandAndHandler> queue = new PriorityQueue<>(100,
+        private final PriorityBlockingQueue<CommandAndHandler> queue = new PriorityBlockingQueue<>(100,
                                                                                                    Comparator.comparingLong(
                                                                                                                      CommandAndHandler::priority)
                                                                                                              .thenComparingLong(
@@ -149,7 +149,6 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         }
 
         private void signalError(String id, Throwable e) {
-            e.printStackTrace();
             Sinks.One<CommandResult> resultMono = resultMap.remove(id);
             if (resultMono != null) {
                 resultMono.tryEmitError(e);
