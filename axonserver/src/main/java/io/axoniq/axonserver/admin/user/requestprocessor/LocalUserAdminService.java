@@ -70,7 +70,7 @@ public class LocalUserAdminService implements UserAdminService {
                                        .collect(Collectors.toSet());
         validateContexts(userRoles);
         User updatedUser = userController.updateUser(userName, password, userRoles);
-        eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false));
+        eventPublisher.publishEvent(new UserEvents.UserUpdated(updatedUser, false, authentication));
     }
 
     private void validateContexts(Set<UserRole> roles) {
@@ -91,7 +91,7 @@ public class LocalUserAdminService implements UserAdminService {
     public void deleteUser(@Nonnull String name, @Nonnull Authentication authentication) {
         auditLog.info("[{}] Request to delete user \"{}\".", AuditLog.username(authentication.username()), name);
         userController.deleteUser(name);
-        eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false));
+        eventPublisher.publishEvent(new UserEvents.UserDeleted(name, false, authentication));
     }
 
     @Nonnull

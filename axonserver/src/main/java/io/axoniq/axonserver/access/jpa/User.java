@@ -131,4 +131,14 @@ public class User {
     public void removeContext(String context) {
         roles.removeIf(r -> r.getContext().equals(context));
     }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "userName='" + userName + '\'' +
+                ", password='PROTECTED'" +
+                ", enabled=" + enabled +
+                ", roles=" + roles +
+                '}';
+    }
 }
