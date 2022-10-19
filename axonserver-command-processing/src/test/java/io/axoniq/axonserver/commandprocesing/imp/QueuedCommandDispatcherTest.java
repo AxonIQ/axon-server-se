@@ -19,7 +19,6 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertTrue;
@@ -53,6 +52,22 @@ public class QueuedCommandDispatcherTest {
     }
 
     @Test
+    public void dispatchWithHardLimit() throws InterruptedException {
+        QueuedCommandDispatcher testSubjectLimit = new QueuedCommandDispatcher(Schedulers.boundedElastic(),
+                h -> Optional.of("clientId"),
+                0,
+                5000,
+                new SimpleMeterRegistry());
+
+        CommandHandlerSubscription handler = commandHandlerSubscription();
+        Command request = request("request1");
+
+        StepVerifier.create(testSubjectLimit.dispatch(handler, request))
+                .expectErrorMatches(e-> e.getMessage().startsWith("Failed to add request to queue"))
+                .verify();
+    }
+
+    @Test
     public void dispatchTimeout() throws InterruptedException {
         CommandHandlerSubscription handler = commandHandlerSubscription();
         Command request = request("request1");
@@ -81,7 +96,6 @@ public class QueuedCommandDispatcherTest {
         }
     }
 
-    AtomicBoolean dispatched = new AtomicBoolean();
     private CommandHandlerSubscription commandHandlerSubscription() {
         return new CommandHandlerSubscription() {
             @Override
