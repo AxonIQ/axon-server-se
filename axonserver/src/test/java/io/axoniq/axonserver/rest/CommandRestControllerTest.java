@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
@@ -18,7 +19,6 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.component.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.component.command.ComponentCommand;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.Before;
@@ -35,9 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier

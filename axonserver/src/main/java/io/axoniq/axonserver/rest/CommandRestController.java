@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.rest;
 
 import com.google.protobuf.ByteString;
+import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
@@ -19,9 +20,6 @@ import io.axoniq.axonserver.component.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.logging.AuditLog;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
-import io.axoniq.axonserver.message.command.CommandHandler;
-import io.axoniq.axonserver.message.command.CommandRegistrationCache;
 import io.axoniq.axonserver.rest.json.CommandRequestJson;
 import io.axoniq.axonserver.rest.json.CommandResponseJson;
 import io.axoniq.axonserver.topology.Topology;
@@ -50,7 +48,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -117,13 +114,16 @@ public class CommandRestController {
     }
 
 
-
+    //todo
     @GetMapping("commands/queues")
     public List<JsonQueueInfo> queues(@Parameter(hidden = true) Principal principal) {
         auditLog.info("[{}] Request to list all CommandQueues.", AuditLog.username(principal));
 
-        return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
-                Collectors.toList());
+        //todo
+        return null;
+//
+//        return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
+//                Collectors.toList());
     }
 
     @GetMapping("commands/count")
@@ -131,7 +131,9 @@ public class CommandRestController {
         if (auditLog.isDebugEnabled()) {
             auditLog.debug("[{}] Request for the active command count.", AuditLog.username(principal));
         }
-        return commandDispatcher.activeCommandCount();
+        //todo
+        return -1;
+//        return commandDispatcher.activeCommandCount();
     }
 
     public static class JsonClientMapping {
@@ -165,19 +167,19 @@ public class CommandRestController {
             jsonCommandMapping.proxy = proxy;
             return jsonCommandMapping;
         }
-
-        static JsonClientMapping from(
-                Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
-            JsonClientMapping jsonCommandMapping = new JsonClientMapping();
-            CommandHandler commandHandler = entry.getKey();
-            jsonCommandMapping.client = commandHandler.getClientStreamIdentification().toString();
-            jsonCommandMapping.component = commandHandler.getComponentName();
-            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
-
-            jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand())
-                                               .collect(Collectors.toSet());
-            return jsonCommandMapping;
-        }
+//todo
+//        static JsonClientMapping from(
+//                Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
+//            JsonClientMapping jsonCommandMapping = new JsonClientMapping();
+//            CommandHandler commandHandler = entry.getKey();
+//            jsonCommandMapping.client = commandHandler.getClientStreamIdentification().toString();
+//            jsonCommandMapping.component = commandHandler.getComponentName();
+//            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
+//
+//            jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand())
+//                                               .collect(Collectors.toSet());
+//            return jsonCommandMapping;
+//        }
     }
 
     private static class JsonQueueInfo {

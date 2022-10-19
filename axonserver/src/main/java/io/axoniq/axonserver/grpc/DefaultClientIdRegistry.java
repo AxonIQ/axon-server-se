@@ -1,10 +1,8 @@
 package io.axoniq.axonserver.grpc;
 
-import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeCommand;
 import io.axoniq.axonserver.applicationevents.SubscriptionEvents.SubscribeQuery;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationDisconnected;
-import io.axoniq.axonserver.applicationevents.TopologyEvents.CommandHandlerDisconnected;
 import io.axoniq.axonserver.applicationevents.TopologyEvents.QueryHandlerDisconnected;
 import io.axoniq.axonserver.serializer.Media;
 import org.slf4j.Logger;
@@ -103,24 +101,6 @@ public class DefaultClientIdRegistry implements ClientIdRegistry {
                     event.getClientId(),
                     event.getClientStreamId());
         unregister(event.getClientStreamId(), PLATFORM);
-    }
-
-    @EventListener
-    public void on(SubscribeCommand event) {
-        String clientId = event.getHandler().getClientId();
-        String clientStreamId = event.clientStreamIdentification().getClientStreamId();
-        if (!clientIdMapPerType.getOrDefault(COMMAND, Collections.emptyMap()).containsKey(clientStreamId)) {
-            logger.info("Command stream connected: {} [stream id -> {}]", clientId, clientStreamId);
-        }
-        register(clientStreamId, new ClientContext(clientId, event.getContext()), COMMAND);
-    }
-
-    @EventListener
-    public void on(CommandHandlerDisconnected event) {
-        logger.info("Command stream disconnected: {} [stream id -> {}]",
-                    event.getClientId(),
-                    event.getClientStreamId());
-        unregister(event.getClientStreamId(), COMMAND);
     }
 
     @EventListener

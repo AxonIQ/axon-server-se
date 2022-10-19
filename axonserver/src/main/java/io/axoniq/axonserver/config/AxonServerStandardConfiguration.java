@@ -30,8 +30,6 @@ import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
-import io.axoniq.axonserver.grpc.SerializedCommandProviderInbound;
-import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
@@ -267,15 +265,6 @@ public class AxonServerStandardConfiguration {
         return new DefaultInstructionAckSource<>(ack -> PlatformOutboundInstruction.newBuilder()
                                                                                    .setAck(ack)
                                                                                    .build());
-    }
-
-    @Bean
-    @Qualifier("commandInstructionAckSource")
-    public InstructionAckSource<SerializedCommandProviderInbound> commandInstructionAckSource() {
-        return new DefaultInstructionAckSource<>(ack -> new SerializedCommandProviderInbound(CommandProviderInbound
-                                                                                                     .newBuilder()
-                                                                                                     .setAck(ack)
-                                                                                                     .build()));
     }
 
     @Bean
