@@ -23,6 +23,10 @@ public abstract class UserEvents {
         private final boolean proxied;
         private final Authentication implementer;
 
+        public UserUpdated(User user, boolean proxied) {
+            this(user, proxied, null);
+        }
+
         public UserUpdated(User user, boolean proxied, Authentication implementer) {
             this.user = user;
             this.proxied = proxied;
@@ -52,6 +56,10 @@ public abstract class UserEvents {
         private final String name;
         private final boolean proxied;
         private final Authentication implementer;
+
+        public UserDeleted(String name, boolean proxied) {
+            this(name, proxied, null);
+        }
 
         public UserDeleted(String name, boolean proxied, Authentication implementer) {
             this.name = name;
