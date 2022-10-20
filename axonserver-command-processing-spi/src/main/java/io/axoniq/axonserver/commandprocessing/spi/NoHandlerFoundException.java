@@ -1,4 +1,4 @@
-package io.axoniq.axonserver.commandprocesing.imp;
+package io.axoniq.axonserver.commandprocessing.spi;
 
 public class NoHandlerFoundException extends RuntimeException {
 

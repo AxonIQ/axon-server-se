@@ -14,11 +14,14 @@ import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
+import io.axoniq.axonserver.commandprocessing.spi.NoHandlerFoundException;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.component.ComponentItems;
 import io.axoniq.axonserver.component.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.rest.json.CommandRequestJson;
 import io.axoniq.axonserver.rest.json.CommandResponseJson;
@@ -39,7 +42,6 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.validation.Valid;
 import java.io.Serializable;
 import java.security.Principal;
 import java.util.Collections;
@@ -48,6 +50,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -109,8 +112,15 @@ public class CommandRestController {
             @Parameter(hidden = true) Authentication principal) {
         auditLog.info("[{}] Request to dispatch a \"{}\" Command.", AuditLog.username(principal), command.getName());
         return commandRequestProcessor.dispatch(new WrappedJsonCommand(command, context))
-                .map(CommandResponseJson::new)
-                .onErrorResume(e -> Mono.just(new CommandResponseJson(command.getMessageIdentifier(), e)));
+                                      .map(CommandResponseJson::new)
+                                      .onErrorMap(NoHandlerFoundException.class,
+                                                  t -> new MessagingPlatformException(ErrorCode.NO_HANDLER_FOR_COMMAND,
+                                                                                      "No handler found for "
+                                                                                              + command.getName()))
+                                      .onErrorResume(e -> {
+                                          e.printStackTrace();
+                                          return Mono.just(new CommandResponseJson(command.getMessageIdentifier(), e));
+                                      });
     }
 
 

@@ -10,6 +10,7 @@
 package io.axoniq.axonserver.rest.json;
 
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.ErrorMessage;
 import io.axoniq.axonserver.grpc.command.CommandResponse;
 
@@ -56,9 +57,9 @@ public class CommandResponseJson {
     public CommandResponseJson(String r, Throwable e) {
         requestIdentifier = r;
         errorMessage = new MessageJson(ErrorMessage.newBuilder()
-                                                   .setMessage(getOrDefault(e.toString(), "Null"))
+                                                   .setMessage(getOrDefault(e.getMessage(), "Null"))
                                                    .build());
-        errorCode = "1234";
+        errorCode = MessagingPlatformException.create(e).getErrorCode().getCode();
         payload = null;
         messageIdentifier = UUID.randomUUID().toString();
         metaData = new MetaDataJson();

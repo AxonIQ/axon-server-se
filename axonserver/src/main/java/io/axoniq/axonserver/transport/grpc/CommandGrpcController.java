@@ -10,9 +10,13 @@
 package io.axoniq.axonserver.transport.grpc;
 
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
+import io.axoniq.axonserver.commandprocessing.spi.CapacityException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
+import io.axoniq.axonserver.commandprocessing.spi.NoHandlerFoundException;
 import io.axoniq.axonserver.component.tags.ClientTagsCache;
 import io.axoniq.axonserver.config.AuthenticationProvider;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.ErrorMessage;
@@ -30,10 +34,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nonnull;
 
 @Service
 public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImplBase
@@ -75,14 +79,18 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
                         commandHandlerStream.subscribe(commandProviderOutbound.getSubscribe())
                                             .subscribe(ignore -> {
                                                        },
-                                                       e->logger.error("Following error occurred while subscribing to command handler: ",e),
+                                                       e -> logger.error(
+                                                               "Following error occurred while subscribing to command handler: ",
+                                                               e),
                                                        () -> sendAck(commandProviderOutbound.getInstructionId()));
                         break;
                     case UNSUBSCRIBE:
                         commandHandlerStream.unsubscribe(commandProviderOutbound.getUnsubscribe())
                                             .subscribe(ignore -> {
                                                        },
-                                                       e->logger.error("Following error occurred while unsubscribing from command handler: ",e),
+                                                       e -> logger.error(
+                                                               "Following error occurred while unsubscribing from command handler: ",
+                                                               e),
                                                        () -> sendAck(commandProviderOutbound.getInstructionId()));
                         break;
                     case FLOW_CONTROL:
@@ -102,12 +110,12 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             @Nonnull
             private CommandHandlerStream getCommandHandlerStream(CommandProviderOutbound commandProviderOutbound) {
                 return commandHandlers.computeIfAbsent(id, id -> new CommandHandlerStream(contextProvider.getContext(),
-                        clientId(
-                                commandProviderOutbound),
-                        responseObserver,
-                        queuedCommandDispatcher,
-                        commandRequestProcessor,
-                        clientTagsCache));
+                                                                                          clientId(
+                                                                                                  commandProviderOutbound),
+                                                                                          responseObserver,
+                                                                                          queuedCommandDispatcher,
+                                                                                          commandRequestProcessor,
+                                                                                          clientTagsCache));
             }
 
             private void sendAck(String instructionId) {
@@ -146,6 +154,7 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             }
         };
     }
+
     //dispatches command from application to axon server
     @Override
     public void dispatch(Command request, StreamObserver<CommandResponse> responseObserver) {
@@ -155,6 +164,13 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
                                                          context,
                                                          new GrpcAuthentication(
                                                                  () -> authentication)))
+                               .onErrorMap(NoHandlerFoundException.class,
+                                           t -> new MessagingPlatformException(ErrorCode.NO_HANDLER_FOR_COMMAND,
+                                                                               "No handler found for "
+                                                                                       + request.getName()))
+                               .onErrorMap(CapacityException.class,
+                                           t -> new MessagingPlatformException(ErrorCode.TOO_MANY_REQUESTS,
+                                                                               t.getMessage()))
                                .subscribe(
                                        result -> responseObserver.onNext(GrpcMapper.map(result)),
                                        error -> returnError(responseObserver, request, error),
@@ -162,15 +178,17 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
     }
 
     private void returnError(StreamObserver<CommandResponse> responseObserver, Command request, Throwable e) {
+        String errorCode = MessagingPlatformException.create(e).getErrorCode().getCode();
         CommandResponse commandResponse = CommandResponse.newBuilder()
                                                          .setRequestIdentifier(request.getMessageIdentifier())
                                                          .setMessageIdentifier(UUID.randomUUID().toString())
+                                                         .setErrorCode(errorCode)
                                                          .setErrorMessage(ErrorMessage.newBuilder()
+                                                                                      .setErrorCode(errorCode)
                                                                                       .setMessage(e.toString()))
                                                          .build();
 
         responseObserver.onNext(commandResponse);
         responseObserver.onCompleted();
     }
-
 }

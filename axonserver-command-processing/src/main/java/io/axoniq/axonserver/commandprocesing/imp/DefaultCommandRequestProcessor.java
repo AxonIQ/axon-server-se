@@ -1,12 +1,12 @@
 package io.axoniq.axonserver.commandprocesing.imp;
 
 import io.axoniq.axonserver.commandprocessing.spi.Command;
-import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Interceptor;
 import io.axoniq.axonserver.commandprocessing.spi.Registration;
+import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
@@ -38,7 +38,8 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
         this(Collections.emptyList());
     }
 
-    public DefaultCommandRequestProcessor(List<HandlerSelectorStrategy> handlerSelectorStrategyList) {//todo rename HandlerSelectorStrategy
+    public DefaultCommandRequestProcessor(
+            List<HandlerSelectorStrategy> handlerSelectorStrategyList) {//todo rename HandlerSelectorStrategy
         this(new InMemoryCommandHandlerRegistry(handlerSelectorStrategyList), new DirectCommandDispatcher());
     }
 
@@ -83,12 +84,15 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
     @Override
     public Mono<CommandResult> dispatch(Command commandRequest) {
         return invokeInterceptors(CommandReceivedInterceptor.class,
-                Mono.just(commandRequest),
-                CommandReceivedInterceptor::onCommandReceived)
+                                  Mono.just(commandRequest),
+                                  CommandReceivedInterceptor::onCommandReceived)
                 .flatMap(command -> commandHandlerRegistry.handler(command)
-                        .flatMap(commandHandlerSubscription -> commandDispatcher.dispatch(commandHandlerSubscription, command)
-                                .transform(this::invokeResultInterceptors)
-                        ))
+                                                          .flatMap(commandHandlerSubscription -> commandDispatcher.dispatch(
+                                                                                                                          commandHandlerSubscription,
+                                                                                                                          command)
+                                                                                                                  .transform(
+                                                                                                                          this::invokeResultInterceptors)
+                                                          ))
                 .onErrorResume(interceptErrorAndContinue(commandRequest));
     }
 

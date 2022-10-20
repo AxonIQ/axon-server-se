@@ -3,6 +3,7 @@ package io.axoniq.axonserver.commandprocesing.imp;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
+import io.axoniq.axonserver.commandprocessing.spi.NoHandlerFoundException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

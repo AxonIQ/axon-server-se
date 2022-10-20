@@ -1,14 +1,15 @@
 package io.axoniq.axonserver.commandprocesing.imp;
 
 import io.axoniq.axonserver.commandprocessing.spi.Command;
-import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
+import io.axoniq.axonserver.commandprocessing.spi.NoHandlerFoundException;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.commandprocessing.spi.Registration;
 import io.axoniq.axonserver.commandprocessing.spi.ResultPayload;
+import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;

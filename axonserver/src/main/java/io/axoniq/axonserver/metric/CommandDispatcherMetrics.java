@@ -10,10 +10,10 @@
 package io.axoniq.axonserver.metric;
 
 import io.axoniq.axonserver.commandprocessing.spi.Command;
-import io.axoniq.axonserver.commandprocessing.spi.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
+import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandReceivedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandResultReceivedInterceptor;

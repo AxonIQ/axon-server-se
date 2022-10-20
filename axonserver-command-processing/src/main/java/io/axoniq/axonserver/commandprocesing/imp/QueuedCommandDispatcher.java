@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.commandprocesing.imp;
 
+import io.axoniq.axonserver.commandprocessing.spi.CapacityException;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
@@ -159,7 +160,6 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         public Mono<CommandResult> enqueue(CommandAndHandler commandRequest) {
             return Mono.defer(() -> {
                 logger.debug("{}: Enqueue: {}, queueSize: {}", queueName, commandRequest.id(), queue.size());
-                Sinks.One<CommandResult> sink = Sinks.one();
                 if (queue.size() >= hardLimit) {
                     logger.warn(
                             "Reached hard limit on queue {} of size {}, priority of item failed to be added {}, hard limit {}.",
@@ -167,8 +167,8 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                             queue.size(),
                             commandRequest.priority,
                             hardLimit);
-                    sink.tryEmitError(new RuntimeException("Failed to add request to queue " + queueName + " as hard limit was reached."));
-                    return sink.asMono();
+                    return Mono.error(new CapacityException(
+                            "Failed to add request to queue " + queueName + " as hard limit was reached."));
                 }
                 if (commandRequest.priority <= 0 && queue.size() >= softLimit) {
                     logger.warn(
@@ -177,9 +177,9 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                             queue.size(),
                             commandRequest.priority,
                             softLimit);
-                    sink.tryEmitError(new RuntimeException("Failed to add request to queue " + queueName));
-                    return sink.asMono();
+                    return Mono.error(new CapacityException("Failed to add request to queue " + queueName));
                 }
+                Sinks.One<CommandResult> sink = Sinks.one();
                 resultMap.put(commandRequest.id(), sink);
 
                 processor.emitNext(commandRequest, (signalType, emitResult) ->

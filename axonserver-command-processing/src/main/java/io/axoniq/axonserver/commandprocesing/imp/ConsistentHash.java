@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.commandprocesing.imp;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -90,7 +89,7 @@ public class ConsistentHash {
      * @return the members of this consistent hash
      */
     public Set<ConsistentHashMember> getMembers() {
-        return Collections.unmodifiableSet(new HashSet<>(hashToMember.values()));
+        return Set.copyOf(hashToMember.values());
     }
 
     /**
@@ -107,7 +106,7 @@ public class ConsistentHash {
      */
     public ConsistentHash with(String member, int loadFactor) {
         if (member == null) {
-            throw new RuntimeException("Member may not be null");
+            throw new IllegalArgumentException("Member may not be null");
         }
 
         ConsistentHashMember newMember = new ConsistentHashMember(member, loadFactor);
@@ -129,7 +128,7 @@ public class ConsistentHash {
      */
     public ConsistentHash without(String member) {
         if (member == null) {
-            throw new RuntimeException("Member may not be null");
+            throw new IllegalArgumentException("Member may not be null");
         }
         SortedMap<String, ConsistentHashMember> newHashes = new TreeMap<>();
         this.hashToMember.forEach((h, v) -> {
