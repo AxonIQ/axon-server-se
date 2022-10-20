@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.admin.eventprocessor.api;
 
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
-import io.axoniq.axonserver.component.processor.balancing.LoadBalancingStrategy;
 import io.axoniq.axonserver.topology.Topology;
 import org.jetbrains.annotations.Nullable;
 
