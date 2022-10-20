@@ -9,11 +9,11 @@
 
 package io.axoniq.axonserver.rest;
 
+import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.message.command.CommandDispatcher;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
@@ -137,7 +137,8 @@ public class PublicRestController {
     public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
-        statusInfo.setCommandRate(commandDispatcher.commandRate(context));
+        //todo
+        //statusInfo.setCommandRate(commandDispatcher.commandRate(context));
         statusInfo.setQueryRate(queryDispatcher.queryRate(context));
         if( ! context.startsWith("_")) {
             statusInfo.setEventRate(eventDispatcher.eventRate(context));

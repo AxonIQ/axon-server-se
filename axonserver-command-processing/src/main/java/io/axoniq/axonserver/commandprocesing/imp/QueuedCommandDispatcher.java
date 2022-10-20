@@ -102,6 +102,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                                                                                                                      CommandAndHandler::priority)
                                                                                                              .thenComparingLong(
                                                                                                                      CommandAndHandler::timeout));
+
         private final AtomicReference<Runnable> onClosed = new AtomicReference<>();
         private final Gauge gauge;
 
@@ -166,7 +167,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                             queue.size(),
                             commandRequest.priority,
                             hardLimit);
-                    sink.tryEmitError(new RuntimeException("Failed to add request to queue " + queueName));
+                    sink.tryEmitError(new RuntimeException("Failed to add request to queue " + queueName + " as hard limit was reached."));
                     return sink.asMono();
                 }
                 if (commandRequest.priority <= 0 && queue.size() >= softLimit) {

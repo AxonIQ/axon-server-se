@@ -64,7 +64,7 @@ public class ConsistentHash {
         SortedMap<String, ConsistentHashMember> tailMap = hashToMember.tailMap(hash);
         Iterator<Map.Entry<String, ConsistentHashMember>> tailIterator = tailMap.entrySet().iterator();
         Optional<ConsistentHashMember> foundMember = findSuitableMember(tailIterator, candidates);
-        if (!foundMember.isPresent()) {
+        if (foundMember.isEmpty()) {
             Iterator<Map.Entry<String, ConsistentHashMember>> headIterator =
                     hashToMember.headMap(hash).entrySet().iterator();
             foundMember = findSuitableMember(headIterator, candidates);
