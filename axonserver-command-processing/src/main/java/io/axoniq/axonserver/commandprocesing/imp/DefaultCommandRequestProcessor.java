@@ -88,7 +88,6 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                 .flatMap(command -> commandHandlerRegistry.handler(command)
                         .flatMap(commandHandlerSubscription -> commandDispatcher.dispatch(commandHandlerSubscription, command)
                                 .transform(this::invokeResultInterceptors)
-                                .transform(pipeline -> recordSuccessMetrics(pipeline, commandRequest, commandHandlerSubscription))
                         ))
                 .onErrorResume(interceptErrorAndContinue(commandRequest));
     }
@@ -100,27 +99,9 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                         commandRequest,
                         throwable),
                 CommandFailedInterceptor::onCommandFailed)
-                .transform(pipeline -> recordErrorMetrics(pipeline, commandRequest, throwable))
                 .then(Mono.error(throwable));
     }
 
-    private Mono<CommandException> recordErrorMetrics(Mono<CommandException> pipeline, Command commandRequest, Throwable throwable) {
-        return pipeline.name("commandDispatchErrors")
-                .tag("command",
-                        commandRequest
-                                .commandName())
-                .tag("context",
-                        commandRequest
-                                .context())
-                .tag("source",
-                        commandRequest
-                                .metadata()
-                                .metadataValue(
-                                        Command.CLIENT_ID,
-                                        "NO-SOURCE"))
-                .tag("error", throwable.toString())
-                .metrics();
-    }
 
     private Mono<CommandResult> invokeResultInterceptors(Mono<CommandResult> commandResultMono) {
         return commandResultMono
@@ -129,32 +110,6 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                         Mono.just(commandResult),
                         CommandResultReceivedInterceptor::onCommandResultReceived)
                         .thenReturn(commandResult));
-    }
-
-    private Mono<CommandResult> recordSuccessMetrics(Mono<CommandResult> dispatchPipeline,
-                                                     Command commandRequest,
-                                                     CommandHandlerSubscription commandHandlerSubscription) {
-        return dispatchPipeline
-                .name("commandDispatch")
-                .tag("command",
-                        commandRequest
-                                .commandName())
-                .tag("context",
-                        commandRequest
-                                .context())
-                .tag("source",
-                        commandRequest
-                                .metadata()
-                                .metadataValue(
-                                        Command.CLIENT_ID,
-                                        "NO-SOURCE"))
-                .tag("target",
-                        commandHandlerSubscription.commandHandler()
-                                .metadata()
-                                .metadataValue(
-                                        Command.CLIENT_ID,
-                                        "NO-SOURCE"))
-                .metrics();
     }
 
     private Mono<CommandException> commandFailed(Command command, Throwable throwable) {

@@ -36,9 +36,41 @@ public class CommandDispatcherMetrics {
     public CommandDispatcherMetrics(CommandRequestProcessor commandRequestProcessor,
                                     CommandMetricsRegistry metricRegistry) {
         this.metricRegistry = metricRegistry;
-        commandRequestProcessor.registerInterceptor(CommandReceivedInterceptor.class, this::commandReceived);
-        commandRequestProcessor.registerInterceptor(CommandResultReceivedInterceptor.class, this::resultReceived);
-        commandRequestProcessor.registerInterceptor(CommandFailedInterceptor.class, this::commandFailed);
+        commandRequestProcessor.registerInterceptor(CommandReceivedInterceptor.class, new CommandReceivedInterceptor() {
+            @Override
+            public Mono<Command> onCommandReceived(Mono<Command> command) {
+                return commandReceived(command);
+            }
+
+            @Override
+            public int priority() {
+                return PRIORITY_FIRST;
+            }
+        });
+        commandRequestProcessor.registerInterceptor(CommandResultReceivedInterceptor.class,
+                                                    new CommandResultReceivedInterceptor() {
+                                                        @Override
+                                                        public Mono<CommandResult> onCommandResultReceived(
+                                                                Mono<CommandResult> commandResult) {
+                                                            return resultReceived(commandResult);
+                                                        }
+
+                                                        @Override
+                                                        public int priority() {
+                                                            return PRIORITY_LAST;
+                                                        }
+                                                    });
+        commandRequestProcessor.registerInterceptor(CommandFailedInterceptor.class, new CommandFailedInterceptor() {
+            @Override
+            public Mono<CommandException> onCommandFailed(Mono<CommandException> commandException) {
+                return commandFailed(commandException);
+            }
+
+            @Override
+            public int priority() {
+                return PRIORITY_LAST;
+            }
+        });
     }
 
     private Mono<CommandException> commandFailed(Mono<CommandException> commandExceptionMono) {
