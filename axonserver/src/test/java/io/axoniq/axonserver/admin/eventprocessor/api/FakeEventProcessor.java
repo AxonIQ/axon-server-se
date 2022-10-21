@@ -11,9 +11,9 @@ package io.axoniq.axonserver.admin.eventprocessor.api;
 
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.topology.Topology;
-import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
