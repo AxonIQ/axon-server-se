@@ -72,7 +72,7 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             @Override
             public void onNext(CommandProviderOutbound commandProviderOutbound) {
                 CommandHandlerStream commandHandlerStream =
-                        getCommandHandlerStream(commandProviderOutbound);
+                        getCommandHandlerStream(commandProviderOutbound,responseObserver);
 
                 switch (commandProviderOutbound.getRequestCase()) {
                     case SUBSCRIBE:
@@ -108,7 +108,8 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             }
 
             @Nonnull
-            private CommandHandlerStream getCommandHandlerStream(CommandProviderOutbound commandProviderOutbound) {
+            private CommandHandlerStream getCommandHandlerStream(CommandProviderOutbound commandProviderOutbound,
+                                                                 StreamObserver<CommandProviderInbound> responseObserver) {
                 return commandHandlers.computeIfAbsent(id, id -> new CommandHandlerStream(contextProvider.getContext(),
                                                                                           clientId(
                                                                                                   commandProviderOutbound),
