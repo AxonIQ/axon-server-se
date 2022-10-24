@@ -18,6 +18,7 @@ import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 import reactor.util.annotation.NonNull;
 
+import java.util.AbstractMap;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandlerUnsubscribedInterceptor {
 
@@ -189,6 +191,10 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
             });
         }
 
+        public int size() {
+            return queue.size();
+        }
+
         public void request(long count) {
             clientSubscription.get().request(count);
         }
@@ -253,5 +259,33 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         public long timeout() {
             return timeout;
         }
+    }
+
+    @Override
+    public Health health() {
+        AtomicReference<Status> status = new AtomicReference<>(Status.UP);
+
+        Map<String, String> details = commandQueueMap
+                .entrySet()
+                .stream()
+                .map(q -> new AbstractMap.SimpleEntry<>(String.format("%s.waitingCommands", q), q.getValue().size()))
+                .peek(q -> {
+                    if (q.getValue() > 10) {
+                        status.set(Status.WARN);
+                    }
+                })
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, q->q.getValue().toString()));
+
+        return new Health() {
+            @Override
+            public Status status() {
+                return status.get();
+            }
+
+            @Override
+            public Map<String, String> details() {
+                return details;
+            }
+        };
     }
 }
