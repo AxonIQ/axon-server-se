@@ -29,7 +29,6 @@ public class HealthCheckMonitor {
         logger.info("Found {} health monitored components...", monitoredComponentMap.size());
 
         monitoredComponentMap.values()
-                        .stream().filter(it->it.health().status() != HealthMonitoredComponent.Status.IGNORE)
                         .forEach(c -> healthContributorRegistry.registerContributor(c.healthCategory(), new HealthIndicator() {
                             @Override
                             public Health getHealth(boolean includeDetails) {

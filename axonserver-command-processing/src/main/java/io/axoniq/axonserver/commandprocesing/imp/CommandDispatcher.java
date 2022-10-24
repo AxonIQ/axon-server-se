@@ -21,7 +21,7 @@ public interface CommandDispatcher extends CommandHandlerUnsubscribedInterceptor
         return new Health() {
             @Override
             public Status status() {
-                return Status.IGNORE;
+                return Status.UP;
             }
 
             @Override

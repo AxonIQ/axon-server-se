@@ -13,9 +13,7 @@ public interface HealthMonitoredComponent {
     enum Status {
         UP("UP"),
         DOWN("DOWN"),
-        WARN("WARN"),
-        IGNORE("IGNORE");
-
+        WARN("WARN");
         public final String label;
 
         Status(String label) {
