@@ -18,6 +18,7 @@ import io.axoniq.axonserver.plugin.PluginInfo;
 import io.axoniq.axonserver.plugin.PluginKey;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,6 +48,7 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
 public class PluginsRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
+    private final Logger logger = LoggerFactory.getLogger(PluginsRestController.class);
     public static final String PLUGINS_DISABLED = "Plugins disabled";
     private final PluginController pluginController;
     private final boolean pluginsEnabled;
@@ -124,7 +126,12 @@ public class PluginsRestController {
         auditLog.info("[{}] Request for configuration of {}/{}. ", AuditLog.username(principal),
                       sanitize(name),
                       sanitize(version));
-        return pluginController.listProperties(new PluginKey(name, version), context);
+        try {
+            return pluginController.listProperties(new PluginKey(name, version), context);
+        } catch (RuntimeException re) {
+            logger.warn("Failed to retrieve properties for {}:{}", name, version, re);
+            throw re;
+        }
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
