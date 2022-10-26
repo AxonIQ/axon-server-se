@@ -3,6 +3,12 @@ This is the Axon Server Standard Edition, version 4.6
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.5
+-------------------------------
+* Fix: update flow control library
+* Fix: change health status for commands to only show warning when there are queued messages and no permits
+* Updated audit logging for authentication failures
+
 Release Notes for version 4.6.4
 -------------------------------
 * Fix: change column name in event processor overview to "Active Segments"
