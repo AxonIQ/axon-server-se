@@ -10,14 +10,13 @@
 package io.axoniq.axonserver.rest;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
+import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.NoHandlerFoundException;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
 import io.axoniq.axonserver.component.ComponentItems;
-import io.axoniq.axonserver.component.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.exception.ErrorCode;
@@ -30,6 +29,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,15 +42,10 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.io.Serializable;
 import java.security.Principal;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
-import java.util.Set;
-import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;
@@ -60,6 +55,8 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
  * REST controller to retrieve information about subscribed commands and to dispatch commands.
  *
  * @author Marc Gathier
+ * @author Stefan Dragisic
+ *
  * @since 4.0
  */
 @RestController("CommandRestController")
@@ -67,16 +64,14 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
 public class CommandRestController {
 
     private static final Logger auditLog = AuditLog.getLogger();
+    private final Logger logger = LoggerFactory.getLogger(CommandRestController.class);
 
-    private final CommandDispatcher commandDispatcher;
     private final CommandRequestProcessor commandRequestProcessor;
     private final CommandSubscriptionCache commandSubscriptionCache;
 
 
-    public CommandRestController(CommandDispatcher commandDispatcher,
-                                 CommandRequestProcessor commandRequestProcessor,
+    public CommandRestController(CommandRequestProcessor commandRequestProcessor,
                                  CommandSubscriptionCache commandSubscriptionCache) {
-        this.commandDispatcher = commandDispatcher;
         this.commandRequestProcessor = commandRequestProcessor;
         this.commandSubscriptionCache = commandSubscriptionCache;
     }
@@ -92,14 +87,6 @@ public class CommandRestController {
                 sanitize(context));
 
         return new ComponentItems<>(component, context, new DefaultCommands(commandSubscriptionCache, component));
-    }
-
-    @GetMapping("commands")
-    public List<JsonClientMapping> get(@Parameter(hidden = true) Principal principal) {
-        auditLog.info("[{}] Request to list all Commands which have a registered handler.",
-                      AuditLog.username(principal));
-// TODO: 14/09/2022 Implement this operation
-        return Collections.emptyList();
     }
 
     @PostMapping("commands/run")
@@ -118,101 +105,9 @@ public class CommandRestController {
                                                                                       "No handler found for "
                                                                                               + command.getName()))
                                       .onErrorResume(e -> {
-                                          e.printStackTrace();
+                                          logger.error("Error occurred while exciting command: ", e);
                                           return Mono.just(new CommandResponseJson(command.getMessageIdentifier(), e));
                                       });
-    }
-
-
-    //todo
-    @GetMapping("commands/queues")
-    public List<JsonQueueInfo> queues(@Parameter(hidden = true) Principal principal) {
-        auditLog.info("[{}] Request to list all CommandQueues.", AuditLog.username(principal));
-
-        //todo
-        return null;
-//
-//        return commandDispatcher.getCommandQueues().getSegments().entrySet().stream().map(JsonQueueInfo::from).collect(
-//                Collectors.toList());
-    }
-
-    @GetMapping("commands/count")
-    public int count(@Parameter(hidden = true) Principal principal) {
-        if (auditLog.isDebugEnabled()) {
-            auditLog.debug("[{}] Request for the active command count.", AuditLog.username(principal));
-        }
-        //todo
-        return -1;
-//        return commandDispatcher.activeCommandCount();
-    }
-
-    public static class JsonClientMapping {
-
-        private String client;
-        private String component;
-        private String proxy;
-        private Set<String> commands;
-
-        public String getClient() {
-            return client;
-        }
-
-        public String getProxy() {
-            return proxy;
-        }
-
-        public Set<String> getCommands() {
-            return commands;
-        }
-
-        public String getComponent() {
-            return component;
-        }
-
-        static JsonClientMapping from(String component, String client, String proxy) {
-            JsonClientMapping jsonCommandMapping = new JsonClientMapping();
-            jsonCommandMapping.client = client;
-            jsonCommandMapping.component = component;
-            jsonCommandMapping.commands = Collections.emptySet();
-            jsonCommandMapping.proxy = proxy;
-            return jsonCommandMapping;
-        }
-//todo
-//        static JsonClientMapping from(
-//                Map.Entry<CommandHandler, Set<CommandRegistrationCache.RegistrationEntry>> entry) {
-//            JsonClientMapping jsonCommandMapping = new JsonClientMapping();
-//            CommandHandler commandHandler = entry.getKey();
-//            jsonCommandMapping.client = commandHandler.getClientStreamIdentification().toString();
-//            jsonCommandMapping.component = commandHandler.getComponentName();
-//            jsonCommandMapping.proxy = commandHandler.getMessagingServerName();
-//
-//            jsonCommandMapping.commands = entry.getValue().stream().map(e -> e.getCommand())
-//                                               .collect(Collectors.toSet());
-//            return jsonCommandMapping;
-//        }
-    }
-
-    private static class JsonQueueInfo {
-
-        private final String client;
-        private final int count;
-
-        private JsonQueueInfo(String client, int count) {
-            this.client = client;
-            this.count = count;
-        }
-
-        public String getClient() {
-            return client;
-        }
-
-        public int getCount() {
-            return count;
-        }
-
-        static JsonQueueInfo from(Map.Entry<String, ? extends Queue> segment) {
-            return new JsonQueueInfo(segment.getKey(), segment.getValue().size());
-        }
     }
 
     private static class WrappedJsonCommand implements Command {
@@ -256,7 +151,7 @@ public class CommandRestController {
 
                 @Override
                 public Flux<Byte> data() {
-                    return Flux.fromIterable(ByteString.copyFromUtf8(command.getPayload().getData()));//todo check data buffers reactive
+                    return Flux.fromIterable(ByteString.copyFromUtf8(command.getPayload().getData()));
                 }
             };
         }

@@ -15,6 +15,7 @@ import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
+import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandlerStrategy;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
 import io.axoniq.axonserver.commandprocesing.imp.HandlerSelectorStrategy;
@@ -234,6 +235,11 @@ public class AxonServerStandardConfiguration {
                                            defaultCommandTimeout,
                                            meterRegistry
         );
+    }
+
+    @Bean
+    public CommandSubscriptionCache commandSubscriptionCache(CommandRequestProcessor commandRequestProcessor) {
+        return new CommandSubscriptionCache(commandRequestProcessor);
     }
 
 

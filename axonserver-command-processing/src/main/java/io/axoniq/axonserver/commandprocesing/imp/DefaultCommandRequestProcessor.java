@@ -39,7 +39,7 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
     }
 
     public DefaultCommandRequestProcessor(
-            List<HandlerSelectorStrategy> handlerSelectorStrategyList) {//todo rename HandlerSelectorStrategy
+            List<HandlerSelectorStrategy> handlerSelectorStrategyList) {
         this(new InMemoryCommandHandlerRegistry(handlerSelectorStrategyList), new DirectCommandDispatcher());
     }
 

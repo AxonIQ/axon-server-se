@@ -7,22 +7,27 @@
  *
  */
 
-package io.axoniq.axonserver.component.command;
+package io.axoniq.axonserver.commandprocesing.imp;
 
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 
-@Component
+/**
+ * Maintains cache of registered command handlers
+ *
+ * @author Marc Gathier
+ */
 public class CommandSubscriptionCache {
 
     private static final String NO_COMPONENT = "NO-COMPONENT";
@@ -54,5 +59,12 @@ public class CommandSubscriptionCache {
 
     public Set<CommandHandler> get(String component) {
         return commandHandlerMap.getOrDefault(component, Collections.emptySet());
+    }
+
+    public Set<CommandHandler> getAll() {
+        return commandHandlerMap.values()
+                .stream()
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
     }
 }
