@@ -268,7 +268,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         Map<String, String> details = commandQueueMap
                 .entrySet()
                 .stream()
-                .map(q -> new AbstractMap.SimpleEntry<>(String.format("%s.waitingCommands", q), q.getValue().size()))
+                .map(q -> new AbstractMap.SimpleEntry<>(String.format("%s.waitingCommands", q.getKey()), q.getValue().size()))
                 .peek(q -> {
                     if (q.getValue() > 10) {
                         status.set(Status.WARN);

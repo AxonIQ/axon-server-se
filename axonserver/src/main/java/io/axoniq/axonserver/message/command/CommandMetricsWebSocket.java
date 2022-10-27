@@ -33,15 +33,15 @@ public class CommandMetricsWebSocket {
     private final Set<SubscriptionKey> subscriptions = new CopyOnWriteArraySet<>();
     private final CommandMetricsRegistry commandMetricsRegistry;
 
-    private final CommandHandlerRegistry commandRegistrationCache;
+    private final CommandHandlerRegistry commandHandlerRegistry;
 
     private final SimpMessagingTemplate webSocket;
 
     public CommandMetricsWebSocket(CommandMetricsRegistry commandMetricsRegistry,
-                                   CommandHandlerRegistry commandRegistrationCache,
+                                   CommandHandlerRegistry commandHandlerRegistry,
                                    SimpMessagingTemplate webSocket) {
         this.commandMetricsRegistry = commandMetricsRegistry;
-        this.commandRegistrationCache = commandRegistrationCache;
+        this.commandHandlerRegistry = commandHandlerRegistry;
         this.webSocket = webSocket;
     }
 
@@ -51,7 +51,7 @@ public class CommandMetricsWebSocket {
         if (subscriptions.isEmpty()) {
             return;
         }
-        commandRegistrationCache.all()
+        commandHandlerRegistry.all()
                                 .map(this::asCommandMetric)
                                 .doOnNext(commandMetric -> webSocket.convertAndSend(DESTINATION, commandMetric))
                                 .subscribe();
