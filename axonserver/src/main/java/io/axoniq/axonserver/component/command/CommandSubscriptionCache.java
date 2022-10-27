@@ -55,4 +55,8 @@ public class CommandSubscriptionCache {
     public Set<CommandHandler> get(String component) {
         return commandHandlerMap.getOrDefault(component, Collections.emptySet());
     }
+
+    public Map<String, Set<CommandHandler>> all() {
+        return Collections.unmodifiableMap(commandHandlerMap);
+    }
 }
