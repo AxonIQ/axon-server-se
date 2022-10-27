@@ -81,7 +81,6 @@ public class GrpcMapper {
         if (result instanceof GrpcCommandResult) {
             return ((GrpcCommandResult) result).wrapped();
         }
-        // TODO: 21/07/2022 Implement creating of a command response from command result
         CommandResponse.Builder builder = CommandResponse.newBuilder()
                                                          .setMessageIdentifier(result.id())
                                                          .setRequestIdentifier(result.commandId());

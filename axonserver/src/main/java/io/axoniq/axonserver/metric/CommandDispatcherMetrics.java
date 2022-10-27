@@ -106,6 +106,8 @@ public class CommandDispatcherMetrics {
 
     private Mono<Command> commandReceived(Mono<Command> commandMono) {
         return commandMono.doOnNext(command -> {
+            metricRegistry.rateMeter(command.context(), BaseMetricName.AXON_COMMAND_RATE)
+                    .mark();
             Metadata metadata = command.metadata();
             String clientId = metadata.metadataValue(Command.CLIENT_ID, NO_SOURCE);
             activeCommands.put(command.id(), new ActiveCommand(command.commandName(),

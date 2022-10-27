@@ -9,29 +9,25 @@
 
 package io.axoniq.axonserver.rest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
+import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
-import io.axoniq.axonserver.component.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.component.command.ComponentCommand;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -43,8 +39,6 @@ import static org.junit.Assert.*;
 @RunWith(MockitoJUnitRunner.class)
 public class CommandRestControllerTest {
     private CommandRestController testSubject;
-    @Mock
-    private CommandDispatcher commandDispatcher;
 
     @Before
     public void setUp() {
@@ -100,15 +94,8 @@ public class CommandRestControllerTest {
                 return Mono.error(new RuntimeException("Not implemented"));
             }
         }).block();
-        testSubject = new CommandRestController(commandDispatcher, null,
+        testSubject = new CommandRestController(commandRequestProcessor,
                                                 commandSubscriptionCache);
-    }
-
-    @Test
-    public void get() throws Exception {
-        List<CommandRestController.JsonClientMapping> commands = testSubject.get(null);
-        ObjectMapper mapper = new ObjectMapper();
-        assertEquals("[]", mapper.writeValueAsString(commands));
     }
 
     @Test

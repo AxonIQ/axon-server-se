@@ -9,14 +9,15 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
+import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.json.UserInfo;
@@ -51,9 +52,10 @@ public class PublicRestController {
 
     private final Function<String, Stream<AxonServer>> axonServerProvider;
     private final Topology topology;
-    private final CommandDispatcher commandDispatcher;
+
     private final QueryDispatcher queryDispatcher;
     private final EventDispatcher eventDispatcher;
+    private final CommandMetricsRegistry commandMetricsRegistry;
     private final FeatureChecker features;
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
@@ -66,7 +68,7 @@ public class PublicRestController {
 
     public PublicRestController(Function<String, Stream<AxonServer>> axonServerProvider,
                                 Topology topology,
-                                CommandDispatcher commandDispatcher,
+                                CommandMetricsRegistry commandMetricsRegistry,
                                 QueryDispatcher queryDispatcher,
                                 EventDispatcher eventDispatcher,
                                 FeatureChecker features,
@@ -75,7 +77,7 @@ public class PublicRestController {
                                 Supplier<SubscriptionMetrics> subscriptionMetricsRegistry) {
         this.axonServerProvider = axonServerProvider;
         this.topology = topology;
-        this.commandDispatcher = commandDispatcher;
+        this.commandMetricsRegistry = commandMetricsRegistry;
         this.queryDispatcher = queryDispatcher;
         this.eventDispatcher = eventDispatcher;
         this.features = features;
@@ -92,7 +94,7 @@ public class PublicRestController {
             "For _admin nodes the result contains all nodes, for non _admin nodes the"
                     + "result only contains nodes from contexts available on this node and the _admin nodes.")
     public List<JsonServerNode> getClusterNodes() {
-        return axonServerProvider.apply(null).map(n -> new JsonServerNode(n))
+        return axonServerProvider.apply(null).map(JsonServerNode::new)
                                  .sorted(Comparator.comparing(JsonServerNode::getName)).collect(Collectors.toList());
     }
 
@@ -137,8 +139,7 @@ public class PublicRestController {
     public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
-        //todo
-        //statusInfo.setCommandRate(commandDispatcher.commandRate(context));
+        statusInfo.setCommandRate(commandMetricsRegistry.rateMeter(context, BaseMetricName.AXON_COMMAND_RATE));
         statusInfo.setQueryRate(queryDispatcher.queryRate(context));
         if( ! context.startsWith("_")) {
             statusInfo.setEventRate(eventDispatcher.eventRate(context));
