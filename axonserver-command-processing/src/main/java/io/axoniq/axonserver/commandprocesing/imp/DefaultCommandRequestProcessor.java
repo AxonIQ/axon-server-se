@@ -112,8 +112,7 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
                 .flatMap(commandResult -> invokeInterceptors(
                         CommandResultReceivedInterceptor.class,
                         Mono.just(commandResult),
-                        CommandResultReceivedInterceptor::onCommandResultReceived)
-                        .thenReturn(commandResult));
+                        CommandResultReceivedInterceptor::onCommandResultReceived));
     }
 
     private Mono<CommandException> commandFailed(Command command, Throwable throwable) {

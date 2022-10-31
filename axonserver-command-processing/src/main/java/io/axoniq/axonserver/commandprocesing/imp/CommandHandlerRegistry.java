@@ -15,4 +15,6 @@ public interface CommandHandlerRegistry {
     Mono<CommandHandlerSubscription> handler(Command command);
 
     Flux<CommandHandler> all();
+
+    CommandHandlerSubscription find(String handlerId);
 }

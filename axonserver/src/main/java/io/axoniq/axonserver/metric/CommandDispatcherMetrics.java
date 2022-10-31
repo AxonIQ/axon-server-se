@@ -33,6 +33,8 @@ public class CommandDispatcherMetrics {
     private final CommandMetricsRegistry metricRegistry;
     private final Map<String, ActiveCommand> activeCommands = new ConcurrentHashMap<>();
 
+    private final Map<String, MeterFactory.RateMeter> commandRateMeterPerContext = new ConcurrentHashMap<>();
+
     public CommandDispatcherMetrics(CommandRequestProcessor commandRequestProcessor,
                                     CommandMetricsRegistry metricRegistry) {
         this.metricRegistry = metricRegistry;
@@ -106,8 +108,10 @@ public class CommandDispatcherMetrics {
 
     private Mono<Command> commandReceived(Mono<Command> commandMono) {
         return commandMono.doOnNext(command -> {
-            metricRegistry.rateMeter(command.context(), BaseMetricName.AXON_COMMAND_RATE)
-                    .mark();
+            commandRateMeterPerContext.computeIfAbsent(command.context(), c ->
+                                              metricRegistry.rateMeter(command.context(),
+                                                                       BaseMetricName.AXON_COMMAND_RATE))
+                                      .mark();
             Metadata metadata = command.metadata();
             String clientId = metadata.metadataValue(Command.CLIENT_ID, NO_SOURCE);
             activeCommands.put(command.id(), new ActiveCommand(command.commandName(),

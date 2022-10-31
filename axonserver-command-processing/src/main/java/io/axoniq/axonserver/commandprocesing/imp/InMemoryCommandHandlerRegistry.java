@@ -53,6 +53,11 @@ public class InMemoryCommandHandlerRegistry implements CommandHandlerRegistry {
     }
 
     @Override
+    public CommandHandlerSubscription find(String handlerId) {
+        return handlers.get(handlerId);
+    }
+
+    @Override
     public Mono<CommandHandlerSubscription> handler(Command command) {
         return Mono.defer(() -> {
             Set<CommandHandlerSubscription> handlers =
