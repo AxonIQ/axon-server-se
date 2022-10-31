@@ -56,9 +56,9 @@ public class MetricsRestControllerTest {
 
     @Before
     public void setUp() {
-        CommandHandlerRegistry commandRegistrationCache = new InMemoryCommandHandlerRegistry(Collections.emptyList());
+        CommandHandlerRegistry commandHandlerRegistry = new InMemoryCommandHandlerRegistry(Collections.emptyList());
         testclient = new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "testclient");
-        commandRegistrationCache.register(new CommandHandlerSubscription() {
+        commandHandlerRegistry.register(new CommandHandlerSubscription() {
             @Override
             public io.axoniq.axonserver.commandprocessing.spi.CommandHandler commandHandler() {
                 return new io.axoniq.axonserver.commandprocessing.spi.CommandHandler() {
@@ -130,7 +130,7 @@ public class MetricsRestControllerTest {
         principal = mock(Principal.class);
         when(principal.getName()).thenReturn("Testuser");
         queryMetricsRegistry = new QueryMetricsRegistry(new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector()));
-        testSubject = new MetricsRestController(commandRegistrationCache, commandMetricsRegistry,
+        testSubject = new MetricsRestController(commandHandlerRegistry, commandMetricsRegistry,
                                                 queryRegistrationCache, queryMetricsRegistry);
     }
 
