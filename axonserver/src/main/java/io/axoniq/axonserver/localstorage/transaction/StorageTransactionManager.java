@@ -10,20 +10,20 @@
 package io.axoniq.axonserver.localstorage.transaction;
 
 import io.axoniq.axonserver.grpc.event.Event;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Defines the interface for a transaction manager.
  *
  * @author Marc Gathier
+ * @author Stefan Dragisic
  * @since 4.0
  */
 public interface StorageTransactionManager {
 
-    CompletableFuture<Long> store(List<Event> eventList);
-
+    Mono<Long> storeBatch(List<Event> eventList);
     /**
      * Reserves the sequence numbers accordingly to the specified events and returns a {@link Runnable} to restore
      * the previous situation.
@@ -38,6 +38,10 @@ public interface StorageTransactionManager {
     }
 
     default void cancelPendingTransactions() {
+
+    }
+
+    default void clearSequenceNumberCache() {
 
     }
 }

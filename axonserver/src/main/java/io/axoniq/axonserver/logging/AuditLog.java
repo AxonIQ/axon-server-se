@@ -1,8 +1,10 @@
 package io.axoniq.axonserver.logging;
 
+import io.axoniq.axonserver.applicationevents.UserEvents.UserDeleted;
+import io.axoniq.axonserver.applicationevents.UserEvents.UserUpdated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.security.authentication.event.AbstractAuthenticationEvent;
 import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
@@ -15,7 +17,7 @@ import java.security.Principal;
 import static io.axoniq.axonserver.util.StringUtils.sanitize;
 
 @Component
-public class AuditLog implements ApplicationListener<AbstractAuthenticationEvent> {
+public class AuditLog {
 
     public static <T> Logger getLogger() {
         Class<?> clazz[] = CallingClass.INSTANCE.getCallingClasses();
@@ -37,22 +39,36 @@ public class AuditLog implements ApplicationListener<AbstractAuthenticationEvent
 
     private static final Logger auditLog = getLogger();
 
-    @Override
-    public void onApplicationEvent(AbstractAuthenticationEvent evt) {
-        if (evt instanceof InteractiveAuthenticationSuccessEvent) {
+    @EventListener
+    public void on(AbstractAuthenticationEvent event) {
+        if (event instanceof InteractiveAuthenticationSuccessEvent) {
             // ignores to prevent duplicate logging with AuthenticationSuccessEvent
             return;
         }
-        Authentication authentication = evt.getAuthentication();
-        if ((evt instanceof AuthenticationSuccessEvent) && authentication.isAuthenticated()) {
+        Authentication authentication = event.getAuthentication();
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug(event.toString());
+        } else if ((event instanceof AuthenticationSuccessEvent) && authentication.isAuthenticated()) {
             auditLog.info("Login with username \"{}\".", authentication.getName());
-        } else if (evt instanceof AbstractAuthenticationFailureEvent) {
-            AbstractAuthenticationFailureEvent failure = (AbstractAuthenticationFailureEvent) evt;
+        } else if (event instanceof AbstractAuthenticationFailureEvent) {
+            AbstractAuthenticationFailureEvent failure = (AbstractAuthenticationFailureEvent) event;
             auditLog.error("Login with username \"{}\" FAILED: {}",
                            authentication.getName(),
                            failure.getException().getMessage());
-        } else {
-            auditLog.debug("Authentication event: {}", evt.getClass().getSimpleName());
+        }
+    }
+
+    @EventListener
+    public void on(UserUpdated event) {
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug(event.toString());
+        }
+    }
+
+    @EventListener
+    public void on(UserDeleted event) {
+        if (auditLog.isDebugEnabled()) {
+            auditLog.debug(event.toString());
         }
     }
 

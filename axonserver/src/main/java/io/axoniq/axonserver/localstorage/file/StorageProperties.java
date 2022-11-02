@@ -97,7 +97,7 @@ public class StorageProperties implements Cloneable {
     /**
      * Use memory mapped files for index files
      */
-    private Boolean useMmapIndex;
+    private boolean useMmapIndex = true;
     /**
      * When using memory mapped files for indexes, let mapdb forcefully close the memory mapped files on close
      */
@@ -122,6 +122,8 @@ public class StorageProperties implements Cloneable {
             Duration.ofDays(7)
     };
     private String indexFormat;
+    private int segmentsForSequenceNumberCheck = 10;
+
     public StorageProperties(SystemInfoProvider systemInfoProvider) {
         this.systemInfoProvider = systemInfoProvider;
     }
@@ -339,19 +341,20 @@ public class StorageProperties implements Cloneable {
     public boolean isForceCleanMmapIndex() {
         return forceCleanMmapIndex != null ?
                 forceCleanMmapIndex :
-                systemInfoProvider.javaOnWindows() && !systemInfoProvider.javaWithModules();
+                systemInfoProvider.javaOnWindows();
     }
 
     public boolean isUseMmapIndex() {
-        return useMmapIndex != null ?
-                useMmapIndex :
-                !(systemInfoProvider.javaOnWindows() && systemInfoProvider.javaWithModules());
+        return useMmapIndex;
     }
 
     public boolean isCleanRequired() {
         return systemInfoProvider.javaOnWindows();
     }
 
+    public void setSegmentsForSequenceNumberCheck(int segmentsForSequenceNumberCheck) {
+        this.segmentsForSequenceNumberCheck = segmentsForSequenceNumberCheck;
+    }
 
     public void setFlags(int flags) {
         this.flags = flags;
@@ -418,5 +421,9 @@ public class StorageProperties implements Cloneable {
         StorageProperties clone = cloneProperties();
         clone.retentionTime = retentionTime;
         return clone;
+    }
+
+    public int segmentsForSequenceNumberCheck() {
+        return segmentsForSequenceNumberCheck;
     }
 }

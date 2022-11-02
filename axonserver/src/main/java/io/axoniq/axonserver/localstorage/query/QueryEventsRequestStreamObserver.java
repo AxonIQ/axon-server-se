@@ -41,10 +41,11 @@ import io.axoniq.axonserver.queryparser.FunctionExpr;
 import io.axoniq.axonserver.queryparser.Numeric;
 import io.axoniq.axonserver.queryparser.Query;
 import io.axoniq.axonserver.queryparser.QueryElement;
+import io.axoniq.axonserver.util.DaemonThreadFactory;
+import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -74,7 +75,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
     private static final Logger logger = LoggerFactory.getLogger(QueryEventsRequestStreamObserver.class);
 
     private static final ScheduledExecutorService senderService = Executors.newScheduledThreadPool(3,
-                                                                                                   new CustomizableThreadFactory(
+                                                                                                   new DaemonThreadFactory(
                                                                                                            "ad-hoc-query-"));
     public static final String COLUMN_NAME_TOKEN = "token";
 
@@ -358,6 +359,7 @@ public class QueryEventsRequestStreamObserver implements StreamObserver<QueryEve
         pipeLine = null;
         Optional.ofNullable(senderRef.get())
                 .ifPresent(Sender::stop);
+        StreamObserverUtils.complete(responseObserver);
     }
 
     private class Sender {

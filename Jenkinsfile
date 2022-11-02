@@ -8,10 +8,10 @@ properties([
 def label = "worker-${UUID.randomUUID().toString()}"
 
 def deployingBranches = [   // The branches mentioned here will get their artifacts deployed to Nexus
-    "master", "axonserver-se-4.5.x"
+    "master", "axonserver-se-4.6.x"
 ]
 def dockerBranches = [      // The branches mentioned here will get Docker images built
-    "master", "axonserver-se-4.5.x"
+    "master", "axonserver-se-4.6.x"
 ]
 
 /*
@@ -49,14 +49,6 @@ def getTestSummary = { ->
  */
 podTemplate(label: label,
     containers: [
-        containerTemplate(name: 'maven-jdk8', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:8', alwaysPullImage: true,
-            command: 'cat', ttyEnabled: true,
-            resourceRequestCpu: '1000m', resourceLimitCpu: '1000m',
-            resourceRequestMemory: '3200Mi', resourceLimitMemory: '4Gi',
-            envVars: [
-                envVar(key: 'MAVEN_OPTS', value: '-Xmx3200m'),
-                envVar(key: 'MVN_BLD', value: '-B -s /maven_settings/settings.xml')
-            ]),
         containerTemplate(name: 'maven-jdk11', image: 'eu.gcr.io/axoniq-devops/maven-axoniq:11', alwaysPullImage: true,
             command: 'cat', ttyEnabled: true,
             envVars: [
@@ -96,12 +88,12 @@ podTemplate(label: label,
             def mavenTarget = "clean verify"
 
             stage ('Maven build') {
-                container("maven-jdk8") {
+                container("maven-jdk11") {
                     sh "mvn \${MVN_BLD} clean"
                 }
 
                 if (!releaseBuild) {
-                    container("maven-jdk8") {
+                    container("maven-jdk11") {
                         if (relevantBranch(gitBranch, deployingBranches)) {                // Deploy artifacts to Nexus for some branches
                             mavenTarget = "clean deploy"
                         }
@@ -127,7 +119,7 @@ podTemplate(label: label,
                 }
                 else { // Release build
                     try {
-                        container("maven-jdk8") {
+                        container("maven-jdk11") {
                             // We need compiled code for SonarQube
                             sh "mvn \${MVN_BLD} -Pcoverage -Dmaven.test.failure.ignore verify"
                         }
@@ -158,7 +150,7 @@ podTemplate(label: label,
             }
 
             stage ('Integration Tests') {
-                container("maven-jdk8") {
+                container("maven-jdk11") {
                     try {
                         // Again, ignore test failures, but this time, skip the Unit tests.
                         sh """
@@ -201,6 +193,12 @@ podTemplate(label: label,
                     if (canaryTests.result == "FAILURE") {
                         slackReport += "\n- Canary Tests FAILED!"
                     }
+                } else if (releaseBuild) {
+                    slackReport += "\n- Skipped Canary tests (already run for this release)"
+                } else if (!relevantBranch(gitBranch, dockerBranches)) {
+                    slackReport += "\n- Skipped Canary tests (no Docker images for this branch)"
+                } else if (!relevantBranch(gitBranch, deployingBranches)) {
+                    slackReport += "\n- Skipped Canary tests (no JAR file deployed for this branch)"
                 }
             }
             slackSend(message: slackReport)

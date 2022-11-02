@@ -49,9 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -84,7 +82,7 @@ public class QueryDispatcherTest {
     public void queryResponse() {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
-        queryCache.put("1234", new ActiveQuery("1234",
+        queryCache.putIfAbsent("1234", new ActiveQuery("1234",
                                                "Source",
                                                new QueryDefinition("c",
                                                                    "q"),
@@ -110,7 +108,7 @@ public class QueryDispatcherTest {
     public void queryResponseScatterGather() {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
-        queryCache.put("1234", new ActiveQuery("1234",
+        queryCache.putIfAbsent("1234", new ActiveQuery("1234",
                                                "Source",
                                                new QueryDefinition("c",
                                                                    "q"),
@@ -437,6 +435,70 @@ public class QueryDispatcherTest {
         assertTrue(instruction.flowControl().isPresent());
         assertEquals(requestId, instruction.requestId());
         assertEquals(100, instruction.flowControl().get().flowControl());
+    }
+
+    @Test
+    public void queryDuplicated() throws ExecutionException, InterruptedException, TimeoutException {
+
+        String requestId = "AAAAA";
+        // futures for the original request, in normal operation, these should both complete
+        CompletableFuture<QueryResponse> originalFutureResponse = new CompletableFuture<>();
+        CompletableFuture<Boolean> originalFutureCompleted = new CompletableFuture<>();
+
+        // set up handlers so AS can find one to dispatch to
+        Set<QueryHandler<?>> handlers = new HashSet<>();
+        FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
+        handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "clientId"));
+        when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
+
+
+        // this query might have been created earlier and already is in the cache
+        queryCache.putIfAbsent(requestId, new ActiveQuery(requestId,
+                                               "Source",
+                                               new QueryDefinition("c","q"),
+                                                  originalFutureResponse::complete,
+                                               (client) -> originalFutureCompleted.complete(true),
+                                                  mockedQueryHandler()));
+
+        testSubject = new QueryDispatcher(registrationCache,
+                                          queryCache,
+                                          queryMetricsRegistry,
+                                          new MyQueryInterceptors(),
+                                          meterFactory,
+                                          10_000);
+
+        // this request has THE SAME requestId as the one already in the cache
+        QueryRequest duplicatedRequest = QueryRequest.newBuilder()
+                                           .setMessageIdentifier(requestId)
+                                           .setQuery("test")
+                                           .build();
+
+        CompletableFuture<QueryResponse> futureResponse = new CompletableFuture<>();
+        CompletableFuture<Boolean> futureCompleted = new CompletableFuture<>();
+        testSubject.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, duplicatedRequest),
+                          GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                          futureResponse::complete,
+                          client -> futureCompleted.complete(true));
+
+        testSubject.handleResponse(QueryResponse.newBuilder()
+                                                .setMessageIdentifier(requestId)
+                                                .setRequestIdentifier(duplicatedRequest.getMessageIdentifier())
+                                                .build(),
+                                   "client",
+                                   "clientId");
+
+        testSubject.handleComplete(requestId, "client", "clientId", false);
+
+        // would not finish, if AS would override query in query cache
+        QueryResponse originalResponse = originalFutureResponse.get(1, TimeUnit.SECONDS);
+        assertTrue(originalFutureCompleted.get(1, TimeUnit.SECONDS));
+        assertEquals(requestId, originalResponse.getRequestIdentifier());
+
+        assertTrue(futureCompleted.get());
+        QueryResponse response = futureResponse.get();
+        assertEquals(response.getErrorCode(), ErrorCode.QUERY_DUPLICATED.getCode());
     }
 
     private static class MyQueryInterceptors implements QueryInterceptors {

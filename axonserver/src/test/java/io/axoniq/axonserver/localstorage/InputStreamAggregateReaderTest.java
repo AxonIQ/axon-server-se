@@ -12,8 +12,14 @@ package io.axoniq.axonserver.localstorage;
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import org.junit.*;
-import org.junit.rules.*;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import reactor.test.StepVerifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +52,9 @@ public class InputStreamAggregateReaderTest {
                                             .setPayload(SerializedObject
                                                                 .newBuilder()
                                                                 .setData(ByteString.copyFrom(data))
-                                                                .build()).build()).get();
+                                                                .build()).build())
+                    .as(StepVerifier::create)
+                    .verifyComplete();
         }
 
     }

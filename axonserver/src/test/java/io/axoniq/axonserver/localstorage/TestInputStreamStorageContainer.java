@@ -11,6 +11,7 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
@@ -30,10 +31,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Marc Gathier
@@ -46,8 +50,13 @@ public class TestInputStreamStorageContainer {
 
     private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
-
     public TestInputStreamStorageContainer(File location) throws IOException {
+        this(location, e -> e);
+    }
+
+    public TestInputStreamStorageContainer(File location,
+                                           Function<EmbeddedDBProperties, EmbeddedDBProperties> propertiesCustomizer)
+            throws IOException {
         EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(location.getAbsolutePath());
@@ -55,6 +64,7 @@ public class TestInputStreamStorageContainer {
         embeddedDBProperties.getEvent().setForceInterval(10000);
         embeddedDBProperties.getSnapshot().setStorage(location.getAbsolutePath());
         embeddedDBProperties.getSnapshot().setSegmentSize(DataSize.ofKilobytes(512));
+        embeddedDBProperties = propertiesCustomizer.apply(embeddedDBProperties);
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
@@ -74,9 +84,12 @@ public class TestInputStreamStorageContainer {
     public void createDummyEvents(int transactions, int transactionSize) {
         createDummyEvents(transactions, transactionSize, "");
     }
+
     public void createDummyEvents(int transactions, int transactionSize, String prefix) {
         CountDownLatch countDownLatch = new CountDownLatch(transactions);
-        IntStream.range(0, transactions).parallel().forEach(j -> {
+        AtomicReference<Throwable> error = new AtomicReference<>();
+
+        IntStream.range(0, transactions).forEach(j -> {
             String aggId = prefix + j;
             List<Event> newEvents = new ArrayList<>();
             IntStream.range(0, transactionSize).forEach(i -> {
@@ -85,12 +98,22 @@ public class TestInputStreamStorageContainer {
                                 SerializedObject
                                         .newBuilder().build()).build());
             });
-            eventWriter.store(newEvents).whenComplete((r,t) -> countDownLatch.countDown());
+            eventWriter.storeBatch(newEvents)
+                       .doOnSuccess((s -> countDownLatch.countDown()))
+                       .doOnError(t -> {
+                           error.set(t);
+                           countDownLatch.countDown();
+                       })
+                       .subscribe();
         });
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+
+        if (error.get() != null) {
+            throw MessagingPlatformException.create(error.get());
         }
     }
 
@@ -111,7 +134,7 @@ public class TestInputStreamStorageContainer {
     }
 
     public SegmentBasedEventStore getPrimary() {
-        return (SegmentBasedEventStore)datafileManagerChain;
+        return (SegmentBasedEventStore) datafileManagerChain;
     }
 
     public void close() {

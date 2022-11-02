@@ -30,12 +30,15 @@
         <frontend-maven-plugin.nodeVersion>v9.7.1</frontend-maven-plugin.nodeVersion>
         <frontend-maven-plugin.npmVersion>5.6.0</frontend-maven-plugin.npmVersion>
         <dropwizard-metrics.version>4.0.0</dropwizard-metrics.version>
+        <reactor.pool.version>0.1.14.RELEASE</reactor.pool.version>
 
         <mapdb.version>3.0.8</mapdb.version>
 
         <skipTests>false</skipTests>
         <skipITs>${skipTests}</skipITs>
         <skipUTs>${skipTests}</skipUTs>
+
+        <reactor.version>3.4.22</reactor.version>
     </properties>
 
     <dependencies>
@@ -241,7 +244,15 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
+            <version>${reactor.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>io.projectreactor.addons</groupId>
+            <artifactId>reactor-pool</artifactId>
+            <version>${reactor.pool.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-kotlin</artifactId>
