@@ -12,10 +12,10 @@ package io.axoniq.axonserver.rest;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SystemInfoProvider;
-import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.FakeSubscriptionMetrics;
+import io.axoniq.axonserver.metric.CommandDispatcherMetrics;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.svg.mapping.AxonServers;
 import io.axoniq.axonserver.topology.DefaultTopology;
@@ -43,7 +43,7 @@ public class PublicRestControllerTest {
     };
     private Topology clusterController;
     @Mock
-    private CommandMetricsRegistry commandMetricsRegistry;
+    private CommandDispatcherMetrics commandMetricsRegistry;
     @Mock
     private QueryDispatcher queryDispatcher;
     @Mock

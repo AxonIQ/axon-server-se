@@ -13,11 +13,10 @@ import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.FeatureChecker;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
-import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.event.EventDispatcher;
 import io.axoniq.axonserver.message.query.QueryDispatcher;
 import io.axoniq.axonserver.message.query.subscription.SubscriptionMetrics;
-import io.axoniq.axonserver.metric.BaseMetricName;
+import io.axoniq.axonserver.metric.CommandDispatcherMetrics;
 import io.axoniq.axonserver.rest.json.NodeConfiguration;
 import io.axoniq.axonserver.rest.json.StatusInfo;
 import io.axoniq.axonserver.rest.json.UserInfo;
@@ -34,13 +33,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * Rest calls to retrieve information about the configuration of Axon Server. Used by UI and CLI.
@@ -55,7 +54,7 @@ public class PublicRestController {
 
     private final QueryDispatcher queryDispatcher;
     private final EventDispatcher eventDispatcher;
-    private final CommandMetricsRegistry commandMetricsRegistry;
+    private final CommandDispatcherMetrics commandMetricsRegistry;
     private final FeatureChecker features;
     private final SslConfiguration sslConfiguration;
     private final AccessControlConfiguration accessControlConfiguration;
@@ -68,7 +67,7 @@ public class PublicRestController {
 
     public PublicRestController(Function<String, Stream<AxonServer>> axonServerProvider,
                                 Topology topology,
-                                CommandMetricsRegistry commandMetricsRegistry,
+                                CommandDispatcherMetrics commandMetricsRegistry,
                                 QueryDispatcher queryDispatcher,
                                 EventDispatcher eventDispatcher,
                                 FeatureChecker features,
@@ -139,7 +138,7 @@ public class PublicRestController {
     public StatusInfo status(@RequestParam(value = "context", defaultValue = Topology.DEFAULT_CONTEXT, required = false) String context) {
         SubscriptionMetrics subscriptionMetrics = this.subscriptionMetricsRegistry.get();
         StatusInfo statusInfo = new StatusInfo();
-        statusInfo.setCommandRate(commandMetricsRegistry.rateMeter(context, BaseMetricName.AXON_COMMAND_RATE));
+        statusInfo.setCommandRate(commandMetricsRegistry.rateMeter(context));
         statusInfo.setQueryRate(queryDispatcher.queryRate(context));
         if( ! context.startsWith("_")) {
             statusInfo.setEventRate(eventDispatcher.eventRate(context));

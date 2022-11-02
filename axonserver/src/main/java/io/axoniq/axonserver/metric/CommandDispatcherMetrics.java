@@ -109,7 +109,7 @@ public class CommandDispatcherMetrics {
     private Mono<Command> commandReceived(Mono<Command> commandMono) {
         return commandMono.doOnNext(command -> {
             commandRateMeterPerContext.computeIfAbsent(command.context(), c ->
-                                              metricRegistry.rateMeter(command.context(),
+                                              metricRegistry.rateMeter(c,
                                                                        BaseMetricName.AXON_COMMAND_RATE))
                                       .mark();
             Metadata metadata = command.metadata();
@@ -119,6 +119,12 @@ public class CommandDispatcherMetrics {
                                                                clientId,
                                                                System.currentTimeMillis()));
         });
+    }
+
+    public MeterFactory.RateMeter rateMeter(String context) {
+        return commandRateMeterPerContext.computeIfAbsent(context,
+                                                          c -> metricRegistry.rateMeter(c,
+                                                                                        BaseMetricName.AXON_COMMAND_RATE));
     }
 
     private static class ActiveCommand {

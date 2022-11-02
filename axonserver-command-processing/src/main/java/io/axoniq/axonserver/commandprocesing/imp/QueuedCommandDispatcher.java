@@ -161,22 +161,25 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
 
         public Mono<CommandResult> enqueue(CommandAndHandler commandRequest) {
             return Mono.defer(() -> {
-                logger.debug("{}: Enqueue: {}, queueSize: {}", queueName, commandRequest.id(), queue.size());
-                if (queue.size() >= hardLimit) {
+                int size = queue.size();
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}: Enqueue: {}, queueSize: {}", queueName, commandRequest.id(), size);
+                }
+                if (size >= hardLimit) {
                     logger.warn(
                             "Reached hard limit on queue {} of size {}, priority of item failed to be added {}, hard limit {}.",
                             queueName,
-                            queue.size(),
+                            size,
                             commandRequest.priority,
                             hardLimit);
                     return Mono.error(new CapacityException(
                             "Failed to add request to queue " + queueName + " as hard limit was reached."));
                 }
-                if (commandRequest.priority <= 0 && queue.size() >= softLimit) {
+                if (commandRequest.priority <= 0 && size >= softLimit) {
                     logger.warn(
                             "Reached soft limit on queue size {} of size {}, priority of item failed to be added {}, soft limit {}.",
                             queueName,
-                            queue.size(),
+                            size,
                             commandRequest.priority,
                             softLimit);
                     return Mono.error(new CapacityException("Failed to add request to queue " + queueName));
