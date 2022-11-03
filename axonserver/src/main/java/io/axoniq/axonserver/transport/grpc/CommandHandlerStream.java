@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc;
 
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
@@ -15,7 +24,9 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
 
 /**
  * Represents command stream from Axon Server to application that handles commands
@@ -25,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 class CommandHandlerStream {
 
+    private final String streamId = UUID.randomUUID().toString();
     private final String context;
     private final String clientId;
     private final StreamObserver<CommandProviderInbound> streamToHandler;
@@ -50,11 +62,12 @@ class CommandHandlerStream {
 
     public Mono<Void> subscribe(CommandSubscription subscribe) {
         GrpcCommandHandlerSubscription handler = new GrpcCommandHandlerSubscription(subscribe,
-                clientId,
-                context,
-                () -> tags(clientId,
-                        context),
-                this::dispatch
+                                                                                    streamId,
+                                                                                    clientId,
+                                                                                    context,
+                                                                                    () -> tags(clientId,
+                                                                                               context),
+                                                                                    this::dispatch
         );
         return commandRequestProcessor.register(handler)
                 .doOnSuccess(registration -> registrations.put(subscribe.getCommand(),

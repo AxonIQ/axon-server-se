@@ -8,6 +8,7 @@ public interface CommandHandler extends Serializable {
     String LOAD_FACTOR = "__loadfactor";
     String COMPONENT_NAME = "__component";
     String CLIENT_ID = "__clientId";
+    String CLIENT_STREAM_ID = "__clientStreamId";
 
     String PROXIED = "__proxied";
 

@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, CommandHandlerSubscribedInterceptor,
         CommandHandlerUnsubscribedInterceptor {
 
-    private final static Logger logger = LoggerFactory.getLogger(ConsistentHashHandlerStrategy.class);
+    private static final Logger logger = LoggerFactory.getLogger(ConsistentHashHandlerStrategy.class);
 
     private final Map<CommandIdentifier, ConsistentHash> consistentHashes = new ConcurrentHashMap<>();
     private final Function<CommandHandler, Optional<Number>> loadFactorProvider;
@@ -44,7 +44,7 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
             CommandIdentifier key = new CommandIdentifier(commandHandler.commandName(),
                                                           commandHandler.context());
             consistentHashes.put(key, consistentHashes.computeIfAbsent(key, c -> new ConsistentHash())
-                                                      .with(commandHandler.id(),
+                                                      .with(hash(commandHandler),
                                                             loadFactor.intValue()));
         });
     }
@@ -58,9 +58,13 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
                                                           commandHandler.context());
             ConsistentHash consitentHash = consistentHashes.get(key);
             if (consitentHash != null) {
-                consistentHashes.put(key, consitentHash.without(commandHandler.id()));
+                consistentHashes.put(key, consitentHash.without(hash(commandHandler)));
             }
         });
+    }
+
+    private String hash(CommandHandler commandHandler) {
+        return commandHandler.metadata().metadataValue(CommandHandler.CLIENT_STREAM_ID, commandHandler.id());
     }
 
     @Override
@@ -74,7 +78,7 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
         logger.debug("{}[{}] Selecting based on consistent hash -  {} candidates", command.commandName(),
                      command.context(), candidates.size());
         Map<String, CommandHandlerSubscription> keys = candidates.stream()
-                                                                 .collect(Collectors.toMap(s -> s.commandHandler().id(),
+                                                                 .collect(Collectors.toMap(s -> hash(s.commandHandler()),
                                                                                            s -> s));
         String routingKey = routingKeyProvider.apply(command).orElse(null);
         if (routingKey == null) {

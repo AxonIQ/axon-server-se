@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc;
 
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
@@ -31,11 +40,12 @@ class GrpcCommandHandlerSubscription implements CommandHandlerSubscription {
 
     public GrpcCommandHandlerSubscription(CommandSubscription subscription,
                                           String clientId,
+                                          String streamId,
                                           String context,
                                           Supplier<Map<String, String>> clientTagsProvider,
                                           Function<Command, Mono<CommandResponse>> dispatchOperation) {
         this.clientId = clientId;
-        this.commandHandler = new GrpcCommandHandler(subscription,context,clientTagsProvider);
+        this.commandHandler = new GrpcCommandHandler(subscription, streamId, context, clientTagsProvider);
         this.dispatchOperation = dispatchOperation;
     }
 
@@ -53,8 +63,8 @@ class GrpcCommandHandlerSubscription implements CommandHandlerSubscription {
     private CommandResult map(CommandResponse commandResponse, String clientId) {
         CommandResponse response = CommandResponse.newBuilder(commandResponse)
                 .putMetaData(CommandResult.CLIENT_ID,
-                        MetaDataValue.newBuilder().setTextValue(clientId)
-                                .build())
+                             MetaDataValue.newBuilder().setTextValue(clientId)
+                                          .build())
                 .build();
         return new GrpcCommandResult(response);
     }
@@ -62,13 +72,16 @@ class GrpcCommandHandlerSubscription implements CommandHandlerSubscription {
     private static class GrpcCommandHandler implements CommandHandler {
 
         private final CommandSubscription subscription;
+        private final String streamId;
         private final String context;
         private final Supplier<Map<String, String>> clientTagsProvider;
         private final String id = UUID.randomUUID().toString();
 
         private GrpcCommandHandler(CommandSubscription subscription,
+                                   String streamId,
                                    String context, Supplier<Map<String, String>> clientTagsProvider) {
             this.subscription = subscription;
+            this.streamId = streamId;
             this.context = context;
             this.clientTagsProvider = clientTagsProvider;
         }
@@ -98,6 +111,7 @@ class GrpcCommandHandlerSubscription implements CommandHandlerSubscription {
             Map<String, Serializable> clientMetadata = new HashMap<>(clientTagsProvider.get());
             clientMetadata.put(LOAD_FACTOR, subscription.getLoadFactor());
             clientMetadata.put(CLIENT_ID, subscription.getClientId());
+            clientMetadata.put(CLIENT_STREAM_ID, streamId);
             clientMetadata.put(COMPONENT_NAME, subscription.getComponentName());
             return new Metadata() {
                 @Override

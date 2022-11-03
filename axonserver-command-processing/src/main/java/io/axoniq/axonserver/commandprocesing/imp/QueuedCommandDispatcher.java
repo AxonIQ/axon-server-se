@@ -117,7 +117,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
                                                    () -> logger.warn(
                                                            "CommandQueue executor has terminated and will no longer execute commands."));
             processor.asFlux()
-                     .subscribeOn(executor)
+                     .publishOn(executor)
                      .subscribe(clientSubscription());
             gauge = Gauge.builder("commands.queued", queueName, q -> queue.size())
                          .tags(Tags.of("QUEUE", queueName))
