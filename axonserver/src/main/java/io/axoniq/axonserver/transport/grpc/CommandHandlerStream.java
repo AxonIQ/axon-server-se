@@ -62,8 +62,8 @@ class CommandHandlerStream {
 
     public Mono<Void> subscribe(CommandSubscription subscribe) {
         GrpcCommandHandlerSubscription handler = new GrpcCommandHandlerSubscription(subscribe,
-                                                                                    streamId,
                                                                                     clientId,
+                                                                                    streamId,
                                                                                     context,
                                                                                     () -> tags(clientId,
                                                                                                context),
