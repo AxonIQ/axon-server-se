@@ -27,7 +27,7 @@
 <script>
 module.exports = {
   name: 'paginated-table',
-  props: ['rows', 'selectable', 'page'],
+  props: ['rows', 'selectable', 'page', 'name'],
   data() {
     return {
       wrappedRows: newPagedArray(),
@@ -37,18 +37,30 @@ module.exports = {
   watch: {
     rows: function (newValue) {
       this.wrappedRows = this.wrappedRows.withRows(newValue);
-    },
+    }
   },
   mounted() {
+    console.info("Id = " + this.name)
+    let p = this.page
+    let rowcount = localStorage.getItem("visible-rows-" + this.name)
+    console.info("rowcount = " + rowcount)
+    if (rowcount) {
+      p = rowcount
+    }
     if (this.selectable) {
       this.clazz = "selectable";
     }
-    if (this.page) {
-      this.wrappedRows = new PagedArray([], this.page, 1);
+    console.info("pagesize = " + p)
+    if (p) {
+      this.wrappedRows = new PagedArray([], p, 1);
     }
     if (this.rows) {
       this.wrappedRows = this.wrappedRows.withRows(this.rows);
     }
+  },
+  beforeDestroy() {
+    localStorage.setItem("visible-rows-" + this.name, this.wrappedRows.pageSize)
+    console.info("visible-rows-" + this.name + " = " + this.wrappedRows.pageSize)
   },
   methods: {}
 }
