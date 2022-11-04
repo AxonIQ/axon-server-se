@@ -40,17 +40,14 @@ module.exports = {
     }
   },
   mounted() {
-    console.info("Id = " + this.name)
     let p = this.page
-    let rowcount = localStorage.getItem("visible-rows-" + this.name)
-    console.info("rowcount = " + rowcount)
+    let rowcount = sessionStorage.getItem("visible-rows-" + this.name)
     if (rowcount) {
       p = rowcount
     }
     if (this.selectable) {
       this.clazz = "selectable";
     }
-    console.info("pagesize = " + p)
     if (p) {
       this.wrappedRows = new PagedArray([], p, 1);
     }
@@ -59,8 +56,7 @@ module.exports = {
     }
   },
   beforeDestroy() {
-    localStorage.setItem("visible-rows-" + this.name, this.wrappedRows.pageSize)
-    console.info("visible-rows-" + this.name + " = " + this.wrappedRows.pageSize)
+    sessionStorage.setItem("visible-rows-" + this.name, this.wrappedRows.pageSize)
   },
   methods: {}
 }
