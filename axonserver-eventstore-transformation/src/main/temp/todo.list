@@ -1,6 +1,0 @@
-implementation of TransformationProgress Store
-delete old versions
-reset file store
-state machine for applied and for rolled back
-ee
-when the leader changes we need to be sure to start reading all the unapplied entries

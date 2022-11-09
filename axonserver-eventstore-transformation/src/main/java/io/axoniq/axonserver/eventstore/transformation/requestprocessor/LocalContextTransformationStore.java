@@ -1,5 +1,7 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationJpa;
+import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;

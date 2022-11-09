@@ -16,6 +16,7 @@ import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.ContextProvider;
 import io.axoniq.axonserver.grpc.GrpcExceptionBuilder;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
+import io.axoniq.axonserver.grpc.event.CompactionRequest;
 import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
 import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
 import io.axoniq.axonserver.grpc.event.TransformRequest;
@@ -26,6 +27,8 @@ import io.axoniq.axonserver.grpc.event.TransformationState;
 import io.axoniq.axonserver.util.StreamObserverUtils;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -47,6 +50,8 @@ public class EventStoreTransformationGrpcController
         extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
         implements AxonServerClientService {
 
+    private final Logger logger = LoggerFactory.getLogger(EventStoreTransformationGrpcController.class);
+
     private final ContextProvider contextProvider;
     private final AuthenticationProvider authenticationProvider;
     private final EventStoreTransformationService eventStoreTransformationService;
@@ -66,7 +71,7 @@ public class EventStoreTransformationGrpcController
         eventStoreTransformationService.start(context,
                                               request.getDescription(),
                                               new GrpcAuthentication(authenticationProvider))
-                                       .doOnSuccess(s -> System.out.println("Transformation Created with id " + s))
+                                       .doOnSuccess(s -> logger.info("Transformation Created with id {}", s))
                                        .subscribe(id -> responseObserver.onNext(transformationId(id)),
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
                                                           throwable)),
@@ -194,22 +199,15 @@ public class EventStoreTransformationGrpcController
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }
 
+
     @Override
-    public void rollbackTransformation(TransformationId request, StreamObserver<Empty> responseObserver) {
+    public void compact(CompactionRequest request, StreamObserver<Empty> responseObserver) {
         String context = contextProvider.getContext();
-        eventStoreTransformationService.startRollingBack(context,
-                                                         request.getId(),
-                                                         new GrpcAuthentication(authenticationProvider))
+        eventStoreTransformationService.compact(context,
+                                                new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }
 
-    @Override
-    public void deleteOldVersions(Empty request, StreamObserver<Empty> responseObserver) {
-        String context = contextProvider.getContext();
-        eventStoreTransformationService.deleteOldVersions(context,
-                                                          new GrpcAuthentication(authenticationProvider))
-                                       .subscribe(new VoidStreamObserverSubscriber(responseObserver));
-    }
 
     @Override
     public void transformations(Empty request, StreamObserver<Transformation> responseObserver) {
@@ -241,7 +239,5 @@ public class EventStoreTransformationGrpcController
         this.put(EventStoreTransformationService.Transformation.Status.APPLIED, TransformationState.APPLIED);
         this.put(EventStoreTransformationService.Transformation.Status.CANCELLING, TransformationState.CANCELLING);
         this.put(EventStoreTransformationService.Transformation.Status.CANCELLED, TransformationState.CANCELLED);
-        this.put(EventStoreTransformationService.Transformation.Status.ROLLING_BACK, TransformationState.ROLLING_BACK);
-        this.put(EventStoreTransformationService.Transformation.Status.ROLLED_BACK, TransformationState.ROLLED_BACK);
     }};
 }

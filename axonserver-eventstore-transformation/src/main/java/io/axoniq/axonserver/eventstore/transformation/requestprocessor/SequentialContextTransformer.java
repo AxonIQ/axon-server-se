@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore.EventStoreState;
 import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -16,7 +17,9 @@ public class SequentialContextTransformer implements ContextTransformer {
 
     private final String context;
     private final ContextTransformationStore store;
+    private final EventStoreStateStore eventStoreStateStore;
     private final TransformationStateConverter converter;
+
     private final Sinks.Many<Mono<?>> taskExecutor = Sinks.many()
                                                           .unicast()
                                                           .onBackpressureBuffer();
@@ -24,9 +27,11 @@ public class SequentialContextTransformer implements ContextTransformer {
 
     public SequentialContextTransformer(String context,
                                         ContextTransformationStore store,
+                                        EventStoreStateStore eventStoreStateStore,
                                         TransformationStateConverter converter) {
         this.context = context;
         this.store = store;
+        this.eventStoreStateStore = eventStoreStateStore;
         this.converter = converter;
         startListening();
     }
@@ -38,20 +43,14 @@ public class SequentialContextTransformer implements ContextTransformer {
                     .subscribe();
     }
 
-    private Mono<TransformationState> ongoingTransformation() {
-        return store.transformations()
-                    .filter(TransformationState::ongoing)
-                    .next();
-    }
-
     @Override
-    public Mono<String> start(String description) {
-        return ongoingTransformation()
-                .<String>flatMap(transformation -> Mono.error(new RuntimeException(
-                        "There is already ongoing transformation")))
-                .switchIfEmpty(store.create(description)
-                                    .map(TransformationState::id)
-                                    .as(this::sequential));
+    public Mono<String> start(String description) { //todo check saving order
+        return eventStoreStateStore.state(context)
+                                   .flatMap(EventStoreState::transform)
+                                   .flatMap(eventStoreStateStore::save)
+                                   .then(store.create(description))
+                                   .map(TransformationState::id)
+                                   .as(this::sequential);
     }
 
     @Override
@@ -59,26 +58,32 @@ public class SequentialContextTransformer implements ContextTransformer {
         return perform(transformationId,
                        "DELETE_EVENT",
                        transformation -> transformation.deleteEvent(tokenToDelete, sequence))
-                .then();
+                .as(this::sequential);
     }
 
     @Override
     public Mono<Void> replaceEvent(String transformationId, long token, Event event, long sequence) {
         return perform(transformationId,
                        "REPLACE_EVENT",
-                       transformation -> transformation.replaceEvent(token, event, sequence)).then();
+                       transformation -> transformation.replaceEvent(token, event, sequence))
+                .as(this::sequential);
     }
 
     @Override
     public Mono<Void> startCancelling(String transformationId) {
-        return perform(transformationId, "CANCEL_TRANSFORMATION", Transformation::startCancelling).then();
+        return perform(transformationId, "CANCEL_TRANSFORMATION", Transformation::startCancelling)
+                .as(this::sequential);
     }
 
     @Override
-    public Mono<Void> markAsCancelled(String transformationId) {
+    public Mono<Void> markCancelled(String transformationId) {
         return perform(transformationId,
                        "MARK_AS_CANCELLED",
-                       Transformation::markCancelled);
+                       Transformation::markCancelled)
+                .then(eventStoreStateStore.state(context))
+                .flatMap(EventStoreState::transformed)
+                .flatMap(eventStoreStateStore::save)
+                .as(this::sequential);
     }
 
 
@@ -86,34 +91,35 @@ public class SequentialContextTransformer implements ContextTransformer {
     public Mono<Void> startApplying(String transformationId, long sequence, String applier) {
         return perform(transformationId,
                        "START_APPLYING_TRANSFORMATION",
-                       transformation -> transformation.startApplying(sequence, applier));
+                       transformation -> transformation.startApplying(sequence, applier))
+                .as(this::sequential);
     }
 
     @Override
     public Mono<Void> markApplied(String transformationId) {
         return perform(transformationId,
                        "MARK_AS_APPLIED",
-                       Transformation::markApplied);
+                       Transformation::markApplied)
+                .then(eventStoreStateStore.state(context))
+                .flatMap(EventStoreState::transformed)
+                .flatMap(eventStoreStateStore::save)
+                .as(this::sequential);
     }
 
     @Override
-    public Mono<Void> startRollingBack(String transformationId) {
-        return perform(transformationId,
-                       "START_ROLLING_BACK_TRANSFORMATION",
-                       Transformation::startRollingBack);
+    public Mono<Void> markCompacted() {
+        return eventStoreStateStore.state(context)
+                                   .flatMap(EventStoreState::compacted)
+                                   .flatMap(eventStoreStateStore::save)
+                                   .as(this::sequential);
     }
 
     @Override
-    public Mono<Void> markRolledBack(String transformationId) {
-        return perform(transformationId,
-                       "MARK_AS_ROLLED_BACK",
-                       Transformation::markRolledBack);
-    }
-
-    @Override
-    public Mono<Void> deleteOldVersions() {
-        return Mono.<Void>fromRunnable(() -> {// TODO: 5/11/22 !!!
-        }).as(this::sequential);
+    public Mono<Void> compact() {
+        return eventStoreStateStore.state(context)
+                                   .flatMap(EventStoreState::compact)
+                                   .flatMap(eventStoreStateStore::save)
+                                   .as(this::sequential);
     }
 
     private Mono<Void> perform(String transformationId,
@@ -125,11 +131,10 @@ public class SequentialContextTransformer implements ContextTransformer {
                     .flatMap(action)
                     .checkpoint(format("Action %s completed", actionName))
                     .flatMap(store::save)
-                    .checkpoint(format("Transformation updated after %s", actionName))
-                    .as(this::sequential);
+                    .checkpoint(format("Transformation updated after %s", actionName));
     }
 
-    private <R> Mono<R> sequential(Mono<R> action) {
+    private <R> Mono<R> sequential(Mono<R> action) {// TODO: 09/11/2022 rethink sequentializing options
         return Mono.deferContextual(contextView -> {
             Sinks.One<R> actionResult = Sinks.one();
             while (taskExecutor.tryEmitNext(action.doOnError(t -> actionResult.emitError(t,

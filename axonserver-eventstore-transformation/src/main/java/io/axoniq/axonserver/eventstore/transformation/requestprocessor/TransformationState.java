@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
+import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationJpa;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,7 +29,7 @@ public interface TransformationState {
 
     Optional<Instant> appliedAt();
 
-    // TODO: 12/30/21 separate this
+    //TODO: 12/30/21 separate this
     EventStoreTransformationJpa.Status status();
 
     TransformationState stage(TransformationAction entry);
@@ -43,15 +44,4 @@ public interface TransformationState {
 
     TransformationState withLastEventToken(long token);
 
-    default boolean ongoing() {
-        switch (status()) {
-            case CANCELLING:
-            case APPLYING:
-            case ACTIVE:
-            case ROLLING_BACK:
-                return true;
-            default:
-                return false;
-        }
-    }
 }

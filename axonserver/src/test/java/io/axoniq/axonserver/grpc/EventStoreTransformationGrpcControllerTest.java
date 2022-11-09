@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -21,13 +21,11 @@ import io.axoniq.axonserver.transport.grpc.EventStoreTransformationGrpcControlle
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -35,10 +33,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.annotation.Nonnull;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author Marc Gathier
@@ -139,15 +136,10 @@ public class EventStoreTransformationGrpcControllerTest {
                 });
             }
 
-            @Override
-            public Mono<Void> startRollingBack(String context, String id,
-                                               @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                return Mono.empty();
-            }
 
             @Override
-            public Mono<Void> deleteOldVersions(String context,
-                                                @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
+            public Mono<Void> compact(String context,
+                                      @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.empty();
             }
         };

@@ -11,6 +11,9 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
+import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
+import io.axoniq.axonserver.eventstore.transformation.cancel.TransformationCancelTask;
+import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionTask;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +38,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     private final Transformations transformations;
     private final Logger auditLog;
     private final TransformationApplyTask transformationApplyTask;
-    private final TransformationRollBackTask transformationRollBackTask;
+    private final EventStoreCompactionTask transformationRollBackTask;
     private final TransformationCancelTask transformationCancelTask;
 
     @Override
@@ -53,7 +56,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     }
 
     public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
-                                                  TransformationRollBackTask transformationRollBackTask,
+                                                  EventStoreCompactionTask transformationRollBackTask,
                                                   TransformationApplyTask transformationApplyTask,
                                                   TransformationCancelTask transformationCancelTask) {
         this(transformers,
@@ -65,7 +68,7 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
                                                   Logger auditLog,
                                                   TransformationApplyTask transformationApplyTask,
-                                                  TransformationRollBackTask transformationRollBackTask,
+                                                  EventStoreCompactionTask transformationRollBackTask,
                                                   TransformationCancelTask transformationCancelTask) {
         this.transformers = transformers;
         this.transformations = transformations;
@@ -140,17 +143,8 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     }
 
     @Override
-    public Mono<Void> startRollingBack(String context, String id, @Nonnull Authentication authentication) {
-        return transformerFor(context).flatMap(transformer -> transformer.startRollingBack(id))
-                                      .doFirst(() -> auditLog.info("{}@{}: Request to rollback transformation {}",
-                                                                   username(authentication.username()),
-                                                                   sanitize(context),
-                                                                   sanitize(id)));
-    }
-
-    @Override
-    public Mono<Void> deleteOldVersions(String context, @Nonnull Authentication authentication) {
-        return transformerFor(context).flatMap(ContextTransformer::deleteOldVersions)
+    public Mono<Void> compact(String context, @Nonnull Authentication authentication) {
+        return transformerFor(context).flatMap(ContextTransformer::compact)
                                       .doFirst(() -> auditLog.info("{}@{}: Request to delete old events.",
                                                                    username(authentication.username()),
                                                                    sanitize(context)));

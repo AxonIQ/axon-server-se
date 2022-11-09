@@ -25,15 +25,7 @@ public interface Transformation {
         return Mono.error(new RuntimeException("Unsupported operation."));
     }
 
-    default Mono<TransformationState> startRollingBack() {
-        return Mono.error(new RuntimeException("Unsupported operation."));
-    }
-
     default Mono<TransformationState> markApplied() {
-        return Mono.error(new RuntimeException("Unsupported operation."));
-    }
-
-    default Mono<TransformationState> markRolledBack() {
         return Mono.error(new RuntimeException("Unsupported operation."));
     }
 }

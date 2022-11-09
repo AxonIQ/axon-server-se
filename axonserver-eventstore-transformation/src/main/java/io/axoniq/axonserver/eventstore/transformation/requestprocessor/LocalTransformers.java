@@ -1,5 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
+import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationRepository;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
@@ -12,14 +13,17 @@ public class LocalTransformers implements Transformers {
     private final EventStoreTransformationRepository transformationRepository;
     private final Function<String, EventProvider> eventProviderFactory;
     private final TransformationEntryStoreSupplier entryStoreSupplier;
+    private final EventStoreStateStore eventStoreStateStore;
 
 
     public LocalTransformers(Function<String, EventProvider> eventProviderFactory,
                              EventStoreTransformationRepository eventStoreTransformationRepository,
-                             TransformationEntryStoreSupplier entryStoreSupplier) {
+                             TransformationEntryStoreSupplier entryStoreSupplier,
+                             EventStoreStateStore eventStoreStateStore) {
         this.eventProviderFactory = eventProviderFactory;
         this.transformationRepository = eventStoreTransformationRepository;
         this.entryStoreSupplier = entryStoreSupplier;
+        this.eventStoreStateStore = eventStoreStateStore;
     }
 
     @Override
@@ -33,8 +37,11 @@ public class LocalTransformers implements Transformers {
                                           transformationEntryStore))
                                   .<ContextTransformer>map(store -> {
                                       EventProvider eventProvider = eventProviderFactory.apply(context);
-                                      TransformationStateConverter converter = new ContextTransformationStateConverter(eventProvider);
-                                      return new SequentialContextTransformer(context, store, converter);
+                                      TransformationStateConverter converter = new ContextTransformationStateConverter(
+                                              eventProvider);
+                                      return new SequentialContextTransformer(context, store,
+                                                                              eventStoreStateStore,
+                                                                              converter);
                                   }).cache());
     }
 }

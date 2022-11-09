@@ -70,9 +70,9 @@ public class DefaultLocalTransformationApplyExecutor implements LocalTransformat
                                     .flatMap(TransformationEntryStore::delete)
                                     .then(stateRepo.markAsApplied(transformation.id()))
                                     .doFinally(onFinally -> applyingTransformations.remove(transformation.id())))
-                   .doOnSuccess(v -> logger.info("Transformation {} applied successfully to local store.",
+                   .doOnSuccess(v -> logger.warn("Transformation {} applied successfully to local store.",
                                                  transformation.id()))
-                   .doOnError(t -> logger.info("Failed to apply to local store the transformation {}", transformation));
+                   .doOnError(t -> logger.warn("Failed to apply to local store the transformation {}", transformation));
     }
 
     @Override

@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
+import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationJpa;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -61,7 +62,8 @@ public class DefaultTransformationState implements TransformationState {
 
     @Override
     public Optional<Instant> appliedAt() {
-        return Optional.ofNullable(entity.getDateApplied().toInstant());
+        return Optional.ofNullable(entity.getDateApplied())
+                       .map(Date::toInstant);
     }
 
     @Override

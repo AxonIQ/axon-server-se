@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
@@ -29,6 +38,13 @@ public class AutoCloseableEventProvider {
         return Mono.create(sink -> {
             cancelClosing();
             executorService.submit(() -> readEvent(sink, token));
+        });
+    }
+
+    public Mono<Void> close() {
+        return Mono.fromRunnable(() -> {
+            cancelClosing();
+            scheduleClosing(0L);
         });
     }
 
@@ -66,13 +82,17 @@ public class AutoCloseableEventProvider {
     }
 
     private void scheduleClosing() {
+        scheduleClosing(autocloseableDeadline.toMillis());
+    }
+
+    private void scheduleClosing(long milliseconds) {
         ScheduledFuture<?> schedule = executorService.schedule(() -> {
             CloseableIterator<SerializedEventWithToken> i = iteratorRef.get();
             iteratorRef.set(null);
             if (i != null) {
                 i.close();
             }
-        }, autocloseableDeadline.toMillis(), TimeUnit.MILLISECONDS);
+        }, milliseconds, TimeUnit.MILLISECONDS);
         scheduledDeadline.set(schedule);
     }
 
@@ -84,7 +104,8 @@ public class AutoCloseableEventProvider {
         return iterator;
     }
 
-    private CloseableIterator<SerializedEventWithToken> newIterator(CloseableIterator<SerializedEventWithToken> current, long token) {
+    private CloseableIterator<SerializedEventWithToken> newIterator(CloseableIterator<SerializedEventWithToken> current,
+                                                                    long token) {
         if (current != null) {
             current.close();
         }

@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -53,7 +53,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +68,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * Component that handles the actual interaction with the event store.
@@ -843,8 +843,8 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public Mono<Void> deleteOldVersions(String context) {
-        return workers(context).deleteOldVersions();
+    public Mono<Void> compact(String context) {
+        return workers(context).compact();
     }
 
     @Override
@@ -975,7 +975,7 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
             trackingEventManager.validateActiveConnections(minLastPermits);
         }
 
-        public Mono<Void> deleteOldVersions() {
+        public Mono<Void> compact() {
             return eventStorageEngine.deleteOldVersions();
         }
 

@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,11 +13,6 @@ import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
-import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreTransformationRepository;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
 import io.axoniq.axonserver.exception.CriticalEventException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
@@ -27,8 +22,6 @@ import io.axoniq.axonserver.grpc.command.CommandProviderInbound;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.grpc.event.EventSchedulerGrpc;
 import io.axoniq.axonserver.grpc.query.QueryProviderInbound;
-import io.axoniq.axonserver.localstorage.AutoCloseableEventProvider;
-import io.axoniq.axonserver.localstorage.ContextEventIteratorFactory;
 import io.axoniq.axonserver.localstorage.DefaultEventDecorator;
 import io.axoniq.axonserver.localstorage.EventDecorator;
 import io.axoniq.axonserver.localstorage.EventStoreFactory;
@@ -73,7 +66,6 @@ import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
-import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.util.Collections;

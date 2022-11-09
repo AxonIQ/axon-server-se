@@ -50,7 +50,7 @@
         <gson.version>2.9.0</gson.version>
         <axonserver-plugin-api.version>4.7.0-SNAPSHOT</axonserver-plugin-api.version>
         <axonserver.api.version>4.7.0-SNAPSHOT</axonserver.api.version>
-        <flow.control.version>1.0</flow.control.version>
+        <flow.control.version>1.1-SNAPSHOT</flow.control.version>
         <spring-boot.version>2.7.1</spring-boot.version>
 
         <kotlin.version>1.7.10</kotlin.version>

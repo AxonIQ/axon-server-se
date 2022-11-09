@@ -1,11 +1,10 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.CancellingTransformation;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.active.ActiveTransformation;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.AppliedTransformation;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.ApplyingTransformation;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.FinalTransformation;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.transformation.RollingBackTransformation;
+import io.axoniq.axonserver.eventstore.transformation.transformation.ActiveTransformation;
+import io.axoniq.axonserver.eventstore.transformation.transformation.ApplyingTransformation;
+import io.axoniq.axonserver.eventstore.transformation.transformation.CancellingTransformation;
+import io.axoniq.axonserver.eventstore.transformation.transformation.FinalTransformation;
+import io.axoniq.axonserver.eventstore.transformation.transformation.active.TransformationResources;
 import reactor.core.publisher.Mono;
 
 public class ContextTransformationStateConverter implements TransformationStateConverter {
@@ -24,13 +23,9 @@ public class ContextTransformationStateConverter implements TransformationStateC
                     return activeTransformation(entity);
                 case APPLYING:
                     return applyingTransformation(entity);
-                case APPLIED:
-                    return appliedTransformation(entity);
-                case ROLLING_BACK:
-                    return rollingBackTransformation(entity);
                 case CANCELLING:
                     return cancellingTransformation(entity);
-                case ROLLED_BACK:
+                case APPLIED:
                 case CANCELLED:
                 case FAILED:
                     return finalTransformation();
@@ -46,14 +41,6 @@ public class ContextTransformationStateConverter implements TransformationStateC
 
     private  ApplyingTransformation applyingTransformation(TransformationState state) {
         return new ApplyingTransformation(state);
-    }
-
-    private  AppliedTransformation appliedTransformation(TransformationState state) {
-        return new AppliedTransformation(state);
-    }
-
-    private  RollingBackTransformation rollingBackTransformation(TransformationState state) {
-        return new RollingBackTransformation(state);
     }
 
     private CancellingTransformation cancellingTransformation(TransformationState state) {

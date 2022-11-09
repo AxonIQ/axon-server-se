@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -126,10 +126,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                        logger.debug("Reading index entries for aggregate {} started.", aggregateId);
 
                        SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
-                                                                                                  firstSequence,
-                                                                                                  lastSequence,
-                                                                                                  Long.MAX_VALUE,
-                                                                                                  minToken);
+                                                                                                         firstSequence,
+                                                                                                         lastSequence,
+                                                                                                         Long.MAX_VALUE,
+                                                                                                         minToken);
                        logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
                        aggregateSegmentsCount.record(positionInfos.size());
 
@@ -139,7 +139,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                 storagePropertiesSupplier.get().getEventsPerSegmentPrefetch()),
                                         PREFETCH_SEGMENT_FILES,
                                         storagePropertiesSupplier.get().getEventsPerSegmentPrefetch())
-                   .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence) //todo for safe guard, remove in 4.6
+                   .skipUntil(se -> se.getAggregateSequenceNumber()
+                           >= firstSequence) //todo for safe guard, remove in 4.6
                    .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
                    .name("event_stream")
                    .tag("context", context)
@@ -324,7 +325,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     private Flux<FileVersion> fileVersions(String suffix) {
         return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePropertiesSupplier.get()
-                                                                                             .getStorage(context)), suffix))
+                                                                                             .getStorage(context)),
+                                                           suffix))
                    .map(FileUtils::process);
     }
 
@@ -347,8 +349,21 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Mono<Void> deleteOldVersions() {
-        // TODO: 4/11/22 !!!
-        return Mono.empty();
+        return fileVersions(storagePropertiesSupplier.get().getEventsSuffix())
+                .doOnNext(fileVersion -> System.out.println(fileVersion.segment()))
+                .filter(fileVersion -> currentSegmentVersion(fileVersion.segment()) != fileVersion.version())
+                .flatMapSequential(this::delete)
+                .then();
+    }
+
+    private Mono<Void> delete(FileVersion fileVersion) {
+        return Mono.fromRunnable(() -> {
+                                     if (!removeSegment(fileVersion.segment(), fileVersion.version())) {
+                                         throw new RuntimeException(context + ": Cannot remove segment " + fileVersion);
+                                     }
+                                 }
+                   ).retry(3)
+                   .then();
     }
 
     @Override
@@ -431,7 +446,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                       scheduleForDeletion(segment, version);
                                                                   }
                                                               },
-                                                              storagePropertiesSupplier.get().getSecondaryCleanupDelay(),
+                                                              storagePropertiesSupplier.get()
+                                                                                       .getSecondaryCleanupDelay(),
                                                               TimeUnit.SECONDS);
     }
 
@@ -741,7 +757,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         if (next == null) {
             return filenames;
         }
-        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, includeActive));
+        return Stream.concat(filenames,
+                             next.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, includeActive));
     }
 
     protected void renameFileIfNecessary(long segment) {
@@ -827,10 +844,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public void validateTransaction(long token, List<Event> eventList) {
         try (CloseableIterator<SerializedTransactionWithToken> transactionIterator =
-                     transactionIterator(token,token + eventList.size())) {
+                     transactionIterator(token, token + eventList.size())) {
             if (transactionIterator.hasNext()) {
                 SerializedTransactionWithToken transaction = transactionIterator.next();
-                if (!equals(transaction.getEvents(),eventList)) {
+                if (!equals(transaction.getEvents(), eventList)) {
                     throw new EventStoreValidationException(format(
                             "%s: Replicated %s transaction %d does not match stored transaction",
                             context,

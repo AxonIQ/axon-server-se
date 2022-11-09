@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc;
 
 
@@ -15,9 +24,7 @@ import io.axoniq.axonserver.grpc.event.EventTransformationServiceGrpc;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.NettyChannelBuilder;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -31,8 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class EventStoreTransformationGrpcControllerITCase {
 
@@ -174,20 +180,11 @@ public class EventStoreTransformationGrpcControllerITCase {
                         throw new RuntimeException(e.getCause());
                     }
                     break;
-                case ROLLING_BACK:
-                    break;
-                case ROLLED_BACK:
-                    break;
                 case CANCELLING:
-                    break;
                 case CANCELLED:
-                    break;
                 case APPLYING:
-                    break;
                 case APPLIED:
-                    break;
                 case FATAL:
-                    break;
                 case UNKNOWN:
                     break;
             }

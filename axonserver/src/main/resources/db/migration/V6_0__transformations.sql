@@ -15,14 +15,22 @@ create table event_store_transformations
     version           int,
     description       varchar(4000),
     date_applied      date,
-    applied_by        varchar(255),
+    applier           varchar(255),
     last_sequence     long,
     last_event_token  long
 );
 
-create table event_store_transformation_progress (
-    transformation_id varchar(255) not null primary key,
+create table event_store_transformation_progress
+(
+    transformation_id     varchar(255) not null primary key,
     last_sequence_applied bigint,
-    applied bool
+    applied               bool
+);
+
+create table event_store_state
+(
+    context     varchar(255) not null primary key,
+    state       varchar(255),
+    last_update date
 );
 

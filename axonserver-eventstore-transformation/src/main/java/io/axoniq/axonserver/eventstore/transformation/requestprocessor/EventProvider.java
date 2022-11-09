@@ -6,4 +6,8 @@ import reactor.core.publisher.Mono;
 public interface EventProvider {
 
     Mono<Event> event(long token);
+
+    default Mono<Void> close() {
+        return Mono.empty();
+    }
 }

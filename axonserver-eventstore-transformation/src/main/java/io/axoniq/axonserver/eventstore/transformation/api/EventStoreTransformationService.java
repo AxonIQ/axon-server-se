@@ -45,8 +45,6 @@ public interface EventStoreTransformationService {
             CANCELLED,
             APPLYING,
             APPLIED,
-            ROLLING_BACK,
-            ROLLED_BACK,
             FAILED
         }
     }
@@ -131,16 +129,6 @@ public interface EventStoreTransformationService {
                              @Nonnull Authentication authentication);
 
     /**
-     * Rolls back a previously applied transformation. Only the last transformation for a context can be rolled back.
-     *
-     * @param context          the name of the context
-     * @param transformationId the identification of the transformation
-     * @param authentication   authentication of the user/application requesting the service
-     * @return a mono that is completed when the rollback is started successfully
-     */
-    Mono<Void> startRollingBack(String context, String transformationId, @Nonnull Authentication authentication);
-
-    /**
      * Deletes old versions of segments updated by a transformation (if the transformation was applied with the
      * {@code keepOldVersions} option)
      *
@@ -148,5 +136,5 @@ public interface EventStoreTransformationService {
      * @param authentication authentication of the user/application requesting the service
      * @return a mono that is completed when the operation is completed successfully
      */
-    Mono<Void> deleteOldVersions(String context, @Nonnull Authentication authentication);
+    Mono<Void> compact(String context, @Nonnull Authentication authentication);
 }

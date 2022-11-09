@@ -6,7 +6,6 @@ public class ProtoTransformationEntry implements TransformationEntry {
 
     private final long sequence;
     private final TransformationAction payload;
-    private final byte version = 0;
 
     public ProtoTransformationEntry(long sequence, TransformationAction payload) {
         this.sequence = sequence;
@@ -25,6 +24,6 @@ public class ProtoTransformationEntry implements TransformationEntry {
 
     @Override
     public byte version() {
-        return version;
+        return 0;
     }
 }

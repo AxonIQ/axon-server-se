@@ -13,15 +13,13 @@ public interface ContextTransformer {
 
     Mono<Void> startCancelling(String transformationId);
 
-    Mono<Void> markAsCancelled(String transformationId);
+    Mono<Void> markCancelled(String transformationId);
 
     Mono<Void> startApplying(String transformationId, long sequence, String applier);
 
     Mono<Void> markApplied(String transformationId);
 
-    Mono<Void> startRollingBack(String transformationId);
+    Mono<Void> markCompacted();
 
-    Mono<Void> markRolledBack(String transformationId);
-
-    Mono<Void> deleteOldVersions();
+    Mono<Void> compact();
 }
