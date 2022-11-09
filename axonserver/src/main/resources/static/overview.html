@@ -186,7 +186,7 @@
     <div v-if="showList()">
 
         <h3>Connected Applications</h3>
-        <paginated-table :rows="applications" key="connected-applications" selectable="true">
+        <paginated-table :rows="applications" name="connected-applications" selectable="true">
             <template #header>
                 <th class="applicationName">Name</th>
                 <th class="instanceCount"># Instances</th>
