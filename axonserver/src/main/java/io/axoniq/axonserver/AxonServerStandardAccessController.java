@@ -14,13 +14,16 @@ import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.InvalidTokenException;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.Set;
+import javax.annotation.PostConstruct;
 
 /**
  * @author Marc Gathier
@@ -36,6 +39,22 @@ public class AxonServerStandardAccessController implements AxonServerAccessContr
                                               UserController userController) {
         this.messagingPlatformConfiguration = messagingPlatformConfiguration;
         this.userController = userController;
+    }
+
+    @PostConstruct
+    public void validate() {
+        if (messagingPlatformConfiguration.getAccesscontrol() == null ||
+                !messagingPlatformConfiguration.getAccesscontrol().isEnabled()) {
+            return;
+        }
+        if (messagingPlatformConfiguration.getAccesscontrol().getAdminToken() == null) {
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "Missing required admin token (axoniq.axonserver.accesscontrol.admin-token) with access control ENABLED ");
+        }
+        if (messagingPlatformConfiguration.getAccesscontrol().getToken() == null) {
+            throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                 "Missing required token (axoniq.axonserver.accesscontrol.token) with access control ENABLED ");
+        }
     }
 
     @Override
