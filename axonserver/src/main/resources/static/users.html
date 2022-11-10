@@ -11,7 +11,7 @@
 <div id="users">
     <section class="msg info" v-if="feedback !== ''">{{feedback}}</section>
     <section>
-        <paginated-table :rows="users">
+        <paginated-table :rows="users" name="users">
             <template #header>
                 <th>Username</th>
                 <th v-if="isEnterprise()">Roles</th>
