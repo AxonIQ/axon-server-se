@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -273,11 +272,6 @@ public class EventDispatcherTest {
                     .expectNextCount(1L)
                     .verifyComplete();
         assertEquals(1, eventStoreWithoutLeaderCalls.get());
-
-        testSubject.on(new TopologyEvents.ApplicationDisconnected(DEFAULT_CONTEXT,
-                                                                  "myComponent",
-                                                                  "sampleClient", "test"));
-        assertTrue(testSubject.eventTrackerStatus(DEFAULT_CONTEXT).isEmpty());
     }
 
 
