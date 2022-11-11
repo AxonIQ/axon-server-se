@@ -14,7 +14,6 @@ import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
-import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandlerStrategy;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
@@ -24,6 +23,7 @@ import io.axoniq.axonserver.commandprocesing.imp.MetaDataBasedHandlerSelectorStr
 import io.axoniq.axonserver.commandprocesing.imp.QueuedCommandDispatcher;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
@@ -82,7 +82,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.Nonnull;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -90,6 +89,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import javax.annotation.Nonnull;
 
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 

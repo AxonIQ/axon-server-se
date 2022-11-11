@@ -14,12 +14,13 @@ import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.commandprocessing.spi.Payload;
-import io.axoniq.axonserver.grpc.MetaDataValue;
 
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import static io.axoniq.axonserver.ProcessingInstructionHelper.routingKey;
 
 
 public class GrpcCommand implements Command {
@@ -40,26 +41,17 @@ public class GrpcCommand implements Command {
         this.wrapped = wrapped;
         this.context = context;
         this.payload = new GrpcPayload(wrapped.getPayload());
-        Map<String, MetaDataValue> requestMetadata = new HashMap<>(wrapped.getMetaDataMap());
-        requestMetadata.put(ROUTING_KEY, MetaDataValue.newBuilder()
-                                                      .setTextValue(ProcessingInstructionHelper.routingKey(wrapped.getProcessingInstructionsList(),
-                                                                                                           "1234"))
-                                                      .build());
-        requestMetadata.put(PRIORITY, MetaDataValue.newBuilder()
-                                                   .setNumberValue(ProcessingInstructionHelper.priority(wrapped.getProcessingInstructionsList()))
-                                                   .build());
+        Map<String, Serializable> requestMetadata = new HashMap<>(internalMetadata);
+        requestMetadata.put(ROUTING_KEY, routingKey(wrapped.getProcessingInstructionsList(),
+                                                    wrapped.getMessageIdentifier()));
+        requestMetadata.put(PRIORITY, ProcessingInstructionHelper.priority(wrapped.getProcessingInstructionsList()));
+
         if (authentication != null) {
-            requestMetadata.put(PRINCIPAL, MetaDataValue.newBuilder()
-                                                        .setTextValue(authentication.username())
-                                                        .build());
+            requestMetadata.put(PRINCIPAL, authentication);
         }
-        requestMetadata.put(CLIENT_ID, MetaDataValue.newBuilder()
-                                                    .setTextValue(wrapped().getClientId())
-                                                    .build());
-        requestMetadata.put(COMPONENT_NAME, MetaDataValue.newBuilder()
-                                                         .setTextValue(wrapped().getComponentName())
-                                                         .build());
-        metadata = new GrpcMetadata(requestMetadata, internalMetadata);
+        requestMetadata.put(CLIENT_ID, wrapped.getClientId());
+        requestMetadata.put(COMPONENT_NAME, wrapped().getComponentName());
+        metadata = new GrpcMetadata(wrapped.getMetaDataMap(), requestMetadata);
     }
 
     @Override

@@ -20,7 +20,6 @@ import reactor.test.StepVerifier;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +35,7 @@ public class DefaultCommandRequestProcessorTest {
     public static final String COMMAND_NAME = "doIt";
     public static final String CONTEXT = "sample";
     public static final int LOWER_PRIORITY = 10;
-    private final DefaultCommandRequestProcessor testSubject = new DefaultCommandRequestProcessor(Collections.emptyList());
+    private final DefaultCommandRequestProcessor testSubject = new DefaultCommandRequestProcessor(new InMemoryCommandHandlerRegistry());
 
     private final CommandHandlerSubscription handler = new CommandHandlerSubscription() {
 
@@ -208,7 +207,8 @@ public class DefaultCommandRequestProcessorTest {
     @Test
     public void interceptorsExecuted() {
         SimpleHandlerSelectorStrategy simpleHandlerSelector = new SimpleHandlerSelectorStrategy();
-        DefaultCommandRequestProcessor testSubject2 = new DefaultCommandRequestProcessor(List.of(simpleHandlerSelector));
+        DefaultCommandRequestProcessor testSubject2 = new DefaultCommandRequestProcessor(new InMemoryCommandHandlerRegistry(
+                List.of(simpleHandlerSelector)));
         testSubject2.registerInterceptor(CommandHandlerSubscribedInterceptor.class, simpleHandlerSelector);
         testSubject2.registerInterceptor(CommandHandlerUnsubscribedInterceptor.class, simpleHandlerSelector);
         testSubject2.register(handler).block();

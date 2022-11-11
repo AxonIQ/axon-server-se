@@ -1,6 +1,7 @@
 package io.axoniq.axonserver.commandprocesing.imp;
 
 import io.axoniq.axonserver.commandprocessing.spi.Command;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
@@ -34,13 +35,8 @@ public class DefaultCommandRequestProcessor implements CommandRequestProcessor {
 
     private final Map<Class<? extends Interceptor>, List<Interceptor>> interceptorMap = new ConcurrentHashMap<>();
 
-    public DefaultCommandRequestProcessor() {
-        this(Collections.emptyList());
-    }
-
-    public DefaultCommandRequestProcessor(
-            List<HandlerSelectorStrategy> handlerSelectorStrategyList) {
-        this(new InMemoryCommandHandlerRegistry(handlerSelectorStrategyList), new DirectCommandDispatcher());
+    public DefaultCommandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry) {
+        this(commandHandlerRegistry, new DirectCommandDispatcher());
     }
 
     public DefaultCommandRequestProcessor(CommandHandlerRegistry commandHandlerRegistry,

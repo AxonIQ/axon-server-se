@@ -11,6 +11,7 @@ package io.axoniq.axonserver.rest;
 
 import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
+import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
@@ -31,7 +32,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Marc Gathier
@@ -42,7 +45,7 @@ public class CommandRestControllerTest {
 
     @Before
     public void setUp() {
-        DefaultCommandRequestProcessor commandRequestProcessor = new DefaultCommandRequestProcessor();
+        DefaultCommandRequestProcessor commandRequestProcessor = new DefaultCommandRequestProcessor(new InMemoryCommandHandlerRegistry());
         CommandSubscriptionCache commandSubscriptionCache = new CommandSubscriptionCache(commandRequestProcessor);
         Map<String, Serializable> metaDataMap = new HashMap<>();
         metaDataMap.put(CommandHandler.COMPONENT_NAME, "component");

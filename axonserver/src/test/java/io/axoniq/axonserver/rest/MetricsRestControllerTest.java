@@ -9,9 +9,9 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;

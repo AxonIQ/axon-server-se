@@ -16,6 +16,7 @@ import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandException;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandFailedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandReceivedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandResultReceivedInterceptor;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -56,16 +57,15 @@ public class CommandsPerContextCounter {
     }
 
     private Mono<Command> receivedCommand(Mono<Command> commandMono) {
-        return commandMono.flatMap(command -> {
+        return commandMono.doOnNext(command -> {
             commandContext.put(command.id(), command.context());
             activeCommandsCounters.computeIfAbsent(command.context(), c -> {
                 AtomicInteger counter = new AtomicInteger();
-                Gauge.builder("axon.commands.active", () -> counter)
+                Gauge.builder(BaseMetricName.AXON_ACTIVE_COMMANDS.name(), () -> counter)
                      .tags(MeterFactory.CONTEXT, c)
                      .register(meterRegistry);
                 return counter;
             }).incrementAndGet();
-            return Mono.just(command);
         });
     }
 

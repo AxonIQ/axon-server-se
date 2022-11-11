@@ -11,6 +11,7 @@ public interface Interceptor {
     int PRIORITY_FIRST = Integer.MIN_VALUE;
     int PRIORITY_LAST = Integer.MAX_VALUE;
     int PRIORITY_LATER = 100;
+    int PRIORITY_EARLIER = -100;
 
     default int priority() {
         return 0;

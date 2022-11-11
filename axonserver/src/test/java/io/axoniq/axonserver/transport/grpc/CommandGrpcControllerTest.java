@@ -1,7 +1,17 @@
+/*
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.transport.grpc;
 
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
+import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
@@ -31,7 +41,12 @@ import java.util.concurrent.CountDownLatch;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Stefan Dragisic
@@ -156,7 +171,7 @@ public class CommandGrpcControllerTest {
         CountDownLatch countDownLatch = new CountDownLatch(1);
 
         FakeStreamObserver<CommandProviderInbound> responseStream = new FakeStreamObserver<>();
-        commandRequestProcessor = new DefaultCommandRequestProcessor();
+        commandRequestProcessor = new DefaultCommandRequestProcessor(new InMemoryCommandHandlerRegistry());
 
         testSubject = new CommandGrpcController(contextProvider,
                 authenticationProvider,commandRequestProcessor,

@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
 import io.axoniq.axonserver.logging.AuditLog;
 import io.axoniq.axonserver.message.command.CommandMetricsRegistry;
 import io.axoniq.axonserver.message.query.QueryDefinition;

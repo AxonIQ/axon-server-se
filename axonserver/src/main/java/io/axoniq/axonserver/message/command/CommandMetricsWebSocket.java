@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.message.command;
 
-import io.axoniq.axonserver.commandprocesing.imp.CommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerRegistry;
 import io.axoniq.axonserver.message.SubscriptionKey;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

@@ -1,8 +1,5 @@
-package io.axoniq.axonserver.commandprocesing.imp;
+package io.axoniq.axonserver.commandprocessing.spi;
 
-import io.axoniq.axonserver.commandprocessing.spi.Command;
-import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
-import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
