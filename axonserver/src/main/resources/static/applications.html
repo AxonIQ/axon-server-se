@@ -20,7 +20,7 @@
     <section id="applicationFeedback" class="msg info" v-if="feedback !== ''">{{feedback}}</section>
 
     <section id="applicationsOverview">
-        <paginated-table :rows="applications">
+        <paginated-table :rows="applications" name="applications">
             <template #header>
                     <th class="applicationName">Name</th>
                     <th class="applicationDescription">Description</th>

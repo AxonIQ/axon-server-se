@@ -248,7 +248,7 @@
 <span id="context">
     <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
 
-    <paginated-table :rows="contexts">
+    <paginated-table :rows="contexts" name="contexts">
             <template #header>
                 <th class="contextColumn">Context Name</th>
                 <th class="contextColumn">Replication Group Name</th>
