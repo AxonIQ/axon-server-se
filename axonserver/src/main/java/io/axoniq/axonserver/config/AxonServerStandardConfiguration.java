@@ -14,7 +14,6 @@ import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.UserController;
 import io.axoniq.axonserver.commandprocesing.imp.CommandDispatcher;
-import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocesing.imp.ConsistentHashHandlerStrategy;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
 import io.axoniq.axonserver.commandprocesing.imp.HandlerSelectorStrategy;
@@ -28,6 +27,8 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerSubscribedInterceptor;
 import io.axoniq.axonserver.commandprocessing.spi.interceptor.CommandHandlerUnsubscribedInterceptor;
 import io.axoniq.axonserver.exception.CriticalEventException;
+import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.AxonServerClientService;
 import io.axoniq.axonserver.grpc.DefaultInstructionAckSource;
 import io.axoniq.axonserver.grpc.InstructionAckSource;
@@ -44,6 +45,7 @@ import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionMa
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transformation.DefaultEventTransformerFactory;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
+import io.axoniq.axonserver.message.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.message.event.EventSchedulerService;
 import io.axoniq.axonserver.message.query.QueryHandlerSelector;
 import io.axoniq.axonserver.message.query.RoundRobinQueryHandlerSelector;
@@ -209,8 +211,14 @@ public class AxonServerStandardConfiguration {
     @Bean
     public ConsistentHashHandlerStrategy consistentHashHandler() {
         return new ConsistentHashHandlerStrategy(commandHandler -> commandHandler.metadata()
-                                                                         .metadataValue(CommandHandler.LOAD_FACTOR),
-                                         command -> command.metadata().metadataValue(Command.ROUTING_KEY));
+                                                                                 .metadataValue(CommandHandler.LOAD_FACTOR,
+                                                                                                100),
+                                                 commandHandler -> commandHandler.metadata()
+                                                                                 .metadataValue(CommandHandler.CLIENT_STREAM_ID,
+                                                                                                commandHandler.id()),
+
+                                                 command -> command.metadata()
+                                                                   .metadataValue(Command.ROUTING_KEY, command.id()));
     }
 
     @Bean
@@ -229,10 +237,16 @@ public class AxonServerStandardConfiguration {
             @Value("${axoniq.axonserver.default-command-timeout:300000}") long defaultCommandTimeout,
             MeterRegistry meterRegistry) {
         return new QueuedCommandDispatcher(Schedulers.boundedElastic(),
-                                           commandHandler -> commandHandler.metadata()
-                                                                           .metadataValue(CommandHandler.CLIENT_ID),
+                                           commandHandler -> (String) commandHandler.metadata()
+                                                                                    .metadataValue(CommandHandler.CLIENT_ID)
+                                                                                    .orElseThrow(() -> new MessagingPlatformException(
+                                                                                            ErrorCode.OTHER,
+                                                                                            "Missing client id in command handler")),
+                                           command -> command.metadata().metadataValue(Command.PRIORITY, 0L),
+                                           command -> command.metadata().metadataValue(Command.TIMEOUT,
+                                                                                       System.currentTimeMillis()
+                                                                                               + defaultCommandTimeout),
                                            queueCapacity,
-                                           defaultCommandTimeout,
                                            meterRegistry
         );
     }

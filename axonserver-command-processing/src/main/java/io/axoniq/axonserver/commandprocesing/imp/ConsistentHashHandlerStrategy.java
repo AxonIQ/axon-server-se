@@ -11,7 +11,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -23,19 +22,22 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
     private static final Logger logger = LoggerFactory.getLogger(ConsistentHashHandlerStrategy.class);
 
     private final Map<CommandIdentifier, ConsistentHash> consistentHashes = new ConcurrentHashMap<>();
-    private final Function<CommandHandler, Optional<Number>> loadFactorProvider;
-    private final Function<Command, Optional<String>> routingKeyProvider;
+    private final Function<CommandHandler, Number> loadFactorProvider;
+    private final Function<Command, String> routingKeyProvider;
+    private final Function<CommandHandler, String> hashKeySourceProvider;
 
-    public ConsistentHashHandlerStrategy(Function<CommandHandler, Optional<Number>> loadFactorProvider,
-                                         Function<Command, Optional<String>> routingKeyProvider) {
+    public ConsistentHashHandlerStrategy(Function<CommandHandler, Number> loadFactorProvider,
+                                         Function<CommandHandler, String> hashKeySourceProvider,
+                                         Function<Command, String> routingKeyProvider) {
         this.loadFactorProvider = loadFactorProvider;
         this.routingKeyProvider = routingKeyProvider;
+        this.hashKeySourceProvider = hashKeySourceProvider;
     }
 
     @Override
     public Mono<Void> onCommandHandlerSubscribed(CommandHandler commandHandler) {
         return Mono.fromRunnable(() -> {
-            Number loadFactor = loadFactorProvider.apply(commandHandler).orElse(100);
+            Number loadFactor = loadFactorProvider.apply(commandHandler);
             logger.debug("{}[{}] ({}) subscribed load factor {}", commandHandler.commandName(),
                          commandHandler.context(),
                          commandHandler.id(),
@@ -64,7 +66,7 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
     }
 
     private String hash(CommandHandler commandHandler) {
-        return commandHandler.metadata().metadataValue(CommandHandler.CLIENT_STREAM_ID, commandHandler.id());
+        return hashKeySourceProvider.apply(commandHandler);
     }
 
     @Override
@@ -80,7 +82,7 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
         Map<String, CommandHandlerSubscription> keys = candidates.stream()
                                                                  .collect(Collectors.toMap(s -> hash(s.commandHandler()),
                                                                                            s -> s));
-        String routingKey = routingKeyProvider.apply(command).orElse(null);
+        String routingKey = routingKeyProvider.apply(command);
         if (routingKey == null) {
             return candidates;
         }

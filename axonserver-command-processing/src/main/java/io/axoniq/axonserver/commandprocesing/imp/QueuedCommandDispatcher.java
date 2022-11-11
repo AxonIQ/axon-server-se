@@ -22,7 +22,6 @@ import java.util.AbstractMap;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -37,35 +36,38 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
 
     private final Map<String, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
     private final Scheduler executor;
-    private final Function<CommandHandler, Optional<String>> queueNameProvider;
+    private final Function<CommandHandler, String> queueNameProvider;
+    private final Function<Command, Long> priorityProvider;
+    private final Function<Command, Long> timeoutProvider;
     private final int softLimit;
     private final int hardLimit;
 
-    private final long defaultTimeout;
     private final MeterRegistry meterRegistry;
 
 
     public QueuedCommandDispatcher(Scheduler executor,
                                    Function<CommandHandler,
-                                           Optional<String>> queueNameProvider,
+                                           String> queueNameProvider,
+                                   Function<Command,
+                                           Long> priorityProvider,
+                                   Function<Command,
+                                           Long> timeoutProvider,
                                    int softLimit,
-                                   long defaultTimeout,
                                    MeterRegistry meterRegistry
     ) {
         this.executor = executor;
         this.queueNameProvider = queueNameProvider;
+        this.priorityProvider = priorityProvider;
+        this.timeoutProvider = timeoutProvider;
         this.softLimit = softLimit;
         this.hardLimit = (int) (softLimit * 1.1);
-        this.defaultTimeout = defaultTimeout;
         this.meterRegistry = meterRegistry;
         executor.schedulePeriodically(this::timeout, 1, 1, TimeUnit.MINUTES);
     }
 
     @Override
     public Mono<CommandResult> dispatch(CommandHandlerSubscription handler, Command commandRequest) {
-        return Mono.fromCallable(() -> commandQueueMap.computeIfAbsent(queueNameProvider.apply(handler.commandHandler())
-                                                                                        .orElseThrow(() -> new RuntimeException(
-                                                                                                "cannot determine queue name for handler")),
+        return Mono.fromCallable(() -> commandQueueMap.computeIfAbsent(queueNameProvider.apply(handler.commandHandler()),
                                                                        CommandQueue::new))
                    .flatMap(q -> q.enqueue(new CommandAndHandler(commandRequest, handler)));
     }
@@ -79,7 +81,7 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
     @Override
     public Mono<Void> onCommandHandlerUnsubscribed(CommandHandler commandHandler) {
         return Mono.fromRunnable(() -> {
-            String queueName = queueNameProvider.apply(commandHandler).orElse(null);
+            String queueName = queueNameProvider.apply(commandHandler);
             if (queueName == null) {
                 return;
             }
@@ -242,9 +244,8 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         public CommandAndHandler(Command commandRequest, CommandHandlerSubscription handler) {
             this.commandRequest = commandRequest;
             this.handler = handler;
-            priority = commandRequest.metadata().metadataValue(Command.PRIORITY, 0L);
-            timeout = commandRequest.metadata().metadataValue(Command.TIMEOUT,
-                                                              System.currentTimeMillis() + defaultTimeout);
+            priority = priorityProvider.apply(commandRequest);
+            timeout = timeoutProvider.apply(commandRequest);
         }
 
         public long priority() {
@@ -271,13 +272,14 @@ public class QueuedCommandDispatcher implements CommandDispatcher, CommandHandle
         Map<String, String> details = commandQueueMap
                 .entrySet()
                 .stream()
-                .map(q -> new AbstractMap.SimpleEntry<>(String.format("%s.waitingCommands", q.getKey()), q.getValue().size()))
+                .map(q -> new AbstractMap.SimpleEntry<>(String.format("%s.waitingCommands", q.getKey()),
+                                                        q.getValue().size()))
                 .peek(q -> {
                     if (q.getValue() > 10) {
                         status.set(Status.WARN);
                     }
                 })
-                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, q->q.getValue().toString()));
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, q -> q.getValue().toString()));
 
         return new Health() {
             @Override

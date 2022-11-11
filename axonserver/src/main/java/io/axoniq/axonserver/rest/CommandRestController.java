@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.rest;
 
 import com.google.protobuf.ByteString;
-import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
@@ -22,6 +21,7 @@ import io.axoniq.axonserver.component.command.DefaultCommands;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.logging.AuditLog;
+import io.axoniq.axonserver.message.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.rest.json.CommandRequestJson;
 import io.axoniq.axonserver.rest.json.CommandResponseJson;
 import io.axoniq.axonserver.topology.Topology;
@@ -42,10 +42,10 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.validation.Valid;
 import java.io.Serializable;
 import java.security.Principal;
 import java.util.Optional;
+import javax.validation.Valid;
 
 import static io.axoniq.axonserver.AxonServerAccessController.CONTEXT_PARAM;
 import static io.axoniq.axonserver.AxonServerAccessController.TOKEN_PARAM;

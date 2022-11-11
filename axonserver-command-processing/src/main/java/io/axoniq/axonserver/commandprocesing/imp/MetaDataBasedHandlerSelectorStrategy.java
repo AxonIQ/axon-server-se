@@ -11,7 +11,6 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
@@ -38,15 +37,14 @@ public class MetaDataBasedHandlerSelectorStrategy implements HandlerSelectorStra
         Metadata clientTags = client.metadata();
 
         return StreamSupport.stream(metaDataMap.metadataKeys().spliterator(), false)
-                .filter(k -> !Metadata.isInternal(k))
-                .reduce(0,
-                        (score, key) -> score + match(metaDataMap.metadataValue(key),
-                                clientTags.metadataValue(key)), Integer::sum );
+                            .filter(k -> !Metadata.isInternal(k))
+                            .reduce(0,
+                                    (score, key) -> score + match(metaDataMap.metadataValue(key, null),
+                                                                  clientTags.metadataValue(key, null)), Integer::sum);
     }
 
-    private int match(Optional<Serializable> requestValue, Optional<Serializable> handlerValue) {
-        return !requestValue.isPresent() || !handlerValue.isPresent() ? 0 : matchValues(requestValue.get(),
-                                                                                        handlerValue.get());
+    private int match(Serializable requestValue, Serializable handlerValue) {
+        return requestValue == null || handlerValue == null ? 0 : matchValues(requestValue, handlerValue);
     }
 
     private int matchValues(Serializable value, Serializable metaDataValue) {

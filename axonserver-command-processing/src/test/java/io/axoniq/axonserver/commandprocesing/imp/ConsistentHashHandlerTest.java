@@ -19,9 +19,12 @@ import static org.junit.Assert.assertEquals;
 
 public class ConsistentHashHandlerTest {
 
-    private final ConsistentHashHandlerStrategy consistentHashHandler = new ConsistentHashHandlerStrategy(commandHandler -> Optional.empty(),
-                                                                                          command -> Optional.of(
-                                                                                                  "routingKey1"));
+    private final ConsistentHashHandlerStrategy consistentHashHandler =
+            new ConsistentHashHandlerStrategy(commandHandler -> 100,
+                                              commandHandler -> commandHandler.metadata()
+                                                                              .metadataValue(CommandHandler.CLIENT_STREAM_ID,
+                                                                                             commandHandler.id()),
+                                              command -> "routingKey1");
 
     @Test
     public void select() {
@@ -48,12 +51,12 @@ public class ConsistentHashHandlerTest {
         consistentHashHandler.onCommandHandlerUnsubscribed(commandHandler1).block();
 
         Set<CommandHandlerSubscription> handlers = consistentHashHandler.select(Set.of(commandHandlerSubscription(
-                                commandHandler1),
-                        commandHandlerSubscription(
-                                commandHandler2)),
-                command("routingKey1"));
+                                                                                               commandHandler1),
+                                                                                       commandHandlerSubscription(
+                                                                                               commandHandler2)),
+                                                                                command("routingKey1"));
         assertEquals(1, handlers.size());
-        assertEquals(handlers.stream().findFirst().get().commandHandler(),commandHandler2);
+        assertEquals(handlers.stream().findFirst().get().commandHandler(), commandHandler2);
     }
 
     @Test
@@ -62,10 +65,10 @@ public class ConsistentHashHandlerTest {
         CommandHandler commandHandler2 = commandHandler("handler2");
 
         Set<CommandHandlerSubscription> handlers = consistentHashHandler.select(Set.of(commandHandlerSubscription(
-                                commandHandler1),
-                        commandHandlerSubscription(
-                                commandHandler2)),
-                command("routingKey1"));
+                                                                                               commandHandler1),
+                                                                                       commandHandlerSubscription(
+                                                                                               commandHandler2)),
+                                                                                command("routingKey1"));
         assertEquals(2, handlers.size());
     }
 
@@ -75,10 +78,10 @@ public class ConsistentHashHandlerTest {
         CommandHandler commandHandler2 = commandHandler("handler2");
 
         Set<CommandHandlerSubscription> handlers = consistentHashHandler.select(Set.of(commandHandlerSubscription(
-                                commandHandler1),
-                        commandHandlerSubscription(
-                                commandHandler2)),
-                command(null));
+                                                                                               commandHandler1),
+                                                                                       commandHandlerSubscription(
+                                                                                               commandHandler2)),
+                                                                                command(null));
         assertEquals(2, handlers.size());
     }
 
@@ -90,7 +93,7 @@ public class ConsistentHashHandlerTest {
         consistentHashHandler.onCommandHandlerSubscribed(commandHandler2).block();
 
         Set<CommandHandlerSubscription> handlers = consistentHashHandler.select(emptySet(),
-                command("routingKey1"));
+                                                                                command("routingKey1"));
 
         assertEquals(0, handlers.size());
     }

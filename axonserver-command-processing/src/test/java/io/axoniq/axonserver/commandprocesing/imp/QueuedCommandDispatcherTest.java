@@ -26,11 +26,13 @@ import static org.junit.Assert.fail;
 
 public class QueuedCommandDispatcherTest {
 
-    private final QueuedCommandDispatcher testSubject = new QueuedCommandDispatcher(Schedulers.boundedElastic(),
-                                                                                    h -> Optional.of("clientId"),
-                                                                                    100,
-                                                                                    5000,
-                                                                                    new SimpleMeterRegistry());
+    private final QueuedCommandDispatcher testSubject =
+            new QueuedCommandDispatcher(Schedulers.boundedElastic(),
+                                        h -> "clientId",
+                                        c -> 0L,
+                                        c -> System.currentTimeMillis() + 5000,
+                                        100,
+                                        new SimpleMeterRegistry());
 
     @Test
     public void dispatch() throws InterruptedException {
@@ -52,19 +54,20 @@ public class QueuedCommandDispatcherTest {
     }
 
     @Test
-    public void dispatchWithHardLimit() throws InterruptedException {
+    public void dispatchWithHardLimit() {
         QueuedCommandDispatcher testSubjectLimit = new QueuedCommandDispatcher(Schedulers.boundedElastic(),
-                h -> Optional.of("clientId"),
-                0,
-                5000,
-                new SimpleMeterRegistry());
+                                                                               h -> "clientId",
+                                                                               c -> 0L,
+                                                                               c -> System.currentTimeMillis() + 5000,
+                                                                               0,
+                                                                               new SimpleMeterRegistry());
 
         CommandHandlerSubscription handler = commandHandlerSubscription();
         Command request = request("request1");
 
         StepVerifier.create(testSubjectLimit.dispatch(handler, request))
-                .expectErrorMatches(e-> e.getMessage().startsWith("Failed to add request to queue"))
-                .verify();
+                    .expectErrorMatches(e -> e.getMessage().startsWith("Failed to add request to queue"))
+                    .verify();
     }
 
     @Test

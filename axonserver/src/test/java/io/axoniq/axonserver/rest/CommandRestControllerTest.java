@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.rest;
 
-import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocesing.imp.DefaultCommandRequestProcessor;
 import io.axoniq.axonserver.commandprocesing.imp.InMemoryCommandHandlerRegistry;
 import io.axoniq.axonserver.commandprocessing.spi.Command;
@@ -18,6 +17,7 @@ import io.axoniq.axonserver.commandprocessing.spi.CommandHandlerSubscription;
 import io.axoniq.axonserver.commandprocessing.spi.CommandResult;
 import io.axoniq.axonserver.commandprocessing.spi.Metadata;
 import io.axoniq.axonserver.component.command.ComponentCommand;
+import io.axoniq.axonserver.message.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.serializer.GsonMedia;
 import io.axoniq.axonserver.topology.Topology;
 import org.junit.Before;

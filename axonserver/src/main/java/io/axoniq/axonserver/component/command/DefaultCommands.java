@@ -9,8 +9,8 @@
 
 package io.axoniq.axonserver.component.command;
 
-import io.axoniq.axonserver.commandprocesing.imp.CommandSubscriptionCache;
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
+import io.axoniq.axonserver.message.command.CommandSubscriptionCache;
 import io.axoniq.axonserver.serializer.Media;
 
 import java.util.Iterator;

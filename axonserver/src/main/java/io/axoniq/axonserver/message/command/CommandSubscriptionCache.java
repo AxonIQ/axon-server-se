@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.commandprocesing.imp;
+package io.axoniq.axonserver.message.command;
 
 import io.axoniq.axonserver.commandprocessing.spi.CommandHandler;
 import io.axoniq.axonserver.commandprocessing.spi.CommandRequestProcessor;
