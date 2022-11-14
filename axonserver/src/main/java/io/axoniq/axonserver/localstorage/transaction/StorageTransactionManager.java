@@ -40,4 +40,8 @@ public interface StorageTransactionManager {
     default void cancelPendingTransactions() {
 
     }
+
+    default void clearSequenceNumberCache() {
+
+    }
 }

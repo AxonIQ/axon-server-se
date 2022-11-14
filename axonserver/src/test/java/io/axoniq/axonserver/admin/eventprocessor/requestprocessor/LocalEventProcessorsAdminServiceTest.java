@@ -28,6 +28,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo;
 import io.axoniq.axonserver.grpc.control.EventProcessorInfo.SegmentStatus;
 import io.axoniq.axonserver.topology.Topology;
+import io.axoniq.axonserver.util.AuthenticatedUser;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
@@ -135,7 +136,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache,
                                                                                             strategyController);
         testSubject.pause(new EventProcessorIdentifier(processorName, Topology.DEFAULT_CONTEXT, tokenStore),
-                          () -> "authenticated-user")
+                          new AuthenticatedUser("authenticated-user"))
                    .block();
         verify(publisher).pauseProcessorRequest(eq("default"), eq("Client-A"), eq(processorName), any());
         verify(publisher).pauseProcessorRequest(eq("default"), eq("Client-B"), eq(processorName), any());
@@ -156,7 +157,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache,
                                                                                             strategyController);
         testSubject.start(new EventProcessorIdentifier(processorName, Topology.DEFAULT_CONTEXT, tokenStore),
-                          () -> "authenticated-user")
+                          new AuthenticatedUser( "authenticated-user"))
                    .block();
         verify(publisher).startProcessorRequest(eq("default"), eq("Client-A"), eq(processorName), any());
         verify(publisher).startProcessorRequest(eq("default"), eq("Client-B"), eq(processorName), any());
@@ -177,7 +178,7 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(testSubject.pause(new EventProcessorIdentifier("anotherProcessor",
                                                                            Topology.DEFAULT_CONTEXT, tokenStore
                                               ),
-                                              () -> "authenticated-user"))
+                                              new AuthenticatedUser( "authenticated-user")))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_NOT_FOUND))
                     .verify();
     }
@@ -197,7 +198,7 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(testSubject.start(new EventProcessorIdentifier("anotherProcessor",
                                                                            Topology.DEFAULT_CONTEXT, tokenStore
                                               ),
-                                              () -> "authenticated-user"))
+                                              new AuthenticatedUser( "authenticated-user")))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_NOT_FOUND))
                     .verify();
     }
@@ -223,7 +224,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache,
                                                                                             strategyController);
         testSubject.split(new EventProcessorIdentifier(processorName, Topology.DEFAULT_CONTEXT, tokenStore),
-                          () -> "authenticated-user")
+                          new AuthenticatedUser( "authenticated-user"))
                    .block();
         verify(publisher).splitSegment(eq("default"), eq("Client-A"), eq(processorName), eq(0), any());
         verifyNoMoreInteractions(publisher);
@@ -241,7 +242,7 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(testSubject.split(new EventProcessorIdentifier(processorName,
                                                                            Topology.DEFAULT_CONTEXT, tokenStore
                                               ),
-                                              () -> "authenticated-user"))
+                                              new AuthenticatedUser( "authenticated-user")))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_NOT_FOUND))
                     .verify();
     }
@@ -260,7 +261,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache,
                                                                                             strategyController);
         testSubject.merge(new EventProcessorIdentifier(processorName, Topology.DEFAULT_CONTEXT, tokenStore),
-                          () -> "authenticated-user")
+                          new AuthenticatedUser( "authenticated-user"))
                    .block();
         // TODO: 10/02/2022 improve checking to ensure only one of client-a, client-b gets merge request and the other gets release request
         verify(publisher).mergeSegment(eq("default"), eq("Client-B"), eq(processorName), eq(1), any());
@@ -290,7 +291,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache,
                                                                                             strategyController);
         testSubject.merge(new EventProcessorIdentifier(processorName, Topology.DEFAULT_CONTEXT, tokenStore),
-                          () -> "authenticated-user")
+                          new AuthenticatedUser( "authenticated-user"))
                    .block();
         // TODO: 10/02/2022 improve checking to ensure only one of client-a, client-b gets merge request and the other gets release request
         verify(publisher).mergeSegment(eq("default"), eq("Client-B"), eq(processorName), eq(2), any());
@@ -322,7 +323,7 @@ public class LocalEventProcessorsAdminServiceTest {
         testSubject.move(new EventProcessorIdentifier(processorName, Topology.DEFAULT_CONTEXT, tokenStore),
                          2,
                          "Client-B",
-                         () -> "authenticated-user").block();
+                         new AuthenticatedUser( "authenticated-user")).block();
         verify(publisher).releaseSegment(eq("default"), eq("Client-A"), eq(processorName), eq(2), any());
         verify(publisher).releaseSegment(eq("default"), eq("Client-E"), eq(processorName), eq(2), any());
         verifyNoMoreInteractions(publisher);
@@ -344,7 +345,7 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName,
                                                                           Topology.DEFAULT_CONTEXT, tokenStore
                                              ), 2, "Client-B",
-                                             () -> "authenticated-user"))
+                                             new AuthenticatedUser( "authenticated-user")))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_MOVE_NO_AVAILBLE_THREADS))
                     .verify();
     }
@@ -362,7 +363,7 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName,
                                                                           Topology.DEFAULT_CONTEXT, tokenStore
                                              ), 2, "Client-B",
-                                             () -> "authenticated-user"))
+                                             new AuthenticatedUser( "authenticated-user")))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.EVENT_PROCESSOR_MOVE_UNKNOWN_TARGET))
                     .verify();
     }
@@ -380,7 +381,7 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(testSubject.move(new EventProcessorIdentifier(processorName,
                                                                           Topology.DEFAULT_CONTEXT, tokenStore
                                              ), 2, "Client-A",
-                                             () -> "authenticated-user"))
+                                             new AuthenticatedUser( "authenticated-user")))
                     .expectErrorMatches(t -> matchException(t, ErrorCode.OTHER))
                     .verify();
     }
@@ -401,7 +402,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                           Topology.DEFAULT_CONTEXT, tokenStore
                                              ),
                                              2, "Client-A",
-                                             () -> "authenticated-user"))
+                                             new AuthenticatedUser( "authenticated-user")))
                     .expectComplete()
                     .verify();
     }
@@ -425,7 +426,7 @@ public class LocalEventProcessorsAdminServiceTest {
                                                                                             instructionCache,
                                                                                             strategyController);
         Flux<String> clients = testSubject.eventProcessorsByComponent("component",
-                                                                      () -> "authenticated-user")
+                                                                      new AuthenticatedUser( "authenticated-user"))
                                           .flatMap(eventProcessor -> Flux.fromIterable(eventProcessor.instances()))
                                           .map(EventProcessorInstance::clientId);
 
@@ -459,7 +460,8 @@ public class LocalEventProcessorsAdminServiceTest {
         StepVerifier.create(testSubject.loadBalance(new EventProcessorIdentifier(processorName,
                                                                                  Topology.DEFAULT_CONTEXT, tokenStore
                                                     ),
-                                                    strategy, () -> "authenticated-user"))
+                                                    strategy,
+                                                    new AuthenticatedUser( "authenticated-user")))
                     .verifyComplete();
 
         TrackingEventProcessor tep = tepCaptor.getValue();

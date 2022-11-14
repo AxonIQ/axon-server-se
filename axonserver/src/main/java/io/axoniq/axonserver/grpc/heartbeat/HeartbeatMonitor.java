@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc.heartbeat;
 
 import io.axoniq.axonserver.applicationevents.TopologyEvents.ApplicationConnected;
@@ -10,6 +19,8 @@ import io.axoniq.axonserver.grpc.control.Heartbeat;
 import io.axoniq.axonserver.grpc.control.PlatformInboundInstruction;
 import io.axoniq.axonserver.grpc.control.PlatformOutboundInstruction;
 import io.axoniq.axonserver.message.ClientStreamIdentification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -38,6 +49,8 @@ import static io.axoniq.axonserver.grpc.control.PlatformInboundInstruction.Reque
 @Component
 @ConditionalOnProperty(value = "axoniq.axonserver.heartbeat.enabled")
 public class HeartbeatMonitor {
+
+    private final Logger logger = LoggerFactory.getLogger(HeartbeatMonitor.class);
 
     private final Map<ClientStreamIdentification, ClientInformation> clientInfos = new ConcurrentHashMap<>();
 
@@ -111,6 +124,7 @@ public class HeartbeatMonitor {
     }
 
     private void onHeartBeat(ClientStreamIdentification clientIdentification, PlatformInboundInstruction heartbeat) {
+        logger.trace("HeartBeat received from {}", clientIdentification);
         lastReceivedHeartBeats.put(clientIdentification, Instant.now(clock));
     }
 
@@ -120,6 +134,7 @@ public class HeartbeatMonitor {
     @Scheduled(initialDelayString = "${axoniq.axonserver.client-heartbeat-check-initial-delay:10000}",
             fixedRateString = "${axoniq.axonserver.client-heartbeat-check-rate:1000}")
     public void checkClientsStillAlive() {
+        logger.debug("Checking connected clients are still alive...");
         Instant timeout = Instant.now(clock).minus(heartbeatTimeout, ChronoUnit.MILLIS);
         lastReceivedHeartBeats.forEach((clientStreamIdentification, instant) -> {
             if (instant.isBefore(timeout) && clientInfos.containsKey(clientStreamIdentification)) {
@@ -127,8 +142,15 @@ public class HeartbeatMonitor {
                 ClientInformation clientInformation = clientInfos.get(clientStreamIdentification);
                 String component = clientInformation.component;
                 String clientId = clientInformation.clientId;
+                logger.info(
+                        "Client inactivity detected for more than {} milliseconds. Client: {}, lastActivity: {}, timeout: {}. ",
+                        heartbeatTimeout,
+                        clientStreamIdentification,
+                        instant,
+                        timeout);
                 eventPublisher.publishEvent(new ApplicationInactivityTimeout(clientStreamIdentification, component,
-                                                                             new ClientContext(clientId, clientInformation.context)));
+                                                                             new ClientContext(clientId,
+                                                                                               clientInformation.context)));
             }
         });
     }
@@ -144,6 +166,7 @@ public class HeartbeatMonitor {
                                                                                          evt.getClientStreamId());
         lastReceivedHeartBeats.remove(clientIdentification);
         clientInfos.remove(clientIdentification);
+        logger.debug("Stop monitoring heartbeat for client {}.", clientIdentification);
     }
 
 

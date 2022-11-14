@@ -528,8 +528,8 @@ public class StandardIndexManager implements IndexManager {
             }
             IndexEntries entries = activeIndexes.getOrDefault(segment, Collections.emptyMap()).get(aggregateId);
             if (entries != null) {
-                entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, new FileVersion(segment, 0), entries);
-                maxResults -= entries.size();
+                int nrOfEntries = addToResult(firstSequenceNumber, lastSequenceNumber, results, new FileVersion(segment, 0), entries);
+                maxResults -= nrOfEntries;
                 if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
                     return results;
                 }
@@ -545,8 +545,8 @@ public class StandardIndexManager implements IndexManager {
             IndexEntries entries = getPositions(fileVersion, aggregateId);
             logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
             if (entries != null) {
-                entries = addToResult(firstSequenceNumber, lastSequenceNumber, results, fileVersion, entries);
-                maxResults -= entries.size();
+                int nrOfEntries = addToResult(firstSequenceNumber, lastSequenceNumber, results, fileVersion, entries);
+                maxResults -= nrOfEntries;
                 if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
                     return results;
                 }
@@ -557,13 +557,13 @@ public class StandardIndexManager implements IndexManager {
         return results;
     }
 
-    private IndexEntries addToResult(long firstSequenceNumber, long lastSequenceNumber,
-                                     SortedMap<FileVersion, IndexEntries> results, FileVersion segment, IndexEntries entries) {
+    private int addToResult(long firstSequenceNumber, long lastSequenceNumber,
+                                     SortedMap<Long, IndexEntries> results, FileVersion segment, IndexEntries entries) {
         entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
         if (!entries.isEmpty()) {
             results.put(segment, entries);
         }
-        return entries;
+        return entries.size();
     }
 
     private boolean allEntriesFound(long firstSequenceNumber, long maxResults, IndexEntries entries) {

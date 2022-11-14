@@ -1,7 +1,33 @@
-This is the Axon Server Standard Edition, version 4.5
+This is the Axon Server Standard Edition, version 4.6
 
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
+
+Release Notes for version 4.6.4
+-------------------------------
+* Fix: change column name in event processor overview to "Active Segments"
+* Fix: null pointer exception popup in dashboard
+
+Release Notes for version 4.6.3
+-------------------------------
+* Fix: reading aggregate events searches for older events when the last event sequence number
+  is the same as the snapshot sequence number
+* New property for index, axoniq.axonserver.event.segments-for-sequence-number-check, defines the number of segments
+  that Axon Server will check for events on an aggregate when an event with sequence number 0
+  is stored. The default value for this property is 10.
+  For performance reasons, if you increase this property to a value higher than 100 it is recommended
+  to also increase the axoniq.axonserver.event.max-bloom-filters-in-memory property.
+
+Release Notes for version 4.6.2
+-------------------------------
+* Fix: reading aggregate events hangs on JVM Error
+* Fix: canceling an event store query through the gRPC interface does not close the stream
+* Fix: event processor operations unavailable in the dashboard for applications using Axon Framework version before 4.5
+* Fix: when sending two commands or queries with the same message identifier at the same time, one does not get completed
+
+Release Notes for version 4.6.1
+-------------------------------
+* Security update: updated control database settings
 
 Release Notes for version 4.6.0
 -------------------------------
@@ -31,6 +57,26 @@ Bug fixes:
 Notes:
 - For the Swagger endpoint use  /swagger-ui.html or /swagger-ui/index.html.
 - The generic endpoint for actuator is /actuator (/actuator/ no longer works)
+
+Release Notes for version 4.5.16
+--------------------------------
+* Fix: reading aggregate events searches for older events when the last event sequence number
+  is the same as the snapshot sequence number
+* New property for index, axoniq.axonserver.event.segments-for-sequence-number-check, defines the number of segments
+  that Axon Server will check for events on an aggregate when an event with sequence number 0
+  is stored. The default value for this property is 10.
+  For performance reasons, if you increase this property to a value higher than 100 it is recommended
+  to also increase the axoniq.axonserver.event.max-bloom-filters-in-memory property.
+
+Release Notes for version 4.5.15
+--------------------------------
+* Fix: reading aggregate events hangs on JVM Error, this includes a new property
+"axoniq.axonserver.event.aggregate.timeout" to set the timeout between two events returned by Axon Server.
+The default value for this property is 30 seconds.
+
+Release Notes for version 4.5.14
+--------------------------------
+* Security update: updated control database settings
 
 Release Notes for version 4.5.13
 --------------------------------
@@ -514,5 +560,5 @@ these in the settings as described above.
 
 The HTTP server has in its root context a management Web GUI, a health
 indicator is available at "/actuator/health", and the REST API at "/v1'. The
-API's Swagger endpoint finally, is available at "/swagger-ui/", and gives
+API's Swagger endpoint finally, is available at "/swagger-ui/index.html", and gives
 the documentation on the REST API.

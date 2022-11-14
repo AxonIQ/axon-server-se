@@ -25,6 +25,7 @@ import io.axoniq.axonserver.message.command.InsufficientBufferCapacityException;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.util.ConstraintCache;
+import io.axoniq.axonserver.util.NonReplacingConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,14 +55,14 @@ public class QueryDispatcher {
 
     private final Logger logger = LoggerFactory.getLogger(QueryDispatcher.class);
     private final QueryRegistrationCache registrationCache;
-    private final ConstraintCache<String, ActiveQuery> queryCache;
+    private final NonReplacingConstraintCache<String, ActiveQuery> queryCache;
     private final QueryInterceptors queryInterceptors;
     private final QueryMetricsRegistry queryMetricsRegistry;
     private final FlowControlQueues<QueryInstruction> queryQueue;
     private final Map<String, MeterFactory.RateMeter> queryRatePerContext = new ConcurrentHashMap<>();
 
     public QueryDispatcher(QueryRegistrationCache registrationCache,
-                           ConstraintCache<String, ActiveQuery> queryCache,
+                           NonReplacingConstraintCache<String, ActiveQuery> queryCache,
                            QueryMetricsRegistry queryMetricsRegistry,
                            QueryInterceptors queryInterceptors,
                            MeterFactory meterFactory,
@@ -227,8 +228,19 @@ public class QueryDispatcher {
                                                           interceptedCallback,
                                                           onCompleted,
                                                           handlers, isStreamingQuery(query));
-                queryCache.put(query.getMessageIdentifier(), activeQuery);
-                handlers.forEach(h -> dispatchQuery(h, serializedQuery2, timeout));
+                if(queryCache.putIfAbsent(query.getMessageIdentifier(), activeQuery)!=null){
+                    callback.accept(QueryResponse.newBuilder()
+                                                 .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
+                                                 .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                 .setMessageIdentifier(UUID.randomUUID().toString())
+                                                 .setErrorMessage(ErrorMessageFactory
+                                                                          .build("Query with supplied ID already present"))
+                                                 .build());
+                    onCompleted.accept("DuplicateId");
+                }
+                else{
+                    handlers.forEach(h -> dispatchQuery(h, serializedQuery2, timeout));
+                }
             }
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
             logger.warn("{}: failed to dispatch query {}", serializedQuery.context(),
@@ -391,8 +403,19 @@ public class QueryDispatcher {
                                                       singleton(queryHandler),
                                                       isStreamingQuery(query));
             try {
-                queryCache.put(key, activeQuery);
-                dispatchQuery(queryHandler, serializedQuery, timeout, streaming);
+                if(queryCache.putIfAbsent(key, activeQuery)!=null){
+                    callback.accept(QueryResponse.newBuilder()
+                                                 .setErrorCode(ErrorCode.QUERY_DUPLICATED.getCode())
+                                                 .setRequestIdentifier(serializedQuery.getMessageIdentifier())
+                                                 .setMessageIdentifier(UUID.randomUUID().toString())
+                                                 .setErrorMessage(ErrorMessageFactory
+                                                                          .build("Query with supplied ID already present"))
+                                                 .build());
+                    onCompleted.accept("DuplicateId");
+                }
+                else{
+                    dispatchQuery(queryHandler, serializedQuery, timeout, streaming);
+                }
             } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
                 activeQuery.completeWithError(queryHandler.getClientId(),
                                               ErrorCode.QUERY_DISPATCH_ERROR,

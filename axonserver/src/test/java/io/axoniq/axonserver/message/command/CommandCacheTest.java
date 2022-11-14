@@ -35,7 +35,7 @@ public class CommandCacheTest {
     @Test
     public void clearOnTimeout() {
         AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
-        testSubject.put("1234", new CommandInformation("1234",
+        testSubject.putIfAbsent("1234", new CommandInformation("1234",
                                                        "Source",
                                                        "Target",
                                                        responseAtomicReference::set,
@@ -51,12 +51,12 @@ public class CommandCacheTest {
     public void onFullCapacityThrowError() {
         AtomicReference<SerializedCommandResponse> responseAtomicReference = new AtomicReference<>();
 
-        testSubject.put("1234", new CommandInformation("1234", "Source", "Target", responseAtomicReference::set,
+        testSubject.putIfAbsent("1234", new CommandInformation("1234", "Source", "Target", responseAtomicReference::set,
                                                        new ClientStreamIdentification("context", "client"),
                                                        "component"));
 
 
-        testSubject.put("4567", new CommandInformation("4567", "Source", "Target", responseAtomicReference::set,
+        testSubject.putIfAbsent("4567", new CommandInformation("4567", "Source", "Target", responseAtomicReference::set,
                                                        new ClientStreamIdentification("context", "client"),
                                                        "component"));
     }

@@ -218,6 +218,18 @@ public class PrimaryEventStoreTest {
     }
 
     @Test
+    public void aggregateEventsReusedAggregateIdentifier() throws InterruptedException {
+        PrimaryEventStore testSubject = primaryEventStore();
+        setupEvents(testSubject, 10000, 20);
+        setupEvents(testSubject, 1, 5);
+
+        List<SerializedEvent> events = testSubject.eventsPerAggregate("aggregate-0", 5, Long.MAX_VALUE, 0)
+                                                  .collectList().block();
+        assertNotNull(events);
+        assertEquals(0, events.size());
+    }
+
+    @Test
     public void transactionsIterator() throws InterruptedException {
         PrimaryEventStore testSubject = primaryEventStore();
         setupEvents(testSubject, 1000, 2);
