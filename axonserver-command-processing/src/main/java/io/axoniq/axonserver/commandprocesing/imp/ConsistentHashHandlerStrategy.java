@@ -86,8 +86,10 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
             return candidates;
         }
 
-        logger.debug("{}[{}] Selecting based on consistent hash -  {} candidates", command.commandName(),
-                     command.context(), candidates.size());
+        if (logger.isDebugEnabled()) {
+            logger.debug("{}[{}] Selecting based on consistent hash -  {} candidates", command.commandName(),
+                         command.context(), candidates.size());
+        }
         Map<String, CommandHandlerSubscription> keys = candidates.stream()
                                                                  .collect(Collectors.toMap(s -> hash(s.commandHandler()),
                                                                                            s -> s));
@@ -100,8 +102,10 @@ public class ConsistentHashHandlerStrategy implements HandlerSelectorStrategy, C
                                                           .map(m -> keys.get(m.getClient()))
                                                           .orElse(null);
         if (member != null) {
-            logger.debug("{}[{}] Selected {} - {}", command.commandName(),
-                         command.context(), member.commandHandler().id(), routingKey);
+            if (logger.isDebugEnabled()) {
+                logger.debug("{}[{}] Selected {} - {}", command.commandName(),
+                             command.context(), member.commandHandler().id(), routingKey);
+            }
             return Collections.singleton(member);
         }
         return candidates;

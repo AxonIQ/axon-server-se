@@ -10,8 +10,8 @@
 package io.axoniq.axonserver.commandprocesing.imp;
 
 
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -60,13 +60,7 @@ public class Digester {
      * @return The hex representation of the MD5 hash of given {@code input}
      */
     public static String md5Hex(String input) {
-        try {
-            return newMD5Instance().update(input.getBytes(UTF_8)).digestHex();
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(
-                    "The UTF-8 encoding is not available on this environment",
-                    e);
-        }
+        return newMD5Instance().update(input.getBytes(StandardCharsets.UTF_8)).digestHex();
     }
 
     private static String hex(byte[] hash) {
