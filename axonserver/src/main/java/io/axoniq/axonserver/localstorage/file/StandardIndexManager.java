@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -47,8 +47,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
 
 /**
  * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
@@ -558,7 +556,7 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private int addToResult(long firstSequenceNumber, long lastSequenceNumber,
-                                     SortedMap<Long, IndexEntries> results, FileVersion segment, IndexEntries entries) {
+                            SortedMap<FileVersion, IndexEntries> results, FileVersion segment, IndexEntries entries) {
         entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
         if (!entries.isEmpty()) {
             results.put(segment, entries);
