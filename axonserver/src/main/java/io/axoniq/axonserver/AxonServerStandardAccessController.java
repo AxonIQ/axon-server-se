@@ -19,7 +19,6 @@ import io.axoniq.axonserver.exception.InvalidTokenException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.Set;
@@ -29,7 +28,6 @@ import javax.annotation.PostConstruct;
  * @author Marc Gathier
  * @since 4.0
  */
-@Component
 public class AxonServerStandardAccessController implements AxonServerAccessController {
 
     private final MessagingPlatformConfiguration messagingPlatformConfiguration;
