@@ -175,7 +175,7 @@
     <section v-if="node.clustered" id="nodesOverview">
         <h2>Nodes</h2>
 
-        <paginated-table :rows="nodes">
+        <paginated-table :rows="nodes" name="cluster">
             <template #header>
                 <th style="width: 20px;"></th>
                 <th class="nodeName">Node Name</th>

@@ -955,6 +955,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         @Override
         public SerializedEvent decorateEvent(SerializedEvent serializedEvent) {
+            if (eventInterceptors.noReadInterceptors(unitOfWork.contextName())) {
+                return serializedEvent;
+            }
             try {
                 Event event = serializedEvent.isSnapshot() ?
                         eventInterceptors.readSnapshot(serializedEvent.asEvent(), unitOfWork) :
