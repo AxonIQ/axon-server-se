@@ -48,31 +48,31 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
     private final AuthenticationProvider authenticationProvider;
     private final CommandRequestProcessor commandRequestProcessor;
 
-    private final CommandDispatcher queuedCommandDispatcher;
+    private final CommandDispatcher commandDispatcher;
     private final ClientTagsCache clientTagsCache;
 
     private final Map<UUID, CommandHandlerStream> commandHandlers = new ConcurrentHashMap<>();
 
     public CommandGrpcController(ContextProvider contextProvider, AuthenticationProvider authenticationProvider,
                                  CommandRequestProcessor commandRequestProcessor,
-                                 CommandDispatcher queuedCommandDispatcher,
+                                 CommandDispatcher commandDispatcher,
                                  ClientTagsCache clientTagsCache) {
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
         this.commandRequestProcessor = commandRequestProcessor;
-        this.queuedCommandDispatcher = queuedCommandDispatcher;
+        this.commandDispatcher = commandDispatcher;
         this.clientTagsCache = clientTagsCache;
     }
 
     @Override
     public StreamObserver<CommandProviderOutbound> openStream(StreamObserver<CommandProviderInbound> responseObserver) {
-        return new StreamObserver<CommandProviderOutbound>() {
+        return new StreamObserver<>() {
             private final UUID id = UUID.randomUUID();
 
             @Override
             public void onNext(CommandProviderOutbound commandProviderOutbound) {
                 CommandHandlerStream commandHandlerStream =
-                        getCommandHandlerStream(commandProviderOutbound,responseObserver);
+                        getCommandHandlerStream(commandProviderOutbound, responseObserver);
 
                 switch (commandProviderOutbound.getRequestCase()) {
                     case SUBSCRIBE:
@@ -110,13 +110,14 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
             @Nonnull
             private CommandHandlerStream getCommandHandlerStream(CommandProviderOutbound commandProviderOutbound,
                                                                  StreamObserver<CommandProviderInbound> responseObserver) {
-                return commandHandlers.computeIfAbsent(id, id -> new CommandHandlerStream(contextProvider.getContext(),
-                                                                                          clientId(
-                                                                                                  commandProviderOutbound),
-                                                                                          responseObserver,
-                                                                                          queuedCommandDispatcher,
-                                                                                          commandRequestProcessor,
-                                                                                          clientTagsCache));
+                return commandHandlers.computeIfAbsent(id,
+                                                       handlerId -> new CommandHandlerStream(contextProvider.getContext(),
+                                                                                             clientId(
+                                                                                                     commandProviderOutbound),
+                                                                                             responseObserver,
+                                                                                             commandDispatcher,
+                                                                                             commandRequestProcessor,
+                                                                                             clientTagsCache));
             }
 
             private void sendAck(String instructionId) {
@@ -137,7 +138,7 @@ public class CommandGrpcController extends CommandServiceGrpc.CommandServiceImpl
                     case FLOW_CONTROL:
                         return request.getFlowControl().getClientId();
                     default:
-                        return "Unknown handler id";
+                        return "Unknown client id";
                 }
             }
 

@@ -43,19 +43,19 @@ class CommandHandlerStream {
 
     private final Map<String, String> registrations = new ConcurrentHashMap<>();
     private final Map<String, MonoSink<CommandResponse>> activeCommands = new ConcurrentHashMap<>();
-    private final CommandDispatcher queuedCommandDispatcher;
+    private final CommandDispatcher commandDispatcher;
     private final CommandRequestProcessor commandRequestProcessor;
     private final ClientTagsCache clientTagsCache;
 
     public CommandHandlerStream(String context, String clientId,
                                 StreamObserver<CommandProviderInbound> streamToHandler,
-                                CommandDispatcher queuedCommandDispatcher,
+                                CommandDispatcher commandDispatcher,
                                 CommandRequestProcessor commandRequestProcessor,
                                 ClientTagsCache clientTagsCache) {
         this.context = context;
         this.clientId = clientId;
         this.streamToHandler = streamToHandler;
-        this.queuedCommandDispatcher = queuedCommandDispatcher;
+        this.commandDispatcher = commandDispatcher;
         this.commandRequestProcessor = commandRequestProcessor;
         this.clientTagsCache = clientTagsCache;
     }
@@ -85,7 +85,7 @@ class CommandHandlerStream {
     }
 
     public void flowControl(FlowControl flowControl) {
-        queuedCommandDispatcher.request(clientId, flowControl.getPermits());
+        commandDispatcher.request(clientId, flowControl.getPermits());
     }
 
     public void commandResponse(CommandResponse commandResponse) {
