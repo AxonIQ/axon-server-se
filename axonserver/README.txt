@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.6
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.7
+-------------------------------
+* Fix: invalid sequence number error when submitting events when the latest segment only contains non-domain events
+
 Release Notes for version 4.6.6
 -------------------------------
 * Fix: memory leak due to a closed event processor keeping memory
