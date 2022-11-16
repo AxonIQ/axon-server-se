@@ -305,9 +305,6 @@ public class StandardIndexManager implements IndexManager {
      */
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateId, int maxSegments, long maxTokenHint) {
-        if (activeIndexes.isEmpty()) {
-            return Optional.empty();
-        }
         int checked = 0;
         for (Long segment : activeIndexes.descendingKeySet()) {
             if (checked >= maxSegments) {
