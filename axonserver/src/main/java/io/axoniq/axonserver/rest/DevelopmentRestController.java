@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 import java.security.Principal;
+import javax.annotation.PostConstruct;
 
 /**
  * Rest calls for convenience in development/test environments. These endpoints are only available when development
@@ -40,6 +41,14 @@ public class DevelopmentRestController {
 
     @Autowired
     private EventStoreLocator eventStoreLocator;
+
+    @PostConstruct
+    public void init() {
+        if (auditLog.isInfoEnabled()) {
+            auditLog.info("Development mode ENABLED");
+        }
+    }
+
 
     /**
      * REST endpoint handling requests to reset the events and snapshots in Axon Server

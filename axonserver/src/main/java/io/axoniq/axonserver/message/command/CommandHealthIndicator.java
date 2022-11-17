@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.message.command;
 
+import io.axoniq.axonserver.config.HealthStatus;
 import io.axoniq.axonserver.grpc.CommandService;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
@@ -30,6 +31,9 @@ public class CommandHealthIndicator extends AbstractHealthIndicator {
     protected void doHealthCheck(Health.Builder builder) {
         builder.up();
         commandService.listeners().forEach(listener-> {
+            if (listener.waiting() > 0 && listener.permits() <= 0) {
+                builder.status(HealthStatus.WARN_STATUS);
+            }
             builder.withDetail(String.format("%s.waitingCommands", listener.queue()), listener.waiting());
             builder.withDetail(String.format("%s.permits", listener.queue()), listener.permits());
         });

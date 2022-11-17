@@ -21,6 +21,10 @@ spring:
       enabled: false
       path: /h2-console
 
+  security:
+    user:
+      password: axoniq
+
   servlet:
     multipart:
       max-file-size: 25MB

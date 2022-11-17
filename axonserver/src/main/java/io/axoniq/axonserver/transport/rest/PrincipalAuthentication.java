@@ -45,4 +45,11 @@ public class PrincipalAuthentication implements Authentication {
         return (principal instanceof org.springframework.security.core.Authentication
                 && ((org.springframework.security.core.Authentication)principal).getPrincipal() instanceof ApplicationBinding);
     }
+
+    @Override
+    public String toString() {
+        return "PrincipalAuthentication{" +
+                "principal=" + principal +
+                '}';
+    }
 }

@@ -9,7 +9,6 @@
 
 package io.axoniq.axonserver.message.event;
 
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.GetAggregateEventsRequest;
@@ -28,13 +27,11 @@ import io.micrometer.core.instrument.Tags;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
@@ -47,8 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 
 import static io.axoniq.axonserver.exception.ErrorCode.LIST_AGGREGATE_EVENTS_TIMEOUT;
 
@@ -210,18 +207,10 @@ public class EventDispatcher {
                                                  Flux<GetEventsRequest> requestFlux) {
         return requestFlux.switchOnFirst((signal, rf) -> {
             if (signal.isOnNext()) {
-                AtomicReference<MonoSink<Void>> completeSink = new AtomicReference<>();
-                Mono<Void> complete = Mono.create(completeSink::set);
                 GetEventsRequest request = signal.get();
                 EventTrackerInfo trackerInfo = new EventTrackerInfo(request.getClientId(),
                                                                     context,
-                                                                    request.getTrackingToken() - 1,
-                                                                    () -> {
-                                                                        MonoSink<Void> sink = completeSink.get();
-                                                                        if (sink != null) {
-                                                                            sink.success();
-                                                                        }
-                                                                    });
+                                                                    request.getTrackingToken() - 1);
                 ClientStreamIdentification clientStreamIdentification =
                         new ClientStreamIdentification(trackerInfo.context, trackerInfo.client);
                 trackingEventProcessors.computeIfAbsent(clientStreamIdentification, key -> new CopyOnWriteArrayList<>())
@@ -234,7 +223,7 @@ public class EventDispatcher {
                                         .flatMapMany(eventStore -> eventStore.events(context,
                                                                                      principal,
                                                                                      rf))
-                                        .takeUntilOther(complete)
+                                        .doOnNext(serializedEventWithToken -> trackerInfo.incrementLastToken())
                                         .doFinally(s -> removeTrackerInfo(trackerInfo));
             } else if (signal.isOnError()) {
                 return Flux.error(signal.getThrowable());
@@ -244,42 +233,18 @@ public class EventDispatcher {
         });
     }
 
-    private void removeTrackerInfo(EventTrackerInfo trackerInfo) {
+    private void removeTrackerInfo(@Nonnull EventTrackerInfo trackerInfo) {
         logger.info("Removed tracker info {}", trackerInfo);
-        if (trackerInfo != null) {
-            trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
-                                                                                    trackerInfo.client),
-                                                     (c, streams) -> {
-                                                         logger.debug("{}: {} streams",
-                                                                      trackerInfo.client,
-                                                                      streams.size());
-                                                         streams.remove(trackerInfo);
-                                                         return streams.isEmpty() ? null : streams;
-                                                     });
-        }
+        trackingEventProcessors.computeIfPresent(new ClientStreamIdentification(trackerInfo.context,
+                                                                                trackerInfo.client),
+                                                 (c, streams) -> {
+                                                     logger.debug("{}: {} streams",
+                                                                 trackerInfo.client,
+                                                                 streams.size());
+                                                     streams.remove(trackerInfo);
+                                                     return streams.isEmpty() ? null : streams;
+                                                 });
     }
-
-    @EventListener
-    public void on(TopologyEvents.ApplicationDisconnected applicationDisconnected) {
-        List<EventTrackerInfo> trackers = trackingEventProcessors.remove(applicationDisconnected
-                                                                                 .clientIdentification());
-        logger.debug("application disconnected: {}, eventsStreams: {}",
-                     applicationDisconnected.getClientStreamId(),
-                     trackers);
-
-        if (trackers != null) {
-            trackers.forEach(tracker -> {
-                try {
-                    tracker.complete();
-                } catch (Exception ex) {
-                    logger.debug("Error while closing tracking event processor connection from {} - {}",
-                                 applicationDisconnected.getClientStreamId(),
-                                 ex.getMessage());
-                }
-            });
-        }
-    }
-
 
     public long getNrOfEvents(String context) {
         Long lastEventToken = eventStoreLocator.eventStore(context)
@@ -358,13 +323,11 @@ public class EventDispatcher {
         private final String client;
         private final String context;
         private final AtomicLong lastToken;
-        private final Runnable completeHandler;
 
-        public EventTrackerInfo(String client, String context, long lastToken, Runnable completeHandler) {
+        public EventTrackerInfo(String client, String context, long lastToken) {
             this.client = client;
             this.context = context;
             this.lastToken = new AtomicLong(lastToken);
-            this.completeHandler = completeHandler;
         }
 
         public String getClient() {
@@ -383,9 +346,6 @@ public class EventDispatcher {
             lastToken.incrementAndGet();
         }
 
-        public void complete() {
-            completeHandler.run();
-        }
 
         @Override
         public String toString() {

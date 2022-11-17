@@ -8,6 +8,10 @@
  */
 package io.axoniq.axonserver.access;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * {@link java.security.Principal} when the request is authenticated using an application token.
  */
@@ -15,10 +19,13 @@ public class ApplicationBinding {
 
     private final String name;
 
-    public ApplicationBinding(String name) {
+
+    @JsonCreator
+    public ApplicationBinding(@JsonProperty("name") String name) {
         this.name = name;
     }
 
+    @JsonGetter("name")
     public String name() {
         return name;
     }
