@@ -202,7 +202,7 @@
 </script>
 <span id="replicationGroups">
     <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
-        <paginated-table :rows="replicationGroups">
+        <paginated-table :rows="replicationGroups" name="replicationGroups">
             <template #header>
                 <th class="contextColumn">Replication Group Name</th>
                 <th class="nodesColumn">Nodes</th>

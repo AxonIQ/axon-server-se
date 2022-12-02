@@ -5,7 +5,9 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.axoniq.axonserver.test.TestUtils;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.assertj.core.api.Assertions;
 import org.junit.*;
 import org.junit.rules.*;
 
@@ -14,6 +16,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.SortedMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -165,4 +168,18 @@ public class StandardIndexManagerTest {
             indexManager.complete(segment);
         }
     }
+
+    @Test
+    public void testLastSequenceNumberWhenNoDomainEventsInActiveIndexes() {
+        String eventStore = TestUtils.fixPathOnWindows(StandardIndexManagerTest.class
+                                                          .getResource("/event-store-without-domain-events-in-last-segment")
+                                                          .getFile());
+        storageProperties.setStorage(eventStore);
+        indexManager.init();
+
+        Optional<Long> result = indexManager.getLastSequenceNumber("Aggregate-25", Integer.MAX_VALUE, Long.MAX_VALUE);
+
+        Assertions.assertThat(result).isNotEmpty();
+    }
+
 }

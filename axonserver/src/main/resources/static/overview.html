@@ -186,7 +186,7 @@
     <div v-if="showList()">
 
         <h3>Connected Applications</h3>
-        <paginated-table :rows="applications" selectable="true">
+        <paginated-table :rows="applications" name="connected-applications" selectable="true">
             <template #header>
                 <th class="applicationName">Name</th>
                 <th class="instanceCount"># Instances</th>
@@ -208,7 +208,7 @@
 
         <div v-if="isEnterprise()">
             <h3>Context overview</h3>
-            <paginated-table :rows="allContexts">
+            <paginated-table :rows="allContexts" name="all-contexts">
                 <template #header>
                     <th class="applicationName">Name</th>
                     <th class="nodeName">Nodes</th>

@@ -33,7 +33,7 @@ public class GrpcAuthentication implements Authentication {
     public boolean hasRole(@NotNull String role, @NotNull String context) {
         return authentication.getAuthorities()
                              .stream()
-                             .anyMatch(grantedAuthority -> grantedAuthority.toString().equals(format("%s@%s", role, context)));
+                             .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals(format("%s@%s", role, context)));
     }
 
     @Override

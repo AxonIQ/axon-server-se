@@ -9,6 +9,8 @@
 
 package io.axoniq.axonserver.config;
 
+import io.axoniq.axonserver.AxonServerAccessController;
+import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.access.roles.RoleController;
 import io.axoniq.axonserver.admin.user.api.UserAdminService;
 import io.axoniq.axonserver.admin.user.requestprocessor.LocalUserAdminService;
@@ -133,6 +135,13 @@ public class AxonServerStandardConfiguration {
     @ConditionalOnMissingBean(EventStoreLocator.class)
     public EventStoreLocator eventStoreLocator(LocalEventStore localEventStore) {
         return new DefaultEventStoreLocator(localEventStore);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AxonServerAccessController.class)
+    public AxonServerAccessController axonServerAccessController(MessagingPlatformConfiguration messagingPlatformConfiguration,
+                                                                 UserController userController) {
+        return new AxonServerStandardAccessController(messagingPlatformConfiguration, userController);
     }
 
     @Bean

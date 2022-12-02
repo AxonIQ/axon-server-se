@@ -220,6 +220,7 @@ public class TrackingEventProcessorManager {
 
         private int sendNext() {
             if (!running) {
+                StreamObserverUtils.complete(eventStream);
                 throw new MessagingPlatformException(ErrorCode.OTHER,
                                                      context + ":Tracking event processor stopped for " + client);
             }
@@ -249,7 +250,7 @@ public class TrackingEventProcessorManager {
             } catch (IllegalStateException ex) {
                 // closed during iterating events
             } catch (Exception ex) {
-                running = false;
+                close();
                 sendError(ex);
             }
 

@@ -3,6 +3,24 @@ This is the Axon Server Standard Edition, version 4.6
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.7
+-------------------------------
+* Fix: invalid sequence number error when submitting events when the latest segment only contains non-domain events
+
+Release Notes for version 4.6.6
+-------------------------------
+* Fix: memory leak due to a closed event processor keeping memory
+* In the UI, the pagination settings for the tables are now kept in the current session
+* Updated gRPC and Netty versions to avoid startup error on alpine linux
+* Axon Server now checks for a configured token when it is started with access control enabled
+* New logging statement to indicate that development mode is enabled
+
+Release Notes for version 4.6.5
+-------------------------------
+* Fix: update flow control library
+* Fix: change health status for commands to only show warning when there are queued messages and no permits
+* Updated audit logging for authentication failures
+
 Release Notes for version 4.6.4
 -------------------------------
 * Fix: change column name in event processor overview to "Active Segments"
