@@ -28,7 +28,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -75,8 +74,8 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Mono<String> start(String context, String description,
-                                      @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
+            public Mono<Void> start(String id, String context, String description,
+                                    @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.create(sink -> {
                     if (activeTransformations.containsKey(context)) {
                         sink.error(new MessagingPlatformException(
@@ -84,8 +83,7 @@ public class EventStoreTransformationGrpcControllerTest {
                                 "Transformation for context in progress"));
                         return;
                     }
-                    String id = activeTransformations.compute(context, (c, old) -> UUID.randomUUID().toString());
-                    sink.success(id);
+                    sink.success();
                 });
             }
 

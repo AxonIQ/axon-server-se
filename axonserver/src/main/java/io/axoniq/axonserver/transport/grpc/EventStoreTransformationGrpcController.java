@@ -35,6 +35,7 @@ import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
@@ -68,14 +69,19 @@ public class EventStoreTransformationGrpcController
     public void startTransformation(StartTransformationRequest request,
                                     StreamObserver<TransformationId> responseObserver) {
         String context = contextProvider.getContext();
-        eventStoreTransformationService.start(context,
+        String uuid = UUID.randomUUID().toString();
+        eventStoreTransformationService.start(uuid,
+                                              context,
                                               request.getDescription(),
                                               new GrpcAuthentication(authenticationProvider))
-                                       .doOnSuccess(s -> logger.info("Transformation Created with id {}", s))
-                                       .subscribe(id -> responseObserver.onNext(transformationId(id)),
+                                       .doOnSuccess(v -> logger.info("Transformation Created with id {}", uuid))
+                                       .subscribe(v -> {},
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
                                                           throwable)),
-                                                  responseObserver::onCompleted);
+                                                  () -> {
+                                                      responseObserver.onNext(transformationId(uuid));
+                                                      responseObserver.onCompleted();
+                                                  });
     }
 
     @Nonnull

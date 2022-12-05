@@ -32,7 +32,7 @@ import static io.axoniq.axonserver.util.StringUtils.username;
  * @author Marc Gathier
  * @since 4.6.0
  */
-public class DefaultEventStoreTransformationService implements EventStoreTransformationService {
+public class LocalEventStoreTransformationService implements EventStoreTransformationService {
 
     private final Transformers transformers;
     private final Transformations transformations;
@@ -55,21 +55,21 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
         transformationCancelTask.stop();
     }
 
-    public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
-                                                  EventStoreCompactionTask transformationRollBackTask,
-                                                  TransformationApplyTask transformationApplyTask,
-                                                  TransformationCancelTask transformationCancelTask) {
+    public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
+                                                EventStoreCompactionTask transformationRollBackTask,
+                                                TransformationApplyTask transformationApplyTask,
+                                                TransformationCancelTask transformationCancelTask) {
         this(transformers,
              transformations,
-             LoggerFactory.getLogger("AUDIT." + DefaultEventStoreTransformationService.class.getName()),
+             LoggerFactory.getLogger("AUDIT." + LocalEventStoreTransformationService.class.getName()),
              transformationApplyTask, transformationRollBackTask, transformationCancelTask);
     }
 
-    public DefaultEventStoreTransformationService(Transformers transformers, Transformations transformations,
-                                                  Logger auditLog,
-                                                  TransformationApplyTask transformationApplyTask,
-                                                  EventStoreCompactionTask transformationRollBackTask,
-                                                  TransformationCancelTask transformationCancelTask) {
+    public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
+                                                Logger auditLog,
+                                                TransformationApplyTask transformationApplyTask,
+                                                EventStoreCompactionTask transformationRollBackTask,
+                                                TransformationCancelTask transformationCancelTask) {
         this.transformers = transformers;
         this.transformations = transformations;
         this.auditLog = auditLog;
@@ -86,13 +86,19 @@ public class DefaultEventStoreTransformationService implements EventStoreTransfo
     }
 
     @Override
-    public Mono<String> start(String context, String description,
-                              @Nonnull Authentication authentication) {
-        return transformerFor(context).flatMap(transformer -> transformer.start(description))
+    public Mono<Void> start(String id, String context, String description,
+                            @Nonnull Authentication authentication) {
+        return transformerFor(context).flatMap(transformer -> transformer.start(id, description))
                                       .doFirst(() -> auditLog.info("{}@{}: Request to start transformation - {}",
                                                                    username(authentication.username()),
                                                                    sanitize(context),
-                                                                   sanitize(description)));
+                                                                   sanitize(description)))
+                                      .doOnError(t -> auditLog.error(
+                                              "Transformation {}: '{}' couldn't be started for context {}.",
+                                              id,
+                                              description,
+                                              context,
+                                              t));
     }
 
     @Override

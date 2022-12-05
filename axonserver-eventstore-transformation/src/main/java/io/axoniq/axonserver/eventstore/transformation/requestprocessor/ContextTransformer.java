@@ -5,7 +5,7 @@ import reactor.core.publisher.Mono;
 
 public interface ContextTransformer {
 
-    Mono<String> start(String description);
+    Mono<Void> start(String id, String description);
 
     Mono<Void> deleteEvent(String transformationId, long token, long sequence);
 

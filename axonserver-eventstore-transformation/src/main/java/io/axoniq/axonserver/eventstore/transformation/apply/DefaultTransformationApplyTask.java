@@ -6,7 +6,6 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transform
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
-import sun.plugin.dom.exception.InvalidStateException;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -82,7 +81,7 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
         @Override
         public long lastSequence() {
             return state.lastSequence()
-                        .orElseThrow(() -> new InvalidStateException("The last sequence of transformation is " + id()));
+                        .orElseThrow(() -> new IllegalStateException("The last sequence of transformation is " + id()));
         }
 
         @Override

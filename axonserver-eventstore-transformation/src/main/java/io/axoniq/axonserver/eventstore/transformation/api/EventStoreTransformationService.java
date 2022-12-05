@@ -67,12 +67,16 @@ public interface EventStoreTransformationService {
     /**
      * Initializes a new transformation and returns a transformation id.
      *
+     * @param id             the identifier of the transformation
      * @param context        the name of the context
      * @param description    description of the goal of the transformation
      * @param authentication authentication of the user/application requesting the service
      * @return a mono with a unique identifier for the transformation
      */
-    Mono<String> start(String context, String description, @Nonnull Authentication authentication);
+    Mono<Void> start(String id,
+                     String context,
+                     String description,
+                     @Nonnull Authentication authentication);
 
     /**
      * Registers the intent to delete an event when applying the transformation. The caller needs to provide the

@@ -7,7 +7,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.Date;
-import java.util.UUID;
 
 public class LocalContextTransformationStore implements ContextTransformationStore {
 
@@ -32,15 +31,15 @@ public class LocalContextTransformationStore implements ContextTransformationSto
     }
 
     @Override
-    public Mono<TransformationState> create(String description) {
+    public Mono<Void> create(String id, String description) {
         return lastAppliedTransformation()
-                .map(lastVersion -> new EventStoreTransformationJpa(UUID.randomUUID().toString(),
+                .map(lastVersion -> new EventStoreTransformationJpa(id,
                                                                     description,
                                                                     context,
                                                                     lastVersion + 1))
                 .map(repository::save)
                 .subscribeOn(Schedulers.boundedElastic())
-                .map(DefaultTransformationState::new);
+                .then();
     }
 
     @Override

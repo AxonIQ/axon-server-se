@@ -44,12 +44,12 @@ public class SequentialContextTransformer implements ContextTransformer {
     }
 
     @Override
-    public Mono<String> start(String description) { //todo check saving order
+    public Mono<Void> start(String id, String description) { //todo check saving order
         return eventStoreStateStore.state(context)
                                    .flatMap(EventStoreState::transform)
                                    .flatMap(eventStoreStateStore::save)
-                                   .then(store.create(description))
-                                   .map(TransformationState::id)
+                                   .then(store.create(id, description))
+                                   .then() // TODO remove it
                                    .as(this::sequential);
     }
 

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.eventstore.transformation.state;
 
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore.EventStoreState;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.WrongTransformationStateException;
 import reactor.core.publisher.Mono;
 
 /**
@@ -29,6 +30,6 @@ public class CompactingState implements EventStoreState {
 
     @Override
     public Mono<EventStoreState> transform() {
-        return Mono.error(new IllegalStateException("Cannot start a new transformation during compaction."));
+        return Mono.error(new WrongTransformationStateException("Cannot start a new transformation during compaction."));
     }
 }

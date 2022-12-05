@@ -25,10 +25,10 @@ import io.axoniq.axonserver.eventstore.transformation.jpa.JpaCompactingContexts;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaEventStoreStateRepo;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaEventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaTransformations;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationEntryStoreSupplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreSupplier;
@@ -195,16 +195,15 @@ public class TransformationConfiguration {
     }
 
     @Bean(initMethod = "init", destroyMethod = "destroy")
-    @ConditionalOnMissingBean(EventStoreTransformationService.class)
-    public EventStoreTransformationService eventStoreTransformationService(Transformers transformers,
-                                                                           Transformations transformations,
-                                                                           EventStoreCompactionTask transformationRollBackTask,
-                                                                           TransformationApplyTask transformationApplyTask,
-                                                                           TransformationCancelTask transformationCancelTask) {
-        return new DefaultEventStoreTransformationService(transformers,
-                                                          transformations,
-                                                          transformationRollBackTask,
-                                                          transformationApplyTask,
-                                                          transformationCancelTask);
+    public EventStoreTransformationService localEventStoreTransformationService(Transformers transformers,
+                                                                                Transformations transformations,
+                                                                                EventStoreCompactionTask transformationRollBackTask,
+                                                                                TransformationApplyTask transformationApplyTask,
+                                                                                TransformationCancelTask transformationCancelTask) {
+        return new LocalEventStoreTransformationService(transformers,
+                                                        transformations,
+                                                        transformationRollBackTask,
+                                                        transformationApplyTask,
+                                                        transformationCancelTask);
     }
 }

@@ -2,6 +2,7 @@ package io.axoniq.axonserver.eventstore.transformation.state;
 
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore.EventStoreState;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.WrongTransformationStateException;
 import reactor.core.publisher.Mono;
 
 /**
@@ -29,6 +30,6 @@ public class TransformingState implements EventStoreState {
 
     @Override
     public Mono<EventStoreState> transform() {
-        return Mono.error(new IllegalStateException("There is already ongoing transformation"));
+        return Mono.error(new WrongTransformationStateException("There is already ongoing transformation"));
     }
 }
