@@ -9,7 +9,7 @@ sequenceDiagram
     participant cts as ContextTransformationStore
     participant t as Transformation
     participant estr as EventStoreTransformationRepository
-    u ->> +e: startApplying(context, transformationId, sequence)
+    u ->> +e: apply(context, transformationId, sequence)
     e ->> +ests: startApplying(context, transformationId, sequence)
     ests ->> +transformers: findTransformerForContext(context)
     transformers ->> -ests: contextTransformer

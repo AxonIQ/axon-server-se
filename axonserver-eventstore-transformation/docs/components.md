@@ -13,12 +13,16 @@ classDiagram
         +transformationById() transformation
         +transformationByContext() transformation
     }
-    LocalEventStoreTransformationService --|> EventStoreTransformationService: implements
+```
+```mermaid
+classDiagram
     class Transformers {
         <<interface>>
         +transformerFor(context) ContextTransformer
     }
-    LocalTransformers --|> Transformers: implements
+```
+```mermaid
+classDiagram
     class ContextTransformer {
         <<interface>>
         +start(description) transformationId
@@ -31,14 +35,28 @@ classDiagram
         +compact()
         +markCompacted()
     }
-    SequentialContextTransformer --|> ContextTransformer: implements
+```
+```mermaid
+classDiagram
     class EventStoreStateStore {
         <<interface>>
         +state(context) eventStoreState
         +save(eventStoreState)
     }
-    JpaEventStoreStateStore --|> EventStoreStateStore
-    class TransformationEntryStore {
+```
+```mermaid
+classDiagram
+    class ContextTransformationStore {
+        <<interface>>
+        +transformations() transformationStates
+        +create(description) transformationState
+        +transformation(id) transformationState
+        +save(transformation state)
+    }
+```
+```mermaid
+classDiagram
+class TransformationEntryStore {
         <<interface>>
         +store(transformationEntry) sequence
         +read() transformation entries
@@ -48,13 +66,4 @@ classDiagram
         +readTo(sequence) transformationEntries
         +delete()
     }
-    SegmentBasedTransformationEntryStore --|> TransformationEntryStore
-    class ContextTransformationStore {
-        <<interface>>
-        +transformations() transformationStates
-        +create(description) transformationState
-        +transformation(id) transformationState
-        +save(transformation state)
-    }
-    LocalContextTransformationStore --|> ContextTransformationStore
 ```
