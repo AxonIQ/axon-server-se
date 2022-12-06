@@ -151,12 +151,12 @@
     <div>
         <span v-if="isEnterprise()">
             Active context:
-        <select v-model="activeContext" @change="initOverview">
+        <select v-model="activeContext" @change="initOverview" :disabled="disableOptions">
             <option value="_all">All</option>
             <option v-for="n in contexts">{{ n }}</option>
         </select>
             Display:
-        <select v-model="displayStyle">
+        <select v-model="displayStyle" :disabled="disableOptions">
             <option value="diagram">Diagram</option>
             <option value="list">List</option>
         </select>
@@ -228,7 +228,7 @@
 
     <div v-if="component">
         <h2>
-            <span @click="component = ''" class="icon"><i class="fas fa-arrow-circle-left"></i></span> Application
+            <span @click="deselectComponent()" class="icon"><i class="fas fa-arrow-circle-left"></i></span> Application
             details for {{ title }}
         </h2>
 

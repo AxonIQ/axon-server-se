@@ -13,6 +13,7 @@ globals.pageView = new Vue(
                 component: null,
                 displayStyle: "diagram",
                 context: null,
+                disableOptions: false,
                 title: null,
                 activeContext: "_all",
                 webSocketInfo: globals.webSocketInfo,
@@ -61,6 +62,7 @@ globals.pageView = new Vue(
                     this.component = component;
                     this.context = context;
                     this.title = title;
+                    this.disableOptions = true;
                 },
 
                 showDiagram() {
@@ -74,6 +76,7 @@ globals.pageView = new Vue(
                     this.component = null;
                     this.context = null;
                     this.title = null;
+                    this.disableOptions = false;
                 }
             }
         });
