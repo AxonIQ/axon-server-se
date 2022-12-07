@@ -299,10 +299,10 @@
             //todo remove duplicate properties from context properties
             //todo add field validation
             collectTierInfo(storageType) {
-                let lTier = 'event.tier';
-                let lStorage = 'event.storage';
-                let lRetentionTime = 'event.retention-time';
-                let lRetentionSize = 'event.retention-size';
+                let lTier = 'tier';
+                let lStorage = 'storage';
+                let lRetentionTime = 'retention-time';
+                let lRetentionSize = 'retention-size';
                 let metaData = this.newContext.metaData;
 
                 let store = (storageType === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
