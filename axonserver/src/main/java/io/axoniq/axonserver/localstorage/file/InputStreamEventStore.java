@@ -34,8 +34,9 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
     public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
                                  EventTransformerFactory eventTransformerFactory,
-                                 Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory) {
-        super(context, indexManager, storagePropertiesSupplier, meterFactory);
+                                 Supplier<StorageProperties> storagePropertiesSupplier,
+                                 MeterFactory meterFactory, String storagePath) {
+        super(context, indexManager, storagePropertiesSupplier, meterFactory, storagePath);
         this.eventTransformerFactory = eventTransformerFactory;
     }
 
@@ -53,8 +54,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     @Override
     public void initSegments(long lastInitialized) {
         segments.addAll(prepareSegmentStore(lastInitialized));
-        if (next != null) {
-            next.initSegments(segments.isEmpty() ? lastInitialized : segments.last());
+        if (next.get() != null) {
+            next.get().initSegments(segments.isEmpty() ? lastInitialized : segments.last());
         }
     }
 
@@ -67,8 +68,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
 
     private void removeSegment(long segment) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
-        if (segments.remove(segment) && (!FileUtils.delete(storageProperties.dataFile(context, segment)) ||
+        if (segments.remove(segment) && (!FileUtils.delete(dataFile(segment)) ||
                 !indexManager.remove(segment))) {
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
                                                  "Failed to rollback " + getType().getEventType()
@@ -88,7 +88,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    protected SortedSet<Long> getSegments() {
+    public SortedSet<Long> getSegments() {
         return segments;
     }
 
@@ -98,7 +98,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         }
 
         fileOpenMeter.increment();
-        return new InputStreamEventSource(storagePropertiesSupplier.get().dataFile(context, segment),
+        return new InputStreamEventSource(dataFile(segment),
                                           eventTransformerFactory);
     }
 

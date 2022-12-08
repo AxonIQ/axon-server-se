@@ -34,6 +34,7 @@ import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,20 +86,21 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
     private final Timer lastSequenceReadTimer;
-    protected final SegmentBasedEventStore next;
+    protected final Supplier<StorageTier> next;
     private static final int PREFETCH_SEGMENT_FILES = 2;
     protected final Counter fileOpenMeter;
     private final DistributionSummary aggregateSegmentsCount;
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                  Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory) {
-        this(eventTypeContext, indexManager, storagePropertiesSupplier, null, meterFactory);
+                                  Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory, String storagePath) {
+        this(eventTypeContext, indexManager, storagePropertiesSupplier, () -> null, meterFactory, storagePath);
     }
 
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
                                   Supplier<StorageProperties> storagePropertiesSupplier,
-                                  SegmentBasedEventStore nextSegmentsHandler,
-                                  MeterFactory meterFactory) {
+                                  Supplier<StorageTier> nextSegmentsHandler,
+                                  MeterFactory meterFactory,
+                                  String storagePath) {
         this.type = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
@@ -143,9 +145,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .metrics();
     }
 
-    private Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries, int prefetch) {
+    public Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries, int prefetch) {
         return (!containsSegment(segment) && next != null) ?
-                next.eventsForPositions(segment, indexEntries, prefetch) :
+                next.get().eventsForPositions(segment, indexEntries, prefetch) :
                 new EventSourceFlux(indexEntries,
                                     () -> eventSource(segment),
                                     segment,
@@ -253,7 +255,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
 
         if (next != null) {
-            next.query(new QueryOptions(queryOptions.getMinToken(),
+            next.get().query(new QueryOptions(queryOptions.getMinToken(),
                                         queryOptions.getMaxToken(),
                                         queryOptions.getMinTimestamp()), consumer);
         }
@@ -299,7 +301,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
     }
 
-    private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
+    public Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
                                                           SegmentIndexEntries lastEventPosition) {
         Optional<EventSource> eventSource = getEventSource(lastEventPosition.segment());
         if (eventSource.isPresent()) {
@@ -320,7 +322,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
 
         if (next != null) {
-            return next.readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
+            return next.get().readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
         }
 
         return Optional.empty();
@@ -351,8 +353,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public long getFirstToken() {
-        if (next != null && !next.getSegments().isEmpty()) {
-            return next.getFirstToken();
+        StorageTier nextTier = next.get();
+        if (nextTier != null && !nextTier.getSegments().isEmpty()) {
+            return nextTier.getFirstToken();
         }
         if (getSegments().isEmpty()) {
             return -1;
@@ -375,8 +378,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
         }
 
-        if (next != null) {
-            return next.getTokenAt(instant);
+        StorageTier nextTier = next.get();
+        if (nextTier != null) {
+            return nextTier.getTokenAt(instant);
         }
         return getSegments().isEmpty() ? -1 : getFirstToken();
     }
@@ -410,10 +414,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     private Stream<Long> getAllSegments() {
-        if (next == null) {
+        StorageTier nextTier = next.get();
+        if (nextTier == null) {
             return getSegments().stream();
         }
-        return Stream.concat(getSegments().stream(), next.getSegments().stream()).distinct();
+        return Stream.concat(getSegments().stream(), nextTier.getSegments().stream()).distinct();
     }
 
     protected ValidationResult validateSegment(long segment) {
@@ -451,13 +456,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         Optional<EventSource> reader = getEventSource(segment);
         return reader.map(eventSource -> createEventIterator(eventSource, segment, token))
                      .orElseGet(() -> {
-                         if (next == null) {
+                         StorageTier nextTier = next.get();
+                         if (nextTier == null) {
                              throw new MessagingPlatformException(ErrorCode.OTHER,
                                                                   format("%s: token %d before start of event store",
                                                                          context,
                                                                          token));
                          }
-                         return next.getEvents(segment, token);
+                         return nextTier.getEvents(segment, token);
                      });
     }
 
@@ -465,14 +471,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return getTransactions(segment, token, false);
     }
 
-    protected TransactionIterator getTransactions(long segment, long token, boolean validating) {
+    public TransactionIterator getTransactions(long segment, long token, boolean validating) {
         Optional<EventSource> reader = getEventSource(segment);
         return reader.map(r -> createTransactionIterator(r, segment, token, validating))
                      .orElseGet(() -> getTransactionsFromNext(segment, token, validating));
     }
 
     private TransactionIterator getTransactionsFromNext(long segment, long token, boolean validating) {
-        if (next == null) {
+        StorageTier nextTier = next.get();
+        if (nextTier == null) {
             throw new MessagingPlatformException(ErrorCode.OTHER,
                                                  format(
                                                          "%s: unable to read transactions for segment %d, requested token %d",
@@ -480,7 +487,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                          segment,
                                                          token));
         }
-        return next.getTransactions(segment, token, validating);
+        return nextTier.getTransactions(segment, token, validating);
     }
 
     protected TransactionIterator createTransactionIterator(EventSource eventSource, long segment, long token,
@@ -492,7 +499,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return getSegments().stream()
                             .filter(segment -> segment <= token)
                             .findFirst()
-                            .orElse(next == null ? -1 : next.getSegmentFor(token));
+                            .orElse(next.get() == null ? -1 : next.get().getSegmentFor(token));
     }
 
     @Override
@@ -522,7 +529,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected abstract void recreateIndex(long segment);
 
-    private int retrieveEventsForAnAggregate(long segment, List<Integer> indexEntries, long minSequenceNumber,
+    public int retrieveEventsForAnAggregate(long segment, List<Integer> indexEntries, long minSequenceNumber,
                                              long maxSequenceNumber,
                                              Consumer<SerializedEvent> onEvent, long maxResults, long minToken) {
         Optional<EventSource> buffer = getEventSource(segment);
@@ -540,8 +547,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
             eventSource.close();
         } else {
-            if (next != null) {
-                processed = next.retrieveEventsForAnAggregate(segment,
+            if (next.get() != null) {
+                processed = next.get().retrieveEventsForAnAggregate(segment,
                                                               indexEntries,
                                                               minSequenceNumber,
                                                               maxSequenceNumber,
@@ -562,10 +569,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                               .map(s -> name(storageProperties.dataFile(context, s))),
                                                  indexManager.getBackupFilenames(lastSegmentBackedUp));
 
-        if (next == null) {
+        if (next.get() == null) {
             return filenames;
         }
-        return Stream.concat(filenames, next.getBackupFilenames(lastSegmentBackedUp, includeActive));
+        return Stream.concat(filenames, next.get().getBackupFilenames(lastSegmentBackedUp, includeActive));
     }
 
     protected void renameFileIfNecessary(long segment) {
@@ -591,6 +598,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
         }
     }
+
+    protected File dataFile(long segment) {
+        return Paths.get(storagePath , storagePropertiesSupplier.get().dataFile(segment)).toFile();
+    }
+
 
     private String renameMessage(File from, File to) {
         return "Could not rename " + from.getAbsolutePath() + " to " + to.getAbsolutePath();
@@ -620,15 +632,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     public abstract Optional<EventSource> getEventSource(long segment);
 
     //Retrieves event source from first available layer that is responsible for given segment
-    private Optional<EventSource> eventSource(long segment) {
+    public Optional<EventSource> eventSource(long segment) {
         Optional<EventSource> eventSource = getEventSource(segment);
         if (eventSource.isPresent()) {
             return eventSource;
         }
-        if (next == null) {
+        if (next.get() == null) {
             return Optional.empty();
         }
-        return next.eventSource(segment);
+        return next.get().eventSource(segment);
     }
 
     /**
@@ -636,7 +648,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
      *
      * @return descending set of segment ids
      */
-    protected abstract SortedSet<Long> getSegments();
+    public abstract SortedSet<Long> getSegments();
 
     @Override
     public byte transactionVersion() {

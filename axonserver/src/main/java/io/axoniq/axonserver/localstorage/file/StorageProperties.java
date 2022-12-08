@@ -231,8 +231,8 @@ public class StorageProperties implements Cloneable {
         this.globalIndexSuffix = globalIndexSuffix;
     }
 
-    public File dataFile(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, eventsSuffix));
+    public String dataFile( long segment) {
+        return String.format(PATH_FORMAT, segment, eventsSuffix);
     }
 
     public long getForceInterval() {
