@@ -91,6 +91,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final Counter fileOpenMeter;
     private final DistributionSummary aggregateSegmentsCount;
 
+    protected final String storagePath;
+
     public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
                                   Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory, String storagePath) {
         this(eventTypeContext, indexManager, storagePropertiesSupplier, () -> null, meterFactory, storagePath);
@@ -111,6 +113,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
         this.aggregateSegmentsCount = meterFactory.distributionSummary
                                                           (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
+        this.storagePath = storagePath;
     }
 
     public abstract void handover(Segment segment, Runnable callback);
@@ -566,7 +569,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         StorageProperties storageProperties = storagePropertiesSupplier.get();
         Stream<String> filenames = Stream.concat(getSegments().stream()
                                                               .filter(s -> s > lastSegmentBackedUp)
-                                                              .map(s -> name(storageProperties.dataFile(context, s))),
+                                                              .map(s -> name(dataFile(s))),
                                                  indexManager.getBackupFilenames(lastSegmentBackedUp));
 
         if (next.get() == null) {
@@ -579,10 +582,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         StorageProperties storageProperties = storagePropertiesSupplier.get();
         File dataFile = storageProperties.oldDataFile(context, segment);
         if (dataFile.exists()) {
-            if (!dataFile.renameTo(storageProperties.dataFile(context, segment))) {
+            if (!dataFile.renameTo(dataFile(segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
                                                      renameMessage(dataFile,
-                                                                   storageProperties.dataFile(context, segment)));
+                                                                   dataFile(segment)));
             }
             File indexFile = storageProperties.oldIndex(context, segment);
             if (indexFile.exists() && !indexFile.renameTo(storageProperties.index(context, segment))) {

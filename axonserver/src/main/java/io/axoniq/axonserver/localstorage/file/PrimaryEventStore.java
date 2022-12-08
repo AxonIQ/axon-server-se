@@ -517,7 +517,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     protected WritableEventSource getOrOpenDatafile(long segment, int minSize, boolean canReplaceFile) {
         StorageProperties storageProperties = storagePropertiesSupplier.get();
-        File file = storageProperties.dataFile(context, segment);
+        File file = dataFile(segment);
         int size = Math.max(storageProperties.getSegmentSize(), minSize);
         if (file.exists()) {
             if (canReplaceFile && file.length() < minSize) {
