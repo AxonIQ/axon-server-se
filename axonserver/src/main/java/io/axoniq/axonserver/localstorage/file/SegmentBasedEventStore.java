@@ -504,7 +504,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected SortedSet<Long> prepareSegmentStore(long lastInitialized) {
         SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
         StorageProperties storageProperties = storagePropertiesSupplier.get();
-        File events = new File(storageProperties.getStorage(context));
+        File events = new File(storagePath);
         FileUtils.checkCreateDirectory(events);
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
         Arrays.stream(eventFiles)
@@ -514,7 +514,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
         segments.forEach(this::renameFileIfNecessary);
         long firstValidIndex = segments.stream().filter(indexManager::validIndex).findFirst().orElse(-1L);
-        logger.debug("First valid index: {}", firstValidIndex);
+        logger.warn("{}: {} First valid index: {}", getType(), storagePath, firstValidIndex);
         SortedSet<Long> recreate = new TreeSet<>();
         recreate.addAll(segments.headSet(firstValidIndex));
         recreate.forEach(this::recreateIndex);
