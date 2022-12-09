@@ -27,6 +27,7 @@ import io.axoniq.axonserver.grpc.admin.Result;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorIdMessage;
 import io.axoniq.axonserver.transport.grpc.eventprocessor.EventProcessorMapping;
 import io.grpc.stub.StreamObserver;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
@@ -80,8 +81,14 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void pauseEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.pause(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
-                      new GrpcAuthentication(authenticationProvider))
+        EventProcessorIdMessage eventProcessorIdMessage;
+        if (Strings.isNotBlank(processorId.getContextName())) {
+            eventProcessorIdMessage = new EventProcessorIdMessage(processorId.getContextName(), processorId);
+        } else {
+            eventProcessorIdMessage = new EventProcessorIdMessage(contextProvider.getContext(), processorId);
+        }
+
+        service.pause(eventProcessorIdMessage, new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
@@ -96,8 +103,14 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void startEventProcessor(EventProcessorIdentifier eventProcessorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.start(new EventProcessorIdMessage(contextProvider.getContext(), eventProcessorId),
-                      new GrpcAuthentication(authenticationProvider))
+        EventProcessorIdMessage eventProcessorIdMessage;
+        if (Strings.isNotBlank(eventProcessorId.getContextName())) {
+            eventProcessorIdMessage = new EventProcessorIdMessage(eventProcessorId.getContextName(), eventProcessorId);
+        } else {
+            eventProcessorIdMessage = new EventProcessorIdMessage(contextProvider.getContext(), eventProcessorId);
+        }
+
+        service.start(eventProcessorIdMessage, new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
@@ -112,8 +125,14 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void splitEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.split(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
-                      new GrpcAuthentication(authenticationProvider))
+        EventProcessorIdMessage eventProcessorIdMessage;
+        if (Strings.isNotBlank(processorId.getContextName())) {
+            eventProcessorIdMessage = new EventProcessorIdMessage(processorId.getContextName(), processorId);
+        } else {
+            eventProcessorIdMessage = new EventProcessorIdMessage(contextProvider.getContext(), processorId);
+        }
+
+        service.split(eventProcessorIdMessage, new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
@@ -128,8 +147,14 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
     @Override
     public void mergeEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        service.merge(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
-                      new GrpcAuthentication(authenticationProvider))
+        EventProcessorIdMessage eventProcessorIdMessage;
+        if (Strings.isNotBlank(processorId.getContextName())) {
+            eventProcessorIdMessage = new EventProcessorIdMessage(processorId.getContextName(), processorId);
+        } else {
+            eventProcessorIdMessage = new EventProcessorIdMessage(contextProvider.getContext(), processorId);
+        }
+
+        service.merge(eventProcessorIdMessage, new GrpcAuthentication(authenticationProvider))
                .subscribe(result -> success(result, responseObserver),
                           onError(responseObserver),
                           responseObserver::onCompleted);
