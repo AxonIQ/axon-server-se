@@ -24,8 +24,9 @@ import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.*;
-import org.junit.rules.*;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.unit.DataSize;
 import reactor.test.StepVerifier;
@@ -43,9 +44,13 @@ import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 
 /**
@@ -87,7 +92,8 @@ public class PrimaryEventStoreTest {
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties::getEvent,
-                                                                 meterFactory);
+                                                                 meterFactory,
+                                                                 embeddedDBProperties.getEvent().getStorage(context));
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
@@ -95,7 +101,7 @@ public class PrimaryEventStoreTest {
                                                               indexManager,
                                                               eventTransformerFactory,
                                                               embeddedDBProperties::getEvent,
-                                                              second,
+                                                              () -> second,
                                                               meterFactory, fileSystemMonitor);
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));

@@ -26,12 +26,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -82,22 +83,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
      * @param meterFactory              factory to create metrics meters
      * @param fileSystemMonitor
      */
-    public PrimaryEventStore(EventTypeContext context,
-                             IndexManager indexManager,
-                             EventTransformerFactory eventTransformerFactory,
-                             Supplier<StorageProperties> storagePropertiesSupplier,
-                             Supplier<StorageTier> completedSegmentsHandler,
-                             MeterFactory meterFactory,
-                             FileSystemMonitor fileSystemMonitor) {
-        this(context,
-             indexManager,
-             eventTransformerFactory,
-             storagePropertiesSupplier,
-             completedSegmentsHandler,
-             meterFactory,
-             fileSystemMonitor,
-             Short.MAX_VALUE);
-    }
 
     public PrimaryEventStore(EventTypeContext context,
                              IndexManager indexManager,
@@ -105,8 +90,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                              Supplier<StorageProperties> storagePropertiesSupplier,
                              Supplier<StorageTier> completedSegmentsHandler,
                              MeterFactory meterFactory,
-                             FileSystemMonitor fileSystemMonitor,
-                             short maxEventsPerTransaction) {
+                             FileSystemMonitor fileSystemMonitor) {
         super(context, indexManager, storagePropertiesSupplier, completedSegmentsHandler, meterFactory,
                 storagePropertiesSupplier.get().getStorage(context.getContext()));
         this.eventTransformerFactory = eventTransformerFactory;
@@ -116,7 +100,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     @Override
     public void initSegments(long lastInitialized, long defaultFirstIndex) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get(); //todo check if override
+        StorageProperties storageProperties = storagePropertiesSupplier.get();
         File storageDir = new File(storagePath);
         FileUtils.checkCreateDirectory(storageDir);
         indexManager.init();
@@ -130,15 +114,13 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                                    StorageProperties storageProperties) {
         long first = getFirstFile(lastInitialized, storageDir, defaultFirstIndex, storageProperties);
         renameFileIfNecessary(first);
-        first = firstSegmentIfLatestCompleted(first, storageProperties);
-        if (next.get() != null) {
-            next.get().initSegments(first);
-        }
-        WritableEventSource buffer = getOrOpenDatafile(first, storageProperties.getSegmentSize(), false);
-        indexManager.remove(first);
-        long sequence = first;
+        long realFirst = firstSegmentIfLatestCompleted(first, storageProperties);
+        applyOnNext(n -> n.initSegments(realFirst));
+        WritableEventSource buffer = getOrOpenDatafile(realFirst, storageProperties.getSegmentSize(), false);
+        indexManager.remove(realFirst);
+        long sequence = realFirst;
         Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
-        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, first, first)) {
+        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, realFirst, realFirst)) {
             while (sequence < nextToken && iterator.hasNext()) {
                 EventInformation event = iterator.next();
                 if (event.isDomainEvent()) {
@@ -176,10 +158,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
             lastToken.set(sequence - 1);
         }
 
-        indexManager.addToActiveSegment(first, loadedEntries);
+        indexManager.addToActiveSegment(realFirst, loadedEntries);
 
         buffer.putInt(buffer.position(), 0);
-        WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, first, 0);
+        WritePosition writePosition = new WritePosition(sequence, buffer.position(), buffer, realFirst, 0);
         writePositionRef.set(writePosition);
         synchronizer.init(writePosition);
     }
@@ -292,7 +274,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
             }
         });
 
-        if( next.get() != null) next.get().close(deleteData);
+        applyOnNext(n -> n.close(deleteData));
 
         indexManager.cleanup(deleteData);
         if (deleteData) {
@@ -302,7 +284,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     }
 
     @Override
-    public NavigableSet<Long> getSegments() {
+    protected NavigableSet<Long> doGetSegments() {
         return readBuffers.descendingKeySet();
     }
 
@@ -321,21 +303,20 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive) {
+        StorageTier nextTier = next.get();
         if (includeActive) {
-            StorageProperties storageProperties = storagePropertiesSupplier.get();
             Stream<String> filenames = getSegments().stream()
                                                     .map(s -> name(dataFile(s)));
-            return next.get() != null ?
-                    Stream.concat(filenames, next.get().getBackupFilenames(lastSegmentBackedUp, includeActive)) :
+            return nextTier != null ?
+                    Stream.concat(filenames, nextTier.getBackupFilenames(lastSegmentBackedUp, includeActive)) :
                     filenames;
-
         }
-        return next.get() != null ? next.get().getBackupFilenames(lastSegmentBackedUp, includeActive) : Stream.empty();
+        return nextTier != null ? nextTier.getBackupFilenames(lastSegmentBackedUp, includeActive) : Stream.empty();
     }
 
     @Override
     public long getFirstCompletedSegment() {
-         return next.get() == null ? -1 : next.get().getFirstCompletedSegment();
+        return invokeOnNext(StorageTier::getFirstCompletedSegment, -1L);
     }
 
         @Override
@@ -402,34 +383,32 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     protected void completeSegment(WritePosition writePosition) {
         indexManager.complete(writePosition.segment);
-        if (next.get() != null) {
-            next.get().handover(new Segment() {
-                @Override
-                public Supplier<FileChannel> contentProvider() {
-                    return () -> fileChannel(writePosition.segment);
-                }
+        applyOnNext(n ->
+                            n.handover(new Segment() {
+                                @Override
+                                public Supplier<InputStream> contentProvider() {
+                                    return () -> inputStream(writePosition.segment);
+                                }
 
-                @Override
-                public long id() {
-                    return writePosition.segment;
-                }
-            }, () -> {
-                ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
-                logger.debug("Handed over {}, remaining segments: {}",
-                        writePosition.segment,
-                        getSegments());
-                if (source != null) {
-                    source.clean(storagePropertiesSupplier.get()
-                            .getPrimaryCleanupDelay());
-                }
-            });
-        }
+                                @Override
+                                public long id() {
+                                    return writePosition.segment;
+                                }
+                            }, () -> {
+                                ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
+                                logger.debug("Handed over {}, remaining segments: {}",
+                                             writePosition.segment,
+                                             getSegments());
+                                if (source != null) {
+                                    source.clean(storagePropertiesSupplier.get()
+                                                                          .getPrimaryCleanupDelay());
+                                }
+                            }));
     }
 
-    private FileChannel fileChannel(Long segmentId) {
+    private FileInputStream inputStream(Long segmentId) {
         try {
-            return FileChannel.open(dataFile(segmentId).toPath(),
-                    StandardOpenOption.READ);
+            return new FileInputStream(dataFile(segmentId));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

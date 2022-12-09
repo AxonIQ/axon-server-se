@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -56,6 +56,7 @@ public class StandardEventStoreFactory implements EventStoreFactory {
      */
     @Override
     public EventStorageEngine createEventStorageEngine(String context) {
+        StorageProperties storageProperties = embeddedDBProperties.getEvent();
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getEvent,
                                                                      EventType.EVENT,
                                                                      meterFactory);
@@ -63,12 +64,13 @@ public class StandardEventStoreFactory implements EventStoreFactory {
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties::getEvent,
-                                                                 meterFactory);
+                                                                 meterFactory,
+                                                                 storageProperties.getStorage(context));
         return new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                      indexManager,
                                      eventTransformerFactory,
                                      embeddedDBProperties::getEvent,
-                                     second,
+                                     () -> second,
                                      meterFactory, fileSystemMonitor);
     }
 
@@ -79,6 +81,7 @@ public class StandardEventStoreFactory implements EventStoreFactory {
      */
     @Override
     public EventStorageEngine createSnapshotStorageEngine(String context) {
+        StorageProperties storageProperties = embeddedDBProperties.getSnapshot();
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getSnapshot,
                                                                      EventType.SNAPSHOT,
                                                                      meterFactory);
@@ -86,10 +89,11 @@ public class StandardEventStoreFactory implements EventStoreFactory {
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties::getSnapshot,
-                                                                 meterFactory);
+                                                                 meterFactory,
+                                                                 storageProperties.getStorage(context));
         return new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                      indexManager,
                                      eventTransformerFactory,
-                                     embeddedDBProperties::getSnapshot, second, meterFactory, fileSystemMonitor);
+                                     embeddedDBProperties::getSnapshot, () -> second, meterFactory, fileSystemMonitor);
     }
 }

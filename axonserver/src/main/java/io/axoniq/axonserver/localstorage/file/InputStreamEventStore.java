@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -27,7 +27,7 @@ import java.util.function.Supplier;
  * @author Marc Gathier
  * @since 4.0
  */
-public class InputStreamEventStore extends SegmentBasedEventStore implements ReadOnlySegmentsHandler {
+public class InputStreamEventStore extends SegmentBasedEventStore implements StorageTier {
 
     private final SortedSet<Long> segments = new ConcurrentSkipListSet<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
@@ -88,7 +88,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    public SortedSet<Long> getSegments() {
+    protected SortedSet<Long> doGetSegments() {
         return segments;
     }
 

@@ -232,7 +232,7 @@ public class StorageProperties implements Cloneable {
     }
 
     public String dataFile( long segment) {
-        return String.format(PATH_FORMAT, segment, eventsSuffix);
+        return String.format("%020d%s", segment, eventsSuffix);
     }
 
     public long getForceInterval() {
