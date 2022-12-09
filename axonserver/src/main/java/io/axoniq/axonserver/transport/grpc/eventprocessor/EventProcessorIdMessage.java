@@ -11,7 +11,7 @@ package io.axoniq.axonserver.transport.grpc.eventprocessor;
 
 import io.axoniq.axonserver.admin.eventprocessor.api.EventProcessorId;
 import io.axoniq.axonserver.grpc.admin.EventProcessorIdentifier;
-import org.jetbrains.annotations.NotNull;
+import io.axoniq.axonserver.util.StringUtils;
 
 import javax.annotation.Nonnull;
 
@@ -27,7 +27,11 @@ public class EventProcessorIdMessage implements EventProcessorId {
     private final EventProcessorIdentifier grpcMessage;
 
     public EventProcessorIdMessage(String context, EventProcessorIdentifier grpcMessage) {
-        this.context = context;
+        if (StringUtils.isEmpty(grpcMessage.getContextName())) {
+            this.context = context;
+        } else {
+            this.context = grpcMessage.getContextName();
+        }
         this.grpcMessage = grpcMessage;
     }
 
