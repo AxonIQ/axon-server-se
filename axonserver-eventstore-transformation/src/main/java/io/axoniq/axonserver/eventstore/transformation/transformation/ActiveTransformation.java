@@ -2,6 +2,7 @@ package io.axoniq.axonserver.eventstore.transformation.transformation;
 
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformation;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationState;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.WrongTransformationStateException;
 import io.axoniq.axonserver.eventstore.transformation.transformation.active.ActiveTransformationAction;
 import io.axoniq.axonserver.eventstore.transformation.transformation.active.DeleteEventAction;
 import io.axoniq.axonserver.eventstore.transformation.transformation.active.ReplaceEventAction;
@@ -51,10 +52,10 @@ public class ActiveTransformation implements Transformation {
     @Override
     public Mono<TransformationState> startApplying(long sequence, String applier) {
         return Mono.defer(() -> Mono.justOrEmpty(state.lastSequence()))
-                   .switchIfEmpty(Mono.error(new RuntimeException("Cannot apply an empty transformation")))
+                   .switchIfEmpty(Mono.error(new WrongTransformationStateException("Cannot apply an empty transformation")))
                    .map(lastSequence -> lastSequence == sequence)
                    .filter(valid -> valid)
-                   .switchIfEmpty(Mono.error(new RuntimeException("Invalid sequence")))
+                   .switchIfEmpty(Mono.error(new WrongTransformationStateException("Invalid sequence")))
                    .map(notUsed -> state.applying(applier))
                    .flatMap(s -> resources.close().thenReturn(s));
     }
@@ -68,7 +69,7 @@ public class ActiveTransformation implements Transformation {
 
     private Mono<Void> validateEventsOrder(long token) {
         return state.lastEventToken()
-                    .map(lastToken -> lastToken < token ? Mono.<Void>empty() : Mono.<Void>error(new RuntimeException(
+                    .map(lastToken -> lastToken < token ? Mono.<Void>empty() : Mono.<Void>error(new WrongTransformationStateException(
                             format("The token [%d] is lower or equals than last modified token [%d] of this transformation.",
                                    token,
                                    lastToken))))
@@ -78,7 +79,7 @@ public class ActiveTransformation implements Transformation {
     private Mono<Void> validateSequence(long sequence) {
         return state.lastSequence()
                     .map(lastSequence -> lastSequence + 1 == sequence ? Mono.<Void>empty() :
-                            Mono.<Void>error(new RuntimeException(format(
+                            Mono.<Void>error(new WrongTransformationStateException(format(
                                     "The sequence [%d] is different from the expected one [%d]",
                                     sequence,
                                     lastSequence + 1))))
