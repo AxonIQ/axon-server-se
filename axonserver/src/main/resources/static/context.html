@@ -18,8 +18,6 @@
             contextProperties: [],
             updatableContextProperties: [],
             availableTiers: [],
-            chosenEventTiers: [],
-            chosenSnapshotTiers: [],
             newContext: {
                 nodes: [],
                 selectedReplicationGroup: "",
@@ -27,7 +25,8 @@
                 metaData: {},
                 metaDataLabel: '',
                 metaDataValue: '',
-                tiers: []
+                chosenEventTiers: [],
+                chosenSnapshotTiers: [],
             },
             currentContext: {
                 metaData: {},
@@ -64,8 +63,10 @@
             });
             axios.get("v1/public/tier").then(response => {
                 this.availableTiers = response.data;
-                this.chosenEventTiers.push(this.availableTiers[0]);
-                this.chosenSnapshotTiers.push(this.availableTiers[0]);
+                if (this.newContext.chosenEventTiers.length === 0)
+                    this.newContext.chosenEventTiers.push(this.availableTiers[0]);
+                if (this.newContext.chosenSnapshotTiers.length === 0)
+                    this.newContext.chosenSnapshotTiers.push(this.availableTiers[0]);
             });
             this.connect();
         }, beforeDestroy() {
@@ -86,7 +87,14 @@
                         selectedRole: "none"
                     };
                 }
-                this.newContext.tiers = {};
+                this.newContext.chosenEventTiers = [];
+                this.newContext.chosenSnapshotTiers = [];
+
+                if (this.availableTiers[0] !== undefined) {
+                    this.newContext.chosenEventTiers.push(this.availableTiers[0]);
+                    this.newContext.chosenSnapshotTiers.push(this.availableTiers[0]);
+                }
+
                 this.$forceUpdate();
             },
             loadContexts() {
@@ -171,7 +179,6 @@
                         "preserveData": false
                     };
                     this.$modal.show('delete-context');
-                    // } if (confirm("Delete context " + context.context)) {
                 }
             },
             doDeleteContext() {
@@ -226,6 +233,8 @@
                 this.currentContext = null;
                 this.showUpdate = false;
                 this.showAdd = true;
+                this.newContext.chosenEventTiers = [];
+                this.newContext.chosenSnapshotTiers = [];
             },
             addMetaDataToCurrent() {
                 if (!this.currentContext.metaDataLabel || !this.currentContext.metaDataValue) {
@@ -255,49 +264,41 @@
                 this.$refs.newContextProperty.setText('');
             },
             addEventTier() {
-                let currentLevel = this.chosenEventTiers.length;
-                this.chosenEventTiers.push(this.showAvalibleTiers(currentLevel)[0]);
+                let currentLevel = this.newContext.chosenEventTiers.length;
+                this.newContext.chosenEventTiers.push(this.showAvailableTiers(currentLevel)[0]);
             },
             addSnapshotTier() {
-                let currentLevel = this.chosenSnapshotTiers.length;
-                this.chosenSnapshotTiers.push(this.showAvalibleTiers(currentLevel)[0]);
+                let currentLevel = this.newContext.chosenSnapshotTiers.length;
+                this.newContext.chosenSnapshotTiers.push(this.showAvailableTiers(currentLevel)[0]);
             },
             onTierSelect(e,tier,index,storage) {
                 let selectedTier = e.target.options[e.target.options.selectedIndex]._value;
-                let store = (storage === 'events') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+                let store = (storage === 'event') ? this.newContext.chosenEventTiers : this.newContext.chosenSnapshotTiers;
                 store[index] = selectedTier;
                 this.$forceUpdate();
             },
             showTierPath(index,storage) {
-              let store = (storage === 'events') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+              let store = (storage === 'event') ? this.newContext.chosenEventTiers : this.newContext.chosenSnapshotTiers;
               return store[index].id === 'custom_path';
             },
             showAfterSelect(tierLevel) {
                 return tierLevel > 0;
             },
-            showAvalibleTiers(index, storage) {
-                let store = (storage === 'events') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+            showAvailableTiers(index, storage) {
+                let store = (storage === 'event') ? this.newContext.chosenEventTiers : this.newContext.chosenSnapshotTiers;
 
                 return this.availableTiers
                     .filter(t => t.level === -1 || t.level <= (store.length - 1))
                     .filter(t => !(index > 0 && t.id === 'default'))
-                //todo
-                    //add blackhole or secondary node as terminal
-                    // .filter(t => {
-                    //     if (store.length >= 2) {
-                    //
-                    //         console.log(('compare:'))
-                    //         console.log((t.id));
-                    //         console.log(store[index + 1].id);
-                    //
-                    //         return true;
-                    //     } else {
-                    //         return true;
-                    //     }
-                    // })
             },
-            //todo remove duplicate properties from context properties
-            //todo add field validation
+            showAddTier(index,storageType) {
+                try {
+                    let store = (storageType === 'event') ? this.newContext.chosenEventTiers : this.newContext.chosenSnapshotTiers;
+                    return store[index].id !== 'black_hole';
+                } catch (e) {
+                    return true;
+                }
+            },
             collectTierInfo(storageType) {
                 let lTier = 'tier';
                 let lStorage = 'storage';
@@ -305,7 +306,7 @@
                 let lRetentionSize = 'retention-size';
                 let metaData = this.newContext.metaData;
 
-                let store = (storageType === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+                let store = (storageType === 'event') ? this.newContext.chosenEventTiers : this.newContext.chosenSnapshotTiers;
 
                 store
                     .forEach((tier,index) => {
@@ -319,11 +320,14 @@
                         let retentionSize = 0;
 
                         switch (tier.retentionType) {
+                            case 'minutes':
+                                retentionTime = 'PT' + tier.retentionAmount + 'M';
+                                break;
                             case 'hours':
-                                retentionTime = tier.retentionAmount;
+                                retentionTime = 'PT' + tier.retentionAmount + 'H';
                                 break;
                             case 'days':
-                                retentionTime = tier.retentionAmount * 24;
+                                retentionTime = 'P' + tier.retentionAmount + 'D';
                                 break;
                             case 'megabytes':
                                 retentionSize = this.retentionAmount;
@@ -337,8 +341,12 @@
                         metaData[prefix.concat(lTier.concat(suffix))] = tier.id;
                         metaData[prefix.concat(lStorage.concat(suffix))] = tier.path;
 
-                        if (retentionTime > 0) metaData[prefix.concat(lRetentionTime.concat(suffix))] = retentionTime;
-                        if (retentionSize > 0) metaData[prefix.concat(lRetentionSize.concat(suffix))] = retentionSize;
+                        if (retentionTime !== 0) {
+                            metaData[prefix.concat(lRetentionTime.concat(suffix))] = retentionTime;
+                        }
+                        if (retentionSize !== 0) {
+                            metaData[prefix.concat(lRetentionSize.concat(suffix))] = retentionSize;
+                        }
                     });
 
             }
@@ -464,26 +472,27 @@
                   <span class="narrow">Event storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
-                        <tr v-for="(tier, index) in chosenEventTiers" :value="tier">
+                        <tr v-for="(tier, index) in newContext.chosenEventTiers" :value="tier">
                            <td>
-                              <select class="tierName"  @change="onTierSelect($event,tier,index,'events')">
-                                 <option v-for="n in showAvalibleTiers(index,'events')" :value="n">{{ n.name }}</option>
+                              <select class="tierName"  @change="onTierSelect($event,tier,index,'event')">
+                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n">{{ n.name }}</option>
                               </select>
                            </td>
-                           <td><input v-model="chosenEventTiers[index].path" v-if="showTierPath(index,'events')" class="tierName" data-lpignore="true" placeholder="path">
+                           <td><input v-model="newContext.chosenEventTiers[index].path" v-if="showTierPath(index,'event')" class="tierName" data-lpignore="true" placeholder="path">
                            </td>
                            <td>
-                              <input v-model="chosenEventTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="newContext.chosenEventTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="newContext.chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                                 <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
                                  <option value="days">DAYS (time based)</option>
                                  <option value="megabytes">MEGABYTES (size based)</option>
                                  <option value="gigabytes">GIGABYTES (size based)</option>
                               </select>
                            </td>
-                           <td style="width: 15px"><span class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addEventTier()"><i class="fas fa-plus"></i></span></td>
+                           <td style="width: 15px"><span v-if="showAddTier(index,'event')" class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addEventTier()"><i class="fas fa-plus"></i></span></td>
                         </tr>
                      </table>
                   </span>
@@ -492,26 +501,27 @@
                   <span class="narrow">Snapshot storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
-                        <tr v-for="(tier, index) in chosenSnapshotTiers" :value="tier">
+                        <tr v-for="(tier, index) in newContext.chosenSnapshotTiers" :value="tier">
                            <td>
-                              <select class="tierName" @change="onTierSelect($event,tier,index,'snapshots')">
-                                 <option v-for="n in showAvalibleTiers(index,'snapshots')" :value="n">{{ n.name }}</option>
+                              <select class="tierName" @change="onTierSelect($event,tier,index,'snapshot')">
+                                 <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n">{{ n.name }}</option>
                               </select>
                            </td>
-                           <td><input v-model="chosenSnapshotTiers[index].path" v-if="showTierPath(index,'snapshots')" class="tierName" data-lpignore="true" placeholder="path">
+                           <td><input v-model="newContext.chosenSnapshotTiers[index].path" v-if="showTierPath(index,'snapshot')" class="tierName" data-lpignore="true" placeholder="path">
                            </td>
                            <td>
-                              <input v-model="chosenSnapshotTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="newContext.chosenSnapshotTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="newContext.chosenSnapshotTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                                 <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
                                  <option value="days">DAYS (time based)</option>
                                  <option value="megabytes">MEGABYTES (size based)</option>
                                  <option value="gigabytes">GIGABYTES (size based)</option>
                               </select>
                            </td>
-                           <td style="width: 15px"><span class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addSnapshotTier()"><i class="fas fa-plus"></i></span></td>
+                           <td style="width: 15px"><span v-if="showAddTier(index,'snapshot')" class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addSnapshotTier()"><i class="fas fa-plus"></i></span></td>
                         </tr>
                      </table>
                   </span>
