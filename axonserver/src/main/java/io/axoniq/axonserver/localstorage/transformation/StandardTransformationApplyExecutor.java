@@ -22,8 +22,7 @@ public class StandardTransformationApplyExecutor implements TransformationApplyE
 
     @Override
     public Mono<Void> apply(Transformation transformation) {
-        return localTransformationApplyExecutor.apply(map(transformation))
-                                               .then(transformation.markAsApplied());
+        return localTransformationApplyExecutor.apply(map(transformation));
         // TODO: 6/2/22 delete transformation actions
     }
 

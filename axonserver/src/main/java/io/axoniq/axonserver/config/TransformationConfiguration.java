@@ -11,6 +11,8 @@ package io.axoniq.axonserver.config;
 
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.apply.DefaultTransformationApplyTask;
+import io.axoniq.axonserver.eventstore.transformation.apply.LocalMarkTransformationApplied;
+import io.axoniq.axonserver.eventstore.transformation.apply.MarkTransformationApplied;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyExecutor;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
 import io.axoniq.axonserver.eventstore.transformation.cancel.DefaultTransformationCancelTask;
@@ -140,10 +142,16 @@ public class TransformationConfiguration {
     }
 
     @Bean
+    public MarkTransformationApplied localMarkTransformationApplied(Transformers transformers) {
+        return new LocalMarkTransformationApplied(transformers);
+    }
+
+    @Bean
     public TransformationApplyTask transformationApplyTask(TransformationApplyExecutor applier,
+                                                           MarkTransformationApplied markTransformationApplied,
                                                            Transformers transformers,
                                                            Transformations transformations) {
-        return new DefaultTransformationApplyTask(applier, transformers, transformations);
+        return new DefaultTransformationApplyTask(applier, markTransformationApplied, transformers, transformations);
     }
 
     @Bean

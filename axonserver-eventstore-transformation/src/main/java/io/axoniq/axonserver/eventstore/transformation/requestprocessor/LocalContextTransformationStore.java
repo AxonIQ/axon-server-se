@@ -32,14 +32,14 @@ public class LocalContextTransformationStore implements ContextTransformationSto
 
     @Override
     public Mono<Void> create(String id, String description) {
-        return lastAppliedTransformation()
-                .map(lastVersion -> new EventStoreTransformationJpa(id,
-                                                                    description,
-                                                                    context,
-                                                                    lastVersion + 1))
-                .map(repository::save)
-                .subscribeOn(Schedulers.boundedElastic())
-                .then();
+        return lastAppliedTransformation()//TODO applied or last transformation?
+                                          .map(lastVersion -> new EventStoreTransformationJpa(id,
+                                                                                              description,
+                                                                                              context,
+                                                                                              lastVersion + 1))
+                                          .map(repository::save)
+                                          .subscribeOn(Schedulers.boundedElastic())
+                                          .then();
     }
 
     @Override

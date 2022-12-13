@@ -10,7 +10,7 @@
 package io.axoniq.axonserver.transport.grpc;
 
 
-import com.google.protobuf.ByteString;
+/*import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.connector.AxonServerConnection;
 import io.axoniq.axonserver.connector.AxonServerConnectionFactory;
 import io.axoniq.axonserver.connector.event.EventChannel;
@@ -38,12 +38,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.*;
+import static org.junit.Assert.*;*/
 
 public class EventStoreTransformationGrpcControllerITCase {
 
 
-    private static final AxonServerConnectionFactory connectionManager =
+    /*private static final AxonServerConnectionFactory connectionManager =
             AxonServerConnectionFactory.forClient("compoonent", "client").build();
 
     private static AxonServerConnection connection;
@@ -189,5 +189,5 @@ public class EventStoreTransformationGrpcControllerITCase {
                     break;
             }
         });
-    }
+    }*/
 }

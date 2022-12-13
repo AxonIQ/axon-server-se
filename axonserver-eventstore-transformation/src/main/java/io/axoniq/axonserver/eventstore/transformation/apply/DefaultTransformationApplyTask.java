@@ -5,7 +5,6 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transform
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,13 +15,17 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
     private static final Logger logger = LoggerFactory.getLogger(DefaultTransformationApplyTask.class);
 
     private final TransformationApplyExecutor applier;
+    private final MarkTransformationApplied markTransformationApplied;
     private final Transformers transformers;
     private final Transformations transformations;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public DefaultTransformationApplyTask(TransformationApplyExecutor applier,
-                                          Transformers transformers, Transformations transformations) {
+                                          MarkTransformationApplied markTransformationApplied,
+                                          Transformers transformers,
+                                          Transformations transformations) {
         this.applier = applier;
+        this.markTransformationApplied = markTransformationApplied;
         this.transformers = transformers;
         this.transformations = transformations;
     }
@@ -40,15 +43,16 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
     private void apply() {
         transformations.applyingTransformations()
                        .doOnNext(transformation -> logger.warn("Applying transformation: {}", transformation.id()))
-                       .flatMap(transformation -> applier.apply(new ApplierTransformation(transformation,
-                                                                                          transformers))
+                       .flatMap(transformation -> applier.apply(new ApplierTransformation(transformation))
                                                          .doOnError(t -> logger.error(
                                                                  "An error happened while applying the transformation: {}.",
                                                                  transformation.id(),
                                                                  t))
                                                          .doOnSuccess(notUsed -> logger.warn(
                                                                  "Applied transformation: {}",
-                                                                 transformation.id())))
+                                                                 transformation.id()))
+                                                         .then(markTransformationApplied.markApplied(transformation.context(),
+                                                                                                     transformation.id())))
                        .doFinally(s -> scheduledExecutorService.schedule(this::apply, 10, TimeUnit.SECONDS))
                        .subscribe();
     }
@@ -56,11 +60,9 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
     static class ApplierTransformation implements TransformationApplyExecutor.Transformation {
 
         private final Transformation state;
-        private final Transformers transformers;
 
-        ApplierTransformation(Transformation state, Transformers transformers) {
+        ApplierTransformation(Transformation state) {
             this.state = state;
-            this.transformers = transformers;
         }
 
         @Override
@@ -82,14 +84,6 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
         public long lastSequence() {
             return state.lastSequence()
                         .orElseThrow(() -> new IllegalStateException("The last sequence of transformation is " + id()));
-        }
-
-        @Override
-        public Mono<Void> markAsApplied() {
-            return transformers.transformerFor(context())
-                               .doOnNext(unused -> logger.warn("Marking as applied transformation {}", id()))
-                               .flatMap(transformation -> transformation.markApplied(id()))
-                               .doOnSuccess(unused -> logger.warn("Transformation {} marked applied.", id()));
         }
 
         @Override

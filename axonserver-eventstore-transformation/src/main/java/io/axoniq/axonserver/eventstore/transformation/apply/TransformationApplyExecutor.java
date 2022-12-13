@@ -18,8 +18,6 @@ public interface TransformationApplyExecutor {
          * @return the last sequence contained in the transformation that needs to be applied.
          */
         long lastSequence();
-
-        Mono<Void> markAsApplied();
     }
 
     /**

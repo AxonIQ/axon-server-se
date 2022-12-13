@@ -140,5 +140,5 @@ public interface EventStoreTransformationService {
      * @param authentication authentication of the user/application requesting the service
      * @return a mono that is completed when the operation is completed successfully
      */
-    Mono<Void> compact(String context, @Nonnull Authentication authentication);
+    Mono<Void> compact(String context, @Nonnull Authentication authentication); //TODO rename with startCompacting
 }
