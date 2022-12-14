@@ -493,7 +493,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     }
 
     protected void completeSegment(WritePosition writePosition) {
-        indexManager.complete(new FileVersion(writePosition.segment, writePosition.version));
+        indexManager.complete(new FileVersion(writePosition.segment, 0));
         if (next != null) {
             next.handover(new FileVersion(writePosition.segment, writePosition.version), () -> {
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
@@ -573,7 +573,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
 
                 writePosition.buffer.putInt(writePosition.position, -1);
 
-                WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, version),
+                WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
                                                                totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
                                                                true);
                 writePositionRef.set(writePosition.reset(buffer, version));
