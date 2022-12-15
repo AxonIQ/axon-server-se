@@ -2,6 +2,8 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore.EventStoreState;
 import io.axoniq.axonserver.grpc.event.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -14,6 +16,8 @@ import static java.lang.String.format;
  * Implementation of {@link ContextTransformer} that guarantees that all actions are performed sequentially.
  */
 public class SequentialContextTransformer implements ContextTransformer {
+
+    private static final Logger logger = LoggerFactory.getLogger(SequentialContextTransformer.class);
 
     private final String context;
     private final ContextTransformationStore store;
@@ -55,9 +59,11 @@ public class SequentialContextTransformer implements ContextTransformer {
 
     @Override
     public Mono<Void> deleteEvent(String transformationId, long tokenToDelete, long sequence) {
+        logger.info("Invoking delete event pipeline");
         return perform(transformationId,
                        "DELETE_EVENT",
                        transformation -> transformation.deleteEvent(tokenToDelete, sequence))
+                .doFirst(() -> logger.info("Performing DELETE EVENT action."))
                 .as(this::sequential);
     }
 

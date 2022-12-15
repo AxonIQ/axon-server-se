@@ -10,6 +10,8 @@
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
@@ -24,6 +26,8 @@ import java.util.function.Function;
 
 public class AutoCloseableEventProvider {
 
+    private static final Logger logger = LoggerFactory.getLogger(AutoCloseableEventProvider.class);
+
     private final Duration autocloseableDeadline = Duration.ofSeconds(60);
     private final AtomicReference<ScheduledFuture<?>> scheduledDeadline = new AtomicReference<>();
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -37,7 +41,14 @@ public class AutoCloseableEventProvider {
     public Mono<Event> event(long token) {
         return Mono.create(sink -> {
             cancelClosing();
-            executorService.submit(() -> readEvent(sink, token));
+            executorService.submit(() -> {
+                try {
+                    readEvent(sink, token);
+                } catch (Throwable t) {
+                    logger.error("Error happened while trying to read the event.", t);
+                    sink.error(t);
+                }
+            });
         });
     }
 
@@ -49,9 +60,11 @@ public class AutoCloseableEventProvider {
     }
 
     private void readEvent(MonoSink<Event> sink, long token) {
+        logger.info("Reading event for token {}.", token);
         CloseableIterator<SerializedEventWithToken> iterator = iterator(token);
 
         if (!iterator.hasNext()) {
+            logger.info("No event for token {}.", token);
             sink.success();
         } else {
             SerializedEventWithToken next = iterator.next();
@@ -63,6 +76,7 @@ public class AutoCloseableEventProvider {
             //todo possible optimization if the gap is very large
             while (iterator.hasNext() && next.getToken() < token) {
                 next = iterator.next();
+                logger.info("Just read {} event.", next);
             }
 
             if (next.getToken() == token) {

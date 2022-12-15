@@ -2,6 +2,8 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationJpa;
 import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -9,6 +11,8 @@ import reactor.core.scheduler.Schedulers;
 import java.util.Date;
 
 public class LocalContextTransformationStore implements ContextTransformationStore {
+
+    private static final Logger logger = LoggerFactory.getLogger(LocalContextTransformationStore.class);
 
     private final String context;
     private final EventStoreTransformationRepository repository;
@@ -45,8 +49,10 @@ public class LocalContextTransformationStore implements ContextTransformationSto
     @Override
     public Mono<TransformationState> transformation(String id) {
         return Mono.fromSupplier(() -> repository.findById(id))
+                   .doFirst(() -> logger.info("Finding transformation with id {}.", id))
                    .subscribeOn(Schedulers.boundedElastic())
                    .flatMap(Mono::justOrEmpty)
+                   .doOnSuccess(s -> logger.info("Found transformation with id {}.", id))
                    .map(DefaultTransformationState::new);
     }
 

@@ -31,7 +31,8 @@ public class ActiveTransformation implements Transformation {
     public Mono<TransformationState> deleteEvent(long tokenToDelete, long sequence) {
         DeleteEventAction action = new DeleteEventAction(tokenToDelete, resources);
         return performEventAction(action, sequence, tokenToDelete)
-                .doOnSuccess(s -> logger.trace("Deleting event with token: {}", tokenToDelete))
+                .doFirst(() -> logger.info("Storing delete event action with token: {}", tokenToDelete))
+                .doOnSuccess(s -> logger.info("Delete event action with token: {} stored", tokenToDelete))
                 .doOnError(e -> logger.warn("Failure deleting event with token: {}", tokenToDelete, e));
     }
 

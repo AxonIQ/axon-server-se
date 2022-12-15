@@ -2,6 +2,8 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.filestorage.AppendOnlyFileStore;
 import io.axoniq.axonserver.filestorage.FileStoreEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -9,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SegmentBasedTransformationEntryStore implements TransformationEntryStore {
 
+    private static final Logger logger = LoggerFactory.getLogger(SegmentBasedTransformationEntryStore.class);
     private final AppendOnlyFileStore appendOnlyFileStore;
 
     public SegmentBasedTransformationEntryStore(AppendOnlyFileStore appendOnlyFileStore) {
@@ -18,7 +21,14 @@ public class SegmentBasedTransformationEntryStore implements TransformationEntry
     @Override
     public Mono<Long> store(TransformationEntry entry) {
         long sequence = entry.sequence();
-        return resetIfNeeded(sequence).then(appendOnlyFileStore.append(toFileStoreEntry(entry)))
+        return resetIfNeeded(sequence).then(appendOnlyFileStore.append(toFileStoreEntry(entry))
+                                                               .doFirst(() -> logger.info(
+                                                                       "Appending transformation entry."))
+                                                               .doOnSuccess(v -> logger.info(
+                                                                       "Successfully appended transformation entry"))
+                                                               .doOnError(t -> logger.warn(
+                                                                       "There was a problem appending transformation entry.",
+                                                                       t)))
                                       .thenReturn(sequence);
     }
 
@@ -64,7 +74,7 @@ public class SegmentBasedTransformationEntryStore implements TransformationEntry
         return appendOnlyFileStore.delete();
     }
 
-    public boolean isClosed(){
+    public boolean isClosed() {
         return closed;
     }
 

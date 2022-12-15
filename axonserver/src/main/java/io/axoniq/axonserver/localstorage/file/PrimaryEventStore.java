@@ -495,7 +495,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
     protected void completeSegment(WritePosition writePosition) {
         indexManager.complete(new FileVersion(writePosition.segment, 0));
         if (next != null) {
-            next.handover(new FileVersion(writePosition.segment, writePosition.version), () -> {
+            next.handover(new FileVersion(writePosition.segment, 0), () -> {
                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
                 logger.debug("Handed over {}, remaining segments: {}",
                              writePosition.segment,
