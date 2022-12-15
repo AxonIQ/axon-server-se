@@ -12,7 +12,6 @@ public interface TransformationCancelExecutor {
 
         int version();
 
-        Mono<Void> markAsCancelled();
     }
 
     Mono<Void> cancel(Transformation transformation);

@@ -2,7 +2,6 @@ package io.axoniq.axonserver.eventstore.transformation.apply;
 
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService.Transformation;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,17 +15,14 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
 
     private final TransformationApplyExecutor applier;
     private final MarkTransformationApplied markTransformationApplied;
-    private final Transformers transformers;
     private final Transformations transformations;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     public DefaultTransformationApplyTask(TransformationApplyExecutor applier,
                                           MarkTransformationApplied markTransformationApplied,
-                                          Transformers transformers,
                                           Transformations transformations) {
         this.applier = applier;
         this.markTransformationApplied = markTransformationApplied;
-        this.transformers = transformers;
         this.transformations = transformations;
     }
 

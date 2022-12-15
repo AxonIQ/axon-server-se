@@ -1,10 +1,9 @@
 package io.axoniq.axonserver.eventstore.transformation.cancel;
 
+import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -13,17 +12,16 @@ import java.util.concurrent.TimeUnit;
 public class DefaultTransformationCancelTask implements TransformationCancelTask {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultTransformationCancelTask.class);
-
-    private final TransformationCancelExecutor executor;
-    private final Transformers transformers;
+    private final TransformationCancelExecutor cancel;
+    private final MarkTransformationCancelled markTransformationCancelled;
     private final Transformations transformations;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    public DefaultTransformationCancelTask(TransformationCancelExecutor executor,
-                                           Transformers transformers,
+    public DefaultTransformationCancelTask(TransformationCancelExecutor cancel,
+                                           MarkTransformationCancelled markTransformationCancelled,
                                            Transformations transformations) {
-        this.executor = executor;
-        this.transformers = transformers;
+        this.cancel = cancel;
+        this.markTransformationCancelled = markTransformationCancelled;
         this.transformations = transformations;
     }
 
@@ -39,30 +37,42 @@ public class DefaultTransformationCancelTask implements TransformationCancelTask
 
     private void cancel() {
         transformations.cancellingTransformations()
-                       .flatMap(transformation -> executor.cancel(new TransformationCancelExecutor.Transformation() {
-                           @Override
-                           public String id() {
-                               return transformation.id();
-                           }
-
-                           @Override
-                           public String context() {
-                               return transformation.context();
-                           }
-
-                           @Override
-                           public int version() {
-                               return transformation.version();
-                           }
-
-                           @Override
-                           public Mono<Void> markAsCancelled() {
-                               return transformers.transformerFor(context())
-                                                  .flatMap(t -> t.markCancelled(id()));
-                           }
-                       }).doOnSuccess(v -> logger.info("Transformation {} cancelled.", transformation))
-                         .doOnError(t -> logger.error("Transformation {} errored.", transformation, t)))
+                       .doOnNext(transformation -> logger.warn("Cancelling transformation: {}", transformation.id()))
+                       .flatMap(transformation -> cancel.cancel(new CancelTransformation(transformation))
+                                                        .doOnError(t -> logger.error(
+                                                                "An error happened while cancelling the transformation: {}.",
+                                                                transformation.id(),
+                                                                t))
+                                                        .doOnSuccess(notUsed -> logger.warn(
+                                                                "Transformation cancelled: {}",
+                                                                transformation.id()))
+                                                        .then(markTransformationCancelled.markCancelled(transformation.context(),
+                                                                                                        transformation.id())))
                        .doFinally(s -> scheduledExecutorService.schedule(this::cancel, 10, TimeUnit.SECONDS))
                        .subscribe();
+    }
+
+    private static class CancelTransformation implements TransformationCancelExecutor.Transformation {
+
+        private final EventStoreTransformationService.Transformation transformation;
+
+        public CancelTransformation(EventStoreTransformationService.Transformation transformation) {
+            this.transformation = transformation;
+        }
+
+        @Override
+        public String id() {
+            return transformation.id();
+        }
+
+        @Override
+        public String context() {
+            return transformation.context();
+        }
+
+        @Override
+        public int version() {
+            return transformation.version();
+        }
     }
 }

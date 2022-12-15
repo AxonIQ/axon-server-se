@@ -16,6 +16,8 @@ import io.axoniq.axonserver.eventstore.transformation.apply.MarkTransformationAp
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyExecutor;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
 import io.axoniq.axonserver.eventstore.transformation.cancel.DefaultTransformationCancelTask;
+import io.axoniq.axonserver.eventstore.transformation.cancel.LocalMarkTransformationCancelled;
+import io.axoniq.axonserver.eventstore.transformation.cancel.MarkTransformationCancelled;
 import io.axoniq.axonserver.eventstore.transformation.cancel.TransformationCancelExecutor;
 import io.axoniq.axonserver.eventstore.transformation.cancel.TransformationCancelTask;
 import io.axoniq.axonserver.eventstore.transformation.compact.CompactingContexts;
@@ -149,9 +151,8 @@ public class TransformationConfiguration {
     @Bean
     public TransformationApplyTask transformationApplyTask(TransformationApplyExecutor applier,
                                                            MarkTransformationApplied markTransformationApplied,
-                                                           Transformers transformers,
                                                            Transformations transformations) {
-        return new DefaultTransformationApplyTask(applier, markTransformationApplied, transformers, transformations);
+        return new DefaultTransformationApplyTask(applier, markTransformationApplied, transformations);
     }
 
     @Bean
@@ -197,9 +198,11 @@ public class TransformationConfiguration {
 
     @Bean
     public TransformationCancelTask transformationCancelTask(TransformationCancelExecutor transformationCancelExecutor,
-                                                             Transformers transformers,
+                                                             MarkTransformationCancelled markTransformationCancelled,
                                                              Transformations transformations) {
-        return new DefaultTransformationCancelTask(transformationCancelExecutor, transformers, transformations);
+        return new DefaultTransformationCancelTask(transformationCancelExecutor,
+                                                   markTransformationCancelled,
+                                                   transformations);
     }
 
     @Bean(initMethod = "init", destroyMethod = "destroy")

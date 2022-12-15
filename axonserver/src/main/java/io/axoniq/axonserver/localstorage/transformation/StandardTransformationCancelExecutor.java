@@ -22,8 +22,7 @@ public class StandardTransformationCancelExecutor implements TransformationCance
 
     @Override
     public Mono<Void> cancel(Transformation transformation) {
-        return localTransformationCancelExecutor.cancel(map(transformation))
-                                                .then(transformation.markAsCancelled());
+        return localTransformationCancelExecutor.cancel(map(transformation)); //TODO remove one layer
     }
 
     private LocalTransformationCancelExecutor.Transformation map(Transformation transformation) {
