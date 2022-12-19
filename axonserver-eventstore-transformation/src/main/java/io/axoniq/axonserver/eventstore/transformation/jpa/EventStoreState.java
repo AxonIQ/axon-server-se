@@ -19,7 +19,9 @@ public class EventStoreState {
     private State state;
     private Instant lastUpdate;
 
-    public String getContext() {
+    private String inProgressOperationId;
+
+    public String context() {
         return context;
     }
 
@@ -27,7 +29,7 @@ public class EventStoreState {
         this.context = context;
     }
 
-    public State getState() {
+    public State state() {
         return state;
     }
 
@@ -35,12 +37,20 @@ public class EventStoreState {
         this.state = state;
     }
 
-    public Instant getLastUpdate() {
+    public Instant lastUpdate() {
         return lastUpdate;
     }
 
     public void setLastUpdate(Instant lastUpdate) {
         this.lastUpdate = lastUpdate;
+    }
+
+    public String inProgressOperationId() {
+        return inProgressOperationId;
+    }
+
+    public void setInProgressOperationId(String inProgressOperationId) {
+        this.inProgressOperationId = inProgressOperationId;
     }
 
     public enum State {

@@ -11,16 +11,19 @@ import reactor.core.publisher.Mono;
  */
 public class CompactingState implements EventStoreState {
 
+    private final String compactionId;
     private final String context;
 
-    public CompactingState(String context) {
+    public CompactingState(String compactionId, String context) {
         this.context = context;
+        this.compactionId = compactionId;
     }
 
     @Override
     public void accept(EventStoreStateStore.Visitor visitor) {
         visitor.setContext(context)
-               .setState(EventStoreStateStore.State.COMPACTING);
+               .setState(EventStoreStateStore.State.COMPACTING)
+               .setOperationId(compactionId);
     }
 
     @Override
@@ -29,7 +32,7 @@ public class CompactingState implements EventStoreState {
     }
 
     @Override
-    public Mono<EventStoreState> transform() {
+    public Mono<EventStoreState> transform(String transformationId) {
         return Mono.error(new WrongTransformationStateException("Cannot start a new transformation during compaction."));
     }
 }

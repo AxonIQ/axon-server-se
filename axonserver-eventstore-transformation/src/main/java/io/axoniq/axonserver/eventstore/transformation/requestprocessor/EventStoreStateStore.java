@@ -23,26 +23,28 @@ public interface EventStoreStateStore {
         Visitor setContext(String context);
 
         Visitor setState(State state);
+
+        Visitor setOperationId(String operationId);
     }
 
     interface EventStoreState {
 
         void accept(Visitor visitor);
 
-        default Mono<EventStoreState> transform() {
-            return Mono.error(new RuntimeException("Unsupported operation"));
+        default Mono<EventStoreState> transform(String transformationId) {
+            return Mono.error(new WrongTransformationStateException("Unsupported operation"));
         }
 
         default Mono<EventStoreState> transformed() {
-            return Mono.error(new RuntimeException("Unsupported operation"));
+            return Mono.error(new WrongTransformationStateException("Unsupported operation"));
         }
 
-        default Mono<EventStoreState> compact() {
-            return Mono.error(new RuntimeException("Unsupported operation"));
+        default Mono<EventStoreState> compact(String compactionId) {
+            return Mono.error(new WrongTransformationStateException("Unsupported operation"));
         }
 
         default Mono<EventStoreState> compacted() {
-            return Mono.error(new RuntimeException("Unsupported operation"));
+            return Mono.error(new WrongTransformationStateException("Unsupported operation"));
         }
     }
 }

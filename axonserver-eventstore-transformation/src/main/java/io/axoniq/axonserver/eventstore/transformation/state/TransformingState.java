@@ -11,15 +11,18 @@ import reactor.core.publisher.Mono;
  */
 public class TransformingState implements EventStoreState {
 
+    private final String transformationId;
     private final String context;
 
-    public TransformingState(String context) {
+    public TransformingState(String transformationId, String context) {
+        this.transformationId = transformationId;
         this.context = context;
     }
 
     @Override
     public void accept(EventStoreStateStore.Visitor visitor) {
         visitor.setContext(context)
+               .setOperationId(transformationId)
                .setState(EventStoreStateStore.State.TRANSFORMING);
     }
 
@@ -29,7 +32,7 @@ public class TransformingState implements EventStoreState {
     }
 
     @Override
-    public Mono<EventStoreState> transform() {
+    public Mono<EventStoreState> transform(String transformationId) {
         return Mono.error(new WrongTransformationStateException("There is already ongoing transformation"));
     }
 }

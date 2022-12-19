@@ -16,10 +16,10 @@ import java.util.EnumMap;
  */
 public class JpaEventStoreStateStore implements EventStoreStateStore {
 
-    private final JpaEventStoreStateRepo repository;
+    private final EventStoreStateRepository repository;
 
 
-    public JpaEventStoreStateStore(JpaEventStoreStateRepo repository) {
+    public JpaEventStoreStateStore(EventStoreStateRepository repository) {
         this.repository = repository;
     }
 
@@ -33,13 +33,13 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
 
     private EventStoreState from(
             io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState entity) {
-        switch (entity.getState()) {
+        switch (entity.state()) {
             case IDLE:
-                return new IdleState(entity.getContext());
+                return new IdleState(entity.context());
             case TRANSFORMING:
-                return new TransformingState(entity.getContext());
+                return new TransformingState(entity.inProgressOperationId(), entity.context());
             case COMPACTING:
-                return new CompactingState(entity.getContext());
+                return new CompactingState(entity.inProgressOperationId(), entity.context());
             default:
                 throw new IllegalStateException("");
         }
@@ -70,6 +70,12 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
         public Visitor setState(State state) {
             io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State s = stateMapping.get(state);
             entity.setState(s);
+            return this;
+        }
+
+        @Override
+        public Visitor setOperationId(String operationId) {
+            entity.setInProgressOperationId(operationId);
             return this;
         }
 

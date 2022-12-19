@@ -29,8 +29,9 @@ create table event_store_transformation_progress
 
 create table event_store_state
 (
-    context     varchar(255) not null primary key,
-    state       varchar(255),
-    last_update date
+    context                  varchar(255) not null primary key,
+    state                    varchar(255),
+    in_progress_operation_id varchar(255),
+    last_update              date
 );
 

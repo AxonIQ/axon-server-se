@@ -141,7 +141,7 @@ public class StandardIndexManager implements IndexManager {
         if (positionsPerAggregate == null) {
             positionsPerAggregate = Collections.emptyMap();
         }
-        File tempFile = properties.transformedIndex(context, segment.segment());
+        File tempFile = properties.transformedIndex(context, segment.segment()); //TODO restore original temporary file
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);

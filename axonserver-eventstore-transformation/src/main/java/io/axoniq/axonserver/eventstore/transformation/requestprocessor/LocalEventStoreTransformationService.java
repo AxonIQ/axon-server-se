@@ -149,8 +149,8 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     }
 
     @Override
-    public Mono<Void> compact(String context, @Nonnull Authentication authentication) {
-        return transformerFor(context).flatMap(ContextTransformer::compact)
+    public Mono<Void> compact(String compactionId, String context, @Nonnull Authentication authentication) {
+        return transformerFor(context).flatMap(contextTransformer -> contextTransformer.compact(compactionId))
                                       .doFirst(() -> auditLog.info("{}@{}: Request to delete old events.",
                                                                    username(authentication.username()),
                                                                    sanitize(context)));

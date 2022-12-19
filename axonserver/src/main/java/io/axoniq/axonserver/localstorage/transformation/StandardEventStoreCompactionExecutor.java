@@ -23,8 +23,7 @@ public class StandardEventStoreCompactionExecutor implements EventStoreCompactio
 
     @Override
     public Mono<Void> compact(Compaction transformation) {
-        return compactionExecutor.compact(map(transformation))
-                                 .then(transformation.markCompacted());
+        return compactionExecutor.compact(map(transformation));
     }
 
     private LocalEventStoreCompactionExecutor.Compaction map(Compaction transformation) {

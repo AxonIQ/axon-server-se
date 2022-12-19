@@ -13,16 +13,16 @@ import static io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState
  */
 public class JpaCompactingContexts implements CompactingContexts {
 
-    private final JpaEventStoreStateRepo repo;
+    private final EventStoreStateRepository repo;
 
-    public JpaCompactingContexts(JpaEventStoreStateRepo repo) {
+    public JpaCompactingContexts(EventStoreStateRepository repo) {
         this.repo = repo;
     }
 
     @Nonnull
     @Override
-    public Iterator<String> iterator() {
-        return new Iterator<String>() {
+    public Iterator<CompactingContext> iterator() {
+        return new Iterator<CompactingContext>() {
             final Iterator<EventStoreState> iterator = repo.findByState(COMPACTING).iterator();
 
             @Override
@@ -31,9 +31,29 @@ public class JpaCompactingContexts implements CompactingContexts {
             }
 
             @Override
-            public String next() {
-                return iterator.next().getContext();
+            public CompactingContext next() {
+                return new JpaCompactingContext(iterator.next());
             }
         };
+    }
+
+
+    private static class JpaCompactingContext implements CompactingContext {
+
+        private final EventStoreState eventStoreState;
+
+        private JpaCompactingContext(EventStoreState eventStoreState) {
+            this.eventStoreState = eventStoreState;
+        }
+
+        @Override
+        public String compactionId() {
+            return eventStoreState.inProgressOperationId();
+        }
+
+        @Override
+        public String context() {
+            return eventStoreState.context();
+        }
     }
 }

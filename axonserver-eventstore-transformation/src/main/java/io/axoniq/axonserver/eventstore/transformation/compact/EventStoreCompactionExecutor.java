@@ -9,7 +9,5 @@ public interface EventStoreCompactionExecutor {
     interface Compaction {
 
         String context();
-
-        Mono<Void> markCompacted();
     }
 }

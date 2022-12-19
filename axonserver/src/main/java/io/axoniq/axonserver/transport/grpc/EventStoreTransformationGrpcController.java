@@ -209,7 +209,9 @@ public class EventStoreTransformationGrpcController
     @Override
     public void compact(CompactionRequest request, StreamObserver<Empty> responseObserver) {
         String context = contextProvider.getContext();
-        eventStoreTransformationService.compact(context,
+        String uuid = UUID.randomUUID().toString();
+        eventStoreTransformationService.compact(uuid,
+                                                context,
                                                 new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }

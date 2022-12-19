@@ -136,9 +136,11 @@ public interface EventStoreTransformationService {
      * Deletes old versions of segments updated by a transformation (if the transformation was applied with the
      * {@code keepOldVersions} option)
      *
+     * @param compactionId   the unique identifier of this compaction request
      * @param context        the name of the context
      * @param authentication authentication of the user/application requesting the service
      * @return a mono that is completed when the operation is completed successfully
      */
-    Mono<Void> compact(String context, @Nonnull Authentication authentication); //TODO rename with startCompacting
+    Mono<Void> compact(String compactionId, String context,
+                       @Nonnull Authentication authentication); //TODO rename with startCompacting
 }

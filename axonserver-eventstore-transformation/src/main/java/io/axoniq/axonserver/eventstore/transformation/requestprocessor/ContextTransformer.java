@@ -19,7 +19,7 @@ public interface ContextTransformer {
 
     Mono<Void> markApplied(String transformationId);
 
-    Mono<Void> markCompacted();
+    Mono<Void> markCompacted(String compactionId);
 
-    Mono<Void> compact();
+    Mono<Void> compact(String compactionId);
 }

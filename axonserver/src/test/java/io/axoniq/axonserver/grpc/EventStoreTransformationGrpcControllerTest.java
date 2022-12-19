@@ -136,7 +136,7 @@ public class EventStoreTransformationGrpcControllerTest {
 
 
             @Override
-            public Mono<Void> compact(String context,
+            public Mono<Void> compact(String compactionId, String context,
                                       @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.empty();
             }

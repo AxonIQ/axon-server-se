@@ -50,7 +50,7 @@ public class SequentialContextTransformer implements ContextTransformer {
     @Override
     public Mono<Void> start(String id, String description) { //todo check saving order
         return eventStoreStateStore.state(context)
-                                   .flatMap(EventStoreState::transform)
+                                   .flatMap(eventStoreState -> eventStoreState.transform(id))
                                    .flatMap(eventStoreStateStore::save)
                                    .then(store.create(id, description))
                                    .then() // TODO remove it
@@ -113,7 +113,7 @@ public class SequentialContextTransformer implements ContextTransformer {
     }
 
     @Override
-    public Mono<Void> markCompacted() {
+    public Mono<Void> markCompacted(String compactionId) {
         return eventStoreStateStore.state(context)
                                    .flatMap(EventStoreState::compacted)
                                    .flatMap(eventStoreStateStore::save)
@@ -121,9 +121,9 @@ public class SequentialContextTransformer implements ContextTransformer {
     }
 
     @Override
-    public Mono<Void> compact() {
+    public Mono<Void> compact(String compactionId) {
         return eventStoreStateStore.state(context)
-                                   .flatMap(EventStoreState::compact)
+                                   .flatMap(eventStoreState -> eventStoreState.compact(compactionId))
                                    .flatMap(eventStoreStateStore::save)
                                    .as(this::sequential);
     }

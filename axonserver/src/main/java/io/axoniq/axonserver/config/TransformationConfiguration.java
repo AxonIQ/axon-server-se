@@ -24,9 +24,11 @@ import io.axoniq.axonserver.eventstore.transformation.compact.CompactingContexts
 import io.axoniq.axonserver.eventstore.transformation.compact.DefaultEventStoreCompactionTask;
 import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionExecutor;
 import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionTask;
+import io.axoniq.axonserver.eventstore.transformation.compact.LocalMarkEventStoreCompacted;
+import io.axoniq.axonserver.eventstore.transformation.compact.MarkEventStoreCompacted;
+import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreStateRepository;
 import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationRepository;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaCompactingContexts;
-import io.axoniq.axonserver.eventstore.transformation.jpa.JpaEventStoreStateRepo;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaEventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaTransformations;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationEntryStoreSupplier;
@@ -100,7 +102,7 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public EventStoreStateStore eventStoreStateStore(JpaEventStoreStateRepo repository) {
+    public EventStoreStateStore eventStoreStateStore(EventStoreStateRepository repository) {
         return new JpaEventStoreStateStore(repository);
     }
 
@@ -149,6 +151,16 @@ public class TransformationConfiguration {
     }
 
     @Bean
+    public MarkTransformationCancelled localMarkTransformationCancelled(Transformers transformers) {
+        return new LocalMarkTransformationCancelled(transformers);
+    }
+
+    @Bean
+    public MarkEventStoreCompacted localMarkEventStoreCompacted(Transformers transformers) {
+        return new LocalMarkEventStoreCompacted(transformers);
+    }
+
+    @Bean
     public TransformationApplyTask transformationApplyTask(TransformationApplyExecutor applier,
                                                            MarkTransformationApplied markTransformationApplied,
                                                            Transformations transformations) {
@@ -168,7 +180,7 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public CompactingContexts compactingContexts(JpaEventStoreStateRepo repository) {
+    public CompactingContexts compactingContexts(EventStoreStateRepository repository) {
         return new JpaCompactingContexts(repository);
     }
 
@@ -176,10 +188,10 @@ public class TransformationConfiguration {
     public EventStoreCompactionTask transformationCompactionTask(
             EventStoreCompactionExecutor transformationRollbackExecutor,
             CompactingContexts compactingContexts,
-            Transformers transformers) {
+            MarkEventStoreCompacted markEventStoreCompacted) {
         return new DefaultEventStoreCompactionTask(Flux.fromIterable(compactingContexts),
                                                    transformationRollbackExecutor,
-                                                   transformers);
+                                                   markEventStoreCompacted);
     }
 
     @Bean
