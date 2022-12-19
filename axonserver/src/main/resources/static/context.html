@@ -349,6 +349,10 @@
                         }
                     });
 
+            },
+            isEphemeral(context) {
+                console.log(context.metaData);
+              return Object.values(context.metaData).some(value => value === 'black_hole');
             }
         }
     });
@@ -363,7 +367,7 @@
             <th class="nodesColumn">Context Options</th>
          </template>
          <template #row="context">
-            <td>{{ context.context }}
+            <td>{{ context.context }} <span v-if="isEphemeral(context)" class="ephemeral" title="Events in this context are configured to last limited amount of time, after which they are deleted!">ephemeral</span>
                <span v-if="admin && !isInternalContext(context)" title="Delete Context"
                      @click="deleteContext(context)">
                <i class="far fa-trash-alt"></i>

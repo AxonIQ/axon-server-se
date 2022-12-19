@@ -732,6 +732,16 @@ select {
 	float: none !important;
 	width: 100%;
 }
+
+.ephemeral {
+	background-color: indianred;
+	padding: 1px 5px;
+	margin: 0px 5px;
+	color: antiquewhite;
+	font-size: 11px;
+	cursor: help;
+}
+
 .roleName {
 	display: inline-block !important;
 	float: none !important;
