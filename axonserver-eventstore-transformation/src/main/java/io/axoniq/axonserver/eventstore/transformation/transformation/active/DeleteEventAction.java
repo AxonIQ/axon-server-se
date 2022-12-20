@@ -2,6 +2,7 @@ package io.axoniq.axonserver.eventstore.transformation.transformation.active;
 
 import io.axoniq.axonserver.eventstore.transformation.DeleteEvent;
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.WrongTransformationStateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -31,7 +32,7 @@ public class DeleteEventAction implements ActiveTransformationAction {
 
     private Mono<Void> validateEvent() {
         return resources.event(tokenToDelete)
-                        .switchIfEmpty(Mono.error(new RuntimeException("")))
+                        .switchIfEmpty(Mono.error(new WrongTransformationStateException("Trying to delete non existing event " + tokenToDelete)))
                         .doFirst(() -> logger.info("Validating DELETE EVENT action."))
                         .doOnSuccess(a -> logger.info("Validated DELETE EVENT action."))
                         .then();
