@@ -404,6 +404,22 @@ input[type="search"] {
 	width: 200px !important;
 }
 
+.metakey {
+	background-color: antiquewhite;
+	width: 200px !important;
+	margin: 0px 5px;
+	padding: 0px 5px;
+	font-size: smaller;
+}
+
+.metavalue {
+	background-color: gainsboro;
+	width: 200px !important;
+	margin: 0px 5px;
+	padding: 0px 5px;
+	font-size: smaller;
+}
+
 .tier-holder {
 	padding: 10px !important;
 	border-style: dotted;
@@ -733,6 +749,28 @@ select {
 	width: 100%;
 }
 
+.label-holder {
+	display: inline-grid !important;
+	max-width: fit-content;
+	margin: 0px 10px;
+	overflow: visible !important;
+}
+
+.label-holder span {
+	margin-bottom: 5px;
+}
+
+.multi-tier {
+	background-color: slategrey;
+	padding: 1px 5px;
+	margin: 0px 5px;
+	color: antiquewhite;
+	font-size: 11px;
+	cursor: help;
+	position: relative;
+	bottom: 1px;
+}
+
 .ephemeral {
 	background-color: indianred;
 	padding: 1px 5px;
@@ -740,6 +778,13 @@ select {
 	color: antiquewhite;
 	font-size: 11px;
 	cursor: help;
+	position: relative;
+	bottom: 1px;
+}
+
+.ephemeral-text {
+	white-space: nowrap;
+	-webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 10%, rgb(0 0 0 / 15%));
 }
 
 .roleName {
@@ -903,4 +948,16 @@ select {
 
 .modal-leave-active {
 	opacity: 0;
+}
+
+span[data-tooltip]:hover:after {
+	content: attr(data-tooltip);
+	color: white;
+	background-color: rgba(0, 0, 0, 0.75);
+	position: absolute;
+	top: 50%;
+	left: 110%;
+	padding: 3px 5px;
+	width: 200px;
+	white-space: break-spaces;
 }

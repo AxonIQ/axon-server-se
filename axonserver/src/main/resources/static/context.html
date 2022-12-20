@@ -64,9 +64,9 @@
             axios.get("v1/public/tier").then(response => {
                 this.availableTiers = response.data;
                 if (this.newContext.chosenEventTiers.length === 0)
-                    this.newContext.chosenEventTiers.push(this.availableTiers[0]);
+                    this.newContext.chosenEventTiers.push(structuredClone(this.availableTiers[0]));
                 if (this.newContext.chosenSnapshotTiers.length === 0)
-                    this.newContext.chosenSnapshotTiers.push(this.availableTiers[0]);
+                    this.newContext.chosenSnapshotTiers.push(structuredClone(this.availableTiers[0]));
             });
             this.connect();
         }, beforeDestroy() {
@@ -91,8 +91,8 @@
                 this.newContext.chosenSnapshotTiers = [];
 
                 if (this.availableTiers[0] !== undefined) {
-                    this.newContext.chosenEventTiers.push(this.availableTiers[0]);
-                    this.newContext.chosenSnapshotTiers.push(this.availableTiers[0]);
+                    this.newContext.chosenEventTiers.push(structuredClone(this.availableTiers[0]));
+                    this.newContext.chosenSnapshotTiers.push(structuredClone(this.availableTiers[0]));
                 }
 
                 this.$forceUpdate();
@@ -265,11 +265,11 @@
             },
             addEventTier() {
                 let currentLevel = this.newContext.chosenEventTiers.length;
-                this.newContext.chosenEventTiers.push(this.showAvailableTiers(currentLevel)[0]);
+                this.newContext.chosenEventTiers.push(structuredClone(this.showAvailableTiers(currentLevel)[0]));
             },
             addSnapshotTier() {
                 let currentLevel = this.newContext.chosenSnapshotTiers.length;
-                this.newContext.chosenSnapshotTiers.push(this.showAvailableTiers(currentLevel)[0]);
+                this.newContext.chosenSnapshotTiers.push(structuredClone(this.showAvailableTiers(currentLevel)[0]));
             },
             onTierSelect(e,tier,index,storage) {
                 let selectedTier = e.target.options[e.target.options.selectedIndex]._value;
@@ -351,8 +351,13 @@
 
             },
             isEphemeral(context) {
-                console.log(context.metaData);
               return Object.values(context.metaData).some(value => value === 'black_hole');
+            },
+            isMultiTier(context) {
+                let eventTiers = Object.keys(context.metaData).filter(key => key.startsWith("event.tier")).length;
+                let snapshotTiers = Object.keys(context.metaData).filter(key => key.startsWith("snapshot.tier")).length;
+                let isMultiTier = (eventTiers > 1) || (snapshotTiers > 1);
+                return isMultiTier;
             }
         }
     });
@@ -367,7 +372,13 @@
             <th class="nodesColumn">Context Options</th>
          </template>
          <template #row="context">
-            <td>{{ context.context }} <span v-if="isEphemeral(context)" class="ephemeral" title="Events in this context are configured to last limited amount of time, after which they are deleted!">ephemeral</span>
+             <td>{{ context.context }}
+
+                <div class="label-holder">
+                    <span v-if="isEphemeral(context)" class="ephemeral" data-tooltip="Ephemeral context stores events for a limited amount of time, after which they are permanently deleted."><span class="ephemeral-text ">ephemeral</span></span>
+                    <span v-if="isMultiTier(context)" class="multi-tier" data-tooltip="This context splits event store into multiple locations (tiers).">multi-tier</span>
+                </div>
+
                <span v-if="admin && !isInternalContext(context)" title="Delete Context"
                      @click="deleteContext(context)">
                <i class="far fa-trash-alt"></i>
@@ -382,8 +393,8 @@
             </td>
             <td>
                <div v-for="key in Object.keys(context.metaData)">
-                  <span class="narrow">{{ key }}</span>
-                  <span>{{ context.metaData[key] }}</span>
+                  <span class="metakey">{{ key }}</span>
+                  <span class="metavalue">{{ context.metaData[key] }}</span>
                </div>
             </td>
          </template>
