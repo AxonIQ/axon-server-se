@@ -330,22 +330,34 @@
                                 retentionTime = 'P' + tier.retentionAmount + 'D';
                                 break;
                             case 'megabytes':
-                                retentionSize = this.retentionAmount;
+                                retentionSize = tier.retentionAmount * 1000000;
                                 break;
                             case 'gigabytes':
-                                retentionSize = this.retentionAmount * 1024;
+                                retentionSize = tier.retentionAmount * 1073741824;
                                 break;
                             default:
                         }
 
                         metaData[prefix.concat(lTier.concat(suffix))] = tier.id;
+
+                        if (tier.id === "custom_path" && tier.path.length >= 1) {
                         metaData[prefix.concat(lStorage.concat(suffix))] = tier.path;
+                        }
+
+                        if (tier.id === "custom_path" && tier.path.length < 1) {
+                            alert("You must define valid storage path!");
+                            throw 'You must define valid storage path!!';
+                        }
 
                         if (retentionTime !== 0) {
                             metaData[prefix.concat(lRetentionTime.concat(suffix))] = retentionTime;
                         }
                         if (retentionSize !== 0) {
                             metaData[prefix.concat(lRetentionSize.concat(suffix))] = retentionSize;
+                        }
+                        if (tier.id !== "default" && retentionSize ===0 && retentionTime === 0) {
+                            alert("Define either retention size or retention time!");
+                            throw 'Define either retention size or retention time!';
                         }
                     });
 
@@ -356,8 +368,7 @@
             isMultiTier(context) {
                 let eventTiers = Object.keys(context.metaData).filter(key => key.startsWith("event.tier")).length;
                 let snapshotTiers = Object.keys(context.metaData).filter(key => key.startsWith("snapshot.tier")).length;
-                let isMultiTier = (eventTiers > 1) || (snapshotTiers > 1);
-                return isMultiTier;
+                return (eventTiers > 1) || (snapshotTiers > 1);
             }
         }
     });
