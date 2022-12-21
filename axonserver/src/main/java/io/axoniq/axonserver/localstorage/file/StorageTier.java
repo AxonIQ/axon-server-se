@@ -5,10 +5,18 @@ import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import reactor.core.publisher.Flux;
 
+import javax.annotation.Nonnull;
+import java.io.File;
+import java.time.Duration;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.SortedSet;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -16,7 +24,7 @@ import java.util.stream.Stream;
  * @author Stefan Dragisic
  */
 public interface StorageTier {
-    Flux<SerializedEvent>  eventsForPositions(long segment, IndexEntries indexEntries, int prefetch);
+    Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries, int prefetch);
 
     void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer);
 
@@ -49,4 +57,114 @@ public interface StorageTier {
     long getFirstCompletedSegment();
 
     void handover(Segment segment, Runnable callback);
+
+    abstract class RetentionStrategy {
+
+        protected final Iterator<Long> segmentIterator;
+        protected final Map<String, String> contextMetaData;
+        protected final String retentionProperty;
+
+        protected final SortedSet<Long> segments;
+
+        protected final Function<Long, File> dataFileResolver;
+
+        RetentionStrategy(String propertyName,
+                          Map<String, String> contextMetaData,
+                          NavigableSet<Long> segments,
+                          Function<Long, File> dataFileResolver) {
+            this.retentionProperty = propertyName;
+            this.contextMetaData = contextMetaData;
+            this.segments = segments;
+            this.segmentIterator = segments.descendingIterator();
+            this.dataFileResolver = dataFileResolver;
+
+        }
+
+        public abstract Long findNextSegment();
+
+    }
+
+
+    class TimeBasedRetentionStrategy extends RetentionStrategy {
+
+        private final Long retentionTimeInMillis = retentionWeight();
+
+        public TimeBasedRetentionStrategy(String propertyName,
+                                          Map<String, String> contextMetaData,
+                                          NavigableSet<Long> segments,
+                                          Function<Long, File> dataFileResolver) {
+            super(propertyName, contextMetaData, segments, dataFileResolver);
+        }
+
+        @Override
+        public Long findNextSegment() {
+            if (segmentIterator.hasNext()) {
+                long minTimestamp = System.currentTimeMillis() - retentionTimeInMillis;
+                long candidate = segmentIterator.next();
+
+
+                if (segments.first() == candidate) {
+                    return null;
+                }
+
+
+                if (dataFileResolver.apply(candidate).lastModified() < minTimestamp) {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        public Long retentionWeight() {
+            String retentionTimeString = contextMetaData.get(retentionProperty);
+            if (retentionTimeString == null) {
+                return null;
+            }
+            return Duration.parse(retentionTimeString).toMillis();
+        }
+    }
+
+    class SizeBasedRetentionStrategy extends RetentionStrategy {
+
+        private final Long retentionSizeInBytes = retentionWeight();
+        private final AtomicLong currentTotalSize;
+
+        public SizeBasedRetentionStrategy(String propertyName,
+                                          Map<String, String> contextMetaData,
+                                          NavigableSet<Long> segments,
+                                          Function<Long, File> dataFileResolver
+        ) {
+            super(propertyName, contextMetaData, segments, dataFileResolver);
+            this.currentTotalSize = getTotalSize(segments);
+        }
+
+        @Nonnull
+        private AtomicLong getTotalSize(NavigableSet<Long> segments) {
+            AtomicLong total = new AtomicLong();
+            segments.forEach(segment -> total.addAndGet(dataFileResolver.apply(segment).length()));
+            return total;
+        }
+
+        @Override
+        public Long findNextSegment() {
+            if (segmentIterator.hasNext()) {
+                long totalSize = currentTotalSize.get();
+                if (totalSize >= retentionSizeInBytes) {
+                    Long nextSegment = segmentIterator.next();
+                    currentTotalSize.addAndGet(-dataFileResolver.apply(nextSegment).length());
+                    return nextSegment;
+                }
+            }
+            return null;
+        }
+
+        public Long retentionWeight() {
+            String retentionSizeString = contextMetaData.get(retentionProperty);
+            if (retentionSizeString == null) {
+                return null;
+            }
+
+            return Long.parseLong(retentionSizeString);
+        }
+    }
 }
