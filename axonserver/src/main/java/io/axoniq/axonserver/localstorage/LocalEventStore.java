@@ -848,11 +848,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     public Mono<Void> compact(String context) {
         return workers(context).compact();
     }
-
-    @Override
-    public Mono<Void> rollback(String context, int version) {
-        return workers(context).rollbackSegments(version);
-    }
     private class Workers {
 
         private final EventWriteStorage eventWriteStorage;
@@ -979,10 +974,6 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
         public Mono<Void> compact() {
             return eventStorageEngine.deleteOldVersions();
-        }
-
-        public Mono<Void> rollbackSegments(int version) {
-            return eventStorageEngine.rollback(version);
         }
     }
 

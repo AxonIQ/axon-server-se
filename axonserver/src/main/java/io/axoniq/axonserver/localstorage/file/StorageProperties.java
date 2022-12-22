@@ -22,11 +22,10 @@ import java.time.Duration;
 public class StorageProperties implements Cloneable {
 
     public static final String TRANSFORMED_SUFFIX = ".transformed";
-    public static final String ROLLED_BACK_SUFFIX = ".rolledback";
     private static final String PATH_FORMAT = "%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
     private static final String PATH_WITH_VERSION_FORMAT = "%s/%020d_%05d%s";
-    private static final String ROLLED_BACK_FORMAT = PATH_WITH_VERSION_FORMAT + ROLLED_BACK_SUFFIX;
+    private static final String TEMP_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + ".temp";
     private static final String TRANSFORMED_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + TRANSFORMED_SUFFIX;
     private static final String OLD_PATH_FORMAT = "%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
@@ -226,16 +225,14 @@ public class StorageProperties implements Cloneable {
         return new File(String.format(PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), indexSuffix));
     }
 
-    public File rolledBackIndex(String context, FileVersion segment){
-        if( segment.version() == 0) {
-            throw new RuntimeException("Cannot rollback version 0");
-        };
-        return new File(String.format(ROLLED_BACK_FORMAT, getStorage(context), segment.segment(), segment.version(), indexSuffix));
-    }
-
     public File transformedIndex(String context, FileVersion segment) {
         if( segment.version() == 0) return transformedIndex(context, segment.segment());
         return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), indexSuffix));
+    }
+
+    public File newTransformedIndex(String context, FileVersion segment) {
+        if( segment.version() == 0) return transformedIndex(context, segment.segment());
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), newIndexSuffix));
     }
 
     public File transformedIndex(String context, long segment) {
@@ -249,13 +246,6 @@ public class StorageProperties implements Cloneable {
         if( segment.version() == 0) return newIndex(context, segment.segment());
 
         return new File(String.format(PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), newIndexSuffix));
-    }
-
-    public File rolledBackNewIndex(String context, FileVersion segment){
-        if( segment.version() == 0) {
-            throw new RuntimeException("Cannot rollback version 0");
-        };
-        return new File(String.format(ROLLED_BACK_FORMAT, getStorage(context), segment.segment(), segment.version(), newIndexSuffix));
     }
 
     public File newIndexTemp(String context, FileVersion segment) {
@@ -290,13 +280,6 @@ public class StorageProperties implements Cloneable {
             throw new RuntimeException("cannot transform to version 0");
         }
         return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), eventsSuffix));
-    }
-
-    public File rolledBackDataFile(String context, FileVersion segment) {
-        if( segment.version() == 0) {
-            throw new RuntimeException("Cannot rollback version 0");
-        };
-        return new File(String.format(ROLLED_BACK_FORMAT, getStorage(context), segment.segment(), segment.version(), eventsSuffix));
     }
 
     public long getForceInterval() {

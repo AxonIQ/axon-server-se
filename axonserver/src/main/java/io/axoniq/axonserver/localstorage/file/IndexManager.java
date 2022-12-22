@@ -136,6 +136,4 @@ public interface IndexManager {
      *
      */
     Mono<Void> activateVersion(long segment, int version);
-
-    Mono<Void> rollbackToVersion(long segment, int currentVersion, int targetVersion);
 }

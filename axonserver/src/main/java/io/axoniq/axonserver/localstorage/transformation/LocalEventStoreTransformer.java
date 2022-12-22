@@ -35,14 +35,6 @@ public interface LocalEventStoreTransformer {
     Flux<TransformationProgress> transformEvents(String context, int version, Flux<EventWithToken> transformedEvents);
 
     /**
-     * Removes the events with given version, making the previous version of the events the active version.
-     *
-     * @param context the name of the context
-     * @param version the version of the event store to rollback
-     */
-    Mono<Void> rollback(String context, int version);
-
-    /**
      * Deletes all events in the event store related to the given context.
      *
      * @param context the name of the context

@@ -141,7 +141,7 @@ public class StandardIndexManager implements IndexManager {
         if (positionsPerAggregate == null) {
             positionsPerAggregate = Collections.emptyMap();
         }
-        File tempFile = properties.transformedIndex(context, segment.segment()); //TODO restore original temporary file
+        File tempFile = properties.newIndexTemp(context, segment.segment()); //TODO restore original temporary file
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
@@ -294,22 +294,6 @@ public class StandardIndexManager implements IndexManager {
                                              .switchIfEmpty(Mono.error(new RuntimeException()))
                                              .flatMap(tempIndex -> FileUtils.rename(tempIndex, indexFile)))
                    .doOnSuccess(v -> indexesDescending.put(segment, version));
-    }
-
-    @Override
-    public Mono<Void> rollbackToVersion(long segment, int currentVersion, int targetVersion) {
-        FileVersion toVersion = new FileVersion(segment, targetVersion);
-        FileVersion fromVersion = new FileVersion(segment, currentVersion);
-        return Mono.fromSupplier(() -> storageProperties.get().index(context, toVersion))
-                   .filter(File::exists)
-                   .switchIfEmpty(Mono.error(new RuntimeException(
-                           "Cannot rollback to this version, the index doesn't exist.")))
-                   .doOnSuccess(v -> indexesDescending.put(segment, targetVersion))
-                   .then(Mono.fromSupplier(() -> storageProperties.get().index(context,fromVersion))
-                             .flatMap(current -> {
-                                 File rolledBack = storageProperties.get().rolledBackIndex(context, fromVersion);
-                                 return FileUtils.rename(current, rolledBack);
-                             }));
     }
 
     @Override

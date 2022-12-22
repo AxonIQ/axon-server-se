@@ -60,7 +60,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.axoniq.axonserver.localstorage.file.StorageProperties.ROLLED_BACK_SUFFIX;
 import static io.axoniq.axonserver.localstorage.file.StorageProperties.TRANSFORMED_SUFFIX;
 import static java.lang.String.format;
 
@@ -315,10 +314,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 .then();
     }
 
-    private Flux<FileVersion> rolledBackFileVersions() {
-        return fileVersions(ROLLED_BACK_SUFFIX);
-    }
-
     private Flux<FileVersion> transformedSegmentVersions() {
         String transformedEventsSuffix = storagePropertiesSupplier.get().getEventsSuffix() + TRANSFORMED_SUFFIX;
         return fileVersions(transformedEventsSuffix);
@@ -351,7 +346,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public Mono<Void> deleteOldVersions() {
         return fileVersions(storagePropertiesSupplier.get().getEventsSuffix())
-                .doOnNext(fileVersion -> System.out.println(fileVersion.segment()))
                 .filter(fileVersion -> currentSegmentVersion(fileVersion.segment()) != fileVersion.version())
                 .flatMapSequential(this::delete)
                 .then();
@@ -365,29 +359,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                  }
                    ).retry(3)
                    .then();
-    }
-
-    @Override
-    public Mono<Void> rollback(int version) {
-        return Flux.fromIterable(getSegments())
-                   .filter(segment -> currentSegmentVersion(segment) == version)
-                   .flatMapSequential(segment -> hasPreviousVersion(segment, version).thenReturn(segment))
-                   .flatMapSequential(segment -> doesntHaveNextVersion(segment, version).thenReturn(segment))
-                   .then(Mono.justOrEmpty(next)
-                             .flatMap(n -> rollback(version)))
-                   .thenMany(Flux.fromIterable(getSegments()))
-                   .filter(segment -> currentSegmentVersion(segment) == version)
-                   .flatMapSequential(segment -> indexManager.rollbackToVersion(segment, version, version - 1)
-                                                             .thenReturn(segment))
-                   .flatMapSequential(segment -> rollbackSegmentVersion(segment, version, version - 1))
-                   .then(deleteRolledBack());
-    }
-
-    private Mono<Void> deleteRolledBack() {
-        return rolledBackFileVersions()
-                .map(fileVersion -> storagePropertiesSupplier.get().rolledBackIndex(context, fileVersion))
-                .map(FileUtils::delete)
-                .then();
     }
 
     @Override
