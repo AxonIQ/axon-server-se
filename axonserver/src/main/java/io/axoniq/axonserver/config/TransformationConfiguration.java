@@ -146,8 +146,10 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public MarkTransformationApplied localMarkTransformationApplied(Transformers transformers) {
-        return new LocalMarkTransformationApplied(transformers);
+    public MarkTransformationApplied localMarkTransformationApplied(
+            Transformers transformers,
+            TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
+        return new LocalMarkTransformationApplied(transformers, transformationEntryStoreSupplier);
     }
 
     @Bean
