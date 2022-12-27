@@ -32,7 +32,7 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
     }
 
     private EventStoreState from(
-            io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState entity) {
+            EventStoreStateJpa entity) {
         switch (entity.state()) {
             case IDLE:
                 return new IdleState(entity.context());
@@ -56,9 +56,9 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
 
     private static class JpaEntityConstructor implements Visitor {
 
-        private static final EnumMap<State, io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State> stateMapping = new EnumMap<>(
+        private static final EnumMap<State, EventStoreStateJpa.State> stateMapping = new EnumMap<>(
                 State.class);
-        private final io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState entity = new io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState();
+        private final EventStoreStateJpa entity = new EventStoreStateJpa();
 
         @Override
         public Visitor setContext(String context) {
@@ -68,7 +68,7 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
 
         @Override
         public Visitor setState(State state) {
-            io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State s = stateMapping.get(state);
+            EventStoreStateJpa.State s = stateMapping.get(state);
             entity.setState(s);
             return this;
         }
@@ -79,17 +79,17 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
             return this;
         }
 
-        io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState entity() {
+        EventStoreStateJpa entity() {
             entity.setLastUpdate(Instant.now());
             return entity;
         }
 
         static {
-            stateMapping.put(State.IDLE, io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State.IDLE);
+            stateMapping.put(State.IDLE, EventStoreStateJpa.State.IDLE);
             stateMapping.put(State.COMPACTING,
-                             io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State.COMPACTING);
+                             EventStoreStateJpa.State.COMPACTING);
             stateMapping.put(State.TRANSFORMING,
-                             io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State.TRANSFORMING);
+                             EventStoreStateJpa.State.TRANSFORMING);
         }
     }
 }

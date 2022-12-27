@@ -13,7 +13,7 @@ import javax.persistence.Table;
  */
 @Entity
 @Table(name="et_event_store_state")
-public class EventStoreState {
+public class EventStoreStateJpa {
 
     @Id
     private String context;

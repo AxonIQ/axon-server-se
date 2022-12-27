@@ -1,6 +1,6 @@
 package io.axoniq.axonserver.eventstore.transformation.jpa;
 
-import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State;
+import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreStateJpa.State;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -9,10 +9,10 @@ import java.util.Optional;
  * @author Sara Pellegrini
  * @since 2023.0.0
  */
-public interface EventStoreStateRepository extends JpaRepository<EventStoreState, String> {
+public interface EventStoreStateRepository extends JpaRepository<EventStoreStateJpa, String> {
 
 
-    Iterable<EventStoreState> findByState(State state);
+    Iterable<EventStoreStateJpa> findByState(State state);
 
-    Optional<EventStoreState> findOptionalByInProgressOperationId(String inProgressOperationId);
+    Optional<EventStoreStateJpa> findOptionalByInProgressOperationId(String inProgressOperationId);
 }

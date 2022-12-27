@@ -5,7 +5,7 @@ import io.axoniq.axonserver.eventstore.transformation.compact.CompactingContexts
 import java.util.Iterator;
 import javax.annotation.Nonnull;
 
-import static io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreState.State.COMPACTING;
+import static io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreStateJpa.State.COMPACTING;
 
 /**
  * @author Sara Pellegrini
@@ -23,7 +23,7 @@ public class JpaCompactingContexts implements CompactingContexts {
     @Override
     public Iterator<CompactingContext> iterator() {
         return new Iterator<CompactingContext>() {
-            final Iterator<EventStoreState> iterator = repo.findByState(COMPACTING).iterator();
+            final Iterator<EventStoreStateJpa> iterator = repo.findByState(COMPACTING).iterator();
 
             @Override
             public boolean hasNext() {
@@ -40,20 +40,20 @@ public class JpaCompactingContexts implements CompactingContexts {
 
     private static class JpaCompactingContext implements CompactingContext {
 
-        private final EventStoreState eventStoreState;
+        private final EventStoreStateJpa eventStoreStateJpa;
 
-        private JpaCompactingContext(EventStoreState eventStoreState) {
-            this.eventStoreState = eventStoreState;
+        private JpaCompactingContext(EventStoreStateJpa eventStoreStateJpa) {
+            this.eventStoreStateJpa = eventStoreStateJpa;
         }
 
         @Override
         public String compactionId() {
-            return eventStoreState.inProgressOperationId();
+            return eventStoreStateJpa.inProgressOperationId();
         }
 
         @Override
         public String context() {
-            return eventStoreState.context();
+            return eventStoreStateJpa.context();
         }
     }
 }

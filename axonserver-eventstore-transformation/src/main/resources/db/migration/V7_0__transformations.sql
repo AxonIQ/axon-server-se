@@ -7,7 +7,7 @@
  *
  */
 
-create table et_event_store_transformations
+create table et_event_store_transformation
 (
     transformation_id varchar(255) not null primary key,
     context           varchar(255) not null,
