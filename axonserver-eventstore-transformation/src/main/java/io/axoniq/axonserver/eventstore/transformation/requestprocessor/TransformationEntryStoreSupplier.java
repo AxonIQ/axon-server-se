@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 @FunctionalInterface
 public interface TransformationEntryStoreSupplier {
 
-    Mono<TransformationEntryStore> supply(String context);
+    Mono<TransformationEntryStore> supply(String context, String transformationId);
 }

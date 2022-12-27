@@ -21,7 +21,7 @@ public class DefaultLocalTransformationCancelExecutor implements LocalTransforma
     @FunctionalInterface
     public interface DeleteActionSupplier {
 
-        Mono<Void> delete(String context);
+        Mono<Void> delete(String context, String transformationId);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultLocalEventStoreCompactionExecutor.class);
@@ -38,7 +38,7 @@ public class DefaultLocalTransformationCancelExecutor implements LocalTransforma
         return Mono.fromSupplier(() -> cancellingTransformations.add(transformation.id()))
                    .filter(inactive -> inactive) // this filter is needed to avoid invoking cancel more than once
                    .switchIfEmpty(Mono.error(new RuntimeException("The cancel operation is already in progress")))
-                   .then(deleteActionSupplier.delete(transformation.context()))
+                   .then(deleteActionSupplier.delete(transformation.context(), transformation.id()))
                    .doOnSuccess(v -> logger.info("Transformation {} cancelled successfully from local store.",
                                                  transformation))
                    .doOnError(t -> logger.info("Failed to cancel from the local store the transformation {}",

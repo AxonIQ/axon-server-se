@@ -16,14 +16,14 @@ public class LocalContextTransformationStore implements ContextTransformationSto
 
     private final String context;
     private final EventStoreTransformationRepository repository;
-    private final TransformationEntryStore transformationEntryStore;
+    private final TransformationEntryStoreSupplier transformationEntryStoreSupplier;
 
     public LocalContextTransformationStore(String context,
                                            EventStoreTransformationRepository repository,
-                                           TransformationEntryStore transformationEntryStore) {
+                                           TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
         this.context = context;
         this.repository = repository;
-        this.transformationEntryStore = transformationEntryStore;
+        this.transformationEntryStoreSupplier = transformationEntryStoreSupplier;
     }
 
     @Override
@@ -64,11 +64,16 @@ public class LocalContextTransformationStore implements ContextTransformationSto
 
     @Override
     public Mono<Void> save(TransformationState transformation) {
-        return Flux.fromIterable(transformation.staged())
-                   .flatMap(transformationEntryStore::store)
+        return storeStagedActions(transformation)
                    .then(Mono.fromSupplier(() -> repository.save(entity(transformation)))
                              .subscribeOn(Schedulers.boundedElastic())
                              .then());
+    }
+
+    private Flux<Long> storeStagedActions(TransformationState transformation) {
+        return transformationEntryStoreSupplier.supply(context, transformation.id())
+                                        .flatMapMany(transformationEntryStore -> Flux.fromIterable(transformation.staged())
+                                                                                 .flatMap(transformationEntryStore::store));
     }
 
     private EventStoreTransformationJpa entity(TransformationState state) {

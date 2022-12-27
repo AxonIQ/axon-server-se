@@ -91,10 +91,11 @@ public class TransformationConfiguration {
 
     @Bean
     public TransformationEntryStoreSupplier transformationEntryStoreSupplier(EmbeddedDBProperties embeddedDBProperties) {
-        DefaultTransformationEntryStoreSupplier.StoragePropertiesSupplier storagePropertiesSupplier = context -> {
+        DefaultTransformationEntryStoreSupplier.StoragePropertiesSupplier storagePropertiesSupplier =
+                (context, transformationId) -> {
             String baseDirectory = embeddedDBProperties.getEvent().getStorage(context);
             StorageProperties storageProperties = new StorageProperties();
-            storageProperties.setStorage(Paths.get(baseDirectory, "transformation").toFile());
+            storageProperties.setStorage(Paths.get(baseDirectory, "transformation", transformationId).toFile());
             storageProperties.setSuffix(".actions");
             return storageProperties;
         };
@@ -200,8 +201,8 @@ public class TransformationConfiguration {
     public LocalTransformationCancelExecutor localTransformationCancelExecutor(
             TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
         return new DefaultLocalTransformationCancelExecutor(
-                context -> transformationEntryStoreSupplier.supply(context)
-                                                           .flatMap(TransformationEntryStore::delete));
+                (context, transformationId) -> transformationEntryStoreSupplier.supply(context, transformationId)
+                                                                               .flatMap(TransformationEntryStore::delete));
     }
 
     @Bean

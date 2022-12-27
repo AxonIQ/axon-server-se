@@ -33,24 +33,17 @@ public class LocalTransformers implements Transformers {
     @Override
     public Mono<ContextTransformer> transformerFor(String context) {
         logger.info("Invoking transformerFor {}", context);
-        return transformers.computeIfAbsent(context, c ->
-                                   entryStoreSupplier.supply(context)
-                                                     .doFirst(() -> logger.info("Getting the event store by the supplier for context {}.",
-                                                                                context))
-                                                     .doOnNext(tes -> logger.info("Loaded Transformation Entry Store for context {}.",
-                                                                                  context))
-                                                     .map(transformationEntryStore -> new LocalContextTransformationStore(
-                                                             context,
-                                                             transformationRepository,
-                                                             transformationEntryStore))
-                                                     .<ContextTransformer>map(store -> {
-                                                         EventProvider eventProvider = eventProviderFactory.apply(context);
-                                                         TransformationStateConverter converter = new ContextTransformationStateConverter(
-                                                                 eventProvider);
-                                                         return new SequentialContextTransformer(context, store,
-                                                                                                 eventStoreStateStore,
-                                                                                                 converter);
-                                                     }).cache())
-                           .doOnSubscribe(s -> logger.info("Subscribed to transformerFor."));
+        return transformers.computeIfAbsent(context, c -> contextTransformerMono(c).cache());
+    }
+
+    private Mono<ContextTransformer> contextTransformerMono(String context) {
+        return Mono.fromSupplier(() -> new LocalContextTransformationStore(context,
+                                                                           transformationRepository,
+                                                                           entryStoreSupplier))
+                   .map(store -> {
+                       EventProvider eventProvider = eventProviderFactory.apply(context);
+                       TransformationStateConverter converter = new ContextTransformationStateConverter(eventProvider);
+                       return new SequentialContextTransformer(context, store, eventStoreStateStore, converter);
+                   });
     }
 }

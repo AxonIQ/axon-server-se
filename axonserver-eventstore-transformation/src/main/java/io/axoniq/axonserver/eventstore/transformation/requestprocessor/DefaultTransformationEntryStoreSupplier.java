@@ -7,6 +7,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -16,20 +17,20 @@ public class DefaultTransformationEntryStoreSupplier implements TransformationEn
     @FunctionalInterface
     public interface StoragePropertiesSupplier {
 
-        StorageProperties storagePropertiesFor(String context);
+        StorageProperties storagePropertiesFor(String context, String transformationId);
     }
 
     private final StoragePropertiesSupplier storagePropertiesSupplier;
-    private final Map<String, Mono<TransformationEntryStore>> cache = new ConcurrentHashMap<>();
+    private final Map<TransformationId, Mono<TransformationEntryStore>> cache = new ConcurrentHashMap<>();
 
     public DefaultTransformationEntryStoreSupplier(StoragePropertiesSupplier storagePropertiesSupplier) {
         this.storagePropertiesSupplier = storagePropertiesSupplier;
     }
 
     @Override
-    public Mono<TransformationEntryStore> supply(String context) {
-       return cache.computeIfAbsent(context, c -> Mono.fromSupplier(() -> autoOpen(() -> new BaseAppendOnlyFileStore(
-                storagePropertiesSupplier.storagePropertiesFor(context), context))).cache());
+    public Mono<TransformationEntryStore> supply(String context, String transformationId) {
+       return cache.computeIfAbsent(new TransformationId(context, transformationId), id -> Mono.fromSupplier(() -> autoOpen(() -> new BaseAppendOnlyFileStore(
+                storagePropertiesSupplier.storagePropertiesFor(context, transformationId), context))).cache());
     }
 
     // TODO: 8/12/22 extract to a separate class
@@ -61,5 +62,40 @@ public class DefaultTransformationEntryStoreSupplier implements TransformationEn
                 return delegate().flatMap(TransformationEntryStore::delete);
             }
         };
+    }
+
+    private static class TransformationId {
+        private final String context;
+        private final String id;
+
+        private TransformationId(String context, String id) {
+            this.context = context;
+            this.id = id;
+        }
+
+        public String context() {
+            return context;
+        }
+
+        public String id() {
+            return id;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TransformationId that = (TransformationId) o;
+            return context.equals(that.context) && id.equals(that.id);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(context, id);
+        }
     }
 }

@@ -26,13 +26,12 @@ public class LocalMarkTransformationApplied implements MarkTransformationApplied
         return transformers.transformerFor(context)
                            .doOnNext(unused -> logger.warn("Marking as applied transformation {}", transformationId))
                            .flatMap(ct -> ct.markApplied(transformationId))
-                           .then(deleteTransformationActions(context))
-                           // TODO: 6/2/22 delete transformation actions
+                           .then(deleteTransformationActions(context, transformationId))
                            .doOnSuccess(unused -> logger.warn("Transformation {} marked applied.", transformationId));
     }
 
-    private Mono<Void> deleteTransformationActions(String context) {
-        return transformationEntryStoreSupplier.supply(context)
+    private Mono<Void> deleteTransformationActions(String context, String transformationId) {
+        return transformationEntryStoreSupplier.supply(context, transformationId)
                                                .flatMap(TransformationEntryStore::delete);
     }
 }
