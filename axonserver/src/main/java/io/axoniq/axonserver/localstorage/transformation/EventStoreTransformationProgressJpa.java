@@ -19,7 +19,7 @@ import javax.persistence.Table;
  * @since 4.6.0
  */
 @Entity
-@Table(name="event_store_transformation_progress")
+@Table(name="et_local_event_store_transformation_progress")
 public class EventStoreTransformationProgressJpa {
     @Id
     private String transformationId;

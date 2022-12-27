@@ -5,12 +5,14 @@ import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
+import javax.persistence.Table;
 
 /**
  * @author Sara Pellegrini
  * @since 2023.0.0
  */
 @Entity
+@Table(name="et_event_store_state")
 public class EventStoreState {
 
     @Id

@@ -24,7 +24,7 @@ import javax.persistence.TemporalType;
  * @since 4.6.0
  */
 @Entity
-@Table(name = "event_store_transformations")
+@Table(name = "et_event_store_transformations")
 public class EventStoreTransformationJpa {
 
     public enum Status {
