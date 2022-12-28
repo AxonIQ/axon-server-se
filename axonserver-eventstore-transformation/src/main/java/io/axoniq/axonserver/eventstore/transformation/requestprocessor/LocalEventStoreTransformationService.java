@@ -12,7 +12,7 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 import io.axoniq.axonserver.api.Authentication;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
-import io.axoniq.axonserver.eventstore.transformation.cancel.TransformationCancelTask;
+import io.axoniq.axonserver.eventstore.transformation.clean.TransformationCleanTask;
 import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionTask;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
@@ -39,43 +39,43 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     private final Logger auditLog;
     private final TransformationApplyTask transformationApplyTask;
     private final EventStoreCompactionTask transformationRollBackTask;
-    private final TransformationCancelTask transformationCancelTask;
+    private final TransformationCleanTask transformationCleanTask;
 
     @Override
     public void init() {
         transformationApplyTask.start();
         transformationRollBackTask.start();
-        transformationCancelTask.start();
+        transformationCleanTask.start();
     }
 
     @Override
     public void destroy() {
         transformationApplyTask.stop();
         transformationRollBackTask.stop();
-        transformationCancelTask.stop();
+        transformationCleanTask.stop();
     }
 
     public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
                                                 EventStoreCompactionTask transformationRollBackTask,
                                                 TransformationApplyTask transformationApplyTask,
-                                                TransformationCancelTask transformationCancelTask) {
+                                                TransformationCleanTask transformationCleanTask) {
         this(transformers,
              transformations,
              LoggerFactory.getLogger("AUDIT." + LocalEventStoreTransformationService.class.getName()),
-             transformationApplyTask, transformationRollBackTask, transformationCancelTask);
+             transformationApplyTask, transformationRollBackTask, transformationCleanTask);
     }
 
     public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
                                                 Logger auditLog,
                                                 TransformationApplyTask transformationApplyTask,
                                                 EventStoreCompactionTask transformationRollBackTask,
-                                                TransformationCancelTask transformationCancelTask) {
+                                                TransformationCleanTask transformationCleanTask) {
         this.transformers = transformers;
         this.transformations = transformations;
         this.auditLog = auditLog;
         this.transformationApplyTask = transformationApplyTask;
         this.transformationRollBackTask = transformationRollBackTask;
-        this.transformationCancelTask = transformationCancelTask;
+        this.transformationCleanTask = transformationCleanTask;
     }
 
     @Override
@@ -127,8 +127,8 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     }
 
     @Override
-    public Mono<Void> startCancelling(String context, String id, @Nonnull Authentication authentication) {
-        return transformerFor(context).flatMap(transformer -> transformer.startCancelling(id))
+    public Mono<Void> cancel(String context, String id, @Nonnull Authentication authentication) {
+        return transformerFor(context).flatMap(transformer -> transformer.cancel(id))
                                       .doFirst(() -> auditLog.info("{}@{}: Request to cancel transformation {}",
                                                                    username(authentication.username()),
                                                                    sanitize(context),

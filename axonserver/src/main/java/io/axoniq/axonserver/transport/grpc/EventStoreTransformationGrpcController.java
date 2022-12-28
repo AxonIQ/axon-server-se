@@ -189,9 +189,9 @@ public class EventStoreTransformationGrpcController
     @Override
     public void cancelTransformation(TransformationId request, StreamObserver<Empty> responseObserver) {
         String context = contextProvider.getContext();
-        eventStoreTransformationService.startCancelling(context,
-                                                        request.getId(),
-                                                        new GrpcAuthentication(authenticationProvider))
+        eventStoreTransformationService.cancel(context,
+                                               request.getId(),
+                                               new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }
 
@@ -245,7 +245,6 @@ public class EventStoreTransformationGrpcController
         this.put(EventStoreTransformationService.Transformation.Status.ACTIVE, TransformationState.ACTIVE);
         this.put(EventStoreTransformationService.Transformation.Status.APPLYING, TransformationState.APPLYING);
         this.put(EventStoreTransformationService.Transformation.Status.APPLIED, TransformationState.APPLIED);
-        this.put(EventStoreTransformationService.Transformation.Status.CANCELLING, TransformationState.CANCELLING);
         this.put(EventStoreTransformationService.Transformation.Status.CANCELLED, TransformationState.CANCELLED);
     }};
 }

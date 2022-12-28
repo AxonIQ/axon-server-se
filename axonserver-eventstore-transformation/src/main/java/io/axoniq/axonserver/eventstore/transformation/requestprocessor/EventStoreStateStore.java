@@ -35,6 +35,10 @@ public interface EventStoreStateStore {
             return Mono.error(new WrongTransformationStateException("Unsupported operation"));
         }
 
+        default Mono<EventStoreState> cancelled() {
+            return Mono.error(new WrongTransformationStateException("Unsupported operation"));
+        }
+
         default Mono<EventStoreState> transformed() {
             return Mono.error(new WrongTransformationStateException("Unsupported operation"));
         }

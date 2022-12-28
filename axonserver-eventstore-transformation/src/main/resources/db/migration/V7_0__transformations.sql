@@ -17,7 +17,8 @@ create table et_event_store_transformation
     date_applied      date,
     applier           varchar(255),
     last_sequence     long,
-    last_event_token  long
+    last_event_token  long,
+    cleaned           bool
 );
 
 create table et_local_event_store_transformation_progress

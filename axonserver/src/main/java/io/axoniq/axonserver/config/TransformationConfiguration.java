@@ -15,11 +15,10 @@ import io.axoniq.axonserver.eventstore.transformation.apply.LocalMarkTransformat
 import io.axoniq.axonserver.eventstore.transformation.apply.MarkTransformationApplied;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyExecutor;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
-import io.axoniq.axonserver.eventstore.transformation.cancel.DefaultTransformationCancelTask;
-import io.axoniq.axonserver.eventstore.transformation.cancel.LocalMarkTransformationCancelled;
-import io.axoniq.axonserver.eventstore.transformation.cancel.MarkTransformationCancelled;
-import io.axoniq.axonserver.eventstore.transformation.cancel.TransformationCancelExecutor;
-import io.axoniq.axonserver.eventstore.transformation.cancel.TransformationCancelTask;
+import io.axoniq.axonserver.eventstore.transformation.clean.DefaultTransformationCleanExecutor;
+import io.axoniq.axonserver.eventstore.transformation.clean.DefaultTransformationCleanTask;
+import io.axoniq.axonserver.eventstore.transformation.clean.JpaTransformationsToBeCleaned;
+import io.axoniq.axonserver.eventstore.transformation.clean.TransformationCleanTask;
 import io.axoniq.axonserver.eventstore.transformation.compact.CompactingContexts;
 import io.axoniq.axonserver.eventstore.transformation.compact.DefaultEventStoreCompactionTask;
 import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionExecutor;
@@ -36,7 +35,6 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventProv
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreSupplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
@@ -48,17 +46,14 @@ import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transformation.DefaultLocalEventStoreCompactionExecutor;
 import io.axoniq.axonserver.localstorage.transformation.DefaultLocalTransformationApplyExecutor;
-import io.axoniq.axonserver.localstorage.transformation.DefaultLocalTransformationCancelExecutor;
 import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformationProgressRepository;
 import io.axoniq.axonserver.localstorage.transformation.JpaLocalTransformationProgressStore;
 import io.axoniq.axonserver.localstorage.transformation.LocalEventStoreCompactionExecutor;
 import io.axoniq.axonserver.localstorage.transformation.LocalEventStoreTransformer;
 import io.axoniq.axonserver.localstorage.transformation.LocalTransformationApplyExecutor;
-import io.axoniq.axonserver.localstorage.transformation.LocalTransformationCancelExecutor;
 import io.axoniq.axonserver.localstorage.transformation.LocalTransformationProgressStore;
 import io.axoniq.axonserver.localstorage.transformation.StandardEventStoreCompactionExecutor;
 import io.axoniq.axonserver.localstorage.transformation.StandardTransformationApplyExecutor;
-import io.axoniq.axonserver.localstorage.transformation.StandardTransformationCancelExecutor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -147,15 +142,8 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public MarkTransformationApplied localMarkTransformationApplied(
-            Transformers transformers,
-            TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
-        return new LocalMarkTransformationApplied(transformers, transformationEntryStoreSupplier);
-    }
-
-    @Bean
-    public MarkTransformationCancelled localMarkTransformationCancelled(Transformers transformers) {
-        return new LocalMarkTransformationCancelled(transformers);
+    public MarkTransformationApplied localMarkTransformationApplied(Transformers transformers) {
+        return new LocalMarkTransformationApplied(transformers);
     }
 
     @Bean
@@ -198,26 +186,10 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public LocalTransformationCancelExecutor localTransformationCancelExecutor(
-            TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
-        return new DefaultLocalTransformationCancelExecutor(
-                (context, transformationId) -> transformationEntryStoreSupplier.supply(context, transformationId)
-                                                                               .flatMap(TransformationEntryStore::delete));
-    }
-
-    @Bean
-    public TransformationCancelExecutor transformationCancelExecutor(
-            LocalTransformationCancelExecutor localTransformationCancelExecutor) {
-        return new StandardTransformationCancelExecutor(localTransformationCancelExecutor);
-    }
-
-    @Bean
-    public TransformationCancelTask transformationCancelTask(TransformationCancelExecutor transformationCancelExecutor,
-                                                             MarkTransformationCancelled markTransformationCancelled,
-                                                             Transformations transformations) {
-        return new DefaultTransformationCancelTask(transformationCancelExecutor,
-                                                   markTransformationCancelled,
-                                                   transformations);
+    public TransformationCleanTask transformationCleanTask(TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+                                                           EventStoreTransformationRepository repository) {
+        return new DefaultTransformationCleanTask(new DefaultTransformationCleanExecutor(transformationEntryStoreSupplier),
+                                                  new JpaTransformationsToBeCleaned(repository));
     }
 
     @Bean(initMethod = "init", destroyMethod = "destroy")
@@ -225,11 +197,11 @@ public class TransformationConfiguration {
                                                                                 Transformations transformations,
                                                                                 EventStoreCompactionTask transformationRollBackTask,
                                                                                 TransformationApplyTask transformationApplyTask,
-                                                                                TransformationCancelTask transformationCancelTask) {
+                                                                                TransformationCleanTask transformationCleanTask) {
         return new LocalEventStoreTransformationService(transformers,
                                                         transformations,
                                                         transformationRollBackTask,
                                                         transformationApplyTask,
-                                                        transformationCancelTask);
+                                                        transformationCleanTask);
     }
 }

@@ -76,18 +76,12 @@ public class SequentialContextTransformer implements ContextTransformer {
     }
 
     @Override
-    public Mono<Void> startCancelling(String transformationId) {
-        return perform(transformationId, "CANCEL_TRANSFORMATION", Transformation::startCancelling)
-                .as(this::sequential);
-    }
-
-    @Override
-    public Mono<Void> markCancelled(String transformationId) {
+    public Mono<Void> cancel(String transformationId) {
         return perform(transformationId,
-                       "MARK_AS_CANCELLED",
-                       Transformation::markCancelled)
+                       "CANCEL",
+                       Transformation::cancel)
                 .then(eventStoreStateStore.state(context))
-                .flatMap(EventStoreState::transformed)
+                .flatMap(EventStoreState::cancelled)
                 .flatMap(eventStoreStateStore::save)
                 .as(this::sequential);
     }

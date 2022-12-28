@@ -111,8 +111,8 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Mono<Void> startCancelling(String context, String id,
-                                              @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
+            public Mono<Void> cancel(String context, String id,
+                                     @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Mono.create(sink -> {
                     if (id.equals(activeTransformations.get(context))) {
                         sink.success();

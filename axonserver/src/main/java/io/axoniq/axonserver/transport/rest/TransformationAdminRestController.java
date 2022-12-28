@@ -41,7 +41,7 @@ public class TransformationAdminRestController {
     public void cancelTransformation(@RequestParam("id") String id,
                                      @RequestParam(name = "targetContext", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
                                      @ApiIgnore final Principal principal) {
-        eventStoreTransformationService.startCancelling(context, id, new PrincipalAuthentication(principal))
+        eventStoreTransformationService.cancel(context, id, new PrincipalAuthentication(principal))
                                        .block();
     }
 

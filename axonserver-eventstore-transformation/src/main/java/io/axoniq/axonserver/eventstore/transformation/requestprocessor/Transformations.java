@@ -18,8 +18,4 @@ public interface Transformations {
     default Flux<Transformation> applyingTransformations() {
         return currentTransformations().filter(t -> APPLYING.equals(t.status()));
     }
-
-    default Flux<Transformation> cancellingTransformations() {
-        return allTransformations().filter(t -> CANCELLING.equals(t.status()));
-    }
 }

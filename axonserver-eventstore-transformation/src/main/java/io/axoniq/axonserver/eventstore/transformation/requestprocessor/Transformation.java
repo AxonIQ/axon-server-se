@@ -1,6 +1,5 @@
 package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
-import io.axoniq.axonserver.eventstore.transformation.NonTransientTransformationException;
 import io.axoniq.axonserver.grpc.event.Event;
 import reactor.core.publisher.Mono;
 
@@ -14,11 +13,7 @@ public interface Transformation {
         return Mono.error(new WrongTransformationStateException("Unsupported operation."));
     }
 
-    default Mono<TransformationState> startCancelling() {
-        return Mono.error(new WrongTransformationStateException("Unsupported operation."));
-    }
-
-    default Mono<TransformationState> markCancelled() {
+    default Mono<TransformationState> cancel() {
         return Mono.error(new WrongTransformationStateException("Unsupported operation."));
     }
 

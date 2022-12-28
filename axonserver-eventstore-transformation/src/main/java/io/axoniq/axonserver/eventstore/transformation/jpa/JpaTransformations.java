@@ -36,32 +36,37 @@ class JPATransformation implements Transformation {
 
     @Override
     public String id() {
-        return jpaEntity.getTransformationId();
+        return jpaEntity.transformationId();
     }
 
     @Override
     public String context() {
-        return jpaEntity.getContext();
+        return jpaEntity.context();
     }
 
     @Override
     public String description() {
-        return jpaEntity.getDescription();
+        return jpaEntity.description();
     }
 
     @Override
     public int version() {
-        return jpaEntity.getVersion();
+        return jpaEntity.version();
     }
 
     @Override
     public Optional<Long> lastSequence() {
-        return Optional.ofNullable(jpaEntity.getLastSequence());
+        return Optional.ofNullable(jpaEntity.lastSequence());
+    }
+
+    @Override
+    public boolean cleaned() {
+        return jpaEntity.cleaned();
     }
 
     @Override
     public Status status() {
-        switch (jpaEntity.getStatus()) {
+        switch (jpaEntity.status()) {
             case APPLIED:
                 return Status.APPLIED;
             case ACTIVE:
@@ -72,8 +77,6 @@ class JPATransformation implements Transformation {
                 return Status.CANCELLED;
             case FAILED:
                 return Status.FAILED;
-            case CANCELLING:
-                return Status.CANCELLING;
             default:
                 throw new IllegalStateException("Unsupported transformation status");
         }

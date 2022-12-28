@@ -39,9 +39,10 @@ public interface EventStoreTransformationService {
 
         Status status();
 
+        boolean cleaned();
+
         enum Status {
             ACTIVE,
-            CANCELLING,
             CANCELLED,
             APPLYING,
             APPLIED,
@@ -118,7 +119,7 @@ public interface EventStoreTransformationService {
      * @param authentication   authentication of the user/application requesting the service
      * @return a mono that is completed when the transformation is cancelled
      */
-    Mono<Void> startCancelling(String context, String transformationId, @Nonnull Authentication authentication);
+    Mono<Void> cancel(String context, String transformationId, @Nonnull Authentication authentication);
 
     /**
      * Starts the apply process. The process runs in the background.

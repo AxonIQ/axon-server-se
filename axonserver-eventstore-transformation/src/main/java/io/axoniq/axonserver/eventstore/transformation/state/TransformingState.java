@@ -32,6 +32,11 @@ public class TransformingState implements EventStoreState {
     }
 
     @Override
+    public Mono<EventStoreState> cancelled() {
+        return Mono.fromSupplier(() -> new IdleState(context));
+    }
+
+    @Override
     public Mono<EventStoreState> transform(String transformationId) {
         return Mono.error(new WrongTransformationStateException("There is already ongoing transformation"));
     }

@@ -2,7 +2,6 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 
 import io.axoniq.axonserver.eventstore.transformation.transformation.ActiveTransformation;
 import io.axoniq.axonserver.eventstore.transformation.transformation.ApplyingTransformation;
-import io.axoniq.axonserver.eventstore.transformation.transformation.CancellingTransformation;
 import io.axoniq.axonserver.eventstore.transformation.transformation.FinalTransformation;
 import io.axoniq.axonserver.eventstore.transformation.transformation.active.TransformationResources;
 import reactor.core.publisher.Mono;
@@ -23,8 +22,6 @@ public class ContextTransformationStateConverter implements TransformationStateC
                     return activeTransformation(entity);
                 case APPLYING:
                     return applyingTransformation(entity);
-                case CANCELLING:
-                    return cancellingTransformation(entity);
                 case APPLIED:
                 case CANCELLED:
                 case FAILED:
@@ -41,10 +38,6 @@ public class ContextTransformationStateConverter implements TransformationStateC
 
     private  ApplyingTransformation applyingTransformation(TransformationState state) {
         return new ApplyingTransformation(state);
-    }
-
-    private CancellingTransformation cancellingTransformation(TransformationState state) {
-        return new CancellingTransformation(state);
     }
 
     private FinalTransformation finalTransformation() {

@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
-import static io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationJpa.Status.CANCELLING;
+import static io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationJpa.Status.CANCELLED;
 import static java.lang.String.format;
 
 
@@ -45,9 +45,8 @@ public class ActiveTransformation implements Transformation {
     }
 
     @Override
-    public Mono<TransformationState> startCancelling() {
-        return Mono.fromSupplier(() -> state.withStatus(CANCELLING))
-                   .flatMap(s -> resources.close().thenReturn(s));
+    public Mono<TransformationState> cancel() {
+        return Mono.fromSupplier(() -> state.withStatus(CANCELLED));
     }
 
     @Override

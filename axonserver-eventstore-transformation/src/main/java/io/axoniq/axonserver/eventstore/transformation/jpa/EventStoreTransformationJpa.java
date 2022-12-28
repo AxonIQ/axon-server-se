@@ -29,7 +29,6 @@ public class EventStoreTransformationJpa {
 
     public enum Status {
         ACTIVE,
-        CANCELLING,
         CANCELLED, // final state
         APPLYING,
         APPLIED, // final state
@@ -57,6 +56,8 @@ public class EventStoreTransformationJpa {
 
     private Long lastEventToken;
 
+    private boolean cleaned;
+
     public EventStoreTransformationJpa() {
     }
 
@@ -81,9 +82,10 @@ public class EventStoreTransformationJpa {
         this.lastEventToken = original.lastEventToken;
         this.status = original.status;
         this.version = original.version;
+        this.cleaned = original.cleaned;
     }
 
-    public String getTransformationId() {
+    public String transformationId() {
         return transformationId;
     }
 
@@ -91,7 +93,7 @@ public class EventStoreTransformationJpa {
         this.transformationId = transformationId;
     }
 
-    public String getContext() {
+    public String context() {
         return context;
     }
 
@@ -99,7 +101,7 @@ public class EventStoreTransformationJpa {
         this.context = context;
     }
 
-    public Status getStatus() {
+    public Status status() {
         return status;
     }
 
@@ -107,7 +109,7 @@ public class EventStoreTransformationJpa {
         this.status = status;
     }
 
-    public int getVersion() {
+    public int version() {
         return version;
     }
 
@@ -115,7 +117,7 @@ public class EventStoreTransformationJpa {
         this.version = version;
     }
 
-    public String getDescription() {
+    public String description() {
         return description;
     }
 
@@ -123,7 +125,7 @@ public class EventStoreTransformationJpa {
         this.description = description;
     }
 
-    public Date getDateApplied() {
+    public Date dateApplied() {
         return dateApplied;
     }
 
@@ -131,7 +133,7 @@ public class EventStoreTransformationJpa {
         this.dateApplied = dateApplied;
     }
 
-    public String getApplier() {
+    public String applier() {
         return applier;
     }
 
@@ -139,7 +141,7 @@ public class EventStoreTransformationJpa {
         this.applier = appliedBy;
     }
 
-    public Long getLastSequence() {
+    public Long lastSequence() {
         return lastSequence;
     }
 
@@ -147,12 +149,20 @@ public class EventStoreTransformationJpa {
         this.lastSequence = lastTransformationEntrySequence;
     }
 
-    public Long getLastEventToken() {
+    public Long lastEventToken() {
         return lastEventToken;
     }
 
     public void setLastEventToken(Long lastEventToken) {
         this.lastEventToken = lastEventToken;
+    }
+
+    public boolean cleaned() {
+        return cleaned;
+    }
+
+    public void setCleaned(boolean cleaned) {
+        this.cleaned = cleaned;
     }
 
     @Override
@@ -164,9 +174,10 @@ public class EventStoreTransformationJpa {
                 ", version=" + version +
                 ", description='" + description + '\'' +
                 ", dateApplied=" + dateApplied +
-                ", appliedBy='" + applier + '\'' +
+                ", applier='" + applier + '\'' +
                 ", lastSequence=" + lastSequence +
                 ", lastEventToken=" + lastEventToken +
+                ", cleaned=" + cleaned +
                 '}';
     }
 }

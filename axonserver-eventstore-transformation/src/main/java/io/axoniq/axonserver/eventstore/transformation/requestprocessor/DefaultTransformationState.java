@@ -31,44 +31,44 @@ public class DefaultTransformationState implements TransformationState {
 
     @Override
     public String id() {
-        return entity.getTransformationId();
+        return entity.transformationId();
     }
 
     @Override
     public int version() {
-        return entity.getVersion();
+        return entity.version();
     }
 
     @Override
     public String description() {
-        return entity.getDescription();
+        return entity.description();
     }
 
     @Override
     public Optional<Long> lastSequence() {
-        return Optional.ofNullable(entity.getLastSequence());
+        return Optional.ofNullable(entity.lastSequence());
     }
 
     @Override
     public Optional<Long> lastEventToken() {
-        return Optional.ofNullable(entity.getLastEventToken());
+        return Optional.ofNullable(entity.lastEventToken());
     }
 
 
     @Override
     public Optional<String> applier() {
-        return Optional.ofNullable(entity.getApplier());
+        return Optional.ofNullable(entity.applier());
     }
 
     @Override
     public Optional<Instant> appliedAt() {
-        return Optional.ofNullable(entity.getDateApplied())
+        return Optional.ofNullable(entity.dateApplied())
                        .map(Date::toInstant);
     }
 
     @Override
     public EventStoreTransformationJpa.Status status() {
-        return entity.getStatus();
+        return entity.status();
     }
 
     @Override
