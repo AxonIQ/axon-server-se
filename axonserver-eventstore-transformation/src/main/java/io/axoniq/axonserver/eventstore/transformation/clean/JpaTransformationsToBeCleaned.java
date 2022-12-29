@@ -12,7 +12,7 @@ import static java.util.Arrays.asList;
 
 public class JpaTransformationsToBeCleaned implements TransformationsToBeCleaned {
 
-    private final EventStoreTransformationRepository repository;
+    private final  repository;
 
     public JpaTransformationsToBeCleaned(EventStoreTransformationRepository repository) {
         this.repository = repository;

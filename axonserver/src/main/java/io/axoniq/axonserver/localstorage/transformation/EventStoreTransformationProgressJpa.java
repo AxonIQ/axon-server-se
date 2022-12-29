@@ -25,6 +25,7 @@ public class EventStoreTransformationProgressJpa {
     private String transformationId;
     private long lastSequenceApplied;
     private boolean applied;
+    private boolean cleaned;
 
     public EventStoreTransformationProgressJpa() {
     }
@@ -47,4 +48,7 @@ public class EventStoreTransformationProgressJpa {
         return applied;
     }
 
+    public boolean isCleaned() {
+        return cleaned;
+    }
 }

@@ -225,6 +225,10 @@ public class StorageProperties implements Cloneable {
         return new File(String.format(PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), indexSuffix));
     }
 
+    public File indexTemp(String context, FileVersion segment) {
+        return new File(String.format(TEMP_PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), indexSuffix));
+    }
+
     public File transformedIndex(String context, FileVersion segment) {
         if( segment.version() == 0) return transformedIndex(context, segment.segment());
         return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, getStorage(context), segment.segment(), segment.version(), indexSuffix));
