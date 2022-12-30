@@ -7,7 +7,7 @@
  *
  */
 
-package io.axoniq.axonserver.localstorage.transformation;
+package io.axoniq.axonserver.eventstore.transformation.jpa;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;

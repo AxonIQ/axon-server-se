@@ -344,7 +344,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore {
         }
     }
 
-    public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
+    public Flux<Long> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
         // TODO: 7/26/22 revisit this approach!!!
         return Mono.fromRunnable(this::forceNextSegment)
                    .thenMany(super.transformContents(newVersion, transformedEvents));

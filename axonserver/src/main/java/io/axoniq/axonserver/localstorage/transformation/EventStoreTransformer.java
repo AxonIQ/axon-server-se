@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.localstorage.transformation;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -20,7 +19,7 @@ import reactor.core.publisher.Mono;
  * @author Marc Gathier
  * @since 4.6.0
  */
-public interface LocalEventStoreTransformer {
+public interface EventStoreTransformer {
 
     /**
      * Transforms events in the event store. Returns a {@link Flux} of progress objects where an object is published
@@ -32,7 +31,7 @@ public interface LocalEventStoreTransformer {
      * @param transformedEvents a {@link Flux} of transformed events
      * @return a flux of progress information objects
      */
-    Flux<TransformationProgress> transformEvents(String context, int version, Flux<EventWithToken> transformedEvents);
+    Flux<Long> transformEvents(String context, int version, Flux<EventWithToken> transformedEvents);
 
     /**
      * Deletes all events in the event store related to the given context.

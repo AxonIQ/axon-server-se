@@ -1,11 +1,13 @@
-package io.axoniq.axonserver.localstorage.transformation;
+package io.axoniq.axonserver.eventstore.transformation.jpa;
 
+import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyingState;
+import io.axoniq.axonserver.eventstore.transformation.apply.TransformationProgressStore;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.Optional;
 
-public class JpaLocalTransformationProgressStore implements LocalTransformationProgressStore {
+public class JpaLocalTransformationProgressStore implements TransformationProgressStore {
 
     private final EventStoreTransformationProgressRepository repository;
 

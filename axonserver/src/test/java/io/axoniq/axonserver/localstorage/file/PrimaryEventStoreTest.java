@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,7 +14,6 @@ import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
-import io.axoniq.axonserver.localstorage.EventTransformationResult;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
@@ -27,26 +26,21 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.*;
 import org.junit.rules.*;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.util.unit.DataSize;
 import reactor.test.StepVerifier;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -488,7 +482,7 @@ public class PrimaryEventStoreTest {
             testSubject.close(true);
         }
     }*/
-
+/*
     private EventTransformationResult eventTransformerResult(Event event, long nextToken) {
         return new EventTransformationResult() {
             @Override
@@ -501,7 +495,7 @@ public class PrimaryEventStoreTest {
                 return nextToken;
             }
         };
-    }
+    } /*
 
     /*@Test
     public void testReadingDuringTransformation() throws InterruptedException, ExecutionException, TimeoutException {

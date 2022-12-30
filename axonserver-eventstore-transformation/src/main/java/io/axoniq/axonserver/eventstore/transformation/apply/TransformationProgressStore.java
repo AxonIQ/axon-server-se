@@ -1,8 +1,8 @@
-package io.axoniq.axonserver.localstorage.transformation;
+package io.axoniq.axonserver.eventstore.transformation.apply;
 
 import reactor.core.publisher.Mono;
 
-public interface LocalTransformationProgressStore {
+public interface TransformationProgressStore {
 
     Mono<TransformationApplyingState> initState(String transformationId);
 

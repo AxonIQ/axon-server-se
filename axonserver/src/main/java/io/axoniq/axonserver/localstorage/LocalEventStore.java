@@ -25,10 +25,9 @@ import io.axoniq.axonserver.grpc.event.ReadHighestSequenceNrResponse;
 import io.axoniq.axonserver.grpc.event.TrackingToken;
 import io.axoniq.axonserver.interceptor.DefaultExecutionContext;
 import io.axoniq.axonserver.interceptor.EventInterceptors;
-import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import io.axoniq.axonserver.localstorage.query.QueryEventsRequestStreamObserver;
 import io.axoniq.axonserver.localstorage.transaction.StorageTransactionManagerFactory;
-import io.axoniq.axonserver.localstorage.transformation.LocalEventStoreTransformer;
+import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformer;
 import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.DefaultMetricCollector;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -80,7 +79,7 @@ import javax.annotation.Nonnull;
  */
 @Component
 public class LocalEventStore implements io.axoniq.axonserver.message.event.EventStore,
-        LocalEventStoreTransformer,
+        EventStoreTransformer,
         SmartLifecycle {
 
     private static final Confirmation CONFIRMATION = Confirmation.newBuilder().setSuccess(true).build();
@@ -222,9 +221,9 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
     }
 
     @Override
-    public Flux<TransformationProgress> transformEvents(String context,
-                                                        int version,
-                                                        Flux<EventWithToken> transformedEvents) {
+    public Flux<Long> transformEvents(String context,
+                                      int version,
+                                      Flux<EventWithToken> transformedEvents) {
         return workersMap.get(context)
                 .eventStorageEngine
                 .transformContents(version, transformedEvents)

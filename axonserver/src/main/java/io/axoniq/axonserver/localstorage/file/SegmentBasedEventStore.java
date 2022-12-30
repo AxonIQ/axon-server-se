@@ -63,8 +63,6 @@ import java.util.stream.Stream;
 import static io.axoniq.axonserver.localstorage.file.StorageProperties.TRANSFORMED_SUFFIX;
 import static java.lang.String.format;
 
-import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
-
 
 /**
  * @author Marc Gathier
@@ -279,7 +277,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Flux<TransformationProgress> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
+    public Flux<Long> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
         return Flux.usingWhen(Mono.just(0L),
                               v -> transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
                                                     .concatMap(segmentedTransformedEvents -> transformSegment(
@@ -289,9 +287,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                               v -> activateTransformation());
     }
 
-    private Mono<TransformationProgress> transformSegment(long segment,
-                                                          int newVersion,
-                                                          Flux<EventWithToken> transformedEventsInTheSegment) {
+    private Mono<Long> transformSegment(long segment,
+                                        int newVersion,
+                                        Flux<EventWithToken> transformedEventsInTheSegment) {
         return Flux.usingWhen(Mono.fromSupplier(() -> new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
                                                                                     context,
                                                                                     segment,
@@ -304,8 +302,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                               SegmentTransformer::completeSegment,
                               SegmentTransformer::rollback,
                               SegmentTransformer::cancel)
-                   .reduce((p1, p2) -> new TransformationProgressUpdate(
-                           p1.eventsTransformed() + p2.eventsTransformed()));
+                   .reduce(Long::sum);
     }
 
     private Mono<Void> activateTransformation() {

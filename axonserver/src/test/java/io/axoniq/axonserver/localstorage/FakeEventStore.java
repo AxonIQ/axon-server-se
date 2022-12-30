@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -11,7 +11,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 
@@ -105,7 +104,7 @@ public class FakeEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Flux<TransformationProgress> transformContents(int version, Flux<EventWithToken> transformedEvents) {
+    public Flux<Long> transformContents(int version, Flux<EventWithToken> transformedEvents) {
         return Flux.empty();
     }
 

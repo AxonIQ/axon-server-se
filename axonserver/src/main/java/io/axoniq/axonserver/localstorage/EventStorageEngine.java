@@ -11,7 +11,6 @@ package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.file.TransformationProgress;
 import org.springframework.data.util.CloseableIterator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -49,7 +48,7 @@ public interface EventStorageEngine {
 
     default long getFirstCompletedSegment() {
         return -1;
-    };
+    }
 
     /**
      * Stores a number of events. Completes the returned completable future when the write is confirmed.
@@ -244,7 +243,7 @@ public interface EventStorageEngine {
     default void validateTransaction(long token, List<Event> eventList) {
     }
 
-    Flux<TransformationProgress> transformContents(int version, Flux<EventWithToken> transformedEvents);
+    Flux<Long> transformContents(int version, Flux<EventWithToken> transformedEvents);
 
     default Mono<Void> deleteOldVersions() {
         return Mono.error(new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine"));
