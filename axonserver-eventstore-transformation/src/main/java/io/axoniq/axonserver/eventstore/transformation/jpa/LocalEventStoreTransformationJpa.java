@@ -15,22 +15,25 @@ import javax.persistence.Table;
 
 /**
  * Stores progress while applying a transformation.
+ *
  * @author Marc Gathier
  * @since 4.6.0
  */
 @Entity
-@Table(name="et_local_event_store_transformation_progress")
-public class EventStoreTransformationProgressJpa {
+@Table(name = "et_local_event_store_transformation")
+public class LocalEventStoreTransformationJpa {
+
     @Id
     private String transformationId;
     private long lastSequenceApplied;
     private boolean applied;
-    private boolean cleaned;
 
-    public EventStoreTransformationProgressJpa() {
+    public LocalEventStoreTransformationJpa() {
     }
 
-    public EventStoreTransformationProgressJpa(String transformationId, long lastSequenceApplied, boolean applied) {
+    public LocalEventStoreTransformationJpa(String transformationId,
+                                            long lastSequenceApplied,
+                                            boolean applied) {
         this.transformationId = transformationId;
         this.lastSequenceApplied = lastSequenceApplied;
         this.applied = applied;
@@ -46,9 +49,5 @@ public class EventStoreTransformationProgressJpa {
 
     public boolean isApplied() {
         return applied;
-    }
-
-    public boolean isCleaned() {
-        return cleaned;
     }
 }

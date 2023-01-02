@@ -13,9 +13,12 @@ import static java.util.Arrays.asList;
 public class JpaTransformationsToBeCleaned implements TransformationsToBeCleaned {
 
     private final EventStoreTransformationRepository repository;
+    private final CleanedTransformationRepository cleanedTransformationRepository;
 
-    public JpaTransformationsToBeCleaned(EventStoreTransformationRepository repository) {
+    public JpaTransformationsToBeCleaned(EventStoreTransformationRepository repository,
+                                         CleanedTransformationRepository cleanedTransformationRepository) {
         this.repository = repository;
+        this.cleanedTransformationRepository = cleanedTransformationRepository;
     }
 
     @Override
@@ -23,16 +26,16 @@ public class JpaTransformationsToBeCleaned implements TransformationsToBeCleaned
         return Flux.defer(() -> Flux.fromIterable(repository.findAll())
                                     .subscribeOn(Schedulers.boundedElastic())
                                     .filter(entity -> asList(APPLIED, CANCELLED).contains(entity.status()))
-                                    .filter(entity -> !entity.cleaned())
-                                    .map(t -> new Transformation(repository, t)));
+                                    .filter(entity -> !cleanedTransformationRepository.existsById(entity.transformationId()))
+                                    .map(t -> new Transformation(cleanedTransformationRepository, t)));
     }
 
     private static class Transformation implements TransformationToBeCleaned {
 
-        private final EventStoreTransformationRepository repo;
+        private final CleanedTransformationRepository repo;
         private final EventStoreTransformationJpa entity;
 
-        private Transformation(EventStoreTransformationRepository repo, EventStoreTransformationJpa entity) {
+        private Transformation(CleanedTransformationRepository repo, EventStoreTransformationJpa entity) {
             this.repo = repo;
             this.entity = entity;
         }
@@ -49,7 +52,7 @@ public class JpaTransformationsToBeCleaned implements TransformationsToBeCleaned
 
         @Override
         public Mono<Void> markAsCleaned() {
-            return Mono.<Void>fromRunnable(() -> repo.markAsCleaned(id()))
+            return Mono.<Void>fromRunnable(() -> repo.save(new CleanedTransformationJpa(id())))
                        .subscribeOn(Schedulers.boundedElastic());
         }
     }

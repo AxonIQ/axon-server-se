@@ -56,8 +56,6 @@ public class EventStoreTransformationJpa {
 
     private Long lastEventToken;
 
-    private boolean cleaned;
-
     public EventStoreTransformationJpa() {
     }
 
@@ -82,7 +80,6 @@ public class EventStoreTransformationJpa {
         this.lastEventToken = original.lastEventToken;
         this.status = original.status;
         this.version = original.version;
-        this.cleaned = original.cleaned;
     }
 
     public String transformationId() {
@@ -157,13 +154,6 @@ public class EventStoreTransformationJpa {
         this.lastEventToken = lastEventToken;
     }
 
-    public boolean cleaned() {
-        return cleaned;
-    }
-
-    public void setCleaned(boolean cleaned) {
-        this.cleaned = cleaned;
-    }
 
     @Override
     public String toString() {
@@ -177,7 +167,6 @@ public class EventStoreTransformationJpa {
                 ", applier='" + applier + '\'' +
                 ", lastSequence=" + lastSequence +
                 ", lastEventToken=" + lastEventToken +
-                ", cleaned=" + cleaned +
                 '}';
     }
 }

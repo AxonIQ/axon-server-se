@@ -17,24 +17,25 @@ create table et_event_store_transformation
     date_applied      date,
     applier           varchar(255),
     last_sequence     long,
-    last_event_token  long,
-    cleaned           boolean
+    last_event_token  long
 );
 
-create table et_local_event_store_transformation_progress
+create table et_local_event_store_transformation
 (
     transformation_id     varchar(255) not null primary key,
     last_sequence_applied bigint,
-    applied               bool,
-    cleaned               bool,
-    last_update           date
+    applied               bool
+);
+
+create table et_local_cleaned_event_store_transformation
+(
+    transformation_id varchar(255) not null primary key
 );
 
 create table et_event_store_state
 (
     context                  varchar(255) not null primary key,
     state                    varchar(255),
-    in_progress_operation_id varchar(255),
-    last_update              date
+    in_progress_operation_id varchar(255)
 );
 

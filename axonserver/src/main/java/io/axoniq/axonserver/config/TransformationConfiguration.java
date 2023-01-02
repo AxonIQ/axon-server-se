@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -17,6 +17,7 @@ import io.axoniq.axonserver.eventstore.transformation.apply.MarkTransformationAp
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyExecutor;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationProgressStore;
+import io.axoniq.axonserver.eventstore.transformation.clean.CleanedTransformationRepository;
 import io.axoniq.axonserver.eventstore.transformation.clean.DefaultTransformationCleanExecutor;
 import io.axoniq.axonserver.eventstore.transformation.clean.DefaultTransformationCleanTask;
 import io.axoniq.axonserver.eventstore.transformation.clean.JpaTransformationsToBeCleaned;
@@ -29,12 +30,12 @@ import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompacti
 import io.axoniq.axonserver.eventstore.transformation.compact.LocalMarkEventStoreCompacted;
 import io.axoniq.axonserver.eventstore.transformation.compact.MarkEventStoreCompacted;
 import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreStateRepository;
-import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationProgressRepository;
 import io.axoniq.axonserver.eventstore.transformation.jpa.EventStoreTransformationRepository;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaCompactingContexts;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaEventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaLocalTransformationProgressStore;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaTransformations;
+import io.axoniq.axonserver.eventstore.transformation.jpa.LocalEventStoreTransformationRepository;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationEntryStoreSupplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
@@ -115,7 +116,7 @@ public class TransformationConfiguration {
 
     @Bean
     public TransformationProgressStore localTransformationProgressStore(
-            EventStoreTransformationProgressRepository repository) {
+            LocalEventStoreTransformationRepository repository) {
         return new JpaLocalTransformationProgressStore(repository);
     }
 
@@ -169,11 +170,16 @@ public class TransformationConfiguration {
                                                    markEventStoreCompacted);
     }
 
+
     @Bean
-    public TransformationCleanTask transformationCleanTask(TransformationEntryStoreSupplier transformationEntryStoreSupplier,
-                                                           EventStoreTransformationRepository repository) {
-        return new DefaultTransformationCleanTask(new DefaultTransformationCleanExecutor(transformationEntryStoreSupplier),
-                                                  new JpaTransformationsToBeCleaned(repository));
+    public TransformationCleanTask transformationCleanTask(
+            TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+            EventStoreTransformationRepository repository,
+            CleanedTransformationRepository cleanedTransformationRepository) {
+        return new DefaultTransformationCleanTask(new DefaultTransformationCleanExecutor(
+                transformationEntryStoreSupplier),
+                                                  new JpaTransformationsToBeCleaned(repository,
+                                                                                    cleanedTransformationRepository));
     }
 
     @Bean(initMethod = "init", destroyMethod = "destroy")

@@ -7,7 +7,6 @@ import io.axoniq.axonserver.eventstore.transformation.state.TransformingState;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.time.Instant;
 import java.util.EnumMap;
 
 /**
@@ -80,7 +79,6 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
         }
 
         EventStoreStateJpa entity() {
-            entity.setLastUpdate(Instant.now());
             return entity;
         }
 

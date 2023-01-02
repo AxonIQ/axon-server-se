@@ -13,7 +13,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
-import javax.transaction.Transactional;
 
 /**
  * @author Marc Gathier
@@ -48,10 +47,4 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
     List<EventStoreTransformationJpa> findByContextAndStatus(String context,
                                                              EventStoreTransformationJpa.Status status);
 
-    @Transactional
-    default void markAsCleaned(String transformationId){
-        EventStoreTransformationJpa transformation = getReferenceById(transformationId);
-        transformation.setCleaned(true);
-        save(transformation);
-    }
 }

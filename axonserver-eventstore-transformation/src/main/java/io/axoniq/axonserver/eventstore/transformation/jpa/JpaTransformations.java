@@ -60,11 +60,6 @@ class JPATransformation implements Transformation {
     }
 
     @Override
-    public boolean cleaned() {
-        return jpaEntity.cleaned();
-    }
-
-    @Override
     public Status status() {
         switch (jpaEntity.status()) {
             case APPLIED:

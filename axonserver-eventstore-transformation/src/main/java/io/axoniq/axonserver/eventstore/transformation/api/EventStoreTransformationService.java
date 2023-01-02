@@ -39,7 +39,6 @@ public interface EventStoreTransformationService {
 
         Status status();
 
-        boolean cleaned();
 
         enum Status {
             ACTIVE,

@@ -9,15 +9,15 @@ import java.util.Optional;
 
 public class JpaLocalTransformationProgressStore implements TransformationProgressStore {
 
-    private final EventStoreTransformationProgressRepository repository;
+    private final LocalEventStoreTransformationRepository repository;
 
-    public JpaLocalTransformationProgressStore(EventStoreTransformationProgressRepository repository) {
+    public JpaLocalTransformationProgressStore(LocalEventStoreTransformationRepository repository) {
         this.repository = repository;
     }
 
     @Override
     public Mono<TransformationApplyingState> initState(String transformationId) {
-        return Mono.just(new EventStoreTransformationProgressJpa(transformationId, -1, false))
+        return Mono.just(new LocalEventStoreTransformationJpa(transformationId, -1, false))
                    .doOnNext(repository::save)
                    .map(JpaTransformationApplyingState::new);
     }
@@ -25,7 +25,7 @@ public class JpaLocalTransformationProgressStore implements TransformationProgre
     @Override
     public Mono<TransformationApplyingState> stateFor(String transformationId) {
         return Mono.<TransformationApplyingState>create(sink -> {
-            Optional<EventStoreTransformationProgressJpa> byId = repository.findById(transformationId);
+            Optional<LocalEventStoreTransformationJpa> byId = repository.findById(transformationId);
             if (byId.isPresent()) {
                 sink.success(new JpaTransformationApplyingState(byId.get()));
             } else {
@@ -38,27 +38,27 @@ public class JpaLocalTransformationProgressStore implements TransformationProgre
     public Mono<Void> updateLastSequence(String transformationId, long lastProcessedSequence) {
         return stateFor(transformationId).filter(state -> !state.applied())
                                          .switchIfEmpty(Mono.error(new RuntimeException("unexisting transformation")))
-                                         .map(state -> new EventStoreTransformationProgressJpa(transformationId,
-                                                                                               lastProcessedSequence,
-                                                                                               state.applied()))
+                                         .map(state -> new LocalEventStoreTransformationJpa(transformationId,
+                                                                                            lastProcessedSequence,
+                                                                                            state.applied()))
                                          .doOnNext(repository::save)
                                          .then();
     }
 
     @Override
     public Mono<Void> markAsApplied(String transformationId) {
-        return stateFor(transformationId).map(state -> new EventStoreTransformationProgressJpa(transformationId,
-                                                                                               state.lastAppliedSequence(),
-                                                                                               true))
+        return stateFor(transformationId).map(state -> new LocalEventStoreTransformationJpa(transformationId,
+                                                                                            state.lastAppliedSequence(),
+                                                                                            true))
                                          .doOnNext(repository::save)
                                          .then();
     }
 
     private static class JpaTransformationApplyingState implements TransformationApplyingState {
 
-        private final EventStoreTransformationProgressJpa entity;
+        private final LocalEventStoreTransformationJpa entity;
 
-        private JpaTransformationApplyingState(EventStoreTransformationProgressJpa entity) {
+        private JpaTransformationApplyingState(LocalEventStoreTransformationJpa entity) {
             this.entity = entity;
         }
 
