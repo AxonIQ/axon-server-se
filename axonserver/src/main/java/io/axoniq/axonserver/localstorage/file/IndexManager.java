@@ -131,4 +131,6 @@ public interface IndexManager {
      * @param indexEntries list of index entries to add
      */
     void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
+
+    SortedMap<Long, IndexEntries> getClosedIndexPositions(String aggregateId, long firstSequenceNumber, long lastSequenceNumber, long maxResults, long minToken, SortedMap<Long, IndexEntries> results, long previousToken);
 }
