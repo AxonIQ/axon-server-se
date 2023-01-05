@@ -59,8 +59,9 @@ public class TokenAtTest {
 
         IndexManager indexManager = new StandardIndexManager("default",
                                                              () -> storageProperties,
+                                                             "/path",
                                                              EventType.EVENT,
-                                                             meterFactory);
+                                                             meterFactory, ()->null);
 
         InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
                                                                                                    EventType.EVENT),

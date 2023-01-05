@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,6 +70,20 @@ public interface IndexManager {
      * @return true if all index related files for the segment have been removed
      */
     boolean remove(long segment);
+
+    /**
+     * Returns index files for segment
+     *
+     * @param segment
+     * @return list of index files
+     */
+    List<File> indexFiles(long segment);
+
+    /**
+     * Add existing, non-active, index file to index manager
+     * @param segment to add
+     */
+    void addExistingIndex(long segment);
 
     /**
      * Finds all locations of events for the given aggregate within range of sequence numbers specified.

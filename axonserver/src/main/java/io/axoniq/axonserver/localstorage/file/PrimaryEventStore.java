@@ -394,6 +394,11 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                                 public long id() {
                                     return writePosition.segment;
                                 }
+
+                                @Override
+                                public Supplier<List<File>> indexProvider() {
+                                    return () -> indexManager.indexFiles(writePosition.segment);
+                                }
                             }, () -> {
                                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
                                 logger.debug("Handed over {}, remaining segments: {}",

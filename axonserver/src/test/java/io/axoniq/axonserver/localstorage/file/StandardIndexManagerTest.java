@@ -8,8 +8,10 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.TestUtils;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.assertj.core.api.Assertions;
-import org.junit.*;
-import org.junit.rules.*;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,7 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.junit.Assert.*;
-import static org.junit.Assume.*;
+import static org.junit.Assume.assumeTrue;
 
 /**
  * Tests for {@link StandardIndexManager}.
@@ -53,7 +55,7 @@ public class StandardIndexManagerTest {
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        indexManager = new StandardIndexManager(context, () -> storageProperties, EventType.EVENT, meterFactory);
+        indexManager = new StandardIndexManager(context, () -> storageProperties, "todo", EventType.EVENT, meterFactory, ()->null); //todo multitier
     }
 
     @Test
@@ -139,7 +141,7 @@ public class StandardIndexManagerTest {
     public void testTemporaryFileIsDeletedWhenCreatingIndex() throws IOException {
         long segment = 0L;
 
-        File tempFile = storageProperties.indexTemp(context, segment);
+        File tempFile = storageProperties.indexTemp("todo", segment); //todo multitier
         try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
             outputStream.write("mockDataToCreateIllegalFile".getBytes(StandardCharsets.UTF_8));
         }
@@ -149,7 +151,7 @@ public class StandardIndexManagerTest {
         indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
         indexManager.complete(segment);
 
-        assertFalse(storageProperties.indexTemp(context, segment).exists());
+        assertFalse(storageProperties.indexTemp("todo", segment).exists()); //todo multitier
     }
 
     @Test(expected = MessagingPlatformException.class)

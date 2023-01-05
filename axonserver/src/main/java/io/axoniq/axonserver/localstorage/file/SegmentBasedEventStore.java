@@ -571,24 +571,24 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected void renameFileIfNecessary(long segment) {
         StorageProperties storageProperties = storagePropertiesSupplier.get();
-        File dataFile = storageProperties.oldDataFile(context, segment);
+        File dataFile = storageProperties.oldDataFile(storagePath, segment);
         if (dataFile.exists()) {
             if (!dataFile.renameTo(dataFile(segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
                                                      renameMessage(dataFile,
                                                                    dataFile(segment)));
             }
-            File indexFile = storageProperties.oldIndex(context, segment);
-            if (indexFile.exists() && !indexFile.renameTo(storageProperties.index(context, segment))) {
+            File indexFile = storageProperties.oldIndex(storagePath, segment);
+            if (indexFile.exists() && !indexFile.renameTo(storageProperties.index(storagePath, segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
                                                      renameMessage(indexFile,
-                                                                   storageProperties.index(context, segment)));
+                                                                   storageProperties.index(storagePath, segment)));
             }
-            File bloomFile = storageProperties.oldBloomFilter(context, segment);
-            if (bloomFile.exists() && !bloomFile.renameTo(storageProperties.bloomFilter(context, segment))) {
+            File bloomFile = storageProperties.oldBloomFilter(storagePath, segment);
+            if (bloomFile.exists() && !bloomFile.renameTo(storageProperties.bloomFilter(storagePath, segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
                                                      renameMessage(bloomFile,
-                                                                   storageProperties.bloomFilter(context, segment)));
+                                                                   storageProperties.bloomFilter(storagePath, segment)));
             }
         }
     }
@@ -596,7 +596,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected File dataFile(long segment) {
         return Paths.get(storagePath, storagePropertiesSupplier.get().dataFile(segment)).toFile();
     }
-
 
     private String renameMessage(File from, File to) {
         return "Could not rename " + from.getAbsolutePath() + " to " + to.getAbsolutePath();

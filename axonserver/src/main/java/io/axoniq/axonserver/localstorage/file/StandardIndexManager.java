@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -79,6 +80,9 @@ public class StandardIndexManager implements IndexManager {
     private final Counter bloomFilterOpenMeter;
     private final Counter bloomFilterCloseMeter;
     private ScheduledFuture<?> cleanupTask;
+    private final String storagePath;
+
+    private final Supplier<IndexManager> next;
 
     /**
      * @param context           the context of the storage engine
@@ -86,9 +90,9 @@ public class StandardIndexManager implements IndexManager {
      * @param eventType         content type of the event store (events or snapshots)
      * @param meterFactory      factory to create metrics meter
      */
-    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, EventType eventType,
-                                MeterFactory meterFactory) {
-        this(context, storageProperties, eventType, null, meterFactory);
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath, EventType eventType,
+                                MeterFactory meterFactory, Supplier<IndexManager> next) {
+        this(context, storageProperties, storagePath, eventType, null, meterFactory, next);
     }
 
     /**
@@ -98,10 +102,12 @@ public class StandardIndexManager implements IndexManager {
      * @param remoteIndexManager component that provides last sequence number for old aggregates
      * @param meterFactory       factory to create metrics meter
      */
-    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, EventType eventType,
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath, EventType eventType,
                                 RemoteAggregateSequenceNumberResolver remoteIndexManager,
-                                MeterFactory meterFactory) {
+                                MeterFactory meterFactory,
+                                Supplier<IndexManager> next) {
         this.storageProperties = storageProperties;
+        this.storagePath = storagePath;
         this.context = context;
         this.eventType = eventType;
         this.remoteIndexManager = remoteIndexManager;
@@ -111,6 +117,7 @@ public class StandardIndexManager implements IndexManager {
         this.bloomFilterOpenMeter = meterFactory.counter(BaseMetricName.AXON_BLOOM_OPEN, tags);
         this.bloomFilterCloseMeter = meterFactory.counter(BaseMetricName.AXON_BLOOM_CLOSE, tags);
         scheduledExecutorService.scheduleAtFixedRate(this::indexCleanup, 10, 10, TimeUnit.SECONDS);
+        this.next = next;
     }
 
     /**
@@ -118,7 +125,7 @@ public class StandardIndexManager implements IndexManager {
      */
     public void init() {
         StorageProperties properties = storageProperties.get();
-        String[] indexFiles = FileUtils.getFilesWithSuffix(new File(properties.getStorage(context)),
+        String[] indexFiles = FileUtils.getFilesWithSuffix(new File(storagePath),
                                                            properties.getIndexSuffix());
         for (String indexFile : indexFiles) {
             long index = Long.parseLong(indexFile.substring(0, indexFile.indexOf('.')));
@@ -138,7 +145,7 @@ public class StandardIndexManager implements IndexManager {
         if (positionsPerAggregate == null) {
             positionsPerAggregate = Collections.emptyMap();
         }
-        File tempFile = properties.indexTemp(context, segment);
+        File tempFile = properties.indexTemp(storagePath, segment);
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
@@ -161,16 +168,16 @@ public class StandardIndexManager implements IndexManager {
         db.close();
 
         try {
-            Files.move(tempFile.toPath(), properties.index(context, segment).toPath(),
+            Files.move(tempFile.toPath(), properties.index(storagePath, segment).toPath(),
                        StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to rename index file" + properties
-                                                         .index(context, segment),
+                                                         .index(storagePath, segment),
                                                  e);
         }
 
-        PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(context, segment)
+        PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(storagePath, segment)
                                                                                 .getAbsolutePath(),
                                                                positionsPerAggregate.keySet().size(),
                                                                properties.getBloomIndexFpp());
@@ -235,7 +242,7 @@ public class StandardIndexManager implements IndexManager {
     private PersistedBloomFilter loadBloomFilter(Long segment) {
         logger.debug("{}: open bloom filter for {}", context, segment);
         StorageProperties properties = storageProperties.get();
-        PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(context, segment)
+        PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(storagePath, segment)
                                                                                 .getAbsolutePath(), 0, 0.03f);
         if (!filter.fileExists()) {
             return null;
@@ -280,6 +287,28 @@ public class StandardIndexManager implements IndexManager {
                                                                    a -> new StandardIndexEntries(
                                                                            entries.get(0).getSequenceNumber()))
                                                   .addAll(entries));
+    }
+
+    @Override
+    public SortedMap<Long, IndexEntries> getClosedIndexPositions(String aggregateId, long firstSequenceNumber, long lastSequenceNumber, long maxResults, long minToken, SortedMap<Long, IndexEntries> results, long minTokenInPreviousSegment) {
+        for (Long index : indexesDescending) {
+            if (minTokenInPreviousSegment < minToken) {
+                return results;
+            }
+            IndexEntries entries = getPositions(index, aggregateId);
+            logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
+            if (entries != null) {
+                int nrOfEntries = addToResult(firstSequenceNumber, lastSequenceNumber, results, index, entries);
+                maxResults -= nrOfEntries;
+                if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
+                    return results;
+                }
+            }
+            minTokenInPreviousSegment = index;
+        }
+
+        if (next.get() != null) return next.get().getClosedIndexPositions(aggregateId, firstSequenceNumber, lastSequenceNumber, maxResults, minToken, results, minTokenInPreviousSegment);
+        return results;
     }
 
     /**
@@ -330,12 +359,10 @@ public class StandardIndexManager implements IndexManager {
                 checked++;
             }
         }
-        if (remoteIndexManager != null && checked < maxSegments) {
+        if (remoteIndexManager != null && checked < maxSegments && !indexesDescending.isEmpty()) {
             return remoteIndexManager.getLastSequenceNumber(context,
                                                             aggregateId,
                                                             maxSegments - checked,
-                                                            indexesDescending.isEmpty() ?
-                                                                    activeIndexes.firstKey() - 1 :
                                                                     indexesDescending.last() - 1);
         }
         return Optional.empty();
@@ -401,8 +428,21 @@ public class StandardIndexManager implements IndexManager {
             bloomFilterPerSegment.remove(segment);
             indexesDescending.remove(segment);
         }
-        return FileUtils.delete(properties.index(context, segment)) &&
-                FileUtils.delete(properties.bloomFilter(context, segment));
+        return FileUtils.delete(properties.index(storagePath, segment)) &&
+                FileUtils.delete(properties.bloomFilter(storagePath, segment));
+    }
+
+    @Override
+    public List<File> indexFiles(long segment) {
+        return Arrays.asList(
+                storageProperties.get().index(storagePath, segment),
+                storageProperties.get().bloomFilter(storagePath, segment));
+    }
+
+    @Override
+    public void addExistingIndex(long segment) {
+        indexesDescending.add(segment);
+        updateUseMmapAfterIndex();
     }
 
     /**
@@ -440,23 +480,7 @@ public class StandardIndexManager implements IndexManager {
             minTokenInPreviousSegment = segment;
         }
 
-        for (Long index : indexesDescending) {
-            if (minTokenInPreviousSegment < minToken) {
-                return results;
-            }
-            IndexEntries entries = getPositions(index, aggregateId);
-            logger.debug("{}: lookupAggregate {} in segment {} found {}", context, aggregateId, index, entries);
-            if (entries != null) {
-                int nrOfEntries = addToResult(firstSequenceNumber, lastSequenceNumber, results, index, entries);
-                maxResults -= nrOfEntries;
-                if (allEntriesFound(firstSequenceNumber, maxResults, entries)) {
-                    return results;
-                }
-            }
-            minTokenInPreviousSegment = index;
-        }
-
-        return results;
+        return getClosedIndexPositions(aggregateId,firstSequenceNumber,lastSequenceNumber,maxResults,minToken,results,minTokenInPreviousSegment);
     }
 
     private int addToResult(long firstSequenceNumber, long lastSequenceNumber,
@@ -494,8 +518,8 @@ public class StandardIndexManager implements IndexManager {
         return indexesDescending.stream()
                                 .filter(s -> s > lastSegmentBackedUp)
                                 .flatMap(s -> Stream.of(
-                                        name(properties.index(context, s)),
-                                        name(properties.bloomFilter(context, s))
+                                        name(properties.index(storagePath, s)),
+                                        name(properties.bloomFilter(storagePath, s))
                                 ));
     }
 
@@ -519,7 +543,7 @@ public class StandardIndexManager implements IndexManager {
         @Override
         public void close() {
             if( logger.isDebugEnabled()) {
-                logger.debug("{}: close {}", segment, storageProperties.get().index(context, segment));
+                logger.debug("{}: close {}", segment, storageProperties.get().index(storagePath, segment));
             }
             if (db != null && !db.isClosed()) {
                 indexCloseMeter.mark();
@@ -539,12 +563,12 @@ public class StandardIndexManager implements IndexManager {
                 }
 
                 StorageProperties properties = storageProperties.get();
-                if (!properties.index(context, segment).exists()) {
+                if (!properties.index(storagePath, segment).exists()) {
                     throw new IndexNotFoundException("Index not found for segment: " + segment);
                 }
                 indexOpenMeter.mark();
-                logger.debug("{}: open {}", segment, properties.index(context, segment));
-                DBMaker.Maker maker = DBMaker.fileDB(properties.index(context, segment))
+                logger.debug("{}: open {}", segment, properties.index(storagePath, segment));
+                DBMaker.Maker maker = DBMaker.fileDB(properties.index(storagePath, segment))
                                              .readOnly()
                                              .fileLockDisable();
                 if (properties.isUseMmapIndex() && segment > useMmapAfterIndex.get()) {

@@ -203,24 +203,24 @@ public class StorageProperties implements Cloneable {
         this.bloomIndexFpp = bloomIndexFpp;
     }
 
-    public File bloomFilter(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, bloomIndexSuffix));
+    public File bloomFilter(String customStorage, long segment) {
+        return new File(String.format(PATH_FORMAT, customStorage, segment, bloomIndexSuffix));
     }
 
-    public File index(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    public File index(String customStorage, long segment) {
+        return new File(String.format(PATH_FORMAT, customStorage, segment, indexSuffix));
     }
 
-    public File indexTemp(String context, long segment) {
-        return new File(String.format(TEMP_PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    public File indexTemp(String storagePath, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, storagePath, segment, indexSuffix));
     }
 
-    public File newIndex(String context, long segment) {
-        return new File(String.format(PATH_FORMAT, getStorage(context), segment, newIndexSuffix));
+    public File newIndex(String storagePath, long segment) {
+        return new File(String.format(PATH_FORMAT, storagePath, segment, newIndexSuffix));
     }
 
-    public File newIndexTemp(String context, long segment) {
-        return new File(String.format(TEMP_PATH_FORMAT, getStorage(context), segment, newIndexSuffix));
+    public File newIndexTemp(String storagePath, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, storagePath, segment, newIndexSuffix));
     }
 
     public String getGlobalIndexSuffix() {
@@ -318,16 +318,16 @@ public class StorageProperties implements Cloneable {
         this.readBufferSize = readBufferSize;
     }
 
-    public File oldDataFile(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, eventsSuffix));
+    public File oldDataFile(String storagePath, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storagePath, segment, eventsSuffix));
     }
 
-    public File oldIndex(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, indexSuffix));
+    public File oldIndex(String storagePath, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storagePath, segment, indexSuffix));
     }
 
-    public File oldBloomFilter(String context, long segment) {
-        return new File(String.format(OLD_PATH_FORMAT, getStorage(context), segment, bloomIndexSuffix));
+    public File oldBloomFilter(String storagePath, long segment) {
+        return new File(String.format(OLD_PATH_FORMAT, storagePath, segment, bloomIndexSuffix));
     }
 
     public void setUseMmapIndex(Boolean useMmapIndex) {

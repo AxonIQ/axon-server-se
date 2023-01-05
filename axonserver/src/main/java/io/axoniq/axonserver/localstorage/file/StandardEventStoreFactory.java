@@ -58,8 +58,9 @@ public class StandardEventStoreFactory implements EventStoreFactory {
     public EventStorageEngine createEventStorageEngine(String context) {
         StorageProperties storageProperties = embeddedDBProperties.getEvent();
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getEvent,
+                                                                     storageProperties.getStorage(context),
                                                                      EventType.EVENT,
-                                                                     meterFactory);
+                                                                     meterFactory, () -> null);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
@@ -83,8 +84,9 @@ public class StandardEventStoreFactory implements EventStoreFactory {
     public EventStorageEngine createSnapshotStorageEngine(String context) {
         StorageProperties storageProperties = embeddedDBProperties.getSnapshot();
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getSnapshot,
+                                                                     storageProperties.getStorage(context),
                                                                      EventType.SNAPSHOT,
-                                                                     meterFactory);
+                                                                     meterFactory, () -> null);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                                  indexManager,
                                                                  eventTransformerFactory,

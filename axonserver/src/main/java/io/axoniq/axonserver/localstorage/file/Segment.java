@@ -13,7 +13,9 @@ package io.axoniq.axonserver.localstorage.file;
  * @author Stefan Dragisic
  */
 
+import java.io.File;
 import java.io.InputStream;
+import java.util.List;
 import java.util.function.Supplier;
 
 public interface Segment {
@@ -22,4 +24,6 @@ public interface Segment {
     Supplier<InputStream> contentProvider();
 
     long id();
+
+    Supplier<List<File>> indexProvider();
 }
