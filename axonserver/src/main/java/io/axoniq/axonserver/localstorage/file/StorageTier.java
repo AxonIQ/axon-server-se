@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.grpc.event.EventWithToken;
@@ -5,7 +14,6 @@ import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import reactor.core.publisher.Flux;
 
-import javax.annotation.Nonnull;
 import java.io.File;
 import java.time.Duration;
 import java.util.Iterator;
@@ -19,6 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * @author Stefan Dragisic

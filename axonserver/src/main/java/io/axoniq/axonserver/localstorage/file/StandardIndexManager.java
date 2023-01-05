@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -48,9 +48,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
-
-import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
 
 /**
  * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
@@ -90,7 +87,8 @@ public class StandardIndexManager implements IndexManager {
      * @param eventType         content type of the event store (events or snapshots)
      * @param meterFactory      factory to create metrics meter
      */
-    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath, EventType eventType,
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath,
+                                EventType eventType,
                                 MeterFactory meterFactory, Supplier<IndexManager> next) {
         this(context, storageProperties, storagePath, eventType, null, meterFactory, next);
     }
@@ -102,7 +100,8 @@ public class StandardIndexManager implements IndexManager {
      * @param remoteIndexManager component that provides last sequence number for old aggregates
      * @param meterFactory       factory to create metrics meter
      */
-    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath, EventType eventType,
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath,
+                                EventType eventType,
                                 RemoteAggregateSequenceNumberResolver remoteIndexManager,
                                 MeterFactory meterFactory,
                                 Supplier<IndexManager> next) {
@@ -136,7 +135,8 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private void updateUseMmapAfterIndex() {
-        useMmapAfterIndex.set(indexesDescending.stream().skip(storageProperties.get().getMaxIndexesInMemory()).findFirst()
+        useMmapAfterIndex.set(indexesDescending.stream().skip(storageProperties.get().getMaxIndexesInMemory())
+                                               .findFirst()
                                                .orElse(-1L));
     }
 
@@ -178,7 +178,7 @@ public class StandardIndexManager implements IndexManager {
         }
 
         PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(storagePath, segment)
-                                                                                .getAbsolutePath(),
+                                                                         .getAbsolutePath(),
                                                                positionsPerAggregate.keySet().size(),
                                                                properties.getBloomIndexFpp());
         filter.create();
@@ -243,7 +243,7 @@ public class StandardIndexManager implements IndexManager {
         logger.debug("{}: open bloom filter for {}", context, segment);
         StorageProperties properties = storageProperties.get();
         PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(storagePath, segment)
-                                                                                .getAbsolutePath(), 0, 0.03f);
+                                                                         .getAbsolutePath(), 0, 0.03f);
         if (!filter.fileExists()) {
             return null;
         }
@@ -290,7 +290,11 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public SortedMap<Long, IndexEntries> getClosedIndexPositions(String aggregateId, long firstSequenceNumber, long lastSequenceNumber, long maxResults, long minToken, SortedMap<Long, IndexEntries> results, long minTokenInPreviousSegment) {
+    public SortedMap<Long, IndexEntries> lookupAggregateInClosedSegments(String aggregateId, long firstSequenceNumber,
+                                                                         long lastSequenceNumber, long maxResults,
+                                                                         long minToken,
+                                                                         long minTokenInPreviousSegment) {
+        SortedMap<Long, IndexEntries> results = new TreeMap<>();
         for (Long index : indexesDescending) {
             if (minTokenInPreviousSegment < minToken) {
                 return results;
@@ -307,7 +311,15 @@ public class StandardIndexManager implements IndexManager {
             minTokenInPreviousSegment = index;
         }
 
-        if (next.get() != null) return next.get().getClosedIndexPositions(aggregateId, firstSequenceNumber, lastSequenceNumber, maxResults, minToken, results, minTokenInPreviousSegment);
+        IndexManager nextIndexManager = next.get();
+        if (nextIndexManager != null) {
+            results.putAll(nextIndexManager.lookupAggregateInClosedSegments(aggregateId,
+                                                                            firstSequenceNumber,
+                                                                            lastSequenceNumber,
+                                                                            maxResults,
+                                                                            minToken,
+                                                                            minTokenInPreviousSegment));
+        }
         return results;
     }
 
@@ -347,6 +359,7 @@ public class StandardIndexManager implements IndexManager {
                 checked++;
             }
         }
+
         for (Long segment : indexesDescending) {
             if (checked >= maxSegments) {
                 return Optional.empty();
@@ -359,13 +372,21 @@ public class StandardIndexManager implements IndexManager {
                 checked++;
             }
         }
-        if (remoteIndexManager != null && checked < maxSegments && !indexesDescending.isEmpty()) {
-            return remoteIndexManager.getLastSequenceNumber(context,
-                                                            aggregateId,
-                                                            maxSegments - checked,
-                                                                    indexesDescending.last() - 1);
+
+        IndexManager nextIndexManager = next.get();
+        Optional<Long> result = Optional.empty();
+        if (nextIndexManager != null) {
+            result = next.get().getLastSequenceNumber(aggregateId, maxSegments - checked, maxTokenHint);
         }
-        return Optional.empty();
+
+
+        if (result.isEmpty() && remoteIndexManager != null && checked < maxSegments && !indexesDescending.isEmpty()) {
+            result = remoteIndexManager.getLastSequenceNumber(context,
+                                                              aggregateId,
+                                                              maxSegments - checked,
+                                                              indexesDescending.last() - 1);
+        }
+        return result;
     }
 
     /**
@@ -392,6 +413,26 @@ public class StandardIndexManager implements IndexManager {
                                                                            maxSequenceNumber,
                                                                            EventType.SNAPSHOT.equals(eventType)));
             }
+        }
+        return lastIndexEntriesFromClosedSegments(aggregateId, maxSequenceNumber, indexesDescending.first());
+    }
+
+    @Override
+    public SegmentIndexEntries lastIndexEntriesFromClosedSegments(String aggregateId, long maxSequenceNumber,
+                                                                  long startAtToken) {
+        for (Long segment : indexesDescending) {
+            IndexEntries indexEntries = getPositions(segment, aggregateId);
+            if (indexEntries != null && indexEntries.firstSequenceNumber() < maxSequenceNumber) {
+                return new SegmentIndexEntries(segment, indexEntries.range(indexEntries.firstSequenceNumber(),
+                                                                           maxSequenceNumber,
+                                                                           EventType.SNAPSHOT.equals(eventType)));
+            }
+        }
+        IndexManager nextIndexManager = next.get();
+        if (nextIndexManager != null) {
+            return nextIndexManager.lastIndexEntriesFromClosedSegments(aggregateId,
+                                                                       maxSequenceNumber,
+                                                                       indexesDescending.last() - 1);
         }
         return null;
     }
@@ -480,11 +521,17 @@ public class StandardIndexManager implements IndexManager {
             minTokenInPreviousSegment = segment;
         }
 
-        return getClosedIndexPositions(aggregateId,firstSequenceNumber,lastSequenceNumber,maxResults,minToken,results,minTokenInPreviousSegment);
+        results.putAll(lookupAggregateInClosedSegments(aggregateId,
+                                                       firstSequenceNumber,
+                                                       lastSequenceNumber,
+                                                       maxResults,
+                                                       minToken,
+                                                       minTokenInPreviousSegment));
+        return results;
     }
 
     private int addToResult(long firstSequenceNumber, long lastSequenceNumber,
-                                     SortedMap<Long, IndexEntries> results, Long segment, IndexEntries entries) {
+                            SortedMap<Long, IndexEntries> results, Long segment, IndexEntries entries) {
         entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
         if (!entries.isEmpty()) {
             results.put(segment, entries);
@@ -512,17 +559,6 @@ public class StandardIndexManager implements IndexManager {
         }
     }
 
-    @Override
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp) {
-        StorageProperties properties = storageProperties.get();
-        return indexesDescending.stream()
-                                .filter(s -> s > lastSegmentBackedUp)
-                                .flatMap(s -> Stream.of(
-                                        name(properties.index(storagePath, s)),
-                                        name(properties.bloomFilter(storagePath, s))
-                                ));
-    }
-
     private class Index implements Closeable {
 
         private final long segment;
@@ -542,7 +578,7 @@ public class StandardIndexManager implements IndexManager {
 
         @Override
         public void close() {
-            if( logger.isDebugEnabled()) {
+            if (logger.isDebugEnabled()) {
                 logger.debug("{}: close {}", segment, storageProperties.get().index(storagePath, segment));
             }
             if (db != null && !db.isClosed()) {

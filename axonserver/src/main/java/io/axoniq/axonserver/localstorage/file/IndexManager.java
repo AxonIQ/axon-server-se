@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
-import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * Manages index for an event store. There are two IndexManagers per context, one for the events and one for the
@@ -98,6 +98,11 @@ public interface IndexManager {
     SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
                                                   long maxResults, long minToken);
 
+    @Nonnull
+    SortedMap<Long, IndexEntries> lookupAggregateInClosedSegments(String aggregateId, long firstSequenceNumber,
+                                                                  long lastSequenceNumber, long maxResults,
+                                                                  long minToken, long previousToken);
+
     /**
      * Stops index manager and optionally deletes all indexes.
      *
@@ -107,8 +112,8 @@ public interface IndexManager {
 
 
     /**
-     * Retrieves the index entries of the last segment containing the aggregate where the first sequence
-     * number of events/snapshots for the aggregate in the segment is lower than {@code maxSequenceNumber}.
+     * Retrieves the index entries of the last segment containing the aggregate where the first sequence number of
+     * events/snapshots for the aggregate in the segment is lower than {@code maxSequenceNumber}.
      *
      * @param aggregateId       the aggregate identifier
      * @param maxSequenceNumber maximum sequence number of the event to find (exclusive)
@@ -116,13 +121,10 @@ public interface IndexManager {
      */
     SegmentIndexEntries lastIndexEntries(String aggregateId, long maxSequenceNumber);
 
-    /**
-     * Returns a stream of index related files that should be included in the backup
-     *
-     * @param lastSegmentBackedUp the sequence number of the last already backed up segment
-     * @return stream of index related files
-     */
-    Stream<String> getBackupFilenames(long lastSegmentBackedUp);
+
+    SegmentIndexEntries lastIndexEntriesFromClosedSegments(String aggregateId, long maxSequenceNumber,
+                                                           long startAtToken);
+
 
     /**
      * Adds a number of index entries for a segment.
@@ -132,5 +134,4 @@ public interface IndexManager {
      */
     void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
 
-    SortedMap<Long, IndexEntries> getClosedIndexPositions(String aggregateId, long firstSequenceNumber, long lastSequenceNumber, long maxResults, long minToken, SortedMap<Long, IndexEntries> results, long previousToken);
 }

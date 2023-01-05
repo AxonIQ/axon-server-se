@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -278,7 +278,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
         indexManager.cleanup(deleteData);
         if (deleteData) {
-            storageDir.delete();
+            FileUtils.delete(storageDir);
         }
         closeListeners.forEach(Runnable::run);
     }
@@ -308,10 +308,10 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
             Stream<String> filenames = getSegments().stream()
                                                     .map(s -> name(dataFile(s)));
             return nextTier != null ?
-                    Stream.concat(filenames, nextTier.getBackupFilenames(lastSegmentBackedUp, includeActive)) :
+                    Stream.concat(filenames, nextTier.getBackupFilenames(lastSegmentBackedUp, true)) :
                     filenames;
         }
-        return nextTier != null ? nextTier.getBackupFilenames(lastSegmentBackedUp, includeActive) : Stream.empty();
+        return nextTier != null ? nextTier.getBackupFilenames(lastSegmentBackedUp, false) : Stream.empty();
     }
 
     @Override

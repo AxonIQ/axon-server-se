@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -59,7 +59,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
 import static java.lang.String.format;
 
 
@@ -557,11 +556,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
-        Stream<String> filenames = Stream.concat(getSegments().stream()
-                                                              .filter(s -> s > lastSegmentBackedUp)
-                                                              .map(s -> name(dataFile(s))),
-                                                 indexManager.getBackupFilenames(lastSegmentBackedUp));
+        Stream<String> filenames = getSegments().stream()
+                                                .filter(s -> s > lastSegmentBackedUp)
+                                                .flatMap(segment ->
+                                                                 Stream.concat(Stream.of(dataFile(segment)),
+                                                                               indexManager.indexFiles(
+                                                                                                   segment)
+                                                                                           .stream())
+                                                                       .map(FileUtils::name));
 
         if (next.get() == null) {
             return filenames;
@@ -588,7 +590,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             if (bloomFile.exists() && !bloomFile.renameTo(storageProperties.bloomFilter(storagePath, segment))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
                                                      renameMessage(bloomFile,
-                                                                   storageProperties.bloomFilter(storagePath, segment)));
+                                                                   storageProperties.bloomFilter(storagePath,
+                                                                                                 segment)));
             }
         }
     }
