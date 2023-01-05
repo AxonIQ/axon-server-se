@@ -557,6 +557,10 @@ public class StandardIndexManager implements IndexManager {
         if (cleanupTask != null && !cleanupTask.isDone()) {
             cleanupTask.cancel(true);
         }
+        IndexManager nextIndexManager = next.get();
+        if (nextIndexManager != null) {
+            nextIndexManager.cleanup(delete);
+        }
     }
 
     private class Index implements Closeable {
