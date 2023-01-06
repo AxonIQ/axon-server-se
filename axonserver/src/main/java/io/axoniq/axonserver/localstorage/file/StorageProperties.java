@@ -15,6 +15,8 @@ import org.springframework.util.unit.DataSize;
 
 import java.io.File;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Marc Gathier
@@ -52,9 +54,13 @@ public class StorageProperties implements Cloneable {
     private int segmentSize = 1024 * 1024 * 256;
 
     /**
-     * Location for segment files. Will create subdirectory per context.
+     * Locations for segment files. Will create subdirectory per context.
      */
     private String storage = "./data";
+    /**
+     * Locations for segment files. Will create subdirectory per context.
+     */
+    private Map<String, String> storages = null;
 
     private String contextStorage;
     /**
@@ -184,6 +190,23 @@ public class StorageProperties implements Cloneable {
 
     public void setStorage(String storage) {
         this.storage = storage;
+
+        if (storages != null) {
+            if (!storages.containsKey("primary")) {
+                storages.put("primary", storage);
+            }
+        } else {
+            this.storages = new HashMap<>();
+            storages.put("primary", storage);
+        }
+    }
+
+    public void setStorages(Map<String, String> storages) {
+        if (this.storages != null && this.storages.containsKey("primary")) {
+            this.storages.putAll(storages);
+        } else {
+            this.storages = storages;
+        }
     }
 
     public int getEventsPerSegmentPrefetch() {
@@ -247,11 +270,37 @@ public class StorageProperties implements Cloneable {
         return flags;
     }
 
-    public String getStorage(String context) {
+    public String getPrimaryStorage(String context) {
         if (contextStorage != null) {
             return contextStorage;
         }
-        return String.format("%s/%s", storage, context);
+        return String.format("%s/%s", storages.get("primary"), context);
+    }
+
+    public String getStorage(String storageName, String context) {
+        if (contextStorage != null) {
+            return contextStorage;
+        }
+
+        String storagePath = storages.get(storageName);
+        if (storagePath == null) {
+            throw new IllegalStateException("Storage " + storageName + " not defined on this node." +
+                    "To define storage set property: axoniq.axonserver.event.storage." + storageName);
+        }
+        return String.format("%s/%s", storagePath, context);
+    }
+
+    public String getStorage(String storageName) {
+        String storagePath = storages.get(storageName);
+        if (storagePath == null) {
+            throw new IllegalStateException("Storage " + storageName + " not defined on this node." +
+                    "To define storage set property: axoniq.axonserver.event.storage." + storageName);
+        }
+        return storagePath;
+    }
+
+    public Map<String,String> getAvailableStorages() {
+        return storages;
     }
 
     public int getValidationSegments() {

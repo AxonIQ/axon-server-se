@@ -55,7 +55,7 @@ public class StandardIndexManagerTest {
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
-        indexManager = new StandardIndexManager(context, () -> storageProperties, "todo", EventType.EVENT, meterFactory, ()->null); //todo multitier
+        indexManager = new StandardIndexManager(context, () -> storageProperties, "storage", EventType.EVENT, meterFactory);
     }
 
     @Test

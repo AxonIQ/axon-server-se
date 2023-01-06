@@ -62,15 +62,17 @@ public class MultipleSnapshotSegments {
 
         IndexManager indexManager = new StandardIndexManager("default",
                                                              () -> storageProperties,
+                                                             "storage",
                                                              EventType.SNAPSHOT,
                                                              meterFactory);
+
         InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
                                                                                                    EventType.SNAPSHOT),
                                                                               indexManager,
                                                                               new DefaultEventTransformerFactory(),
                                                                               () -> storageProperties,
                                                                               meterFactory,
-                                                                              storageProperties.getStorage("default"));
+                                                                              storageProperties.getPrimaryStorage("default"));
         testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.SNAPSHOT),
                                             indexManager,
                                             new DefaultEventTransformerFactory(),

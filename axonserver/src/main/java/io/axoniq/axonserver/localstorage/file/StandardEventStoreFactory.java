@@ -58,15 +58,15 @@ public class StandardEventStoreFactory implements EventStoreFactory {
     public EventStorageEngine createEventStorageEngine(String context) {
         StorageProperties storageProperties = embeddedDBProperties.getEvent();
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getEvent,
-                                                                     storageProperties.getStorage(context),
+                                                                     storageProperties.getPrimaryStorage(context),
                                                                      EventType.EVENT,
-                                                                     meterFactory, () -> null);
+                                                                     meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties::getEvent,
                                                                  meterFactory,
-                                                                 storageProperties.getStorage(context));
+                                                                 storageProperties.getPrimaryStorage(context));
         return new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
                                      indexManager,
                                      eventTransformerFactory,
@@ -84,15 +84,15 @@ public class StandardEventStoreFactory implements EventStoreFactory {
     public EventStorageEngine createSnapshotStorageEngine(String context) {
         StorageProperties storageProperties = embeddedDBProperties.getSnapshot();
         StandardIndexManager indexManager = new StandardIndexManager(context, embeddedDBProperties::getSnapshot,
-                                                                     storageProperties.getStorage(context),
+                                                                     storageProperties.getPrimaryStorage(context),
                                                                      EventType.SNAPSHOT,
-                                                                     meterFactory, () -> null);
+                                                                     meterFactory);
         InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                                                  indexManager,
                                                                  eventTransformerFactory,
                                                                  embeddedDBProperties::getSnapshot,
                                                                  meterFactory,
-                                                                 storageProperties.getStorage(context));
+                                                                 storageProperties.getPrimaryStorage(context));
         return new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                      indexManager,
                                      eventTransformerFactory,

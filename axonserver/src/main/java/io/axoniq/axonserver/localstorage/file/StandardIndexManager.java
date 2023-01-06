@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -80,6 +80,17 @@ public class StandardIndexManager implements IndexManager {
     private final String storagePath;
 
     private final Supplier<IndexManager> next;
+
+    /**
+     * @param context           the context of the storage engine
+     * @param storageProperties storage engine configuration
+     * @param eventType         content type of the event store (events or snapshots)
+     * @param meterFactory      factory to create metrics meter
+     */
+    public StandardIndexManager(String context, Supplier<StorageProperties> storageProperties, String storagePath, EventType eventType,
+                                MeterFactory meterFactory) {
+        this(context, storageProperties, storagePath, eventType, null, meterFactory, ()->null);
+    }
 
     /**
      * @param context           the context of the storage engine

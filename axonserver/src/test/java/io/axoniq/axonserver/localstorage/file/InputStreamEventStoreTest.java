@@ -54,7 +54,7 @@ public class InputStreamEventStoreTest {
         testSubject = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
                                                 eventTransformerFactory,
                                                 embeddedDBProperties::getEvent, meterFactory,
-                                                embeddedDBProperties.getEvent().getStorage(context));
+                                                embeddedDBProperties.getEvent().getPrimaryStorage(context));
         testSubject.init(true);
     }
 

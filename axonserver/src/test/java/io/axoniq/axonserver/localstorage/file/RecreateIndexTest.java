@@ -61,6 +61,7 @@ public class RecreateIndexTest {
 
         IndexManager indexManager = new StandardIndexManager("default",
                                                              () -> storageProperties,
+                                                             "storage",
                                                              EventType.EVENT,
                                                              meterFactory);
 
@@ -70,7 +71,7 @@ public class RecreateIndexTest {
                                                                               new DefaultEventTransformerFactory(),
                                                                               () -> storageProperties,
                                                                               meterFactory,
-                                                                              storageProperties.getStorage("context"));
+                                                                              storageProperties.getPrimaryStorage("context"));
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 

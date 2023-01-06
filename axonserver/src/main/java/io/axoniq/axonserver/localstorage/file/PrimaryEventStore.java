@@ -92,7 +92,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                              MeterFactory meterFactory,
                              FileSystemMonitor fileSystemMonitor) {
         super(context, indexManager, storagePropertiesSupplier, completedSegmentsHandler, meterFactory,
-                storagePropertiesSupplier.get().getStorage(context.getContext()));
+                storagePropertiesSupplier.get().getPrimaryStorage(context.getContext()));
         this.eventTransformerFactory = eventTransformerFactory;
         this.fileSystemMonitor = fileSystemMonitor;
         synchronizer = new Synchronizer(context, storagePropertiesSupplier.get(), this::completeSegment);

@@ -69,7 +69,7 @@ public class TokenAtTest {
                                                                               new DefaultEventTransformerFactory(),
                                                                               () -> storageProperties,
                                                                               meterFactory,
-                                                                              storageProperties.getStorage("default"));
+                                                                              storageProperties.getPrimaryStorage("default"));
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 

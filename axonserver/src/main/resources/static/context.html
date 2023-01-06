@@ -18,6 +18,8 @@
             contextProperties: [],
             updatableContextProperties: [],
             availableTiers: [],
+            availableEventStorages: new Map(),
+            availableSnapshotStorages: new Map(),
             newContext: {
                 nodes: [],
                 selectedReplicationGroup: "",
@@ -67,6 +69,12 @@
                     this.newContext.chosenEventTiers.push(structuredClone(this.availableTiers[0]));
                 if (this.newContext.chosenSnapshotTiers.length === 0)
                     this.newContext.chosenSnapshotTiers.push(structuredClone(this.availableTiers[0]));
+            });
+            axios.get("v1/public/storages?type=event").then(response => {
+                this.availableEventStorages = new Map(Object.entries(response.data));
+            });
+            axios.get("v1/public/storages?type=snapshot").then(response => {
+                this.availableSnapshotStorages = new Map(Object.entries(response.data));
             });
             this.connect();
         }, beforeDestroy() {
@@ -277,9 +285,9 @@
                 store[index] = selectedTier;
                 this.$forceUpdate();
             },
-            showTierPath(index,storage) {
+            showTierStorage(index,storage) {
               let store = (storage === 'event') ? this.newContext.chosenEventTiers : this.newContext.chosenSnapshotTiers;
-              return store[index].id === 'custom_path';
+              return store[index].id === 'custom_storage';
             },
             showAfterSelect(tierLevel) {
                 return tierLevel > 0;
@@ -340,13 +348,13 @@
 
                         metaData[prefix.concat(lTier.concat(suffix))] = tier.id;
 
-                        if (tier.id === "custom_path" && tier.path.length >= 1) {
-                        metaData[prefix.concat(lStorage.concat(suffix))] = tier.path;
+                        if (tier.id === "custom_storage" && tier.storage.length >= 1) {
+                        metaData[prefix.concat(lStorage.concat(suffix))] = tier.storage;
                         }
 
-                        if (tier.id === "custom_path" && tier.path.length < 1) {
-                            alert("You must define valid storage path!");
-                            throw 'You must define valid storage path!!';
+                        if (tier.id === "custom_storage" && tier.storage.length < 1) {
+                            alert("You must define valid storage storage!");
+                            throw 'You must define valid storage storage!!';
                         }
 
                         if (retentionTime !== 0) {
@@ -369,6 +377,17 @@
                 let eventTiers = Object.keys(context.metaData).filter(key => key.startsWith("event.tier")).length;
                 let snapshotTiers = Object.keys(context.metaData).filter(key => key.startsWith("snapshot.tier")).length;
                 return (eventTiers > 1) || (snapshotTiers > 1);
+            },
+            showAvailableStorages(index,storageType) {
+                let store = (storageType === 'event') ? this.newContext.chosenEventTiers : this.newContext.chosenSnapshotTiers;
+                let availableStores = (storageType === 'event') ? this.availableEventStorages : this.availableSnapshotStorages;
+                let chosen = store.slice(0,index).map( tier => {
+                    if (tier.id === 'default') {
+                        tier.storage = 'primary';
+                    }
+                    return tier;
+                }).map(tier => tier.storage);
+                return Array.from(availableStores).filter(([storage, unused]) => !chosen.includes(storage));
             }
         }
     });
@@ -504,13 +523,18 @@
                                  <option v-for="n in showAvailableTiers(index,'event')" :value="n">{{ n.name }}</option>
                               </select>
                            </td>
-                           <td><input v-model="newContext.chosenEventTiers[index].path" v-if="showTierPath(index,'event')" class="tierName" data-lpignore="true" placeholder="path">
+                           <td>
+                              <select v-model="newContext.chosenEventTiers[index].storage"  v-if="showTierStorage(index,'event')" class="tierName">
+                                  <option :value="undefined" disabled hidden selected>Select storage</option>
+                                  <option v-for="[storage, path] in showAvailableStorages(index,'event')" :value="storage">{{storage}}</option>
+                              </select>
                            </td>
                            <td>
                               <input v-model="newContext.chosenEventTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
                               <select v-model="newContext.chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                                 <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
                                  <option value="days">DAYS (time based)</option>
@@ -533,13 +557,18 @@
                                  <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n">{{ n.name }}</option>
                               </select>
                            </td>
-                           <td><input v-model="newContext.chosenSnapshotTiers[index].path" v-if="showTierPath(index,'snapshot')" class="tierName" data-lpignore="true" placeholder="path">
+                           <td>
+                              <select v-model="newContext.chosenSnapshotTiers[index].storage"  v-if="showTierStorage(index,'snapshot')" class="tierName">
+                                  <option :value="undefined" disabled hidden selected>Select storage</option>
+                                  <option v-for="[storage, path] in showAvailableStorages(index,'snapshot')" :value="storage">{{storage}}</option>
+                              </select>
                            </td>
                            <td>
                               <input v-model="newContext.chosenSnapshotTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
                               <select v-model="newContext.chosenSnapshotTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                                 <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
                                  <option value="days">DAYS (time based)</option>
