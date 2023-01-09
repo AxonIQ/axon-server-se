@@ -428,6 +428,28 @@ input[type="search"] {
 	margin-bottom: 15px;
 }
 
+
+.storageBox {
+	text-align: center;
+	display: block;
+	background-color: gainsboro;
+	width: 150px !important;
+	font-size: smaller;
+	margin-bottom: 10px;
+	padding: 0px 5px;
+}
+
+.retentionBox {
+	text-align: center;
+	display: block;
+	background-color: antiquewhite;
+	width: 100px !important;
+	left: 25px;
+	margin-bottom: 10px;
+	padding: 0px 5px;
+	font-size: smaller;
+}
+
 .tier-holder tbody tr:last-child .add-tier {
 	display: block !important;
 }
@@ -441,6 +463,14 @@ input[type="search"] {
 
 .nodesColumn {
 	width: 60%;
+}
+
+.contextMetaDataColumn {
+	width: 20%;
+}
+
+.storageColumn {
+	width: 20%;
 }
 
 .roleColumn {

@@ -33,7 +33,9 @@
             currentContext: {
                 metaData: {},
                 metaDataLabel: '',
-                metaDataValue: ''
+                metaDataValue: '',
+                chosenEventTiers: [],
+                chosenSnapshotTiers: [],
             },
             admin: globals.admin,
             webSocketInfo: globals.webSocketInfo,
@@ -236,6 +238,8 @@
                     "metaDataLabel": '',
                     "metaDataValue": ''
                 };
+                this.newContext.chosenEventTiers = this.eventStorages(context);
+                this.newContext.chosenSnapshotTiers = this.eventStorages(context);
             },
             cancelUpdate() {
                 this.currentContext = null;
@@ -388,7 +392,74 @@
                     return tier;
                 }).map(tier => tier.storage);
                 return Array.from(availableStores).filter(([storage, unused]) => !chosen.includes(storage));
-            }
+            },
+            isTierMetaData(key) {
+                let lTier = 'tier';
+                let lStorage = 'storage';
+                let lRetentionTime = 'retention-time';
+                let lRetentionSize = 'retention-size';
+
+                return key.includes(lTier) ||
+                       key.includes(lStorage) ||
+                       key.includes(lRetentionTime) ||
+                       key.includes(lRetentionSize);
+            },
+            eventStorages(context) {
+              let lTier = 'event.tier';
+              let lStorage = 'event.storage';
+              let lRetentionTime = 'event.retention-time';
+              let lRetentionSize = 'event.retention-size';
+
+              let contextMeta = context.metaData;
+
+              let eventStorageArray = [];
+                let i = 0;
+                do {
+                    let suffix = (i === 0) ? '' : '.' + i;
+
+                    let tier = contextMeta[lTier.concat(suffix)];
+                    let storage = contextMeta[lStorage.concat(suffix)];
+                    let retentionTime = contextMeta[lRetentionTime.concat(suffix)];
+                    let retentionSize = contextMeta[lRetentionSize.concat(suffix)];
+
+                    let retentionFormatted;
+
+                    if (retentionSize) {
+                        retentionFormatted = this.humanFileSize(retentionSize);
+                    } else if (retentionTime) {
+                        retentionFormatted = retentionTime
+                            .replace('P','')
+                            .replace('T','')
+                            .replace('M',' MIN')
+                            .replace('D',' DAYS');
+                    }
+
+                    if (tier || storage || retentionTime || retentionSize) {
+                        if (i === 0) storage = 'primary';
+                        if(tier === 'black_hole') storage = 'removed';
+                        eventStorageArray.push({
+                            id: tier,
+                            name: tier,
+                            tier: tier,
+                            storage: storage,
+                            retentionTime: retentionTime,
+                            retentionSize: retentionSize,
+                            retentionFormatted: retentionFormatted,
+                            retentionAmount: 1,
+                            retentionType: 'DAYS'
+                        });
+                    } else {
+                        break;
+                    }
+                    i = i + 1;
+                } while (true);
+
+                return eventStorageArray;
+            },
+            humanFileSize(size) {
+        let i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+        return (size / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+    }
         }
     });
 
@@ -399,7 +470,9 @@
          <template #header>
             <th class="contextColumn">Context Name</th>
             <th class="contextColumn">Replication Group Name</th>
-            <th class="nodesColumn">Context Options</th>
+            <th class="contextMetaDataColumn">Context Options</th>
+            <th class="storageColumn">Event storage</th>
+            <th class="storageColumn">Snapshot storage</th>
          </template>
          <template #row="context">
              <td>{{ context.context }}
@@ -422,11 +495,23 @@
                {{ context.replicationGroup }}
             </td>
             <td>
-               <div v-for="key in Object.keys(context.metaData)">
+               <div v-for="key in Object.keys(context.metaData)" v-if="!isTierMetaData(key)">
                   <span class="metakey">{{ key }}</span>
                   <span class="metavalue">{{ context.metaData[key] }}</span>
                </div>
             </td>
+             <td>
+                 <template v-for="storage in eventStorages(context)">
+                    <div v-if="storage.retentionFormatted" class="retentionBox">after {{ storage.retentionFormatted }} &#8600;</div>
+                    <div class="storageBox">{{ storage.storage }}</div>
+                 </template>
+             </td>
+             <td>
+                 <template v-for="storage in eventStorages(context)">
+                    <div v-if="storage.retentionFormatted" class="retentionBox">after {{ storage.retentionFormatted }} &#8600;</div>
+                    <div class="storageBox">{{ storage.storage }}</div>
+                 </template>
+             </td>
          </template>
       </paginated-table>
    </section>
@@ -602,7 +687,7 @@
                   <span>
                      <table class="nestedTable">
                         <tbody>
-                           <tr v-for="key in Object.keys(currentContext.metaData)">
+                           <tr v-for="key in Object.keys(currentContext.metaData)" v-if="!isTierMetaData(key)">
                               <td style="width: 60%">{{ key }}</td>
                               <td>
                                  <span v-if="isReadonly(key)">
@@ -638,6 +723,74 @@
                      </span>
                   </span>
                </li>
+<!--                <li>-->
+<!--                  <span class="narrow">Event storage</span>-->
+<!--                  <span class="tier-holder">-->
+<!--                     <table class="nestedTable">-->
+<!--                        <tr v-for="(tier, index) in currentContext.chosenEventTiers" :value="tier">-->
+<!--                           <td>-->
+<!--                              <select class="tierName"  @change="onTierSelect($event,tier,index,'event')">-->
+<!--                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n">{{ n.name }}</option>-->
+<!--                              </select>-->
+<!--                           </td>-->
+<!--                           <td>-->
+<!--                              <select v-model="currentContext.chosenEventTiers[index].storage"  v-if="showTierStorage(index,'event')" class="tierName">-->
+<!--                                  <option :value="undefined" disabled hidden selected>Select storage</option>-->
+<!--                                  <option v-for="[storage, path] in showAvailableStorages(index,'event')" :value="storage">{{storage}}</option>-->
+<!--                              </select>-->
+<!--                           </td>-->
+<!--                           <td>-->
+<!--                              <input v-model="currentContext.chosenEventTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">-->
+<!--                           </td>-->
+<!--                           <td>-->
+<!--                              <select v-model="currentContext.chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">-->
+<!--                                 <option :value="undefined" disabled hidden selected>Select retention strategy</option>-->
+<!--                                 <option value="minutes">MINUTES (time based)</option>-->
+<!--                                 <option value="hours">HOURS (time based)</option>-->
+<!--                                 <option value="days">DAYS (time based)</option>-->
+<!--                                 <option value="megabytes">MEGABYTES (size based)</option>-->
+<!--                                 <option value="gigabytes">GIGABYTES (size based)</option>-->
+<!--                              </select>-->
+<!--                           </td>-->
+<!--                           <td style="width: 15px"><span v-if="showAddTier(index,'event')" class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addEventTier()"><i class="fas fa-plus"></i></span></td>-->
+<!--                        </tr>-->
+<!--                     </table>-->
+<!--                  </span>-->
+<!--               </li>-->
+<!--               <li>-->
+<!--                  <span class="narrow">Snapshot storage</span>-->
+<!--                  <span class="tier-holder">-->
+<!--                     <table class="nestedTable">-->
+<!--                        <tr v-for="(tier, index) in currentContext.chosenSnapshotTiers" :value="tier">-->
+<!--                           <td>-->
+<!--                              <select class="tierName" @change="onTierSelect($event,tier,index,'snapshot')">-->
+<!--                                 <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n">{{ n.name }}</option>-->
+<!--                              </select>-->
+<!--                           </td>-->
+<!--                           <td>-->
+<!--                              <select v-model="currentContext.chosenSnapshotTiers[index].storage"  v-if="showTierStorage(index,'snapshot')" class="tierName">-->
+<!--                                  <option :value="undefined" disabled hidden selected>Select storage</option>-->
+<!--                                  <option v-for="[storage, path] in showAvailableStorages(index,'snapshot')" :value="storage">{{storage}}</option>-->
+<!--                              </select>-->
+<!--                           </td>-->
+<!--                           <td>-->
+<!--                              <input v-model="currentContext.chosenSnapshotTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">-->
+<!--                           </td>-->
+<!--                           <td>-->
+<!--                              <select v-model="currentContext.chosenSnapshotTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">-->
+<!--                                 <option :value="undefined" disabled hidden selected>Select retention strategy</option>-->
+<!--                                 <option value="minutes">MINUTES (time based)</option>-->
+<!--                                 <option value="hours">HOURS (time based)</option>-->
+<!--                                 <option value="days">DAYS (time based)</option>-->
+<!--                                 <option value="megabytes">MEGABYTES (size based)</option>-->
+<!--                                 <option value="gigabytes">GIGABYTES (size based)</option>-->
+<!--                              </select>-->
+<!--                           </td>-->
+<!--                           <td style="width: 15px"><span v-if="showAddTier(index,'snapshot')" class="add-tier" style="display: none; width: 15px; float: right !important;" title="Add Tier" @click="addSnapshotTier()"><i class="fas fa-plus"></i></span></td>-->
+<!--                        </tr>-->
+<!--                     </table>-->
+<!--                  </span>-->
+<!--               </li>-->
                <li>
                   <span class="narrow">&nbsp;</span>
                   <span>
