@@ -12,9 +12,9 @@ package io.axoniq.axonserver.admin.eventprocessor.api;
 import io.axoniq.axonserver.component.processor.EventProcessorIdentifier;
 import io.axoniq.axonserver.topology.Topology;
 
+import java.util.List;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.List;
 
 /**
  * Fake implementation of {@link EventProcessor} for test purpose
