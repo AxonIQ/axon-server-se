@@ -16,13 +16,13 @@ public class LocalTransformers implements Transformers {
     private final Map<String, Mono<ContextTransformer>> transformers = new ConcurrentHashMap<>();
     private final EventStoreTransformationRepository transformationRepository;
     private final Function<String, EventProvider> eventProviderFactory;
-    private final TransformationEntryStoreSupplier entryStoreSupplier;
+    private final TransformationEntryStoreProvider entryStoreSupplier;
     private final EventStoreStateStore eventStoreStateStore;
 
 
     public LocalTransformers(Function<String, EventProvider> eventProviderFactory,
                              EventStoreTransformationRepository eventStoreTransformationRepository,
-                             TransformationEntryStoreSupplier entryStoreSupplier,
+                             TransformationEntryStoreProvider entryStoreSupplier,
                              EventStoreStateStore eventStoreStateStore) {
         this.eventProviderFactory = eventProviderFactory;
         this.transformationRepository = eventStoreTransformationRepository;

@@ -16,11 +16,11 @@ public class LocalContextTransformationStore implements ContextTransformationSto
 
     private final String context;
     private final EventStoreTransformationRepository repository;
-    private final TransformationEntryStoreSupplier transformationEntryStoreSupplier;
+    private final TransformationEntryStoreProvider transformationEntryStoreSupplier;
 
     public LocalContextTransformationStore(String context,
                                            EventStoreTransformationRepository repository,
-                                           TransformationEntryStoreSupplier transformationEntryStoreSupplier) {
+                                           TransformationEntryStoreProvider transformationEntryStoreSupplier) {
         this.context = context;
         this.repository = repository;
         this.transformationEntryStoreSupplier = transformationEntryStoreSupplier;
@@ -71,9 +71,10 @@ public class LocalContextTransformationStore implements ContextTransformationSto
     }
 
     private Flux<Long> storeStagedActions(TransformationState transformation) {
-        return transformationEntryStoreSupplier.supply(context, transformation.id())
-                                        .flatMapMany(transformationEntryStore -> Flux.fromIterable(transformation.staged())
-                                                                                 .flatMap(transformationEntryStore::store));
+        return transformationEntryStoreSupplier.provide(context, transformation.id())
+                                               .flatMapMany(transformationEntryStore -> Flux.fromIterable(transformation.staged())
+                                                                                            .flatMap(
+                                                                                                    transformationEntryStore::store));
     }
 
     private EventStoreTransformationJpa entity(TransformationState state) {

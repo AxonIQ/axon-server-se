@@ -13,7 +13,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.axoniq.axonserver.eventstore.transformation.ReplaceEvent;
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntry;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreSupplier;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreProvider;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.slf4j.Logger;
@@ -28,12 +28,12 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultTransformationApplyExecutor.class);
 
-    private final TransformationEntryStoreSupplier transformationEntryStoreSupplier;
+    private final TransformationEntryStoreProvider transformationEntryStoreSupplier;
     private final TransformationProgressStore localStateStore;
     private final EventStoreTransformer transformer;
     private final Set<String> applyingTransformations = new CopyOnWriteArraySet<>();
 
-    public DefaultTransformationApplyExecutor(TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+    public DefaultTransformationApplyExecutor(TransformationEntryStoreProvider transformationEntryStoreSupplier,
                                               TransformationProgressStore localStateStore,
                                               EventStoreTransformer transformer) {
         this.transformationEntryStoreSupplier = transformationEntryStoreSupplier;
@@ -47,11 +47,11 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
                 localStateStore.stateFor(transformation.id())
                                .switchIfEmpty(localStateStore.initState(transformation.id()))
                                .map(state -> state.lastAppliedSequence() + 1)
-                               .flatMapMany(firstSequence -> transformationEntryStoreSupplier.supply(transformation.context(),
-                                                                                                     transformation.id())
-                                                                                       .flatMapMany(store -> store.readClosed(
-                                                                                               firstSequence,
-                                                                                               transformation.lastSequence())))
+                               .flatMapMany(firstSequence -> transformationEntryStoreSupplier.provide(transformation.context(),
+                                                                                                      transformation.id())
+                                                                                             .flatMapMany(store -> store.readClosed(
+                                                                                                     firstSequence,
+                                                                                                     transformation.lastSequence())))
                                .map(TransformationEntry::payload)
                                .flatMapSequential(this::parseFrom)
                                .map(this::eventWithToken);
@@ -97,7 +97,8 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
                              .build();
     }
 
-    private Mono<TransformationAction> parseFrom(byte[] data) {
+    private Mono<TransformationAction> parseFrom(
+            byte[] data) { //TODO parse is used also in TransformationActionsSnapshotDataStore - extract it
         return Mono.create(sink -> {
             try {
                 sink.success(TransformationAction.parseFrom(data));

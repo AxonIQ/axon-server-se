@@ -41,7 +41,7 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventProv
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
-import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreSupplier;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
@@ -81,15 +81,16 @@ public class TransformationConfiguration {
     }
 
     @Bean
-    public TransformationEntryStoreSupplier transformationEntryStoreSupplier(EmbeddedDBProperties embeddedDBProperties) {
+    public TransformationEntryStoreProvider transformationEntryStoreSupplier(
+            EmbeddedDBProperties embeddedDBProperties) {
         DefaultTransformationEntryStoreSupplier.StoragePropertiesSupplier storagePropertiesSupplier =
                 (context, transformationId) -> {
-            String baseDirectory = embeddedDBProperties.getEvent().getStorage(context);
-            StorageProperties storageProperties = new StorageProperties();
-            storageProperties.setStorage(Paths.get(baseDirectory, "transformation", transformationId).toFile());
-            storageProperties.setSuffix(".actions");
-            return storageProperties;
-        };
+                    String baseDirectory = embeddedDBProperties.getEvent().getStorage(context);
+                    StorageProperties storageProperties = new StorageProperties();
+                    storageProperties.setStorage(Paths.get(baseDirectory, "transformation", transformationId).toFile());
+                    storageProperties.setSuffix(".actions");
+                    return storageProperties;
+                };
         return new DefaultTransformationEntryStoreSupplier(storagePropertiesSupplier);
     }
 
@@ -101,7 +102,7 @@ public class TransformationConfiguration {
     @Bean
     public Transformers transformers(EventStoreTransformationRepository repository,
                                      ContextEventIteratorFactory iteratorFactory,
-                                     TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+                                     TransformationEntryStoreProvider transformationEntryStoreSupplier,
                                      EventStoreStateStore eventStoreStateStore) {
         return new LocalTransformers(iteratorFactory::createFrom,
                                      repository,
@@ -123,7 +124,7 @@ public class TransformationConfiguration {
 
     @Bean
     public TransformationApplyExecutor localTransformationApplier(
-            TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+            TransformationEntryStoreProvider transformationEntryStoreSupplier,
             TransformationProgressStore localTransformationProgressStore,
             EventStoreTransformer eventStoreTransformer) {
         return new DefaultTransformationApplyExecutor(transformationEntryStoreSupplier,
@@ -173,7 +174,7 @@ public class TransformationConfiguration {
 
     @Bean
     public TransformationCleanTask transformationCleanTask(
-            TransformationEntryStoreSupplier transformationEntryStoreSupplier,
+            TransformationEntryStoreProvider transformationEntryStoreSupplier,
             EventStoreTransformationRepository repository,
             CleanedTransformationRepository cleanedTransformationRepository) {
         return new DefaultTransformationCleanTask(new DefaultTransformationCleanExecutor(

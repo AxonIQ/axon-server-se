@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-public class DefaultTransformationEntryStoreSupplier implements TransformationEntryStoreSupplier {
+public class DefaultTransformationEntryStoreSupplier implements TransformationEntryStoreProvider {
 
     @FunctionalInterface
     public interface StoragePropertiesSupplier {
@@ -28,9 +28,11 @@ public class DefaultTransformationEntryStoreSupplier implements TransformationEn
     }
 
     @Override
-    public Mono<TransformationEntryStore> supply(String context, String transformationId) {
-       return cache.computeIfAbsent(new TransformationId(context, transformationId), id -> Mono.fromSupplier(() -> autoOpen(() -> new BaseAppendOnlyFileStore(
-                storagePropertiesSupplier.storagePropertiesFor(context, transformationId), context))).cache());
+    public Mono<TransformationEntryStore> provide(String context, String transformationId) {
+        return cache.computeIfAbsent(new TransformationId(context, transformationId),
+                                     id -> Mono.fromSupplier(() -> autoOpen(() -> new BaseAppendOnlyFileStore(
+                                             storagePropertiesSupplier.storagePropertiesFor(context, transformationId),
+                                             context))).cache());
     }
 
     // TODO: 8/12/22 extract to a separate class
