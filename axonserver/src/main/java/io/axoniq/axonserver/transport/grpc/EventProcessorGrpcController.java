@@ -185,14 +185,16 @@ import java.util.stream.StreamSupport;
      */
     @Override
     public void moveEventProcessorSegment(MoveSegment request, StreamObserver<AdminActionResult> responseObserver) {
+        String contextName = determineContextName(request.getEventProcessor().getContextName());
+
         if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
                 EventProcessorAdminServiceGrpc.getMergeEventProcessorMethod().getFullMethodName(),
-                contextProvider.getContext(),
+                contextName,
                 authenticationProvider.get())) {
             throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Move operation not allowed");
         }
 
-        service.move(new EventProcessorIdMessage(contextProvider.getContext(), request.getEventProcessor()),
+        service.move(new EventProcessorIdMessage(contextName, request.getEventProcessor()),
                      request.getSegment(),
                      request.getTargetClientId(),
                      new GrpcAuthentication(authenticationProvider)).subscribe(result -> success(result,
