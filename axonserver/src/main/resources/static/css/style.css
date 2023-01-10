@@ -432,22 +432,37 @@ input[type="search"] {
 .storageBox {
 	text-align: center;
 	display: block;
-	background-color: gainsboro;
 	width: 150px !important;
 	font-size: smaller;
-	margin-bottom: 10px;
+	margin-bottom: 5px;
 	padding: 0px 5px;
+	background-size: auto auto;
+	background-color: rgba(255, 255, 255, 1);
+	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(238, 238, 238, 1) 2px, rgba(238, 238, 238, 1) 4px );
 }
 
+.storageBlackHoleBox {
+	text-align: center;
+	display: block;
+	width: 150px !important;
+	font-size: smaller;
+	margin-bottom: 5px;
+	padding: 0px 5px;
+	background-size: auto auto;
+	background-color: rgba(244, 205, 202, 1);
+	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255, 255, 255, 1) 2px, rgba(255, 255, 255, 1) 4px );
+}
 .retentionBox {
 	text-align: center;
 	display: block;
-	background-color: antiquewhite;
 	width: 100px !important;
 	left: 25px;
-	margin-bottom: 10px;
+	margin-bottom: 5px;
 	padding: 0px 5px;
 	font-size: smaller;
+	background-size: auto auto;
+	background-color: rgba(255, 255, 255, 1);
+	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(253, 233, 195, 1) 2px, rgba(253, 233, 195, 1) 4px );
 }
 
 .tier-holder tbody tr:last-child .add-tier {
@@ -461,16 +476,20 @@ input[type="search"] {
 	width: 160px !important;
 }
 
+.contextNameColumn {
+	width: 20% !important;
+}
+
 .nodesColumn {
 	width: 60%;
 }
 
 .contextMetaDataColumn {
-	width: 20%;
+	width: 30%;
 }
 
 .storageColumn {
-	width: 20%;
+	width: 15%;
 }
 
 .roleColumn {
