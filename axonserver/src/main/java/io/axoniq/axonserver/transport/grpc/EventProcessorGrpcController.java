@@ -86,8 +86,7 @@ import java.util.stream.StreamSupport;
     @Override
     public void pauseEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        String contextName = StringUtils.isEmpty(processorId.getContextName()) ?
-                contextProvider.getContext() : processorId.getContextName();
+        String contextName = determineContextName(processorId.getContextName());
 
         if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
                 EventProcessorAdminServiceGrpc.getPauseEventProcessorMethod().getFullMethodName(),
@@ -96,7 +95,7 @@ import java.util.stream.StreamSupport;
             throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Pause operation not allowed");
         }
 
-        service.pause(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
+        service.pause(new EventProcessorIdMessage(contextName, processorId),
                       new GrpcAuthentication(authenticationProvider)).subscribe(result -> success(result,
                                                                                                   responseObserver),
                                                                                 onError(responseObserver),
@@ -112,8 +111,7 @@ import java.util.stream.StreamSupport;
     @Override
     public void startEventProcessor(EventProcessorIdentifier eventProcessorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        String contextName = StringUtils.isEmpty(eventProcessorId.getContextName()) ?
-                contextProvider.getContext() : eventProcessorId.getContextName();
+        String contextName = determineContextName(eventProcessorId.getContextName());
 
         if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
                 EventProcessorAdminServiceGrpc.getStartEventProcessorMethod().getFullMethodName(),
@@ -138,8 +136,7 @@ import java.util.stream.StreamSupport;
     @Override
     public void splitEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        String contextName = StringUtils.isEmpty(processorId.getContextName()) ?
-                contextProvider.getContext() : processorId.getContextName();
+        String contextName = determineContextName(processorId.getContextName());
 
         if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
                 EventProcessorAdminServiceGrpc.getSplitEventProcessorMethod().getFullMethodName(),
@@ -164,8 +161,7 @@ import java.util.stream.StreamSupport;
     @Override
     public void mergeEventProcessor(EventProcessorIdentifier processorId,
                                     StreamObserver<AdminActionResult> responseObserver) {
-        String contextName = StringUtils.isEmpty(processorId.getContextName()) ?
-                contextProvider.getContext() : processorId.getContextName();
+        String contextName = determineContextName(processorId.getContextName());
 
         if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
                 EventProcessorAdminServiceGrpc.getMergeEventProcessorMethod().getFullMethodName(),
@@ -174,7 +170,7 @@ import java.util.stream.StreamSupport;
             throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Merge operation not allowed");
         }
 
-        service.merge(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
+        service.merge(new EventProcessorIdMessage(contextName, processorId),
                       new GrpcAuthentication(authenticationProvider)).subscribe(result -> success(result,
                                                                                                   responseObserver),
                                                                                 onError(responseObserver),
@@ -189,6 +185,13 @@ import java.util.stream.StreamSupport;
      */
     @Override
     public void moveEventProcessorSegment(MoveSegment request, StreamObserver<AdminActionResult> responseObserver) {
+        if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
+                EventProcessorAdminServiceGrpc.getMergeEventProcessorMethod().getFullMethodName(),
+                contextProvider.getContext(),
+                authenticationProvider.get())) {
+            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Move operation not allowed");
+        }
+
         service.move(new EventProcessorIdMessage(contextProvider.getContext(), request.getEventProcessor()),
                      request.getSegment(),
                      request.getTargetClientId(),
@@ -278,5 +281,15 @@ import java.util.stream.StreamSupport;
             return Result.ACCEPTED;
         }
         return Result.UNRECOGNIZED;
+    }
+
+    /**
+     * Find the right context name to use for the operation
+     *
+     * @param requestContextName the context name supplied in the request
+     * @return the context name from the request is available, if empty provides the context name from contextProvider
+     */
+    private String determineContextName(String requestContextName) {
+        return StringUtils.isEmpty(requestContextName) ? contextProvider.getContext() : requestContextName;
     }
 }

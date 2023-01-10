@@ -27,12 +27,8 @@ public class EventProcessorIdMessage implements EventProcessorId {
     private final EventProcessorIdentifier grpcMessage;
 
     public EventProcessorIdMessage(String context, EventProcessorIdentifier grpcMessage) {
-        if (StringUtils.isEmpty(grpcMessage.getContextName())) {
-            this.context = context;
-        } else {
-            this.context = grpcMessage.getContextName();
-        }
         this.grpcMessage = grpcMessage;
+        this.context = context;
     }
 
     @Nonnull
