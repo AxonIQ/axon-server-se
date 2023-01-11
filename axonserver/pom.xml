@@ -38,7 +38,7 @@
         <skipITs>${skipTests}</skipITs>
         <skipUTs>${skipTests}</skipUTs>
 
-        <reactor.version>3.4.22</reactor.version>
+        <reactor.version>3.5.2</reactor.version>
     </properties>
 
     <dependencies>
