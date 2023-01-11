@@ -121,8 +121,8 @@ public class StandardIndexManager implements IndexManager {
             FileVersion fileVersion = FileUtils.process(indexFile);
             if (properties.dataFile(context, fileVersion).exists()) {
                 indexesDescending.compute(fileVersion.segment(),
-                                          (s, old) -> old == null ? fileVersion.version() : Math.max(
-                                                  fileVersion.version(), old));
+                                          (s, old) -> old == null ? fileVersion.segmentVersion() : Math.max(
+                                                  fileVersion.segmentVersion(), old));
             } else {
                 remove(fileVersion);
             }
@@ -289,8 +289,8 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public Mono<Void> activateVersion(long segment, int version) {
-        FileVersion fileVersion = new FileVersion(segment, version);
+    public Mono<Void> activateVersion(long segment, int segmentVersion) {
+        FileVersion fileVersion = new FileVersion(segment, segmentVersion);
         return Mono.fromSupplier(() -> storageProperties.get().index(context, fileVersion))
                    .filter(indexFile -> !indexFile.exists())
                    .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.get().transformedIndex(context,
@@ -299,7 +299,7 @@ public class StandardIndexManager implements IndexManager {
                                              .switchIfEmpty(Mono.error(new RuntimeException())) //TODO custom exception
                                              .flatMap(tempIndex -> FileUtils.rename(tempIndex, indexFile)))
 
-                   .doOnSuccess(v -> indexesDescending.put(segment, version));
+                   .doOnSuccess(v -> indexesDescending.put(segment, segmentVersion));
     }
 
     @Override
@@ -356,7 +356,7 @@ public class StandardIndexManager implements IndexManager {
     @Override
     public void complete(FileVersion segment) {
         createIndex(segment, activeIndexes.get(segment.segment()));
-        indexesDescending.put(segment.segment(), segment.version());
+        indexesDescending.put(segment.segment(), segment.segmentVersion());
         activeIndexes.remove(segment.segment());
         updateUseMmapAfterIndex();
     }
@@ -449,7 +449,7 @@ public class StandardIndexManager implements IndexManager {
     public boolean validIndex(FileVersion segment) {
         try {
             if (indexesDescending.containsKey(segment.segment())
-                    && indexesDescending.get(segment.segment()) == segment.version()) {
+                    && indexesDescending.get(segment.segment()) == segment.segmentVersion()) {
                 return loadBloomFilter(segment) != null && getIndex(segment) != null;
             }
         } catch (Exception ex) {

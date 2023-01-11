@@ -30,17 +30,17 @@ public class InputStreamEventSource implements EventSource {
     private final EventTransformer eventTransformer;
     private final File dataFile;
     private final long segment;
-    private final int version;
+    private final int segmentVersion;
     private volatile boolean closed;
 
 
     public InputStreamEventSource(File dataFile,
                                   long segment,
-                                  int version,
+                                  int segmentVersion,
                                   EventTransformerFactory eventTransformerFactory) {
         this.dataFile = dataFile;
         this.segment = segment;
-        this.version = version;
+        this.segmentVersion = segmentVersion;
         try {
             logger.debug("Open file {}", dataFile);
             dataInputStream = new PositionKeepingDataInputStream(dataFile);
@@ -78,8 +78,8 @@ public class InputStreamEventSource implements EventSource {
     }
 
     @Override
-    public int version() {
-        return version;
+    public int segmentVersion() {
+        return segmentVersion;
     }
 
     @Override

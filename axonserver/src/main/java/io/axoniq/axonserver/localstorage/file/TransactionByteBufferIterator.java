@@ -69,14 +69,14 @@ public class TransactionByteBufferIterator implements TransactionIterator {
             reader.position(reader.position()-4);
             return false;
         }
-        byte version = reader.get();
+        byte eventFormatVersion = reader.get();
         short nrOfMessages = reader.getShort();
         List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
         int position = reader.position();
         for (int idx = 0; idx < nrOfMessages; idx++) {
             events.add(eventSource.readEvent());
         }
-        next = new SerializedTransactionWithToken(currentSequenceNumber, version, eventSource.version(), events);
+        next = new SerializedTransactionWithToken(currentSequenceNumber, eventFormatVersion, events);
         currentSequenceNumber += nrOfMessages;
         int chk = reader.getInt(); // checksum
         if (validating) {

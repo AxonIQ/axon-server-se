@@ -222,11 +222,11 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
 
     @Override
     public Flux<Long> transformEvents(String context,
-                                      int version,
+                                      int segmentVersion,
                                       Flux<EventWithToken> transformedEvents) {
         return workersMap.get(context)
                 .eventStorageEngine
-                .transformContents(version, transformedEvents)
+                .transformContents(segmentVersion, transformedEvents)
                 .subscribeOn(Schedulers.fromExecutorService(dataFetcher));
     }
 
@@ -761,10 +761,18 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workersMap.get(context).snapshotStorageEngine.transactionIterator(fromToken, toToken);
     }
 
-    public long syncEvents(String context, long token, int version, List<Event> events) {
+    /**
+     *
+     * @param context
+     * @param token
+     * @param segmentVersion the segmentVersion of the segment
+     * @param events
+     * @return
+     */
+    public long syncEvents(String context, long token, int segmentVersion, List<Event> events) {
         try {
             Workers worker = workers(context);
-            worker.eventSyncStorage.sync(token, version, events);
+            worker.eventSyncStorage.sync(token, segmentVersion, events);
             worker.triggerTrackerEventProcessors();
             return token + events.size();
         } catch (MessagingPlatformException ex) {
@@ -777,10 +785,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         }
     }
 
-    public long syncSnapshots(String context, long token, int version, List<Event> snapshots) {
+    public long syncSnapshots(String context, long token, int segmentVersion, List<Event> snapshots) {
         try {
             SyncStorage writeStorage = workers(context).snapshotSyncStorage;
-            writeStorage.sync(token, version, snapshots);
+            writeStorage.sync(token, segmentVersion, snapshots);
             return token + snapshots.size();
         } catch (MessagingPlatformException ex) {
             if (ErrorCode.NO_EVENTSTORE.equals(ex.getErrorCode())) {

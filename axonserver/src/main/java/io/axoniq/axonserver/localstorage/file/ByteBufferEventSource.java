@@ -126,7 +126,7 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     @Override
-    public int version() {
+    public int segmentVersion() {
         return version;
     }
 

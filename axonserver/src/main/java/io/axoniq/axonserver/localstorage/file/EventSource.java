@@ -26,7 +26,7 @@ public interface EventSource extends AutoCloseable {
 
     EventIterator createEventIterator(long startToken);
 
-    int version();
+    int segmentVersion();
 
     long segment();
 }

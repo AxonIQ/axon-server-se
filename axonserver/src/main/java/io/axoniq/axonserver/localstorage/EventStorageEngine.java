@@ -60,7 +60,7 @@ public interface EventStorageEngine {
         return store(eventList, 0);
     }
 
-    default CompletableFuture<Long> store(List<Event> eventList, int version) {
+    default CompletableFuture<Long> store(List<Event> eventList, int segmentVersion) {
         CompletableFuture<Long> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new UnsupportedOperationException("Store operation not supported"));
         return completableFuture;
@@ -243,7 +243,7 @@ public interface EventStorageEngine {
     default void validateTransaction(long token, List<Event> eventList) {
     }
 
-    Flux<Long> transformContents(int version, Flux<EventWithToken> transformedEvents);
+    Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents);
 
     default Mono<Void> deleteOldVersions() {
         return Mono.error(new UnsupportedOperationException("deleteSegments: Operation not supported by this EventStorageEngine"));

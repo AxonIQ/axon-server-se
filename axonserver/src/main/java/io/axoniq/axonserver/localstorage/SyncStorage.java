@@ -32,7 +32,7 @@ public class SyncStorage {
         this.eventStore = eventStore;
     }
 
-    public void sync(long token, int eventVersion, List<Event> eventList) {
+    public void sync(long token, int segmentVersion, List<Event> eventList) {
         if (eventList.isEmpty()) {
             return;
         }
@@ -49,7 +49,7 @@ public class SyncStorage {
             throw new EventStoreValidationException("Received invalid token");
         }
         try {
-            eventStore.store(eventList, eventVersion).get();
+            eventStore.store(eventList, segmentVersion).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, e.getMessage(), e);

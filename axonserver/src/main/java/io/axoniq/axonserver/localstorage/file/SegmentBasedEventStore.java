@@ -51,7 +51,6 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -75,7 +74,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected static final int VERSION_BYTES = 1;
     protected static final int FILE_OPTIONS_BYTES = 4;
     protected static final int TX_CHECKSUM_BYTES = 4;
-    protected static final byte VERSION = 2;
+    protected static final byte EVENT_FORMAT_VERSION = 2;
     private static final int TRANSACTION_LENGTH_BYTES = 4;
     private static final int NUMBER_OF_EVENTS_BYTES = 2;
     protected static final int HEADER_BYTES = TRANSACTION_LENGTH_BYTES + VERSION_BYTES + NUMBER_OF_EVENTS_BYTES;
@@ -277,12 +276,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     @Override
-    public Flux<Long> transformContents(int newVersion, Flux<EventWithToken> transformedEvents) {
+    public Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
         return Flux.usingWhen(Mono.just(0L),
                               v -> transformedEvents.groupBy(eventWithToken -> getSegmentFor(eventWithToken.getToken()))
                                                     .concatMap(segmentedTransformedEvents -> transformSegment(
                                                             segmentedTransformedEvents.key(),
-                                                            newVersion,
+                                                            transformationVersion,
                                                             segmentedTransformedEvents)),
                               v -> activateTransformation());
     }
@@ -326,7 +325,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Mono<Void> activateSegment(FileVersion fileVersion) {
         return renameTransformedSegmentIfNeeded(fileVersion)
                 .then(indexManager.activateVersion(fileVersion))
-                .then(Mono.fromRunnable(() -> activateSegmentVersion(fileVersion.segment(), fileVersion.version())));
+                .then(Mono.fromRunnable(() -> activateSegmentVersion(fileVersion.segment(), fileVersion.segmentVersion())));
     }
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
@@ -343,14 +342,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public Mono<Void> deleteOldVersions() {
         return fileVersions(storagePropertiesSupplier.get().getEventsSuffix())
-                .filter(fileVersion -> currentSegmentVersion(fileVersion.segment()) != fileVersion.version())
+                .filter(fileVersion -> currentSegmentVersion(fileVersion.segment()) != fileVersion.segmentVersion())
                 .flatMapSequential(this::delete)
                 .then();
     }
 
     private Mono<Void> delete(FileVersion fileVersion) {
         return Mono.fromRunnable(() -> {
-                                     if (!removeSegment(fileVersion.segment(), fileVersion.version())) {
+                                     if (!removeSegment(fileVersion.segment(), fileVersion.segmentVersion())) {
                                          throw new RuntimeException(context + ": Cannot remove segment " + fileVersion);
                                      }
                                  }
@@ -360,67 +359,18 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public int nextVersion() {
-        int version = 1;
+        int segmentVersion = 1;
         for (Long segment : getSegments()) {
-            version = Math.max(version, currentSegmentVersion(segment) + 1);
+            segmentVersion = Math.max(segmentVersion, currentSegmentVersion(segment) + 1);
         }
-        return next == null ? version : Math.max(version, next.nextVersion());
+        return next == null ? segmentVersion : Math.max(segmentVersion, next.nextVersion());
     }
-
-    private Mono<Void> hasPreviousVersion(long segment, int version) {
-        return hasVersion(segment, version - 1);
-    }
-
-    private Mono<Void> doesntHaveNextVersion(long segment, int version) {
-        return hasVersion(segment, version + 1);
-    }
-
-    private Mono<Void> hasVersion(long segment, int version) {
-        return Mono.create(sink -> {
-            StorageProperties storageProperties = storagePropertiesSupplier.get();
-            if (version == 0 && storageProperties.dataFile(context, segment).exists()) {
-                sink.success();
-            } else if (storageProperties.dataFile(context, new FileVersion(segment, version)).exists()) {
-                sink.success();
-            } else {
-                sink.error(new RuntimeException(version + " version for segment " + segment + " doesn't exist."));
-            }
-        });
-    }
-
-    // TODO: 4/7/22 remove?
-    private int previousVersion(Long segment, int version) {
-        int previous = version - 1;
-        while (previous >= 0) {
-            if (storagePropertiesSupplier.get().dataFile(context, new FileVersion(segment, previous)).exists()) {
-                return previous;
-            }
-            previous--;
-        }
-        return -1;
-    }
-
 
     protected abstract Integer currentSegmentVersion(Long segment);
 
-    protected abstract void activateSegmentVersion(long segment, int version);
+    protected abstract void activateSegmentVersion(long segment, int segmentVersion);
 
-    protected Mono<Void> rollbackSegmentVersion(long segment, int currentVersion, int targetVersion) {
-        return Mono.error(new UnsupportedOperationException());
-    }
-
-    protected void scheduleForDeletion(long segment, int version) {
-        Executors.newSingleThreadScheduledExecutor().schedule(() -> {
-                                                                  if (!removeSegment(segment, version)) {
-                                                                      scheduleForDeletion(segment, version);
-                                                                  }
-                                                              },
-                                                              storagePropertiesSupplier.get()
-                                                                                       .getSecondaryCleanupDelay(),
-                                                              TimeUnit.SECONDS);
-    }
-
-    protected abstract boolean removeSegment(long segment, int version);
+    protected abstract boolean removeSegment(long segment, int segmentVersion);
 
     private <T> boolean contains(T[] values, T value) {
         for (T t : values) {
@@ -655,12 +605,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
               .filter(segment -> segment.segment() < lastInitialized)
               .forEach(segment -> segments.compute(segment.segment(), (s, old) -> {
                   if (old == null) {
-                      return segment.version();
+                      return segment.segmentVersion();
                   }
-                  return Math.max(old, segment.version());
+                  return Math.max(old, segment.segmentVersion());
               }));
 
-        segments.forEach((segment, version) -> renameFileIfNecessary(segment));
+        segments.forEach((segment, segmentVersion) -> renameFileIfNecessary(segment));
         long firstValidIndex = segments.entrySet().stream().filter(entry -> indexManager.validIndex(new FileVersion(
                                                entry.getKey(),
                                                entry.getValue())))

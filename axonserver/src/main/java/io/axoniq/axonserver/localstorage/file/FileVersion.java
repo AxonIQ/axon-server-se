@@ -20,7 +20,7 @@ public class FileVersion implements Comparable<FileVersion>{
         return segment;
     }
 
-    public int version() {
+    public int segmentVersion() {
         return version;
     }
 

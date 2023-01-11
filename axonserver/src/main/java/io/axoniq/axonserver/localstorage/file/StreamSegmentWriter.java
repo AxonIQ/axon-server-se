@@ -35,7 +35,7 @@ public class StreamSegmentWriter implements SegmentWriter {
 
     public StreamSegmentWriter(File file, long segment, int flags) throws IOException {
         dataOutputStream = new DataOutputStream(new FileOutputStream(file));
-        dataOutputStream.write(PrimaryEventStore.VERSION);
+        dataOutputStream.write(PrimaryEventStore.EVENT_FORMAT_VERSION);
         dataOutputStream.writeInt(flags);
         token = segment-1;
     }

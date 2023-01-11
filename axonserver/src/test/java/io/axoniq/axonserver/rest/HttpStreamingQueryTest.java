@@ -139,7 +139,7 @@ public class HttpStreamingQueryTest {
             }
 
             @Override
-            public Flux<Long> transformContents(int version, Flux<EventWithToken> transformedEvents) {
+            public Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
                 return Flux.empty();
             }
         };

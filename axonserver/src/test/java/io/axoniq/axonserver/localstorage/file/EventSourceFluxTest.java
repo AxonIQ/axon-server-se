@@ -62,7 +62,7 @@ class EventSourceFluxTest {
                     }
 
                     @Override
-                    public int version() {
+                    public int segmentVersion() {
                         return 0;
                     }
 

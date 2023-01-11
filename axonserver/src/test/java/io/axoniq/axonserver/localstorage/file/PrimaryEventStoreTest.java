@@ -317,7 +317,7 @@ public class PrimaryEventStoreTest {
         testSubject.store(singletonList(newEvent)).get(1, TimeUnit.SECONDS);
     }
 
-    private void storeEventWithNewVersion(PrimaryEventStore testSubject, long payloadSize, int version)
+    private void storeEventWithNewVersion(PrimaryEventStore testSubject, long payloadSize, int segmentVersion)
             throws ExecutionException, InterruptedException, TimeoutException {
         byte[] buffer = new byte[(int) payloadSize];
         Arrays.fill(buffer, (byte) 'a');
@@ -325,7 +325,7 @@ public class PrimaryEventStoreTest {
                               .setAggregateType("Demo").setPayload(SerializedObject.newBuilder()
                                                                                    .setData(ByteString.copyFrom(buffer))
                                                                                    .build()).build();
-        testSubject.store(singletonList(newEvent), version).get(1, TimeUnit.SECONDS);
+        testSubject.store(singletonList(newEvent), segmentVersion).get(1, TimeUnit.SECONDS);
     }
 
     @Test

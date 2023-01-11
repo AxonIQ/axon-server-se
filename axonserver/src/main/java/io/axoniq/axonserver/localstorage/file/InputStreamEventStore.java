@@ -9,8 +9,6 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
@@ -20,7 +18,6 @@ import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Supplier;
 
 /**
@@ -43,7 +40,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
     @Override
     public void handover(FileVersion segment, Runnable callback) {
-        segments.put(segment.segment(), segment.version());
+        segments.put(segment.segment(), segment.segmentVersion());
         callback.run();
     }
 
@@ -54,9 +51,9 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
 
     @Override
     protected Optional<EventSource> getEventSource(long segment) {
-        Integer version = segments.get(segment);
-        if (version != null) {
-            return getEventSource(new FileVersion(segment, version));
+        Integer segmentVersion = segments.get(segment);
+        if (segmentVersion != null) {
+            return getEventSource(new FileVersion(segment, segmentVersion));
         }
         return Optional.empty();
     }
@@ -88,14 +85,14 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
     }
 
     @Override
-    protected void activateSegmentVersion(long segment, int version) {
-        segments.put(segment, version);
+    protected void activateSegmentVersion(long segment, int segmentVersion) {
+        segments.put(segment, segmentVersion);
     }
 
     @Override
-    protected boolean removeSegment(long segment, int version) {
-        return indexManager.remove(new FileVersion(segment, version)) &&
-                FileUtils.delete(storagePropertiesSupplier.get().dataFile(context, new FileVersion(segment, version)));
+    protected boolean removeSegment(long segment, int segmentVersion) {
+        return indexManager.remove(new FileVersion(segment, segmentVersion)) &&
+                FileUtils.delete(storagePropertiesSupplier.get().dataFile(context, new FileVersion(segment, segmentVersion)));
     }
 
     @Override
@@ -122,7 +119,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Rea
         fileOpenMeter.increment();
         return new InputStreamEventSource(storagePropertiesSupplier.get().dataFile(context, segment),
                                           segment.segment(),
-                                          segment.version(),
+                                          segment.segmentVersion(),
                                           eventTransformerFactory);
     }
 

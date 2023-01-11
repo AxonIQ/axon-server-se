@@ -20,16 +20,15 @@ import java.util.Objects;
 public class SerializedTransactionWithToken {
 
     private final long token;
-    private final byte version;
-    private final int eventVersion;
+    private final byte eventFormatVersion;
     private final List<SerializedEvent> events;
 
-    public SerializedTransactionWithToken(long token, byte version, int eventVersion,
+    public SerializedTransactionWithToken(long token,
+                                          byte eventFormatVersion,
                                           List<SerializedEvent> events) {
         this.token = token;
-        this.version = version;
+        this.eventFormatVersion = eventFormatVersion;
         this.events = events;
-        this.eventVersion = eventVersion;
     }
 
     public long getToken() {
@@ -40,12 +39,8 @@ public class SerializedTransactionWithToken {
         return events;
     }
 
-    public int getVersion() {
-        return version;
-    }
-
-    public int getEventVersion() {
-        return eventVersion;
+    public int getEventFormatVersion() {
+        return eventFormatVersion;
     }
 
     @Override

@@ -76,13 +76,13 @@ public class InputStreamTransactionIterator implements TransactionIterator {
                 return false;
             }
 
-            byte version = processVersion(reader);
+            byte eventFormatVersion = processVersion(reader);
             short nrOfMessages = reader.readShort();
             List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
             for (int idx = 0; idx < nrOfMessages; idx++) {
                 events.add(eventSource.readEvent());
             }
-            next = new SerializedTransactionWithToken(currentSequenceNumber, version, eventSource.version(), events);
+            next = new SerializedTransactionWithToken(currentSequenceNumber, eventFormatVersion, events);
             currentSequenceNumber += nrOfMessages;
             reader.readInt(); // checksum
             return true;
