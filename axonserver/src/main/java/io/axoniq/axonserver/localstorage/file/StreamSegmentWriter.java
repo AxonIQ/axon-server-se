@@ -52,8 +52,7 @@ public class StreamSegmentWriter implements SegmentWriter {
 
     @Override
     public void writeEndOfFile() throws IOException {
-        dataOutputStream.writeInt(0);
-        dataOutputStream.writeInt(0);
+        dataOutputStream.writeInt(-1);
     }
 
     @Override
