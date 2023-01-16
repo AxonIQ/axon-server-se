@@ -48,6 +48,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * Implementation of the index manager that creates 2 files per segment, an index file containing a map of aggregate
@@ -298,6 +299,11 @@ public class StandardIndexManager implements IndexManager {
                                                                    a -> new StandardIndexEntries(
                                                                            entries.get(0).getSequenceNumber()))
                                                   .addAll(entries));
+    }
+
+    @Override
+    public Stream<AggregateSequence> latestSequenceNumbers(Long segment) {
+        return getIndex(segment).latestSequenceNumbers();
     }
 
     @Override
@@ -636,6 +642,10 @@ public class StandardIndexManager implements IndexManager {
                 initialized = true;
             }
             return this;
+        }
+
+        public Stream<AggregateSequence> latestSequenceNumbers() {
+            return positions.entrySet().stream().map(e -> new AggregateSequence(e.getKey(), e.getValue().lastSequenceNumber()));
         }
     }
 }

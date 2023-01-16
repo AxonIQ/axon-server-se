@@ -9,12 +9,13 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
-import javax.annotation.Nonnull;
+import java.util.stream.Stream;
 
 /**
  * Manages index for an event store. There are two IndexManagers per context, one for the events and one for the
@@ -134,4 +135,5 @@ public interface IndexManager {
      */
     void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
 
+    Stream<AggregateSequence> latestSequenceNumbers(Long segment);
 }

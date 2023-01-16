@@ -271,23 +271,7 @@ public class StorageProperties implements Cloneable {
     }
 
     public String getPrimaryStorage(String context) {
-        if (contextStorage != null) {
-            return contextStorage;
-        }
         return String.format("%s/%s", storages.get("primary"), context);
-    }
-
-    public String getStorage(String storageName, String context) {
-        if (contextStorage != null) {
-            return contextStorage;
-        }
-
-        String storagePath = storages.get(storageName);
-        if (storagePath == null) {
-            throw new IllegalStateException("Storage " + storageName + " not defined on this node." +
-                    "To define storage set property: axoniq.axonserver.event.storage." + storageName);
-        }
-        return String.format("%s/%s", storagePath, context);
     }
 
     public String getStorage(String storageName) {

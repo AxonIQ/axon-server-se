@@ -822,6 +822,10 @@ public class LocalEventStore implements io.axoniq.axonserver.message.event.Event
         return workers(context).snapshotStorageEngine.getFirstCompletedSegment();
     }
 
+    public EventStorageEngine getSnapshotStorage(String context) {
+        return workers(context).snapshotStorageEngine;
+    }
+
     private class Workers {
 
         private final EventWriteStorage eventWriteStorage;

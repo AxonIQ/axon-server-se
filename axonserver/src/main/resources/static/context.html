@@ -550,7 +550,8 @@
              <td>
                  <template v-for="storage in storages('snapshot',context)">
                     <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{ storage.retentionFormatted }} &#8600;</div>
-                    <div class="storageBox">{{ storage.storage }}</div>
+                    <div v-if="storage.id !== 'black_hole'" class="storageBox">{{ storage.storage }}</div>
+                    <div v-if="storage.id === 'black_hole'" class="storageBlackHoleBox">{{ storage.storage }}</div>
                  </template>
              </td>
          </template>
@@ -775,7 +776,7 @@
                               </select>
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[index].storage" :disabled="chosenEventTiers[index].readOnly"   v-if="showTierStorage(index,'event')" class="tierName">
+                              <select v-model="chosenEventTiers[index].storage" :disabled="chosenEventTiers[index].readOnly"  v-if="showTierStorage(index,'event')" class="tierName">
                                   <option :value="undefined" disabled hidden selected>Select storage</option>
                                   <option v-for="[storage, path] in showAvailableStorages(index,'event')" :value="storage">{{storage}}</option>
                               </select>
