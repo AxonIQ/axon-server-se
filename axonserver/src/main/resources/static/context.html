@@ -291,11 +291,13 @@
                 this.chosenSnapshotTiers.push(structuredClone(this.showAvailableTiers(currentLevel)[0]));
             },
             onTierSelect(e,tier,index,storage) {
-                console.log('test');
                 let selectedTier = e.target.options[e.target.options.selectedIndex]._value;
                 let store = (storage === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
                 store[index] = selectedTier;
                 this.$forceUpdate();
+                if (selectedTier.id === 'black_hole') {
+                    this.$modal.show('black_hole');
+                }
             },
             showTierStorage(index,storage) {
               let store = (storage === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
@@ -386,7 +388,7 @@
                         }
                     });
                 } catch (e) {
-                    console.log(e);
+
                 }
             },
             isEphemeral(context) {
@@ -420,6 +422,8 @@
                        key.includes(lRetentionSize);
             },
             storages(storageType, context) {
+               if (context.context === '_admin') return [];
+
               let lTier = storageType.concat('.tier');
               let lStorage = storageType.concat('.storage');
               let lRetentionTime = storageType.concat('.retention-time');
@@ -543,15 +547,19 @@
              <td>
                  <template v-for="storage in storages('event',context)">
                     <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{ storage.retentionFormatted }}</div>
+                    <div class="bottom-arrow">&#8964;</div>
                     <div v-if="storage.id !== 'black_hole'" class="storageBox">{{ storage.storage }}</div>
                     <div v-if="storage.id === 'black_hole'" class="storageBlackHoleBox">{{ storage.storage }}</div>
+                    <div class="bottom-arrow">&#8964;</div>
                  </template>
              </td>
              <td>
                  <template v-for="storage in storages('snapshot',context)">
-                    <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{ storage.retentionFormatted }} &#8600;</div>
+                    <div v-if="storage.retentionFormatted" class="retentionBox">&#9716; {{ storage.retentionFormatted }}</div>
+                    <div class="bottom-arrow">&#8964;</div>
                     <div v-if="storage.id !== 'black_hole'" class="storageBox">{{ storage.storage }}</div>
                     <div v-if="storage.id === 'black_hole'" class="storageBlackHoleBox">{{ storage.storage }}</div>
+                    <div class="bottom-arrow">&#8964;</div>
                  </template>
              </td>
          </template>
@@ -872,4 +880,28 @@
          </form>
       </div>
    </modal>
+
+    <modal name="black_hole" width="600" height="320">
+            <div class="column configuration modal">
+                <h2>Ephemeral context</h2>
+                <p>
+                    Selecting black hole as tier will mark your context as ephemeral which means data is <span style="color: red">permanently</span> removed data after a specified retention interval.
+                    Once data is removed, it cannot be recovered.
+                </p>
+                <p>
+                    Use this feature with caution and only if you are certain that you no longer need the data.
+                </p>
+                <form>
+                    <ul>
+                        <li>
+                            <span>&nbsp;</span>
+                            <span>
+                                <button @click.prevent="hideModal('black_hole')" class="button">Continue</button>
+                            </span>
+                        </li>
+                    </ul>
+                </form>
+
+            </div>
+    </modal>
 </span>

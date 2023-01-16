@@ -428,41 +428,63 @@ input[type="search"] {
 	margin-bottom: 15px;
 }
 
-
 .storageBox {
 	text-align: center;
+	position: relative;
 	display: block;
 	width: 150px !important;
 	font-size: smaller;
-	margin-bottom: 5px;
 	padding: 0px 5px;
 	background-size: auto auto;
 	background-color: rgba(255, 255, 255, 1);
 	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(238, 238, 238, 1) 2px, rgba(238, 238, 238, 1) 4px );
+	pointer-events: none;
 }
+
+
 
 .storageBlackHoleBox {
 	text-align: center;
 	display: block;
 	width: 150px !important;
 	font-size: smaller;
-	margin-bottom: 5px;
 	padding: 0px 5px;
 	background-size: auto auto;
 	background-color: rgba(244, 205, 202, 1);
 	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255, 255, 255, 1) 2px, rgba(255, 255, 255, 1) 4px );
+	pointer-events: none;
 }
 .retentionBox {
 	text-align: center;
 	display: block;
 	width: 100px !important;
 	left: 25px;
-	margin-bottom: 5px;
 	padding: 0px 5px;
 	font-size: smaller;
 	background-size: auto auto;
 	background-color: rgba(255, 255, 255, 1);
 	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(253, 233, 195, 1) 2px, rgba(253, 233, 195, 1) 4px );
+	pointer-events: none;
+}
+
+.bottom-arrow {
+	text-align: center;
+	display: block;
+	width: 100px !important;
+	left: 25px;
+	top: -5px;
+	padding: 0;
+	font-size: small;
+	height: 16px;
+	pointer-events: none;
+}
+
+.bottom-arrow:first-child {
+	visibility: hidden;
+}
+
+.bottom-arrow:last-child {
+	visibility: hidden;
 }
 
 .tier-holder tbody tr:last-child .add-tier {
