@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public interface Segment {
 
@@ -26,4 +27,6 @@ public interface Segment {
     long id();
 
     Supplier<List<File>> indexProvider();
+
+    Stream<AggregateSequence> latestSequenceNumbers();
 }
