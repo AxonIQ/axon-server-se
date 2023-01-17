@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -50,12 +50,22 @@ public interface Topology {
     }
 
     /**
-     * Gets the names of all contexts where the current Axon Server instance is member of. In Axon Server Standard this only contains DEFAULT_CONTEXT, in
-     * Axon Server Enterprise this is dynamic.
+     * Gets the names of all contexts where the current Axon Server instance is member of. In Axon Server Standard this
+     * only contains DEFAULT_CONTEXT, in Axon Server Enterprise this is dynamic.
      *
      * @return names of contexts
      */
     default Iterable<String> getMyContextNames() {
+        return getMe().getContextNames();
+    }
+
+    /**
+     * Gets the names of all contexts known in this Axon Server. In Axon Server Standard this only contains
+     * DEFAULT_CONTEXT, in Axon Server Enterprise this is dynamic.
+     *
+     * @return names of contexts
+     */
+    default Iterable<String> knownContexts() {
         return getMe().getContextNames();
     }
 

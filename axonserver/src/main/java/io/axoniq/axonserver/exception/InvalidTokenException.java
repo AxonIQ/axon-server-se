@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2020 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -15,6 +15,9 @@ package io.axoniq.axonserver.exception;
  * @author Marc Gathier
  * @since 4.3.1
  */
-public class InvalidTokenException extends RuntimeException {
+public class InvalidTokenException extends MessagingPlatformException {
 
+    public InvalidTokenException() {
+        super(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Invalid token");
+    }
 }

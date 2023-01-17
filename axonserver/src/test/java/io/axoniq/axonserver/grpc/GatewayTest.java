@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -13,9 +13,9 @@ import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.AxonServerStandardAccessController;
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.config.AccessControlConfiguration;
-import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.config.MessagingPlatformConfiguration;
 import io.axoniq.axonserver.config.SslConfiguration;
+import io.axoniq.axonserver.config.TokenAuthentication;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.grpc.control.ClientIdentification;
 import io.axoniq.axonserver.grpc.control.NodeInfo;
@@ -33,15 +33,22 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.unit.DataSize;
 
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static io.axoniq.axonserver.config.GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Marc Gathier
@@ -123,19 +130,18 @@ public class GatewayTest {
     @Test
     public void testAccessControlInterceptor() {
         accessController = new AxonServerAccessController() {
-            @Override
-            public boolean allowed(String fullMethodName, String context, String token) {
-                return "1234".equals(token) && Topology.DEFAULT_CONTEXT.equals(context);
-            }
 
             @Override
             public boolean allowed(String fullMethodName, String context, Authentication authentication) {
-                return false;
+                return authentication.isAuthenticated();
             }
 
             @Override
-            public Authentication authentication(String context, String token) {
-                return GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
+            public Authentication authentication(String token) {
+                if (token.equals("1234")) {
+                    return new TokenAuthentication(true, "User", Collections.emptySet());
+                }
+                return DEFAULT_PRINCIPAL;
             }
         };
 
