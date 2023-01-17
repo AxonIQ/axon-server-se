@@ -422,8 +422,8 @@ input[type="search"] {
 
 .tier-holder {
 	padding: 10px !important;
-	border-style: dotted;
-	border-width: medium;
+	border-style: solid;
+	border-width: thin;
 	border-color: lightgrey;
 	margin-bottom: 15px;
 }
@@ -440,8 +440,6 @@ input[type="search"] {
 	background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(238, 238, 238, 1) 2px, rgba(238, 238, 238, 1) 4px );
 	pointer-events: none;
 }
-
-
 
 .storageBlackHoleBox {
 	text-align: center;
@@ -512,6 +510,41 @@ input[type="search"] {
 
 .storageColumn {
 	width: 15%;
+}
+
+.tier-tabs-holder {
+	position: relative;
+	display: contents;
+	border: none;
+}
+
+.tier-tab {
+	width: 120px !important;
+	border-top-style: solid;
+	border-top-width: thin;
+	border-top-color: lightgrey;
+	color: black;
+	border-left-style: solid;
+	border-left-width: thin;
+	border-left-color: lightgrey;
+	border-right-style: solid;
+	border-right-width: thin;
+	margin-bottom: 10px;
+	margin-right: 10px;
+	border-right-color: lightgrey;
+	padding-left: 5px !important;
+	cursor: pointer;
+}
+
+.tier-tab-active {
+	border-top-width: medium !important;
+	font-weight: bolder !important;
+	color: black !important;
+}
+
+.tier-tab-disabled {
+	opacity: 0.4;
+	cursor: not-allowed !important;
 }
 
 .roleColumn {

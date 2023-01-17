@@ -22,6 +22,7 @@
             availableSnapshotStorages: new Map(),
             chosenEventTiers: [],
             chosenSnapshotTiers: [],
+            selectedTierNodeRole: 'primary',
             newContext: {
                 nodes: [],
                 selectedReplicationGroup: "",
@@ -421,6 +422,40 @@
                        key.includes(lRetentionTime) ||
                        key.includes(lRetentionSize);
             },
+            tabNodeState(nodeRoleName) {
+                if (nodeRoleName === this.selectedTierNodeRole) return 'tier-tab-active';
+                else {
+                    let availableNodeRoles1 = [];
+                    let availableNodeRoles2 = [];
+
+                    if (this.newContext) {
+                        availableNodeRoles1 = this.newContext.nodes.map(n=>n.selectedRole).filter(r=>r !== 'none');
+                    }
+
+                    if (this.replicationGroups) {
+                        let selectedRP = this.replicationGroups.find(rp => rp.name === this.newContext.selectedReplicationGroup);
+                        if (selectedRP) availableNodeRoles2 = selectedRP.roles.map(r=>r.role);
+                    }
+
+                    let availableNodeRoles = availableNodeRoles1.concat(availableNodeRoles2)
+
+                    if (availableNodeRoles.some(role=>role === nodeRoleName.toUpperCase())) {
+                        return 'tier-tab-available';
+                    } else {
+                        return 'tier-tab-disabled';
+                    }
+                }
+            },
+            changeSelectedTierNodeRole(nodeRoleName) {
+                if (this.tabNodeState(nodeRoleName) === 'tier-tab-disabled') return;
+                else {
+                    this.selectedTierNodeRole = nodeRoleName;
+                    this.$forceUpdate();
+                }
+            },
+            updateUI() {
+                this.$forceUpdate();
+            },
             storages(storageType, context) {
                if (context.context === '_admin') return [];
 
@@ -445,7 +480,6 @@
                         tier = 'default';
                         storage = 'primary';
                     }
-
 
                     let retentionFormatted;
 
@@ -580,7 +614,7 @@
                <li>
                   <span class="narrow">Replication Group</span>
                   <span>
-                     <select v-model="newContext.selectedReplicationGroup" class="nodeRoleName">
+                     <select v-model="newContext.selectedReplicationGroup" class="nodeRoleName" @change="updateUI()">
                         <option value="">-- create new --</option>
                         <option v-for="n in replicationGroups" :value="n.name">{{ n.name }}</option>
                      </select>
@@ -602,7 +636,7 @@
                                  <tr v-for="node in newContext.nodes">
                                     <td style="width: 60%">{{ node.name }}</td>
                                     <td>
-                                       <select v-model="node.selectedRole" class="nodeRoleName">
+                                       <select v-model="node.selectedRole" class="nodeRoleName" @change="updateUI()">
                                           <option value="none">-- none --</option>
                                           <option v-for="n in roles" :value="n">{{ n }}</option>
                                        </select>
@@ -648,6 +682,15 @@
                      </span>
                   </span>
                </li>
+                <li>
+                <span class="narrow" style="visibility: hidden">Nodes</span>
+                <span class="tier-tabs-holder">
+                        <span @click="changeSelectedTierNodeRole('primary')" class="tier-tab" :class="tabNodeState('primary')">Primary</span>
+                        <span @click="changeSelectedTierNodeRole('secondary')" class="tier-tab" :class="tabNodeState('secondary')">Secondary</span>
+                        <span @click="changeSelectedTierNodeRole('passive_backup')" class="tier-tab" :class="tabNodeState('passive_backup')">Passive backup</span>
+                        <span @click="changeSelectedTierNodeRole('active_backup')" class="tier-tab" :class="tabNodeState('active_backup')">Active backup</span>
+                </span>
+                </li>
                <li>
                   <span class="narrow">Event storage</span>
                   <span class="tier-holder">
