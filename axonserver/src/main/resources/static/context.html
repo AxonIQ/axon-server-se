@@ -20,8 +20,18 @@
             availableTiers: [],
             availableEventStorages: new Map(),
             availableSnapshotStorages: new Map(),
-            chosenEventTiers: [],
-            chosenSnapshotTiers: [],
+            chosenEventTiers: {
+                primary: [],
+                secondary: [],
+                passive_backup:[],
+                active_backup:[]
+            },
+            chosenSnapshotTiers: {
+                primary: [],
+                secondary: [],
+                passive_backup:[],
+                active_backup:[]
+            },
             selectedTierNodeRole: 'primary',
             newContext: {
                 nodes: [],
@@ -66,10 +76,12 @@
             });
             axios.get("v1/public/tier").then(response => {
                 this.availableTiers = response.data;
-                if (this.chosenEventTiers.length === 0)
-                    this.chosenEventTiers.push(structuredClone(this.availableTiers[0]));
-                if (this.chosenSnapshotTiers.length === 0)
-                    this.chosenSnapshotTiers.push(structuredClone(this.availableTiers[0]));
+                Object.keys(this.chosenEventTiers).forEach(nodeRole => {
+                    if (this.chosenEventTiers[nodeRole].length === 0)
+                        this.chosenEventTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
+                    if (this.chosenSnapshotTiers[nodeRole].length === 0)
+                        this.chosenSnapshotTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
+                })
             });
             axios.get("v1/public/storages?type=event").then(response => {
                 this.availableEventStorages = new Map(Object.entries(response.data));
@@ -96,12 +108,18 @@
                         selectedRole: "none"
                     };
                 }
-                this.chosenEventTiers = [];
-                this.chosenSnapshotTiers = [];
+
+                Object.keys(this.chosenEventTiers).forEach(nodeRole => {
+                    this.chosenEventTiers[nodeRole] = [];
+                    this.chosenSnapshotTiers[nodeRole] = [];
+                });
+
 
                 if (this.availableTiers[0] !== undefined) {
-                    this.chosenEventTiers.push(structuredClone(this.availableTiers[0]));
-                    this.chosenSnapshotTiers.push(structuredClone(this.availableTiers[0]));
+                    Object.keys(this.chosenEventTiers).forEach(nodeRole => {
+                        this.chosenEventTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
+                        this.chosenSnapshotTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
+                    });
                 }
 
                 this.$forceUpdate();
@@ -150,8 +168,7 @@
                     this.addMetaData()
                 }
 
-                this.collectTierInfo(this.newContext,'event');
-                this.collectTierInfo(this.newContext,'snapshot');
+                this.collectTierInfo(this.newContext);
 
                 axios.post("v1/context", context).then(response => {
                     this.initNewContext();
@@ -163,8 +180,7 @@
                     this.addMetaDataToCurrent()
                 }
 
-                this.collectTierInfo(this.currentContext,'event');
-                this.collectTierInfo(this.currentContext,'snapshot');
+                this.collectTierInfo(this.currentContext);
 
                 axios.patch("v1/context/" + this.currentContext.context,
                     this.currentContext.metaData).then(response => {
@@ -240,20 +256,25 @@
                     "metaDataLabel": '',
                     "metaDataValue": ''
                 };
-                this.chosenEventTiers = this.storages('event',context);
-                this.chosenSnapshotTiers = this.storages('snapshot',context);
+                this.chosenEventTiers[this.selectedTierNodeRole] = this.storages('event',context);
+                this.chosenSnapshotTiers[this.selectedTierNodeRole] = this.storages('snapshot',context);
             },
             cancelUpdate() {
                 this.currentContext = null;
                 this.showUpdate = false;
                 this.showAdd = true;
 
-                this.chosenEventTiers = [];
-                this.chosenSnapshotTiers = [];
+                Object.keys(this.chosenEventTiers).forEach(nodeRole => {
+                    this.chosenEventTiers[nodeRole] = [];
+                    this.chosenSnapshotTiers[nodeRole] = [];
+                });
+
 
                 if (this.availableTiers[0] !== undefined) {
-                    this.chosenEventTiers.push(structuredClone(this.availableTiers[0]));
-                    this.chosenSnapshotTiers.push(structuredClone(this.availableTiers[0]));
+                    Object.keys(this.chosenEventTiers).forEach(nodeRole => {
+                        this.chosenEventTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
+                        this.chosenSnapshotTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
+                    });
                 }
             },
             addMetaDataToCurrent() {
@@ -284,16 +305,16 @@
                 this.$refs.newContextProperty.setText('');
             },
             addEventTier() {
-                let currentLevel = this.chosenEventTiers.length;
-                this.chosenEventTiers.push(structuredClone(this.showAvailableTiers(currentLevel)[0]));
+                let currentLevel = this.chosenEventTiers[this.selectedTierNodeRole].length;
+                this.chosenEventTiers[this.selectedTierNodeRole].push(structuredClone(this.showAvailableTiers(currentLevel)[0]));
             },
             addSnapshotTier() {
-                let currentLevel = this.chosenSnapshotTiers.length;
-                this.chosenSnapshotTiers.push(structuredClone(this.showAvailableTiers(currentLevel)[0]));
+                let currentLevel = this.chosenSnapshotTiers[this.selectedTierNodeRole].length;
+                this.chosenSnapshotTiers[this.selectedTierNodeRole].push(structuredClone(this.showAvailableTiers(currentLevel)[0]));
             },
             onTierSelect(e,tier,index,storage) {
                 let selectedTier = e.target.options[e.target.options.selectedIndex]._value;
-                let store = (storage === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+                let store = (storage === 'event') ? this.chosenEventTiers[this.selectedTierNodeRole] : this.chosenSnapshotTiers[this.selectedTierNodeRole];
                 store[index] = selectedTier;
                 this.$forceUpdate();
                 if (selectedTier.id === 'black_hole') {
@@ -301,14 +322,14 @@
                 }
             },
             showTierStorage(index,storage) {
-              let store = (storage === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
-              return store[index].id === 'custom_storage';
+                let store = (storage === 'event') ? this.chosenEventTiers[this.selectedTierNodeRole] : this.chosenSnapshotTiers[this.selectedTierNodeRole];
+                return store[index].id === 'custom_storage';
             },
             showAfterSelect(tierLevel) {
                 return tierLevel > 0;
             },
             showAvailableTiers(index, storage) {
-                let store = (storage === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+                let store = (storage === 'event') ? this.chosenEventTiers[this.selectedTierNodeRole] : this.chosenSnapshotTiers[this.selectedTierNodeRole];
 
                 return this.availableTiers
                     .filter(t => t.level === -1 || t.level <= (store.length - 1))
@@ -316,29 +337,48 @@
             },
             showAddTier(index,storageType) {
                 try {
-                    let store = (storageType === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+                    let store = (storageType === 'event') ? this.chosenEventTiers[this.selectedTierNodeRole] : this.chosenSnapshotTiers[this.selectedTierNodeRole];
                     return store[index].id !== 'black_hole';
                 } catch (e) {
                     return true;
                 }
             },
-            collectTierInfo(context,storageType) {
-                try {
+            collectTierInfo(context) {
+
+                let metaData = context.metaData;
+
+                Object.keys(this.chosenEventTiers).forEach(nodeRole => {
+                    let store = this.chosenEventTiers[nodeRole];
+                    let storageType = 'event';
+
+                    if (this.tabNodeState(nodeRole) !== 'tier-tab-disabled') {
+                        this.collectTierInfoToMetaData(store,storageType,nodeRole, metaData);
+                    }
+                })
+
+                Object.keys(this.chosenSnapshotTiers).forEach(nodeRole => {
+                    let store = this.chosenSnapshotTiers[nodeRole];
+                    let storageType = 'snapshot';
+                    if (this.tabNodeState(nodeRole) !== 'tier-tab-disabled') {
+                        this.collectTierInfoToMetaData(store, storageType, nodeRole, metaData);
+                    }
+                })
+
+            },
+            collectTierInfoToMetaData(store, storageType, nodeRole, metaData) {
                 let lTier = 'tier';
                 let lStorage = 'storage';
                 let lRetentionTime = 'retention-time';
                 let lRetentionSize = 'retention-size';
-                let metaData = context.metaData;
-
-                let store = (storageType === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
 
                 store
                     .forEach((tier,index) => {
                         let prefix = storageType.concat('.');
-                        let suffix = '';
+                        let suffixLevel = '';
                         if (index > 0) {
-                            suffix = '.' + index;
+                            suffixLevel = '.' + index;
                         }
+                        let suffixNodeRole = '.' + nodeRole;
 
                         let retentionTime = 0;
                         let retentionSize = 0;
@@ -362,14 +402,14 @@
                             default:
                         }
 
-                        metaData[prefix.concat(lTier.concat(suffix))] = tier.id;
+                        metaData[prefix.concat(lTier.concat(suffixLevel).concat(suffixNodeRole))] = tier.id;
 
                         if (tier.id === "default") {
-                            metaData[prefix.concat(lStorage.concat(suffix))] = 'primary';
+                            metaData[prefix.concat(lStorage.concat(suffixLevel).concat(suffixNodeRole))] = 'primary';
                         }
 
                         if (tier.id === "custom_storage" && tier.storage.length >= 1) {
-                        metaData[prefix.concat(lStorage.concat(suffix))] = tier.storage;
+                            metaData[prefix.concat(lStorage.concat(suffixLevel).concat(suffixNodeRole))] = tier.storage;
                         }
 
                         if (tier.id === "custom_storage" && tier.storage.length < 1) {
@@ -378,22 +418,19 @@
                         }
 
                         if (retentionTime !== 0) {
-                            metaData[prefix.concat(lRetentionTime.concat(suffix))] = retentionTime;
+                            metaData[prefix.concat(lRetentionTime.concat(suffixLevel).concat(suffixNodeRole))] = retentionTime;
                         }
                         if (retentionSize !== 0) {
-                            metaData[prefix.concat(lRetentionSize.concat(suffix))] = retentionSize;
+                            metaData[prefix.concat(lRetentionSize.concat(suffixLevel).concat(suffixNodeRole))] = retentionSize;
                         }
                         if (tier.id !== "default" && retentionSize ===0 && retentionTime === 0) {
                             alert("Define either retention size or retention time!");
                             throw 'Define either retention size or retention time!';
                         }
                     });
-                } catch (e) {
-
-                }
             },
             isEphemeral(context) {
-              return Object.values(context.metaData).some(value => value === 'black_hole');
+                return Object.values(context.metaData).some(value => value === 'black_hole');
             },
             isMultiTier(context) {
                 let eventTiers = Object.keys(context.metaData).filter(key => key.startsWith("event.tier")).length;
@@ -401,7 +438,7 @@
                 return (eventTiers > 1) || (snapshotTiers > 1);
             },
             showAvailableStorages(index,storageType) {
-                let store = (storageType === 'event') ? this.chosenEventTiers : this.chosenSnapshotTiers;
+                let store = (storageType === 'event') ? this.chosenEventTiers[this.selectedTierNodeRole] : this.chosenSnapshotTiers[this.selectedTierNodeRole];
                 let availableStores = (storageType === 'event') ? this.availableEventStorages : this.availableSnapshotStorages;
                 let chosen = store.slice(0,index).map( tier => {
                     if (tier.id === 'default') {
@@ -418,9 +455,9 @@
                 let lRetentionSize = 'retention-size';
 
                 return key.includes(lTier) ||
-                       key.includes(lStorage) ||
-                       key.includes(lRetentionTime) ||
-                       key.includes(lRetentionSize);
+                    key.includes(lStorage) ||
+                    key.includes(lRetentionTime) ||
+                    key.includes(lRetentionSize);
             },
             tabNodeState(nodeRoleName) {
                 if (nodeRoleName === this.selectedTierNodeRole) return 'tier-tab-active';
@@ -457,16 +494,16 @@
                 this.$forceUpdate();
             },
             storages(storageType, context) {
-               if (context.context === '_admin') return [];
+                if (context.context === '_admin') return [];
 
-              let lTier = storageType.concat('.tier');
-              let lStorage = storageType.concat('.storage');
-              let lRetentionTime = storageType.concat('.retention-time');
-              let lRetentionSize = storageType.concat('.retention-size');
+                let lTier = storageType.concat('.tier');
+                let lStorage = storageType.concat('.storage');
+                let lRetentionTime = storageType.concat('.retention-time');
+                let lRetentionSize = storageType.concat('.retention-size');
 
-              let contextMeta = context.metaData;
+                let contextMeta = context.metaData;
 
-              let storageArray = [];
+                let storageArray = [];
                 let i = 0;
                 do {
                     let suffix = (i === 0) ? '' : '.' + i;
@@ -535,9 +572,9 @@
                 return storageArray;
             },
             humanFileSize(size) {
-        let i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
-        return (size / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
-    }
+                let i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+                return (size / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+            }
         }
     });
 
@@ -683,7 +720,7 @@
                   </span>
                </li>
                 <li>
-                <span class="narrow" style="visibility: hidden">Nodes</span>
+                <span class="narrow" style="visibility: hidden">Node roles</span>
                 <span class="tier-tabs-holder">
                         <span @click="changeSelectedTierNodeRole('primary')" class="tier-tab" :class="tabNodeState('primary')">Primary</span>
                         <span @click="changeSelectedTierNodeRole('secondary')" class="tier-tab" :class="tabNodeState('secondary')">Secondary</span>
@@ -695,23 +732,23 @@
                   <span class="narrow">Event storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
-                        <tr v-for="(tier, index) in chosenEventTiers" :value="tier">
+                        <tr v-for="(tier, index) in chosenEventTiers[selectedTierNodeRole]" :value="tier">
                            <td>
-                              <select class="tierName"  @change="onTierSelect($event,tier,index,'event')">
-                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n">{{ n.name }}</option>
+                              <select class="tierName" :content="chosenEventTiers[selectedTierNodeRole][index].name" @change="onTierSelect($event,tier,index,'event')">
+                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n" :selected="n.name === chosenEventTiers[selectedTierNodeRole][index].name">{{ n.name }}</option>
                               </select>
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[index].storage"  v-if="showTierStorage(index,'event')" class="tierName">
+                              <select v-model="chosenEventTiers[selectedTierNodeRole][index].storage"  v-if="showTierStorage(index,'event')" class="tierName">
                                   <option :value="undefined" disabled hidden selected>Select storage</option>
                                   <option v-for="[storage, path] in showAvailableStorages(index,'event')" :value="storage">{{storage}}</option>
                               </select>
                            </td>
                            <td>
-                              <input v-model="chosenEventTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="chosenEventTiers[selectedTierNodeRole][index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="chosenEventTiers[selectedTierNodeRole][index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
                                  <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
@@ -729,23 +766,23 @@
                   <span class="narrow">Snapshot storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
-                        <tr v-for="(tier, index) in chosenSnapshotTiers" :value="tier">
+                        <tr v-for="(tier, index) in chosenSnapshotTiers[selectedTierNodeRole]" :value="tier">
                            <td>
-                              <select class="tierName" @change="onTierSelect($event,tier,index,'snapshot')">
-                                 <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n">{{ n.name }}</option>
+                              <select class="tierName" :content="chosenSnapshotTiers[selectedTierNodeRole][index].name" @change="onTierSelect($event,tier,index,'snapshot')">
+                                 <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n" :selected="n.name === chosenSnapshotTiers[selectedTierNodeRole][index].name">{{ n.name }}</option>
                               </select>
                            </td>
                            <td>
-                              <select v-model="chosenSnapshotTiers[index].storage"  v-if="showTierStorage(index,'snapshot')" class="tierName">
+                              <select v-model="chosenSnapshotTiers[selectedTierNodeRole][index].storage"  v-if="showTierStorage(index,'snapshot')" class="tierName">
                                   <option :value="undefined" disabled hidden selected>Select storage</option>
                                   <option v-for="[storage, path] in showAvailableStorages(index,'snapshot')" :value="storage">{{storage}}</option>
                               </select>
                            </td>
                            <td>
-                              <input v-model="chosenSnapshotTiers[index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenSnapshotTiers[index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionType"  v-if="showAfterSelect(index)" class="tierName">
                                  <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
@@ -816,27 +853,36 @@
                      </span>
                   </span>
                </li>
+               <li>
+                <span class="narrow" style="visibility: hidden">Node roles</span>
+                <span class="tier-tabs-holder">
+                        <span @click="changeSelectedTierNodeRole('primary')" class="tier-tab" :class="tabNodeState('primary')">Primary</span>
+                        <span @click="changeSelectedTierNodeRole('secondary')" class="tier-tab" :class="tabNodeState('secondary')">Secondary</span>
+                        <span @click="changeSelectedTierNodeRole('passive_backup')" class="tier-tab" :class="tabNodeState('passive_backup')">Passive backup</span>
+                        <span @click="changeSelectedTierNodeRole('active_backup')" class="tier-tab" :class="tabNodeState('active_backup')">Active backup</span>
+                </span>
+                </li>
                 <li>
                   <span class="narrow">Event storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
-                        <tr v-for="(tier, index) in chosenEventTiers" :value="tier">
+                        <tr v-for="(tier, index) in chosenEventTiers[selectedTierNodeRole]" :value="tier">
                            <td>
-                              <select class="tierName" :disabled="chosenEventTiers[index].readOnly"  @change="onTierSelect($event,tier,index,'event')">
-                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n">{{ n.name }}</option>
+                              <select class="tierName" :content="chosenEventTiers[selectedTierNodeRole][index].name" :disabled="chosenEventTiers[selectedTierNodeRole][index].readOnly"  @change="onTierSelect($event,tier,index,'event')">
+                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n" :selected="n.name === chosenEventTiers[selectedTierNodeRole][index].name">{{ n.name }}</option>
                               </select>
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[index].storage" :disabled="chosenEventTiers[index].readOnly"  v-if="showTierStorage(index,'event')" class="tierName">
+                              <select v-model="chosenEventTiers[selectedTierNodeRole][index].storage" :disabled="chosenEventTiers[selectedTierNodeRole][index].readOnly"  v-if="showTierStorage(index,'event')" class="tierName">
                                   <option :value="undefined" disabled hidden selected>Select storage</option>
                                   <option v-for="[storage, path] in showAvailableStorages(index,'event')" :value="storage">{{storage}}</option>
                               </select>
                            </td>
                            <td>
-                              <input v-model="chosenEventTiers[index].retentionAmount" v-if="showAfterSelect(index)" :disabled="chosenEventTiers[index].readOnly" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="chosenEventTiers[selectedTierNodeRole][index].retentionAmount" v-if="showAfterSelect(index)" :disabled="chosenEventTiers[selectedTierNodeRole][index].readOnly" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[index].retentionType" :disabled="chosenEventTiers[index].readOnly"   v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="chosenEventTiers[selectedTierNodeRole][index].retentionType" :disabled="chosenEventTiers[selectedTierNodeRole][index].readOnly"   v-if="showAfterSelect(index)" class="tierName">
                                  <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
@@ -854,24 +900,23 @@
                   <span class="narrow">Snapshot storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
-                        <tr v-for="(tier, index) in chosenSnapshotTiers" :value="tier">
+                        <tr v-for="(tier, index) in chosenSnapshotTiers[selectedTierNodeRole]" :value="tier">
                            <td>
-                              <select class="tierName" :disabled="chosenSnapshotTiers[index].readOnly" @change="onTierSelect($event,tier,index,'snapshot')">
-                                 <option :value="undefined" disabled hidden selected>Select storage</option>
-                                  <option v-for="n in showAvailableTiers(index,'snapshot')" :value="n">{{ n.name }}</option>
+                                <select class="tierName" :content="chosenSnapshotTiers[selectedTierNodeRole][index].name" :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly"  @change="onTierSelect($event,tier,index,'event')">
+                                 <option v-for="n in showAvailableTiers(index,'event')" :value="n" :selected="n.name === chosenSnapshotTiers[selectedTierNodeRole][index].name">{{ n.name }}</option>
                               </select>
                            </td>
                            <td>
-                              <select v-model="chosenSnapshotTiers[index].storage" :disabled="chosenSnapshotTiers[index].readOnly" v-if="showTierStorage(index,'snapshot')" class="tierName">
+                              <select v-model="chosenSnapshotTiers[selectedTierNodeRole][index].storage" :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly" v-if="showTierStorage(index,'snapshot')" class="tierName">
                                   <option :value="undefined" disabled hidden selected>Select storage</option>
                                   <option v-for="[storage, path] in showAvailableStorages(index,'snapshot')" :value="storage">{{storage}}</option>
                               </select>
                            </td>
                            <td>
-                              <input v-model="chosenSnapshotTiers[index].retentionAmount" :disabled="chosenSnapshotTiers[index].readOnly" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionAmount" :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenSnapshotTiers[index].retentionType" :disabled="chosenSnapshotTiers[index].readOnly" v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionType" :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly" v-if="showAfterSelect(index)" class="tierName">
                                  <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
