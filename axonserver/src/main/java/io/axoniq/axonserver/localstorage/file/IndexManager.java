@@ -135,5 +135,5 @@ public interface IndexManager {
      */
     void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
 
-    Stream<AggregateSequence> latestSequenceNumbers(Long segment);
+    Stream<AggregateIndexEntries> latestSequenceNumbers(Long segment);
 }

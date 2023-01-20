@@ -302,7 +302,7 @@ public class StandardIndexManager implements IndexManager {
     }
 
     @Override
-    public Stream<AggregateSequence> latestSequenceNumbers(Long segment) {
+    public Stream<AggregateIndexEntries> latestSequenceNumbers(Long segment) {
         return getIndex(segment).latestSequenceNumbers();
     }
 
@@ -644,8 +644,8 @@ public class StandardIndexManager implements IndexManager {
             return this;
         }
 
-        public Stream<AggregateSequence> latestSequenceNumbers() {
-            return positions.entrySet().stream().map(e -> new AggregateSequence(e.getKey(), e.getValue().lastSequenceNumber()));
+        public Stream<AggregateIndexEntries> latestSequenceNumbers() {
+            return positions.entrySet().stream().map(e -> new AggregateIndexEntries(e.getKey(), e.getValue()));
         }
     }
 }

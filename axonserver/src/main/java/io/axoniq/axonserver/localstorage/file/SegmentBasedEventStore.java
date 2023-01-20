@@ -193,6 +193,21 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                       minToken));
     }
 
+    protected Stream<AggregateSequence> latestSequenceNumbers(long segment) {
+        return indexManager.latestSequenceNumbers(segment).map(indexEntries -> last(segment, indexEntries));
+    }
+
+    private AggregateSequence last(long segment, AggregateIndexEntries indexEntries) {
+        if (type.isEvent() || indexEntries.entries().size() == 1) {
+            return new AggregateSequence(indexEntries.aggregateId(), indexEntries.entries().lastSequenceNumber());
+        }
+
+        return readSerializedEvent(0, Long.MAX_VALUE, new SegmentIndexEntries(segment, indexEntries.entries()))
+                .map(event -> new AggregateSequence(indexEntries.aggregateId(), event.getAggregateSequenceNumber()))
+                .orElseThrow(() -> new RuntimeException("Failed to read snapshot"));
+    }
+
+
     @Override
     public void processEventsPerAggregateHighestFirst(String aggregateId, long firstSequenceNumber,
                                                       long maxSequenceNumber,

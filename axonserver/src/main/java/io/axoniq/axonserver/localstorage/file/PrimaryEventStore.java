@@ -402,7 +402,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
                                 @Override
                                 public Stream<AggregateSequence> latestSequenceNumbers() {
-                                    return indexManager.latestSequenceNumbers(writePosition.segment);
+                                    return PrimaryEventStore.this.latestSequenceNumbers(writePosition.segment);
                                 }
                             }, () -> {
                                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
