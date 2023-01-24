@@ -50,9 +50,9 @@ import java.util.stream.StreamSupport;
 
     private final EventProcessorAdminService service;
     private final AuthenticationProvider authenticationProvider;
-    private final EventProcessorMapping eventProcessorMapping;
-    private ContextProvider contextProvider;
-    private AxonServerAccessController axonServerAccessController;
+    private final EventProcessorMapping eventProcessorMapping =new EventProcessorMapping();
+    private final ContextProvider contextProvider;
+    private final AxonServerAccessController axonServerAccessController;
 
     /**
      * Constructor that specify the service to perform the requested operation and the authentication provider.
@@ -64,17 +64,10 @@ import java.util.stream.StreamSupport;
     public EventProcessorGrpcController(EventProcessorAdminService service,
                                         AuthenticationProvider authenticationProvider, ContextProvider contextProvider,
                                         AxonServerAccessController axonServerAccessController) {
-        this(service, authenticationProvider, new EventProcessorMapping());
         this.contextProvider = contextProvider;
         this.axonServerAccessController = axonServerAccessController;
-    }
-
-    public EventProcessorGrpcController(EventProcessorAdminService service,
-                                        AuthenticationProvider authenticationProvider,
-                                        EventProcessorMapping eventProcessorMapping) {
         this.service = service;
         this.authenticationProvider = authenticationProvider;
-        this.eventProcessorMapping = eventProcessorMapping;
     }
 
     /**

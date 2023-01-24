@@ -9,9 +9,12 @@
 
 package io.axoniq.axonserver.grpc;
 
+import io.axoniq.axonserver.AxonServerAccessController;
 import io.axoniq.axonserver.config.AuthenticationProvider;
+import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
+import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
@@ -53,7 +56,10 @@ import java.time.Instant;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.grpc.stub.ServerCalls.*;
+import static io.grpc.stub.ServerCalls.asyncBidiStreamingCall;
+import static io.grpc.stub.ServerCalls.asyncClientStreamingCall;
+import static io.grpc.stub.ServerCalls.asyncServerStreamingCall;
+import static io.grpc.stub.ServerCalls.asyncUnaryCall;
 
 /**
  * @author Marc Gathier
@@ -89,15 +95,18 @@ public class EventStoreService implements AxonServerClientService {
     private final ContextProvider contextProvider;
     private final EventDispatcher eventDispatcher;
     private final GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider;
+    private final AxonServerAccessController axonServerAccessController;
 
     public EventStoreService(ContextProvider contextProvider,
                              AuthenticationProvider authenticationProvider,
                              EventDispatcher eventDispatcher,
-                             GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider) {
+                             GrpcFlowControlExecutorProvider grpcFlowControlExecutorProvider,
+                             AxonServerAccessController axonServerAccessController) {
         this.contextProvider = contextProvider;
         this.authenticationProvider = authenticationProvider;
         this.eventDispatcher = eventDispatcher;
         this.grpcFlowControlExecutorProvider = grpcFlowControlExecutorProvider;
+        this.axonServerAccessController = axonServerAccessController;
     }
 
 
@@ -324,17 +333,23 @@ public class EventStoreService implements AxonServerClientService {
                 CallStreamObserver<QueryEventsResponse> callStreamObserver = (CallStreamObserver<QueryEventsResponse>) streamObserver;
                 ForwardingStreamObserver<QueryEventsResponse> responseObserver =
                         new ForwardingStreamObserver<>(logger, "queryEvents", callStreamObserver);
-                String context = contextProvider.getContext();
-                Authentication authentication = authenticationProvider.get();
+                String contextName = queryEventsRequest.getContextName().isEmpty() ? contextProvider.getContext(): queryEventsRequest.getContextName();
                 if (requestSinkRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
-                    eventDispatcher.queryEvents(context, authentication, requestSinkRef.get().asFlux())
+                    Authentication authentication = authenticationProvider.get();
+                    if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
+                            EventProcessorAdminServiceGrpc.getStartEventProcessorMethod().getFullMethodName(),
+                            contextName,
+                            authenticationProvider.get())) {
+                        throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Start operation not allowed");
+                    }
+                    eventDispatcher.queryEvents(contextName, authentication, requestSinkRef.get().asFlux())
                                    .subscribe(responseObserver::onNext,
                                               responseObserver::onError,
                                               responseObserver::onCompleted);
                 }
                 Sinks.EmitResult emitResult = requestSinkRef.get().tryEmitNext(queryEventsRequest);
                 if (emitResult.isFailure()) {
-                    String message = String.format("%s: Error forwarding request to event store.", context);
+                    String message = String.format("%s: Error forwarding request to event store.", contextName);
                     logger.warn(message);
                     requestSinkRef.get().tryEmitError(new RuntimeException(message));
                 }
