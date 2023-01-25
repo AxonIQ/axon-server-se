@@ -14,7 +14,6 @@ import io.axoniq.axonserver.config.AuthenticationProvider;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ExceptionUtils;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.grpc.admin.EventProcessorAdminServiceGrpc;
 import io.axoniq.axonserver.grpc.event.Confirmation;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventStoreGrpc;
@@ -337,10 +336,13 @@ public class EventStoreService implements AxonServerClientService {
                 if (requestSinkRef.compareAndSet(null, Sinks.many().unicast().onBackpressureBuffer())) {
                     Authentication authentication = authenticationProvider.get();
                     if (authenticationProvider.get().isAuthenticated() && !axonServerAccessController.allowed(
-                            EventProcessorAdminServiceGrpc.getStartEventProcessorMethod().getFullMethodName(),
+                            EventStoreGrpc.getQueryEventsMethod().getFullMethodName(),
                             contextName,
                             authenticationProvider.get())) {
-                        throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Start operation not allowed");
+                        streamObserver.onError(GrpcExceptionBuilder.build(
+                                new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN,
+                                                               "Query operation not allowed")));
+                        return;
                     }
                     eventDispatcher.queryEvents(contextName, authentication, requestSinkRef.get().asFlux())
                                    .subscribe(responseObserver::onNext,

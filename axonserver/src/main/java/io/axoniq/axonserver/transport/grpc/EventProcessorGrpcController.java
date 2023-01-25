@@ -45,7 +45,8 @@ import java.util.stream.StreamSupport;
  * @author Stefan Dragisic
  * @since 4.6
  */
-@Controller public class EventProcessorGrpcController extends EventProcessorAdminServiceImplBase
+@Controller
+public class EventProcessorGrpcController extends EventProcessorAdminServiceImplBase
         implements AxonServerClientService {
 
     private final EventProcessorAdminService service;
@@ -85,7 +86,8 @@ import java.util.stream.StreamSupport;
                 EventProcessorAdminServiceGrpc.getPauseEventProcessorMethod().getFullMethodName(),
                 contextName,
                 authenticationProvider.get())) {
-            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Pause operation not allowed");
+            returnAuthorizationError(responseObserver, "Pause operation not allowed");
+            return;
         }
 
         service.pause(new EventProcessorIdMessage(contextName, processorId),
@@ -110,7 +112,8 @@ import java.util.stream.StreamSupport;
                 EventProcessorAdminServiceGrpc.getStartEventProcessorMethod().getFullMethodName(),
                 contextName,
                 authenticationProvider.get())) {
-            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Start operation not allowed");
+            returnAuthorizationError(responseObserver, "Start operation not allowed");
+            return;
         }
 
         service.start(new EventProcessorIdMessage(contextProvider.getContext(), eventProcessorId),
@@ -135,7 +138,8 @@ import java.util.stream.StreamSupport;
                 EventProcessorAdminServiceGrpc.getSplitEventProcessorMethod().getFullMethodName(),
                 contextName,
                 authenticationProvider.get())) {
-            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Split operation not allowed");
+            returnAuthorizationError(responseObserver, "Split operation not allowed");
+            return;
         }
 
         service.split(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
@@ -160,7 +164,8 @@ import java.util.stream.StreamSupport;
                 EventProcessorAdminServiceGrpc.getMergeEventProcessorMethod().getFullMethodName(),
                 contextName,
                 authenticationProvider.get())) {
-            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Merge operation not allowed");
+            returnAuthorizationError(responseObserver, "Merge operation not allowed");
+            return;
         }
 
         service.merge(new EventProcessorIdMessage(contextName, processorId),
@@ -184,7 +189,8 @@ import java.util.stream.StreamSupport;
                 EventProcessorAdminServiceGrpc.getMergeEventProcessorMethod().getFullMethodName(),
                 contextName,
                 authenticationProvider.get())) {
-            throw new MessagingPlatformException(ErrorCode.AUTHENTICATION_INVALID_TOKEN, "Move operation not allowed");
+            returnAuthorizationError(responseObserver, "Move operation not allowed");
+            return;
         }
 
         service.move(new EventProcessorIdMessage(contextName, request.getEventProcessor()),
@@ -194,6 +200,11 @@ import java.util.stream.StreamSupport;
                                                                                                  responseObserver),
                                                                                onError(responseObserver),
                                                                                responseObserver::onCompleted);
+    }
+
+    private void returnAuthorizationError(StreamObserver<?> responseObserver, String message) {
+        responseObserver.onError(GrpcExceptionBuilder.build(new MessagingPlatformException(
+                ErrorCode.AUTHENTICATION_INVALID_TOKEN, message)));
     }
 
     /**
