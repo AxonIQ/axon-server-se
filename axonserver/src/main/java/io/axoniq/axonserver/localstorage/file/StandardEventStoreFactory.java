@@ -72,7 +72,8 @@ public class StandardEventStoreFactory implements EventStoreFactory {
                                      eventTransformerFactory,
                                      embeddedDBProperties::getEvent,
                                      () -> second,
-                                     meterFactory, fileSystemMonitor);
+                                     meterFactory, fileSystemMonitor,
+                                     storageProperties.getPrimaryStorage(context));
     }
 
     /**
@@ -96,6 +97,7 @@ public class StandardEventStoreFactory implements EventStoreFactory {
         return new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
                                      indexManager,
                                      eventTransformerFactory,
-                                     embeddedDBProperties::getSnapshot, () -> second, meterFactory, fileSystemMonitor);
+                                     embeddedDBProperties::getSnapshot, () -> second, meterFactory, fileSystemMonitor,
+                                     storageProperties.getPrimaryStorage(context));
     }
 }

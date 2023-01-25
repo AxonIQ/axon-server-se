@@ -75,6 +75,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     protected EventTransformer eventTransformer;
     protected final FileSystemMonitor fileSystemMonitor;
 
+    private final String storagePath;
     /**
      * @param context                   the context and the content type (events or snapshots)
      * @param indexManager              the index manager to use
@@ -90,12 +91,14 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                              Supplier<StorageProperties> storagePropertiesSupplier,
                              Supplier<StorageTier> completedSegmentsHandler,
                              MeterFactory meterFactory,
-                             FileSystemMonitor fileSystemMonitor) {
+                             FileSystemMonitor fileSystemMonitor,
+                             String storagePath) {
         super(context, indexManager, storagePropertiesSupplier, completedSegmentsHandler, meterFactory,
                 storagePropertiesSupplier.get().getPrimaryStorage(context.getContext()));
         this.eventTransformerFactory = eventTransformerFactory;
         this.fileSystemMonitor = fileSystemMonitor;
         synchronizer = new Synchronizer(context, storagePropertiesSupplier.get(), this::completeSegment);
+        this.storagePath = storagePath;
     }
 
     @Override
