@@ -25,15 +25,8 @@ public class FastValidationEventStoreTransformationService implements EventStore
         this.contextEventProviderSupplier = contextEventProviderSupplier;
     }
 
-    @Override
-    public void init() {
-        delegate.init();
-    }
-
-    @Override
     public void destroy() {
         // TODO: 1/19/23 close opened event providers
-        delegate.destroy();
     }
 
     private Mono<Void> validateEventToDelete(String context, long token) {

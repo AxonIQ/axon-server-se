@@ -41,14 +41,12 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     private final EventStoreCompactionTask transformationRollBackTask;
     private final TransformationCleanTask transformationCleanTask;
 
-    @Override
     public void init() {
         transformationApplyTask.start();
         transformationRollBackTask.start();
         transformationCleanTask.start();
     }
 
-    @Override
     public void destroy() {
         transformationApplyTask.stop();
         transformationRollBackTask.stop();

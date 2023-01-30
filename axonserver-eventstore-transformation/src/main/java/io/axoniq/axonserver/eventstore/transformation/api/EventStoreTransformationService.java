@@ -49,10 +49,6 @@ public interface EventStoreTransformationService {
         }
     }
 
-    void init();
-
-    void destroy();
-
     default Mono<Transformation> transformation(String id, String context, @Nonnull Authentication authentication) {
         return transformations(context, authentication).filter(transformation -> id.equals(transformation.id()))
                                                        .next();

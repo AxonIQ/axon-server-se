@@ -209,10 +209,11 @@ public class TransformationConfiguration {
                                                         transformationCleanTask);
     }
 
-    @ConditionalOnMissingBean(ignored = LocalEventStoreTransformationService.class)
+    @ConditionalOnMissingBean(value = EventStoreTransformationService.class,
+            ignored = LocalEventStoreTransformationService.class)
     @Primary
-    @Bean
-    public EventStoreTransformationService fastValidationEventStoreTransformationService(
+    @Bean(destroyMethod = "destroy")
+    public FastValidationEventStoreTransformationService fastValidationEventStoreTransformationService(
             @Qualifier("localEventStoreTransformationService") EventStoreTransformationService service,
             ContextEventProviderSupplier eventIteratorFactory
     ) {

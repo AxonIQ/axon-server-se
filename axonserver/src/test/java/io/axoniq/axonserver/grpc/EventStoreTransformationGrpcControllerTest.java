@@ -58,16 +58,6 @@ public class EventStoreTransformationGrpcControllerTest {
             private final Map<String, String> activeTransformations = new HashMap<>();
 
             @Override
-            public void init() {
-                // nothing to init
-            }
-
-            @Override
-            public void destroy() {
-                // nothing to destroy
-            }
-
-            @Override
             public Flux<Transformation> transformations(String context,
                     @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Flux.empty();
