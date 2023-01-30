@@ -39,45 +39,58 @@ import io.axoniq.axonserver.eventstore.transformation.jpa.LocalEventStoreTransfo
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationEntryStoreSupplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
+import io.axoniq.axonserver.eventstore.transformation.requestprocessor.FastValidationEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalEventStoreTransformationService;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTransformers;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
-import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.AutoCloseableEventProvider;
-import io.axoniq.axonserver.localstorage.ContextEventIteratorFactory;
+import io.axoniq.axonserver.localstorage.ContextEventProviderSupplier;
 import io.axoniq.axonserver.localstorage.LocalEventStore;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
 import io.axoniq.axonserver.localstorage.transformation.EventStoreTransformer;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
 public class TransformationConfiguration {
 
-    @Bean
-    public ContextEventIteratorFactory eventProviderFactory(LocalEventStore eventStore) {
-        return context -> {
-            AutoCloseableEventProvider autoCloseableEventProvider =
-                    new AutoCloseableEventProvider(token -> eventStore.eventIterator(context, token));
-            return new EventProvider() {
-                @Override
-                public Mono<Event> event(long token) {
-                    return autoCloseableEventProvider.event(token);
-                }
+    // TODO: 1/30/23 extract this class
+    private static class CachedContextEventProviderSupplier implements ContextEventProviderSupplier {
 
-                @Override
-                public Mono<Void> close() {
-                    return autoCloseableEventProvider.close();
-                }
-            };
+        private final ContextEventProviderSupplier supplier;
+        private final Map<String, EventProvider> cache = new ConcurrentHashMap<>();
+
+        private CachedContextEventProviderSupplier(ContextEventProviderSupplier supplier) {
+            this.supplier = supplier;
+        }
+
+        @Override
+        public EventProvider eventProviderFor(String context) {
+            return cache.computeIfAbsent(context, supplier::eventProviderFor);
+        }
+    }
+
+    @Bean
+    public ContextEventProviderSupplier localEventProviderSupplier(LocalEventStore eventStore) {
+        ContextEventProviderSupplier autoCloseable = ctx -> {
+            if (eventStore.activeContext(ctx)) {
+                return new AutoCloseableEventProvider(token -> eventStore.eventIterator(ctx, token))::event;
+            }
+            return (EventProvider) token -> Mono.empty();
         };
+        return context -> new CachedContextEventProviderSupplier(autoCloseable).eventProviderFor(context);
     }
 
     @Bean
@@ -101,10 +114,10 @@ public class TransformationConfiguration {
 
     @Bean
     public Transformers transformers(EventStoreTransformationRepository repository,
-                                     ContextEventIteratorFactory iteratorFactory,
+                                     ContextEventProviderSupplier iteratorFactory,
                                      TransformationEntryStoreProvider transformationEntryStoreSupplier,
                                      EventStoreStateStore eventStoreStateStore) {
-        return new LocalTransformers(iteratorFactory::createFrom,
+        return new LocalTransformers(iteratorFactory::eventProviderFor,
                                      repository,
                                      transformationEntryStoreSupplier,
                                      eventStoreStateStore);
@@ -184,7 +197,7 @@ public class TransformationConfiguration {
     }
 
     @Bean(initMethod = "init", destroyMethod = "destroy")
-    public EventStoreTransformationService localEventStoreTransformationService(Transformers transformers,
+    public LocalEventStoreTransformationService localEventStoreTransformationService(Transformers transformers,
                                                                                 Transformations transformations,
                                                                                 EventStoreCompactionTask eventStoreCompactionTask,
                                                                                 TransformationApplyTask transformationApplyTask,
@@ -194,5 +207,15 @@ public class TransformationConfiguration {
                                                         eventStoreCompactionTask,
                                                         transformationApplyTask,
                                                         transformationCleanTask);
+    }
+
+    @ConditionalOnMissingBean(ignored = LocalEventStoreTransformationService.class)
+    @Primary
+    @Bean
+    public EventStoreTransformationService fastValidationEventStoreTransformationService(
+            @Qualifier("localEventStoreTransformationService") EventStoreTransformationService service,
+            ContextEventProviderSupplier eventIteratorFactory
+    ) {
+        return new FastValidationEventStoreTransformationService(service, eventIteratorFactory::eventProviderFor);
     }
 }

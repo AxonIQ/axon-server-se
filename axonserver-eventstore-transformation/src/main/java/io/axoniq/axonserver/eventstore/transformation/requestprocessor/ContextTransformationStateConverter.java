@@ -3,7 +3,6 @@ package io.axoniq.axonserver.eventstore.transformation.requestprocessor;
 import io.axoniq.axonserver.eventstore.transformation.transformation.ActiveTransformation;
 import io.axoniq.axonserver.eventstore.transformation.transformation.ApplyingTransformation;
 import io.axoniq.axonserver.eventstore.transformation.transformation.FinalTransformation;
-import io.axoniq.axonserver.eventstore.transformation.transformation.active.TransformationResources;
 import reactor.core.publisher.Mono;
 
 public class ContextTransformationStateConverter implements TransformationStateConverter {
@@ -33,7 +32,7 @@ public class ContextTransformationStateConverter implements TransformationStateC
     }
 
     private ActiveTransformation activeTransformation(TransformationState state) {
-        return new ActiveTransformation(resources(), state);
+        return new ActiveTransformation(state);
     }
 
     private  ApplyingTransformation applyingTransformation(TransformationState state) {
@@ -44,7 +43,4 @@ public class ContextTransformationStateConverter implements TransformationStateC
         return new FinalTransformation();
     }
 
-    private TransformationResources resources() {
-        return new ContextTransformationResources(eventProvider);
-    }
 }

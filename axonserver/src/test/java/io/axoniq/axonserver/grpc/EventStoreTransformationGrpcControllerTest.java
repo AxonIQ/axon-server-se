@@ -68,7 +68,7 @@ public class EventStoreTransformationGrpcControllerTest {
             }
 
             @Override
-            public Flux<Transformation> transformations(
+            public Flux<Transformation> transformations(String context,
                     @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
                 return Flux.empty();
             }

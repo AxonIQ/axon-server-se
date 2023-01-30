@@ -98,7 +98,7 @@ public class EventStoreTransformationGrpcController
         serverCallStreamObserver.disableAutoInboundFlowControl();
 
         String context = contextProvider.getContext();
-        return new StreamObserver<TransformRequest>() {
+        return new StreamObserver<>() {
             final AtomicInteger pendingRequests = new AtomicInteger();
             final AtomicBoolean sendConfirmation = new AtomicBoolean();
 
@@ -219,7 +219,8 @@ public class EventStoreTransformationGrpcController
 
     @Override
     public void transformations(Empty request, StreamObserver<Transformation> responseObserver) {
-        eventStoreTransformationService.transformations(new GrpcAuthentication(authenticationProvider))
+        eventStoreTransformationService.transformations(contextProvider.getContext(),
+                                                        new GrpcAuthentication(authenticationProvider))
                                        .map(transformation -> {
                                            String description = Objects.toString(transformation.description(), "");
                                            String context = Objects.toString(transformation.context());

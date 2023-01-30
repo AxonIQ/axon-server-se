@@ -12,30 +12,16 @@ public class DeleteEventAction implements ActiveTransformationAction {
     private static final Logger logger = LoggerFactory.getLogger(DeleteEventAction.class);
 
     private final long tokenToDelete;
-    private final TransformationResources resources;
 
-    public DeleteEventAction(long tokenToDelete,
-                             TransformationResources resources) {
+    public DeleteEventAction(long tokenToDelete) {
         this.tokenToDelete = tokenToDelete;
-        this.resources = resources;
     }
 
     @Override
     public Mono<TransformationAction> apply() {
-        return validateEvent()
-                .checkpoint("Event with token " + tokenToDelete + " validated for deletion ")
-                .then(Mono.fromSupplier(this::action))
-                .doFirst(() -> logger.info("Applying DELETE EVENT action."))
-                .doOnSuccess(a -> logger.info("Applied DELETE EVENT action."));
-    }
-
-
-    private Mono<Void> validateEvent() {
-        return resources.event(tokenToDelete)
-                        .switchIfEmpty(Mono.error(new WrongTransformationStateException("Trying to delete non existing event " + tokenToDelete)))
-                        .doFirst(() -> logger.info("Validating DELETE EVENT action."))
-                        .doOnSuccess(a -> logger.info("Validated DELETE EVENT action."))
-                        .then();
+        return Mono.fromSupplier(this::action)
+                   .doFirst(() -> logger.info("Applying DELETE EVENT action."))
+                   .doOnSuccess(a -> logger.info("Applied DELETE EVENT action."));
     }
 
     private TransformationAction action() {

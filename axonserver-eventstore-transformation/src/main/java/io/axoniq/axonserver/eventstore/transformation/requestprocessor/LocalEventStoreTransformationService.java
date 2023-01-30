@@ -79,8 +79,9 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     }
 
     @Override
-    public Flux<Transformation> transformations(@Nonnull Authentication authentication) {
+    public Flux<Transformation> transformations(String context, @Nonnull Authentication authentication) {
         return transformations.allTransformations()
+                              .filter(t -> context.equals(t.context()))
                               .doFirst(() -> auditLog.info("{}: Request to list transformations",
                                                            username(authentication.username())));
     }

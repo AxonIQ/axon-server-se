@@ -25,7 +25,7 @@ import javax.annotation.Nonnull;
  */
 public interface EventStoreTransformationService {
 
-    interface Transformation {
+    interface Transformation { // TODO: 1/27/23 add missing fields, check proto file
 
         String id();
 
@@ -53,16 +53,12 @@ public interface EventStoreTransformationService {
 
     void destroy();
 
-    Flux<Transformation> transformations(@Nonnull Authentication authentication);
-
-    default Mono<Transformation> transformationById(String id, @Nonnull Authentication authentication) {
-        return transformations(authentication).filter(transformation -> id.equals(transformation.id()))
-                                              .next();
+    default Mono<Transformation> transformation(String id, String context, @Nonnull Authentication authentication) {
+        return transformations(context, authentication).filter(transformation -> id.equals(transformation.id()))
+                                                       .next();
     }
 
-    default Flux<Transformation> transformationByContext(String context, @Nonnull Authentication authentication) {
-        return transformations(authentication).filter(transformation -> context.equals(transformation.context()));
-    }
+    Flux<Transformation> transformations(String context, @Nonnull Authentication authentication);
 
     /**
      * Initializes a new transformation and returns a transformation id.

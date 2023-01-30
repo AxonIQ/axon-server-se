@@ -6,7 +6,6 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.WrongTran
 import io.axoniq.axonserver.eventstore.transformation.transformation.active.ActiveTransformationAction;
 import io.axoniq.axonserver.eventstore.transformation.transformation.active.DeleteEventAction;
 import io.axoniq.axonserver.eventstore.transformation.transformation.active.ReplaceEventAction;
-import io.axoniq.axonserver.eventstore.transformation.transformation.active.TransformationResources;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,17 +18,15 @@ import static java.lang.String.format;
 public class ActiveTransformation implements Transformation {
 
     private static final Logger logger = LoggerFactory.getLogger(ActiveTransformation.class);
-    private final TransformationResources resources;
     private final TransformationState state;
 
-    public ActiveTransformation(TransformationResources resources, TransformationState state) {
-        this.resources = resources;
+    public ActiveTransformation(TransformationState state) {
         this.state = state;
     }
 
     @Override
     public Mono<TransformationState> deleteEvent(long tokenToDelete, long sequence) {
-        DeleteEventAction action = new DeleteEventAction(tokenToDelete, resources);
+        DeleteEventAction action = new DeleteEventAction(tokenToDelete);
         return performEventAction(action, sequence, tokenToDelete)
                 .doFirst(() -> logger.info("Storing delete event action with token: {}", tokenToDelete))
                 .doOnSuccess(s -> logger.info("Delete event action with token: {} stored", tokenToDelete))
@@ -38,7 +35,7 @@ public class ActiveTransformation implements Transformation {
 
     @Override
     public Mono<TransformationState> replaceEvent(long token, Event event, long sequence) {
-        ReplaceEventAction action = new ReplaceEventAction(token, event, resources);
+        ReplaceEventAction action = new ReplaceEventAction(token, event);
         return performEventAction(action, sequence, token)
                 .doOnSuccess(s -> logger.trace("Replacing event with token: {}", token))
                 .doOnError(e -> logger.warn("Failure replacing event with token: {}", token, e));
@@ -52,12 +49,12 @@ public class ActiveTransformation implements Transformation {
     @Override
     public Mono<TransformationState> startApplying(long sequence, String applier) {
         return Mono.defer(() -> Mono.justOrEmpty(state.lastSequence()))
-                   .switchIfEmpty(Mono.error(new WrongTransformationStateException("Cannot apply an empty transformation")))
+                   .switchIfEmpty(Mono.error(new WrongTransformationStateException(
+                           "Cannot apply an empty transformation")))
                    .map(lastSequence -> lastSequence == sequence)
                    .filter(valid -> valid)
                    .switchIfEmpty(Mono.error(new WrongTransformationStateException("Invalid sequence")))
-                   .map(notUsed -> state.applying(applier))
-                   .flatMap(s -> resources.close().thenReturn(s));
+                   .map(notUsed -> state.applying(applier));
     }
 
     private Mono<TransformationState> performEventAction(ActiveTransformationAction action, long sequence, long token) {
@@ -69,7 +66,8 @@ public class ActiveTransformation implements Transformation {
 
     private Mono<Void> validateEventsOrder(long token) {
         return state.lastEventToken()
-                    .map(lastToken -> lastToken < token ? Mono.<Void>empty() : Mono.<Void>error(new WrongTransformationStateException(
+                    .map(lastToken -> lastToken
+                            < token ? Mono.<Void>empty() : Mono.<Void>error(new WrongTransformationStateException(
                             format("The token [%d] is lower or equals than last modified token [%d] of this transformation.",
                                    token,
                                    lastToken))))

@@ -56,8 +56,9 @@ public class TransformationAdminRestController {
     }
 
     @GetMapping("v1/transformations")
-    public Flux<ObjectNode> get(@ApiIgnore final Authentication principal) {
-        return eventStoreTransformationService.transformations(new PrincipalAuthentication(principal))
+    public Flux<ObjectNode> get(@RequestParam(name = "context", required = false, defaultValue = Topology.DEFAULT_CONTEXT) String context,
+                                @ApiIgnore final Authentication principal) {
+        return eventStoreTransformationService.transformations(context, new PrincipalAuthentication(principal))
                                               .map(this::toJson);
     }
 
