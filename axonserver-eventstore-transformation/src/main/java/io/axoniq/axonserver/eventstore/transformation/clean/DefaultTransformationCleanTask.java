@@ -27,7 +27,7 @@ public class DefaultTransformationCleanTask implements TransformationCleanTask {
 
     @Override
     public void stop() {
-        scheduledExecutorService.shutdown();
+        scheduledExecutorService.shutdownNow();
     }
 
     private void cancel() {

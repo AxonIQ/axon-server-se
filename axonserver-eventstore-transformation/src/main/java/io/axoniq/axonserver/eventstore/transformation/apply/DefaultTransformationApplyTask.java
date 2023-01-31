@@ -33,7 +33,7 @@ public class DefaultTransformationApplyTask implements TransformationApplyTask {
 
     @Override
     public void stop() {
-        scheduledExecutorService.shutdown();
+        scheduledExecutorService.shutdownNow();
     }
 
     private void apply() {

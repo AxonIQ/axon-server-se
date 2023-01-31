@@ -34,7 +34,7 @@ public class DefaultEventStoreCompactionTask implements EventStoreCompactionTask
 
     @Override
     public void stop() {
-        scheduledExecutorService.shutdown();
+        scheduledExecutorService.shutdownNow();
     }
 
     private void compact() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -209,7 +209,7 @@ public class EventStoreTransformationGrpcController
     @Override
     public void compact(CompactionRequest request, StreamObserver<Empty> responseObserver) {
         String context = contextProvider.getContext();
-        String uuid = UUID.randomUUID().toString();
+        String uuid = UUID.randomUUID().toString(); //TODO return uuid
         eventStoreTransformationService.compact(uuid,
                                                 context,
                                                 new GrpcAuthentication(authenticationProvider))
