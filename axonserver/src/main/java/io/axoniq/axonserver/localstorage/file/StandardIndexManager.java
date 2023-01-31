@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -503,25 +503,26 @@ public class StandardIndexManager implements IndexManager {
                                                                   EventType.SNAPSHOT.equals(eventType)));
             }
         }
-        return lastIndexEntriesFromClosedSegments(aggregateId, maxSequenceNumber, indexesDescending.first());
+        return lastIndexEntriesFromClosedSegments(aggregateId, maxSequenceNumber, indexesDescending.keySet().first());
     }
 
     @Override
     public SegmentIndexEntries lastIndexEntriesFromClosedSegments(String aggregateId, long maxSequenceNumber,
                                                                   long startAtToken) {
-        for (Long segment : indexesDescending) {
-            IndexEntries indexEntries = getPositions(segment, aggregateId);
+        for (Map.Entry<Long, Integer> segment : indexesDescending.entrySet()) {
+            FileVersion fileVersion = new FileVersion(segment.getKey(), segment.getValue());
+            IndexEntries indexEntries = getPositions(fileVersion, aggregateId);
             if (indexEntries != null && indexEntries.firstSequenceNumber() < maxSequenceNumber) {
-                return new SegmentIndexEntries(segment, indexEntries.range(indexEntries.firstSequenceNumber(),
-                                                                           maxSequenceNumber,
-                                                                           EventType.SNAPSHOT.equals(eventType)));
+                return new SegmentIndexEntries(fileVersion, indexEntries.range(indexEntries.firstSequenceNumber(),
+                                                                               maxSequenceNumber,
+                                                                               EventType.SNAPSHOT.equals(eventType)));
             }
         }
         IndexManager nextIndexManager = next.get();
         if (nextIndexManager != null) {
             return nextIndexManager.lastIndexEntriesFromClosedSegments(aggregateId,
                                                                        maxSequenceNumber,
-                                                                       indexesDescending.last() - 1);
+                                                                       indexesDescending.keySet().last() - 1);
         }
         return null;
     }
@@ -588,7 +589,7 @@ public class StandardIndexManager implements IndexManager {
 
     @Override
     public void addExistingIndex(FileVersion segment) {
-        indexesDescending.add(segment);
+        indexesDescending.put(segment.segment(), segment.segmentVersion());
         updateUseMmapAfterIndex();
     }
 

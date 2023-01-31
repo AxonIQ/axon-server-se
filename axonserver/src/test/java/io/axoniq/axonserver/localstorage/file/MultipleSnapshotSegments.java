@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -78,7 +78,9 @@ public class MultipleSnapshotSegments {
                                             new DefaultEventTransformerFactory(),
                                             () -> storageProperties,
                                             () -> secondaryEventStore,
-                                            meterFactory, fileSystemMonitor);
+                                            meterFactory,
+                                            fileSystemMonitor,
+                                            storageProperties.getPrimaryStorage("default"));
         testSubject.init(true);
     }
 

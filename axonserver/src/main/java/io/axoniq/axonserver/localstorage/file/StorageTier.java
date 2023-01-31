@@ -33,7 +33,7 @@ import javax.annotation.Nonnull;
  * @author Stefan Dragisic
  */
 public interface StorageTier {
-    Flux<SerializedEvent> eventsForPositions(long segment, IndexEntries indexEntries, int prefetch);
+    Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch);
 
     void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer);
 
@@ -51,13 +51,13 @@ public interface StorageTier {
 
     long getSegmentFor(long token);
 
-    int retrieveEventsForAnAggregate(long segment, List<Integer> indexEntries, long minSequenceNumber,
+    int retrieveEventsForAnAggregate(FileVersion segment, List<Integer> indexEntries, long minSequenceNumber,
                                      long maxSequenceNumber,
                                      Consumer<SerializedEvent> onEvent, long maxResults, long minToken);
 
-    Stream<String> getBackupFilenames(long lastSegmentBackedUp, boolean includeActive);
+    Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive);
 
-    Optional<EventSource> eventSource(long segment);
+    Optional<EventSource> eventSource(FileVersion segment);
 
     void close(boolean deleteData);
 
@@ -66,6 +66,14 @@ public interface StorageTier {
     long getFirstCompletedSegment();
 
     void handover(Segment segment, Runnable callback);
+
+    int nextVersion();
+
+    boolean removeSegment(long segment, int segmentVersion);
+
+    Integer currentSegmentVersion(Long segment);
+
+    void activateSegmentVersion(long segment, int segmentVersion);
 
     abstract class RetentionStrategy {
 

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -42,7 +42,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
     //add FileVersion to the Segment
     @Override
     public void handover(Segment segment, Runnable callback) {
-        segments.put(segment.id(), segment.segmentVersion());
+        segments.put(segment.id().segment(), segment.id().segmentVersion());
         callback.run();
     }
 
@@ -78,31 +78,32 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
     private void removeAllSegmentVersions(Long segment, int currentVersion) {
         for (int i = 0; i <= currentVersion; i++) {
             removeSegment(segment, i);
+        }
     }
 
-        //todo fix me
-        @Override
-        protected boolean removeSegment(long segment, int segmentVersion) {
-            return indexManager.remove(new FileVersion(segment, segmentVersion)) &&
-                    FileUtils.delete(storagePropertiesSupplier.get().dataFile(context, new FileVersion(segment, segmentVersion)));
-        }
+    //todo fix me
+    @Override
+    public boolean removeSegment(long segment, int segmentVersion) {
+        return indexManager.remove(new FileVersion(segment, segmentVersion)) &&
+                FileUtils.delete(dataFile(new FileVersion(segment, segmentVersion)));
+    }
 
-        //todo check if we should keep it
-        private void removeSegment(long segment) {
-            if (segments.remove(segment) && (!FileUtils.delete(dataFile(segment)) ||
-                    !indexManager.remove(segment))) {
-                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
-                        "Failed to rollback " + getType().getEventType()
-                                + ", could not remove segment: " + segment);
-            }
+    //todo check if we should keep it
+//        private void removeSegment(long segment) {
+//            if (segments.remove(segment) && (!FileUtils.delete(dataFile(segment)) ||
+//                    !indexManager.remove(segment))) {
+//                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
+//                        "Failed to rollback " + getType().getEventType()
+//                                + ", could not remove segment: " + segment);
+//            }
 
     @Override
-    protected Integer currentSegmentVersion(Long segment) {
+    public Integer currentSegmentVersion(Long segment) {
         return segments.get(segment);
     }
 
     @Override
-    protected void activateSegmentVersion(long segment, int segmentVersion) {
+    public void activateSegmentVersion(long segment, int segmentVersion) {
         segments.put(segment, segmentVersion);
     }
 

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -121,7 +121,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         FileVersion first = getFirstFile(lastInitialized, storageDir, new FileVersion(defaultFirstIndex, 0), storageProperties);
         renameFileIfNecessary(first.segment());
         FileVersion realFirst = firstSegmentIfLatestCompleted(first, storageProperties);
-        applyOnNext(n -> n.initSegments(realFirst));
+        applyOnNext(n -> n.initSegments(realFirst.segment()));
         WritableEventSource buffer = getOrOpenDatafile(realFirst, storageProperties.getSegmentSize(), false);
         indexManager.remove(realFirst);
         long sequence = realFirst.segment();
@@ -273,7 +273,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     @Override
     public void close(boolean deleteData) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
         File storageDir = new File(storagePath);
         fileSystemMonitor.unregisterPath(storeName());
 
@@ -281,7 +280,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         readBuffers.forEach((s, source) -> {
             source.clean(0);
             if (deleteData) {
-                removeSegment(s, storageProperties);
+                removeSegment(s);
             }
         });
 
@@ -313,22 +312,28 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     }
 
     @Override
-    protected boolean removeSegment(long segment, int segmentVersion) {
-        return next.removeSegment(segment, segmentVersion);
+    public boolean removeSegment(long segment, int segmentVersion) {
+        return invokeOnNext(n -> n.removeSegment(segment, segmentVersion), true);
     }
 
-    @Override
-    protected Integer currentSegmentVersion(Long segment) {
-        Integer segmentVersion = next.currentSegmentVersion(segment);
-        return segmentVersion == null ? 0 : segmentVersion;
-    }
-
-    @Override
-    protected void activateSegmentVersion(long segment, int segmentVersion) {
-        // no-op, no versioning for primary segments
-        if (next != null) {
-            next.activateSegmentVersion(segment, segmentVersion);
+    public void removeSegment(long segment) {
+        indexManager.remove(segment);
+        ByteBufferEventSource eventSource = readBuffers.remove(segment);
+        if (eventSource != null) {
+            eventSource.clean(0);
         }
+        FileUtils.delete(dataFile(new FileVersion(segment, 0)));
+    }
+
+
+    @Override
+    public Integer currentSegmentVersion(Long segment) {
+        return invokeOnNext(n -> n.currentSegmentVersion(segment), 0);
+    }
+
+    @Override
+    public void activateSegmentVersion(long segment, int segmentVersion) {
+        applyOnNext(n -> n.activateSegmentVersion(segment, segmentVersion));
     }
 
     public Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
@@ -404,7 +409,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         StorageTier nextTier = next.get();
         if (includeActive) {
             Stream<String> filenames = getSegments().stream()
-                                                    .map(s -> name(dataFile(s)));
+                                                    .map(s -> name(dataFile(new FileVersion(s, 0))));
             return nextTier != null ?
                     Stream.concat(filenames, nextTier.getBackupFilenames(lastSegmentBackedUp,  lastVersionBackedUp, true)) :
                     filenames;
@@ -470,14 +475,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         // No implementation as for primary segment store there are no index files, index is kept in memory
     }
 
-    private void removeSegment(long segment, StorageProperties storageProperties) {
-        indexManager.remove(segment);
-        ByteBufferEventSource eventSource = readBuffers.remove(segment);
-        if (eventSource != null) {
-            eventSource.clean(0);
-        }
-        FileUtils.delete(dataFile(segment));
-    }
 
     protected void completeSegment(WritePosition writePosition) {
         indexManager.complete(new FileVersion(writePosition.segment, 0));
@@ -495,12 +492,13 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
                                 @Override
                                 public Supplier<List<File>> indexProvider() {
-                                    return () -> indexManager.indexFiles(writePosition.segment);
+                                    return () -> indexManager.indexFiles(new FileVersion(writePosition.segment, 0));
                                 }
 
                                 @Override
                                 public Stream<AggregateSequence> latestSequenceNumbers() {
-                                    return PrimaryEventStore.this.latestSequenceNumbers(writePosition.segment);
+                                    return PrimaryEventStore.this.latestSequenceNumbers(new FileVersion(writePosition.segment,
+                                                                                                        0));
                                 }
                             }, () -> {
                                 ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
@@ -516,7 +514,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     private FileInputStream inputStream(Long segmentId) {
         try {
-            return new FileInputStream(dataFile(segmentId));
+            return new FileInputStream(dataFile(new FileVersion(segmentId, 0)));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -617,7 +615,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                 size = (int) file.length();
             }
         } else if (segment.segmentVersion() > 0) {
-            File defaultFile = storageProperties.dataFile(context, new FileVersion(segment.segment(), 0));
+            File defaultFile = dataFile(new FileVersion(segment.segment(), 0));
             if (defaultFile.exists()) {
                 ByteBufferEventSource s = readBuffers.remove(segment.segment());
                 if (s != null) {

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -297,22 +297,31 @@ public class StorageProperties implements Cloneable {
         this.globalIndexSuffix = globalIndexSuffix;
     }
 
-    public String dataFile( long segment) {
+    public String dataFile(long segment) {
         return String.format("%020d%s", segment, eventsSuffix);
     }
 
     public String dataFile(FileVersion segment) {
-        if( segment.segmentVersion() == 0) return dataFile(segment.segment());
-       //todo fix me PATH_WITH_VERSION_FORMAT
+        if (segment.segmentVersion() == 0) {
+            return dataFile(segment.segment());
+        }
+        //todo fix me PATH_WITH_VERSION_FORMAT
         return String.format(PATH_WITH_VERSION_FORMAT, segment.segment(), segment.segmentVersion(), eventsSuffix);
     }
 
-    public String transformedDataFile(FileVersion segment) {
-        if( segment.segmentVersion() == 0) {
+    public File dataFile(String storagePath, FileVersion fileVersion) {
+        return new File(storagePath + File.separator + dataFile(fileVersion));
+    }
+
+    public File transformedDataFile(String storagePath, FileVersion segment) {
+        if (segment.segmentVersion() == 0) {
             throw new RuntimeException("cannot transform to version 0");
         }
-        //todo fix me TRANSFORMED_PATH_WITH_VERSION_FORMAT
-        return String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, segment.segment(), segment.segmentVersion(), eventsSuffix);
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT,
+                                      storagePath,
+                                      segment.segment(),
+                                      segment.segmentVersion(),
+                                      eventsSuffix));
     }
 
     public long getForceInterval() {

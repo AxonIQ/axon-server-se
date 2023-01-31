@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -34,6 +34,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     private final AtomicReference<SerializedTransactionWithToken> originalTransactionRef = new AtomicReference<>();
     private final IndexManager indexManager;
     private final Supplier<TransactionIterator> transactionIteratorSupplier;
+    private final String storagePath;
     private final List<Event> transformedTransaction = new CopyOnWriteArrayList<>();
 
 
@@ -42,20 +43,23 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                               long segment,
                               int newVersion,
                               IndexManager indexManager,
-                              Supplier<TransactionIterator> transactionIteratorSupplier) {
+                              Supplier<TransactionIterator> transactionIteratorSupplier,
+                              String storagePath) {
         this.storageProperties = storageProperties;
         this.context = context;
         this.segment = segment;
         this.newVersion = newVersion;
         this.indexManager = indexManager;
         this.transactionIteratorSupplier = transactionIteratorSupplier;
+        this.storagePath = storagePath;
     }
 
     @Override
     public Mono<Void> initialize() {
         return Mono.create(sink -> {
             try {
-                File tempFile = storageProperties.transformedDataFile(context, new FileVersion(segment, newVersion));
+                File tempFile = storageProperties.transformedDataFile(storagePath,
+                                                                      new FileVersion(segment, newVersion));
                 FileUtils.delete(tempFile);
                 tempFileRef.set(tempFile);
                 SegmentWriter segmentWriter = new StreamSegmentWriter(tempFile,

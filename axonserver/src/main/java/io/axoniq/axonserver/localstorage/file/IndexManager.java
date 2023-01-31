@@ -9,15 +9,15 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import javax.annotation.Nonnull;
-import java.io.File;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * Manages index for an event store. There are two IndexManagers per context, one for the events and one for the
@@ -83,13 +83,14 @@ public interface IndexManager {
      * @param segment
      * @return list of index files
      */
-    List<File> indexFiles(long segment);
+    List<File> indexFiles(FileVersion segment);
 
     /**
      * Add existing, non-active, index file to index manager
+     *
      * @param segment to add
      */
-    void addExistingIndex(long segment);
+    void addExistingIndex(FileVersion segment);
 
     /**
      * Finds all locations of events for the given aggregate within range of sequence numbers specified.
@@ -172,8 +173,9 @@ public interface IndexManager {
 
     /**
      * todo comment
+     *
      * @param segment
      * @return
      */
-    Stream<AggregateIndexEntries> latestSequenceNumbers(Long segment);
+    Stream<AggregateIndexEntries> latestSequenceNumbers(FileVersion segment);
 }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -47,9 +47,13 @@ import java.util.stream.IntStream;
 
 import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 
 /**
@@ -82,8 +86,9 @@ public class PrimaryEventStoreTest {
 
     private PrimaryEventStore primaryEventStore(EventType eventType) {
         return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties::getEvent,
+                                                          embeddedDBProperties.getEvent().getPrimaryStorage(context),
                                                           eventType,
-                                                          meterFactory));
+                                                          meterFactory, () -> null));
     }
 
     private PrimaryEventStore primaryEventStore(IndexManager indexManager) {
@@ -102,7 +107,10 @@ public class PrimaryEventStoreTest {
                                                               eventTransformerFactory,
                                                               embeddedDBProperties::getEvent,
                                                               () -> second,
-                                                              meterFactory, fileSystemMonitor);
+                                                              meterFactory,
+                                                              fileSystemMonitor,
+                                                              embeddedDBProperties.getEvent()
+                                                                                  .getPrimaryStorage(context));
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));
         return testSubject;

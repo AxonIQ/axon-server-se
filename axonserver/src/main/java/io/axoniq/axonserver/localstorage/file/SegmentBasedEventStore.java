@@ -153,7 +153,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                    .metrics();
     }
 
-    private Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch) {
+    public Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch) {
         return (!containsSegment(segment.segment()) && next.get() != null) ?
                 next.get().eventsForPositions(segment, indexEntries, prefetch) :
                 new EventSourceFlux(indexEntries,
@@ -312,9 +312,11 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return Flux.usingWhen(Mono.fromSupplier(() -> new DefaultSegmentTransformer(storagePropertiesSupplier.get(),
                                                                                     context,
                                                                                     segment,
-                                                                                    newVersion, indexManager,
+                                                                                    newVersion,
+                                                                                    indexManager,
                                                                                     () -> getTransactions(segment,
-                                                                                                          segment))),
+                                                                                                          segment),
+                                                                                    storagePath)),
                               segmentTransformer -> segmentTransformer.initialize()
                                                                       .thenMany(transformedEventsInTheSegment.concatMap(
                                                                               segmentTransformer::transformEvent)),
@@ -350,10 +352,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
         StorageProperties storageProperties = storagePropertiesSupplier.get();
-        return Mono.fromSupplier(() -> storageProperties.dataFile(context, fileVersion))
+        return Mono.fromSupplier(() -> dataFile(fileVersion))
                    .filter(dataFile -> !dataFile.exists())
-                   .flatMap(dataFile -> Mono.fromSupplier(() -> storageProperties.transformedDataFile(context,
-                                                                                                      fileVersion))
+                   .flatMap(dataFile -> Mono.fromSupplier(() -> transformedDataFile(fileVersion))
                                             .filter(File::exists)
                                             .switchIfEmpty(Mono.error(new RuntimeException("File does not exist.")))
                                             .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
@@ -383,7 +384,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         for (Long segment : getSegments()) {
             segmentVersion = Math.max(segmentVersion, currentSegmentVersion(segment) + 1);
         }
-        return next == null ? segmentVersion : Math.max(segmentVersion, next.nextVersion());
+        int v = segmentVersion;
+        return invokeOnNext(nextTier -> Math.max(v, nextTier.nextVersion()), segmentVersion);
     }
 
     protected abstract Integer currentSegmentVersion(Long segment);
@@ -698,17 +700,19 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             return filenames;
         }
 
-        return Stream.concat(filenames, next.get().getBackupFilenames(lastSegmentBackedUp, includeActive));
+        return Stream.concat(filenames,
+                             next.get().getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, includeActive));
     }
 
     protected void renameFileIfNecessary(long segment) {
         StorageProperties storageProperties = storagePropertiesSupplier.get();
         File dataFile = storageProperties.oldDataFile(storagePath, segment);
+        FileVersion fileVersion = new FileVersion(segment, 0);
         if (dataFile.exists()) {
-            if (!dataFile.renameTo(dataFile(segment))) {
+            if (!dataFile.renameTo(dataFile(fileVersion))) {
                 throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
                                                      renameMessage(dataFile,
-                                                                   dataFile(segment)));
+                                                                   dataFile(fileVersion)));
             }
             File indexFile = storageProperties.oldIndex(storagePath, segment);
             if (indexFile.exists() && !indexFile.renameTo(storageProperties.index(storagePath, segment))) {
@@ -728,6 +732,10 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected File dataFile(FileVersion segment) {
         return Paths.get(storagePath, storagePropertiesSupplier.get().dataFile(segment)).toFile();
+    }
+
+    protected File transformedDataFile(FileVersion segment) {
+        return storagePropertiesSupplier.get().transformedDataFile(storagePath, segment);
     }
 
     private String renameMessage(File from, File to) {
