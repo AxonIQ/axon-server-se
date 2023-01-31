@@ -12,7 +12,7 @@
     <parent>
         <artifactId>axonserver-se</artifactId>
         <groupId>io.axoniq.axonserver</groupId>
-        <version>4.6.8-SNAPSHOT</version>
+        <version>4.6.8</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
