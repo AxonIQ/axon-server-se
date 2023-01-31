@@ -67,6 +67,7 @@ public class StandardIndexManagerTest {
         storageProperties.setStorage(temporaryFolder.getRoot().getAbsolutePath());
 
         MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+
         indexManager = new StandardIndexManager(context,
                                                 () -> storageProperties,
                                                 storageProperties.getPrimaryStorage(context),
@@ -158,7 +159,7 @@ public class StandardIndexManagerTest {
     public void testTemporaryFileIsDeletedWhenCreatingIndex() throws IOException {
         long segment = 0L;
 
-        File tempFile = storageProperties.transformedIndex(context, segment);
+        File tempFile = storageProperties.transformedIndex(storageProperties.getPrimaryStorage(context), segment);
         try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
             outputStream.write("mockDataToCreateIllegalFile".getBytes(StandardCharsets.UTF_8));
         }
@@ -176,7 +177,7 @@ public class StandardIndexManagerTest {
         assumeTrue(systemInfoProvider.javaOnWindows());
         long segment = 0L;
 
-        File tempFile = storageProperties.transformedIndex(context, segment);
+        File tempFile = storageProperties.transformedIndex(storageProperties.getPrimaryStorage(context), segment);
 
         String aggregateId = "aggregateId";
         IndexEntry positionInfo = new IndexEntry(0, 0, 0);
@@ -191,9 +192,20 @@ public class StandardIndexManagerTest {
     @Test
     public void testLastSequenceNumberWhenNoDomainEventsInActiveIndexes() {
         String eventStore = TestUtils.fixPathOnWindows(StandardIndexManagerTest.class
-                                                          .getResource("/event-store-without-domain-events-in-last-segment")
-                                                          .getFile());
+                                                               .getResource(
+                                                                       "/event-store-without-domain-events-in-last-segment")
+                                                               .getFile());
+        storageProperties = new StorageProperties(systemInfoProvider);
+        storageProperties.setMaxIndexesInMemory(3);
         storageProperties.setStorage(eventStore);
+        MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
+
+        indexManager = new StandardIndexManager(context,
+                                                () -> storageProperties,
+                                                storageProperties.getPrimaryStorage(context),
+                                                EventType.EVENT,
+                                                meterFactory,
+                                                () -> null);
         indexManager.init();
 
         Optional<Long> result = indexManager.getLastSequenceNumber("Aggregate-25", Integer.MAX_VALUE, Long.MAX_VALUE);
