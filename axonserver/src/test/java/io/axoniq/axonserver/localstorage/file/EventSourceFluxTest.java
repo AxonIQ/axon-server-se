@@ -57,8 +57,18 @@ class EventSourceFluxTest {
                     }
 
                     @Override
-                    public EventIterator createEventIterator(long segment, long startToken) {
+                    public EventIterator createEventIterator(long startToken) {
                         return null;
+                    }
+
+                    @Override
+                    public int segmentVersion() {
+                        return 0;
+                    }
+
+                    @Override
+                    public long segment() {
+                        return 0;
                     }
 
                     @Override

@@ -85,4 +85,5 @@ public interface IndexEntries {
      * @param entries list of positions
      */
     void addAll(List<IndexEntry> entries);
+
 }

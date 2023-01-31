@@ -23,8 +23,12 @@ import java.util.Map;
  */
 public class StorageProperties implements Cloneable {
 
+    public static final String TRANSFORMED_SUFFIX = ".transformed";
     private static final String PATH_FORMAT = "%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
+    private static final String PATH_WITH_VERSION_FORMAT = "%s/%020d_%05d%s";
+    private static final String TEMP_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + ".temp";
+    private static final String TRANSFORMED_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + TRANSFORMED_SUFFIX;
     private static final String OLD_PATH_FORMAT = "%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
     /**
@@ -118,6 +122,8 @@ public class StorageProperties implements Cloneable {
      * Size of the buffer when reading from non-memory mapped files. Defaults to 32kiB.
      */
     private int readBufferSize = DEFAULT_READ_BUFFER_SIZE;
+
+    private boolean keepOldVersions = false;
 
     private final SystemInfoProvider systemInfoProvider;
     private int flags;
@@ -229,17 +235,54 @@ public class StorageProperties implements Cloneable {
     public File bloomFilter(String customStorage, long segment) {
         return new File(String.format(PATH_FORMAT, customStorage, segment, bloomIndexSuffix));
     }
+    public File bloomFilter(String customStorage, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return bloomFilter(customStorage, segment.segment());
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, customStorage, segment.segment(), segment.segmentVersion(), bloomIndexSuffix));
+    }
 
     public File index(String customStorage, long segment) {
         return new File(String.format(PATH_FORMAT, customStorage, segment, indexSuffix));
+    }
+    public File index(String customStorage, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return index(customStorage, segment.segment());
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, customStorage, segment.segment(), segment.segmentVersion(), indexSuffix));
     }
 
     public File indexTemp(String storagePath, long segment) {
         return new File(String.format(TEMP_PATH_FORMAT, storagePath, segment, indexSuffix));
     }
 
+    public File indexTemp(String storagePath, FileVersion segment) {
+        return new File(String.format(TEMP_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), indexSuffix));
+    }
+
+    public File transformedIndex(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return transformedIndex(storagePath, segment.segment());
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), indexSuffix));
+    }
+
+    public File newTransformedIndex(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return transformedIndex(storagePath, segment.segment());
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), newIndexSuffix));
+    }
+
+    public File transformedIndex(String storagePath, long segment) {
+        return new File(String.format(TEMP_PATH_FORMAT, storagePath, segment, indexSuffix));
+    }
+
     public File newIndex(String storagePath, long segment) {
         return new File(String.format(PATH_FORMAT, storagePath, segment, newIndexSuffix));
+    }
+    public File newIndex(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return newIndex(storagePath, segment.segment());
+
+        return new File(String.format(PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), newIndexSuffix));
+    }
+
+    public File newIndexTemp(String storagePath, FileVersion segment) {
+        if( segment.segmentVersion() == 0) return newIndexTemp(storagePath, segment.segment());
+
+        return new File(String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, storagePath, segment.segment(), segment.segmentVersion(), newIndexSuffix));
     }
 
     public File newIndexTemp(String storagePath, long segment) {
@@ -256,6 +299,20 @@ public class StorageProperties implements Cloneable {
 
     public String dataFile( long segment) {
         return String.format("%020d%s", segment, eventsSuffix);
+    }
+
+    public String dataFile(FileVersion segment) {
+        if( segment.segmentVersion() == 0) return dataFile(segment.segment());
+       //todo fix me PATH_WITH_VERSION_FORMAT
+        return String.format(PATH_WITH_VERSION_FORMAT, segment.segment(), segment.segmentVersion(), eventsSuffix);
+    }
+
+    public String transformedDataFile(FileVersion segment) {
+        if( segment.segmentVersion() == 0) {
+            throw new RuntimeException("cannot transform to version 0");
+        }
+        //todo fix me TRANSFORMED_PATH_WITH_VERSION_FORMAT
+        return String.format(TRANSFORMED_PATH_WITH_VERSION_FORMAT, segment.segment(), segment.segmentVersion(), eventsSuffix);
     }
 
     public long getForceInterval() {
@@ -453,6 +510,20 @@ public class StorageProperties implements Cloneable {
     public StorageProperties withRetentionTime(Duration[] retentionTime) {
         StorageProperties clone = cloneProperties();
         clone.retentionTime = retentionTime;
+        return clone;
+    }
+
+    public boolean isKeepOldVersions() {
+        return keepOldVersions;
+    }
+
+    public void setKeepOldVersions(boolean keepOldVersions) {
+        this.keepOldVersions = keepOldVersions;
+    }
+
+    public StorageProperties withKeepOldVersions(boolean keepOldVersions) {
+        StorageProperties clone = cloneProperties();
+        clone.keepOldVersions = keepOldVersions;
         return clone;
     }
 

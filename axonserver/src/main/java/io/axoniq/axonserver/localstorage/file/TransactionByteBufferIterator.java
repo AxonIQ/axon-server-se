@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -69,14 +69,14 @@ public class TransactionByteBufferIterator implements TransactionIterator {
             reader.position(reader.position()-4);
             return false;
         }
-        byte version = reader.get();
+        byte eventFormatVersion = reader.get();
         short nrOfMessages = reader.getShort();
         List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
         int position = reader.position();
         for (int idx = 0; idx < nrOfMessages; idx++) {
             events.add(eventSource.readEvent());
         }
-        next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
+        next = new SerializedTransactionWithToken(currentSequenceNumber, eventFormatVersion, events);
         currentSequenceNumber += nrOfMessages;
         int chk = reader.getInt(); // checksum
         if (validating) {

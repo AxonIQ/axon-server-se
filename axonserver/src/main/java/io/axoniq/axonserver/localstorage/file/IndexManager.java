@@ -11,6 +11,8 @@ package io.axoniq.axonserver.localstorage.file;
 
 import javax.annotation.Nonnull;
 import java.io.File;
+import reactor.core.publisher.Mono;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,8 +47,11 @@ public interface IndexManager {
      *
      * @param segment the first token in the segment
      */
-    void complete(long segment);
+    default void complete(long segment) {
+        complete(new FileVersion(segment, 0));
+    }
 
+    void complete(FileVersion segment);
     /**
      * Retrieves the sequence number of the last event for the given aggregate.
      *
@@ -62,7 +67,7 @@ public interface IndexManager {
      *
      * @param segment the segment number
      */
-    boolean validIndex(long segment);
+    boolean validIndex(FileVersion segment);
 
     /**
      * Removes index entries for a specific segment.
@@ -96,11 +101,11 @@ public interface IndexManager {
      * @param minToken            minimum token hint for the entries to return
      * @return map of positions per segment
      */
-    SortedMap<Long, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
+    SortedMap<FileVersion, IndexEntries> lookupAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
                                                   long maxResults, long minToken);
 
     @Nonnull
-    SortedMap<Long, IndexEntries> lookupAggregateInClosedSegments(String aggregateId, long firstSequenceNumber,
+    SortedMap<FileVersion, IndexEntries> lookupAggregateInClosedSegments(String aggregateId, long firstSequenceNumber,
                                                                   long lastSequenceNumber, long maxResults,
                                                                   long minToken, long previousToken);
 
@@ -122,7 +127,23 @@ public interface IndexManager {
      */
     SegmentIndexEntries lastIndexEntries(String aggregateId, long maxSequenceNumber);
 
+    /**
+     * Returns a stream of index related files that should be included in the backup
+     *
+     * @param lastSegmentBackedUp the sequence number of the last already backed up segment
+     * @param lastVersionBackedUp
+     * @return stream of index related files
+     */
+    Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp);
 
+
+    /**
+     * todo comment
+     * @param aggregateId
+     * @param maxSequenceNumber
+     * @param startAtToken
+     * @return
+     */
     SegmentIndexEntries lastIndexEntriesFromClosedSegments(String aggregateId, long maxSequenceNumber,
                                                            long startAtToken);
 
@@ -135,5 +156,24 @@ public interface IndexManager {
      */
     void addToActiveSegment(Long segment, Map<String, List<IndexEntry>> indexEntries);
 
+    void createNewVersion(long segment, int version, Map<String, List<IndexEntry>> indexEntriesMap);
+
+    boolean remove(FileVersion fileVersion);
+
+    default Mono<Void> activateVersion(FileVersion fileVersion) {
+        return activateVersion(fileVersion.segment(), fileVersion.segmentVersion());
+    }
+
+    /**
+     * Rename the temporary index if it exists into the active segmentVersion and active it.
+     *
+     */
+    Mono<Void> activateVersion(long segment, int segmentVersion);
+
+    /**
+     * todo comment
+     * @param segment
+     * @return
+     */
     Stream<AggregateIndexEntries> latestSequenceNumbers(Long segment);
 }

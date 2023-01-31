@@ -22,7 +22,7 @@ public class StringUtils {
     }
 
     public static boolean isEmpty(String value) {
-        return (value == null) || "".equals(value);
+        return value == null || "".equals(value);
     }
 
     /**
@@ -36,5 +36,9 @@ public class StringUtils {
             return null;
         }
         return string.replaceAll("[\n|\r|\t]", "_");
+    }
+
+    public static String username(String username) {
+        return sanitize(getOrDefault(username, "<anonymous>"));
     }
 }

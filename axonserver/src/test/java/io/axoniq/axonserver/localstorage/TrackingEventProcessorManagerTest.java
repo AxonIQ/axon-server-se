@@ -17,6 +17,7 @@ import org.junit.*;
 import org.springframework.data.util.CloseableIterator;
 
 import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,6 +57,7 @@ public class TrackingEventProcessorManagerTest {
                     eventsLeft.decrementAndGet();
                     return new SerializedEventWithToken(nextToken.getAndIncrement(),
                                                         Event.newBuilder()
+                                                             .setMessageIdentifier(UUID.randomUUID().toString())
                                                              .setPayload(SerializedObject.newBuilder()
                                                              .setType("DemoType")
                                                              .setRevision("1.0"))

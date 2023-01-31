@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -20,8 +20,7 @@ import io.axoniq.axonserver.metric.MeterFactory;
 import io.axoniq.axonserver.test.TestUtils;
 import io.axoniq.axonserver.topology.Topology;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import java.util.SortedSet;
 
@@ -53,8 +52,7 @@ public class InputStreamEventStoreTest {
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
         testSubject = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT), indexManager,
                                                 eventTransformerFactory,
-                                                embeddedDBProperties::getEvent, meterFactory,
-                                                embeddedDBProperties.getEvent().getPrimaryStorage(context));
+                                                embeddedDBProperties::getEvent, meterFactory);
         testSubject.init(true);
     }
 
@@ -64,7 +62,7 @@ public class InputStreamEventStoreTest {
     @Test
     public void getEventSource() {
         EventSource eventSource = testSubject.getEventSource(0).get();
-        try (EventIterator iterator = eventSource.createEventIterator(0, 5)) {
+        try (EventIterator iterator = eventSource.createEventIterator(5)) {
             assertTrue(iterator.hasNext());
             EventInformation next = iterator.next();
             assertEquals(5, next.getToken());

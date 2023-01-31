@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 4.0
  */
 public class ByteBufferEventSource implements EventSource {
+
     private final EventTransformer eventTransformer;
     private final Runnable onClose;
     private final ByteBuffer buffer;
@@ -33,10 +34,16 @@ public class ByteBufferEventSource implements EventSource {
     // indicates if the low-level clean method should be called (needed to free file lock on windows)
     private final boolean cleanerHack;
     private final AtomicBoolean closed = new AtomicBoolean();
+    private final int version;
+    private final long segment;
 
-    public ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformerFactory eventTransformerFactory,
+    public ByteBufferEventSource(String path, ByteBuffer buffer,
+                                 long segment, int version,
+                                 EventTransformerFactory eventTransformerFactory,
                                  StorageProperties storageProperties) {
         this.path = path;
+        this.segment = segment;
+        this.version = version;
         buffer.get();
         int flags = buffer.getInt();
         this.eventTransformer = eventTransformerFactory.get(flags);
@@ -46,9 +53,13 @@ public class ByteBufferEventSource implements EventSource {
         this.cleanerHack = storageProperties.isCleanRequired();
     }
 
-    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer,
+    protected ByteBufferEventSource(String path, ByteBuffer buffer,
+                                    long segment, int version,
+                                    EventTransformer eventTransformer,
                                     boolean cleanerHack, Runnable onClose) {
         this.path = path;
+        this.segment = segment;
+        this.version = version;
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.onClose = onClose;
@@ -56,9 +67,13 @@ public class ByteBufferEventSource implements EventSource {
         this.cleanerHack = cleanerHack;
     }
 
-    protected ByteBufferEventSource(String path, ByteBuffer buffer, EventTransformer eventTransformer,
+    protected ByteBufferEventSource(String path, ByteBuffer buffer,
+                                    long segment, int version,
+                                    EventTransformer eventTransformer,
                                     boolean cleanerHack) {
         this.path = path;
+        this.segment = segment;
+        this.version = version;
         this.buffer = buffer;
         this.eventTransformer = eventTransformer;
         this.onClose = null;
@@ -77,6 +92,8 @@ public class ByteBufferEventSource implements EventSource {
         duplicatesCount.incrementAndGet();
         return new ByteBufferEventSource(path,
                                          buffer.duplicate(),
+                                         segment,
+                                         version,
                                          eventTransformer,
                                          cleanerHack,
                                          duplicatesCount::decrementAndGet);
@@ -104,8 +121,18 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     @Override
-    public EventIterator createEventIterator(long segment, long startToken) {
-        return new EventByteBufferIterator(this, segment, startToken);
+    public EventIterator createEventIterator(long startToken) {
+        return new EventByteBufferIterator(this, startToken);
+    }
+
+    @Override
+    public int segmentVersion() {
+        return version;
+    }
+
+    @Override
+    public long segment() {
+        return segment;
     }
 
     public ByteBuffer getBuffer() {
@@ -124,9 +151,12 @@ public class ByteBufferEventSource implements EventSource {
 
     @Override
     public void close() {
-        if( onClose != null) {
-            if (closed.compareAndSet(false, true))  {
-                onClose.run();
+        if (closed.compareAndSet(false, true )) {
+            duplicatesCount.decrementAndGet();
+            if (onClose != null) {
+                if (closed.compareAndSet(false, true))  {
+                    onClose.run();
+                }
             }
         }
     }

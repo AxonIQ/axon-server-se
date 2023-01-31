@@ -13,6 +13,8 @@ import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,7 +25,9 @@ import java.nio.file.StandardCopyOption;
  * @author Marc Gathier
  */
 public class FileUtils {
+
     public static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
+
     private FileUtils() {
 
     }
@@ -48,8 +52,20 @@ public class FileUtils {
         return eventFiles;
     }
 
+    public static FileVersion process(String name) {
+        String baseName = name.substring(0, name.indexOf('.'));
+        int separator = baseName.indexOf('_');
+        if (separator < 0) {
+            return new FileVersion(Long.parseLong(baseName), 0);
+        }
+        return new FileVersion(Long.parseLong(baseName.substring(0, separator)),
+                               Integer.parseInt(baseName.substring(separator + 1)));
+    }
+
     public static boolean delete(File file) {
-        if( ! file.exists()) return true;
+        if (!file.exists()) {
+            return true;
+        }
         logger.debug("Delete file {}", file.getAbsolutePath());
 
         try {
@@ -61,8 +77,15 @@ public class FileUtils {
         return true;
     }
 
-    public static void rename(File target, File currentLocation) throws IOException {
-        Files.move(target.toPath(), currentLocation.toPath(), StandardCopyOption.REPLACE_EXISTING);
+    public static Mono<Void> rename(File source, File target) {
+        return Mono.<Void>create(sink -> {
+            try {
+                Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                sink.success();
+            } catch (Exception e) {
+                sink.error(e);
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     public static String name(File file) {

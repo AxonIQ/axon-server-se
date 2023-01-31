@@ -110,7 +110,7 @@ public class Synchronizer {
                 completeSegmentCallback.accept(toSync);
                 log.info("Synced segment and index at {}", toSync);
             } catch (Exception ex) {
-                log.warn("Failed to close file {} - {}", toSync.segment, ex.getMessage());
+                log.warn("Failed to close file {} - {}", toSync.segment, ex.getMessage(), ex);
                 syncAndCloseFile.add(toSync);
                 return false;
             }

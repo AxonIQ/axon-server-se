@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -76,13 +76,13 @@ public class InputStreamTransactionIterator implements TransactionIterator {
                 return false;
             }
 
-            byte version = processVersion(reader);
+            byte eventFormatVersion = processVersion(reader);
             short nrOfMessages = reader.readShort();
             List<SerializedEvent> events = new ArrayList<>(nrOfMessages);
             for (int idx = 0; idx < nrOfMessages; idx++) {
                 events.add(eventSource.readEvent());
             }
-            next = new SerializedTransactionWithToken(currentSequenceNumber, version, events);
+            next = new SerializedTransactionWithToken(currentSequenceNumber, eventFormatVersion, events);
             currentSequenceNumber += nrOfMessages;
             reader.readInt(); // checksum
             return true;
