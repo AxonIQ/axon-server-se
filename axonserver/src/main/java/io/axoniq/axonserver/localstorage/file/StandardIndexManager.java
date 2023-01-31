@@ -129,7 +129,8 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private void updateUseMmapAfterIndex() {
-        useMmapAfterIndex.set(indexesDescending.stream().skip(storageProperties.get().getMaxIndexesInMemory()).findFirst()
+        useMmapAfterIndex.set(indexesDescending.stream().skip(storageProperties.get().getMaxIndexesInMemory())
+                                               .findFirst()
                                                .orElse(-1L));
     }
 
@@ -171,7 +172,7 @@ public class StandardIndexManager implements IndexManager {
         }
 
         PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(context, segment)
-                                                                                .getAbsolutePath(),
+                                                                         .getAbsolutePath(),
                                                                positionsPerAggregate.keySet().size(),
                                                                properties.getBloomIndexFpp());
         filter.create();
@@ -236,7 +237,7 @@ public class StandardIndexManager implements IndexManager {
         logger.debug("{}: open bloom filter for {}", context, segment);
         StorageProperties properties = storageProperties.get();
         PersistedBloomFilter filter = new PersistedBloomFilter(properties.bloomFilter(context, segment)
-                                                                                .getAbsolutePath(), 0, 0.03f);
+                                                                         .getAbsolutePath(), 0, 0.03f);
         if (!filter.fileExists()) {
             return null;
         }
@@ -330,13 +331,11 @@ public class StandardIndexManager implements IndexManager {
                 checked++;
             }
         }
-        if (remoteIndexManager != null && checked < maxSegments) {
+        if (remoteIndexManager != null && checked < maxSegments && !indexesDescending.isEmpty()) {
             return remoteIndexManager.getLastSequenceNumber(context,
                                                             aggregateId,
                                                             maxSegments - checked,
-                                                            indexesDescending.isEmpty() ?
-                                                                    activeIndexes.firstKey() - 1 :
-                                                                    indexesDescending.last() - 1);
+                                                            indexesDescending.last() - 1);
         }
         return Optional.empty();
     }
@@ -460,7 +459,7 @@ public class StandardIndexManager implements IndexManager {
     }
 
     private int addToResult(long firstSequenceNumber, long lastSequenceNumber,
-                                     SortedMap<Long, IndexEntries> results, Long segment, IndexEntries entries) {
+                            SortedMap<Long, IndexEntries> results, Long segment, IndexEntries entries) {
         entries = entries.range(firstSequenceNumber, lastSequenceNumber, EventType.SNAPSHOT.equals(eventType));
         if (!entries.isEmpty()) {
             results.put(segment, entries);
@@ -518,7 +517,7 @@ public class StandardIndexManager implements IndexManager {
 
         @Override
         public void close() {
-            if( logger.isDebugEnabled()) {
+            if (logger.isDebugEnabled()) {
                 logger.debug("{}: close {}", segment, storageProperties.get().index(context, segment));
             }
             if (db != null && !db.isClosed()) {

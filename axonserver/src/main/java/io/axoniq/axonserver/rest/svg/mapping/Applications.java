@@ -14,7 +14,6 @@ import io.axoniq.axonserver.topology.Topology;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
@@ -25,6 +24,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toSet;
@@ -128,8 +128,8 @@ public class Applications implements Function<String, Stream<Application>> {
 
                                    @Override
                                    public int instances() {
-                                       return entry.getValue().stream().findFirst().map(apps -> apps.getValue().size())
-                                                   .orElse(0);
+                                       return entry.getValue().stream().mapToInt(apps -> apps.getValue().size())
+                                               .sum();
                                    }
 
                                    @Override
