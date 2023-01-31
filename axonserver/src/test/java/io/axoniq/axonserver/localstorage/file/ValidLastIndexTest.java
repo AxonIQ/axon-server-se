@@ -59,7 +59,7 @@ public class ValidLastIndexTest {
 
         IndexManager indexManager = new StandardIndexManager("default",
                                                              () -> storageProperties,
-                                                             "storage",
+                                                             storageProperties.getPrimaryStorage("default"),
                                                              EventType.EVENT,
                                                              meterFactory);
         InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
