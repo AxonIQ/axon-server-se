@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -12,29 +12,27 @@ package io.axoniq.axonserver.grpc;
 import com.google.protobuf.Empty;
 import io.axoniq.axonserver.config.GrpcContextAuthenticationProvider;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
-import io.axoniq.axonserver.exception.ErrorCode;
-import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.ApplyTransformationRequest;
+import io.axoniq.axonserver.grpc.event.CompactionRequest;
+import io.axoniq.axonserver.grpc.event.DeletedEvent;
 import io.axoniq.axonserver.grpc.event.Event;
+import io.axoniq.axonserver.grpc.event.StartTransformationRequest;
+import io.axoniq.axonserver.grpc.event.TransformRequest;
+import io.axoniq.axonserver.grpc.event.TransformRequestAck;
 import io.axoniq.axonserver.grpc.event.TransformationId;
+import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.transport.grpc.EventStoreTransformationGrpcController;
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
-import org.junit.*;
+import org.junit.jupiter.api.*;
+import org.mockito.*;
 import org.springframework.security.core.Authentication;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import javax.annotation.Nonnull;
 
-import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -44,252 +42,115 @@ public class EventStoreTransformationGrpcControllerTest {
 
     private static final String CONTEXT = "CONTEXT";
     private static final Authentication AUTHENTICATION = GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL;
-    private EventStoreTransformationGrpcController testSubject;
+    private final EventStoreTransformationService mockedService = mock(EventStoreTransformationService.class);
+    private final EventStoreTransformationGrpcController testSubject = new EventStoreTransformationGrpcController(() -> CONTEXT,
+                                                                                                                  () -> AUTHENTICATION,
+                                                                                                                  mockedService);
 
-    @Before
-    public void setUp() throws Exception {
-        testSubject = new EventStoreTransformationGrpcController(() -> CONTEXT,
-                                                                 () -> AUTHENTICATION,
-                                                                 eventStoreTransformationService());
-    }
-
-    private EventStoreTransformationService eventStoreTransformationService() {
-        return new EventStoreTransformationService() {
-            private final Map<String, String> activeTransformations = new HashMap<>();
-
-            @Override
-            public Flux<Transformation> transformations(String context,
-                    @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                return Flux.empty();
-            }
-
-            @Override
-            public Mono<Void> start(String id, String context, String description,
-                                    @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                return Mono.create(sink -> {
-                    if (activeTransformations.containsKey(context)) {
-                        sink.error(new MessagingPlatformException(
-                                ErrorCode.CONTEXT_EXISTS,
-                                "Transformation for context in progress"));
-                        return;
-                    }
-                    sink.success();
-                });
-            }
-
-            @Override
-            public Mono<Void> deleteEvent(String context, String transformationId, long token, long previousToken,
-                                          @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                if (transformationId != null && !transformationId.equals(
-                        activeTransformations.get(context))) {
-                    return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                                     "Transformation not found"));
-                }
-                return Mono.empty();
-            }
-
-            @Override
-            public Mono<Void> replaceEvent(String context, String transformationId, long token, Event event,
-                                           long sequence,
-                                           @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                if (transformationId != null && !transformationId.equals(
-                        activeTransformations.get(context))) {
-                    return Mono.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND,
-                                                                     "Transformation not found"));
-                }
-                return Mono.empty();
-            }
-
-            @Override
-            public Mono<Void> cancel(String context, String id,
-                                     @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                return Mono.create(sink -> {
-                    if (id.equals(activeTransformations.get(context))) {
-                        sink.success();
-                        return;
-                    }
-                    sink.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, "Transformation not found"));
-                });
-            }
-
-            @Override
-            public Mono<Void> startApplying(String context, String id, long lastEventToken,
-                                            @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                return Mono.create(sink -> {
-                    if (id.equals(activeTransformations.get(context))) {
-                        sink.success();
-                        return;
-                    }
-                    sink.error(new MessagingPlatformException(ErrorCode.CONTEXT_NOT_FOUND, "Transformation not found"));
-                });
-            }
-
-
-            @Override
-            public Mono<Void> compact(String compactionId, String context,
-                                      @Nonnull io.axoniq.axonserver.api.Authentication authentication) {
-                return Mono.empty();
-            }
-        };
-    }
 
     @Test
-    public void startTransformation() throws ExecutionException, InterruptedException {
-        TransformationId id = doStartTransformation();
-        assertNotNull(id.getId());
-    }
-
-    @Test
-    public void startTransformationFails() throws ExecutionException, InterruptedException {
-        doStartTransformation();
-        try {
-            doStartTransformation();
-            fail("Start transaction should fail");
-        } catch (ExecutionException executionException) {
-            assertTrue(executionException.getCause() instanceof StatusRuntimeException);
-        }
-    }
-
-    @Test
-    public void transformEvents() throws ExecutionException, InterruptedException, TimeoutException {
-//        TransformationId transformationId = doStartTransformation();
-//        CompletableFuture<Void> futureConfirmation = new CompletableFuture<>();
-//        StreamObserver<TransformRequest> requestStream = testSubject.transformEvents(new FlowControlledCompletableFutureStreamObserver(
-//                futureConfirmation));
-//        requestStream.onNext(TransformRequest.newBuilder()
-//                                             .setTransformationId(transformationId)
-//                                             .setEvent(TransformedEvent.newBuilder()
-//                                                                       .setToken(1)
-//                                                                       .setEvent(Event.getDefaultInstance())
-//                                                                       .build())
-//                                             .build());
-//        requestStream.onCompleted();
-//        futureConfirmation.get(1, TimeUnit.SECONDS);
-    }
-
-    private TransformationId doStartTransformation() throws InterruptedException, ExecutionException {
-//        CompletableFuture<TransformationId> futureTransformationId = new CompletableFuture<>();
-//        testSubject.startTransformation(StartTransformationRequest.getDefaultInstance(),
-//                                        new CompletableFutureStreamObserver<>(futureTransformationId));
-//
-//        return futureTransformationId.get();
-        return null;
-    }
-
-    @Test
-    public void transformEventsError() throws InterruptedException {
-//        TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
-//        CompletableFuture<Confirmation> futureConfirmation = new CompletableFuture<>();
-//        StreamObserver<TransformRequest> requestStream = testSubject.transformEvents(new FlowControlledCompletableFutureStreamObserver<>(
-//                futureConfirmation));
-//        requestStream.onNext(TransformRequest.newBuilder()
-//                                             .setTransformationId(transformationId)
-//                                             .setEvent(TransformedEvent.newBuilder()
-//                                                                       .setToken(1)
-//                                                                       .setEvent(Event.getDefaultInstance())
-//                                                                       .build())
-//                                             .build());
-//        requestStream.onCompleted();
-//        try {
-//            futureConfirmation.get();
-//            fail("Should fail");
-//        } catch (ExecutionException executionException) {
-//            assertTrue(executionException.getCause() instanceof StatusRuntimeException);
-//        }
-    }
-
-    @Test
-    public void cancelTransformation() throws ExecutionException, InterruptedException, TimeoutException {
-        TransformationId transformationId = doStartTransformation();
-        CompletableFuture<Void> futureConfirmation = new CompletableFuture<>();
-        testSubject.cancelTransformation(transformationId, new CompletableFutureStreamObserver(futureConfirmation));
-        futureConfirmation.get(1, TimeUnit.SECONDS);
-    }
-
-    @Test
-    public void cancelTransformationError() throws InterruptedException {
-        TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
-        CompletableFuture<Void> futureConfirmation = new CompletableFuture<>();
-        testSubject.cancelTransformation(transformationId, new CompletableFutureStreamObserver(futureConfirmation));
-        try {
-            futureConfirmation.get();
-            fail("Expected exception");
-        } catch (ExecutionException executionException) {
-            assertTrue(executionException.getCause() instanceof StatusRuntimeException);
-        }
-    }
-
-    @Test
-    public void applyTransformation() throws ExecutionException, InterruptedException, TimeoutException {
-        TransformationId transformationId = doStartTransformation();
-        CompletableFuture<Void> futureConfirmation = new CompletableFuture<>();
-        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId)
+    void testStartTransformation() throws ExecutionException, InterruptedException {
+        CompletableFuture<TransformationId> transformationIdCompletableFuture = new CompletableFuture<>();
+        ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
+        when(mockedService.start(idCaptor.capture(),
+                                 eq(CONTEXT),
+                                 eq("My Description"),
+                                 any())).thenReturn(Mono.empty());
+        testSubject.startTransformation(StartTransformationRequest.newBuilder()
+                                                                  .setDescription("My Description")
                                                                   .build(),
-                                        new CompletableFutureStreamObserver(futureConfirmation));
-        futureConfirmation.get(1, TimeUnit.SECONDS);
+                                        new CompletableFutureStreamObserver<>(transformationIdCompletableFuture));
+        Assertions.assertEquals(transformationIdCompletableFuture.get().getId(), idCaptor.getValue());
     }
 
     @Test
-    public void applyTransformationError() throws InterruptedException {
-        TransformationId transformationId = TransformationId.newBuilder().setId("unknown").build();
-        CompletableFuture<Void> futureConfirmation = new CompletableFuture<>();
-        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(transformationId)
-                                                                  .build(),
-                                        new CompletableFutureStreamObserver(futureConfirmation));
-        try {
-            futureConfirmation.get();
-            fail("Expected exception");
-        } catch (ExecutionException executionException) {
-            assertTrue(executionException.getCause() instanceof StatusRuntimeException);
-        }
+    void testDeleteEvent() {
+        when(mockedService.deleteEvent(eq(CONTEXT), eq("transformation-ID"), eq(100L), eq(5L), any()))
+                .thenReturn(Mono.empty());
+        CompletableFuture<TransformRequestAck> future = new CompletableFuture<>();
+        CompletableFutureStreamObserver<TransformRequestAck> response = new CompletableFutureStreamObserver<>(future);
+        StreamObserver<TransformRequest> streamObserver = testSubject.transformEvents(response);
+        streamObserver.onNext(TransformRequest.newBuilder()
+                                              .setTransformationId(TransformationId.newBuilder()
+                                                                                   .setId("transformation-ID"))
+                                              .setDeleteEvent(DeletedEvent.newBuilder()
+                                                                          .setToken(100L))
+                                              .setSequence(5L)
+                                              .build());
+        streamObserver.onCompleted();
+        //TODO test backpressure
     }
 
-    private static class CompletableFutureStreamObserver implements StreamObserver<Empty> {
+    @Test
+    void testReplaceEvent() {
+        when(mockedService.replaceEvent(eq(CONTEXT), eq("transformation-ID"),
+                                        eq(100L), eq(Event.getDefaultInstance()),
+                                        eq(5L), any()))
+                .thenReturn(Mono.empty());
+        CompletableFuture<TransformRequestAck> future = new CompletableFuture<>();
+        CompletableFutureStreamObserver<TransformRequestAck> response = new CompletableFutureStreamObserver<>(future);
+        StreamObserver<TransformRequest> streamObserver = testSubject.transformEvents(response);
+        streamObserver.onNext(TransformRequest.newBuilder()
+                                              .setTransformationId(TransformationId.newBuilder()
+                                                                                   .setId("transformation-ID"))
+                                              .setEvent(TransformedEvent.newBuilder()
+                                                                        .setEvent(Event.getDefaultInstance())
+                                                                        .setToken(100L))
+                                              .setSequence(5L)
+                                              .build());
+        streamObserver.onCompleted();
+    }
 
-        private final CompletableFuture<Void> futureTransactionId;
+    @Test
+    void testCancelTransformation() {
+        when(mockedService.cancel(eq(CONTEXT), eq("My-ID"), any())).thenReturn(Mono.empty());
+        CompletableFuture<Empty> future = new CompletableFuture<>();
+        testSubject.cancelTransformation(TransformationId.newBuilder().setId("My-ID").build(),
+                                         new CompletableFutureStreamObserver<>(future));
+    }
 
-        public CompletableFutureStreamObserver(CompletableFuture<Void> futureTransactionId) {
-            this.futureTransactionId = futureTransactionId;
+    @Test
+    void testApplyTransformation() {
+        when(mockedService.startApplying(eq(CONTEXT), eq("My-ID"), eq(8L), any())).thenReturn(Mono.empty());
+        CompletableFuture<Empty> future = new CompletableFuture<>();
+        testSubject.applyTransformation(ApplyTransformationRequest.newBuilder().setTransformationId(
+                                                                          TransformationId.newBuilder().setId("My-ID"))
+                                                                  .setLastSequence(8L)
+                                                                  .build(),
+                                        new CompletableFutureStreamObserver<>(future));
+    }
+
+    @Test
+    void testCompact() {
+        ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
+        when(mockedService.compact(idCaptor.capture(), eq(CONTEXT), any()))
+                .thenReturn(Mono.empty());
+        CompletableFuture<Empty> future = new CompletableFuture<>();
+        testSubject.compact(CompactionRequest.getDefaultInstance(),
+                            new CompletableFutureStreamObserver<>(future));
+    }
+
+    private static class CompletableFutureStreamObserver<T> extends CallStreamObserver<T> {
+
+        private final CompletableFuture<T> future;
+
+        public CompletableFutureStreamObserver(CompletableFuture<T> future) {
+            this.future = future;
         }
 
         @Override
-        public void onNext(Empty transformationId) {
-            // do nothing
+        public void onNext(T next) {
+            this.future.complete(next);
         }
 
         @Override
         public void onError(Throwable throwable) {
-            futureTransactionId.completeExceptionally(throwable);
+            future.completeExceptionally(throwable);
         }
 
         @Override
         public void onCompleted() {
-            futureTransactionId.complete(null);
-        }
-    }
-
-    private static class FlowControlledCompletableFutureStreamObserver extends CallStreamObserver<Empty> {
-
-        private final CompletableFuture<Void> futureTransactionId;
-
-        public FlowControlledCompletableFutureStreamObserver(CompletableFuture<Void> futureTransactionId) {
-            super();
-            this.futureTransactionId = futureTransactionId;
-        }
-
-        @Override
-        public void onNext(Empty transformationId) {
-            // do nothing
-        }
-
-        @Override
-        public void onError(Throwable throwable) {
-            futureTransactionId.completeExceptionally(throwable);
-        }
-
-        @Override
-        public void onCompleted() {
-            futureTransactionId.complete(null);
+            future.complete(null);
         }
 
         @Override
@@ -298,19 +159,23 @@ public class EventStoreTransformationGrpcControllerTest {
         }
 
         @Override
-        public void setOnReadyHandler(Runnable runnable) {
+        public void setOnReadyHandler(Runnable onReadyHandler) {
+
         }
 
         @Override
         public void disableAutoInboundFlowControl() {
+
         }
 
         @Override
-        public void request(int i) {
+        public void request(int count) {
+
         }
 
         @Override
-        public void setMessageCompression(boolean b) {
+        public void setMessageCompression(boolean enable) {
+
         }
     }
 }
