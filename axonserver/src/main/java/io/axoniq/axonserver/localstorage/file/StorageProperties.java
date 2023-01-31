@@ -27,6 +27,8 @@ public class StorageProperties implements Cloneable {
     private static final String PATH_FORMAT = "%s/%020d%s";
     private static final String TEMP_PATH_FORMAT = PATH_FORMAT + ".temp";
     private static final String PATH_WITH_VERSION_FORMAT = "%s/%020d_%05d%s";
+    private static final String FILE_WITH_VERSION_FORMAT = "%020d_%05d%s";
+    private static final String FILE_FORMAT = "%020d%s";
     private static final String TEMP_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + ".temp";
     private static final String TRANSFORMED_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + TRANSFORMED_SUFFIX;
     private static final String OLD_PATH_FORMAT = "%s/%014d%s";
@@ -298,15 +300,14 @@ public class StorageProperties implements Cloneable {
     }
 
     public String dataFile(long segment) {
-        return String.format("%020d%s", segment, eventsSuffix);
+        return String.format(FILE_FORMAT, segment, eventsSuffix);
     }
 
     public String dataFile(FileVersion segment) {
         if (segment.segmentVersion() == 0) {
             return dataFile(segment.segment());
         }
-        //todo fix me PATH_WITH_VERSION_FORMAT
-        return String.format(PATH_WITH_VERSION_FORMAT, segment.segment(), segment.segmentVersion(), eventsSuffix);
+        return String.format(FILE_WITH_VERSION_FORMAT, segment.segment(), segment.segmentVersion(), eventsSuffix);
     }
 
     public File dataFile(String storagePath, FileVersion fileVersion) {

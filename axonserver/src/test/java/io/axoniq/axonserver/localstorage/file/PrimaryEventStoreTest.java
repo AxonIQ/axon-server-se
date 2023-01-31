@@ -215,7 +215,7 @@ public class PrimaryEventStoreTest {
         }
         assertEquals(2, counter);
         assertEquals(2, testSubject.nextToken());
-        File file = new File(embeddedDBProperties.getEvent().getStorage(context));
+        File file = new File(embeddedDBProperties.getEvent().getPrimaryStorage(context));
         for (File f : file.listFiles()) {
             System.out.println(f.getAbsolutePath());
         }
