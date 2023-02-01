@@ -19,7 +19,7 @@ import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
+import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -81,18 +81,18 @@ public interface StorageTier {
         protected final Map<String, String> contextMetaData;
         protected final String retentionProperty;
 
-        protected final SortedSet<Long> segments;
+        protected final NavigableMap<Long, Integer> segments;
 
-        protected final Function<Long, File> dataFileResolver;
+        protected final Function<FileVersion, File> dataFileResolver;
 
         RetentionStrategy(String propertyName,
                           Map<String, String> contextMetaData,
-                          NavigableSet<Long> segments,
-                          Function<Long, File> dataFileResolver) {
+                          NavigableMap<Long, Integer> segments,
+                          Function<FileVersion, File> dataFileResolver) {
             this.retentionProperty = propertyName;
             this.contextMetaData = contextMetaData;
             this.segments = segments;
-            this.segmentIterator = segments.descendingIterator();
+            this.segmentIterator = segments.descendingKeySet().iterator();
             this.dataFileResolver = dataFileResolver;
 
         }
@@ -108,8 +108,8 @@ public interface StorageTier {
 
         public TimeBasedRetentionStrategy(String propertyName,
                                           Map<String, String> contextMetaData,
-                                          NavigableSet<Long> segments,
-                                          Function<Long, File> dataFileResolver) {
+                                          NavigableMap<Long, Integer> segments,
+                                          Function<FileVersion, File> dataFileResolver) {
             super(propertyName, contextMetaData, segments, dataFileResolver);
         }
 
@@ -120,12 +120,13 @@ public interface StorageTier {
                 long candidate = segmentIterator.next();
 
 
-                if (segments.first() == candidate) {
+                if (segments.firstKey() == candidate) {
                     return null;
                 }
 
 
-                if (dataFileResolver.apply(candidate).lastModified() < minTimestamp) {
+                Map.Entry<Long, Integer> firstEntry = segments.firstEntry();
+                if (dataFileResolver.apply(new FileVersion(firstEntry.getKey(), firstEntry.getValue())).lastModified() < minTimestamp) {
                     return candidate;
                 }
             }
@@ -148,17 +149,17 @@ public interface StorageTier {
 
         public SizeBasedRetentionStrategy(String propertyName,
                                           Map<String, String> contextMetaData,
-                                          NavigableSet<Long> segments,
-                                          Function<Long, File> dataFileResolver
+                                          NavigableMap<Long, Integer> segments,
+                                          Function<FileVersion, File> dataFileResolver
         ) {
             super(propertyName, contextMetaData, segments, dataFileResolver);
             this.currentTotalSize = getTotalSize(segments);
         }
 
         @Nonnull
-        private AtomicLong getTotalSize(NavigableSet<Long> segments) {
+        private AtomicLong getTotalSize(NavigableMap<Long, Integer> segments) {
             AtomicLong total = new AtomicLong();
-            segments.forEach(segment -> total.addAndGet(dataFileResolver.apply(segment).length()));
+            segments.forEach((segment, version) -> total.addAndGet(dataFileResolver.apply(new FileVersion(segment, version)).length()));
             return total;
         }
 
@@ -168,7 +169,7 @@ public interface StorageTier {
                 long totalSize = currentTotalSize.get();
                 if (totalSize >= retentionSizeInBytes) {
                     Long nextSegment = segmentIterator.next();
-                    currentTotalSize.addAndGet(-dataFileResolver.apply(nextSegment).length());
+                    currentTotalSize.addAndGet(-dataFileResolver.apply(new FileVersion(nextSegment, segments.get(nextSegment))).length());
                     return nextSegment;
                 }
             }
