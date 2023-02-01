@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- * under one or more contributor license agreements.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -338,7 +338,7 @@ public class StorageProperties implements Cloneable {
     }
 
     public String getPrimaryStorage(String context) {
-        return String.format("%s/%s", storages.get("primary"), context);
+        return String.format("%s/%s", storages.getOrDefault("primary", "data"), context);
     }
 
     public String getStorage(String storageName) {

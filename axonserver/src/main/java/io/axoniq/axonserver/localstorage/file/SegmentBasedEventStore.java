@@ -338,9 +338,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     private Flux<FileVersion> fileVersions(String suffix) {
-        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePropertiesSupplier.get()
-                                                                                             .getStorage(context)),
-                                                           suffix))
+        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePath), suffix))
                    .map(FileUtils::process);
     }
 
@@ -351,7 +349,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
         return Mono.fromSupplier(() -> dataFile(fileVersion))
                    .filter(dataFile -> !dataFile.exists())
                    .flatMap(dataFile -> Mono.fromSupplier(() -> transformedDataFile(fileVersion))
