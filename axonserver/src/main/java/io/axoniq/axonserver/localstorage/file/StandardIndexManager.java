@@ -311,9 +311,9 @@ public class StandardIndexManager implements IndexManager {
     @Override
     public Mono<Void> activateVersion(long segment, int segmentVersion) {
         FileVersion fileVersion = new FileVersion(segment, segmentVersion);
-        return Mono.fromSupplier(() -> storageProperties.get().index(context, fileVersion))
+        return Mono.fromSupplier(() -> storageProperties.get().index(storagePath, fileVersion))
                    .filter(indexFile -> !indexFile.exists())
-                   .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.get().transformedIndex(context,
+                   .flatMap(indexFile -> Mono.fromSupplier(() -> storageProperties.get().transformedIndex(storagePath,
                                                                                                           fileVersion))
                                              .filter(File::exists)
                                              .switchIfEmpty(Mono.error(new RuntimeException())) //TODO custom exception
@@ -328,7 +328,7 @@ public class StandardIndexManager implements IndexManager {
         if (indexEntriesMap == null) {
             indexEntriesMap = Collections.emptyMap();
         }
-        File tempFile = storageProperties.get().transformedIndex(context, newVersion);
+        File tempFile = storageProperties.get().transformedIndex(storagePath, newVersion);
         if (!FileUtils.delete(tempFile)) {
             throw new MessagingPlatformException(ErrorCode.INDEX_WRITE_ERROR,
                                                  "Failed to delete temp index file:" + tempFile);
@@ -357,7 +357,8 @@ public class StandardIndexManager implements IndexManager {
             });
         }
         db.close();
-        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.get().bloomFilter(context, newVersion)
+        PersistedBloomFilter filter = new PersistedBloomFilter(storageProperties.get()
+                                                                                .bloomFilter(storagePath, newVersion)
                                                                                 .getAbsolutePath(),
                                                                indexEntriesMap.keySet().size(),
                                                                storageProperties.get().getBloomIndexFpp());
@@ -582,8 +583,8 @@ public class StandardIndexManager implements IndexManager {
             index.close();
         }
         bloomFilterPerSegment.remove(fileVersion);
-        return FileUtils.delete(storageProperties.get().index(context, fileVersion)) &&
-                FileUtils.delete(storageProperties.get().bloomFilter(context, fileVersion));
+        return FileUtils.delete(storageProperties.get().index(storagePath, fileVersion)) &&
+                FileUtils.delete(storageProperties.get().bloomFilter(storagePath, fileVersion));
     }
 
 

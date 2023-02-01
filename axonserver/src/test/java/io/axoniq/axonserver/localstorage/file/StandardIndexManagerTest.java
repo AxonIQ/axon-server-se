@@ -169,7 +169,7 @@ public class StandardIndexManagerTest {
         indexManager.addToActiveSegment(segment, aggregateId, positionInfo);
         indexManager.complete(segment);
 
-        assertFalse(storageProperties.transformedIndex(context, segment).exists());
+        assertFalse(storageProperties.transformedIndex(storageProperties.getPrimaryStorage(context), segment).exists());
     }
 
     @Test(expected = MessagingPlatformException.class)

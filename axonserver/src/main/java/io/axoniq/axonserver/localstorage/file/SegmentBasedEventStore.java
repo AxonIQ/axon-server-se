@@ -611,7 +611,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         return getSegments().stream()
                             .filter(segment -> segment <= token)
                             .findFirst()
-                            .orElse(next.get() == null ? -1 : next.get().getSegmentFor(token));
+                            .orElseGet(() -> invokeOnNext(n -> n.getSegmentFor(token), -1L));
     }
 
     @Override
@@ -669,15 +669,13 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
             eventSource.close();
         } else {
-            if (next.get() != null) {
-                processed = next.get().retrieveEventsForAnAggregate(segment,
-                                                                    indexEntries,
-                                                                    minSequenceNumber,
-                                                                    maxSequenceNumber,
-                                                                    onEvent,
-                                                                    maxResults,
-                                                                    minToken);
-            }
+            processed = invokeOnNext(n -> n.retrieveEventsForAnAggregate(segment,
+                                                                         indexEntries,
+                                                                         minSequenceNumber,
+                                                                         maxSequenceNumber,
+                                                                         onEvent,
+                                                                         maxResults,
+                                                                         minToken), 0);
         }
 
         return processed;
@@ -690,18 +688,21 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                       || currentSegmentVersion(s)
                                                                       > lastVersionBackedUp))
                                                               .map(s -> dataFile(new FileVersion(s,
-                                                                                                                   currentSegmentVersion(
-                                                                                                                           s)))
-                                                                                         .getAbsolutePath()),
+                                                                                                 currentSegmentVersion(
+                                                                                                         s)))
+                                                                      .getAbsolutePath()),
                                                  indexManager.getBackupFilenames(lastSegmentBackedUp,
                                                                                  lastVersionBackedUp));
 
-        if (next.get() == null) {
+        StorageTier nextStorageTier = next.get();
+        if (nextStorageTier == null) {
             return filenames;
         }
 
         return Stream.concat(filenames,
-                             next.get().getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, includeActive));
+                             nextStorageTier.getBackupFilenames(lastSegmentBackedUp,
+                                                                lastVersionBackedUp,
+                                                                includeActive));
     }
 
     protected void renameFileIfNecessary(long segment) {
@@ -771,10 +772,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         if (eventSource.isPresent()) {
             return eventSource;
         }
-        if (next.get() == null) {
-            return Optional.empty();
-        }
-        return next.get().eventSource(segment);
+        return invokeOnNext(nextStorageTier -> nextStorageTier.eventSource(segment), Optional.empty());
     }
 
     /**
