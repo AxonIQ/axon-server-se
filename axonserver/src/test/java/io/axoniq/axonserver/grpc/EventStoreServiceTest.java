@@ -1,3 +1,12 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.AxonServerAccessController;
@@ -55,10 +64,6 @@ public class EventStoreServiceTest {
 
     private AxonServerAccessController accessController() {
         return new AxonServerAccessController() {
-            @Override
-            public boolean allowed(String fullMethodName, String context, String token) {
-                return false;
-            }
 
             @Override
             public boolean allowed(String fullMethodName, String context, Authentication authentication) {
@@ -66,7 +71,7 @@ public class EventStoreServiceTest {
             }
 
             @Override
-            public Authentication authentication(String context, String token) {
+            public Authentication authentication(String token) {
                 return null;
             }
         };
