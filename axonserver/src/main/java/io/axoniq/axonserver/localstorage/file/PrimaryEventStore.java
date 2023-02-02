@@ -328,6 +328,9 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     @Override
     public Integer currentSegmentVersion(Long segment) {
+        if (readBuffers.containsKey(segment)) {
+            return 0;
+        }
         return invokeOnNext(n -> n.currentSegmentVersion(segment), 0);
     }
 

@@ -35,7 +35,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -729,7 +728,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     protected File dataFile(FileVersion segment) {
-        return Paths.get(storagePath, storagePropertiesSupplier.get().dataFile(segment)).toFile();
+        return storagePropertiesSupplier.get().dataFile(storagePath, segment);
     }
 
     protected File transformedDataFile(FileVersion segment) {

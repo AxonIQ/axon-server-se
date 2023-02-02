@@ -83,7 +83,7 @@ public class WritableSegment extends AbstractSegment {
     }
 
     public CompletableFuture<Long> write(List<FileStoreEntry> entries) {
-        if (entries.size() == 0) {
+        if (entries.isEmpty()) {
             throw new FileStoreException(FileStoreErrorCode.VALIDATION_FAILED, "Provide at least one entry");
         }
         long size = 0;
@@ -120,7 +120,7 @@ public class WritableSegment extends AbstractSegment {
     protected Optional<CloseableIterator<FileStoreEntry>> createIterator(long segment, long startIndex) {
         ByteBufferEntrySource buffer = writeBuffers.get(segment);
         if( buffer == null) {
-            return Optional.empty();
+            return next.createIterator(segment, startIndex);
         }
         return Optional.of(new ReaderEventIterator(storageProperties.dataFile(segment), segment, startIndex));
     }

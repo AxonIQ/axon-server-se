@@ -75,7 +75,7 @@ public class MultiSegmentIterator implements CloseableIterator<FileStoreEntry> {
             return;
         }
 
-        close();
+        iterator.close();
         iterator = iteratorProvider.apply(nextIndex.get());
     }
 }
