@@ -213,7 +213,7 @@ public class TransformationIntegrationTest {
         transformationServiceStub.applyTransformation(
                 ApplyTransformationRequest.newBuilder()
                                           .setTransformationId(transformationId)
-                                          .setLastSequence(count)
+                                          .setLastSequence(count - 1)
                                           .build(), new CompletableFutureStreamObserver<>(applied));
         applied.get();
     }

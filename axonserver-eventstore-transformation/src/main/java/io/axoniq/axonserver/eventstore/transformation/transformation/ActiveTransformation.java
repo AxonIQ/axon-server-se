@@ -53,7 +53,7 @@ public class ActiveTransformation implements Transformation {
                            "Cannot apply an empty transformation")))
                    .map(lastSequence -> lastSequence == sequence)
                    .filter(valid -> valid)
-                   .switchIfEmpty(Mono.error(new WrongTransformationStateException("Invalid sequence")))
+                   .switchIfEmpty(Mono.error(new WrongTransformationStateException("Invalid sequence " + sequence))) // TODO: 2/2/23 add expected sequence
                    .map(notUsed -> state.applying(applier));
     }
 

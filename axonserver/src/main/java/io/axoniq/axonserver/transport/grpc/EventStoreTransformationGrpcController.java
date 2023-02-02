@@ -30,8 +30,9 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 
-import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -75,7 +76,8 @@ public class EventStoreTransformationGrpcController
                                               request.getDescription(),
                                               new GrpcAuthentication(authenticationProvider))
                                        .doOnSuccess(v -> logger.info("Transformation Created with id {}", uuid))
-                                       .subscribe(v -> {},
+                                       .subscribe(v -> {
+                                                  },
                                                   throwable -> responseObserver.onError(GrpcExceptionBuilder.build(
                                                           throwable)),
                                                   () -> {
@@ -102,48 +104,59 @@ public class EventStoreTransformationGrpcController
             final AtomicInteger pendingRequests = new AtomicInteger();
             final AtomicBoolean sendConfirmation = new AtomicBoolean();
 
-            @Override
-            public void onNext(TransformRequest request) {
-                switch (request.getRequestCase()) {
-                    case EVENT:
-                        pendingRequests.incrementAndGet();
-                        eventStoreTransformationService.replaceEvent(context,
-                                                                     transformationId(request),
-                                                                     request.getEvent().getToken(),
-                                                                     request.getEvent().getEvent(),
-                                                                     request.getSequence(),
-                                                                     new GrpcAuthentication(authenticationProvider))
-                                                       .subscribe(r -> {
-                                                                  },
-                                                                  this::forwardError,
-                                                                  () -> {
-                                                                      responseObserver.onNext(ack(request.getSequence()));
-                                                                      handleRequestProcessed();
-                                                                  });
-                        break;
-                    case DELETE_EVENT:
-                        pendingRequests.incrementAndGet();
-                        eventStoreTransformationService.deleteEvent(context,
-                                                                    transformationId(request),
-                                                                    request.getDeleteEvent().getToken(),
-                                                                    request.getSequence(),
-                                                                    new GrpcAuthentication(authenticationProvider))
-                                                       .timeout(Duration.ofMinutes(1))
-                                                       .subscribe(r -> {
-                                                                  },
-                                                                  this::forwardError,
-                                                                  () -> {
-                                                                      responseObserver.onNext(ack(request.getSequence()));
-                                                                      handleRequestProcessed();
-                                                                  });
-                        break;
-                    case REQUEST_NOT_SET:
-                        break;
+            final Sinks.Many<TransformRequest> receiverFlux = Sinks.many()
+                                                                   .unicast()
+                                                                   .onBackpressureBuffer();
+
+            {
+                {
+                    receiverFlux.asFlux()
+                                .concatMap(request -> {
+                                    switch (request.getRequestCase()) {
+                                        case EVENT:
+                                            return eventStoreTransformationService.replaceEvent(context,
+                                                                                                transformationId(request),
+                                                                                                request.getEvent()
+                                                                                                       .getToken(),
+                                                                                                request.getEvent()
+                                                                                                       .getEvent(),
+                                                                                                request.getSequence(),
+                                                                                                new GrpcAuthentication(
+                                                                                                        authenticationProvider))
+                                                                                  .thenReturn(request);
+                                        case DELETE_EVENT:
+                                            return eventStoreTransformationService.deleteEvent(context,
+                                                                                               transformationId(request),
+                                                                                               request.getDeleteEvent()
+                                                                                                      .getToken(),
+                                                                                               request.getSequence(),
+                                                                                               new GrpcAuthentication(
+                                                                                                       authenticationProvider))
+                                                                                  .thenReturn(request);
+                                        default:
+                                            return Mono.error(new IllegalArgumentException());
+                                    }
+                                }).subscribe(r -> {
+                                                 responseObserver.onNext(ack(r.getSequence()));
+                                                 handleRequestProcessed(r.getSequence());
+                                             },
+                                             this::forwardError);
                 }
             }
 
-            private void handleRequestProcessed() {
+            @Override
+            public void onNext(TransformRequest request) {
+                logger.trace("Received transform request with sequence {}.", request.getSequence());
+                Sinks.EmitResult emitResult = receiverFlux.tryEmitNext(request);
+                if (emitResult.isSuccess()) {
+                    pendingRequests.incrementAndGet();
+                }
+            }
+
+            private void handleRequestProcessed(long sequence) {
                 pendingRequests.decrementAndGet();
+                logger.trace("Handled transform request with sequence {}. Still {} requests pending. ",
+                             sequence, pendingRequests.get());
                 checkRequestsDone();
                 serverCallStreamObserver.request(1);
             }
@@ -154,18 +167,21 @@ public class EventStoreTransformationGrpcController
 
             @Override
             public void onError(Throwable throwable) {
-                throwable.printStackTrace();
+                receiverFlux.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
+                logger.warn("There was an error on the receiving transformation requests stream.", throwable);
             }
 
             @Override
             public void onCompleted() {
                 sendConfirmation.set(true);
+                receiverFlux.emitComplete(Sinks.EmitFailureHandler.FAIL_FAST);
                 checkRequestsDone();
             }
 
             private void checkRequestsDone() {
                 if (pendingRequests.get() == 0 && sendConfirmation.compareAndSet(true, false)) {
                     try {
+                        logger.trace("Completing transformation client stream.");
                         responseObserver.onCompleted();
                     } catch (Exception ex) {
                         // unable to send confirmation
