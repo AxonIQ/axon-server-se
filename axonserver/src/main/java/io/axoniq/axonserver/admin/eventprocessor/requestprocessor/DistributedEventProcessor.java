@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 
 /**
@@ -80,6 +81,12 @@ public class DistributedEventProcessor implements EventProcessor {
     private boolean isStreamingProcessor(EventProcessorInfo eventProcessorInfo) {
         return eventProcessorInfo.getIsStreamingProcessor()
                 || TRACKING_EVENT_PROCESSOR_MODE.equals(eventProcessorInfo.getMode());
+    }
+
+    @Nullable
+    @Override
+    public String loadBalancingStrategyName() {
+        return null;
     }
 
     private static class ClientInstance implements EventProcessorInstance {
