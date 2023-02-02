@@ -39,7 +39,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
         this.eventTransformerFactory = eventTransformerFactory;
     }
 
-    //add FileVersion to the Segment
     @Override
     public void handover(Segment segment, Runnable callback) {
         segments.put(segment.id().segment(), segment.id().segmentVersion());
@@ -81,21 +80,11 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
         }
     }
 
-    //todo fix me
     @Override
     public boolean removeSegment(long segment, int segmentVersion) {
         return indexManager.remove(new FileVersion(segment, segmentVersion)) &&
                 FileUtils.delete(dataFile(new FileVersion(segment, segmentVersion)));
     }
-
-    //todo check if we should keep it
-//        private void removeSegment(long segment) {
-//            if (segments.remove(segment) && (!FileUtils.delete(dataFile(segment)) ||
-//                    !indexManager.remove(segment))) {
-//                throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
-//                        "Failed to rollback " + getType().getEventType()
-//                                + ", could not remove segment: " + segment);
-//            }
 
     @Override
     public Integer currentSegmentVersion(Long segment) {
