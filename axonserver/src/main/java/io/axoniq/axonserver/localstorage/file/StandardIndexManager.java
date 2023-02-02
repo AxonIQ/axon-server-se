@@ -691,8 +691,8 @@ public class StandardIndexManager implements IndexManager {
                                 .stream()
                                 .filter(s -> s.getKey() > lastSegmentBackedUp || s.getValue() > lastVersionBackedUp)
                                 .flatMap(s -> Stream.of(
-                                        properties.index(context, s.getKey()).getAbsolutePath(),
-                                        properties.bloomFilter(context, s.getKey()).getAbsolutePath()
+                                        properties.index(storagePath, s.getKey()).getAbsolutePath(),
+                                        properties.bloomFilter(storagePath, s.getKey()).getAbsolutePath()
                                 ));
     }
 
