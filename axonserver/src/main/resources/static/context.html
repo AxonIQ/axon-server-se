@@ -506,7 +506,7 @@
                 let storageArray = [];
                 let i = 0;
                 do {
-                    let suffix = (i === 0) ? '' : '.' + i;
+                    let suffix = (i === 0) ? '' : '.' + i + '.primary';
 
                     let tier = contextMeta[lTier.concat(suffix)];
                     let storage = contextMeta[lStorage.concat(suffix)];
