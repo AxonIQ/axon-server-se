@@ -315,7 +315,7 @@
             onTierSelect(e,tier,index,storage) {
                 let selectedTier = e.target.options[e.target.options.selectedIndex]._value;
                 let store = (storage === 'event') ? this.chosenEventTiers[this.selectedTierNodeRole] : this.chosenSnapshotTiers[this.selectedTierNodeRole];
-                store[index] = selectedTier;
+                store[index] = {...selectedTier};
                 this.$forceUpdate();
                 if (selectedTier.id === 'black_hole') {
                     this.$modal.show('black_hole');
