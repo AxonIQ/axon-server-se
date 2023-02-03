@@ -109,6 +109,11 @@
                     };
                 }
 
+                this.resetMultiTierConf();
+
+                this.$forceUpdate();
+            },
+            resetMultiTierConf() {
                 Object.keys(this.chosenEventTiers).forEach(nodeRole => {
                     this.chosenEventTiers[nodeRole] = [];
                     this.chosenSnapshotTiers[nodeRole] = [];
@@ -121,8 +126,6 @@
                         this.chosenSnapshotTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
                     });
                 }
-
-                this.$forceUpdate();
             },
             loadContexts() {
                 axios.get("v1/public/context").then(response => {
@@ -186,6 +189,7 @@
                     this.currentContext.metaData).then(response => {
                     this.showAdd = true;
                     this.showUpdate = false;
+                    this.resetMultiTierConf();
                     this.loadContexts();
                 });
             },
@@ -264,18 +268,7 @@
                 this.showUpdate = false;
                 this.showAdd = true;
 
-                Object.keys(this.chosenEventTiers).forEach(nodeRole => {
-                    this.chosenEventTiers[nodeRole] = [];
-                    this.chosenSnapshotTiers[nodeRole] = [];
-                });
-
-
-                if (this.availableTiers[0] !== undefined) {
-                    Object.keys(this.chosenEventTiers).forEach(nodeRole => {
-                        this.chosenEventTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
-                        this.chosenSnapshotTiers[nodeRole].push(structuredClone(this.availableTiers[0]));
-                    });
-                }
+                this.resetMultiTierConf();
             },
             addMetaDataToCurrent() {
                 if (!this.currentContext.metaDataLabel || !this.currentContext.metaDataValue) {
@@ -394,7 +387,7 @@
                                 retentionTime = 'P' + tier.retentionAmount + 'D';
                                 break;
                             case 'MB':
-                                retentionSize = tier.retentionAmount * 1000000;
+                                retentionSize = tier.retentionAmount * 1048576;
                                 break;
                             case 'GB':
                                 retentionSize = tier.retentionAmount * 1073741824;
@@ -416,12 +409,15 @@
                             alert("You must define valid storage storage!");
                             throw 'You must define valid storage storage!!';
                         }
+                        console.log("test");
 
                         if (retentionTime !== 0) {
                             metaData[prefix.concat(lRetentionTime.concat(suffixLevel).concat(suffixNodeRole))] = retentionTime;
+                            delete metaData[prefix.concat(lRetentionSize.concat(suffixLevel).concat(suffixNodeRole))];
                         }
                         if (retentionSize !== 0) {
                             metaData[prefix.concat(lRetentionSize.concat(suffixLevel).concat(suffixNodeRole))] = retentionSize;
+                            delete metaData[prefix.concat(lRetentionTime.concat(suffixLevel).concat(suffixNodeRole))];
                         }
                         if (tier.id !== "default" && retentionSize ===0 && retentionTime === 0) {
                             alert("Define either retention size or retention time!");
@@ -879,10 +875,10 @@
                               </select>
                            </td>
                            <td>
-                              <input v-model="chosenEventTiers[selectedTierNodeRole][index].retentionAmount" v-if="showAfterSelect(index)" :disabled="chosenEventTiers[selectedTierNodeRole][index].readOnly" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="chosenEventTiers[selectedTierNodeRole][index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenEventTiers[selectedTierNodeRole][index].retentionType" :disabled="chosenEventTiers[selectedTierNodeRole][index].readOnly"   v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="chosenEventTiers[selectedTierNodeRole][index].retentionType" v-if="showAfterSelect(index)" class="tierName">
                                  <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
@@ -913,10 +909,10 @@
                               </select>
                            </td>
                            <td>
-                              <input v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionAmount" :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
+                              <input v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionAmount" v-if="showAfterSelect(index)" class="tierName" data-lpignore="true" placeholder="after">
                            </td>
                            <td>
-                              <select v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionType" :disabled="chosenSnapshotTiers[selectedTierNodeRole][index].readOnly" v-if="showAfterSelect(index)" class="tierName">
+                              <select v-model="chosenSnapshotTiers[selectedTierNodeRole][index].retentionType" v-if="showAfterSelect(index)" class="tierName">
                                  <option :value="undefined" disabled hidden selected>Select retention strategy</option>
                                  <option value="minutes">MINUTES (time based)</option>
                                  <option value="hours">HOURS (time based)</option>
