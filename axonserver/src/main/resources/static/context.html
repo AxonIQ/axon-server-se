@@ -419,10 +419,6 @@
                             metaData[prefix.concat(lRetentionSize.concat(suffixLevel).concat(suffixNodeRole))] = retentionSize;
                             delete metaData[prefix.concat(lRetentionTime.concat(suffixLevel).concat(suffixNodeRole))];
                         }
-                        if (tier.id !== "default" && retentionSize ===0 && retentionTime === 0) {
-                            alert("Define either retention size or retention time!");
-                            throw 'Define either retention size or retention time!';
-                        }
                     });
             },
             isEphemeral(context) {
