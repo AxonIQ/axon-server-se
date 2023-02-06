@@ -721,7 +721,7 @@
                 </span>
                 </li>
                <li>
-                  <span class="narrow">Event storage</span>
+                  <span class="narrow" style="cursor: pointer" @click="$modal.show('about-multitier')">Event storage  <i class="fas fa-question-circle"></i> </span>
                   <span class="tier-holder">
                      <table class="nestedTable">
                         <tr v-for="(tier, index) in chosenEventTiers[selectedTierNodeRole]" :value="tier">
@@ -755,7 +755,7 @@
                   </span>
                </li>
                <li>
-                  <span class="narrow">Snapshot storage</span>
+                  <span class="narrow" style="cursor: pointer" @click="$modal.show('about-multitier')">Snapshot storage <i class="fas fa-question-circle"></i></span>
                   <span class="tier-holder">
                      <table class="nestedTable">
                         <tr v-for="(tier, index) in chosenSnapshotTiers[selectedTierNodeRole]" :value="tier">
@@ -958,6 +958,17 @@
                </li>
             </ul>
          </form>
+      </div>
+   </modal>
+
+       <modal height="500" name="about-multitier" width="800">
+      <div class="column configuration modal">
+<h2>Important Information on Multi-tier Storage Configuration</h2>
+<p>Multi-tier storage is a useful tool that allows you to store data across different levels of storage media based on access speed and cost. This helps optimize performance and reduce overall storage costs by placing frequently accessed data on faster storage media, such as SSDs, and less frequently accessed data on slower but more cost-effective storage media, such as HDDs.</p>
+          <p><b>Please note that once you have added a storage tier, it cannot be removed. </b> Therefore, it is important to carefully consider your storage requirements and configure the tiers appropriately. <b>
+              A misconfigured storage tier can result in performance degradation and decreased efficiency, so be sure to select the appropriate retention strategy for each tier to ensure optimal performance and data accessibility.</b></p>
+<p>For example, you can move events to a slower storage tier once they have been snapshot and the snapshot is available on the faster tier.</p>
+      <button class="button" @click.prevent="hideModal('about-multitier')">I understand</button>
       </div>
    </modal>
 
