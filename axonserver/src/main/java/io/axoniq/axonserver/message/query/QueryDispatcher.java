@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -101,8 +101,7 @@ public class QueryDispatcher {
                                                          clientStream.getContext(),
                                                          responseTime);
             if (activeQuery.forward(queryResponse, clientStreamId) && activeQuery.isStreaming()) {
-                activeQuery.removeHandlersNotMatching(clientStreamId)
-                           .forEach(h -> dispatchCancellation(h, activeQuery.getKey(), activeQuery.queryName()));
+                activeQuery.cancelOtherHandlersBut(clientStreamId);
             }
         } else {
             logger.debug("No (more) information for {}", queryResponse.getRequestIdentifier());
@@ -146,19 +145,6 @@ public class QueryDispatcher {
         }
     }
 
-    /**
-     * Removes the query from the cache and completes it with a {@link ErrorCode#COMMAND_TIMEOUT} error.
-     *
-     * @param client    the client where the query should be handled
-     * @param messageId the request id for the query
-     */
-    public void removeFromCache(String client, String messageId) {
-        ActiveQuery query = queryCache.remove(messageId);
-        if (query != null) {
-            query.completeWithError(client, ErrorCode.QUERY_TIMEOUT, "Query cancelled due to timeout");
-        }
-    }
-
     public FlowControlQueues<QueryInstruction> getQueryQueue() {
         return queryQueue;
     }
@@ -171,11 +157,35 @@ public class QueryDispatcher {
     public void cancel(String requestId) {
         ActiveQuery activeQuery = queryCache.get(requestId);
         if (activeQuery != null) {
-            activeQuery.handlers()
-                       .forEach(h -> dispatchCancellation(h,
-                                                          activeQuery.getKey(),
-                                                          activeQuery.queryName()));
+            activeQuery.cancel();
             queryCache.remove(requestId);
+        }
+    }
+
+    /**
+     * Completes the communication with one specific target client id.
+     * If there are no others query handlers remaining, then remove the query from the cache.
+     *
+     * @param requestId            the message identifier of the query
+     * @param targetClientStreamId the clientStreamId for the query long living call for the specific query handler that
+     *                             need be completed
+     * @param errorCode            the error code
+     * @param errorMessage         the error message
+     */
+    public void completeWithError(String requestId, String targetClientStreamId, ErrorCode errorCode,
+                                  String errorMessage) {
+        logger.debug(
+                "Completing with error the communication with a specific handler [clientStreamId={}], for the query [id={}]. Error code: {}. ErrorMessage: {}.",
+                targetClientStreamId,
+                requestId,
+                errorCode.getCode(),
+                errorMessage);
+        ActiveQuery information = queryCache.get(requestId);
+        if (information != null) {
+            boolean noHandler = information.completeWithError(targetClientStreamId, errorCode, errorMessage);
+            if (noHandler) {
+                queryCache.remove(requestId);
+            }
         }
     }
 
@@ -207,9 +217,6 @@ public class QueryDispatcher {
 
             QueryRequest query = serializedQuery2.query();
 
-            long timeout =
-                    System.currentTimeMillis() + ProcessingInstructionHelper
-                            .timeout(query.getProcessingInstructionsList());
             Set<QueryHandler<?>> handlers = registrationCache.find(serializedQuery.context(), query);
             if (handlers.isEmpty()) {
                 interceptedCallback.accept(QueryResponse.newBuilder()
@@ -222,9 +229,8 @@ public class QueryDispatcher {
                                                         .build());
                 onCompleted.accept("NoClient");
             } else {
-                QueryDefinition queryDefinition = new QueryDefinition(serializedQuery.context(), query.getQuery());
                 ActiveQuery activeQuery = new ActiveQuery(query.getMessageIdentifier(),
-                                                          query.getClientId(), queryDefinition,
+                                                          serializedQuery2,
                                                           interceptedCallback,
                                                           onCompleted,
                                                           handlers, isStreamingQuery(query));
@@ -237,9 +243,8 @@ public class QueryDispatcher {
                                                                           .build("Query with supplied ID already present"))
                                                  .build());
                     onCompleted.accept("DuplicateId");
-                }
-                else{
-                    handlers.forEach(h -> dispatchQuery(h, serializedQuery2, timeout));
+                } else {
+                    dispatch(query.getMessageIdentifier(), activeQuery);
                 }
             }
         } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
@@ -286,6 +291,18 @@ public class QueryDispatcher {
         }
     }
 
+    private void dispatch(String cacheKey, ActiveQuery activeQuery) {
+        try {
+            logger.trace("Dispatching query {}...", activeQuery.getKey());
+            activeQuery.dispatchQuery(queryQueue);
+        } catch (MessagingPlatformException exception) {
+            logger.debug("Error during dispatching of query {}. Cancelling with error.",
+                         activeQuery.getKey(), exception);
+            activeQuery.cancelWithError(exception.getErrorCode(), exception.getMessage());
+            queryCache.remove(cacheKey);
+        }
+    }
+
     private void intercept(DefaultExecutionContext executionContext, QueryResponse response,
                            Consumer<QueryResponse> callback) {
         try {
@@ -313,16 +330,10 @@ public class QueryDispatcher {
      * Cancels the query initiated via other node.
      *
      * @param requestId      the query identifier
-     * @param queryName      the query name
-     * @param context        the context
      * @param clientStreamId the client stream identifier
      */
-    public void cancelProxied(String requestId, String queryName, String context, String clientStreamId) {
-        dispatchProxied(context, queryName, clientStreamId,
-                        handler -> {
-                            dispatchCancellation(handler, requestId, queryName);
-                            queryCache.remove(proxiedQueryKey(requestId, clientStreamId));
-                        });
+    public void cancelProxied(String requestId, String clientStreamId) {
+        cancel(proxiedQueryKey(requestId, clientStreamId));
     }
 
     private String proxiedQueryKey(String requestId, String clientStreamId) {
@@ -368,16 +379,14 @@ public class QueryDispatcher {
     /**
      * Dispatches the query. The request is initiated via other node.
      *
-     * @param serializedQuery the serialized query
-     * @param callback        the callback to be invoked for each query result when they are ready
-     * @param onCompleted     the callback to be invoked when the query is completed
-     * @param streaming       indicates whether results of this query are going to be streamed or not
+     * @param serializedQuery         the serialized query
+     * @param callback                the callback to be invoked for each query result when they are ready
+     * @param onCompleted             the callback to be invoked when the query is completed
+     * @param serverSupportsStreaming indicates whether results of this query are going to be streamed or not
      */
     public void dispatchProxied(SerializedQuery serializedQuery, Consumer<QueryResponse> callback,
-                                Consumer<String> onCompleted, boolean streaming) {
+                                Consumer<String> onCompleted, boolean serverSupportsStreaming) {
         QueryRequest query = serializedQuery.query();
-        long timeout =
-                System.currentTimeMillis() + ProcessingInstructionHelper.timeout(query.getProcessingInstructionsList());
         String context = serializedQuery.context();
         String clientId = serializedQuery.clientStreamId();
         QueryHandler<?> queryHandler = registrationCache.find(context, query, clientId);
@@ -393,15 +402,13 @@ public class QueryDispatcher {
                                          .build());
             onCompleted.accept(clientId);
         } else {
-            QueryDefinition queryDefinition = new QueryDefinition(context, query.getQuery());
             String key = proxiedQueryKey(query.getMessageIdentifier(), serializedQuery.clientStreamId());
             ActiveQuery activeQuery = new ActiveQuery(key,
-                                                      serializedQuery.query().getClientId(),
-                                                      queryDefinition,
+                                                      serializedQuery,
                                                       callback,
                                                       onCompleted,
                                                       singleton(queryHandler),
-                                                      isStreamingQuery(query));
+                                                      serverSupportsStreaming && isStreamingQuery(query));
             try {
                 if(queryCache.putIfAbsent(key, activeQuery)!=null){
                     callback.accept(QueryResponse.newBuilder()
@@ -414,10 +421,10 @@ public class QueryDispatcher {
                     onCompleted.accept("DuplicateId");
                 }
                 else{
-                    dispatchQuery(queryHandler, serializedQuery, timeout, streaming);
+                    dispatch(key,activeQuery);
                 }
             } catch (InsufficientBufferCapacityException insufficientBufferCapacityException) {
-                activeQuery.completeWithError(queryHandler.getClientId(),
+                activeQuery.completeWithError(queryHandler.getClientStreamId(),
                                               ErrorCode.QUERY_DISPATCH_ERROR,
                                               insufficientBufferCapacityException.getMessage());
             }
@@ -428,36 +435,18 @@ public class QueryDispatcher {
         return ProcessingInstructionHelper.clientSupportsQueryStreaming(query.getProcessingInstructionsList());
     }
 
-    private void dispatchQuery(QueryHandler<?> queryHandler, SerializedQuery query, long timeout) {
-        dispatchQuery(queryHandler, query, timeout, true);
-    }
-
-    private void dispatchQuery(QueryHandler<?> queryHandler, SerializedQuery query, long timeout, boolean streaming) {
-        dispatch(query.getMessageIdentifier(),
-                 queryHandler.getClientId(),
-                 () -> queryHandler.enqueueQuery(query, queryQueue, timeout, streaming));
-    }
-
-    private void dispatchCancellation(QueryHandler<?> queryHandler, String requestId, String queryName) {
-        dispatch(requestId,
-                 queryHandler.getClientId(),
-                 () -> queryHandler.enqueueCancellation(requestId, queryName, queryQueue));
-    }
-
     private void dispatchFlowControl(QueryHandler<?> queryHandler, String requestId, String queryName, long permits) {
         dispatch(requestId,
-                 queryHandler.getClientId(),
+                 queryHandler.getClientStreamId(),
                  () -> queryHandler.enqueueFlowControl(requestId, queryName, permits, queryQueue));
     }
 
-    private void dispatch(String requestId, String clientId, Runnable action) {
+    private void dispatch(String requestId, String targetClientStreamId, Runnable action) {
         try {
             action.run();
         } catch (MessagingPlatformException mpe) {
-            ActiveQuery information = queryCache.remove(requestId);
-            if (information != null) {
-                information.completeWithError(clientId, mpe.getErrorCode(), mpe.getMessage());
-            }
+            logger.debug("Error dispatching flow query instruction to target client {}", targetClientStreamId);
+            completeWithError(requestId, targetClientStreamId, mpe.getErrorCode(), mpe.getMessage());
         }
     }
 }

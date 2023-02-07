@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -74,19 +74,21 @@ public class FlowControlQueues<T> {
         put(filterValue, value, 0);
     }
 
-    public void put(String filterValue, T value, long priority) {
+    public Cancellable put(String filterValue, T value, long priority) {
         if (value == null) {
             throw new NullPointerException();
         }
         BlockingQueue<DestinationNode> destinationSegment = segments.computeIfAbsent(filterValue,
                                                                                      this::newQueueWithMetrics);
+        String errorMessage = "Failed to add request to queue ";
         if (destinationSegment.size() >= hardLimit) {
-            logger.warn("Reached hard limit on queue {} of size {}, priority of item failed to be added {}, hard limit {}.",
-                        filterValue,
-                        destinationSegment.size(),
+            logger.warn(
+                    "Reached hard limit on queue {} of size {}, priority of item failed to be added {}, hard limit {}.",
+                    filterValue,
+                    destinationSegment.size(),
                         priority,
                         hardLimit);
-            throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
+            throw new MessagingPlatformException(errorCode, errorMessage + filterValue);
         }
         if (priority <= 0 && destinationSegment.size() >= softLimit) {
             logger.warn("Reached soft limit on queue size {} of size {}, priority of item failed to be added {}, soft limit {}.",
@@ -94,16 +96,21 @@ public class FlowControlQueues<T> {
                         destinationSegment.size(),
                         priority,
                         softLimit);
-            throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
+            throw new MessagingPlatformException(errorCode, errorMessage + filterValue);
         }
         DestinationNode destinationNode = new DestinationNode(value);
         if (!destinationSegment.offer(destinationNode)) {
-            throw new MessagingPlatformException(errorCode, "Failed to add request to queue " + filterValue);
+            throw new MessagingPlatformException(errorCode, errorMessage + filterValue);
         }
-
+        logger.trace("Added new item {} to the queue {}",
+                     destinationNode.id, filterValue);
         if (logger.isTraceEnabled()) {
             destinationSegment.forEach(node -> logger.trace("entry: {}", node.id));
         }
+        return () -> {
+            logger.debug("Remove item {} from queue {}.", destinationNode.id, filterValue);
+            return destinationSegment.remove(destinationNode);
+        };
     }
 
     public void move(String oldDestinationValue, Function<T, String> newDestinationAssignment) {
