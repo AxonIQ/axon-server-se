@@ -144,10 +144,9 @@ public class QueryDispatcher {
      * @param requestId the identifier of the query to be cancelled
      */
     public void cancel(String requestId) {
-        ActiveQuery activeQuery = queryCache.get(requestId);
+        ActiveQuery activeQuery = queryCache.remove(requestId);
         if (activeQuery != null) {
             activeQuery.cancel();
-            queryCache.remove(requestId);
         }
     }
 
