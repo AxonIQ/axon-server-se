@@ -10,7 +10,6 @@
 package io.axoniq.axonserver.message.query;
 
 import io.axoniq.axonserver.ProcessingInstructionHelper;
-import io.axoniq.axonserver.applicationevents.TopologyEvents;
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.ErrorMessageFactory;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
@@ -29,7 +28,6 @@ import io.axoniq.axonserver.util.NonReplacingConstraintCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -133,15 +131,6 @@ public class QueryDispatcher {
             }
         } else {
             logger.debug("No (more) information for {} on completed", requestId);
-        }
-    }
-
-    @EventListener
-    public void on(TopologyEvents.QueryHandlerDisconnected event) {
-        registrationCache.remove(event.clientIdentification());
-        if (!event.isProxied()) {
-            queryQueue.move(new ClientStreamIdentification(event.getContext(), event.getClientStreamId()).toString(),
-                            query -> null);
         }
     }
 
