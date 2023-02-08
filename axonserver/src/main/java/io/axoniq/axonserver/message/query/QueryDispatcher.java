@@ -388,8 +388,8 @@ public class QueryDispatcher {
                                 Consumer<String> onCompleted, boolean serverSupportsStreaming) {
         QueryRequest query = serializedQuery.query();
         String context = serializedQuery.context();
-        String clientId = serializedQuery.clientStreamId();
-        QueryHandler<?> queryHandler = registrationCache.find(context, query, clientId);
+        String clientStreamId = serializedQuery.clientStreamId();
+        QueryHandler<?> queryHandler = registrationCache.find(context, query, clientStreamId);
         if (queryHandler == null) {
             callback.accept(QueryResponse.newBuilder()
                                          .setErrorCode(ErrorCode.CLIENT_DISCONNECTED.getCode())
@@ -398,9 +398,9 @@ public class QueryDispatcher {
                                          .setErrorMessage(
                                                  ErrorMessageFactory
                                                          .build(format("Client %s not found while processing: %s"
-                                                                 , clientId, query.getQuery())))
+                                                                 , clientStreamId, query.getQuery())))
                                          .build());
-            onCompleted.accept(clientId);
+            onCompleted.accept(clientStreamId);
         } else {
             String key = proxiedQueryKey(query.getMessageIdentifier(), serializedQuery.clientStreamId());
             ActiveQuery activeQuery = new ActiveQuery(key,

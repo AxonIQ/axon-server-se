@@ -99,14 +99,29 @@ public class ActiveQuery {
     }
 
 
+    /**
+     * Returns the query definition
+     *
+     * @return the query definition
+     */
     public QueryDefinition getQuery() {
         return query;
     }
 
+    /**
+     * Returns the query timestamp
+     *
+     * @return the query timestamp
+     */
     public long getTimestamp() {
         return timestamp;
     }
 
+    /**
+     * Dispatches the query request to all handlers.
+     *
+     * @param queues the destinations' queues used to buffer the query instructions to be sent
+     */
     public void dispatchQuery(FlowControlQueues<QueryInstruction> queues) {
         handlers.forEach(handler -> cancelOperations
                 .computeIfAbsent(handler, h -> h.enqueueQuery(serializedQuery, queues, timeout, streaming)));
@@ -189,6 +204,11 @@ public class ActiveQuery {
         return handlers.isEmpty();
     }
 
+    /**
+     * Request the unique identifier for the query request
+     *
+     * @return the unique identifier for the query request
+     */
     public String getKey() {
         return key;
     }
@@ -208,6 +228,9 @@ public class ActiveQuery {
         cancel();
     }
 
+    /**
+     * Cancels the request to all handlers and completes the query request.
+     */
     public void cancel() {
         logger.debug("Cancelling query {}.",
                      serializedQuery.getMessageIdentifier());
@@ -230,6 +253,11 @@ public class ActiveQuery {
         }
     }
 
+    /**
+     * Returns the context for the query
+     *
+     * @return the context for the query
+     */
     public String getContext() {
         return query.getContext();
     }
@@ -246,6 +274,14 @@ public class ActiveQuery {
                        .anyMatch(h -> clientStreamId.equals(h.getClientStreamId()));
     }
 
+    /**
+     * Completes the request for the handler identified by the {@code clientStreamId} with the specified error.
+     *
+     * @param clientStreamId the identifier of the query handler
+     * @param errorCode      the error code
+     * @param message        the error message.
+     * @return {@code true} if the query request has been completed, {@code false} if there are other handlers still active.
+     */
     public boolean completeWithError(String clientStreamId, ErrorCode errorCode, String message) {
         responseConsumer.accept(buildErrorResponse(errorCode, message));
         return complete(clientStreamId);
@@ -298,7 +334,6 @@ public class ActiveQuery {
      * Cancels handlers that do not match given {@code clientStreamId}.
      *
      * @param clientStreamId the identifier of the client stream
-     * @return removed handlers
      */
     public void cancelOtherHandlersBut(String clientStreamId) {
         logger.debug("Cancelling all query handlers for query {} but the one for clientStreamId {}",

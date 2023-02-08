@@ -74,6 +74,15 @@ public class FlowControlQueues<T> {
         put(filterValue, value, 0);
     }
 
+    /**
+     * Enqueues the {@code value} to the destination identified by {@code filterValue} with the specified
+     * {@code priority}.
+     *
+     * @param filterValue the identifier of the destination of the value
+     * @param value       the item we need to enqueue
+     * @param priority    the priority of the item in the queue
+     * @return the function to remove the item from the queue
+     */
     public Cancellable put(String filterValue, T value, long priority) {
         if (value == null) {
             throw new NullPointerException();
@@ -86,8 +95,8 @@ public class FlowControlQueues<T> {
                     "Reached hard limit on queue {} of size {}, priority of item failed to be added {}, hard limit {}.",
                     filterValue,
                     destinationSegment.size(),
-                        priority,
-                        hardLimit);
+                    priority,
+                    hardLimit);
             throw new MessagingPlatformException(errorCode, errorMessage + filterValue);
         }
         if (priority <= 0 && destinationSegment.size() >= softLimit) {

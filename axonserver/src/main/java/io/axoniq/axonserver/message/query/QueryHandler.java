@@ -50,14 +50,29 @@ public abstract class QueryHandler<T> {
      */
     public abstract void dispatch(SubscriptionQueryRequest query);
 
+    /**
+     * Returns the identification of the client that subscribed the handler
+     *
+     * @return the identification of the client that subscribed the handler
+     */
     public ClientStreamIdentification getClientStreamIdentification() {
         return clientStreamIdentification;
     }
 
+    /**
+     * Returns the name of the component that subscribed the handler
+     *
+     * @return the name of the component that subscribed the handler
+     */
     public String getComponentName() {
         return componentName;
     }
 
+    /**
+     * Returns the name of the query that this handler can receive
+     *
+     * @return the name of the query that this handler can receive
+     */
     public String queueName() {
         return clientStreamIdentification.toString();
     }
@@ -73,6 +88,8 @@ public abstract class QueryHandler<T> {
      * @param queryQueue the queue used for enqueueing
      * @param timeout    how long we should wait for this query
      * @param streaming  indicates whether this query is streaming results or not
+     * @return the function to cancel the query, removing the request from the queue if still possible or enqueueing a
+     * cancel instruction otherwise
      */
     public Cancellable enqueueQuery(SerializedQuery request, FlowControlQueues<QueryInstruction> queryQueue,
                                     long timeout,
@@ -140,6 +157,8 @@ public abstract class QueryHandler<T> {
      *
      * @param queryQueue  the queue used for enqueueing
      * @param instruction the query instruction
+     *
+     * @return the function to remove the instruction from the queue
      */
     public Cancellable enqueueInstruction(FlowControlQueues<QueryInstruction> queryQueue,
                                           QueryInstruction instruction) {
@@ -163,10 +182,20 @@ public abstract class QueryHandler<T> {
         return Objects.hash(clientStreamIdentification);
     }
 
+    /**
+     * Returns the id of the query stream to the client that subscribed the handler
+     *
+     * @return the id of the query stream to the client that subscribed the handler
+     */
     public String getClientStreamId() {
         return clientStreamIdentification.getClientStreamId();
     }
 
+    /**
+     * Returns the unique name of the client the subscribed the handler
+     *
+     * @return the unique name of the client the subscribed the handler
+     */
     public String getClientId() {
         return clientId;
     }
