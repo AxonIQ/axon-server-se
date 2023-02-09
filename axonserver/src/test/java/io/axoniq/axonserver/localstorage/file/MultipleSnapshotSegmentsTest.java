@@ -35,7 +35,7 @@ import static org.mockito.Mockito.mock;
 /**
  * @author Marc Gathier
  */
-public class MultipleSnapshotSegments {
+public class MultipleSnapshotSegmentsTest {
 
     private PrimaryEventStore testSubject;
 
@@ -57,12 +57,11 @@ public class MultipleSnapshotSegments {
             public String getHostName() throws UnknownHostException {
                 return null;
             }
-        }, ".snapshots", ".sindex", ".sbloom", ".snindex", ".sxref").withStorage(sampleEventStoreFolder
-                                                                                         .getAbsolutePath());
+        }, ".snapshots", ".sindex", ".sbloom", ".snindex", ".sxref");
 
         IndexManager indexManager = new StandardIndexManager("default",
                                                              () -> storageProperties,
-                                                             "storage",
+                sampleEventStoreFolder.getAbsolutePath(),
                                                              EventType.SNAPSHOT,
                                                              meterFactory);
 
@@ -72,7 +71,8 @@ public class MultipleSnapshotSegments {
                                                                               new DefaultEventTransformerFactory(),
                                                                               () -> storageProperties,
                                                                               meterFactory,
-                                                                              storageProperties.getPrimaryStorage("default"));
+                sampleEventStoreFolder
+                        .getAbsolutePath());
         testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.SNAPSHOT),
                                             indexManager,
                                             new DefaultEventTransformerFactory(),
@@ -80,7 +80,8 @@ public class MultipleSnapshotSegments {
                                             () -> secondaryEventStore,
                                             meterFactory,
                                             fileSystemMonitor,
-                                            storageProperties.getPrimaryStorage("default"));
+                sampleEventStoreFolder
+                        .getAbsolutePath());
         testSubject.init(true);
     }
 

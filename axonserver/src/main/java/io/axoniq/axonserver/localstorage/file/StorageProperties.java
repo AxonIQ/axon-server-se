@@ -68,7 +68,6 @@ public class StorageProperties implements Cloneable {
      */
     private Map<String, String> storages = new HashMap<>();
 
-    private String contextStorage;
     /**
      * False-positive percentage allowed for bloom index. Decreasing the value increases the size of the bloom indexes.
      */
@@ -338,7 +337,7 @@ public class StorageProperties implements Cloneable {
     }
 
     public String getPrimaryStorage(String context) {
-        return String.format("%s/%s", storages.getOrDefault("primary", "data"), context);
+        return String.format("%s/%s", storages.getOrDefault("primary", storage), context);
     }
 
     public String getStorage(String storageName) {
@@ -462,7 +461,7 @@ public class StorageProperties implements Cloneable {
 
     public StorageProperties withStorage(String storage) {
         StorageProperties clone = cloneProperties();
-        clone.contextStorage = storage;
+        clone.storage = storage;
         return clone;
     }
 

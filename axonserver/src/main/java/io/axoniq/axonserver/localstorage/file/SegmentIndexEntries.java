@@ -22,7 +22,7 @@ public class SegmentIndexEntries {
         this.indexEntries = indexEntries;
     }
 
-    public FileVersion segment() {
+    public FileVersion fileVersion() {
         return segment;
     }
 

@@ -68,7 +68,7 @@ public class StandardIndexManager implements IndexManager {
     private final EventType eventType;
     private final ConcurrentNavigableMap<Long, Map<String, IndexEntries>> activeIndexes = new ConcurrentSkipListMap<>();
     private final ConcurrentNavigableMap<FileVersion, PersistedBloomFilter> bloomFilterPerSegment = new ConcurrentSkipListMap<>();
-    private final ConcurrentSkipListMap<FileVersion, Index> indexMap = new ConcurrentSkipListMap<>();
+    private final ConcurrentSkipListMap<FileVersion, StandardIndex> indexMap = new ConcurrentSkipListMap<>();
     private final ConcurrentNavigableMap<Long, Integer> indexesDescending = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
     private final MeterFactory.RateMeter indexOpenMeter;
     private final MeterFactory.RateMeter indexCloseMeter;
@@ -213,7 +213,7 @@ public class StandardIndexManager implements IndexManager {
         RuntimeException lastError = new RuntimeException();
         for (int retry = 0; retry < 3; retry++) {
             try {
-                Index idx = getIndex(fileVersion);
+                StandardIndex idx = getIndex(fileVersion);
                 return idx.getPositions(aggregateId);
             } catch (IndexNotFoundException ex) {
                 return null;
@@ -225,11 +225,11 @@ public class StandardIndexManager implements IndexManager {
         throw lastError;
     }
 
-    private Index getIndex(FileVersion fileVersion) {
+    private StandardIndex getIndex(FileVersion fileVersion) {
         try {
-            return indexMap.computeIfAbsent(fileVersion, Index::new).ensureReady();
+            return indexMap.computeIfAbsent(fileVersion, StandardIndex::new).ensureReady();
         } catch (IndexNotFoundException indexNotFoundException) {
-            Index remove = indexMap.remove(fileVersion);
+            StandardIndex remove = indexMap.remove(fileVersion);
             if (remove != null) {
                 remove.close();
             }
@@ -240,7 +240,7 @@ public class StandardIndexManager implements IndexManager {
     private void indexCleanup() {
         StorageProperties properties = storageProperties.get();
         while (indexMap.size() > properties.getMaxIndexesInMemory()) {
-            Map.Entry<FileVersion, Index> entry = indexMap.pollFirstEntry(); //TODO
+            Map.Entry<FileVersion, StandardIndex> entry = indexMap.pollFirstEntry(); //TODO
             logger.debug("{}: Closing index {}", context, entry.getKey());
             cleanupTask = scheduledExecutorService.schedule(() -> entry.getValue().close(), 2, TimeUnit.SECONDS);
         }
@@ -565,7 +565,7 @@ public class StandardIndexManager implements IndexManager {
             Integer version = indexesDescending.remove(segment);
             if (version != null) {
                 FileVersion fileVersion = new FileVersion(segment, version);
-                Index index = indexMap.remove(fileVersion); //TODO
+                StandardIndex index = indexMap.remove(fileVersion); //TODO
                 if (index != null) {
                     index.close();
                 }
@@ -578,7 +578,7 @@ public class StandardIndexManager implements IndexManager {
 
     @Override
     public boolean remove(FileVersion fileVersion) {
-        Index index = indexMap.remove(fileVersion); //TODO
+        StandardIndex index = indexMap.remove(fileVersion); //TODO
         if (index != null) {
             index.close();
         }
@@ -696,7 +696,7 @@ public class StandardIndexManager implements IndexManager {
                                 ));
     }
 
-    private class Index implements Closeable {
+    private class StandardIndex implements Closeable {
 
         private final FileVersion segment;
         private final Object initLock = new Object();
@@ -705,7 +705,7 @@ public class StandardIndexManager implements IndexManager {
         private DB db;
 
 
-        private Index(FileVersion fileVersion) {
+        private StandardIndex(FileVersion fileVersion) {
             this.segment = fileVersion;
         }
 
@@ -725,7 +725,7 @@ public class StandardIndexManager implements IndexManager {
             }
         }
 
-        public Index ensureReady() {
+        public StandardIndex ensureReady() {
             if (initialized && !db.isClosed()) {
                 return this;
             }
