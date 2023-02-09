@@ -1,5 +1,5 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -28,6 +28,7 @@
             readOnlyAdmin: false,
             adminNode: true,
             license: "free",
+            initialized: false,
             features: [],
             hasFeature: function (featureName) {
                 for (let idx = 0; idx < globals.features.length; idx++) {
@@ -37,7 +38,7 @@
                 }
                 return false;
             },
-            isEnterprise: function() {
+            isEnterprise: function () {
                 return globals.license !== 'Standard Edition'
             },
 
@@ -131,7 +132,7 @@
         });
 
         Vue.filter('formatRate', function (rate) {
-            if( rate) {
+            if (rate) {
                 return Number(rate.oneMinuteRate).toFixed(0);
             } else {
                 return Number(0).toFixed(0);
@@ -143,48 +144,50 @@
 
         $(document).ready(function () {
             new Vue({
-                el: "#logout",
-                data: {
-                    user: null
-                },
-                mounted() {
-                    axios.get("v1/public/user").then(response => {
-                        if (response.data && response.data.user) {
-                            this.user = response.data.user;
+                        el: "#logout",
+                        data: {
+                            user: null
+                        },
+                        mounted() {
+                            axios.get("v1/public/user").then(response => {
+                                if (response.data && response.data.user) {
+                                    this.user = response.data.user;
+                                }
+                            });
+                        },
+                        methods: {
+                            loggedIn: function () {
+                                return this.user != null;
+                            }
                         }
                     });
-                },
-                methods: {
-                    loggedIn: function () {
-                        return this.user != null;
-                    }
-                }
-            });
+
 
             new Vue({
-                el: '#footer',
-                data: {
-                    version: "Version",
-                    updates: {},
-                    showModal: false,
-                    hasUpdates: false
-                },
-                mounted() {
-                    axios.get("v1/public/version").then(response => {
-                        this.version = response.data.version;
-                        return response.data
-                    }).then(data => {
-                        let product = "axonserver";
-                        let productVersion = data.version
-                            return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}`)}
-                    ).then(updatesData=> {
-                        if (updatesData.data !== undefined && updatesData.data.length !== 0) {
-                            this.hasUpdates = true
+                        el: '#footer',
+                        data: {
+                            version: "Version",
+                            updates: {},
+                            showModal: false,
+                            hasUpdates: false
+                        },
+                        mounted() {
+                            axios.get("v1/public/version").then(response => {
+                                this.version = response.data.version;
+                                return response.data
+                            }).then(data => {
+                                        let product = "axonserver";
+                                        let productVersion = data.version
+                                        return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}`)
+                                    }
+                            ).then(updatesData => {
+                                if (updatesData.data !== undefined && updatesData.data.length !== 0) {
+                                    this.hasUpdates = true
+                                }
+                                this.updates = updatesData.data.reverse();
+                            });
                         }
-                        this.updates = updatesData.data.reverse();
                     });
-                }
-            });
             new Vue({
                         el: '#topsection',
                         data: {
@@ -192,41 +195,44 @@
                             readOnlyAdmin: globals.readOnlyAdmin,
                             licenseLoaded: false,
                             license: "free",
+                            initialized: false,
                             pluginsEnabled: false
                         }, mounted() {
-                            axios.get("v1/public/license").then(response => {
-                                globals.license = response.data.edition;
-                                globals.features = response.data.featureList;
+                    axios.get("v1/public/license").then(response => {
+                        globals.license = response.data.edition;
+                        globals.features = response.data.featureList;
 
-                                if (globals.license !== 'Standard Edition'){
-                                    this.licenseLoaded = true;
-                                }
+                        if (globals.license !== 'Standard Edition') {
+                            this.licenseLoaded = true;
+                        }
 
-                                axios.get("v1/public/me").then(response => {
-                                    globals.authenticationEnabled = response.data.authentication;
-                                    globals.adminNode = response.data.adminNode;
-                                    this.pluginsEnabled = response.data.pluginsEnabled;
-                                    if (globals.authenticationEnabled) {
-                                        this.admin = false;
-                                        globals.admin = false;
-                                        axios.get("v1/public/user").then(
-                                                response => {
-                                                    globals.admin = globals.adminNode && response.data.adminUser;
-                                                    globals.readOnlyAdmin = globals.adminNode
-                                                            && response.data.readOnlyAdminUser;
-                                                    this.admin = globals.admin;
-                                                    this.readOnlyAdmin = globals.readOnlyAdmin;
-                                                    this.setHeight();
-                                                    loadFragment();
-                                                });
-                                    } else {
-                                        this.admin = response.data.adminNode;
-                                        globals.admin = response.data.adminNode;
-                                        this.setHeight();
-                                        loadFragment();
-                                    }
-                                });
-                            });
+                        axios.get("v1/public/me").then(response => {
+                            globals.authenticationEnabled = response.data.authentication;
+                            globals.adminNode = response.data.adminNode;
+                            globals.initialized = response.data.initialized;
+                            this.initialized = response.data.initialized;
+                            this.pluginsEnabled = response.data.pluginsEnabled;
+                            if (globals.authenticationEnabled) {
+                                this.admin = false;
+                                globals.admin = false;
+                                axios.get("v1/public/user").then(
+                                        response => {
+                                            globals.admin = globals.adminNode && response.data.adminUser;
+                                            globals.readOnlyAdmin = globals.adminNode
+                                                    && response.data.readOnlyAdminUser;
+                                            this.admin = globals.admin;
+                                            this.readOnlyAdmin = globals.readOnlyAdmin;
+                                            this.setHeight();
+                                            loadFragment();
+                                        });
+                            } else {
+                                this.admin = response.data.adminNode;
+                                globals.admin = response.data.adminNode;
+                                this.setHeight();
+                                loadFragment();
+                            }
+                        });
+                    });
                 }, methods: {
                     showConfiguration: function () {
                         return this.admin || this.readOnlyAdmin || globals.license === 'Standard Edition';
@@ -245,6 +251,9 @@
                             $("article").css("min-height", "414px");
                         }
                     },
+                    isEE() {
+                        return globals.features.length > 0
+                    }
                 }
                     });
 
@@ -318,7 +327,7 @@
 
     <script type="text/x-template" id="modal-template">
         <transition name="modal">
-            <div style="visibility: hidden"  class="modal-mask" @click.stop="$emit('close')">
+            <div style="visibility: hidden" class="modal-mask" @click.stop="$emit('close')">
                 <div class="modal-wrapper">
                     <div class="modal-container" @click.stop="">
 
@@ -348,38 +357,42 @@
 <body>
 
 <section id="topsection">
-<article>
-    <header>
-        <h1 v-if="licenseLoaded" style="float: left; background: url('/img/axon-server-ee.png') no-repeat left center;">Axon Server EE</h1>
-        <h1 v-if="!licenseLoaded" style="float: left; background: url('/img/axon-server-se.png') no-repeat left center;">Axon Server SE</h1>
-        <div id="logout" style="float:right; margin-top: 30px;">
-            <a v-if="loggedIn()" href="logout">Logout {{user}}</a>
-        </div>
-    </header>
+    <article>
+        <header>
+            <h1 v-if="licenseLoaded"
+                style="float: left; background: url('/img/axon-server-ee.png') no-repeat left center;">Axon Server
+                EE</h1>
+            <h1 v-if="!licenseLoaded"
+                style="float: left; background: url('/img/axon-server-se.png') no-repeat left center;">Axon Server
+                SE</h1>
+            <div id="logout" style="float:right; margin-top: 30px;">
+                <a v-if="loggedIn()" href="logout">Logout {{ user }}</a>
+            </div>
+        </header>
 
-    <span id="pageContent">
+        <span id="pageContent">
             </span>
-</article>
+    </article>
 
-<nav id="nav">
+    <nav id="nav">
     <span>
     <a href="#" class="menu-settings current"><i class="fas fa-cog fa-2x"></i>Settings</a>
-    <a href="#overview" class="menu-overview"><i class="fas fa-eye fa-2x"></i>Overview</a>
-    <a href="#query" class="menu-query"><i class="fas fa-search fa-2x"></i>Search</a>
-    <a href="#commands" class="menu-commands"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
-    <a href="#queries" class="menu-queries"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
-    <a href="#applications" class="menu-applications" v-if="showConfiguration()"><i
+    <a href="#overview" class="menu-overview" v-if="initialized"><i class="fas fa-eye fa-2x"></i>Overview</a>
+    <a href="#query" class="menu-query" v-if="initialized"><i class="fas fa-search fa-2x"></i>Search</a>
+    <a href="#commands" class="menu-commands" v-if="initialized"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
+    <a href="#queries" class="menu-queries" v-if="initialized"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
+    <a href="#applications" class="menu-applications" v-if="initialized && showConfiguration() && isEE()"><i
             class="fas fa-window-restore fa-2x"></i>Apps</a>
-    <a href="#users" class="menu-users" v-if="showConfiguration()"><i class="fas fa-users fa-2x"></i> Users</a>
-    <a href="#context" class="menu-context" v-if="showConfiguration()"><i
+    <a href="#users" class="menu-users" v-if="initialized && showConfiguration()"><i class="fas fa-users fa-2x"></i> Users</a>
+    <a href="#context" class="menu-context" v-if="initialized && showConfiguration() && isEE()"><i
             class="fas fa-sitemap fa-2x"></i> Contexts</a>
     <a href="#replicationgroups" class="menu-replicationgroups"
-       v-if="showConfiguration() "><i
+       v-if="initialized && showConfiguration() && isEE()"><i
             class="fas fa-clone fa-2x"></i>Replication groups</a>
-        <a href="#plugins" class="menu-plugins" v-if="pluginsEnabled && showConfiguration()"><i
-                class="fas fa-plus-square fa-2x"></i>Plugins</a>
+    <a href="#plugins" class="menu-plugins" v-if="initialized && pluginsEnabled && showConfiguration()"><i
+            class="fas fa-plus-square fa-2x"></i>Plugins</a>
     </span>
-</nav>
+    </nav>
 
 </section>
 
@@ -401,7 +414,7 @@
                 <li v-for="update in updates">
                     <h4>{{ update.name }}</h4>
                     <p>{{ update.body }}</p>
-                    <hr />
+                    <hr/>
                 </li>
             </ul>
         </div>
