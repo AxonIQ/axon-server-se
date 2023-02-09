@@ -3,6 +3,11 @@ This is the Axon Server Standard Edition, version 4.6
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.9
+-------------------------------
+* Fix: the processing of items must not be interrupted if an exception occurs during sending
+* Fix: improve handling of cancelled queries
+
 Release Notes for version 4.6.8
 -------------------------------
 * Updated version of plugin-api library
