@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -25,10 +25,13 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Reads messages for a specific client from a queue and sends them to the client using gRPC.
  * Only reads messages when there are permits left.
+ *
  * @author Marc Gathier
  */
 public abstract class GrpcFlowControlledDispatcherListener<I, T> {
-    private static final ExecutorService executorService = Executors.newCachedThreadPool(new CustomizableThreadFactory("request-dispatcher-"));
+
+    private static final ExecutorService executorService = Executors.newCachedThreadPool(new CustomizableThreadFactory(
+            "request-dispatcher-"));
     private final BlockingQueue<FlowControlQueues<T>.DestinationNode> EMPTY_QUEUE = new ArrayBlockingQueue<>(1);
 
     protected final StreamObserver<I> inboundStream;
@@ -38,7 +41,8 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     private final Future<?>[] futures;
     private volatile boolean running = true;
 
-    public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, String queueName, StreamObserver<I> inboundStream, int threads) {
+    public GrpcFlowControlledDispatcherListener(FlowControlQueues<T> queues, String queueName,
+                                                StreamObserver<I> inboundStream, int threads) {
         this.queues = queues;
         this.queueName = queueName;
         this.inboundStream = inboundStream;
@@ -46,17 +50,25 @@ public abstract class GrpcFlowControlledDispatcherListener<I, T> {
     }
 
     private void process() {
-        try {
-            getLogger().debug("Starting listener for {} ", queueName);
-            while (running && permitsLeft.get() > 0) {
-                getLogger().trace("waiting for message for {} ", queueName);
-                T message = queues.take(queueName);
-                if (message != null && send(message)) {
-                    long left = permitsLeft.decrementAndGet();
-                    getLogger().trace("{} permits left", left);
-                }
+        getLogger().debug("Starting listener for {} ", queueName);
+        while (running && permitsLeft.get() > 0) {
+            try {
+                processNext();
+            } catch (Exception e) {
+                getLogger().warn("Problem occurred while processing the next message", e);
             }
-            getLogger().debug("Listener stopped as no more permits ({}) left for {} ", permitsLeft.get(), queueName);
+        }
+        getLogger().debug("Listener stopped as no more permits ({}) left for {} ", permitsLeft.get(), queueName);
+    }
+
+    private void processNext() {
+        try {
+            getLogger().trace("waiting for message for {} ", queueName);
+            T message = queues.take(queueName);
+            if (message != null && send(message)) {
+                long left = permitsLeft.decrementAndGet();
+                getLogger().trace("{} permits left", left);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             getLogger().trace("Processing of messages from {} interrupted", queueName, e);
