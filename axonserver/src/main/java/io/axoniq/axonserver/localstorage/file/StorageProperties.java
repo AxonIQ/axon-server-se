@@ -33,6 +33,7 @@ public class StorageProperties implements Cloneable {
     private static final String TRANSFORMED_PATH_WITH_VERSION_FORMAT = PATH_WITH_VERSION_FORMAT + TRANSFORMED_SUFFIX;
     private static final String OLD_PATH_FORMAT = "%s/%014d%s";
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024 * 32;
+    public static final String PRIMARY_STORAGE_KEY = "primary";
     /**
      * File suffix for events files.
      */
@@ -68,7 +69,6 @@ public class StorageProperties implements Cloneable {
      */
     private Map<String, String> storages = new HashMap<>();
 
-    private String contextStorage;
     /**
      * False-positive percentage allowed for bloom index. Decreasing the value increases the size of the bloom indexes.
      */
@@ -200,17 +200,17 @@ public class StorageProperties implements Cloneable {
         this.storage = storage;
 
         if (storages != null) {
-            if (!storages.containsKey("primary")) {
-                storages.put("primary", storage);
+            if (!storages.containsKey(PRIMARY_STORAGE_KEY)) {
+                storages.put(PRIMARY_STORAGE_KEY, storage);
             }
         } else {
             this.storages = new HashMap<>();
-            storages.put("primary", storage);
+            storages.put(PRIMARY_STORAGE_KEY, storage);
         }
     }
 
     public void setStorages(Map<String, String> storages) {
-        if (this.storages != null && this.storages.containsKey("primary")) {
+        if (this.storages != null && this.storages.containsKey(PRIMARY_STORAGE_KEY)) {
             this.storages.putAll(storages);
         } else {
             this.storages = storages;
@@ -338,14 +338,18 @@ public class StorageProperties implements Cloneable {
     }
 
     public String getPrimaryStorage(String context) {
-        return String.format("%s/%s", storages.getOrDefault("primary", "data"), context);
+        return String.format("%s/%s", storages.getOrDefault(PRIMARY_STORAGE_KEY, storage), context);
     }
 
     public String getStorage(String storageName) {
         String storagePath = storages.get(storageName);
         if (storagePath == null) {
+            if (PRIMARY_STORAGE_KEY.equals(storageName)) {
+                return storage;
+            }
             throw new IllegalStateException("Storage " + storageName + " not defined on this node." +
-                    "To define storage set property: axoniq.axonserver.event.storage." + storageName);
+                                                    "To define storage set property: axoniq.axonserver.event.storage."
+                                                    + storageName);
         }
         return storagePath;
     }
@@ -462,7 +466,7 @@ public class StorageProperties implements Cloneable {
 
     public StorageProperties withStorage(String storage) {
         StorageProperties clone = cloneProperties();
-        clone.contextStorage = storage;
+        clone.storage = storage;
         return clone;
     }
 

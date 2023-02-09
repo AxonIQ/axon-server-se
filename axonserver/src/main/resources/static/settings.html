@@ -1,5 +1,5 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -58,24 +58,57 @@
         Authentication disabled
     </div>
 
-    <div v-if="!node.adminNode" class="msg warning">
+    <div v-if="initialized && !node.adminNode" class="msg warning">
         This is not an ADMIN node
     </div>
 
+    <div v-if="!initialized" class="msg warning">
+        This not is not initialized yet. If this is the first node for a cluster initialize it, otherwise register the
+        node with one of the other nodes in the cluster.
+
+        <div>
+            Action:
+            <br/>
+            <select v-model="initializeMode">
+                <option value="init">Initialize first node</option>
+                <option value="join">Join cluster</option>
+            </select>
+            <div v-if="initializeMode === 'init'">
+                Context name:
+                <br/>
+                <input v-model="initContext"/>
+                <br/>
+                <button @click="initCluster()">Initialize</button>
+            </div>
+            <div v-if="initializeMode === 'join'">
+                Internal hostname for other node:
+                <br/>
+                <input v-model="joinHost"/>
+                <br/>
+                Internal port for other node:
+                <br/>
+                <input v-model="joinPort" type="number"/>
+                <br/>
+                <button @click="joinCluster()">Join</button>
+            </div>
+        </div>
+    </div>
     <div class="column-wrapper">
 
         <div class="column configuration titleButton">
             <section>
                 <h2>Configuration</h2>
-                <span v-disable="!node.clustered" @click="downloadTemplate" class="icon download-contents" title="Download cluster configuration as Cluster Template Yaml file."><i class="fas fa-file-export"></i></span>
+                <span v-disable="!node.clustered" @click="downloadTemplate" class="icon download-contents"
+                      title="Download cluster configuration as Cluster Template Yaml file."><i
+                        class="fas fa-file-export"></i></span>
                 <ul>
                     <li>
                         <span>Node Name</span>
-                        <span id="nodeName">{{node.name}}</span>
+                        <span id="nodeName">{{ node.name }}</span>
                     </li>
                     <li>
                         <span>Host Name</span>
-                        <span id="hostName">{{node.hostName}}</span>
+                        <span id="hostName">{{ node.hostName }}</span>
                     </li>
                     <li>
                         <span>Http Port</span>
@@ -162,13 +195,14 @@
                     </li>
                 </ul>
             </section>
-            <section v-if="license.featureList.length > 0">
+            <section v-if="initialized && license.featureList.length > 0">
                 <h3>Upload license</h3>
                 <form id="licenseForm" enctype="multipart/form-data">
                     <input type="file" id="license" name="licenseFile"/>
                     <input type="submit" value="Upload" id="license_upload_button"/>
                 </form>
-                <span v-if="!isEnterprise()"> <a href="axoniq.io/se-vs-ee" class="info">Request free trial <i class="fas fa-certificate"></i></a></span>
+                <span v-if="!isEnterprise()"> <a href="axoniq.io/se-vs-ee" class="info">Request free trial <i
+                        class="fas fa-certificate"></i></a></span>
             </section>
         </div>
     </div>
