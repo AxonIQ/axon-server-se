@@ -116,7 +116,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
             return;
         }
 
-        service.start(new EventProcessorIdMessage(contextProvider.getContext(), eventProcessorId),
+        service.start(new EventProcessorIdMessage(contextName, eventProcessorId),
                       new GrpcAuthentication(authenticationProvider)).subscribe(result -> success(result,
                                                                                                   responseObserver),
                                                                                 onError(responseObserver),
@@ -142,7 +142,7 @@ public class EventProcessorGrpcController extends EventProcessorAdminServiceImpl
             return;
         }
 
-        service.split(new EventProcessorIdMessage(contextProvider.getContext(), processorId),
+        service.split(new EventProcessorIdMessage(contextName, processorId),
                       new GrpcAuthentication(authenticationProvider)).subscribe(result -> success(result,
                                                                                                   responseObserver),
                                                                                 onError(responseObserver),
