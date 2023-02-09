@@ -147,9 +147,7 @@ header{
 		display: block;
 		width: 300px;
 		height: 18px;
-		background: url('../img/axon-server.png') no-repeat left center;
-		background-size: contain;
-
+		background-size: contain !important;
 	}
 article {
 	margin: 0 40px 0 104px;
@@ -191,7 +189,34 @@ footer .info {
     color: darkgray;
 }
 
-	footer .important {
+
+	a.info {
+		color: brown;
+		text-decoration: underline;
+	}
+
+	a .info:link {
+		color: brown;
+		text-decoration: underline;
+	}
+
+	a .info:visited {
+		color: brown;
+		text-decoration: underline;
+	}
+
+	a .info:hover {
+		color: darkred;
+		text-decoration: underline;
+	}
+
+	a .info:active {
+		color: brown;
+		text-decoration: underline;
+	}
+
+
+footer .important {
 		margin: 9px 3px;
 		line-height: 20px;
 		font-weight: 300;
@@ -307,6 +332,11 @@ input[type="search"] {
 	.msg.info{
 		border-color: #4fff19;
 		background: #b1ff93;
+	}
+
+	.msg.white{
+		border-color: black;
+		background: white;
 	}
 
 .help {

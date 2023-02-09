@@ -67,7 +67,7 @@
         <div class="column configuration titleButton">
             <section>
                 <h2>Configuration</h2>
-                <span v-if="node.clustered" @click="downloadTemplate" class="icon download-contents" title="Download cluster configuration as Cluster Template Yaml file."><i class="fas fa-file-export"></i></span>
+                <span v-disable="!node.clustered" @click="downloadTemplate" class="icon download-contents" title="Download cluster configuration as Cluster Template Yaml file."><i class="fas fa-file-export"></i></span>
                 <ul>
                     <li>
                         <span>Node Name</span>
@@ -168,6 +168,7 @@
                     <input type="file" id="license" name="licenseFile"/>
                     <input type="submit" value="Upload" id="license_upload_button"/>
                 </form>
+                <span v-if="!isEnterprise()"> <a href="axoniq.io/se-vs-ee" class="info">Request free trial <i class="fas fa-certificate"></i></a></span>
             </section>
         </div>
     </div>

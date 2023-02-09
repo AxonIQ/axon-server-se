@@ -13,11 +13,7 @@
     <title>AxonDashboard: Settings</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <link rel="stylesheet" href="css/style.css">
-    <!--<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png"/>-->
-    <!--<link rel="icon" type="image/png" sizes="96x96" href="/img/favicon-96x96.png"/>-->
-    <!--<link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16x16.png"/>-->
     <link rel="icon" type="image/x-icon" href="./img/axon-server-icon.png"/>
-    <!--<script src="js/vue.js"></script>-->
     <script src="dist/build.js"></script>
     <script src="js/axios.min.js"></script>
     <script src="js/fontawesome-all.js"></script>
@@ -25,8 +21,8 @@
     <script src="webjars/sockjs-client/sockjs.min.js"></script>
     <script src="webjars/stomp-websocket/stomp.min.js"></script>
     <script type="application/javascript">
-        //# sourceURL=index.js
         let globals = {
+            licenseLoaded: false,
             authenticationEnabled: true,
             admin: false,
             readOnlyAdmin: false,
@@ -42,7 +38,7 @@
                 return false;
             },
             isEnterprise: function() {
-                return globals.license === 'enterprise edition'
+                return globals.license !== 'Standard Edition'
             },
 
             webSocketInfo: {
@@ -175,10 +171,10 @@
                 },
                 mounted() {
                     axios.get("v1/public/version").then(response => {
-                        this.version = response.data.productName + " " + response.data.version;
+                        this.version = response.data.version;
                         return response.data
                     }).then(data => {
-                        let product = data.productName.includes("Enterprise") ? "axonserver" : "axonserver-se"
+                        let product = "axonserver";
                         let productVersion = data.version
                             return axios.get(`https://download.axoniq.io/updates?module=${product}&version=${productVersion}`)}
                     ).then(updatesData=> {
@@ -190,7 +186,7 @@
                 }
             });
             new Vue({
-                        el: '#nav',
+                        el: '#topsection',
                         data: {
                             admin: globals.admin,
                             readOnlyAdmin: globals.readOnlyAdmin,
@@ -199,9 +195,13 @@
                             pluginsEnabled: false
                         }, mounted() {
                             axios.get("v1/public/license").then(response => {
-                                globals.license = response.data.edition.toLowerCase();
+                                globals.license = response.data.edition;
                                 globals.features = response.data.featureList;
-                                this.licenseLoaded = true;
+
+                                if (globals.license !== 'Standard Edition'){
+                                    this.licenseLoaded = true;
+                                }
+
                                 axios.get("v1/public/me").then(response => {
                                     globals.authenticationEnabled = response.data.authentication;
                                     globals.adminNode = response.data.adminNode;
@@ -229,7 +229,7 @@
                             });
                 }, methods: {
                     showConfiguration: function () {
-                        return this.admin || this.readOnlyAdmin;
+                        return this.admin || this.readOnlyAdmin || globals.license === 'Standard Edition';
                     },
                     setHeight() {
                         if (globals.admin) {
@@ -244,9 +244,30 @@
                             $("nav").css("min-height", "414px");
                             $("article").css("min-height", "414px");
                         }
-                    }
+                    },
                 }
                     });
+
+            Vue.directive('disable', {
+                bind: function (el, binding) {
+                    if (binding.value) {
+                        el.style.pointerEvents = 'none';
+                        el.style.opacity = 0.5;
+                    } else {
+                        el.style.pointerEvents = '';
+                        el.style.opacity = 1;
+                    }
+                },
+                update: function (el, binding) {
+                    if (binding.value) {
+                        el.style.pointerEvents = 'none';
+                        el.style.opacity = 0.5;
+                    } else {
+                        el.style.pointerEvents = '';
+                        el.style.opacity = 1;
+                    }
+                }
+            });
 
             $.ajaxPrefilter(function (options, original_Options, jqXHR) {
                 options.async = true;
@@ -325,31 +346,12 @@
     </script>
 </head>
 <body>
-<nav id="nav">
-    <span v-if="licenseLoaded">
-    <a href="#" class="menu-settings current"><i class="fas fa-cog fa-2x"></i>Settings</a>
-    <a href="#overview" class="menu-overview"><i class="fas fa-eye fa-2x"></i>Overview</a>
-    <a href="#query" class="menu-query"><i class="fas fa-search fa-2x"></i>Search</a>
-    <a href="#commands" class="menu-commands"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
-    <a href="#queries" class="menu-queries"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
-    <a href="#applications" class="menu-applications" v-if="showConfiguration() && hasFeature('APP_AUTHENTICATION')"><i
-            class="fas fa-window-restore fa-2x"></i>Apps</a>
-    <a href="#users" class="menu-users" v-if="showConfiguration()"><i class="fas fa-users fa-2x"></i> Users</a>
-    <a href="#context" class="menu-context" v-if="showConfiguration() && hasFeature('MULTI_CONTEXT')"><i
-            class="fas fa-sitemap fa-2x"></i> Contexts</a>
-    <a href="#replicationgroups" class="menu-replicationgroups"
-       v-if="showConfiguration() && hasFeature('MULTI_CONTEXT')"><i
-            class="fas fa-clone fa-2x"></i>Replication groups</a>
-        <a href="#plugins" class="menu-plugins" v-if="pluginsEnabled && showConfiguration()"><i
-                class="fas fa-plus-square fa-2x"></i>Plugins</a>
-        <!--<a href="#load-balancing" class="menu-load-balancing" v-if="admin && hasFeature('AUTOMATIC_TRACKING_PROCESSOR_SCALING_BALANCING')"><i class="fas fa-balance-scale fa-2x"></i> LoadBalance</a>-->
-    </span>
-</nav>
 
-
+<section id="topsection">
 <article>
     <header>
-        <h1 style="float: left">AxonDashboard</h1>
+        <h1 v-if="licenseLoaded" style="float: left; background: url('/img/axon-server-ee.png') no-repeat left center;">Axon Server EE</h1>
+        <h1 v-if="!licenseLoaded" style="float: left; background: url('/img/axon-server-se.png') no-repeat left center;">Axon Server SE</h1>
         <div id="logout" style="float:right; margin-top: 30px;">
             <a v-if="loggedIn()" href="logout">Logout {{user}}</a>
         </div>
@@ -358,6 +360,29 @@
     <span id="pageContent">
             </span>
 </article>
+
+<nav id="nav">
+    <span>
+    <a href="#" class="menu-settings current"><i class="fas fa-cog fa-2x"></i>Settings</a>
+    <a href="#overview" class="menu-overview"><i class="fas fa-eye fa-2x"></i>Overview</a>
+    <a href="#query" class="menu-query"><i class="fas fa-search fa-2x"></i>Search</a>
+    <a href="#commands" class="menu-commands"><i class="fas fa-exclamation-circle fa-2x"></i>Commands</a>
+    <a href="#queries" class="menu-queries"><i class="fas fa-question-circle fa-2x"></i>Queries</a>
+    <a href="#applications" class="menu-applications" v-if="showConfiguration()"><i
+            class="fas fa-window-restore fa-2x"></i>Apps</a>
+    <a href="#users" class="menu-users" v-if="showConfiguration()"><i class="fas fa-users fa-2x"></i> Users</a>
+    <a href="#context" class="menu-context" v-if="showConfiguration()"><i
+            class="fas fa-sitemap fa-2x"></i> Contexts</a>
+    <a href="#replicationgroups" class="menu-replicationgroups"
+       v-if="showConfiguration() "><i
+            class="fas fa-clone fa-2x"></i>Replication groups</a>
+        <a href="#plugins" class="menu-plugins" v-if="pluginsEnabled && showConfiguration()"><i
+                class="fas fa-plus-square fa-2x"></i>Plugins</a>
+    </span>
+</nav>
+
+</section>
+
 
 <footer id="footer">
     <p>{{ version }} <a v-if="hasUpdates" id="show-modal" @click="showModal = true" title="New version available!"

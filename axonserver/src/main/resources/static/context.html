@@ -95,6 +95,14 @@
                 this.subscription.unsubscribe();
             }
         }, methods: {
+            isEnterprise() {
+                return globals.isEnterprise()
+            },
+            isDisabled() {
+                if (!globals.isEnterprise() && this.contexts.length > 1) {
+                    return true;
+                }
+            },
             initNewContext() {
                 this.newContext.metaData = {};
                 this.newContext.metaDataKey = "";
@@ -572,7 +580,7 @@
 
 </script>
 <span id="context">
-   <section v-if="hasFeature('MULTI_CONTEXT')" id="applicationsOverview">
+   <section id="applicationsOverview">
       <paginated-table :rows="contexts" name="contexts">
          <template #header>
             <th class="contextNameColumn">Context Name</th>
@@ -583,17 +591,15 @@
          </template>
          <template #row="context">
              <td>{{ context.context }}
-
                 <div class="label-holder">
                     <span v-if="isEphemeral(context)" class="ephemeral" data-tooltip="Ephemeral context stores events for a limited amount of time, after which they are permanently deleted."><span class="ephemeral-text ">ephemeral</span></span>
                     <span v-if="isMultiTier(context) && !isEphemeral(context)" class="multi-tier" data-tooltip="This context splits event store into multiple locations (tiers).">multi-tier</span>
                 </div>
-
                <span v-if="admin && !isInternalContext(context)" title="Delete Context"
                      @click="deleteContext(context)">
                <i class="far fa-trash-alt"></i>
                </span>
-               <span v-if="admin && !isInternalContext(context)" title="Update Context"
+               <span v-if="admin && !isInternalContext(context)" v-disable="!isEnterprise()" title="Update Context"
                      @click="updateContext(context)">
                <i class="fas fa-pencil-alt"></i>
                </span>
@@ -628,11 +634,11 @@
          </template>
       </paginated-table>
    </section>
-   <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
-      Multi-context is not allowed
+   <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg white">
+      Multi-context and multi-tiered storage features are restricted for Standard Edition. <a href="http://axoniq.io/se-vs-ee" target="_blank" class="info">Learn more <i class="fas fa-info-circle"></i></a>
    </div>
-   <section v-if="admin && hasFeature('MULTI_CONTEXT') && showAdd" id="newContextPanel">
-      <div class="column configuration">
+   <section v-if="admin && showAdd" id="newContextPanel">
+      <div class="column configuration" v-disable="isDisabled()">
          <form id="contextForm">
             <ul>
                <li>
@@ -644,12 +650,12 @@
                   <span class="narrow">Replication Group</span>
                   <span>
                      <select v-model="newContext.selectedReplicationGroup" class="nodeRoleName" @change="updateUI()">
-                        <option value="">-- create new --</option>
+                        <option value="" v-if="isEnterprise()" v-disable="!isEnterprise()">-- create new --</option>
                         <option v-for="n in replicationGroups" :value="n.name">{{ n.name }}</option>
                      </select>
                   </span>
                </li>
-               <li v-if="createReplicationGroup(newContext)">
+               <li v-if="createReplicationGroup(newContext) && isEnterprise()">
                   <span class="narrow"></span>
                   <span style="display: inline-block; border: 1px solid #CCC">
                      <ul>
@@ -678,7 +684,7 @@
                   </span>
                </li>
                <li></li>
-               <li>
+               <li v-disable="!isEnterprise()">
                   <span class="narrow">Context Properties</span>
                   <span>
                      <table class="nestedTable">
@@ -711,7 +717,7 @@
                      </span>
                   </span>
                </li>
-                <li>
+                <li v-disable="!isEnterprise()">
                 <span class="narrow" style="visibility: hidden">Node roles</span>
                 <span class="tier-tabs-holder">
                         <span @click="changeSelectedTierNodeRole('primary')" class="tier-tab" :class="tabNodeState('primary')">Primary</span>
@@ -720,7 +726,7 @@
                         <span @click="changeSelectedTierNodeRole('active_backup')" class="tier-tab" :class="tabNodeState('active_backup')">Active backup</span>
                 </span>
                 </li>
-               <li>
+               <li v-disable="!isEnterprise()">
                   <span class="narrow" style="cursor: pointer" @click="$modal.show('about-multitier')">Event storage  <i class="fas fa-question-circle"></i> </span>
                   <span class="tier-holder">
                      <table class="nestedTable">
@@ -754,7 +760,7 @@
                      </table>
                   </span>
                </li>
-               <li>
+               <li v-disable="!isEnterprise()">
                   <span class="narrow" style="cursor: pointer" @click="$modal.show('about-multitier')">Snapshot storage <i class="fas fa-question-circle"></i></span>
                   <span class="tier-holder">
                      <table class="nestedTable">
@@ -790,13 +796,13 @@
                </li>
                <li>
                   <span class="narrow">&nbsp;</span>
-                  <span><button class="button" @click.prevent="createContext()">Save</button></span>
+                  <span><button v-disable="isDisabled()" class="button" @click.prevent="createContext()">Save</button></span>
                </li>
             </ul>
          </form>
       </div>
    </section>
-   <section v-if="admin && hasFeature('MULTI_CONTEXT') && showUpdate" id="updateContextPanel">
+   <section v-if="admin && showUpdate" id="updateContextPanel">
       <div class="column configuration">
          <form id="updateContext">
             <ul>
@@ -845,7 +851,7 @@
                      </span>
                   </span>
                </li>
-               <li>
+               <li v-disable="!isEnterprise()">
                 <span class="narrow" style="visibility: hidden">Node roles</span>
                 <span class="tier-tabs-holder">
                         <span @click="changeSelectedTierNodeRole('primary')" class="tier-tab" :class="tabNodeState('primary')">Primary</span>
@@ -854,7 +860,7 @@
                         <span @click="changeSelectedTierNodeRole('active_backup')" class="tier-tab" :class="tabNodeState('active_backup')">Active backup</span>
                 </span>
                 </li>
-                <li>
+                <li v-disable="!isEnterprise()">
                   <span class="narrow">Event storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
@@ -888,7 +894,7 @@
                      </table>
                   </span>
                </li>
-               <li>
+               <li v-disable="!isEnterprise()">
                   <span class="narrow">Snapshot storage</span>
                   <span class="tier-holder">
                      <table class="nestedTable">
