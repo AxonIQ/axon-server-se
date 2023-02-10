@@ -62,25 +62,26 @@
         This is not an ADMIN node
     </div>
 
-    <div v-if="!initialized" class="msg warning">
-        This not is not initialized yet. If this is the first node for a cluster initialize it, otherwise register the
-        node with one of the other nodes in the cluster.
+    <div v-if="!initialized" class="msg white">
+        <h4>It appears that you have a fresh installation.</h4>
+        Would you like to complete the installation and utilize this node as a standalone entity,
+        or join an existing cluster with a license?
 
-        <div>
+        <div style="margin-top: 15px">
             Action:
             <br/>
-            <select v-model="initializeMode">
-                <option value="init">Initialize first node</option>
-                <option value="join">Join cluster</option>
+            <select v-model="initializeMode" style="margin-top: 10px">
+                <option value="init">Start standalone node</option>
+                <option value="join">Join cluster with license</option>
             </select>
-            <div v-if="initializeMode === 'init'">
-                Context name:
+            <div v-if="initializeMode === 'init'" style="margin-top: 10px">
+                With context name:
                 <br/>
                 <input v-model="initContext"/>
                 <br/>
-                <button @click="initCluster()">Initialize</button>
+                <button style="margin-top: 15px" @click="initCluster()">Finish</button>
             </div>
-            <div v-if="initializeMode === 'join'">
+            <div v-if="initializeMode === 'join'" style="margin-top: 15px">
                 Internal hostname for other node:
                 <br/>
                 <input v-model="joinHost"/>
@@ -89,7 +90,7 @@
                 <br/>
                 <input v-model="joinPort" type="number"/>
                 <br/>
-                <button @click="joinCluster()">Join</button>
+                <button style="margin-top: 15px" @click="joinCluster()">Join</button>
             </div>
         </div>
     </div>
