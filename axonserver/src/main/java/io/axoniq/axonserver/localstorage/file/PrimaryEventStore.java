@@ -97,7 +97,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                              FileSystemMonitor fileSystemMonitor,
                              String storagePath) {
         super(context, indexManager, storagePropertiesSupplier, completedSegmentsHandler, meterFactory,
-                storagePropertiesSupplier.get().getPrimaryStorage(context.getContext()));
+                storagePath);
         this.eventTransformerFactory = eventTransformerFactory;
         this.fileSystemMonitor = fileSystemMonitor;
         synchronizer = new Synchronizer(context, storagePropertiesSupplier.get(), this::completeSegment);
@@ -428,7 +428,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     @Override
     public CloseableIterator<SerializedEventWithToken> getGlobalIterator(long start) {
 
-        return new CloseableIterator<SerializedEventWithToken>() {
+        return new CloseableIterator<>() {
 
             long nextToken = start;
             EventIterator eventIterator;

@@ -422,7 +422,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
                                                          SegmentIndexEntries lastEventPosition) {
-        Optional<EventSource> eventSource = getEventSource(lastEventPosition.segment());
+        Optional<EventSource> eventSource = getEventSource(lastEventPosition.fileVersion());
         if (eventSource.isPresent()) {
             try {
                 List<Integer> positions = lastEventPosition.indexEntries().positions();
