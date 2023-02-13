@@ -34,11 +34,11 @@
         </paginated-table>
     </section>
 
-    <section id="applicationDetails" v-disable="!admin || isDisabled()">
+    <section id="applicationDetails">
         <div v-if="!hasFeature('APP_AUTHENTICATION') && isDisabled()" class="msg white">
           Only one application bidding allowerd in this edition. <a href="http://axoniq.io/se-vs-ee" target="_blank" class="info">Learn more <i class="fas fa-info-circle"></i></a>
         </div>
-        <div class="column">
+        <div class="column" v-disable="!admin || isDisabled()">
             <form>
                 <ul>
                     <li>
