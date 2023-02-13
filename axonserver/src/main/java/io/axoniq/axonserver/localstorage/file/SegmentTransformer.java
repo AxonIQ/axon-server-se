@@ -23,4 +23,6 @@ interface SegmentTransformer {
     Mono<Void> rollback(Throwable e);
 
     Mono<Void> cancel();
+
+    long segment();
 }

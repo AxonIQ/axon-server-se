@@ -25,7 +25,6 @@ import java.util.function.Supplier;
 class DefaultSegmentTransformer implements SegmentTransformer {
 
     private final StorageProperties storageProperties;
-    private final String context;
     private final long segment;
     private final int newVersion;
     private final AtomicReference<TransactionIterator> transactionIteratorRef = new AtomicReference<>();
@@ -39,14 +38,12 @@ class DefaultSegmentTransformer implements SegmentTransformer {
 
 
     DefaultSegmentTransformer(StorageProperties storageProperties,
-                              String context,
                               long segment,
                               int newVersion,
                               IndexManager indexManager,
                               Supplier<TransactionIterator> transactionIteratorSupplier,
                               String storagePath) {
         this.storageProperties = storageProperties;
-        this.context = context;
         this.segment = segment;
         this.newVersion = newVersion;
         this.indexManager = indexManager;
@@ -112,6 +109,11 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     public Mono<Void> cancel() {
         closeTransactionIterator();
         return Mono.empty();
+    }
+
+    @Override
+    public long segment() {
+        return segment;
     }
 
     private void closeTransactionIterator() {
