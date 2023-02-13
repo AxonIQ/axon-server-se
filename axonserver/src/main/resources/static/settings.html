@@ -194,6 +194,9 @@
                         <span id="expiryDate"
                               v-bind:style="{ color: (new Date().valueOf() >= new Date(license.expiryDate).valueOf()) ? 'red':'' }"> {{license.expiryDate | formatDate}}</span>
                     </li>
+                    <li v-if="!isEnterprise()">
+                    <span></span>
+                    <span><a href="http://axoniq.io/se-vs-ee" target="_blank" class="info">Try Enterprise for free</a></span></li>
                 </ul>
             </section>
             <section v-if="initialized && license.featureList.length > 0">
@@ -202,8 +205,6 @@
                     <input type="file" id="license" name="licenseFile"/>
                     <input type="submit" value="Upload" id="license_upload_button"/>
                 </form>
-                <span v-if="!isEnterprise()"> <a href="axoniq.io/se-vs-ee" class="info">Request free trial <i
-                        class="fas fa-certificate"></i></a></span>
             </section>
         </div>
     </div>
