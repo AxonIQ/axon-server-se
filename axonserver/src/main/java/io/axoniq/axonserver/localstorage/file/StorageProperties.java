@@ -459,12 +459,6 @@ public class StorageProperties implements Cloneable {
         this.flags = flags;
     }
 
-    public StorageProperties withStorage(String storage) {
-        StorageProperties clone = cloneProperties();
-        clone.storage = storage;
-        return clone;
-    }
-
     private StorageProperties cloneProperties() {
         try {
             return (StorageProperties) this.clone();
