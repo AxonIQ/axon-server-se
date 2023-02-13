@@ -90,7 +90,8 @@ public class TransformationConfiguration {
             }
             return (EventProvider) token -> Mono.empty();
         };
-        return context -> new CachedContextEventProviderSupplier(autoCloseable).eventProviderFor(context);
+        CachedContextEventProviderSupplier cached = new CachedContextEventProviderSupplier(autoCloseable);
+        return cached::eventProviderFor;
     }
 
     @Bean
