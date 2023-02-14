@@ -36,7 +36,7 @@
 
     <section id="applicationDetails">
         <div v-if="!hasFeature('APP_AUTHENTICATION') && isDisabled()" class="msg white">
-          Only one application bidding allowerd in this edition. <a href="http://axoniq.io/se-vs-ee" target="_blank" class="info">Learn more <i class="fas fa-info-circle"></i></a>
+           Creating more than one application binding requires Enterprise Edition. <a href="http://axoniq.io/axonserver" target="_blank" class="info">Learn more or request a trial license.<i class="fas fa-info-circle"></i></a>
         </div>
         <div class="column" v-disable="!admin || isDisabled()">
             <form>

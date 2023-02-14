@@ -635,7 +635,7 @@
       </paginated-table>
    </section>
    <div v-if="!hasFeature('MULTI_CONTEXT')  && isDisabled()" class="msg white">
-      Multi-context and multi-tiered storage features are restricted for Standard Edition. <a href="http://axoniq.io/se-vs-ee" target="_blank" class="info">Learn more <i class="fas fa-info-circle"></i></a>
+      Multi-context and multi-tiered storage features are only available on Enterprise Edition. <a href="http://axoniq.io/axonserver" target="_blank" class="info">Learn more or request your trial license.<i class="fas fa-info-circle"></i></a>
    </div>
    <section v-if="admin && showAdd" id="newContextPanel">
       <div class="column configuration" v-disable="isDisabled()">
@@ -969,11 +969,11 @@
 
        <modal height="500" name="about-multitier" width="800">
       <div class="column configuration modal">
-<h2>Important Information on Multi-tier Storage Configuration</h2>
-<p>Multi-tier storage is a useful tool that allows you to store data across different levels of storage media based on access speed and cost. This helps optimize performance and reduce overall storage costs by placing frequently accessed data on faster storage media, such as SSDs, and less frequently accessed data on slower but more cost-effective storage media, such as HDDs.</p>
+<h2>Important Information on Multi-tiered Storage Configuration</h2>
+<p>Multi-tiered storage is a useful tool that allows you to store data across different levels of storage media based on access speed and cost. This helps optimize performance and reduce overall storage costs by placing frequently accessed data on faster storage media, such as SSDs, and less frequently accessed data on slower but more cost-effective storage media, such as HDDs.</p>
           <p><b>Please note that once you have added a storage tier, it cannot be removed. </b> Therefore, it is important to carefully consider your storage requirements and configure the tiers appropriately. <b>
               A misconfigured storage tier can result in performance degradation and decreased efficiency, so be sure to select the appropriate retention strategy for each tier to ensure optimal performance and data accessibility.</b></p>
-<p>For example, you can move events to a slower storage tier once they have been snapshot and the snapshot is available on the faster tier.</p>
+<p>For example, you can move events to a slower storage tier once they have been snapshotted and the snapshot is available on the faster tier.</p>
       <button class="button" @click.prevent="hideModal('about-multitier')">I understand</button>
       </div>
    </modal>
@@ -982,7 +982,7 @@
             <div class="column configuration modal">
                 <h2>Ephemeral context</h2>
                 <p>
-                    Selecting black hole as tier will mark your context as ephemeral which means data is <span style="color: red">permanently</span> removed data after a specified retention interval.
+                    Selecting black hole as tier will mark your context as ephemeral which means data is permanently removed after a specified retention interval.
                     Once data is removed, it cannot be recovered.
                 </p>
                 <p>
@@ -993,7 +993,7 @@
                         <li>
                             <span>&nbsp;</span>
                             <span>
-                                <button @click.prevent="hideModal('black_hole')" class="button">Continue</button>
+                                <button @click.prevent="hideModal('black_hole')" class="button">I understand</button>
                             </span>
                         </li>
                     </ul>

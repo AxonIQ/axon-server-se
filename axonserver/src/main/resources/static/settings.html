@@ -63,16 +63,16 @@
     </div>
 
     <div v-if="!initialized" class="msg white">
-        <h4>It appears that you have a fresh installation.</h4>
-        Would you like to complete the installation and utilize this node as a standalone entity,
-        or join an existing cluster with a license?
+        <h4>It appears that you have a fresh installation. How would you like to initialize this node?</h4>
+
+        Would you like to complete the installation and use this node as a standalone node as the first node in a cluster (Enterprise Edition only), or as a node in an existing cluster?
 
         <div style="margin-top: 15px">
             Action:
             <br/>
             <select v-model="initializeMode" style="margin-top: 10px">
-                <option value="init">Start standalone node</option>
-                <option value="join">Join cluster with license</option>
+                <option value="init">Start as standalone node or first node</option>
+                <option value="join">Join an existing cluster</option>
             </select>
             <div v-if="initializeMode === 'init'" style="margin-top: 10px">
                 With context name:
@@ -82,11 +82,11 @@
                 <button style="margin-top: 15px" @click="initCluster()">Finish</button>
             </div>
             <div v-if="initializeMode === 'join'" style="margin-top: 15px">
-                Internal hostname for other node:
+                Internal hostname of one of the nodes in the cluster to join:
                 <br/>
                 <input v-model="joinHost"/>
                 <br/>
-                Internal port for other node:
+                Internal port:
                 <br/>
                 <input v-model="joinPort" type="number"/>
                 <br/>
@@ -196,7 +196,7 @@
                     </li>
                     <li v-if="!isEnterprise()">
                     <span></span>
-                    <span><a href="http://axoniq.io/se-vs-ee" target="_blank" class="info">Try Enterprise for free</a></span></li>
+                    <span><a href="http://axoniq.io/axonserver" target="_blank" class="info">Try Enterprise for free</a></span></li>
                 </ul>
             </section>
             <section v-if="initialized && license.featureList.length > 0">
