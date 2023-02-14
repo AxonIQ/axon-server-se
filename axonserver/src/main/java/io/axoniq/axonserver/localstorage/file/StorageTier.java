@@ -14,7 +14,6 @@ import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import reactor.core.publisher.Flux;
 
-import javax.annotation.Nonnull;
 import java.io.File;
 import java.time.Duration;
 import java.util.Iterator;
@@ -28,6 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import javax.annotation.Nonnull;
 
 /**
  * Interface StorageTier that defines the contract for a storage tier.
@@ -148,6 +148,8 @@ public interface StorageTier {
     Integer currentSegmentVersion(Long segment);
 
     void activateSegmentVersion(long segment, int segmentVersion);
+
+    SortedSet<FileVersion> segmentsWithoutIndex();
 
     /**
      * Represents the abstract RetentionStrategy class.

@@ -178,4 +178,6 @@ public interface IndexManager {
      * @return
      */
     Stream<AggregateIndexEntries> latestSequenceNumbers(FileVersion segment);
+
+    void createIndex(FileVersion segment, Map<String, List<IndexEntry>> entries);
 }

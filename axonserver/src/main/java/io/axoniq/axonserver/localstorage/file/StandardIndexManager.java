@@ -33,6 +33,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -157,7 +158,34 @@ public class StandardIndexManager implements IndexManager {
                                                .orElse(-1L));
     }
 
-    private void createIndex(FileVersion segment, Map<String, IndexEntries> positionsPerAggregate) {
+    @Override
+    public void createIndex(FileVersion segment, Map<String, List<IndexEntry>> indexEntries) {
+        Map<String, IndexEntries> positionsPerAggregate = new HashMap<>();
+        indexEntries.forEach((aggregateId, entries) ->
+                                     positionsPerAggregate
+                                             .computeIfAbsent(aggregateId,
+                                                              a -> new StandardIndexEntries(
+                                                                      entries.get(0).getSequenceNumber()))
+                                             .addAll(entries));
+        createStandardIndex(segment, positionsPerAggregate);
+    }
+
+    public void createStandardIndex(FileVersion segment, Map<String, IndexEntries> positionsPerAggregate) {
+        if (mySegment(segment)) {
+            doCreateIndex(segment, positionsPerAggregate);
+        } else {
+            StandardIndexManager nextStandardIndexManager = (StandardIndexManager) next.get();
+            if (nextStandardIndexManager != null) {
+                nextStandardIndexManager.createStandardIndex(segment, positionsPerAggregate);
+            }
+        }
+    }
+
+    private boolean mySegment(FileVersion segment) {
+        return storageProperties.get().dataFile(storagePath, segment).exists();
+    }
+
+    private void doCreateIndex(FileVersion segment, Map<String, IndexEntries> positionsPerAggregate) {
         StorageProperties properties = storageProperties.get();
         if (positionsPerAggregate == null) {
             positionsPerAggregate = Collections.emptyMap();
@@ -417,7 +445,7 @@ public class StandardIndexManager implements IndexManager {
      */
     @Override
     public void complete(FileVersion segment) {
-        createIndex(segment, activeIndexes.get(segment.segment()));
+        doCreateIndex(segment, activeIndexes.get(segment.segment()));
         indexesDescending.put(segment.segment(), segment.segmentVersion());
         activeIndexes.remove(segment.segment());
         updateUseMmapAfterIndex();
