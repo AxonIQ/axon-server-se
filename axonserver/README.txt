@@ -3,6 +3,10 @@ This is the Axon Server Standard Edition, version 4.6
 For information about the Axon Framework and Axon Server,
 visit https://docs.axoniq.io.
 
+Release Notes for version 4.6.10
+-------------------------------
+* Fix regression on query handling: on query handler disconnected, all registered handler for that stream must be removed.
+
 Release Notes for version 4.6.9
 -------------------------------
 * Fix: the processing of items must not be interrupted if an exception occurs during sending
