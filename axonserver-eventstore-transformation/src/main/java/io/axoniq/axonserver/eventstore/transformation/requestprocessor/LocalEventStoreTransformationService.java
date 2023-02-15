@@ -14,6 +14,7 @@ import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformati
 import io.axoniq.axonserver.eventstore.transformation.apply.TransformationApplyTask;
 import io.axoniq.axonserver.eventstore.transformation.clean.TransformationCleanTask;
 import io.axoniq.axonserver.eventstore.transformation.compact.EventStoreCompactionTask;
+import io.axoniq.axonserver.eventstore.transformation.spi.TransformationAllowed;
 import io.axoniq.axonserver.grpc.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     private final TransformationApplyTask transformationApplyTask;
     private final EventStoreCompactionTask transformationRollBackTask;
     private final TransformationCleanTask transformationCleanTask;
+    private final TransformationAllowed transformationAllowed;
 
     public void init() {
         transformationApplyTask.start();
@@ -56,24 +58,28 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
                                                 EventStoreCompactionTask transformationRollBackTask,
                                                 TransformationApplyTask transformationApplyTask,
-                                                TransformationCleanTask transformationCleanTask) {
+                                                TransformationCleanTask transformationCleanTask,
+                                                TransformationAllowed transformationAllowed) {
         this(transformers,
              transformations,
              LoggerFactory.getLogger("AUDIT." + LocalEventStoreTransformationService.class.getName()),
-             transformationApplyTask, transformationRollBackTask, transformationCleanTask);
+             transformationApplyTask, transformationRollBackTask, transformationCleanTask,
+             transformationAllowed);
     }
 
     public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
                                                 Logger auditLog,
                                                 TransformationApplyTask transformationApplyTask,
                                                 EventStoreCompactionTask transformationRollBackTask,
-                                                TransformationCleanTask transformationCleanTask) {
+                                                TransformationCleanTask transformationCleanTask,
+                                                TransformationAllowed transformationAllowed) {
         this.transformers = transformers;
         this.transformations = transformations;
         this.auditLog = auditLog;
         this.transformationApplyTask = transformationApplyTask;
         this.transformationRollBackTask = transformationRollBackTask;
         this.transformationCleanTask = transformationCleanTask;
+        this.transformationAllowed = transformationAllowed;
     }
 
     @Override
@@ -87,17 +93,20 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     @Override
     public Mono<Void> start(String id, String context, String description,
                             @Nonnull Authentication authentication) {
-        return transformerFor(context).flatMap(transformer -> transformer.start(id, description))
-                                      .doFirst(() -> auditLog.info("{}@{}: Request to start transformation - {}",
-                                                                   username(authentication.username()),
-                                                                   sanitize(context),
-                                                                   sanitize(description)))
-                                      .doOnError(t -> auditLog.error(
-                                              "Transformation {}: '{}' couldn't be started for context {}.",
-                                              id,
-                                              description,
-                                              context,
-                                              t));
+        return transformationAllowed.validate(context)
+                                    .then(transformerFor(context).flatMap(transformer -> transformer.start(id,
+                                                                                                           description))
+                                                                 .doFirst(() -> auditLog.info(
+                                                                         "{}@{}: Request to start transformation - {}",
+                                                                         username(authentication.username()),
+                                                                         sanitize(context),
+                                                                         sanitize(description)))
+                                                                 .doOnError(t -> auditLog.error(
+                                                                         "Transformation {}: '{}' couldn't be started for context {}.",
+                                                                         id,
+                                                                         description,
+                                                                         context,
+                                                                         t)));
     }
 
     @Override
@@ -138,21 +147,27 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     public Mono<Void> startApplying(String context, String transformationId, long sequence,
                                     @Nonnull Authentication authentication) {
         String applier = username(authentication.username());
-        return transformerFor(context).flatMap(transformer -> transformer.startApplying(transformationId,
-                                                                                        sequence,
-                                                                                        applier))
-                                      .doFirst(() -> auditLog.info("{}@{}: Request to apply transformation {}",
-                                                                   applier,
-                                                                   sanitize(context),
-                                                                   sanitize(transformationId)));
+        return transformationAllowed.validate(context)
+                                    .then(transformerFor(context).flatMap(transformer -> transformer.startApplying(
+                                                                         transformationId,
+                                                                         sequence,
+                                                                         applier))
+                                                                 .doFirst(() -> auditLog.info(
+                                                                         "{}@{}: Request to apply transformation {}",
+                                                                         applier,
+                                                                         sanitize(context),
+                                                                         sanitize(transformationId))));
     }
 
     @Override
     public Mono<Void> compact(String compactionId, String context, @Nonnull Authentication authentication) {
-        return transformerFor(context).flatMap(contextTransformer -> contextTransformer.compact(compactionId))
-                                      .doFirst(() -> auditLog.info("{}@{}: Request to delete old events.",
-                                                                   username(authentication.username()),
-                                                                   sanitize(context)));
+        return transformationAllowed.validate(context)
+                                    .then(transformerFor(context).flatMap(contextTransformer -> contextTransformer.compact(
+                                                                         compactionId))
+                                                                 .doFirst(() -> auditLog.info(
+                                                                         "{}@{}: Request to delete old events.",
+                                                                         username(authentication.username()),
+                                                                         sanitize(context))));
     }
 
     private Mono<ContextTransformer> transformerFor(String context) {

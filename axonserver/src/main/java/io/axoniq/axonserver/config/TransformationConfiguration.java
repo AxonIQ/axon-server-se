@@ -35,6 +35,7 @@ import io.axoniq.axonserver.eventstore.transformation.jpa.JpaCompactingContexts;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaEventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaLocalTransformationProgressStore;
 import io.axoniq.axonserver.eventstore.transformation.jpa.JpaTransformations;
+import io.axoniq.axonserver.eventstore.transformation.jpa.JpaTransformationsInProgressForContext;
 import io.axoniq.axonserver.eventstore.transformation.jpa.LocalEventStoreTransformationRepository;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.DefaultTransformationEntryStoreSupplier;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventProvider;
@@ -45,6 +46,8 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.LocalTran
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreProvider;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformations;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.Transformers;
+import io.axoniq.axonserver.eventstore.transformation.spi.TransformationAllowed;
+import io.axoniq.axonserver.eventstore.transformation.spi.TransformationsInProgressForContext;
 import io.axoniq.axonserver.filestorage.impl.StorageProperties;
 import io.axoniq.axonserver.localstorage.AutoCloseableEventProvider;
 import io.axoniq.axonserver.localstorage.ContextEventProviderSupplier;
@@ -60,6 +63,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -199,15 +203,17 @@ public class TransformationConfiguration {
 
     @Bean(initMethod = "init", destroyMethod = "destroy")
     public LocalEventStoreTransformationService localEventStoreTransformationService(Transformers transformers,
-                                                                                Transformations transformations,
-                                                                                EventStoreCompactionTask eventStoreCompactionTask,
-                                                                                TransformationApplyTask transformationApplyTask,
-                                                                                TransformationCleanTask transformationCleanTask) {
+                                                                                     Transformations transformations,
+                                                                                     EventStoreCompactionTask eventStoreCompactionTask,
+                                                                                     TransformationApplyTask transformationApplyTask,
+                                                                                     TransformationCleanTask transformationCleanTask,
+                                                                                     TransformationAllowed transformationAllowed) {
         return new LocalEventStoreTransformationService(transformers,
                                                         transformations,
                                                         eventStoreCompactionTask,
                                                         transformationApplyTask,
-                                                        transformationCleanTask);
+                                                        transformationCleanTask,
+                                                        transformationAllowed);
     }
 
     @ConditionalOnMissingBean(value = EventStoreTransformationService.class,
@@ -219,5 +225,18 @@ public class TransformationConfiguration {
             ContextEventProviderSupplier eventIteratorFactory
     ) {
         return new FastValidationEventStoreTransformationService(service, eventIteratorFactory::eventProviderFor);
+    }
+
+    @Bean
+    public TransformationsInProgressForContext transformationsInProgressForContext(EventStoreStateRepository repository) {
+        return new JpaTransformationsInProgressForContext(repository);
+    }
+
+    @Primary
+    @Bean
+    public TransformationAllowed transformationAllowed(List<TransformationAllowed> transformationAllowedList) {
+        return context -> Flux.fromIterable(transformationAllowedList)
+                .flatMap(transformationAllowed -> transformationAllowed.validate(context))
+                .then();
     }
 }
