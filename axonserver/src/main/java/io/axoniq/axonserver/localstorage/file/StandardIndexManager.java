@@ -230,6 +230,7 @@ public class StandardIndexManager implements IndexManager {
         filter.insertAll(positionsPerAggregate.keySet());
         filter.store();
         bloomFilterPerSegment.put(segment, filter);
+        indexesDescending.put(segment.segment(), segment.segmentVersion());
         getIndex(segment);
     }
 
@@ -446,7 +447,6 @@ public class StandardIndexManager implements IndexManager {
     @Override
     public void complete(FileVersion segment) {
         doCreateIndex(segment, activeIndexes.get(segment.segment()));
-        indexesDescending.put(segment.segment(), segment.segmentVersion());
         activeIndexes.remove(segment.segment());
         updateUseMmapAfterIndex();
     }
