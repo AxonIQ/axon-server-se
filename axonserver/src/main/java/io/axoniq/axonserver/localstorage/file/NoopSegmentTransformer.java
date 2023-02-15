@@ -11,8 +11,8 @@ class NoopSegmentTransformer implements SegmentTransformer{
     }
 
     @Override
-    public Mono<Long> transformEvent(EventWithToken transformedEvent) {
-        return Mono.just(1L);
+    public Mono<Void> transformEvent(EventWithToken transformedEvent) {
+        return Mono.empty();
     }
 
     @Override

@@ -3,14 +3,12 @@ package io.axoniq.axonserver.localstorage.file;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import reactor.core.publisher.Mono;
 
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 class TransformationResources {
 
-    private final AtomicLong currentSequence = new AtomicLong(-1L);
     private final AtomicReference<SegmentTransformer> segmentTransformerRef =
             new AtomicReference<>(new NoopSegmentTransformer());
 
@@ -36,7 +34,7 @@ class TransformationResources {
     }
 
 
-    public Mono<Long> transform(EventWithToken eventWithToken) {
+    public Mono<Void> transform(EventWithToken eventWithToken) {
         long segment = segmentForToken.apply(eventWithToken.getToken());
         if (segment > segmentTransformerRef.get().segment()) {
             DefaultSegmentTransformer segmentTransformer =
@@ -50,12 +48,10 @@ class TransformationResources {
             segmentTransformerRef.set(segmentTransformer);
             return prevSegmentTransformer.completeSegment()
                                          .then(segmentTransformer.initialize())
-                                         .then(segmentTransformer.transformEvent(eventWithToken))
-                                         .thenReturn(currentSequence.incrementAndGet());
+                                         .then(segmentTransformer.transformEvent(eventWithToken));
         }
         return segmentTransformerRef.get()
-                                    .transformEvent(eventWithToken)
-                                    .thenReturn(currentSequence.incrementAndGet());
+                                    .transformEvent(eventWithToken);
     }
 
     public Mono<Void> completeCurrentSegment() {

@@ -66,20 +66,12 @@ public class DefaultTransformationApplyExecutor implements TransformationApplyEx
                    .then(transformer.transformEvents(transformation.context(),
                                                      transformation.version(),
                                                      transformedEvents)
-                                    .flatMapSequential(progress -> sequence(transformation.id(), progress))
-                                    .flatMapSequential(lastProcessedSequence -> localStateStore.updateLastSequence(
-                                            transformation.id(),
-                                            lastProcessedSequence))
+                                    .concatMap(progress -> localStateStore.incrementLastSequence(transformation.id(), progress))
                                     .then(localStateStore.markAsApplied(transformation.id()))
                                     .doFinally(onFinally -> applyingTransformations.remove(transformation.id())))
                    .doOnSuccess(v -> logger.warn("Transformation {} applied successfully to local store.",
                                                  transformation.id()))
                    .doOnError(t -> logger.warn("Failed to apply to local store the transformation {}", transformation));
-    }
-
-    private Mono<Long> sequence(String transformationId, Long progress) {
-        return localStateStore.stateFor(transformationId)
-                              .map(state -> state.lastAppliedSequence() + progress);
     }
 
     private EventWithToken eventWithToken(TransformationAction transformationAction) {

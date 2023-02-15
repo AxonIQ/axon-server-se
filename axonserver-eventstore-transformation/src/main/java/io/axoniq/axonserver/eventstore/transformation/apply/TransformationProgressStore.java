@@ -14,7 +14,7 @@ public interface TransformationProgressStore {
      */
     Mono<TransformationApplyingState> stateFor(String transformationId);
 
-    Mono<Void> updateLastSequence(String transformationId, long lastProcessedSequence);
+    Mono<Void> incrementLastSequence(String transformationId, long sequenceIncrement);
 
     Mono<Void> markAsApplied(String transformationId);
 }

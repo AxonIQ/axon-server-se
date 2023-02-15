@@ -302,7 +302,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                     indexManager,
                                                                     segment -> getTransactions(segment, segment),
                                                                     storagePath)),
-                              resources -> transformedEvents.concatMap(resources::transform),
+                              resources -> transformedEvents.concatMap(event -> resources.transform(event)
+                                                                                         .thenReturn(1L)),
                               currentSegmentTransformer -> currentSegmentTransformer.completeCurrentSegment()
                                                                                     .then(activateTransformation()),
                               TransformationResources::rollback,

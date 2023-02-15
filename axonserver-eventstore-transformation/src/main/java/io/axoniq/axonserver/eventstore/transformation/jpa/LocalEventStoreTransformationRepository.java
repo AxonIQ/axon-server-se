@@ -10,6 +10,11 @@
 package io.axoniq.axonserver.eventstore.transformation.jpa;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import javax.transaction.Transactional;
 
 /**
  * @author Marc Gathier
@@ -18,4 +23,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LocalEventStoreTransformationRepository
         extends JpaRepository<LocalEventStoreTransformationJpa, String> {
 
+    @Modifying
+    @Query("update LocalEventStoreTransformationJpa d set d.lastSequenceApplied = d.lastSequenceApplied + :#{#increment} where d.transformationId = :#{#transformationId}")
+    @Transactional
+    void incrementLastSequence(@Param("transformationId") String transformationId, @Param("increment") long increment);
 }

@@ -35,14 +35,9 @@ public class JpaLocalTransformationProgressStore implements TransformationProgre
     }
 
     @Override
-    public Mono<Void> updateLastSequence(String transformationId, long lastProcessedSequence) {
-        return stateFor(transformationId).filter(state -> !state.applied())
-                                         .switchIfEmpty(Mono.error(new RuntimeException("unexisting transformation")))
-                                         .map(state -> new LocalEventStoreTransformationJpa(transformationId,
-                                                                                            lastProcessedSequence,
-                                                                                            state.applied()))
-                                         .doOnNext(repository::save)
-                                         .then();
+    public Mono<Void> incrementLastSequence(String transformationId, long sequenceIncrement) {
+        return Mono.<Void>fromRunnable(() -> repository.incrementLastSequence(transformationId, sequenceIncrement))
+                   .subscribeOn(Schedulers.boundedElastic());
     }
 
     @Override

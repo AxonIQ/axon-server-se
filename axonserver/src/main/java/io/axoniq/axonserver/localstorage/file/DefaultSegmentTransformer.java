@@ -72,9 +72,8 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     }
 
     @Override
-    public Mono<Long> transformEvent(EventWithToken transformedEvent) {
-        return process(() -> Optional.of(transformedEvent))
-                .thenReturn(1L);
+    public Mono<Void> transformEvent(EventWithToken transformedEvent) {
+        return process(() -> Optional.of(transformedEvent));
     }
 
     @Override

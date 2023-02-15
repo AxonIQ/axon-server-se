@@ -16,7 +16,7 @@ interface SegmentTransformer {
 
     Mono<Void> initialize();
 
-    Mono<Long> transformEvent(EventWithToken transformedEvent); //TODO MonoVoid
+    Mono<Void> transformEvent(EventWithToken transformedEvent);
 
     Mono<Void> completeSegment();
 
