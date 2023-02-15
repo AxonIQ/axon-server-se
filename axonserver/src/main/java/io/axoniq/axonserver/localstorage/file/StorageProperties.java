@@ -344,12 +344,17 @@ public class StorageProperties implements Cloneable {
         String storagePath = storages.get(storageName);
         if (storagePath == null) {
             throw new IllegalStateException("Storage " + storageName + " not defined on this node." +
-                    "To define storage set property: axoniq.axonserver.event.storage." + storageName);
+                                                    "To define storage set property: axoniq.axonserver.event.storage."
+                                                    + storageName);
         }
         return storagePath;
     }
 
-    public Map<String,String> getAvailableStorages() {
+    public String getStorage(String storageName, String context) {
+        return String.format("%s/%s", getStorage(storageName), context);
+    }
+
+    public Map<String, String> getAvailableStorages() {
         return storages;
     }
 
