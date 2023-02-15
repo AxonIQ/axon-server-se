@@ -48,8 +48,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -87,6 +87,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final Supplier<StorageProperties> storagePropertiesSupplier;
     protected final EventTypeContext type;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
+    protected final NavigableMap<Long, Integer> segments = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
     private final Timer lastSequenceReadTimer;
     protected final Supplier<StorageTier> next;
     private static final int PREFETCH_SEGMENT_FILES = 2;
@@ -96,17 +97,17 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     protected final String storagePath;
     private final AtomicBoolean initialized = new AtomicBoolean(true);
 
-    public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                  Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory,
-                                  String storagePath) {
+    protected SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
+                                     Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory,
+                                     String storagePath) {
         this(eventTypeContext, indexManager, storagePropertiesSupplier, () -> null, meterFactory, storagePath);
     }
 
-    public SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                  Supplier<StorageProperties> storagePropertiesSupplier,
-                                  Supplier<StorageTier> nextSegmentsHandler,
-                                  MeterFactory meterFactory,
-                                  String storagePath) {
+    protected SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
+                                     Supplier<StorageProperties> storagePropertiesSupplier,
+                                     Supplier<StorageTier> nextSegmentsHandler,
+                                     MeterFactory meterFactory,
+                                     String storagePath) {
         this.type = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
@@ -119,8 +120,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                           (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
         this.storagePath = storagePath;
     }
-
-    public abstract void handover(Segment segment, Runnable callback);
 
     public Flux<SerializedEvent> eventsPerAggregate(String aggregateId,
                                                     long firstSequence,
@@ -153,27 +152,28 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch) {
-        return (!containsSegment(segment.segment()) && next.get() != null) ?
-                next.get().eventsForPositions(segment, indexEntries, prefetch) :
-                new EventSourceFlux(indexEntries,
-                                    () -> eventSource(segment),
-                                    segment.segment(),
-                                    prefetch).get()
-                                             .name("event_stream")
-                                             .tag("context", context)
-                                             .tag("stream",
-                                                  "aggregate_events")
-                                             .tag("origin",
-                                                  "event_source")
-                                             .metrics();
+        if (!containsSegment(segment.segment())) {
+            return invokeOnNext(n -> n.eventsForPositions(segment, indexEntries, prefetch), Flux.empty());
+        } else {
+            return new EventSourceFlux(indexEntries,
+                                       () -> eventSource(segment),
+                                       segment.segment(),
+                                       prefetch).get()
+                                                .name("event_stream")
+                                                .tag("context", context)
+                                                .tag("stream",
+                                                     "aggregate_events")
+                                                .tag("origin",
+                            "event_source")
+                    .metrics();
+        }
     }
 
     /**
-     * Returns {@code true} if this instance is resposnsible to handling the specified segment, {@code false}
-     * otherwise.
+     * Returns {@code true} if this instance is responsible to handling the specified segment, {@code false} otherwise.
      *
      * @param segment the segment to check
-     * @return {@code true} if this instance is resposnsible to handling the specified segment, {@code false} otherwise.
+     * @return {@code true} if this instance is responsible to handling the specified segment, {@code false} otherwise.
      */
     protected abstract boolean containsSegment(long segment);
 
@@ -290,7 +290,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
-        return getLastSequenceNumber(aggregateIdentifier, contains(hints, SearchHint.RECENT_ONLY) ?
+        return getLastSequenceNumber(aggregateIdentifier, recentOnly(hints) ?
                 storagePropertiesSupplier.get().segmentsForSequenceNumberCheck() : Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
@@ -352,14 +352,15 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Mono<Void> delete(FileVersion fileVersion) {
         return Mono.fromRunnable(() -> {
                                      if (!removeSegment(fileVersion.segment(), fileVersion.segmentVersion())) {
-                                         throw new RuntimeException(context + ": Cannot remove segment " + fileVersion);
+                                         throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                                              context + ": Cannot remove segment "
+                                                                                      + fileVersion);
                                      }
                                  }
                    ).retry(3)
                    .then();
     }
 
-    @Override
     public int nextVersion() {
         int segmentVersion = 1;
         for (Long segment : getSegments()) {
@@ -375,9 +376,9 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     protected abstract boolean removeSegment(long segment, int segmentVersion);
 
-    private <T> boolean contains(T[] values, T value) {
-        for (T t : values) {
-            if (t.equals(value)) {
+    private boolean recentOnly(SearchHint[] values) {
+        for (SearchHint t : values) {
+            if (t.equals(SearchHint.RECENT_ONLY)) {
                 return true;
             }
         }
@@ -601,7 +602,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     protected Map<Long, Integer> prepareSegmentStore(long lastInitialized) {
-        NavigableMap<Long, Integer> segments = new TreeMap<>(Comparator.reverseOrder());
         StorageProperties storageProperties = storagePropertiesSupplier.get();
         File events = new File(storagePath);
         FileUtils.checkCreateDirectory(events);
@@ -617,20 +617,26 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
               }));
 
         segments.forEach((segment, segmentVersion) -> renameFileIfNecessary(segment));
-        long firstValidIndex = segments.entrySet().stream().filter(entry -> indexManager.validIndex(new FileVersion(
+        return segments;
+    }
+
+    public SortedSet<FileVersion> segmentsWithoutIndex() {
+        long firstValidIndex = segments.entrySet()
+                                       .stream()
+                                       .filter(entry -> indexManager.validIndex(new FileVersion(
                                                entry.getKey(),
                                                entry.getValue())))
                                        .map(Map.Entry::getKey)
                                        .findFirst().orElse(-1L);
         logger.info("{}: {} First valid index: {}", getType(), storagePath, firstValidIndex);
-        SortedSet<FileVersion> recreate = new TreeSet<>();
-        recreate.addAll(segments.headMap(firstValidIndex).entrySet().stream()
-                                .map(e -> new FileVersion(e.getKey(), e.getValue())).collect(Collectors.toSet()));
-        recreate.forEach(this::recreateIndex);
-        return segments;
+        TreeSet<FileVersion> local = new TreeSet<>(segments.headMap(firstValidIndex).entrySet().stream()
+                                                           .map(e -> new FileVersion(e.getKey(), e.getValue()))
+                                                           .collect(Collectors.toSet()));
+        if (firstValidIndex < 0) {
+            local.addAll(invokeOnNext(n -> n.segmentsWithoutIndex(), Collections.emptySortedSet()));
+        }
+        return local;
     }
-
-    protected abstract void recreateIndex(FileVersion segment);
 
     public int retrieveEventsForAnAggregate(FileVersion segment, List<Integer> indexEntries, long minSequenceNumber,
                                             long maxSequenceNumber,
@@ -765,10 +771,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         if (!initialized.get()) {
             init(false, 0L);
         }
-        return doGetSegments();
+        return segments.navigableKeySet();
     }
-
-    protected abstract SortedSet<Long> doGetSegments();
 
     @Override
     public byte transactionVersion() {

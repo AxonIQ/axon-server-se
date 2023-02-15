@@ -38,14 +38,14 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -122,6 +122,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         renameFileIfNecessary(first.segment());
         FileVersion realFirst = firstSegmentIfLatestCompleted(first, storageProperties);
         applyOnNext(n -> n.initSegments(realFirst.segment()));
+        createMissingIndexes();
         WritableEventSource buffer = getOrOpenDatafile(realFirst, storageProperties.getSegmentSize(), false);
         indexManager.remove(realFirst);
         long sequence = realFirst.segment();
@@ -177,6 +178,40 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         synchronizer.init(writePosition);
     }
 
+
+    private void createMissingIndexes() {
+        SortedSet<FileVersion> segmentsWithoutIndex = segmentsWithoutIndex();
+        segmentsWithoutIndex.forEach(this::createIndex);
+    }
+
+    @Override
+    public SortedSet<FileVersion> segmentsWithoutIndex() {
+        return invokeOnNext(StorageTier::segmentsWithoutIndex,
+                            Collections.emptySortedSet());
+    }
+
+    private void createIndex(FileVersion segment) {
+        Optional<EventSource> optionalEventSource = invokeOnNext(n -> n.eventSource(segment), Optional.empty());
+        if (optionalEventSource.isPresent()) {
+            try (EventIterator iterator = optionalEventSource.get().createEventIterator(segment.segment())) {
+                Map<String, List<IndexEntry>> entries = new HashMap<>();
+                while (iterator.hasNext()) {
+                    EventInformation event = iterator.next();
+                    if (event.isDomainEvent()) {
+                        IndexEntry indexEntry = new IndexEntry(
+                                event.getEvent().getAggregateSequenceNumber(),
+                                event.getPosition(),
+                                event.getToken());
+                        entries.computeIfAbsent(event.getEvent().getAggregateIdentifier(), id -> new LinkedList<>())
+                               .add(indexEntry);
+                    }
+                }
+
+                indexManager.createIndex(segment, entries);
+            }
+        }
+    }
+
     public int activeSegmentCount() {
         return readBuffers.size();
     }
@@ -204,7 +239,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
 
         return Arrays.stream(eventFiles)
-                     .map(name -> FileUtils.process(name))
+                     .map(FileUtils::process)
                      .filter(segment -> segment.segment() < lastInitialized)
                      .max(FileVersion::compareTo)
                      .orElse(defaultFirstIndex);
@@ -291,11 +326,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
             FileUtils.delete(storageDir);
         }
         closeListeners.forEach(Runnable::run);
-    }
-
-    @Override
-    protected NavigableSet<Long> doGetSegments() {
-        return readBuffers.descendingKeySet();
     }
 
     @Override
@@ -411,13 +441,22 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive) {
         StorageTier nextTier = next.get();
         if (includeActive) {
-            Stream<String> filenames = getSegments().stream()
-                                                    .map(s -> name(dataFile(new FileVersion(s, 0))));
+            Stream<String> filenames = getSegments()
+                    .stream()
+                    .map(s -> name(dataFile(new FileVersion(s, 0))));
             return nextTier != null ?
-                    Stream.concat(filenames, nextTier.getBackupFilenames(lastSegmentBackedUp,  lastVersionBackedUp, true)) :
+                    Stream.concat(filenames,
+                                  nextTier.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, true)) :
                     filenames;
         }
-        return nextTier != null ? nextTier.getBackupFilenames(lastSegmentBackedUp,  lastVersionBackedUp, false) : Stream.empty();
+        return nextTier != null ? nextTier.getBackupFilenames(lastSegmentBackedUp,
+                                                              lastVersionBackedUp,
+                                                              false) : Stream.empty();
+    }
+
+    @Override
+    public SortedSet<Long> getSegments() {
+        return readBuffers.keySet();
     }
 
     @Override
@@ -472,12 +511,6 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
             }
         };
     }
-
-    @Override
-    protected void recreateIndex(FileVersion segment) {
-        // No implementation as for primary segment store there are no index files, index is kept in memory
-    }
-
 
     protected void completeSegment(WritePosition writePosition) {
         indexManager.complete(new FileVersion(writePosition.segment, 0));
@@ -662,9 +695,5 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     private String storeName() {
         return context + "-" + type.getEventType().name().toLowerCase();
-    }
-
-    public Set<Long> activeSegments() {
-        return readBuffers.keySet();
     }
 }

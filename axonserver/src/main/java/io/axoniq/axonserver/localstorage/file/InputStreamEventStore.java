@@ -13,11 +13,7 @@ import io.axoniq.axonserver.localstorage.EventTypeContext;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
 import io.axoniq.axonserver.metric.MeterFactory;
 
-import java.util.Comparator;
-import java.util.NavigableMap;
 import java.util.Optional;
-import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Supplier;
 
 /**
@@ -27,8 +23,6 @@ import java.util.function.Supplier;
  * @since 4.0
  */
 public class InputStreamEventStore extends SegmentBasedEventStore implements StorageTier {
-
-    private final NavigableMap<Long, Integer> segments = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
     private final EventTransformerFactory eventTransformerFactory;
 
     public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
@@ -61,10 +55,8 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
 
     @Override
     public void initSegments(long lastInitialized) {
-        segments.putAll(prepareSegmentStore(lastInitialized));
-        if (next.get() != null) {
-            next.get().initSegments(segments.isEmpty() ? lastInitialized : segments.navigableKeySet().last());
-        }
+        prepareSegmentStore(lastInitialized);
+        applyOnNext(n -> n.initSegments(segments.isEmpty() ? lastInitialized : segments.navigableKeySet().last()));
     }
 
     @Override
@@ -108,11 +100,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
         return Optional.of(eventSource);
     }
 
-    @Override
-    protected SortedSet<Long> doGetSegments() {
-        return segments.navigableKeySet();
-    }
-
     private InputStreamEventSource get(FileVersion segment, boolean force) {
         if (!force && !segments.containsKey(segment.segment())) {
             return null;
@@ -123,13 +110,5 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
                                           segment.segment(),
                                           segment.segmentVersion(),
                                           eventTransformerFactory);
-    }
-
-    @Override
-    protected void recreateIndex(FileVersion segment) {
-        try (InputStreamEventSource is = get(segment, true);
-             EventIterator iterator = createEventIterator(is, segment.segment())) {
-            recreateIndexFromIterator(segment, iterator);
-        }
     }
 }
