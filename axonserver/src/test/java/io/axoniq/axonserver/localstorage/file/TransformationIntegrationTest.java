@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -31,8 +31,7 @@ import io.grpc.Channel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.*;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -253,7 +252,7 @@ public class TransformationIntegrationTest {
         return TransformRequest.newBuilder()
                                .setTransformationId(transformationId)
                                .setSequence(sequence)
-                               .setEvent(
+                               .setReplaceEvent(
                                        TransformedEvent.newBuilder()
                                                        .setToken(token)
                                                        .setEvent(event)).build();
