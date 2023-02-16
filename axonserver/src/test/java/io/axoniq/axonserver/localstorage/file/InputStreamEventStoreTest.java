@@ -68,7 +68,7 @@ public class InputStreamEventStoreTest {
 
     @Test
     public void getEventSource() {
-        EventSource eventSource = testSubject.getEventSource(0).get();
+        EventSource eventSource = testSubject.localEventSource(0).get();
         try (EventIterator iterator = eventSource.createEventIterator(5)) {
             assertTrue(iterator.hasNext());
             EventInformation next = iterator.next();
@@ -83,7 +83,7 @@ public class InputStreamEventStoreTest {
 
     @Test
     public void readBackwards() {
-        EventSource eventSource = testSubject.getEventSource(0).get();
+        EventSource eventSource = testSubject.localEventSource(0).get();
         int[] positions = {432, 502, 572, 642, 712, 782, 852, 922};
         for (int i = positions.length - 1; i >= 0; i--) {
             eventSource.readEvent(positions[i]);
@@ -93,7 +93,7 @@ public class InputStreamEventStoreTest {
 
     @Test
     public void iterateTransactions() {
-        EventSource eventSource = testSubject.getEventSource(0).get();
+        EventSource eventSource = testSubject.localEventSource(0).get();
         TransactionIterator iterator = eventSource.createTransactionIterator(0, 5, true);
         assertTrue(iterator.hasNext());
         SerializedTransactionWithToken next = iterator.next();

@@ -39,6 +39,7 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -74,11 +75,13 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     protected final Synchronizer synchronizer;
     protected final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
     protected final AtomicLong lastToken = new AtomicLong(-1);
-    protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>();
+    protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>(
+            Comparator.reverseOrder());
     protected EventTransformer eventTransformer;
     protected final FileSystemMonitor fileSystemMonitor;
 
     private final String storagePath;
+
     /**
      * @param context                   the context and the content type (events or snapshots)
      * @param indexManager              the index manager to use
@@ -329,12 +332,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     }
 
     @Override
-    public Optional<EventSource> getEventSource(FileVersion segment) {
-        return getEventSource(segment.segment());
+    protected Optional<EventSource> localEventSource(FileVersion segment) {
+        return localEventSource(segment.segment());
     }
 
     @Override
-    protected Optional<EventSource> getEventSource(long segment) {
+    protected Optional<EventSource> localEventSource(long segment) {
         if (readBuffers.containsKey(segment)) {
             return Optional.of(readBuffers.get(segment).duplicate());
         }
@@ -461,7 +464,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     @Override
     public long getFirstCompletedSegment() {
-        return invokeOnNext(StorageTier::getFirstCompletedSegment, -1L);
+        return invokeOnNext(n -> n.allSegments().findFirst().orElse(-1L), -1L);
     }
 
     @Override

@@ -45,10 +45,10 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
     }
 
     @Override
-    protected Optional<EventSource> getEventSource(long segment) {
+    protected Optional<EventSource> localEventSource(long segment) {
         Integer segmentVersion = segments.get(segment);
         if (segmentVersion != null) {
-            return getEventSource(new FileVersion(segment, segmentVersion));
+            return localEventSource(new FileVersion(segment, segmentVersion));
         }
         return Optional.empty();
     }
@@ -90,7 +90,7 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
 
 
     @Override
-    public Optional<EventSource> getEventSource(FileVersion segment) {
+    protected Optional<EventSource> localEventSource(FileVersion segment) {
         logger.debug("Get eventsource: {}", segment);
         InputStreamEventSource eventSource = get(segment, false);
         logger.trace("result={}", eventSource);

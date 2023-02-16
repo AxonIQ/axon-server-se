@@ -9,23 +9,15 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
-import io.axoniq.axonserver.grpc.event.EventWithToken;
-import io.axoniq.axonserver.localstorage.QueryOptions;
-import io.axoniq.axonserver.localstorage.SerializedEvent;
-import reactor.core.publisher.Flux;
-
 import java.io.File;
 import java.time.Duration;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
@@ -36,33 +28,6 @@ import javax.annotation.Nonnull;
  * @since 2023.0.0
  */
 public interface StorageTier {
-    /**
-     * Retrieve events for positions in a segment.
-     *
-     * @param segment the segment to retrieve events from
-     * @param indexEntries the positions of events to retrieve
-     * @param prefetch the number of events to prefetch
-     * @return the events for the given positions
-     */
-    Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch);
-
-    /**
-     * Queries events from storage.
-     *
-     * @param queryOptions the options to use for querying events
-     * @param consumer the consumer to which the events will be delivered
-     */
-    void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer);
-
-    /**
-     * Reads a single serialized event from storage.
-     *
-     * @param minSequenceNumber the minimum sequence number for the event
-     * @param maxSequenceNumber the maximum sequence number for the event
-     * @param lastEventPosition the last event position
-     * @return the serialized event or an empty optional if no event was found
-     */
-    Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber, SegmentIndexEntries lastEventPosition);
 
     /**
      * Get the set of segments in storage.
@@ -86,25 +51,6 @@ public interface StorageTier {
      */
     long getTokenAt(long instant);
 
-    /**
-     * Get events from a given segment.
-     *
-     * @param segment the segment to retrieve events from
-     * @param token the token to start retrieval from
-     * @return the event iterator
-     */
-    EventIterator getEvents(long segment, long token);
-
-    /**
-     * Get transactions from a given segment.
-     *
-     * @param segment the segment to retrieve transactions from
-     * @param token the token to start retrieval from
-     * @param validating whether the transactions should be validated
-     * @return the transaction iterator
-     */
-    TransactionIterator getTransactions(long segment, long token, boolean validating);
-
 
     /**
      * Get the segment for a given token.
@@ -114,30 +60,30 @@ public interface StorageTier {
      */
     long getSegmentFor(long token);
 
-/**
- * Retrieve events for an aggregate from storage.
- *
- * @param segment the segment to retrieve events from
- * @param indexEntries the positions of events to retrieve
- * @param minSequenceNumber the minimum sequence number for the events
- * @param maxSequenceNumber the maximum sequence number for the events
- * @param onEvent the consumer to which the events will be delivered
- * @param maxResults the maximum number of events to retrieve
- * @param minToken the minimum token
- */
-    int retrieveEventsForAnAggregate(FileVersion segment, List<Integer> indexEntries, long minSequenceNumber,
-                                     long maxSequenceNumber,
-                                     Consumer<SerializedEvent> onEvent, long maxResults, long minToken);
 
     Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive);
 
+    /**
+     * Retrieves an {@link EventSource} for the given segment with specific version from this StorageTier or any linked
+     * storage tiers.
+     *
+     * @param segment the segment and version to retrieve
+     * @return an EventSource for the segment, or empty if not found
+     */
     Optional<EventSource> eventSource(FileVersion segment);
+
+    /**
+     * Retrieves an {@link EventSource} for the active version fo the given segment from this StorageTier or any linked
+     * storage tiers.
+     *
+     * @param segment the segment and version to retrieve
+     * @return an EventSource for the segment, or empty if not found
+     */
+    Optional<EventSource> eventSource(long segment);
 
     void close(boolean deleteData);
 
     void initSegments(long first);
-
-    long getFirstCompletedSegment();
 
     void handover(Segment segment, Runnable callback);
 
@@ -150,6 +96,9 @@ public interface StorageTier {
     void activateSegmentVersion(long segment, int segmentVersion);
 
     SortedSet<FileVersion> segmentsWithoutIndex();
+
+    Stream<Long> allSegments();
+
 
     /**
      * Represents the abstract RetentionStrategy class.

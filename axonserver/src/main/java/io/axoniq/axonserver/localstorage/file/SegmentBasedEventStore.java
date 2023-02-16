@@ -152,21 +152,17 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch) {
-        if (!containsSegment(segment.segment())) {
-            return invokeOnNext(n -> n.eventsForPositions(segment, indexEntries, prefetch), Flux.empty());
-        } else {
-            return new EventSourceFlux(indexEntries,
-                                       () -> eventSource(segment),
-                                       segment.segment(),
-                                       prefetch).get()
-                                                .name("event_stream")
-                                                .tag("context", context)
-                                                .tag("stream",
-                                                     "aggregate_events")
-                                                .tag("origin",
-                            "event_source")
-                    .metrics();
-        }
+        return new EventSourceFlux(indexEntries,
+                                   () -> eventSource(segment),
+                                   segment.segment(),
+                                   prefetch).get()
+                                            .name("event_stream")
+                                            .tag("context", context)
+                                            .tag("stream",
+                                                 "aggregate_events")
+                                            .tag("origin",
+                                                 "event_source")
+                                            .metrics();
     }
 
     /**
@@ -190,8 +186,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                                                       firstSequenceNumber,
                                                                                       lastSequenceNumber,
                                                                                       eventConsumer,
-                                                                                      Long.MAX_VALUE,
-                                                                                      minToken));
+                                                                                      Long.MAX_VALUE));
     }
 
     protected Stream<AggregateSequence> latestSequenceNumbers(FileVersion segment) {
@@ -230,7 +225,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                                        firstSequenceNumber,
                                                        maxSequenceNumber,
                                                        eventConsumer,
-                                                       maxResults, 0);
+                                                       maxResults);
             if (maxResults <= 0) {
                 return;
             }
@@ -240,49 +235,49 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     @Override
     public void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer) {
-        for (long segment : getSegments()) {
-            if (segment <= queryOptions.getMaxToken()) {
-                Optional<EventSource> eventSource = getEventSource(segment);
-                AtomicBoolean done = new AtomicBoolean();
-                boolean snapshot = EventType.SNAPSHOT.equals(type.getEventType());
-                eventSource.ifPresent(e -> {
-                    long minTimestampInSegment = Long.MAX_VALUE;
-                    EventInformation eventWithToken;
-                    EventIterator iterator = createEventIterator(e, segment);
-                    while (iterator.hasNext()) {
-                        eventWithToken = iterator.next();
-                        minTimestampInSegment = Math.min(minTimestampInSegment,
-                                                         eventWithToken.getEvent().getTimestamp());
-                        if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
-                            iterator.close();
-                            return;
+        List<Long> segments = allSegments().collect(Collectors.toList());
+        try {
+            for (Long segment : segments) {
+                if (segment <= queryOptions.getMaxToken()) {
+                    Optional<EventSource> eventSource = eventSource(segment);
+                    AtomicBoolean done = new AtomicBoolean();
+                    boolean snapshot = EventType.SNAPSHOT.equals(type.getEventType());
+                    eventSource.ifPresent(e -> {
+                        long minTimestampInSegment = Long.MAX_VALUE;
+                        EventInformation eventWithToken;
+                        EventIterator iterator = e.createEventIterator(segment);
+                        while (iterator.hasNext()) {
+                            eventWithToken = iterator.next();
+                            minTimestampInSegment = Math.min(minTimestampInSegment,
+                                                             eventWithToken.getEvent().getTimestamp());
+                            if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
+                                iterator.close();
+                                return;
+                            }
+                            if (eventWithToken.getToken() >= queryOptions.getMinToken()
+                                    && eventWithToken.getEvent().getTimestamp() >= queryOptions.getMinTimestamp()
+                                    && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
+                                iterator.close();
+                                return;
+                            }
                         }
-                        if (eventWithToken.getToken() >= queryOptions.getMinToken()
-                                && eventWithToken.getEvent().getTimestamp() >= queryOptions.getMinTimestamp()
-                                && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
-                            iterator.close();
-                            return;
+                        if (queryOptions.getMinToken() > segment || minTimestampInSegment < queryOptions
+                                .getMinTimestamp()) {
+                            done.set(true);
                         }
+                        iterator.close();
+                        e.close();
+                    });
+                    if (done.get()) {
+                        return;
                     }
-                    if (queryOptions.getMinToken() > segment || minTimestampInSegment < queryOptions
-                            .getMinTimestamp()) {
-                        done.set(true);
-                    }
-                    iterator.close();
-                    e.close();
-                });
-                if (done.get()) {
-                    return;
                 }
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-
-        applyOnNext(n -> n.query(new QueryOptions(queryOptions.getMinToken(),
-                                                  queryOptions.getMaxToken(),
-                                                  queryOptions.getMinTimestamp()), consumer));
     }
 
-    protected abstract Optional<EventSource> getEventSource(long segment);
 
     protected EventIterator createEventIterator(EventSource e, long startToken) {
         return e.createEventIterator(startToken);
@@ -329,7 +324,8 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     private Mono<Void> activateSegment(FileVersion fileVersion) {
         return renameTransformedSegmentIfNeeded(fileVersion)
                 .then(indexManager.activateVersion(fileVersion))
-                .then(Mono.fromRunnable(() -> activateSegmentVersion(fileVersion.segment(), fileVersion.segmentVersion())));
+                .then(Mono.fromRunnable(() -> activateSegmentVersion(fileVersion.segment(),
+                                                                     fileVersion.segmentVersion())));
     }
 
     private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
@@ -408,7 +404,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
 
     public Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
                                                          SegmentIndexEntries lastEventPosition) {
-        Optional<EventSource> eventSource = getEventSource(lastEventPosition.fileVersion());
+        Optional<EventSource> eventSource = eventSource(lastEventPosition.fileVersion());
         if (eventSource.isPresent()) {
             try {
                 List<Integer> positions = lastEventPosition.indexEntries().positions();
@@ -426,8 +422,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
             }
         }
 
-        return invokeOnNext(n -> n.readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition),
-                            Optional.empty());
+        return Optional.empty();
     }
 
     @Override
@@ -460,7 +455,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     @Override
     public long getTokenAt(long instant) {
         for (long segment : getSegments()) {
-            Optional<EventSource> eventSource = getEventSource(segment);
+            Optional<EventSource> eventSource = localEventSource(segment);
             Long found = eventSource.map(es -> {
                 try (EventIterator iterator = es.createEventIterator(segment)) {
                     return iterator.getTokenAt(instant);
@@ -485,7 +480,7 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public void validate(int maxSegments) {
-        Stream<Long> segments = getAllSegments();
+        Stream<Long> segments = allSegments();
         List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(
                 Collectors.toList());
         resultList.stream().filter(validationResult -> !validationResult.isValid()).findFirst().ifPresent(
@@ -507,12 +502,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
         }
     }
 
-    private Stream<Long> getAllSegments() {
+    public Stream<Long> allSegments() {
         StorageTier nextTier = next.get();
         if (nextTier == null) {
             return getSegments().stream();
         }
-        return Stream.concat(getSegments().stream(), nextTier.getSegments().stream()).distinct();
+        return Stream.concat(getSegments().stream(), nextTier.allSegments()).distinct();
     }
 
     protected ValidationResult validateSegment(long segment) {
@@ -547,18 +542,12 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public EventIterator getEvents(long segment, long token) {
-        Optional<EventSource> reader = getEventSource(segment);
+        Optional<EventSource> reader = eventSource(segment);
         return reader.map(eventSource -> createEventIterator(eventSource, token))
-                     .orElseGet(() -> {
-                         StorageTier nextTier = next.get();
-                         if (nextTier == null) {
-                             throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                                  format("%s: token %d before start of event store",
-                                                                         context,
-                                                                         token));
-                         }
-                         return nextTier.getEvents(segment, token);
-                     });
+                     .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
+                                                                       format("%s: token %d before start of event store",
+                                                                              context,
+                                                                              token)));
     }
 
     public TransactionIterator getTransactions(long segment, long token) {
@@ -566,22 +555,14 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     public TransactionIterator getTransactions(long segment, long token, boolean validating) {
-        Optional<EventSource> reader = getEventSource(segment);
+        Optional<EventSource> reader = eventSource(segment);
         return reader.map(r -> createTransactionIterator(r, segment, token, validating))
-                     .orElseGet(() -> getTransactionsFromNext(segment, token, validating));
-    }
-
-    private TransactionIterator getTransactionsFromNext(long segment, long token, boolean validating) {
-        StorageTier nextTier = next.get();
-        if (nextTier == null) {
-            throw new MessagingPlatformException(ErrorCode.OTHER,
-                                                 format(
-                                                         "%s: unable to read transactions for segment %d, requested token %d",
-                                                         context,
-                                                         segment,
-                                                         token));
-        }
-        return nextTier.getTransactions(segment, token, validating);
+                     .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
+                                                                       format(
+                                                                               "%s: unable to read transactions for segment %d, requested token %d",
+                                                                               context,
+                                                                               segment,
+                                                                               token)));
     }
 
     protected TransactionIterator createTransactionIterator(EventSource eventSource, long segment, long token,
@@ -629,19 +610,21 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                                        .map(Map.Entry::getKey)
                                        .findFirst().orElse(-1L);
         logger.info("{}: {} First valid index: {}", getType(), storagePath, firstValidIndex);
-        TreeSet<FileVersion> local = new TreeSet<>(segments.headMap(firstValidIndex).entrySet().stream()
-                                                           .map(e -> new FileVersion(e.getKey(), e.getValue()))
-                                                           .collect(Collectors.toSet()));
+        TreeSet<FileVersion> local = segments.headMap(firstValidIndex)
+                                             .entrySet()
+                                             .stream()
+                                             .map(e -> new FileVersion(e.getKey(), e.getValue()))
+                                             .collect(Collectors.toCollection(TreeSet::new));
         if (firstValidIndex < 0) {
-            local.addAll(invokeOnNext(n -> n.segmentsWithoutIndex(), Collections.emptySortedSet()));
+            local.addAll(invokeOnNext(StorageTier::segmentsWithoutIndex, Collections.emptySortedSet()));
         }
         return local;
     }
 
     public int retrieveEventsForAnAggregate(FileVersion segment, List<Integer> indexEntries, long minSequenceNumber,
                                             long maxSequenceNumber,
-                                            Consumer<SerializedEvent> onEvent, long maxResults, long minToken) {
-        Optional<EventSource> buffer = getEventSource(segment);
+                                            Consumer<SerializedEvent> onEvent, long maxResults) {
+        Optional<EventSource> buffer = eventSource(segment);
         int processed = 0;
 
         if (buffer.isPresent()) {
@@ -655,14 +638,6 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
                 processed++;
             }
             eventSource.close();
-        } else {
-            processed = invokeOnNext(n -> n.retrieveEventsForAnAggregate(segment,
-                                                                         indexEntries,
-                                                                         minSequenceNumber,
-                                                                         maxSequenceNumber,
-                                                                         onEvent,
-                                                                         maxResults,
-                                                                         minToken), 0);
         }
 
         return processed;
@@ -748,14 +723,33 @@ public abstract class SegmentBasedEventStore implements EventStorageEngine {
     }
 
     /**
-     * @param segment gets an EventSource for the segment
+     * Gets an EventSource for the segment from this handler.
+     *
+     * @param segment the segment number and version of this segment
      * @return the event source or Optional.empty() if segment not managed by this handler
      */
-    public abstract Optional<EventSource> getEventSource(FileVersion segment);
+    protected abstract Optional<EventSource> localEventSource(FileVersion segment);
+
+    /**
+     * Gets an EventSource for the segment from this handler.
+     *
+     * @param segment the segment number of this segment
+     * @return the event source or Optional.empty() if segment not managed by this handler
+     */
+    protected abstract Optional<EventSource> localEventSource(long segment);
+
 
     //Retrieves event source from first available layer that is responsible for given segment
     public Optional<EventSource> eventSource(FileVersion segment) {
-        Optional<EventSource> eventSource = getEventSource(segment);
+        Optional<EventSource> eventSource = localEventSource(segment);
+        if (eventSource.isPresent()) {
+            return eventSource;
+        }
+        return invokeOnNext(nextStorageTier -> nextStorageTier.eventSource(segment), Optional.empty());
+    }
+
+    public Optional<EventSource> eventSource(long segment) {
+        Optional<EventSource> eventSource = localEventSource(segment);
         if (eventSource.isPresent()) {
             return eventSource;
         }
