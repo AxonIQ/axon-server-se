@@ -36,31 +36,6 @@ public interface StorageTier {
      */
     SortedSet<Long> getSegments();
 
-    /**
-     * Get the first token in storage.
-     *
-     * @return the first token
-     */
-    long getFirstToken();
-
-    /**
-     * Get the token for a given instant.
-     *
-     * @param instant the instant for which to retrieve the token
-     * @return the token
-     */
-    long getTokenAt(long instant);
-
-
-    /**
-     * Get the segment for a given token.
-     *
-     * @param token the token for which to retrieve the segment
-     * @return the segment for the given token
-     */
-    long getSegmentFor(long token);
-
-
     Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive);
 
     /**
@@ -86,8 +61,6 @@ public interface StorageTier {
     void initSegments(long first);
 
     void handover(Segment segment, Runnable callback);
-
-    int nextVersion();
 
     boolean removeSegment(long segment, int segmentVersion);
 

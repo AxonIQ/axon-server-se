@@ -11,17 +11,23 @@ package io.axoniq.axonserver.localstorage.file;
 
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.exception.ErrorCode;
+import io.axoniq.axonserver.exception.EventStoreValidationException;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
+import io.axoniq.axonserver.localstorage.EventStorageEngine;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.QueryOptions;
+import io.axoniq.axonserver.localstorage.Registration;
+import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
-import io.axoniq.axonserver.localstorage.StorageCallback;
-import io.axoniq.axonserver.localstorage.transformation.EventTransformer;
+import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
 import io.axoniq.axonserver.localstorage.transformation.EventTransformerFactory;
-import io.axoniq.axonserver.localstorage.transformation.ProcessedEvent;
-import io.axoniq.axonserver.localstorage.transformation.WrappedEvent;
+import io.axoniq.axonserver.metric.BaseMetricName;
 import io.axoniq.axonserver.metric.MeterFactory;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.util.CloseableIterator;
@@ -29,56 +35,52 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.SortedSet;
+import java.util.Set;
+import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
+import static io.axoniq.axonserver.localstorage.file.StorageProperties.TRANSFORMED_SUFFIX;
+import static java.lang.String.format;
 
 /**
- * Manages the writable segments of the event store. Once the segment is completed this class hands the segment over
- * to the next segment based event store.
+ * Manages the writable segments of the event store. Once the segment is completed this class hands the segment over to
+ * the next segment based event store.
  *
  * @author Marc Gathier
  * @since 4.0
  */
-public class PrimaryEventStore extends SegmentBasedEventStore implements StorageTier {
+public class PrimaryEventStore implements EventStorageEngine {
 
     protected static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
     public static final int MAX_EVENTS_PER_BLOCK = Short.MAX_VALUE;
+    private static final int PREFETCH_SEGMENT_FILES = 2;
 
-    protected final EventTransformerFactory eventTransformerFactory;
-    protected final Synchronizer synchronizer;
-    protected final AtomicReference<WritePosition> writePositionRef = new AtomicReference<>();
-    protected final AtomicLong lastToken = new AtomicLong(-1);
-    protected final ConcurrentNavigableMap<Long, ByteBufferEventSource> readBuffers = new ConcurrentSkipListMap<>();
-    protected EventTransformer eventTransformer;
-    protected final FileSystemMonitor fileSystemMonitor;
+    private final WritableEventStore head;
+    protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
 
     private final String storagePath;
+    private final EventTypeContext context;
+    private final IndexManager indexManager;
+    private final Supplier<StorageProperties> storagePropertiesSupplier;
+    private final Timer lastSequenceReadTimer;
+    private final DistributionSummary aggregateSegmentsCount;
+    private final AtomicBoolean initialized = new AtomicBoolean(true);
+
+
     /**
      * @param context                   the context and the content type (events or snapshots)
      * @param indexManager              the index manager to use
@@ -96,372 +98,486 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
                              MeterFactory meterFactory,
                              FileSystemMonitor fileSystemMonitor,
                              String storagePath) {
-        super(context, indexManager, storagePropertiesSupplier, completedSegmentsHandler, meterFactory,
-                storagePath);
-        this.eventTransformerFactory = eventTransformerFactory;
-        this.fileSystemMonitor = fileSystemMonitor;
-        synchronizer = new Synchronizer(context, storagePropertiesSupplier.get(), this::completeSegment);
+        this.context = context;
+        this.indexManager = indexManager;
+        this.storagePropertiesSupplier = storagePropertiesSupplier;
+        head = new WritableEventStore(context,
+                                      indexManager,
+                                      storagePropertiesSupplier,
+                                      completedSegmentsHandler,
+                                      meterFactory,
+                                      storagePath,
+                                      eventTransformerFactory,
+                                      fileSystemMonitor);
         this.storagePath = storagePath;
+        Tags tags = Tags.of(MeterFactory.CONTEXT, context.getContext(), "type", context.getEventType().name());
+        this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
+        this.aggregateSegmentsCount = meterFactory.distributionSummary
+                                                          (BaseMetricName.AXON_AGGREGATE_SEGMENT_COUNT, tags);
     }
 
     @Override
-    public void initSegments(long lastInitialized, long defaultFirstIndex) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
-        File storageDir = new File(storagePath);
-        FileUtils.checkCreateDirectory(storageDir);
-        indexManager.init();
-        eventTransformer = eventTransformerFactory.get(storageProperties.getFlags());
-        initLatestSegment(lastInitialized, Long.MAX_VALUE, storageDir, defaultFirstIndex, storageProperties);
-
-        fileSystemMonitor.registerPath(storeName(), storageDir.toPath());
+    public void init(boolean validate, long defaultFirstIndex) {
+        head.initSegments(Long.MAX_VALUE, defaultFirstIndex);
+        validate(validate ? storagePropertiesSupplier.get().getValidationSegments() : 2);
+        initialized.set(true);
     }
 
-    private void initLatestSegment(long lastInitialized, long nextToken, File storageDir, long defaultFirstIndex,
-                                   StorageProperties storageProperties) {
-        FileVersion first = getFirstFile(lastInitialized, storageDir, new FileVersion(defaultFirstIndex, 0), storageProperties);
-        renameFileIfNecessary(first.segment());
-        FileVersion realFirst = firstSegmentIfLatestCompleted(first, storageProperties);
-        applyOnNext(n -> n.initSegments(realFirst.segment()));
-        createMissingIndexes();
-        WritableEventSource buffer = getOrOpenDatafile(realFirst, storageProperties.getSegmentSize(), false);
-        indexManager.remove(realFirst);
-        long sequence = realFirst.segment();
-        Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
-        try (EventByteBufferIterator iterator = new EventByteBufferIterator(buffer, realFirst.segment())) {
-            while (sequence < nextToken && iterator.hasNext()) {
-                EventInformation event = iterator.next();
-                if (event.isDomainEvent()) {
-                    IndexEntry indexEntry = new IndexEntry(
-                            event.getEvent().getAggregateSequenceNumber(),
-                            event.getPosition(),
-                            sequence
-                    );
-                    loadedEntries.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                  aggregateId -> new LinkedList<>())
-                                 .add(indexEntry);
-                }
-                sequence++;
-            }
-            List<EventInformation> pendingEvents = iterator.pendingEvents();
-            if (!pendingEvents.isEmpty()) {
-                logger.warn(
-                        "Failed to position to transaction {}, {} events left in transaction, moving to end of transaction",
-                        nextToken,
-                        pendingEvents.size());
-                for (EventInformation event : pendingEvents) {
-                    if (event.isDomainEvent()) {
-                        IndexEntry indexEntry = new IndexEntry(
-                                event.getEvent().getAggregateSequenceNumber(),
-                                event.getPosition(),
-                                sequence
-                        );
-                        loadedEntries.computeIfAbsent(event.getEvent().getAggregateIdentifier(),
-                                                      aggregateId -> new LinkedList<>())
-                                     .add(indexEntry);
-                    }
-                    sequence++;
-                }
-            }
-            lastToken.set(sequence - 1);
-        }
-
-        indexManager.addToActiveSegment(realFirst.segment(), loadedEntries);
-
-        buffer.putInt(buffer.position(), 0);
-        WritePosition writePosition = new WritePosition(sequence,
-                                                        buffer.position(),
-                                                        realFirst.segmentVersion(),
-                                                        buffer,
-                                                        realFirst.segment(),
-                                                        0);
-        writePositionRef.set(writePosition);
-        synchronizer.init(writePosition);
-    }
-
-
-    private void createMissingIndexes() {
-        SortedSet<FileVersion> segmentsWithoutIndex = segmentsWithoutIndex();
-        segmentsWithoutIndex.forEach(this::createIndex);
-    }
-
-    @Override
-    public SortedSet<FileVersion> segmentsWithoutIndex() {
-        return invokeOnNext(StorageTier::segmentsWithoutIndex,
-                            Collections.emptySortedSet());
-    }
-
-    private void createIndex(FileVersion segment) {
-        Optional<EventSource> optionalEventSource = invokeOnNext(n -> n.eventSource(segment), Optional.empty());
-        if (optionalEventSource.isPresent()) {
-            try (EventIterator iterator = optionalEventSource.get().createEventIterator(segment.segment())) {
-                Map<String, List<IndexEntry>> entries = new HashMap<>();
-                while (iterator.hasNext()) {
-                    EventInformation event = iterator.next();
-                    if (event.isDomainEvent()) {
-                        IndexEntry indexEntry = new IndexEntry(
-                                event.getEvent().getAggregateSequenceNumber(),
-                                event.getPosition(),
-                                event.getToken());
-                        entries.computeIfAbsent(event.getEvent().getAggregateIdentifier(), id -> new LinkedList<>())
-                               .add(indexEntry);
-                    }
-                }
-
-                indexManager.createIndex(segment, entries);
-            }
-        }
-    }
-
-    public int activeSegmentCount() {
-        return readBuffers.size();
-    }
-
-    private FileVersion firstSegmentIfLatestCompleted(FileVersion latestSegment, StorageProperties storageProperties) {
-        if (!indexManager.validIndex(latestSegment)) {
-            return latestSegment;
-        }
-        WritableEventSource buffer = getOrOpenDatafile(latestSegment, storageProperties.getSegmentSize(), false);
-        long token = latestSegment.segment();
-        try (EventIterator iterator = buffer.createEventIterator(latestSegment.segment())) {
-            while (iterator.hasNext()) {
-                iterator.next();
-                token++;
-            }
-        } finally {
-            readBuffers.remove(latestSegment.segment());
-            buffer.close();
-        }
-        return new FileVersion(token, 0);
-    }
-
-    private FileVersion getFirstFile(long lastInitialized, File events, FileVersion defaultFirstIndex,
-                              StorageProperties storageProperties) {
-        String[] eventFiles = FileUtils.getFilesWithSuffix(events, storageProperties.getEventsSuffix());
-
-        return Arrays.stream(eventFiles)
-                     .map(FileUtils::process)
-                     .filter(segment -> segment.segment() < lastInitialized)
-                     .max(FileVersion::compareTo)
-                     .orElse(defaultFirstIndex);
-    }
-
-    private FilePreparedTransaction prepareTransaction(List<Event> origEventList, int segmentVersion) {
-        List<ProcessedEvent> eventList = origEventList.stream().map(s -> new WrappedEvent(s, eventTransformer)).collect(
+    public void validate(int maxSegments) {
+        Stream<Long> segments = head.allSegments();
+        List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(
                 Collectors.toList());
-        int eventSize = eventBlockSize(eventList);
-        WritePosition writePosition = claim(eventSize, eventList.size(), segmentVersion);
-        return new FilePreparedTransaction(writePosition, eventSize, eventList);
-    }
-
-    /**
-     * Stores a list of events. Completable future completes when these events and all previous events are written.
-     *
-     * @param events the events to store
-     * @return completable future with the token of the first event
-     */
-    @Override
-    public CompletableFuture<Long> store(List<Event> events, int segmentVersion) {
-
-        CompletableFuture<Long> completableFuture = new CompletableFuture<>();
-        try {
-            Map<String, List<IndexEntry>> indexEntries = new HashMap<>();
-            FilePreparedTransaction preparedTransaction = prepareTransaction(events, segmentVersion);
-            WritePosition writePosition = preparedTransaction.getWritePosition();
-
-            synchronizer.register(writePosition, new StorageCallback() {
-                private final AtomicBoolean running = new AtomicBoolean();
-
-                @Override
-                public boolean complete(long firstToken) {
-                    if (running.compareAndSet(false, true)) {
-                        indexManager.addToActiveSegment(writePosition.segment, indexEntries);
-                        completableFuture.complete(firstToken);
-                        lastToken.set(firstToken + preparedTransaction.getEventList().size() - 1);
-                        return true;
-                    }
-                    return false;
-                }
-
-                @Override
-                public void error(Throwable cause) {
-                    completableFuture.completeExceptionally(cause);
-                }
-            });
-            write(writePosition, preparedTransaction.getEventList(), indexEntries);
-            synchronizer.notifyWritePositions();
-        } catch (RuntimeException cause) {
-            completableFuture.completeExceptionally(cause);
-        }
-
-        return completableFuture;
-    }
-
-    @Override
-    public void handover(Segment segment, Runnable callback) {
-        callback.run();
-    }
-
-    @Override
-    protected boolean containsSegment(long segment) {
-        return readBuffers.containsKey(segment);
-    }
-
-    @Override
-    public void close(boolean deleteData) {
-        File storageDir = new File(storagePath);
-        fileSystemMonitor.unregisterPath(storeName());
-
-        synchronizer.shutdown(true);
-        readBuffers.forEach((s, source) -> {
-            source.clean(0);
-            if (deleteData) {
-                removeSegment(s);
-            }
-        });
-
-        applyOnNext(n -> n.close(deleteData));
-
-        indexManager.cleanup(deleteData);
-        if (deleteData) {
-            FileUtils.delete(storageDir);
-        }
-        closeListeners.forEach(Runnable::run);
-    }
-
-    @Override
-    protected Optional<EventSource> localEventSource(FileVersion segment) {
-        return localEventSource(segment.segment());
-    }
-
-    @Override
-    protected Optional<EventSource> localEventSource(long segment) {
-        if (readBuffers.containsKey(segment)) {
-            return Optional.of(readBuffers.get(segment).duplicate());
-        }
-        return Optional.empty();
-    }
-
-    @Override
-    public boolean removeSegment(long segment, int segmentVersion) {
-        return invokeOnNext(n -> n.removeSegment(segment, segmentVersion), true);
-    }
-
-    public void removeSegment(long segment) {
-        indexManager.remove(segment);
-        ByteBufferEventSource eventSource = readBuffers.remove(segment);
-        if (eventSource != null) {
-            eventSource.clean(0);
-        }
-        FileUtils.delete(dataFile(new FileVersion(segment, 0)));
-    }
-
-
-    @Override
-    public Integer currentSegmentVersion(Long segment) {
-        if (readBuffers.containsKey(segment)) {
-            return 0;
-        }
-        return invokeOnNext(n -> n.currentSegmentVersion(segment), 0);
-    }
-
-    @Override
-    public void activateSegmentVersion(long segment, int segmentVersion) {
-        applyOnNext(n -> n.activateSegmentVersion(segment, segmentVersion));
-    }
-
-    public Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
-        // TODO: 7/26/22 revisit this approach!!!
-        return Mono.fromRunnable(this::forceNextSegment)
-                   .thenMany(super.transformContents(transformationVersion, transformedEvents));
-    }
-
-    private void forceNextSegment() {
-        logger.info("Forcing next segment to be created");
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
-        WritePosition writePosition = writePositionRef //replace the reference with a fake write position
-                                                       .getAndUpdate(prev -> prev.incrementedWith(0,
-                                                                                                  storageProperties.getSegmentSize(),
-                                                                                                  0));
-        //this if is needed to allow only 1 thread to enter (the others will have the fake write position)
-        if (writePosition.isOverflow(storageProperties.getSegmentSize())) {
-            // only one thread can be here
-            logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
-
-            writePosition.buffer.putInt(writePosition.position, -1); //writePosition.writeEndOfFile();
-
-            //create new file
-            WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, 0),
-                                                           storageProperties.getSegmentSize(),
-                                                           false);
-            //replace the reference with a valid write position
-            writePositionRef.set(writePosition.reset(buffer, 0));
-
-            //the synchronizer close the previous one
-            synchronizer.register(new WritePosition(writePosition.sequence,
-                                                    0,
-                                                    0,
-                                                    buffer,
-                                                    writePosition.sequence,
-                                                    writePosition.prevEntries),
-                                  new StorageCallback() {
-                                      @Override
-                                      public boolean complete(long firstToken) {
-                                          logger.warn("Ready for transformation");
-                                          return true;
-                                      }
-
-                                      @Override
-                                      public void error(Throwable cause) {
-
-                                      }
-                                  });
-            synchronizer.notifyWritePositions();
-            waitForPendingFileCompletions();
-        }
-    }
-
-    private void waitForPendingFileCompletions() {
-        while (readBuffers.size() != 1) {
-            try {
-                //noinspection BusyWait
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
+        resultList.stream().filter(validationResult -> !validationResult.isValid()).findFirst().ifPresent(
+                validationResult -> {
+                    throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED, validationResult.getMessage());
+                });
+        resultList.sort(Comparator.comparingLong(ValidationResult::getSegment));
+        for (int i = 0; i < resultList.size() - 1; i++) {
+            ValidationResult thisResult = resultList.get(i);
+            ValidationResult nextResult = resultList.get(i + 1);
+            if (thisResult.getLastToken() != nextResult.getSegment()) {
+                throw new MessagingPlatformException(ErrorCode.VALIDATION_FAILED,
+                                                     format(
+                                                             "Validation exception: segment %d ending at token, %d, next segment starts at token %d",
+                                                             thisResult.getSegment(),
+                                                             thisResult.getLastToken() - 1,
+                                                             nextResult.getSegment()));
             }
         }
+    }
+
+    private ValidationResult validateSegment(long segment) {
+        logger.debug("{}: Validating {} segment: {}", context.getContext(), context.getEventType(), segment);
+        try (TransactionIterator iterator = getTransactions(segment, segment, true)) {
+            SerializedTransactionWithToken last = null;
+            while (iterator.hasNext()) {
+                last = iterator.next();
+            }
+            return new ValidationResult(segment, last == null ? segment : last.getToken() + last.getEvents().size());
+        } catch (Exception ex) {
+            return new ValidationResult(segment, ex.getMessage());
+        }
+    }
+
+
+    @Override
+    public long getFirstCompletedSegment() {
+        return EventStorageEngine.super.getFirstCompletedSegment();
+    }
+
+    @Override
+    public CompletableFuture<Long> store(List<Event> eventList, int segmentVersion) {
+        return head.store(eventList, segmentVersion);
     }
 
     @Override
     public long getLastToken() {
-        return lastToken.get();
+        return head.getLastToken();
+    }
+
+    @Override
+    public Flux<SerializedEvent> eventsPerAggregate(String aggregateId, long firstSequence,
+                                                    long lastSequence, long minToken) {
+        return Flux.defer(() -> {
+                       logger.debug("Reading index entries for aggregate {} started.", aggregateId);
+
+                       SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                                         firstSequence,
+                                                                                                         lastSequence,
+                                                                                                         Long.MAX_VALUE,
+                                                                                                         minToken);
+                       logger.debug("Reading index entries for aggregate {} finished.", aggregateId);
+                       aggregateSegmentsCount.record(positionInfos.size());
+
+                       return Flux.fromIterable(positionInfos.entrySet());
+                   }).flatMapSequential(e -> eventsForPositions(e.getKey(),
+                                                                e.getValue(),
+                                                                storagePropertiesSupplier.get().getEventsPerSegmentPrefetch()),
+                                        PREFETCH_SEGMENT_FILES,
+                                        storagePropertiesSupplier.get().getEventsPerSegmentPrefetch())
+                   .skipUntil(se -> se.getAggregateSequenceNumber() >= firstSequence)
+                   .takeWhile(se -> se.getAggregateSequenceNumber() < lastSequence)
+                   .name("event_stream")
+                   .tag("context", context.getContext())
+                   .tag("stream", "aggregate_events")
+                   .tag("origin", "event_sources")
+                   .metrics();
+    }
+
+    private Flux<SerializedEvent> eventsForPositions(FileVersion segment, IndexEntries indexEntries, int prefetch) {
+        return new EventSourceFlux(indexEntries,
+                                   () -> head.eventSource(segment),
+                                   segment.segment(),
+                                   prefetch).get()
+                                            .name("event_stream")
+                                            .tag("context", context.getContext())
+                                            .tag("stream",
+                                                 "aggregate_events")
+                                            .tag("origin",
+                                                 "event_source")
+                                            .metrics();
+    }
+
+    @Override
+    public void processEventsPerAggregate(String aggregateId, long firstSequenceNumber, long lastSequenceNumber,
+                                          long minToken, Consumer<SerializedEvent> eventConsumer) {
+        SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                          firstSequenceNumber,
+                                                                                          lastSequenceNumber,
+                                                                                          Long.MAX_VALUE,
+                                                                                          minToken);
+        positionInfos.forEach((segment, positionInfo) -> retrieveEventsForAnAggregate(segment,
+                                                                                      positionInfo.positions(),
+                                                                                      firstSequenceNumber,
+                                                                                      lastSequenceNumber,
+                                                                                      eventConsumer,
+                                                                                      Long.MAX_VALUE));
+    }
+
+    @Override
+    public EventTypeContext getType() {
+        return context;
     }
 
     @Override
     public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive) {
-        StorageTier nextTier = next.get();
-        if (includeActive) {
-            Stream<String> filenames = getSegments()
-                    .stream()
-                    .map(s -> name(dataFile(new FileVersion(s, 0))));
-            return nextTier != null ?
-                    Stream.concat(filenames,
-                                  nextTier.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, true)) :
-                    filenames;
+        return head.getBackupFilenames(lastSegmentBackedUp, lastVersionBackedUp, includeActive);
+    }
+
+    @Override
+    public byte transactionVersion() {
+        return SegmentBasedEventStore.TRANSACTION_VERSION;
+    }
+
+    @Override
+    public long nextToken() {
+        return head.nextToken();
+    }
+
+    @Override
+    public void close(boolean deleteData) {
+        head.close(deleteData);
+        closeListeners.forEach(Runnable::run);
+    }
+
+    @Override
+    public Registration registerCloseListener(Runnable listener) {
+        closeListeners.add(listener);
+        return () -> closeListeners.remove(listener);
+    }
+
+    @Override
+    public Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
+        // TODO: 7/26/22 revisit this approach!!!
+        return Mono.fromRunnable(head::forceNextSegment)
+                   .thenMany(doTransformContents(transformationVersion, transformedEvents));
+    }
+
+
+    @Override
+    public void processEventsPerAggregateHighestFirst(String aggregateId, long firstSequenceNumber,
+                                                      long maxSequenceNumber,
+                                                      int maxResults, Consumer<SerializedEvent> eventConsumer) {
+        SortedMap<FileVersion, IndexEntries> positionInfos = indexManager.lookupAggregate(aggregateId,
+                                                                                          firstSequenceNumber,
+                                                                                          maxSequenceNumber,
+                                                                                          maxResults,
+                                                                                          0);
+
+        List<FileVersion> segmentsContainingAggregate = new ArrayList<>(positionInfos.keySet());
+        Collections.reverse(segmentsContainingAggregate);
+        for (FileVersion segmentContainingAggregate : segmentsContainingAggregate) {
+            IndexEntries entries = positionInfos.get(segmentContainingAggregate);
+            List<Integer> positions = new ArrayList<>(entries.positions());
+            Collections.reverse(positions);
+            maxResults -= retrieveEventsForAnAggregate(segmentContainingAggregate,
+                                                       positions,
+                                                       firstSequenceNumber,
+                                                       maxSequenceNumber,
+                                                       eventConsumer,
+                                                       maxResults);
+            if (maxResults <= 0) {
+                return;
+            }
         }
-        return nextTier != null ? nextTier.getBackupFilenames(lastSegmentBackedUp,
-                                                              lastVersionBackedUp,
-                                                              false) : Stream.empty();
+    }
+
+    private int retrieveEventsForAnAggregate(FileVersion segment, List<Integer> indexEntries, long minSequenceNumber,
+                                             long maxSequenceNumber,
+                                             Consumer<SerializedEvent> onEvent, long maxResults) {
+        Optional<EventSource> buffer = head.eventSource(segment);
+        int processed = 0;
+
+        if (buffer.isPresent()) {
+            EventSource eventSource = buffer.get();
+            for (int i = 0; i < indexEntries.size() && i < maxResults; i++) {
+                SerializedEvent event = eventSource.readEvent(indexEntries.get(i));
+                if (event.getAggregateSequenceNumber() >= minSequenceNumber
+                        && event.getAggregateSequenceNumber() < maxSequenceNumber) {
+                    onEvent.accept(event);
+                }
+                processed++;
+            }
+            eventSource.close();
+        }
+
+        return processed;
+    }
+
+
+    @Override
+    public void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer) {
+        List<Long> segments = head.allSegments().collect(Collectors.toList());
+        try {
+            for (Long segment : segments) {
+                if (segment <= queryOptions.getMaxToken()) {
+                    Optional<EventSource> eventSource = head.eventSource(segment);
+                    AtomicBoolean done = new AtomicBoolean();
+                    boolean snapshot = !context.isEvent();
+                    eventSource.ifPresent(e -> {
+                        long minTimestampInSegment = Long.MAX_VALUE;
+                        EventInformation eventWithToken;
+                        EventIterator iterator = e.createEventIterator(segment);
+                        while (iterator.hasNext()) {
+                            eventWithToken = iterator.next();
+                            minTimestampInSegment = Math.min(minTimestampInSegment,
+                                                             eventWithToken.getEvent().getTimestamp());
+                            if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
+                                iterator.close();
+                                return;
+                            }
+                            if (eventWithToken.getToken() >= queryOptions.getMinToken()
+                                    && eventWithToken.getEvent().getTimestamp() >= queryOptions.getMinTimestamp()
+                                    && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
+                                iterator.close();
+                                return;
+                            }
+                        }
+                        if (queryOptions.getMinToken() > segment || minTimestampInSegment < queryOptions
+                                .getMinTimestamp()) {
+                            done.set(true);
+                        }
+                        iterator.close();
+                        e.close();
+                    });
+                    if (done.get()) {
+                        return;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+
+    private EventIterator createEventIterator(EventSource e, long startToken) {
+        return e.createEventIterator(startToken);
     }
 
     @Override
-    public SortedSet<Long> getSegments() {
-        return readBuffers.keySet();
+    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
+        return getLastSequenceNumber(aggregateIdentifier, recentOnly(hints) ?
+                storagePropertiesSupplier.get().segmentsForSequenceNumberCheck() : Integer.MAX_VALUE, Long.MAX_VALUE);
+    }
+
+    private Flux<Long> doTransformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
+        return Flux.usingWhen(Mono.just(new TransformationResources(this::getSegmentFor,
+                                                                    storagePropertiesSupplier,
+                                                                    transformationVersion,
+                                                                    indexManager,
+                                                                    segment -> getTransactions(segment, segment),
+                                                                    storagePath)),
+                              resources -> transformedEvents.concatMap(event -> resources.transform(event)
+                                                                                         .thenReturn(1L)),
+                              currentSegmentTransformer -> currentSegmentTransformer.completeCurrentSegment()
+                                                                                    .then(activateTransformation()),
+                              TransformationResources::rollback,
+                              TransformationResources::cancel);
+    }
+
+    private Mono<Void> activateTransformation() {
+        return transformedSegmentVersions()
+                .flatMap(this::activateSegment)
+                .then();
+    }
+
+    private Flux<FileVersion> transformedSegmentVersions() {
+        String transformedEventsSuffix = storagePropertiesSupplier.get().getEventsSuffix() + TRANSFORMED_SUFFIX;
+        return fileVersions(transformedEventsSuffix);
+    }
+
+    private Flux<FileVersion> fileVersions(String suffix) {
+        return Flux.fromArray(FileUtils.getFilesWithSuffix(new File(storagePath), suffix))
+                   .map(FileUtils::process);
+    }
+
+    private Mono<Void> activateSegment(FileVersion fileVersion) {
+        return renameTransformedSegmentIfNeeded(fileVersion)
+                .then(indexManager.activateVersion(fileVersion))
+                .then(Mono.fromRunnable(() -> head.activateSegmentVersion(fileVersion.segment(),
+                                                                          fileVersion.segmentVersion())));
+    }
+
+    private Mono<Void> renameTransformedSegmentIfNeeded(FileVersion fileVersion) {
+        return Mono.fromSupplier(() -> storagePropertiesSupplier.get().dataFile(storagePath, fileVersion))
+                   .filter(dataFile -> !dataFile.exists())
+                   .flatMap(dataFile -> Mono.fromSupplier(() -> transformedDataFile(fileVersion))
+                                            .filter(File::exists)
+                                            .switchIfEmpty(Mono.error(new RuntimeException("File does not exist.")))
+                                            .flatMap(tempFile -> FileUtils.rename(tempFile, dataFile)));
+    }
+
+    private File transformedDataFile(FileVersion segment) {
+        return storagePropertiesSupplier.get().transformedDataFile(storagePath, segment);
     }
 
     @Override
-    public long getFirstCompletedSegment() {
-        return invokeOnNext(n -> n.allSegments().findFirst().orElse(-1L), -1L);
+    public Mono<Void> deleteOldVersions() {
+        return fileVersions(storagePropertiesSupplier.get().getEventsSuffix())
+                .filter(fileVersion -> head.currentSegmentVersion(fileVersion.segment())
+                        != fileVersion.segmentVersion())
+                .flatMapSequential(this::delete)
+                .then();
+    }
+
+    private Mono<Void> delete(FileVersion fileVersion) {
+        return Mono.fromRunnable(() -> {
+                                     if (!head.removeSegment(fileVersion.segment(), fileVersion.segmentVersion())) {
+                                         throw new MessagingPlatformException(ErrorCode.OTHER,
+                                                                              context + ": Cannot remove segment "
+                                                                                      + fileVersion);
+                                     }
+                                 }
+                   ).retry(3)
+                   .then();
+    }
+
+    @Override
+    public void validateTransaction(long token, List<Event> eventList) {
+        try (CloseableIterator<SerializedTransactionWithToken> transactionIterator =
+                     transactionIterator(token, token + eventList.size())) {
+            if (transactionIterator.hasNext()) {
+                SerializedTransactionWithToken transaction = transactionIterator.next();
+                if (!equals(transaction.getEvents(), eventList)) {
+                    throw new EventStoreValidationException(format(
+                            "%s: Replicated %s transaction %d does not match stored transaction",
+                            context.getContext(),
+                            context.getEventType(),
+                            token));
+                }
+            } else {
+                throw new EventStoreValidationException(format("%s: Replicated %s transaction %d not found",
+                                                               context.getContext(),
+                                                               context.getEventType(),
+                                                               token));
+            }
+        }
+    }
+
+    private boolean equals(List<SerializedEvent> storedEvents, List<Event> eventList) {
+        for (int i = 0; i < storedEvents.size(); i++) {
+            if (!storedEvents.get(i).asEvent().equals(eventList.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public int nextVersion() {
+        int maxVersion = head.allSegments()
+                             .map(head::currentSegmentVersion)
+                             .max(Integer::compareTo)
+                             .orElse(0);
+        return maxVersion + 1;
+    }
+
+    private boolean recentOnly(SearchHint[] values) {
+        for (SearchHint t : values) {
+            if (t.equals(SearchHint.RECENT_ONLY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, int maxSegmentsHint, long maxTokenHint) {
+        long before = System.currentTimeMillis();
+        try {
+            return indexManager.getLastSequenceNumber(aggregateIdentifier, maxSegmentsHint, maxTokenHint);
+        } finally {
+            lastSequenceReadTimer.record(System.currentTimeMillis() - before, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    @Override
+    public Optional<SerializedEvent> getLastEvent(String aggregateId, long minSequenceNumber, long maxSequenceNumber) {
+
+        SegmentIndexEntries lastEventPosition = indexManager.lastIndexEntries(aggregateId, maxSequenceNumber);
+        if (lastEventPosition == null) {
+            return Optional.empty();
+        }
+
+        return readSerializedEvent(minSequenceNumber, maxSequenceNumber, lastEventPosition);
+    }
+
+    @Override
+    public CloseableIterator<SerializedTransactionWithToken> transactionIterator(long firstToken, long limitToken) {
+        return new TransactionWithTokenIterator(firstToken, limitToken);
+    }
+
+    private TransactionIterator createTransactionIterator(EventSource eventSource, long segment, long token,
+                                                          boolean validating) {
+        return eventSource.createTransactionIterator(segment, token, validating);
+    }
+
+    private TransactionIterator getTransactions(long segment, long token) {
+        return getTransactions(segment, token, false);
+    }
+
+    private TransactionIterator getTransactions(long segment, long token, boolean validating) {
+        Optional<EventSource> reader = head.eventSource(segment);
+        return reader.map(r -> createTransactionIterator(r, segment, token, validating))
+                     .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
+                                                                       format(
+                                                                               "%s: unable to read transactions for segment %d, requested token %d",
+                                                                               context,
+                                                                               segment,
+                                                                               token)));
+    }
+
+    private EventIterator getEvents(long segment, long token) {
+        Optional<EventSource> reader = head.eventSource(segment);
+        return reader.map(eventSource -> createEventIterator(eventSource, token))
+                     .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
+                                                                       format("%s: token %d before start of event store",
+                                                                              context,
+                                                                              token)));
+    }
+
+
+    private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
+                                                          SegmentIndexEntries lastEventPosition) {
+        Optional<EventSource> eventSource = head.eventSource(lastEventPosition.fileVersion());
+        if (eventSource.isPresent()) {
+            try {
+                List<Integer> positions = lastEventPosition.indexEntries().positions();
+                for (int i = positions.size() - 1; i >= 0; i--) {
+                    SerializedEvent event = eventSource.get().readEvent(positions.get(i));
+                    if (event.getAggregateSequenceNumber() >= minSequenceNumber
+                            && event.getAggregateSequenceNumber() < maxSequenceNumber) {
+                        return Optional.of(event);
+                    }
+                }
+
+                return Optional.empty();
+            } finally {
+                eventSource.get().close();
+            }
+        }
+
+        return Optional.empty();
     }
 
     @Override
@@ -512,188 +628,88 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
         };
     }
 
-    protected void completeSegment(WritePosition writePosition) {
-        indexManager.complete(new FileVersion(writePosition.segment, 0));
-        applyOnNext(n ->
-                            n.handover(new Segment() {
-                                @Override
-                                public Supplier<InputStream> contentProvider() {
-                                    return () -> inputStream(writePosition.segment);
-                                }
-
-                                @Override
-                                public FileVersion id() {
-                                    return new FileVersion(writePosition.segment, 0);
-                                }
-
-                                @Override
-                                public Supplier<List<File>> indexProvider() {
-                                    return () -> indexManager.indexFiles(new FileVersion(writePosition.segment, 0));
-                                }
-
-                                @Override
-                                public Stream<AggregateSequence> latestSequenceNumbers() {
-                                    return PrimaryEventStore.this.latestSequenceNumbers(new FileVersion(writePosition.segment,
-                                                                                                        0));
-                                }
-                            }, () -> {
-                                ByteBufferEventSource source = readBuffers.remove(writePosition.segment);
-                                logger.debug("Handed over {}, remaining segments: {}",
-                                             writePosition.segment,
-                                             getSegments());
-                                if (source != null) {
-                                    source.clean(storagePropertiesSupplier.get()
-                                                                          .getPrimaryCleanupDelay());
-                                }
-                            }));
+    public int activeSegmentCount() {
+        return head.activeSegmentCount();
     }
 
-    private FileInputStream inputStream(Long segmentId) {
-        try {
-            return new FileInputStream(dataFile(new FileVersion(segmentId, 0)));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    public void handover(Segment segment, Runnable callback) {
+        head.handover(segment, callback);
+    }
+
+    private class TransactionWithTokenIterator implements CloseableIterator<SerializedTransactionWithToken> {
+
+        private final Long limitToken;
+        private long currentToken;
+        private long currentSegment;
+        private TransactionIterator currentTransactionIterator;
+
+        TransactionWithTokenIterator(long token, Long limitToken) {
+            this.currentToken = token;
+            this.limitToken = limitToken;
+            this.currentSegment = getSegmentFor(token);
+            this.currentTransactionIterator = getTransactions(currentSegment, currentToken);
         }
-    }
 
-    private void write(WritePosition writePosition, List<ProcessedEvent> eventList,
-                       Map<String, List<IndexEntry>> indexEntries) {
-        ByteBufferEventSource source = writePosition.buffer.duplicate();
-        ByteBuffer writeBuffer = source.getBuffer();
-        writeBuffer.position(writePosition.position);
-        int count = eventList.size();
-        int from = 0;
-        int to = Math.min(count, from + MAX_EVENTS_PER_BLOCK);
-        int firstSize = writeBlock(writeBuffer, eventList, 0, to, indexEntries, writePosition.sequence);
-        while (to < count) {
-            from = to;
-            to = Math.min(count, from + MAX_EVENTS_PER_BLOCK);
-            int positionBefore = writeBuffer.position();
-            int blockSize = writeBlock(writeBuffer, eventList, from, to, indexEntries, writePosition.sequence + from);
-            int positionAfter = writeBuffer.position();
-            writeBuffer.putInt(positionBefore, blockSize);
-            writeBuffer.position(positionAfter);
+        @Override
+        public boolean hasNext() {
+            return currentTransactionIterator.hasNext();
         }
-        writeBuffer.putInt(writePosition.position, firstSize);
-        source.close();
-    }
 
-    private int writeBlock(ByteBuffer writeBuffer, List<ProcessedEvent> eventList, int from, int to,
-                           Map<String, List<IndexEntry>> indexEntries, long token) {
-        writeBuffer.putInt(0);
-        writeBuffer.put(TRANSACTION_VERSION);
-        writeBuffer.putShort((short) (to - from));
-        Checksum checksum = new Checksum();
-        int eventsPosition = writeBuffer.position();
-        int eventsSize = 0;
-        for (int i = from; i < to; i++) {
-            ProcessedEvent event = eventList.get(i);
-            int position = writeBuffer.position();
-            writeBuffer.putInt(event.getSerializedSize());
-            writeBuffer.put(event.toByteArray());
-            if (event.isDomainEvent()) {
-                indexEntries.computeIfAbsent(event.getAggregateIdentifier(),
-                                             k -> new ArrayList<>())
-                            .add(new IndexEntry(event.getAggregateSequenceNumber(), position, token));
+        @Override
+        public SerializedTransactionWithToken next() {
+            SerializedTransactionWithToken nextTransaction = currentTransactionIterator.next();
+            currentToken += nextTransaction.getEventsCount();
+            checkPointers();
+            return nextTransaction;
+        }
+
+        private void checkPointers() {
+            if (limitToken != null && currentToken >= limitToken) {
+                // we are done
+                currentTransactionIterator.close();
+            } else if (!currentTransactionIterator.hasNext()) {
+                currentSegment = getSegmentFor(currentToken);
+                currentTransactionIterator.close();
+                currentTransactionIterator = getTransactions(currentSegment, currentToken);
             }
-            eventsSize += event.getSerializedSize() + 4;
-            token++;
         }
 
-        writeBuffer.putInt(checksum.update(writeBuffer, eventsPosition, writeBuffer.position() - eventsPosition).get());
-        return eventsSize;
-    }
-
-    private WritePosition claim(int eventBlockSize, int nrOfEvents, int segmentVersion) {
-        int blocks = (int) Math.ceil(nrOfEvents / (double) MAX_EVENTS_PER_BLOCK);
-        int totalSize = eventBlockSize + blocks * (HEADER_BYTES + TX_CHECKSUM_BYTES);
-        if (totalSize > MAX_TRANSACTION_SIZE || eventBlockSize <= 0) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR,
-                                                 String.format("Illegal transaction size: %d", eventBlockSize));
-        }
-        WritePosition writePosition;
-        do {
-            writePosition = writePositionRef.getAndUpdate(prev -> prev.incrementedWith(nrOfEvents, totalSize, segmentVersion));
-
-            if (writePosition.isOverflow(totalSize) || writePosition.isVersionUpdate(segmentVersion)) {
-                // only one thread can be here
-                logger.debug("{}: Creating new segment {}", context, writePosition.sequence);
-
-                writePosition.buffer.putInt(writePosition.position, -1);
-
-                WritableEventSource buffer = getOrOpenDatafile(new FileVersion(writePosition.sequence, segmentVersion),
-                                                               totalSize + FILE_HEADER_SIZE + FILE_FOOTER_SIZE,
-                                                               true);
-                writePositionRef.set(writePosition.reset(buffer, segmentVersion));
+        @Override
+        public void close() {
+            if (currentTransactionIterator != null) {
+                currentTransactionIterator.close();
             }
-        } while (!writePosition.isWritable(totalSize) || writePosition.isVersionUpdate(segmentVersion));
-
-        return writePosition;
+        }
     }
 
     @Override
-    public long nextToken() {
-        return writePositionRef.get().sequence;
+    public long getFirstToken() {
+        return head.allSegments().reduce((id, acc) -> id).orElse(-1L);
     }
 
-    protected WritableEventSource getOrOpenDatafile(FileVersion segment, int minSize, boolean canReplaceFile) {
-        StorageProperties storageProperties = storagePropertiesSupplier.get();
-        File file = dataFile(segment);
-        int size = Math.max(storageProperties.getSegmentSize(), minSize);
-        if (file.exists()) {
-            if (canReplaceFile && file.length() < minSize) {
-                ByteBufferEventSource s = readBuffers.remove(segment.segment());
-                if (s != null) {
-                    s.clean(0);
+    @Override
+    public long getTokenAt(long instant) {
+        List<Long> segments = head.allSegments().collect(Collectors.toList());
+        for (long segment : segments) {
+            Optional<EventSource> eventSource = head.eventSource(segment);
+            Long found = eventSource.map(es -> {
+                try (EventIterator iterator = es.createEventIterator(segment)) {
+                    return iterator.getTokenAt(instant);
                 }
-                FileUtils.delete(file);
-            } else {
-                size = (int) file.length();
-            }
-        } else if (segment.segmentVersion() > 0) {
-            File defaultFile = dataFile(new FileVersion(segment.segment(), 0));
-            if (defaultFile.exists()) {
-                ByteBufferEventSource s = readBuffers.remove(segment.segment());
-                if (s != null) {
-                    s.clean(0);
-                }
-                FileUtils.delete(defaultFile);
+            }).orElse(null);
+
+            if (found != null) {
+                return found;
             }
         }
 
-        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
-            FileChannel fileChannel = raf.getChannel();
-            logger.info("Opening file {}", file);
-            MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, size);
-            buffer.put(EVENT_FORMAT_VERSION);
-            buffer.putInt(storageProperties.getFlags());
-            WritableEventSource writableEventSource = new WritableEventSource(file.getAbsolutePath(),
-                                                                              buffer,
-                                                                              segment.segment(),
-                                                                              segment.segmentVersion(),
-                                                                              eventTransformer,
-                                                                              storageProperties.isCleanRequired());
-            readBuffers.put(segment.segment(), writableEventSource);
-            return writableEventSource;
-        } catch (IOException ioException) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_READ_ERROR,
-                                                 "Failed to open segment: " + segment,
-                                                 ioException);
-        }
+        return getFirstToken();
     }
 
-    private int eventBlockSize(List<ProcessedEvent> eventList) {
-        long size = 0;
-        for (ProcessedEvent event : eventList) {
-            size += 4 + event.getSerializedSize();
-        }
-        if (size > Integer.MAX_VALUE) {
-            throw new MessagingPlatformException(ErrorCode.DATAFILE_WRITE_ERROR, "Transaction size exceeds maximum size");
-        }
-        return (int) size;
-    }
-
-    private String storeName() {
-        return context + "-" + type.getEventType().name().toLowerCase();
+    private long getSegmentFor(long token) {
+        return head.allSegments()
+                   .filter(segment -> segment <= token)
+                   .findFirst()
+                   .orElse(-1L);
     }
 }

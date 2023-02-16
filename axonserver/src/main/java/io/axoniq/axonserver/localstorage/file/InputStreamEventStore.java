@@ -22,7 +22,8 @@ import java.util.function.Supplier;
  * @author Marc Gathier
  * @since 4.0
  */
-public class InputStreamEventStore extends SegmentBasedEventStore implements StorageTier {
+public class InputStreamEventStore extends SegmentBasedEventStore {
+
     private final EventTransformerFactory eventTransformerFactory;
 
     public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
@@ -37,11 +38,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore implements Sto
     public void handover(Segment segment, Runnable callback) {
         segments.put(segment.id().segment(), segment.id().segmentVersion());
         callback.run();
-    }
-
-    @Override
-    protected boolean containsSegment(long segment) {
-        return segments.containsKey(segment);
     }
 
     @Override

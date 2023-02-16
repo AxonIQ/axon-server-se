@@ -60,7 +60,7 @@ public class InputStreamEventStoreTest {
                                                 embeddedDBProperties::getEvent,
                                                 meterFactory,
                                                 embeddedDBProperties.getEvent().getPrimaryStorage(context));
-        testSubject.init(true);
+        testSubject.initSegments(Long.MAX_VALUE);
     }
 
 

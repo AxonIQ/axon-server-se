@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -35,7 +35,7 @@ public class StreamSegmentWriter implements SegmentWriter {
 
     public StreamSegmentWriter(File file, long segment, int flags) throws IOException {
         dataOutputStream = new DataOutputStream(new FileOutputStream(file));
-        dataOutputStream.write(PrimaryEventStore.EVENT_FORMAT_VERSION);
+        dataOutputStream.write(SegmentBasedEventStore.EVENT_FORMAT_VERSION);
         dataOutputStream.writeInt(flags);
         token = segment-1;
     }
