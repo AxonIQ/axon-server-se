@@ -329,12 +329,12 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
     }
 
     @Override
-    public Optional<EventSource> getEventSource(FileVersion segment) {
-        return getEventSource(segment.segment());
+    protected Optional<EventSource> localEventSource(FileVersion segment) {
+        return localEventSource(segment.segment());
     }
 
     @Override
-    protected Optional<EventSource> getEventSource(long segment) {
+    protected Optional<EventSource> localEventSource(long segment) {
         if (readBuffers.containsKey(segment)) {
             return Optional.of(readBuffers.get(segment).duplicate());
         }
@@ -461,7 +461,7 @@ public class PrimaryEventStore extends SegmentBasedEventStore implements Storage
 
     @Override
     public long getFirstCompletedSegment() {
-        return invokeOnNext(StorageTier::getFirstCompletedSegment, -1L);
+        return invokeOnNext(n -> n.allSegments().findFirst().orElse(-1L), -1L);
     }
 
     @Override
