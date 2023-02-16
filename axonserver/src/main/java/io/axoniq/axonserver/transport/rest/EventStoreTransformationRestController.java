@@ -169,6 +169,22 @@ public class EventStoreTransformationRestController {
     }
 
     /**
+     * Deletes old versions of segments updated by a transformation
+     *
+     * @param context   the name of the context
+     * @param principal authentication of the user/application requesting the service
+     */
+    @PostMapping("v1/eventstore/compact")
+    public void compact(
+            @RequestHeader(value = CONTEXT_PARAM, defaultValue = DEFAULT_CONTEXT, required = false) String context,
+            @ApiIgnore final Authentication principal
+    ) {
+        String uuid = UUID.randomUUID().toString();
+        eventStoreTransformationService.compact(uuid, context, new PrincipalAuthentication(principal))
+                                       .block();
+    }
+
+    /**
      * Returns the transformations for the specified context.
      *
      * @param context   the name of the context
