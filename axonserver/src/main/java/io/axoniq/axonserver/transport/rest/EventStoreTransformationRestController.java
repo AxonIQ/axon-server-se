@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformationService;
 import io.axoniq.axonserver.topology.Topology;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,11 +30,12 @@ import java.security.Principal;
  * @since 4.6.0
  */
 @RestController
-public class TransformationAdminRestController {
+@ConditionalOnProperty(value = "${axoniq.axonserver.experimental.event-transformation:false}")
+public class EventStoreTransformationRestController {
 
     private final EventStoreTransformationService eventStoreTransformationService;
 
-    public TransformationAdminRestController(EventStoreTransformationService eventStoreTransformationService) {
+    public EventStoreTransformationRestController(EventStoreTransformationService eventStoreTransformationService) {
         this.eventStoreTransformationService = eventStoreTransformationService;
     }
 

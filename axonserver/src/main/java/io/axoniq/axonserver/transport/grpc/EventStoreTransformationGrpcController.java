@@ -29,6 +29,7 @@ import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -48,6 +49,7 @@ import javax.annotation.Nonnull;
  * @since 4.6.0
  */
 @Component
+@ConditionalOnProperty(value = "${axoniq.axonserver.experimental.event-transformation:false}")
 public class EventStoreTransformationGrpcController
         extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
         implements AxonServerClientService {
