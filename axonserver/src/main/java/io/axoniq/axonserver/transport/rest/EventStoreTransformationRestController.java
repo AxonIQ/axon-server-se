@@ -30,7 +30,7 @@ import java.security.Principal;
  * @since 4.6.0
  */
 @RestController
-@ConditionalOnProperty(value = "${axoniq.axonserver.experimental.event-transformation:false}")
+@ConditionalOnProperty(value = "axoniq.axonserver.experimental.event-transformation")
 public class EventStoreTransformationRestController {
 
     private final EventStoreTransformationService eventStoreTransformationService;
