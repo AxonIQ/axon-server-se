@@ -54,6 +54,13 @@ public interface EventStoreTransformationService {
                                                        .next();
     }
 
+    /**
+     * Returns the transformations for the specified context.
+     *
+     * @param context        the name of the context
+     * @param authentication authentication of the user/application requesting the service
+     * @return the transformations for the specified context.
+     */
     Flux<Transformation> transformations(String context, @Nonnull Authentication authentication);
 
     /**
@@ -63,7 +70,7 @@ public interface EventStoreTransformationService {
      * @param context        the name of the context
      * @param description    description of the goal of the transformation
      * @param authentication authentication of the user/application requesting the service
-     * @return a mono with a unique identifier for the transformation
+     * @return a mono that completes once the transformation has been started
      */
     Mono<Void> start(String id,
                      String context,
@@ -72,11 +79,11 @@ public interface EventStoreTransformationService {
 
     /**
      * Registers the intent to delete an event when applying the transformation. The caller needs to provide the
-     * previous token to ensure that the events to change in the transformation are specified in the correct order.
+     * previous sequence to ensure that the transformation actions are received in the correct order.
      *
      * @param context          the name of the context
      * @param transformationId the identification of the transformation
-     * @param token            the token (global position) of the event to delete
+     * @param token            the token (global position) of the event to be deleted
      * @param sequence         the sequence of the transformation request used to validate the request chain, -1 if it
      *                         is the first one
      * @param authentication   authentication of the user/application requesting the service
@@ -92,7 +99,7 @@ public interface EventStoreTransformationService {
      *
      * @param context          the name of the context
      * @param transformationId the identification of the transformation
-     * @param token            the token (global position) of the event to delete
+     * @param token            the token (global position) of the event to replace
      * @param event            the new content of the event
      * @param sequence         the sequence of the transformation request used to validate the requests chain, -1 if it
      *                         is the first one
@@ -103,7 +110,8 @@ public interface EventStoreTransformationService {
                             @Nonnull Authentication authentication);
 
     /**
-     * Cancels a transformation. Can only be done before calling the applyTransformation operation.
+     * Cancels a transformation. Can only be done before calling the
+     * {@link EventStoreTransformationService#startApplying(String, String, long, Authentication)} operation.
      *
      * @param context          the name of the context
      * @param transformationId the identification of the transformation
