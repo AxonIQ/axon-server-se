@@ -113,12 +113,12 @@ public class EventStoreTransformationGrpcController
                     receiverFlux.asFlux()
                                 .concatMap(request -> {
                                     switch (request.getRequestCase()) {
-                                        case EVENT:
+                                        case REPLACE_EVENT:
                                             return eventStoreTransformationService.replaceEvent(context,
                                                                                                 transformationId(request),
-                                                                                                request.getEvent()
+                                                                                                request.getReplaceEvent()
                                                                                                        .getToken(),
-                                                                                                request.getEvent()
+                                                                                                request.getReplaceEvent()
                                                                                                        .getEvent(),
                                                                                                 request.getSequence(),
                                                                                                 new GrpcAuthentication(
