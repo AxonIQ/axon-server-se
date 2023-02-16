@@ -36,7 +36,7 @@ public class LocalContextTransformationStore implements ContextTransformationSto
 
     @Override
     public Mono<Void> create(String id, String description) {
-        return lastAppliedTransformation()//TODO applied or last transformation?
+        return lastTransformationVersion()//TODO applied or last transformation?
                                           .map(lastVersion -> new EventStoreTransformationJpa(id,
                                                                                               description,
                                                                                               context,
@@ -56,8 +56,8 @@ public class LocalContextTransformationStore implements ContextTransformationSto
                    .map(DefaultTransformationState::new);
     }
 
-    private Mono<Integer> lastAppliedTransformation() {
-        return Mono.fromSupplier(() -> repository.lastAppliedVersion(context)
+    private Mono<Integer> lastTransformationVersion() {
+        return Mono.fromSupplier(() -> repository.lastVersion(context)
                                                  .orElse(0))
                    .subscribeOn(Schedulers.boundedElastic());
     }
@@ -65,9 +65,9 @@ public class LocalContextTransformationStore implements ContextTransformationSto
     @Override
     public Mono<Void> save(TransformationState transformation) {
         return storeStagedActions(transformation)
-                   .then(Mono.fromSupplier(() -> repository.save(entity(transformation)))
-                             .subscribeOn(Schedulers.boundedElastic())
-                             .then());
+                .then(Mono.fromSupplier(() -> repository.save(entity(transformation)))
+                          .subscribeOn(Schedulers.boundedElastic())
+                          .then());
     }
 
     private Flux<Long> storeStagedActions(TransformationState transformation) {

@@ -37,8 +37,8 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
         return findEventStoreTransformationJpaByContextAndStatus(context, EventStoreTransformationJpa.Status.ACTIVE);
     }
 
-    default Optional<Integer> lastAppliedVersion(String context) {
-        return findByContextAndStatus(context, EventStoreTransformationJpa.Status.APPLIED)
+    default Optional<Integer> lastVersion(String context) {
+        return findByContext(context)
                 .stream()
                 .map(EventStoreTransformationJpa::version)
                 .max(Integer::compareTo);
@@ -46,5 +46,4 @@ public interface EventStoreTransformationRepository extends JpaRepository<EventS
 
     List<EventStoreTransformationJpa> findByContextAndStatus(String context,
                                                              EventStoreTransformationJpa.Status status);
-
 }
