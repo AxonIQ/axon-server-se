@@ -69,9 +69,35 @@
                         </goals>
                         <configuration>
                             <additionalProtoPathElements>
-                                <additionalProtoPathElement>${project.basedir}/src/main/proto</additionalProtoPathElement>
+                                <additionalProtoPathElement>${project.basedir}/src/main/proto
+                                </additionalProtoPathElement>
                             </additionalProtoPathElements>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!--
+                    Need to ensure that CRLF of the Flyway scripts are consistent, independent of the build platform.
+                    Initial versions are delivered in DOS format, so we should stick to that.
+                -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>ant-test</id>
+                        <phase>compile</phase>
+                        <configuration>
+                            <target>
+                                <echo message="${project.build.outputDirectory}/db/migration"/>
+                                <fixcrlf srcdir="${project.build.outputDirectory}/db/migration" eol="dos"
+                                         fixlast="false"/>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
