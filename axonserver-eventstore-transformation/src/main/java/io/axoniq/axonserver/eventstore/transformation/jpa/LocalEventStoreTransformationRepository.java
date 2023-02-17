@@ -14,17 +14,24 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import javax.transaction.Transactional;
-
 /**
+ * JpaRepository for {@link LocalEventStoreTransformationJpa} entity.
+ *
+ * @author Sara Pellegirini
+ * @author Milan Savic
  * @author Marc Gathier
- * @since 4.6.0
+ * @since 2023.0.0
  */
 public interface LocalEventStoreTransformationRepository
         extends JpaRepository<LocalEventStoreTransformationJpa, String> {
 
+    /**
+     * Increments the last sequence of the specified transaction by the specified increment.
+     *
+     * @param transformationId the identifier of the transformation
+     * @param increment        the delta used to increase the current last sequence
+     */
     @Modifying
     @Query("update LocalEventStoreTransformationJpa d set d.lastSequenceApplied = d.lastSequenceApplied + :#{#increment} where d.transformationId = :#{#transformationId}")
-    @Transactional
     void incrementLastSequence(@Param("transformationId") String transformationId, @Param("increment") long increment);
 }
