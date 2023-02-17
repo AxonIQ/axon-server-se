@@ -123,7 +123,7 @@ public class EventStoreTransformationGrpcControllerTest {
     @Test
     void testCompact() {
         ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
-        when(mockedService.compact(idCaptor.capture(), eq(CONTEXT), any()))
+        when(mockedService.startCompacting(idCaptor.capture(), eq(CONTEXT), any()))
                 .thenReturn(Mono.empty());
         CompletableFuture<Empty> future = new CompletableFuture<>();
         testSubject.compact(CompactionRequest.getDefaultInstance(),
