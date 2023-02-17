@@ -7,12 +7,6 @@ import reactor.core.publisher.Mono;
 
 public class ContextTransformationStateConverter implements TransformationStateConverter {
 
-    private final EventProvider eventProvider;
-
-    public ContextTransformationStateConverter(EventProvider eventProvider) {
-        this.eventProvider = eventProvider;
-    }
-
     @Override
     public Mono<Transformation> from(TransformationState entity) {
         return Mono.fromSupplier(() -> {

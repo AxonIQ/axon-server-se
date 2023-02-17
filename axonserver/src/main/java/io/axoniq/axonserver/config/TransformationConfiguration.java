@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -59,6 +59,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.transaction.PlatformTransactionManager;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -121,11 +122,12 @@ public class TransformationConfiguration {
     public Transformers transformers(EventStoreTransformationRepository repository,
                                      ContextEventProviderSupplier iteratorFactory,
                                      TransformationEntryStoreProvider transformationEntryStoreSupplier,
-                                     EventStoreStateStore eventStoreStateStore) {
-        return new LocalTransformers(iteratorFactory::eventProviderFor,
-                                     repository,
+                                     EventStoreStateStore eventStoreStateStore,
+                                     PlatformTransactionManager transactionManager) {
+        return new LocalTransformers(repository,
                                      transformationEntryStoreSupplier,
-                                     eventStoreStateStore);
+                                     eventStoreStateStore,
+                                     transactionManager);
     }
 
     @Bean
@@ -210,8 +212,8 @@ public class TransformationConfiguration {
                                                                                      TransformationAllowed transformationAllowed) {
         return new LocalEventStoreTransformationService(transformers,
                                                         transformations,
-                                                        eventStoreCompactionTask,
                                                         transformationApplyTask,
+                                                        eventStoreCompactionTask,
                                                         transformationCleanTask,
                                                         transformationAllowed);
     }
