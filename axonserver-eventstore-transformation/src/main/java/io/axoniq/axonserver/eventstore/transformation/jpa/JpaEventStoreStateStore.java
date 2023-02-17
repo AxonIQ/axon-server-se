@@ -4,13 +4,14 @@ import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStor
 import io.axoniq.axonserver.eventstore.transformation.state.CompactingState;
 import io.axoniq.axonserver.eventstore.transformation.state.IdleState;
 import io.axoniq.axonserver.eventstore.transformation.state.TransformingState;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.EnumMap;
 
 /**
+ * JPA implementation of the {@link EventStoreStateStore}.
+ *
  * @author Sara Pellegrini
+ * @author Milan Savic
  * @since 2023.0.0
  */
 public class JpaEventStoreStateStore implements EventStoreStateStore {
@@ -18,16 +19,20 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
     private final EventStoreStateRepository repository;
 
 
+    /**
+     * Create an instance that uses the specified JPA repository.
+     *
+     * @param repository the JPA repository for handling the persistence.
+     */
     public JpaEventStoreStateStore(EventStoreStateRepository repository) {
         this.repository = repository;
     }
 
     @Override
-    public Mono<EventStoreState> state(String context) {
-        return Mono.defer(() -> Mono.justOrEmpty(repository.findById(context))
-                                    .subscribeOn(Schedulers.boundedElastic())
-                                    .map(this::from)
-                                    .switchIfEmpty(Mono.just(new IdleState(context))));
+    public EventStoreState state(String context) {
+        return repository.findById(context)
+                         .map(this::from)
+                         .orElse(new IdleState(context));
     }
 
     private EventStoreState from(
@@ -45,12 +50,10 @@ public class JpaEventStoreStateStore implements EventStoreStateStore {
     }
 
     @Override
-    public Mono<Void> save(EventStoreState state) {
-        return Mono.<Void>fromRunnable(() -> {
-            JpaEntityConstructor entityConstructor = new JpaEntityConstructor();
-            state.accept(entityConstructor);
-            repository.save(entityConstructor.entity());
-        }).subscribeOn(Schedulers.boundedElastic());
+    public void save(EventStoreState state) {
+        JpaEntityConstructor entityConstructor = new JpaEntityConstructor();
+        state.accept(entityConstructor);
+        repository.save(entityConstructor.entity());
     }
 
     private static class JpaEntityConstructor implements Visitor {
