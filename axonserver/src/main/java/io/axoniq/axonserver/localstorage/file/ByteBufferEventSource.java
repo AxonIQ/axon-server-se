@@ -99,6 +99,10 @@ public class ByteBufferEventSource implements EventSource {
                                          duplicatesCount::decrementAndGet);
     }
 
+    public int version() {
+        return version;
+    }
+
     @Override
     protected void finalize() {
         if (cleanerHack && main) {
@@ -116,18 +120,13 @@ public class ByteBufferEventSource implements EventSource {
     }
 
     @Override
-    public TransactionIterator createTransactionIterator(long segment, long token, boolean validating) {
-        return new TransactionByteBufferIterator(this, segment, token, validating);
+    public TransactionIterator createTransactionIterator(long token, boolean validating) {
+        return new TransactionByteBufferIterator(this, token, validating);
     }
 
     @Override
     public EventIterator createEventIterator(long startToken) {
         return new EventByteBufferIterator(this, startToken);
-    }
-
-    @Override
-    public int segmentVersion() {
-        return version;
     }
 
     @Override

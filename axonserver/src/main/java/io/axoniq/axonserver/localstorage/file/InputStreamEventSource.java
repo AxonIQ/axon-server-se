@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -68,18 +68,13 @@ public class InputStreamEventSource implements EventSource {
     }
 
     @Override
-    public TransactionIterator createTransactionIterator(long segment, long token, boolean validating) {
-        return new InputStreamTransactionIterator(this, segment, token, validating);
+    public TransactionIterator createTransactionIterator(long token, boolean validating) {
+        return new InputStreamTransactionIterator(this, token);
     }
 
     @Override
     public EventIterator createEventIterator(long startToken) {
         return new InputStreamEventIterator(this, startToken);
-    }
-
-    @Override
-    public int segmentVersion() {
-        return segmentVersion;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -28,14 +28,12 @@ public class InputStreamTransactionIterator implements TransactionIterator {
     private final InputStreamEventSource eventSource;
     private final PositionKeepingDataInputStream reader;
     private long currentSequenceNumber;
-    private final boolean validating;
     private SerializedTransactionWithToken next;
 
-    public InputStreamTransactionIterator(InputStreamEventSource eventSource, long segment, long start, boolean validating) {
+    public InputStreamTransactionIterator(InputStreamEventSource eventSource, long start) {
         this.eventSource = eventSource;
         this.reader = eventSource.getStream();
-        this.currentSequenceNumber = segment;
-        this.validating = validating;
+        this.currentSequenceNumber = eventSource.segment();
         try {
             forwardTo(start);
         } catch (IOException e) {

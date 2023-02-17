@@ -74,15 +74,6 @@ public class InputStreamEventStore extends SegmentBasedEventStore {
                 FileUtils.delete(dataFile(new FileVersion(segment, segmentVersion)));
     }
 
-    @Override
-    public Integer currentSegmentVersion(Long segment) {
-        return segments.get(segment);
-    }
-
-    @Override
-    public void activateSegmentVersion(long segment, int segmentVersion) {
-        segments.put(segment, segmentVersion);
-    }
 
 
     @Override

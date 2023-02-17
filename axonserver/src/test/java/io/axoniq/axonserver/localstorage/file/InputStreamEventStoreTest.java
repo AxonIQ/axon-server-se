@@ -93,8 +93,8 @@ public class InputStreamEventStoreTest {
 
     @Test
     public void iterateTransactions() {
-        EventSource eventSource = testSubject.localEventSource(0).get();
-        TransactionIterator iterator = eventSource.createTransactionIterator(0, 5, true);
+        EventSource eventSource = testSubject.localEventSource(0).orElseThrow();
+        TransactionIterator iterator = eventSource.createTransactionIterator(5, true);
         assertTrue(iterator.hasNext());
         SerializedTransactionWithToken next = iterator.next();
         assertEquals(5, next.getToken());

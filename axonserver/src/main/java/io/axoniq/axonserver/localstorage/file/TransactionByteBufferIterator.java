@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2021 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -32,10 +32,10 @@ public class TransactionByteBufferIterator implements TransactionIterator {
     private SerializedTransactionWithToken next;
 
 
-    public TransactionByteBufferIterator(ByteBufferEventSource eventSource, long segment, long token, boolean validating) {
+    public TransactionByteBufferIterator(ByteBufferEventSource eventSource, long token, boolean validating) {
         this.eventSource = eventSource;
         this.reader = eventSource.getBuffer();
-        this.currentSequenceNumber = segment;
+        this.currentSequenceNumber = eventSource.segment();
         this.validating = validating;
         forwardTo(token);
         readTransaction();

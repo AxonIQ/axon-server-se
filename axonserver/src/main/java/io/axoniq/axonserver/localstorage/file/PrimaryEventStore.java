@@ -38,9 +38,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
@@ -79,7 +79,6 @@ public class PrimaryEventStore implements EventStorageEngine {
     private final Supplier<StorageProperties> storagePropertiesSupplier;
     private final Timer lastSequenceReadTimer;
     private final DistributionSummary aggregateSegmentsCount;
-    private final AtomicBoolean initialized = new AtomicBoolean(true);
 
 
     /**
@@ -121,7 +120,6 @@ public class PrimaryEventStore implements EventStorageEngine {
     public void init(boolean validate, long defaultFirstIndex) {
         head.initSegments(Long.MAX_VALUE, defaultFirstIndex);
         validate(validate ? storagePropertiesSupplier.get().getValidationSegments() : 2);
-        initialized.set(true);
     }
 
     public void validate(int maxSegments) {
@@ -163,7 +161,7 @@ public class PrimaryEventStore implements EventStorageEngine {
 
     @Override
     public long getFirstCompletedSegment() {
-        return EventStorageEngine.super.getFirstCompletedSegment();
+        return head.getFirstCompletedSegment();
     }
 
     @Override
@@ -270,8 +268,7 @@ public class PrimaryEventStore implements EventStorageEngine {
     @Override
     public Flux<Long> transformContents(int transformationVersion, Flux<EventWithToken> transformedEvents) {
         // TODO: 7/26/22 revisit this approach!!!
-        return Mono.fromRunnable(head::forceNextSegment)
-                   .thenMany(doTransformContents(transformationVersion, transformedEvents));
+        return doTransformContents(transformationVersion, transformedEvents);
     }
 
 
@@ -328,47 +325,41 @@ public class PrimaryEventStore implements EventStorageEngine {
 
     @Override
     public void query(QueryOptions queryOptions, Predicate<EventWithToken> consumer) {
-        List<Long> segments = head.allSegments().collect(Collectors.toList());
-        try {
-            for (Long segment : segments) {
-                if (segment <= queryOptions.getMaxToken()) {
-                    Optional<EventSource> eventSource = head.eventSource(segment);
-                    AtomicBoolean done = new AtomicBoolean();
-                    boolean snapshot = !context.isEvent();
-                    eventSource.ifPresent(e -> {
-                        long minTimestampInSegment = Long.MAX_VALUE;
-                        EventInformation eventWithToken;
-                        EventIterator iterator = e.createEventIterator(segment);
-                        while (iterator.hasNext()) {
-                            eventWithToken = iterator.next();
-                            minTimestampInSegment = Math.min(minTimestampInSegment,
-                                                             eventWithToken.getEvent().getTimestamp());
-                            if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
-                                iterator.close();
-                                return;
-                            }
-                            if (eventWithToken.getToken() >= queryOptions.getMinToken()
-                                    && eventWithToken.getEvent().getTimestamp() >= queryOptions.getMinTimestamp()
-                                    && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
-                                iterator.close();
-                                return;
-                            }
-                        }
-                        if (queryOptions.getMinToken() > segment || minTimestampInSegment < queryOptions
-                                .getMinTimestamp()) {
-                            done.set(true);
-                        }
-                        iterator.close();
-                        e.close();
-                    });
-                    if (done.get()) {
-                        return;
+        boolean snapshot = !context.isEvent();
+        head.allSegments()
+            .filter(s -> s <= queryOptions.getMaxToken())
+            .map(s -> head.eventSource(s).orElse(null))
+            .filter(Objects::nonNull)
+            .anyMatch(eventSource -> {
+                boolean done = false;
+                long minTimestampInSegment = Long.MAX_VALUE;
+                EventInformation eventWithToken;
+                EventIterator iterator = eventSource.createEventIterator();
+                while (!done && iterator.hasNext()) {
+                    eventWithToken = iterator.next();
+                    minTimestampInSegment = Math.min(minTimestampInSegment,
+                                                     eventWithToken.getEvent().getTimestamp());
+                    if (eventWithToken.getToken() > queryOptions.getMaxToken()) {
+                        done = true;
+                    }
+
+                    if (!done && eventWithToken.getToken() >= queryOptions.getMinToken()
+                            && eventWithToken.getEvent().getTimestamp()
+                            >= queryOptions.getMinTimestamp()
+                            && !consumer.test(eventWithToken.asEventWithToken(snapshot))) {
+                        done = true;
                     }
                 }
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+                if (queryOptions.getMinToken() > eventSource.segment()
+                        || minTimestampInSegment < queryOptions
+                        .getMinTimestamp()) {
+                    done = true;
+                }
+                iterator.close();
+                eventSource.close();
+
+                return done;
+            });
     }
 
 
@@ -387,7 +378,7 @@ public class PrimaryEventStore implements EventStorageEngine {
                                                                     storagePropertiesSupplier,
                                                                     transformationVersion,
                                                                     indexManager,
-                                                                    segment -> getTransactions(segment, segment),
+                                                                    this::transactionsForTransformation,
                                                                     storagePath)),
                               resources -> transformedEvents.concatMap(event -> resources.transform(event)
                                                                                          .thenReturn(1L)),
@@ -528,18 +519,23 @@ public class PrimaryEventStore implements EventStorageEngine {
         return new TransactionWithTokenIterator(firstToken, limitToken);
     }
 
-    private TransactionIterator createTransactionIterator(EventSource eventSource, long segment, long token,
+    private TransactionIterator createTransactionIterator(EventSource eventSource, long token,
                                                           boolean validating) {
-        return eventSource.createTransactionIterator(segment, token, validating);
+        return eventSource.createTransactionIterator(token, validating);
     }
 
     private TransactionIterator getTransactions(long segment, long token) {
         return getTransactions(segment, token, false);
     }
 
+    private TransactionIterator transactionsForTransformation(long segment) {
+        head.forceNextSegmentIfNeeded(segment);
+        return getTransactions(segment, segment, false);
+    }
+
     private TransactionIterator getTransactions(long segment, long token, boolean validating) {
         Optional<EventSource> reader = head.eventSource(segment);
-        return reader.map(r -> createTransactionIterator(r, segment, token, validating))
+        return reader.map(r -> createTransactionIterator(r, token, validating))
                      .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
                                                                        format(
                                                                                "%s: unable to read transactions for segment %d, requested token %d",
@@ -560,25 +556,16 @@ public class PrimaryEventStore implements EventStorageEngine {
 
     private Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
                                                           SegmentIndexEntries lastEventPosition) {
-        Optional<EventSource> eventSource = head.eventSource(lastEventPosition.fileVersion());
-        if (eventSource.isPresent()) {
-            try {
-                List<Integer> positions = lastEventPosition.indexEntries().positions();
-                for (int i = positions.size() - 1; i >= 0; i--) {
-                    SerializedEvent event = eventSource.get().readEvent(positions.get(i));
-                    if (event.getAggregateSequenceNumber() >= minSequenceNumber
-                            && event.getAggregateSequenceNumber() < maxSequenceNumber) {
-                        return Optional.of(event);
-                    }
-                }
-
-                return Optional.empty();
-            } finally {
-                eventSource.get().close();
-            }
-        }
-
-        return Optional.empty();
+        return head.eventSource(lastEventPosition.fileVersion())
+                   .map(e -> {
+                       try {
+                           return e.readLastInRange(minSequenceNumber,
+                                                    maxSequenceNumber,
+                                                    lastEventPosition.indexEntries().positions());
+                       } finally {
+                           e.close();
+                       }
+                   });
     }
 
     @Override
@@ -685,26 +672,21 @@ public class PrimaryEventStore implements EventStorageEngine {
 
     @Override
     public long getFirstToken() {
-        return head.allSegments().reduce((id, acc) -> id).orElse(-1L);
+        return head.allSegments().reduce((acc, id) -> id).orElse(-1L);
     }
 
     @Override
     public long getTokenAt(long instant) {
-        List<Long> segments = head.allSegments().collect(Collectors.toList());
-        for (long segment : segments) {
-            Optional<EventSource> eventSource = head.eventSource(segment);
-            Long found = eventSource.map(es -> {
-                try (EventIterator iterator = es.createEventIterator(segment)) {
-                    return iterator.getTokenAt(instant);
-                }
-            }).orElse(null);
-
-            if (found != null) {
-                return found;
-            }
-        }
-
-        return getFirstToken();
+        return head.allSegments()
+                   .map(s -> head.eventSource(s).orElse(null))
+                   .filter(Objects::nonNull)
+                   .map(es -> {
+                       try (EventIterator iterator = es.createEventIterator(es.segment())) {
+                           return iterator.getTokenAt(instant);
+                       }
+                   })
+                   .findFirst()
+                   .orElseGet(this::getFirstToken);
     }
 
     private long getSegmentFor(long token) {

@@ -24,9 +24,6 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
@@ -62,9 +59,9 @@ public abstract class SegmentBasedEventStore implements StorageTier {
     protected final String context;
     protected final IndexManager indexManager;
     protected final Supplier<StorageProperties> storagePropertiesSupplier;
-    protected final EventTypeContext type;
+    protected final EventTypeContext eventTypeContext;
     protected final NavigableMap<Long, Integer> segments = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
-    protected final Supplier<StorageTier> next;
+    protected final Supplier<StorageTier> nextSegmentsHandler;
     protected final Counter fileOpenMeter;
 
     protected final String storagePath;
@@ -81,11 +78,11 @@ public abstract class SegmentBasedEventStore implements StorageTier {
                                      Supplier<StorageTier> nextSegmentsHandler,
                                      MeterFactory meterFactory,
                                      String storagePath) {
-        this.type = eventTypeContext;
+        this.eventTypeContext = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;
         this.storagePropertiesSupplier = storagePropertiesSupplier;
-        this.next = nextSegmentsHandler;
+        this.nextSegmentsHandler = nextSegmentsHandler;
         Tags tags = Tags.of(MeterFactory.CONTEXT, context, "type", eventTypeContext.getEventType().name());
         this.fileOpenMeter = meterFactory.counter(BaseMetricName.AXON_SEGMENT_OPEN, tags);
         this.storagePath = storagePath;
@@ -96,7 +93,7 @@ public abstract class SegmentBasedEventStore implements StorageTier {
     }
 
     private AggregateSequence last(FileVersion segment, AggregateIndexEntries indexEntries) {
-        if (type.isEvent() || indexEntries.entries().size() == 1) {
+        if (eventTypeContext.isEvent() || indexEntries.entries().size() == 1) {
             return new AggregateSequence(indexEntries.aggregateId(), indexEntries.entries().lastSequenceNumber());
         }
 
@@ -108,44 +105,46 @@ public abstract class SegmentBasedEventStore implements StorageTier {
 
     public Optional<SerializedEvent> readSerializedEvent(long minSequenceNumber, long maxSequenceNumber,
                                                          SegmentIndexEntries lastEventPosition) {
-        Optional<EventSource> eventSource = localEventSource(lastEventPosition.fileVersion());
-        if (eventSource.isPresent()) {
-            try {
-                List<Integer> positions = lastEventPosition.indexEntries().positions();
-                for (int i = positions.size() - 1; i >= 0; i--) {
-                    SerializedEvent event = eventSource.get().readEvent(positions.get(i));
-                    if (event.getAggregateSequenceNumber() >= minSequenceNumber
-                            && event.getAggregateSequenceNumber() < maxSequenceNumber) {
-                        return Optional.of(event);
+        return localEventSource(lastEventPosition.fileVersion())
+                .map(e -> {
+                    try {
+                        return e.readLastInRange(minSequenceNumber,
+                                                 maxSequenceNumber,
+                                                 lastEventPosition.indexEntries().positions());
+                    } finally {
+                        e.close();
                     }
-                }
-
-                return Optional.empty();
-            } finally {
-                eventSource.get().close();
-            }
-        }
-
-        return Optional.empty();
+                });
     }
 
-    public abstract Integer currentSegmentVersion(Long segment);
+    public Integer currentSegmentVersion(Long segment) {
+        Integer version = segments.get(segment);
+        if (version != null) {
+            return version;
+        }
 
-    public abstract void activateSegmentVersion(long segment, int segmentVersion);
+        return invokeOnNext(n -> n.currentSegmentVersion(segment), 0);
+    }
+
+    public void activateSegmentVersion(long segment, int segmentVersion) {
+        Integer version = segments.get(segment);
+        if (version != null) {
+            segments.put(segment, segmentVersion);
+        } else {
+            applyOnNext(n -> n.activateSegmentVersion(segment, segmentVersion));
+        }
+    }
 
     public abstract boolean removeSegment(long segment, int segmentVersion);
 
     public Stream<Long> allSegments() {
-        StorageTier nextTier = next.get();
-        if (nextTier == null) {
-            return getSegments().stream();
-        }
-        return Stream.concat(getSegments().stream(), nextTier.allSegments()).distinct();
+        return Stream.concat(getSegments().stream(), invokeOnNext(StorageTier::allSegments, Stream.empty()));
     }
 
     public void initSegments(long lastInitialized) {
         prepareSegmentStore(lastInitialized);
         applyOnNext(n -> n.initSegments(segments.isEmpty() ? lastInitialized : segments.navigableKeySet().last()));
+        initialized.set(true);
     }
 
 
@@ -176,7 +175,7 @@ public abstract class SegmentBasedEventStore implements StorageTier {
                                                entry.getValue())))
                                        .map(Map.Entry::getKey)
                                        .findFirst().orElse(-1L);
-        logger.info("{}: {} First valid index: {}", type, storagePath, firstValidIndex);
+        logger.info("{}: {} First valid index: {}", eventTypeContext, storagePath, firstValidIndex);
         TreeSet<FileVersion> local = segments.headMap(firstValidIndex)
                                              .entrySet()
                                              .stream()
@@ -189,7 +188,7 @@ public abstract class SegmentBasedEventStore implements StorageTier {
     }
 
 
-    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp, boolean includeActive) {
+    public Stream<String> getBackupFilenames(long lastSegmentBackedUp, int lastVersionBackedUp) {
         Stream<String> filenames = Stream.concat(getSegments().stream()
                                                               .filter(s -> (s > lastSegmentBackedUp
                                                                       || currentSegmentVersion(s)
@@ -201,15 +200,14 @@ public abstract class SegmentBasedEventStore implements StorageTier {
                                                  indexManager.getBackupFilenames(lastSegmentBackedUp,
                                                                                  lastVersionBackedUp));
 
-        StorageTier nextStorageTier = next.get();
+        StorageTier nextStorageTier = nextSegmentsHandler.get();
         if (nextStorageTier == null) {
             return filenames;
         }
 
         return Stream.concat(filenames,
                              nextStorageTier.getBackupFilenames(lastSegmentBackedUp,
-                                                                lastVersionBackedUp,
-                                                                includeActive));
+                                                                lastVersionBackedUp));
     }
 
     protected void renameFileIfNecessary(long segment) {
@@ -245,23 +243,6 @@ public abstract class SegmentBasedEventStore implements StorageTier {
 
     private String renameMessage(File from, File to) {
         return "Could not rename " + from.getAbsolutePath() + " to " + to.getAbsolutePath();
-    }
-
-    protected void recreateIndexFromIterator(FileVersion segment, EventIterator iterator) {
-        Map<String, List<IndexEntry>> loadedEntries = new HashMap<>();
-        while (iterator.hasNext()) {
-            EventInformation event = iterator.next();
-            if (event.isDomainEvent()) {
-                IndexEntry indexEntry = new IndexEntry(
-                        event.getEvent().getAggregateSequenceNumber(),
-                        event.getPosition(),
-                        event.getToken());
-                loadedEntries.computeIfAbsent(event.getEvent().getAggregateIdentifier(), id -> new LinkedList<>())
-                             .add(indexEntry);
-            }
-        }
-        indexManager.addToActiveSegment(segment.segment(), loadedEntries);
-        indexManager.complete(segment);
     }
 
     /**
@@ -304,22 +285,25 @@ public abstract class SegmentBasedEventStore implements StorageTier {
      * @return descending set of segment ids
      */
     public SortedSet<Long> getSegments() {
+        if (!initialized.get()) {
+            initSegments(Long.MAX_VALUE);
+        }
         return segments.navigableKeySet();
     }
 
     protected EventTypeContext getType() {
-        return type;
+        return eventTypeContext;
     }
 
     protected void applyOnNext(Consumer<StorageTier> action) {
-        StorageTier nextTier = next.get();
+        StorageTier nextTier = nextSegmentsHandler.get();
         if (nextTier != null) {
             action.accept(nextTier);
         }
     }
 
     protected <R> R invokeOnNext(Function<StorageTier, R> action, R defaultValue) {
-        StorageTier nextTier = next.get();
+        StorageTier nextTier = nextSegmentsHandler.get();
         if (nextTier != null) {
             return action.apply(nextTier);
         }

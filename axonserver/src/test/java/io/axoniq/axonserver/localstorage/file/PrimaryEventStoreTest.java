@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import com.google.common.collect.Sets;
 import com.google.protobuf.ByteString;
 import io.axoniq.axonserver.config.FileSystemMonitor;
 import io.axoniq.axonserver.config.SystemInfoProvider;
@@ -16,6 +17,7 @@ import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.EventType;
 import io.axoniq.axonserver.localstorage.EventTypeContext;
+import io.axoniq.axonserver.localstorage.QueryOptions;
 import io.axoniq.axonserver.localstorage.SerializedEvent;
 import io.axoniq.axonserver.localstorage.SerializedEventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -37,11 +39,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -49,6 +53,7 @@ import static io.axoniq.axonserver.test.AssertUtils.assertWithin;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -185,6 +190,57 @@ public class PrimaryEventStoreTest {
     }
 
     @Test
+    public void queryEvents() throws ExecutionException, InterruptedException {
+        PrimaryEventStore testSubject = primaryEventStore();
+        for (int i = 0; i < 1000; i++) {
+            byte[] buffer = new byte[200];
+            Arrays.fill(buffer, (byte) 'x');
+            Event.Builder builder = Event.newBuilder()
+                                         .setAggregateIdentifier("query-" + i)
+                                         .setPayload(SerializedObject.newBuilder()
+                                                                     .setData(ByteString.copyFrom(buffer))
+                                                                     .build())
+                                         .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build());
+            for (int j = 0; j < 20; j++) {
+                List<Event> events = new ArrayList<>();
+                events.add(builder.setMessageIdentifier(UUID.randomUUID().toString())
+                                  .setAggregateSequenceNumber(j)
+                                  .setTimestamp(System.currentTimeMillis())
+                                  .build());
+                testSubject.store(events).get();
+            }
+        }
+
+        // ensure all segments are closed
+        assertWithin(5, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegmentCount()));
+
+        AtomicInteger counter = new AtomicInteger();
+        testSubject.query(new QueryOptions(0, Long.MAX_VALUE, 0), e -> {
+            counter.incrementAndGet();
+            return true;
+        });
+        assertEquals(20_000, counter.get());
+        counter.set(0);
+        testSubject.query(new QueryOptions(0, 100, 0), e -> {
+            counter.incrementAndGet();
+            return true;
+        });
+        assertEquals(101, counter.get());
+        counter.set(0);
+        testSubject.query(new QueryOptions(500, 650, 0), e -> {
+            counter.incrementAndGet();
+            return true;
+        });
+        assertEquals(151, counter.get());
+        counter.set(0);
+        testSubject.query(new QueryOptions(0, Long.MAX_VALUE, 0), e -> {
+            counter.incrementAndGet();
+            return e.getToken() == 10_000;
+        });
+        assertTrue(counter.get() < 20_000);
+    }
+
+    @Test
     public void testLargeSecondEvent() throws ExecutionException, InterruptedException, TimeoutException {
         PrimaryEventStore testSubject = primaryEventStore();
         storeEvent(testSubject, 10);
@@ -216,9 +272,38 @@ public class PrimaryEventStoreTest {
         assertEquals(2, counter);
         assertEquals(2, testSubject.nextToken());
         File file = new File(embeddedDBProperties.getEvent().getPrimaryStorage(context));
+        Set<String> expectedFilenames = Sets.newHashSet("00000000000000000000.events",
+                                                        "00000000000000000001_00001.events");
         for (File f : file.listFiles()) {
-            System.out.println(f.getAbsolutePath());
+            assertTrue(expectedFilenames.remove(f.getName()));
         }
+        assertTrue(expectedFilenames.isEmpty());
+    }
+
+    @Test
+    public void testFirstEventOtherVersion() throws ExecutionException, InterruptedException, TimeoutException {
+        PrimaryEventStore testSubject = primaryEventStore();
+        storeEventWithNewVersion(testSubject, 10, 1);
+        long counter = 0;
+        try (CloseableIterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject
+                .transactionIterator(0, Long.MAX_VALUE)) {
+            while (transactionWithTokenIterator.hasNext()) {
+                counter++;
+                transactionWithTokenIterator.next();
+            }
+        }
+        assertEquals(1, counter);
+        assertEquals(1, testSubject.nextToken());
+        File file = new File(embeddedDBProperties.getEvent().getPrimaryStorage(context));
+        Set<String> expectedFilenames = Sets.newHashSet(
+                "00000000000000000000_00001.events");
+        for (File f : file.listFiles()) {
+            assertTrue(expectedFilenames.remove(f.getName()));
+        }
+        assertTrue(expectedFilenames.isEmpty());
+
+        assertTrue(testSubject.getBackupFilenames(-1, 0, true)
+                              .anyMatch(p -> p.endsWith("00000000000000000000_00001.events")));
     }
 
     @Test
@@ -327,7 +412,7 @@ public class PrimaryEventStoreTest {
         testSubject.store(singletonList(newEvent)).get(1, TimeUnit.SECONDS);
     }
 
-    private void storeEventWithNewVersion(PrimaryEventStore testSubject, long payloadSize, int segmentVersion)
+    private void storeEventWithNewVersion(PrimaryEventStore testSubject, int payloadSize, int segmentVersion)
             throws ExecutionException, InterruptedException, TimeoutException {
         byte[] buffer = new byte[(int) payloadSize];
         Arrays.fill(buffer, (byte) 'a');
