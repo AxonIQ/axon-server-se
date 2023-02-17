@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -24,19 +24,15 @@ import io.axoniq.axonserver.grpc.event.TransformedEvent;
 import io.axoniq.axonserver.transport.grpc.EventStoreTransformationGrpcController;
 import io.grpc.stub.CallStreamObserver;
 import io.grpc.stub.StreamObserver;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.*;
+import org.mockito.*;
 import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -97,9 +93,9 @@ public class EventStoreTransformationGrpcControllerTest {
         streamObserver.onNext(TransformRequest.newBuilder()
                                               .setTransformationId(TransformationId.newBuilder()
                                                                                    .setId("transformation-ID"))
-                                              .setEvent(TransformedEvent.newBuilder()
-                                                                        .setEvent(Event.getDefaultInstance())
-                                                                        .setToken(100L))
+                                              .setReplaceEvent(TransformedEvent.newBuilder()
+                                                                               .setEvent(Event.getDefaultInstance())
+                                                                               .setToken(100L))
                                               .setSequence(5L)
                                               .build());
         streamObserver.onCompleted();
