@@ -9,9 +9,13 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-
 import static java.lang.String.format;
 
+/**
+ * Implementation of the {@link EventStoreTransformationService} that execute in the first place the validation related
+ * to the event in the event store. This is mainly useful for performance reason, in order to avoid to proceed if the
+ * transforming operation does not comply with the rules.
+ */
 public class FastValidationEventStoreTransformationService implements EventStoreTransformationService {
 
     private static final Logger logger = LoggerFactory.getLogger(FastValidationEventStoreTransformationService.class);
@@ -19,12 +23,22 @@ public class FastValidationEventStoreTransformationService implements EventStore
     private final EventStoreTransformationService delegate;
     private final ContextEventProviderSupplier contextEventProviderSupplier;
 
+    /**
+     * Creates an instance that delegate to the provided {@link EventStoreTransformationService} after the fast
+     * validation operations have been executed.
+     *
+     * @param delegate                     the {@link EventStoreTransformationService} to delegate to
+     * @param contextEventProviderSupplier provides events needed to perform the fast validations
+     */
     public FastValidationEventStoreTransformationService(EventStoreTransformationService delegate,
                                                          ContextEventProviderSupplier contextEventProviderSupplier) {
         this.delegate = delegate;
         this.contextEventProviderSupplier = contextEventProviderSupplier;
     }
 
+    /**
+     * Closes the opened events providers.
+     */
     public void destroy() {
         // TODO: 1/19/23 close opened event providers
     }
@@ -34,7 +48,7 @@ public class FastValidationEventStoreTransformationService implements EventStore
                                            .event(token)
                                            .switchIfEmpty(Mono.error(new IllegalArgumentException(
                                                    "Trying to delete non existing event " + token)))
-                                           .doOnError(t -> t instanceof FastValidationException,
+                                           .doOnError(FastValidationException.class::isInstance,
                                                       t -> logger.warn("Invalid token to delete.", t))
                                            .doOnError(t -> !(t instanceof FastValidationException),
                                                       t -> logger.warn("Unable to validate deletion.", t))
@@ -48,7 +62,7 @@ public class FastValidationEventStoreTransformationService implements EventStore
                                            .flatMap(original -> validateAggregateIdentifier(original, replacement))
                                            .switchIfEmpty(Mono.error(new IllegalArgumentException(
                                                    "Event not found: " + token)))
-                                           .doOnError(t -> t instanceof FastValidationException,
+                                           .doOnError(FastValidationException.class::isInstance,
                                                       t -> logger.warn("Invalid event to replace.", t))
                                            .doOnError(t -> !(t instanceof FastValidationException),
                                                       t -> logger.warn("Unable to validate replacement.", t));
@@ -112,7 +126,7 @@ public class FastValidationEventStoreTransformationService implements EventStore
     }
 
     @Override
-    public Mono<Void> compact(String compactionId, String context, @NotNull Authentication authentication) {
-        return delegate.compact(compactionId, context, authentication);
+    public Mono<Void> startCompacting(String compactionId, String context, @NotNull Authentication authentication) {
+        return delegate.startCompacting(compactionId, context, authentication);
     }
 }
