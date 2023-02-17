@@ -15,7 +15,6 @@ import io.axoniq.axonserver.eventstore.transformation.api.EventStoreTransformati
 import io.axoniq.axonserver.rest.EventsRestController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -136,7 +135,7 @@ public class EventStoreTransformationRestController {
      * @param transformationId the identification of the transformation
      * @param principal        authentication of the user/application requesting the service
      */
-    @DeleteMapping("v1/transformations/{transformationId}")
+    @PatchMapping("v1/transformations/{transformationId}/cancel")
     public void cancelTransformation(
             @RequestHeader(value = CONTEXT_PARAM, defaultValue = DEFAULT_CONTEXT, required = false) String context,
             @PathVariable("transformationId") String transformationId,

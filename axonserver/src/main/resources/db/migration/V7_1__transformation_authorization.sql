@@ -37,6 +37,6 @@ values ('PATCH:/v1/transformations/[^/]*/event/.*', 'TRANSFORM');
 insert into paths_to_functions (path, function)
 values ('PATCH:/v1/transformations/[^/]*/apply/', 'APPLY_TRANSFORMATION');
 insert into paths_to_functions (path, function)
-values ('DELETE:/v1/transformations/.*', 'TRANSFORM'); -- cancel
+values ('PATCH:/v1/transformations/[^/]*/cancel/.*', 'TRANSFORM');
 insert into paths_to_functions (path, function)
 values ('POST:/v1/eventstore/compact/', 'TRANSFORM');
