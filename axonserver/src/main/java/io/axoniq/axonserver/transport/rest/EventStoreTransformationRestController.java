@@ -179,7 +179,7 @@ public class EventStoreTransformationRestController {
             @ApiIgnore final Authentication principal
     ) {
         String uuid = UUID.randomUUID().toString();
-        eventStoreTransformationService.compact(uuid, context, new PrincipalAuthentication(principal))
+        eventStoreTransformationService.startCompacting(uuid, context, new PrincipalAuthentication(principal))
                                        .block();
     }
 
