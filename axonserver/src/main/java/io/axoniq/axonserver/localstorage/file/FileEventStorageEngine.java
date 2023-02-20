@@ -569,13 +569,17 @@ public class FileEventStorageEngine implements EventStorageEngine {
 
             @Override
             public boolean hasNext() {
-                if (closed.get()) throw new IllegalStateException("Iterator is closed");
+                if (closed.get()) {
+                    throw new IllegalStateException("Iterator is closed");
+                }
                 return nextToken <= getLastToken();
             }
 
             @Override
             public SerializedEventWithToken next() {
-                if (closed.get()) throw new IllegalStateException("Iterator is closed");
+                if (closed.get()) {
+                    throw new IllegalStateException("Iterator is closed");
+                }
                 if (eventIterator == null) {
                     eventIterator = getEvents(getSegmentFor(nextToken), nextToken);
                 }
@@ -671,6 +675,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
                            return iterator.getTokenAt(instant);
                        }
                    })
+                   .filter(Objects::nonNull)
                    .findFirst()
                    .orElseGet(this::getFirstToken);
     }
