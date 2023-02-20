@@ -94,6 +94,7 @@ globals.pageView = new Vue({
                                        }
                                    },
                                    initCluster() {
+                                       setTimeout(function() { alert("This may take a while, please wait..."); }, 0);
                                        if (!this.initContext) {
                                            axios.post("v1/context/init").then(_ => {
                                                location.reload();
@@ -109,7 +110,7 @@ globals.pageView = new Vue({
                                            alert("Enter the internal hostname of a member of the existing cluster");
                                            return
                                        }
-
+                                       setTimeout(function() { alert("This may take a while, please wait..."); }, 0);
                                        axios.post("v1/cluster", {
                                            "internalHostName": this.joinHost,
                                            "internalGrpcPort": this.joinPort
