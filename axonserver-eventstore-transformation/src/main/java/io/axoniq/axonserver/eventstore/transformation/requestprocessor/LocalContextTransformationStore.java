@@ -35,15 +35,12 @@ public class LocalContextTransformationStore implements ContextTransformationSto
     }
 
     @Override
-    public Mono<Void> create(String id, String description) {
-        return lastAppliedTransformation()//TODO applied or last transformation?
-                                          .map(lastVersion -> new EventStoreTransformationJpa(id,
-                                                                                              description,
-                                                                                              context,
-                                                                                              lastVersion + 1))
-                                          .map(repository::save)
-                                          .subscribeOn(Schedulers.boundedElastic())
-                                          .then();
+    public void create(String id, String description) {
+        EventStoreTransformationJpa entity = new EventStoreTransformationJpa(id,
+                                                                             description,
+                                                                             context,
+                                                                             lastTransformationVersion() + 1);
+        repository.save(entity);
     }
 
     @Override
@@ -56,25 +53,24 @@ public class LocalContextTransformationStore implements ContextTransformationSto
                    .map(DefaultTransformationState::new);
     }
 
-    private Mono<Integer> lastAppliedTransformation() {
-        return Mono.fromSupplier(() -> repository.lastAppliedVersion(context)
-                                                 .orElse(0))
-                   .subscribeOn(Schedulers.boundedElastic());
+    private int lastTransformationVersion() {
+        return repository.lastVersion(context)
+                         .orElse(0);
     }
 
     @Override
-    public Mono<Void> save(TransformationState transformation) {
-        return storeStagedActions(transformation)
-                   .then(Mono.fromSupplier(() -> repository.save(entity(transformation)))
-                             .subscribeOn(Schedulers.boundedElastic())
-                             .then());
+    public void save(TransformationState transformation) {
+        storeStagedActions(transformation);
+        repository.save(entity(transformation));
     }
 
-    private Flux<Long> storeStagedActions(TransformationState transformation) {
-        return transformationEntryStoreSupplier.provide(context, transformation.id())
-                                               .flatMapMany(transformationEntryStore -> Flux.fromIterable(transformation.staged())
-                                                                                            .flatMap(
-                                                                                                    transformationEntryStore::store));
+    private void storeStagedActions(TransformationState transformation) {
+        transformationEntryStoreSupplier.provide(context, transformation.id())
+                                        .flatMapMany(transformationEntryStore -> Flux.fromIterable(transformation.staged())
+                                                                                     .flatMap(
+                                                                                             transformationEntryStore::store))
+                                        .then()
+                                        .block();
     }
 
     private EventStoreTransformationJpa entity(TransformationState state) {

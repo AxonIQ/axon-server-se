@@ -14,7 +14,6 @@ import io.axoniq.axonserver.eventstore.transformation.ReplaceEvent;
 import io.axoniq.axonserver.eventstore.transformation.TransformationAction;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntry;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.TransformationEntryStoreProvider;
-import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import org.slf4j.Logger;
@@ -28,10 +27,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class DefaultTransformationApplyExecutor implements TransformationApplyExecutor {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultTransformationApplyExecutor.class);
-    private static final Event EMPTY_EVENT = Event.newBuilder()
-                                                  .setPayload(SerializedObject.newBuilder()
-                                                                              .setType("empty"))
-                                                  .build();
+    private static final Event EMPTY_EVENT = Event.getDefaultInstance();
 
     private final TransformationEntryStoreProvider transformationEntryStoreSupplier;
     private final TransformationProgressStore localStateStore;

@@ -2,9 +2,12 @@ package io.axoniq.axonserver.eventstore.transformation.state;
 
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore;
 import io.axoniq.axonserver.eventstore.transformation.requestprocessor.EventStoreStateStore.EventStoreState;
-import reactor.core.publisher.Mono;
 
 /**
+ * Represents the state of a context's event store when there is no operation in progress.
+ * That means that it is possible to request a new operation execution.
+ *
+ * @author Milan Savic
  * @author Sara Pellegrini
  * @since 2023.0.0
  */
@@ -12,6 +15,11 @@ public class IdleState implements EventStoreState {
 
     private final String context;
 
+    /**
+     * Constructs an instance for the specified context.
+     *
+     * @param context the context
+     */
     public IdleState(String context) {
         this.context = context;
     }
@@ -24,12 +32,12 @@ public class IdleState implements EventStoreState {
     }
 
     @Override
-    public Mono<EventStoreState> transform(String transformationId) {
-        return Mono.fromSupplier(() -> new TransformingState(transformationId, context));
+    public EventStoreState transform(String transformationId) {
+        return new TransformingState(transformationId, context);
     }
 
     @Override
-    public Mono<EventStoreState> compact(String compactionId) {
-        return Mono.fromSupplier(() -> new CompactingState(compactionId, context));
+    public EventStoreState compact(String compactionId) {
+        return new CompactingState(compactionId, context);
     }
 }

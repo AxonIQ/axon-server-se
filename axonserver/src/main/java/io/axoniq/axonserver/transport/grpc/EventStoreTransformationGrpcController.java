@@ -49,7 +49,7 @@ import javax.annotation.Nonnull;
  * @since 4.6.0
  */
 @Component
-@ConditionalOnProperty(value = "${axoniq.axonserver.experimental.event-transformation:false}")
+@ConditionalOnProperty(value = "axoniq.axonserver.experimental.event-transformation")
 public class EventStoreTransformationGrpcController
         extends EventTransformationServiceGrpc.EventTransformationServiceImplBase
         implements AxonServerClientService {
@@ -60,6 +60,13 @@ public class EventStoreTransformationGrpcController
     private final AuthenticationProvider authenticationProvider;
     private final EventStoreTransformationService eventStoreTransformationService;
 
+    /**
+     * Constructs an isntance based on the specified parameters.
+     *
+     * @param contextProvider                 used to retrieve the current context
+     * @param authenticationProvider          used to retrieve the current authentication
+     * @param eventStoreTransformationService the service to execute the requests
+     */
     public EventStoreTransformationGrpcController(ContextProvider contextProvider,
                                                   AuthenticationProvider authenticationProvider,
                                                   EventStoreTransformationService eventStoreTransformationService) {
@@ -228,9 +235,9 @@ public class EventStoreTransformationGrpcController
     public void compact(CompactionRequest request, StreamObserver<Empty> responseObserver) {
         String context = contextProvider.getContext();
         String uuid = UUID.randomUUID().toString(); //TODO return uuid
-        eventStoreTransformationService.compact(uuid,
-                                                context,
-                                                new GrpcAuthentication(authenticationProvider))
+        eventStoreTransformationService.startCompacting(uuid,
+                                                        context,
+                                                        new GrpcAuthentication(authenticationProvider))
                                        .subscribe(new VoidStreamObserverSubscriber(responseObserver));
     }
 

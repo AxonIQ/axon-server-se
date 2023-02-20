@@ -37,6 +37,14 @@
                         this.subscription.unsubscribe();
                     }
                 }, methods: {
+                    isEnterprise() {
+                        return globals.isEnterprise()
+                    },
+                    isDisabled() {
+                        if (!globals.isEnterprise() && this.replicationGroups.length > 1) {
+                            return true;
+                        }
+                    },
                     initNewReplicationGroup() {
                         this.newReplicationGroup.name = "";
                         for (var a = 0; a < this.nodes.length; a++) {
@@ -45,7 +53,7 @@
                                 selectedRole: "none"
                             };
                         }
-
+                        this.$forceUpdate();
                     },
                     deleteNodeFromReplicationGroup(node, replicationGroup) {
                         if (replicationGroup.roles.length == 1) {
@@ -201,7 +209,7 @@
 
 </script>
 <span id="replicationGroups">
-    <section id="applicationsOverview" v-if="hasFeature('MULTI_CONTEXT')">
+    <section id="applicationsOverview">
         <paginated-table :rows="replicationGroups" name="replicationGroups">
             <template #header>
                 <th class="contextColumn">Replication Group Name</th>
@@ -250,12 +258,12 @@
         </paginated-table>
     </section>
 
-    <div v-if="!hasFeature('MULTI_CONTEXT')" class="msg warning">
-        Multi-context is not allowed
-    </div>
+   <div v-if="!hasFeature('MULTI_CONTEXT')  && isDisabled()" class="msg white">
+      Replication group management is only available on Enterprise Edition. <a href="https://axoniq.io/axonserver" target="_blank" class="info">Learn more or request a trial license. <i class="fas fa-info-circle"></i></a>
+   </div>
 
-    <section id="applicationDetails" v-if="admin && hasFeature('MULTI_CONTEXT')">
-    <div class="column configuration">
+    <section id="applicationDetails" v-if="admin">
+    <div class="column configuration" v-disable="isDisabled()">
         <form id="contextForm">
                     <ul>
                         <li>

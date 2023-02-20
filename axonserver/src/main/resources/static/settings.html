@@ -1,5 +1,5 @@
 <!--
-  ~  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+  ~  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
   ~  under one or more contributor license agreements.
   ~
   ~  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -58,24 +58,58 @@
         Authentication disabled
     </div>
 
-    <div v-if="!node.adminNode" class="msg warning">
+    <div v-if="initialized && !node.adminNode" class="msg warning">
         This is not an ADMIN node
     </div>
 
+    <div v-if="!initialized" class="msg white">
+        <h4>It appears that you have a fresh installation. How would you like to initialize this node?</h4>
+
+        Would you like to complete the installation and use this node as a standalone node as the first node in a cluster (Enterprise Edition only), or as a node in an existing cluster?
+
+        <div style="margin-top: 15px">
+            Action:
+            <br/>
+            <select v-model="initializeMode" style="margin-top: 10px">
+                <option value="init">Start as standalone node or first node</option>
+                <option value="join">Join an existing cluster</option>
+            </select>
+            <div v-if="initializeMode === 'init'" style="margin-top: 10px">
+                With context name:
+                <br/>
+                <input v-model="initContext"/>
+                <br/>
+                <button style="margin-top: 15px" @click="initCluster()">Finish</button>
+            </div>
+            <div v-if="initializeMode === 'join'" style="margin-top: 15px">
+                Internal hostname of one of the nodes in the cluster to join:
+                <br/>
+                <input v-model="joinHost"/>
+                <br/>
+                Internal port:
+                <br/>
+                <input v-model="joinPort" type="number"/>
+                <br/>
+                <button style="margin-top: 15px" @click="joinCluster()">Join</button>
+            </div>
+        </div>
+    </div>
     <div class="column-wrapper">
 
         <div class="column configuration titleButton">
             <section>
                 <h2>Configuration</h2>
-                <span v-if="node.clustered" @click="downloadTemplate" class="icon download-contents" title="Download cluster configuration as Cluster Template Yaml file."><i class="fas fa-file-export"></i></span>
+                <span v-disable="!node.clustered" @click="downloadTemplate" class="icon download-contents"
+                      title="Download cluster configuration as Cluster Template Yaml file."><i
+                        class="fas fa-file-export"></i></span>
                 <ul>
                     <li>
                         <span>Node Name</span>
-                        <span id="nodeName">{{node.name}}</span>
+                        <span id="nodeName">{{ node.name }}</span>
                     </li>
                     <li>
                         <span>Host Name</span>
-                        <span id="hostName">{{node.hostName}}</span>
+                        <span id="hostName">{{ node.hostName }}</span>
                     </li>
                     <li>
                         <span>Http Port</span>
@@ -160,9 +194,12 @@
                         <span id="expiryDate"
                               v-bind:style="{ color: (new Date().valueOf() >= new Date(license.expiryDate).valueOf()) ? 'red':'' }"> {{license.expiryDate | formatDate}}</span>
                     </li>
+                    <li v-if="!isEnterprise()">
+                    <span></span>
+                    <span><a href="https://axoniq.io/axonserver" target="_blank" class="info">Try Enterprise for free</a></span></li>
                 </ul>
             </section>
-            <section v-if="license.featureList.length > 0">
+            <section v-if="initialized && license.featureList.length > 0">
                 <h3>Upload license</h3>
                 <form id="licenseForm" enctype="multipart/form-data">
                     <input type="file" id="license" name="licenseFile"/>

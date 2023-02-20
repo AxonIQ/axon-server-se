@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -9,6 +9,7 @@
 
 package io.axoniq.axonserver.localstorage.file;
 
+import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.grpc.event.EventWithToken;
 import io.axoniq.axonserver.localstorage.SerializedTransactionWithToken;
@@ -35,7 +36,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
     private final Supplier<TransactionIterator> transactionIteratorSupplier;
     private final String storagePath;
     private final List<Event> transformedTransaction = new CopyOnWriteArrayList<>();
-
+    private static final SerializedObject EMPTY_PAYLOAD = SerializedObject.newBuilder().setType("empty").build();
 
     DefaultSegmentTransformer(StorageProperties storageProperties,
                               long segment,
@@ -122,7 +123,7 @@ class DefaultSegmentTransformer implements SegmentTransformer {
         }
     }
 
-    private Mono<Void> process(Supplier<Optional<EventWithToken>> replacement) {
+    private Mono<Void> process(Supplier<Optional<EventWithToken>> replacementSupplier) {
         return Mono.<Void>create(sink -> {
             try {
                 //todo to be simplified
@@ -140,12 +141,22 @@ class DefaultSegmentTransformer implements SegmentTransformer {
                     Event event = originalTX.getEvents(transformedTransaction.size());
 
 
-                    Optional<EventWithToken> eventWithToken = replacement.get();
+                    Optional<EventWithToken> eventWithToken = replacementSupplier.get();
                     if (eventWithToken.isPresent()) {
                         long currentToken = originalTX.getToken() + transformedTransaction.size();
                         EventWithToken transformedEvent = eventWithToken.get();
                         if (transformedEvent.getToken() == currentToken) {
-                            event = transformedEvent.getEvent();
+                            Event replacement = transformedEvent.getEvent();
+                            if (Event.getDefaultInstance().equals(replacement)) {
+                                event = Event.newBuilder()
+                                             .setTimestamp(event.getTimestamp())
+                                             .setAggregateIdentifier(event.getAggregateIdentifier())
+                                             .setAggregateSequenceNumber(event.getAggregateSequenceNumber())
+                                             .setPayload(EMPTY_PAYLOAD)
+                                             .build();
+                            } else {
+                                event = replacement;
+                            }
                             done = true;
                         }
                     } else if (!transactionIteratorRef.get().hasNext()) {

@@ -27,59 +27,70 @@ import static io.axoniq.axonserver.util.StringUtils.sanitize;
 import static io.axoniq.axonserver.util.StringUtils.username;
 
 /**
- * Implementation of the {@link EventStoreTransformationService}.
+ * Implementation of the {@link EventStoreTransformationService} the perform the requested operations on the local
+ * instance.
  * <p>
  *
+ * @author Sara Pellegrini
+ * @author Milan Savic
  * @author Marc Gathier
- * @since 4.6.0
+ * @since 2023.0.0
  */
 public class LocalEventStoreTransformationService implements EventStoreTransformationService {
 
     private final Transformers transformers;
     private final Transformations transformations;
-    private final Logger auditLog;
+    private final Logger auditLog = LoggerFactory.getLogger(
+            "AUDIT." + LocalEventStoreTransformationService.class.getName());
     private final TransformationApplyTask transformationApplyTask;
-    private final EventStoreCompactionTask transformationRollBackTask;
+    private final EventStoreCompactionTask eventStoreCompactionTask;
     private final TransformationCleanTask transformationCleanTask;
     private final TransformationAllowed transformationAllowed;
 
-    public void init() {
-        transformationApplyTask.start();
-        transformationRollBackTask.start();
-        transformationCleanTask.start();
-    }
-
-    public void destroy() {
-        transformationApplyTask.stop();
-        transformationRollBackTask.stop();
-        transformationCleanTask.stop();
-    }
-
-    public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
-                                                EventStoreCompactionTask transformationRollBackTask,
+    /**
+     * Creates an instance with the specified parameters.
+     *
+     * @param transformers             provides the {@link ContextTransformer} for the specified context
+     * @param transformations          used to retrieve the event transformations
+     * @param transformationApplyTask  task that periodically checks if there are transformations to apply, and apply
+     *                                 them
+     * @param eventStoreCompactionTask task that periodically checks if a compaction of the event store has been
+     *                                 requested, and compact it
+     * @param transformationCleanTask  task that periodically checks if there are transformations to be cleaned, and
+     *                                 clean them
+     * @param transformationAllowed    used to verify if it is allowed to use the event transofrmation feature on the
+     *                                 context
+     */
+    public LocalEventStoreTransformationService(Transformers transformers,
+                                                Transformations transformations,
                                                 TransformationApplyTask transformationApplyTask,
-                                                TransformationCleanTask transformationCleanTask,
-                                                TransformationAllowed transformationAllowed) {
-        this(transformers,
-             transformations,
-             LoggerFactory.getLogger("AUDIT." + LocalEventStoreTransformationService.class.getName()),
-             transformationApplyTask, transformationRollBackTask, transformationCleanTask,
-             transformationAllowed);
-    }
-
-    public LocalEventStoreTransformationService(Transformers transformers, Transformations transformations,
-                                                Logger auditLog,
-                                                TransformationApplyTask transformationApplyTask,
-                                                EventStoreCompactionTask transformationRollBackTask,
+                                                EventStoreCompactionTask eventStoreCompactionTask,
                                                 TransformationCleanTask transformationCleanTask,
                                                 TransformationAllowed transformationAllowed) {
         this.transformers = transformers;
         this.transformations = transformations;
-        this.auditLog = auditLog;
         this.transformationApplyTask = transformationApplyTask;
-        this.transformationRollBackTask = transformationRollBackTask;
+        this.eventStoreCompactionTask = eventStoreCompactionTask;
         this.transformationCleanTask = transformationCleanTask;
         this.transformationAllowed = transformationAllowed;
+    }
+
+    /**
+     * Initializes the tasks scheduled to apply, clean and compact.
+     */
+    public void init() {
+        transformationApplyTask.start();
+        eventStoreCompactionTask.start();
+        transformationCleanTask.start();
+    }
+
+    /**
+     * Stops the tasks scheduled to apply, clean and compact.
+     */
+    public void destroy() {
+        transformationApplyTask.stop();
+        eventStoreCompactionTask.stop();
+        transformationCleanTask.stop();
     }
 
     @Override
@@ -160,9 +171,9 @@ public class LocalEventStoreTransformationService implements EventStoreTransform
     }
 
     @Override
-    public Mono<Void> compact(String compactionId, String context, @Nonnull Authentication authentication) {
+    public Mono<Void> startCompacting(String compactionId, String context, @Nonnull Authentication authentication) {
         return transformationAllowed.validate(context)
-                                    .then(transformerFor(context).flatMap(contextTransformer -> contextTransformer.compact(
+                                    .then(transformerFor(context).flatMap(contextTransformer -> contextTransformer.startCompacting(
                                                                          compactionId))
                                                                  .doFirst(() -> auditLog.info(
                                                                          "{}@{}: Request to delete old events.",

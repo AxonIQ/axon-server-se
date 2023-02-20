@@ -12,19 +12,31 @@ insert into roles (role, description) values ('TRANSFORM_ADMIN', 'Applies transf
 
 insert into function_roles (id, function, role) values (160, 'TRANSFORM', 'TRANSFORM');
 insert into function_roles (id, function, role) values (161, 'LIST_TRANSFORMATIONS', 'TRANSFORM');
-insert into function_roles (id, function, role) values (162, 'APPLY_TRANSFORMATION', 'TRANSFORM_ADMIN');
+insert into function_roles (id, function, role)
+values (162, 'APPLY_TRANSFORMATION', 'TRANSFORM_ADMIN');
 
-insert into paths_to_functions (path, function) values ('io.axoniq.axonserver.grpc.event.EventTransformationService/Transformations', 'LIST_TRANSFORMATIONS');
-insert into paths_to_functions (path, function) values ('io.axoniq.axonserver.grpc.event.EventTransformationService/StartTransformation', 'TRANSFORM');
-insert into paths_to_functions (path, function) values ('io.axoniq.axonserver.grpc.event.EventTransformationService/TransformEvents', 'TRANSFORM');
-insert into paths_to_functions (path, function) values ('io.axoniq.axonserver.grpc.event.EventTransformationService/CancelTransformation', 'TRANSFORM');
-insert into paths_to_functions (path, function) values ('io.axoniq.axonserver.grpc.event.EventTransformationService/ApplyTransformation', 'APPLY_TRANSFORMATION');
-insert into paths_to_functions (path, function) values ('io.axoniq.axonserver.grpc.event.EventTransformationService/Compact', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('io.axoniq.axonserver.grpc.event.EventTransformationService/Transformations', 'LIST_TRANSFORMATIONS');
+insert into paths_to_functions (path, function)
+values ('io.axoniq.axonserver.grpc.event.EventTransformationService/StartTransformation', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('io.axoniq.axonserver.grpc.event.EventTransformationService/TransformEvents', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('io.axoniq.axonserver.grpc.event.EventTransformationService/CancelTransformation', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('io.axoniq.axonserver.grpc.event.EventTransformationService/ApplyTransformation', 'APPLY_TRANSFORMATION');
+insert into paths_to_functions (path, function)
+values ('io.axoniq.axonserver.grpc.event.EventTransformationService/Compact', 'TRANSFORM');
 
-insert into paths_to_functions (path, function) values ('GET:/v1/transformations/', 'LIST_TRANSFORMATIONS');
-insert into paths_to_functions (path, function) values ('POST:/v1/transformations/startTransformation', 'TRANSFORM');
-insert into paths_to_functions (path, function) values ('POST:/v1/transformations/deleteEvent', 'TRANSFORM');
-insert into paths_to_functions (path, function) values ('POST:/v1/transformations/replaceEvent', 'TRANSFORM');
-insert into paths_to_functions (path, function) values ('DELETE:/v1/transformations/', 'TRANSFORM'); -- cancel
-insert into paths_to_functions (path, function) values ('POST:/v1/transformations/applyTransformation', 'APPLY_TRANSFORMATION');
-insert into paths_to_functions (path, function) values ('POST:/v1/transformations/compact', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('GET:/v1/transformations/', 'LIST_TRANSFORMATIONS');
+insert into paths_to_functions (path, function)
+values ('POST:/v1/transformations/', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('PATCH:/v1/transformations/[^/]*/event/.*', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('PATCH:/v1/transformations/[^/]*/apply/', 'APPLY_TRANSFORMATION');
+insert into paths_to_functions (path, function)
+values ('PATCH:/v1/transformations/[^/]*/cancel/.*', 'TRANSFORM');
+insert into paths_to_functions (path, function)
+values ('POST:/v1/eventstore/compact/', 'TRANSFORM');
