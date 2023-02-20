@@ -32,9 +32,15 @@ globals.pageView = new Vue(
                 });
                 this.loadApplications();
                 this.connect();
-            }, beforeDestroy() {
+            },
+            beforeDestroy() {
                 if( this.subscription) this.subscription.unsubscribe();
             }, methods: {
+                    isDisabled() {
+                        if (!globals.isEnterprise() && this.applications.length > 0) {
+                            return true;
+                        }
+                    },
                     loadApplications() {
                         axios.get("v1/public/applications").then(response => {
                             this.applications = response.data;
@@ -55,7 +61,6 @@ globals.pageView = new Vue(
                             this.application.metaDataValue = "";
                         });
                     },
-
                     saveApp(application) {
                         if (this.newRole.context && this.newRole.role) {
                             this.addNewRole(this.newRole);

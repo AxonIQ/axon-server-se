@@ -11,7 +11,11 @@ package io.axoniq.axonserver.grpc;
 
 import io.axoniq.axonserver.LicenseAccessController;
 import io.axoniq.axonserver.exception.ErrorCode;
-import io.grpc.*;
+import io.grpc.Metadata;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
+import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +26,10 @@ import org.slf4j.LoggerFactory;
  * @since 4.4
  */
 public class LicenseInterceptor implements ServerInterceptor {
+
+    private static final String APPEND_EVENT = "io.axoniq.axonserver.grpc.event.EventStore/AppendEvent";
+    private static final String DISPATCH_COMMAND = "io.axoniq.axonserver.grpc.command.CommandService/Dispatch";
+
     private final LicenseAccessController licenseAccessController;
     private final Logger logger = LoggerFactory.getLogger(LicenseInterceptor.class);
 
@@ -31,15 +39,17 @@ public class LicenseInterceptor implements ServerInterceptor {
 
     @Override
     public <T, R> ServerCall.Listener<T> interceptCall(ServerCall<T, R> serverCall, Metadata metadata, ServerCallHandler<T, R> serverCallHandler) {
-
-        if (!licenseAccessController.allowed()) {
-            StatusRuntimeException sre = GrpcExceptionBuilder.build(ErrorCode.OTHER, "License is not valid!");
-            logger.error("License is not valid!");
-            serverCall.close(sre.getStatus(), sre.getTrailers());
-            return new ServerCall.Listener<T>() {
-            };
+        if (APPEND_EVENT.equals(serverCall.getMethodDescriptor().getFullMethodName()) ||
+               DISPATCH_COMMAND.equals(serverCall.getMethodDescriptor().getFullMethodName())) {
+            if (!licenseAccessController.allowed()) {
+                StatusRuntimeException sre = GrpcExceptionBuilder.build(ErrorCode.OTHER, "License is not valid!");
+                logger.error("Warning: Unauthorized feature(s) that cannot be used with this license have been detected." +
+                        "Please remove them or contact AxonIQ for more information/assistance.");
+                serverCall.close(sre.getStatus(), sre.getTrailers());
+                return new ServerCall.Listener<T>() {
+                };
+            }
         }
-
         return serverCallHandler.startCall(serverCall, metadata);
     }
 }
