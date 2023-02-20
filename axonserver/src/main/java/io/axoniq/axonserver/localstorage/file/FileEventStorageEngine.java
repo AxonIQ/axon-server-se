@@ -122,7 +122,7 @@ public class FileEventStorageEngine implements EventStorageEngine {
         validate(validate ? storagePropertiesSupplier.get().getValidationSegments() : 2);
     }
 
-    private void validate(int maxSegments) {
+    public void validate(int maxSegments) {
         Stream<Long> segments = head.allSegments();
         List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(
                 Collectors.toList());
