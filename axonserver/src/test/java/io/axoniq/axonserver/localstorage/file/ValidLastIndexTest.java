@@ -34,12 +34,12 @@ import static org.mockito.Mockito.mock;
  */
 public class ValidLastIndexTest {
 
-    private PrimaryEventStore testSubject;
+    private FileEventStorageEngine testSubject;
     private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
 
     File sampleEventStoreFolder = new File(TestUtils
-                                                   .fixPathOnWindows(InputStreamEventStore.class
+                                                   .fixPathOnWindows(InputStreamStrorageTierEventStore.class
                                                                              .getResource(
                                                                                      "/event-store-with-last-segment-index")
                                                                              .getFile()));
@@ -62,20 +62,22 @@ public class ValidLastIndexTest {
                                                              storageProperties.getPrimaryStorage("default"),
                                                              EventType.EVENT,
                                                              meterFactory);
-        InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
-                                                                                                   EventType.EVENT),
-                                                                              indexManager,
-                                                                              new DefaultEventTransformerFactory(),
-                                                                              () -> storageProperties,
-                                                                              meterFactory,
-                                                                              storageProperties.getPrimaryStorage("default"));
-        testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
-                                            indexManager,
-                                            new DefaultEventTransformerFactory(),
-                                            () -> storageProperties,
-                                            () -> secondaryEventStore,
-                                            meterFactory, fileSystemMonitor,
-                                            storageProperties.getPrimaryStorage("default"));
+        InputStreamStrorageTierEventStore secondaryEventStore = new InputStreamStrorageTierEventStore(new EventTypeContext(
+                "default",
+                EventType.EVENT),
+                                                                                                      indexManager,
+                                                                                                      new DefaultEventTransformerFactory(),
+                                                                                                      () -> storageProperties,
+                                                                                                      meterFactory,
+                                                                                                      storageProperties.getPrimaryStorage(
+                                                                                                              "default"));
+        testSubject = new FileEventStorageEngine(new EventTypeContext("default", EventType.EVENT),
+                                                 indexManager,
+                                                 new DefaultEventTransformerFactory(),
+                                                 () -> storageProperties,
+                                                 () -> secondaryEventStore,
+                                                 meterFactory, fileSystemMonitor,
+                                                 storageProperties.getPrimaryStorage("default"));
     }
 
     @Test

@@ -1,16 +1,25 @@
+/*
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  under one or more contributor license agreements.
+ *
+ *  Licensed under the AxonIQ Open Source License Agreement v1.0;
+ *  you may not use this file except in compliance with the license.
+ *
+ */
+
 package io.axoniq.axonserver.localstorage;
 
 import io.axoniq.axonserver.exception.ErrorCode;
 import io.axoniq.axonserver.exception.MessagingPlatformException;
-import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
+import io.axoniq.axonserver.localstorage.file.FileEventStorageEngine;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class EventWriteStorageTest {
     @ClassRule
@@ -25,11 +34,10 @@ public class EventWriteStorageTest {
         });
         container.createDummyEvents(1000, 150, "sample");
         container.getEventWriter().clearSequenceNumberCache();
-        PrimaryEventStore primaryEventStore = (PrimaryEventStore)container.getPrimary();
-        while( primaryEventStore.activeSegmentCount() > 1 ) {
+        FileEventStorageEngine fileEventStorageEngine = (FileEventStorageEngine) container.getPrimary();
+        while (fileEventStorageEngine.activeSegmentCount() > 1) {
             Thread.sleep(10);
         }
-
     }
 
     @Test

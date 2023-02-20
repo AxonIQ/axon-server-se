@@ -22,14 +22,14 @@ import java.util.function.Supplier;
  * @author Marc Gathier
  * @since 4.0
  */
-public class InputStreamEventStore extends SegmentBasedEventStore {
+public class InputStreamStrorageTierEventStore extends AbstractFileStorageTier {
 
     private final EventTransformerFactory eventTransformerFactory;
 
-    public InputStreamEventStore(EventTypeContext context, IndexManager indexManager,
-                                 EventTransformerFactory eventTransformerFactory,
-                                 Supplier<StorageProperties> storageProperties,
-                                 MeterFactory meterFactory, String storagePath) {
+    public InputStreamStrorageTierEventStore(EventTypeContext context, IndexManager indexManager,
+                                             EventTransformerFactory eventTransformerFactory,
+                                             Supplier<StorageProperties> storageProperties,
+                                             MeterFactory meterFactory, String storagePath) {
         super(context, indexManager, storageProperties, meterFactory, storagePath);
         this.eventTransformerFactory = eventTransformerFactory;
     }

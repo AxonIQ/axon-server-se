@@ -15,7 +15,7 @@ import io.axoniq.axonserver.exception.MessagingPlatformException;
 import io.axoniq.axonserver.grpc.SerializedObject;
 import io.axoniq.axonserver.grpc.event.Event;
 import io.axoniq.axonserver.localstorage.file.EmbeddedDBProperties;
-import io.axoniq.axonserver.localstorage.file.PrimaryEventStore;
+import io.axoniq.axonserver.localstorage.file.FileEventStorageEngine;
 import io.axoniq.axonserver.localstorage.file.StandardEventStoreFactory;
 import io.axoniq.axonserver.localstorage.transaction.DefaultStorageTransactionManagerFactory;
 import io.axoniq.axonserver.localstorage.transaction.SingleInstanceTransactionManager;
@@ -133,8 +133,8 @@ public class TestInputStreamStorageContainer {
         return new SingleInstanceTransactionManager(datafileManagerChain);
     }
 
-    public PrimaryEventStore getPrimary() {
-        return (PrimaryEventStore) datafileManagerChain;
+    public FileEventStorageEngine getPrimary() {
+        return (FileEventStorageEngine) datafileManagerChain;
     }
 
     public void close() {

@@ -31,15 +31,16 @@ import static junit.framework.TestCase.assertTrue;
 /**
  * @author Marc Gathier
  */
-public class InputStreamEventStoreTest {
-    private InputStreamEventStore testSubject;
+public class InputStreamStrorageTierEventStoreTest {
+
+    private InputStreamStrorageTierEventStore testSubject;
 
     @Before
     public void setUp() {
         EmbeddedDBProperties embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(TestUtils
-                                                           .fixPathOnWindows(InputStreamEventStore.class
+                                                           .fixPathOnWindows(InputStreamStrorageTierEventStore.class
                                                                                      .getResource("/data").getFile()));
         embeddedDBProperties.getEvent().setForceCleanMmapIndex(true);
         embeddedDBProperties.getEvent().setUseMmapIndex(true);
@@ -54,12 +55,12 @@ public class InputStreamEventStoreTest {
                                                                      () -> null);
         indexManager.init();
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
-        testSubject = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
-                                                indexManager,
-                                                eventTransformerFactory,
-                                                embeddedDBProperties::getEvent,
-                                                meterFactory,
-                                                embeddedDBProperties.getEvent().getPrimaryStorage(context));
+        testSubject = new InputStreamStrorageTierEventStore(new EventTypeContext(context, EventType.EVENT),
+                                                            indexManager,
+                                                            eventTransformerFactory,
+                                                            embeddedDBProperties::getEvent,
+                                                            meterFactory,
+                                                            embeddedDBProperties.getEvent().getPrimaryStorage(context));
         testSubject.initSegments(Long.MAX_VALUE);
     }
 

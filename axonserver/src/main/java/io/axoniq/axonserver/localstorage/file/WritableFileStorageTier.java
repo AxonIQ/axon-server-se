@@ -50,12 +50,12 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.axoniq.axonserver.localstorage.file.FileEventStorageEngine.MAX_EVENTS_PER_BLOCK;
 import static io.axoniq.axonserver.localstorage.file.FileUtils.name;
-import static io.axoniq.axonserver.localstorage.file.PrimaryEventStore.MAX_EVENTS_PER_BLOCK;
 
-public class WritableEventStore extends SegmentBasedEventStore {
+public class WritableFileStorageTier extends AbstractFileStorageTier {
 
-    private static final Logger logger = LoggerFactory.getLogger(WritableEventStore.class);
+    private static final Logger logger = LoggerFactory.getLogger(WritableFileStorageTier.class);
 
     private final Synchronizer synchronizer;
     private final FileSystemMonitor fileSystemMonitor;
@@ -67,11 +67,11 @@ public class WritableEventStore extends SegmentBasedEventStore {
             Comparator.reverseOrder());
 
 
-    public WritableEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                              Supplier<StorageProperties> storagePropertiesSupplier,
-                              Supplier<StorageTier> completedSegmentsHandler, MeterFactory meterFactory,
-                              String storagePath, EventTransformerFactory eventTransformerFactory,
-                              FileSystemMonitor fileSystemMonitor) {
+    public WritableFileStorageTier(EventTypeContext eventTypeContext, IndexManager indexManager,
+                                   Supplier<StorageProperties> storagePropertiesSupplier,
+                                   Supplier<StorageTier> completedSegmentsHandler, MeterFactory meterFactory,
+                                   String storagePath, EventTransformerFactory eventTransformerFactory,
+                                   FileSystemMonitor fileSystemMonitor) {
         super(eventTypeContext,
               indexManager,
               storagePropertiesSupplier,

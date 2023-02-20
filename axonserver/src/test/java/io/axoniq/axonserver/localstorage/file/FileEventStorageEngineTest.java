@@ -64,7 +64,7 @@ import static org.mockito.Mockito.verify;
 /**
  * @author Marc Gathier
  */
-public class PrimaryEventStoreTest {
+public class FileEventStorageEngineTest {
 
     @ClassRule
     public static TemporaryFolder tempFolder = new TemporaryFolder();
@@ -72,7 +72,7 @@ public class PrimaryEventStoreTest {
     private final EmbeddedDBProperties embeddedDBProperties;
     private final MeterFactory meterFactory = new MeterFactory(new SimpleMeterRegistry(), new DefaultMetricCollector());
 
-    public PrimaryEventStoreTest() {
+    public FileEventStorageEngineTest() {
         embeddedDBProperties = new EmbeddedDBProperties(new SystemInfoProvider() {
         });
         embeddedDBProperties.getEvent().setStorage(
@@ -85,37 +85,40 @@ public class PrimaryEventStoreTest {
 
     private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
-    private PrimaryEventStore primaryEventStore() {
+    private FileEventStorageEngine primaryEventStore() {
         return primaryEventStore(EventType.EVENT);
     }
 
-    private PrimaryEventStore primaryEventStore(EventType eventType) {
+    private FileEventStorageEngine primaryEventStore(EventType eventType) {
         return primaryEventStore(new StandardIndexManager(context, embeddedDBProperties::getEvent,
                                                           embeddedDBProperties.getEvent().getPrimaryStorage(context),
                                                           eventType,
                                                           meterFactory, () -> null));
     }
 
-    private PrimaryEventStore primaryEventStore(IndexManager indexManager) {
+    private FileEventStorageEngine primaryEventStore(IndexManager indexManager) {
         EventTransformerFactory eventTransformerFactory = new DefaultEventTransformerFactory();
-        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
-                                                                 indexManager,
-                                                                 eventTransformerFactory,
-                                                                 embeddedDBProperties::getEvent,
-                                                                 meterFactory,
-                                                                 embeddedDBProperties.getEvent().getPrimaryStorage(context));
+        InputStreamStrorageTierEventStore second = new InputStreamStrorageTierEventStore(new EventTypeContext(context,
+                                                                                                              EventType.EVENT),
+                                                                                         indexManager,
+                                                                                         eventTransformerFactory,
+                                                                                         embeddedDBProperties::getEvent,
+                                                                                         meterFactory,
+                                                                                         embeddedDBProperties.getEvent()
+                                                                                                             .getPrimaryStorage(
+                                                                                                                     context));
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
-        PrimaryEventStore testSubject = new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
-                                                              indexManager,
-                                                              eventTransformerFactory,
-                                                              embeddedDBProperties::getEvent,
-                                                              () -> second,
-                                                              meterFactory,
-                                                              fileSystemMonitor,
-                                                              embeddedDBProperties.getEvent()
-                                                                                  .getPrimaryStorage(context));
+        FileEventStorageEngine testSubject = new FileEventStorageEngine(new EventTypeContext(context, EventType.EVENT),
+                                                                        indexManager,
+                                                                        eventTransformerFactory,
+                                                                        embeddedDBProperties::getEvent,
+                                                                        () -> second,
+                                                                        meterFactory,
+                                                                        fileSystemMonitor,
+                                                                        embeddedDBProperties.getEvent()
+                                                                                            .getPrimaryStorage(context));
         testSubject.init(false);
         verify(fileSystemMonitor).registerPath(any(String.class), any(Path.class));
         return testSubject;
@@ -128,7 +131,7 @@ public class PrimaryEventStoreTest {
         Event.Builder builder = Event.newBuilder()
                                      .setAggregateIdentifier(aggregateId)
                                      .setAggregateType("Demo").setPayload(SerializedObject.newBuilder().build());
-        PrimaryEventStore testSubject = primaryEventStore(EventType.SNAPSHOT);
+        FileEventStorageEngine testSubject = primaryEventStore(EventType.SNAPSHOT);
 
         testSubject.store(singletonList(builder.setMessageIdentifier("1").setAggregateSequenceNumber(5).build())).thenAccept(t -> latch
                 .countDown());
@@ -175,7 +178,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testLargeEvent() throws ExecutionException, InterruptedException, TimeoutException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         storeEvent(testSubject, embeddedDBProperties.getEvent().getSegmentSize() + 1);
         storeEvent(testSubject, 10);
         long counter = 0;
@@ -191,7 +194,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void queryEvents() throws ExecutionException, InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         for (int i = 0; i < 1000; i++) {
             byte[] buffer = new byte[200];
             Arrays.fill(buffer, (byte) 'x');
@@ -242,7 +245,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testLargeSecondEvent() throws ExecutionException, InterruptedException, TimeoutException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         storeEvent(testSubject, 10);
         storeEvent(testSubject, embeddedDBProperties.getEvent().getSegmentSize() + 1);
         long counter = 0;
@@ -258,7 +261,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testEventVersions() throws ExecutionException, InterruptedException, TimeoutException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         storeEvent(testSubject, 10);
         storeEventWithNewVersion(testSubject, 10, 1);
         long counter = 0;
@@ -282,7 +285,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testFirstEventOtherVersion() throws ExecutionException, InterruptedException, TimeoutException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         storeEventWithNewVersion(testSubject, 10, 1);
         long counter = 0;
         try (CloseableIterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject
@@ -308,7 +311,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void aggregateEventsReusedAggregateIdentifier() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         setupEvents(testSubject, 10000, 20);
         setupEvents(testSubject, 1, 5);
 
@@ -320,7 +323,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void transactionsIterator() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         setupEvents(testSubject, 1000, 2);
         Iterator<SerializedTransactionWithToken> transactionWithTokenIterator = testSubject.transactionIterator(0,
                                                                                                                 Long.MAX_VALUE);
@@ -336,7 +339,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void largeTransactions() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         setupEvents(testSubject, 10, Short.MAX_VALUE + 5);
         Iterator<SerializedTransactionWithToken> transactionWithTokenIterator =
                 testSubject.transactionIterator(0, Long.MAX_VALUE);
@@ -368,7 +371,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void readClosedIterator() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         setupEvents(testSubject, 1000, 20);
         assertWithin(5, TimeUnit.SECONDS, () -> assertEquals(1, testSubject.activeSegmentCount()));
         CloseableIterator<SerializedEventWithToken> transactionWithTokenIterator = testSubject.getGlobalIterator(0);
@@ -381,7 +384,7 @@ public class PrimaryEventStoreTest {
         }
     }
 
-    private void setupEvents(PrimaryEventStore testSubject, int numOfTransactions, int numOfEvents)
+    private void setupEvents(FileEventStorageEngine testSubject, int numOfTransactions, int numOfEvents)
             throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(numOfTransactions);
         IntStream.range(0, numOfTransactions).forEach(j -> {
@@ -401,7 +404,7 @@ public class PrimaryEventStoreTest {
         }
     }
 
-    private void storeEvent(PrimaryEventStore testSubject, long payloadSize)
+    private void storeEvent(FileEventStorageEngine testSubject, long payloadSize)
             throws ExecutionException, InterruptedException, TimeoutException {
         byte[] buffer = new byte[(int) payloadSize];
         Arrays.fill(buffer, (byte) 'a');
@@ -412,7 +415,7 @@ public class PrimaryEventStoreTest {
         testSubject.store(singletonList(newEvent)).get(1, TimeUnit.SECONDS);
     }
 
-    private void storeEventWithNewVersion(PrimaryEventStore testSubject, int payloadSize, int segmentVersion)
+    private void storeEventWithNewVersion(FileEventStorageEngine testSubject, int payloadSize, int segmentVersion)
             throws ExecutionException, InterruptedException, TimeoutException {
         byte[] buffer = new byte[(int) payloadSize];
         Arrays.fill(buffer, (byte) 'a');
@@ -425,7 +428,7 @@ public class PrimaryEventStoreTest {
 
     @Test
     public void testGlobalIterator() throws InterruptedException {
-        PrimaryEventStore testSubject = primaryEventStore();
+        FileEventStorageEngine testSubject = primaryEventStore();
         CountDownLatch latch = new CountDownLatch(100);
         // setup with 10,000 events
         IntStream.range(0, 100).forEach(j -> {

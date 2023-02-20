@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.axoniq.axonserver.localstorage.file.SegmentBasedEventStore.TRANSACTION_VERSION;
+import static io.axoniq.axonserver.localstorage.file.AbstractFileStorageTier.TRANSACTION_VERSION;
 
 /**
  * @author Marc Gathier
@@ -35,7 +35,7 @@ public class StreamSegmentWriter implements SegmentWriter {
 
     public StreamSegmentWriter(File file, long segment, int flags) throws IOException {
         dataOutputStream = new DataOutputStream(new FileOutputStream(file));
-        dataOutputStream.write(SegmentBasedEventStore.EVENT_FORMAT_VERSION);
+        dataOutputStream.write(AbstractFileStorageTier.EVENT_FORMAT_VERSION);
         dataOutputStream.writeInt(flags);
         token = segment-1;
     }

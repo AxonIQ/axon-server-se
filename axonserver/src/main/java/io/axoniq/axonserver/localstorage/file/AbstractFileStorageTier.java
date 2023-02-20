@@ -42,10 +42,10 @@ import java.util.stream.Stream;
  * @author Marc Gathier
  * @since 4.0
  */
-public abstract class SegmentBasedEventStore implements StorageTier {
+public abstract class AbstractFileStorageTier implements StorageTier {
 
     public static final byte TRANSACTION_VERSION = 2;
-    protected static final Logger logger = LoggerFactory.getLogger(SegmentBasedEventStore.class);
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractFileStorageTier.class);
     protected static final int VERSION_BYTES = 1;
     protected static final int FILE_OPTIONS_BYTES = 4;
     protected static final int TX_CHECKSUM_BYTES = 4;
@@ -67,17 +67,17 @@ public abstract class SegmentBasedEventStore implements StorageTier {
     protected final String storagePath;
     private final AtomicBoolean initialized = new AtomicBoolean(true);
 
-    protected SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                     Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory,
-                                     String storagePath) {
+    protected AbstractFileStorageTier(EventTypeContext eventTypeContext, IndexManager indexManager,
+                                      Supplier<StorageProperties> storagePropertiesSupplier, MeterFactory meterFactory,
+                                      String storagePath) {
         this(eventTypeContext, indexManager, storagePropertiesSupplier, () -> null, meterFactory, storagePath);
     }
 
-    protected SegmentBasedEventStore(EventTypeContext eventTypeContext, IndexManager indexManager,
-                                     Supplier<StorageProperties> storagePropertiesSupplier,
-                                     Supplier<StorageTier> nextSegmentsHandler,
-                                     MeterFactory meterFactory,
-                                     String storagePath) {
+    protected AbstractFileStorageTier(EventTypeContext eventTypeContext, IndexManager indexManager,
+                                      Supplier<StorageProperties> storagePropertiesSupplier,
+                                      Supplier<StorageTier> nextSegmentsHandler,
+                                      MeterFactory meterFactory,
+                                      String storagePath) {
         this.eventTypeContext = eventTypeContext;
         this.context = eventTypeContext.getContext();
         this.indexManager = indexManager;

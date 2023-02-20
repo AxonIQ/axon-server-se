@@ -35,14 +35,14 @@ import static org.mockito.Mockito.mock;
  */
 public class TokenAtTest {
 
-    private static PrimaryEventStore testSubject;
+    private static FileEventStorageEngine testSubject;
     private final static FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     @BeforeClass
     public static void init() {
 
         File sampleEventStoreFolder = new File(TestUtils
-                                                       .fixPathOnWindows(InputStreamEventStore.class
+                                                       .fixPathOnWindows(InputStreamStrorageTierEventStore.class
                                                                                  .getResource(
                                                                                          "/token-at")
                                                                                  .getFile()));
@@ -63,24 +63,26 @@ public class TokenAtTest {
                                                              EventType.EVENT,
                                                              meterFactory, () -> null);
 
-        InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
-                                                                                                   EventType.EVENT),
-                                                                              indexManager,
-                                                                              new DefaultEventTransformerFactory(),
-                                                                              () -> storageProperties,
-                                                                              meterFactory,
-                                                                              storageProperties.getPrimaryStorage("default"));
+        InputStreamStrorageTierEventStore secondaryEventStore = new InputStreamStrorageTierEventStore(new EventTypeContext(
+                "default",
+                EventType.EVENT),
+                                                                                                      indexManager,
+                                                                                                      new DefaultEventTransformerFactory(),
+                                                                                                      () -> storageProperties,
+                                                                                                      meterFactory,
+                                                                                                      storageProperties.getPrimaryStorage(
+                                                                                                              "default"));
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
-        testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
-                                            indexManager,
-                                            new DefaultEventTransformerFactory(),
-                                            () -> storageProperties,
-                                            () -> secondaryEventStore,
-                                            meterFactory,
-                                            fileSystemMonitor,
-                                            storageProperties.getPrimaryStorage("default"));
+        testSubject = new FileEventStorageEngine(new EventTypeContext("default", EventType.EVENT),
+                                                 indexManager,
+                                                 new DefaultEventTransformerFactory(),
+                                                 () -> storageProperties,
+                                                 () -> secondaryEventStore,
+                                                 meterFactory,
+                                                 fileSystemMonitor,
+                                                 storageProperties.getPrimaryStorage("default"));
         testSubject.init(true);
     }
 

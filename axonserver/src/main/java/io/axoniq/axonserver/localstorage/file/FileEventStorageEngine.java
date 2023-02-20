@@ -58,19 +58,19 @@ import static io.axoniq.axonserver.localstorage.file.StorageProperties.TRANSFORM
 import static java.lang.String.format;
 
 /**
- * Manages the writable segments of the event store. Once the segment is completed this class hands the segment over to
- * the next segment based event store.
+ * File based implementation for the {@link EventStorageEngine}. Breaks up the event stores into segments, with each
+ * segment stored in a separate file.
  *
  * @author Marc Gathier
  * @since 4.0
  */
-public class PrimaryEventStore implements EventStorageEngine {
+public class FileEventStorageEngine implements EventStorageEngine {
 
-    protected static final Logger logger = LoggerFactory.getLogger(PrimaryEventStore.class);
+    protected static final Logger logger = LoggerFactory.getLogger(FileEventStorageEngine.class);
     public static final int MAX_EVENTS_PER_BLOCK = Short.MAX_VALUE;
     private static final int PREFETCH_SEGMENT_FILES = 2;
 
-    private final WritableEventStore head;
+    private final WritableFileStorageTier head;
     protected final Set<Runnable> closeListeners = new CopyOnWriteArraySet<>();
 
     private final String storagePath;
@@ -90,25 +90,25 @@ public class PrimaryEventStore implements EventStorageEngine {
      * @param fileSystemMonitor
      */
 
-    public PrimaryEventStore(EventTypeContext context,
-                             IndexManager indexManager,
-                             EventTransformerFactory eventTransformerFactory,
-                             Supplier<StorageProperties> storagePropertiesSupplier,
-                             Supplier<StorageTier> completedSegmentsHandler,
-                             MeterFactory meterFactory,
-                             FileSystemMonitor fileSystemMonitor,
-                             String storagePath) {
+    public FileEventStorageEngine(EventTypeContext context,
+                                  IndexManager indexManager,
+                                  EventTransformerFactory eventTransformerFactory,
+                                  Supplier<StorageProperties> storagePropertiesSupplier,
+                                  Supplier<StorageTier> completedSegmentsHandler,
+                                  MeterFactory meterFactory,
+                                  FileSystemMonitor fileSystemMonitor,
+                                  String storagePath) {
         this.context = context;
         this.indexManager = indexManager;
         this.storagePropertiesSupplier = storagePropertiesSupplier;
-        head = new WritableEventStore(context,
-                                      indexManager,
-                                      storagePropertiesSupplier,
-                                      completedSegmentsHandler,
-                                      meterFactory,
-                                      storagePath,
-                                      eventTransformerFactory,
-                                      fileSystemMonitor);
+        head = new WritableFileStorageTier(context,
+                                           indexManager,
+                                           storagePropertiesSupplier,
+                                           completedSegmentsHandler,
+                                           meterFactory,
+                                           storagePath,
+                                           eventTransformerFactory,
+                                           fileSystemMonitor);
         this.storagePath = storagePath;
         Tags tags = Tags.of(MeterFactory.CONTEXT, context.getContext(), "type", context.getEventType().name());
         this.lastSequenceReadTimer = meterFactory.timer(BaseMetricName.AXON_LAST_SEQUENCE_READTIME, tags);
@@ -122,7 +122,7 @@ public class PrimaryEventStore implements EventStorageEngine {
         validate(validate ? storagePropertiesSupplier.get().getValidationSegments() : 2);
     }
 
-    public void validate(int maxSegments) {
+    private void validate(int maxSegments) {
         Stream<Long> segments = head.allSegments();
         List<ValidationResult> resultList = segments.limit(maxSegments).parallel().map(this::validateSegment).collect(
                 Collectors.toList());
@@ -245,7 +245,7 @@ public class PrimaryEventStore implements EventStorageEngine {
 
     @Override
     public byte transactionVersion() {
-        return SegmentBasedEventStore.TRANSACTION_VERSION;
+        return AbstractFileStorageTier.TRANSACTION_VERSION;
     }
 
     @Override
@@ -362,11 +362,6 @@ public class PrimaryEventStore implements EventStorageEngine {
             });
     }
 
-
-    private EventIterator createEventIterator(EventSource e, long startToken) {
-        return e.createEventIterator(startToken);
-    }
-
     @Override
     public Optional<Long> getLastSequenceNumber(String aggregateIdentifier, SearchHint[] hints) {
         return getLastSequenceNumber(aggregateIdentifier, recentOnly(hints) ?
@@ -476,14 +471,6 @@ public class PrimaryEventStore implements EventStorageEngine {
         return true;
     }
 
-    public int nextVersion() {
-        int maxVersion = head.allSegments()
-                             .map(head::currentSegmentVersion)
-                             .max(Integer::compareTo)
-                             .orElse(0);
-        return maxVersion + 1;
-    }
-
     private boolean recentOnly(SearchHint[] values) {
         for (SearchHint t : values) {
             if (t.equals(SearchHint.RECENT_ONLY)) {
@@ -524,9 +511,6 @@ public class PrimaryEventStore implements EventStorageEngine {
         return eventSource.createTransactionIterator(token, validating);
     }
 
-    private TransactionIterator getTransactions(long segment, long token) {
-        return getTransactions(segment, token, false);
-    }
 
     private TransactionIterator transactionsForTransformation(long segment) {
         head.forceNextSegmentIfNeeded(segment);
@@ -546,7 +530,7 @@ public class PrimaryEventStore implements EventStorageEngine {
 
     private EventIterator getEvents(long segment, long token) {
         Optional<EventSource> reader = head.eventSource(segment);
-        return reader.map(eventSource -> createEventIterator(eventSource, token))
+        return reader.map(eventSource -> eventSource.createEventIterator(token))
                      .orElseThrow(() -> new MessagingPlatformException(ErrorCode.OTHER,
                                                                        format("%s: token %d before start of event store",
                                                                               context,
@@ -558,12 +542,10 @@ public class PrimaryEventStore implements EventStorageEngine {
                                                           SegmentIndexEntries lastEventPosition) {
         return head.eventSource(lastEventPosition.fileVersion())
                    .map(e -> {
-                       try {
+                       try (e) {
                            return e.readLastInRange(minSequenceNumber,
                                                     maxSequenceNumber,
                                                     lastEventPosition.indexEntries().positions());
-                       } finally {
-                           e.close();
                        }
                    });
     }
@@ -667,6 +649,10 @@ public class PrimaryEventStore implements EventStorageEngine {
             if (currentTransactionIterator != null) {
                 currentTransactionIterator.close();
             }
+        }
+
+        private TransactionIterator getTransactions(long segment, long token) {
+            return FileEventStorageEngine.this.getTransactions(segment, token, false);
         }
     }
 

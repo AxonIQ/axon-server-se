@@ -37,12 +37,12 @@ import static org.mockito.Mockito.mock;
  */
 public class MultipleSnapshotSegmentsTest {
 
-    private PrimaryEventStore testSubject;
+    private FileEventStorageEngine testSubject;
 
     private FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     File sampleEventStoreFolder = new File(TestUtils
-                                                   .fixPathOnWindows(InputStreamEventStore.class
+                                                   .fixPathOnWindows(InputStreamStrorageTierEventStore.class
                                                                              .getResource("/multiple-snapshot-segments")
                                                                              .getFile()));
 
@@ -61,27 +61,28 @@ public class MultipleSnapshotSegmentsTest {
 
         IndexManager indexManager = new StandardIndexManager("default",
                                                              () -> storageProperties,
-                sampleEventStoreFolder.getAbsolutePath(),
+                                                             sampleEventStoreFolder.getAbsolutePath(),
                                                              EventType.SNAPSHOT,
                                                              meterFactory);
 
-        InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
-                                                                                                   EventType.SNAPSHOT),
-                                                                              indexManager,
-                                                                              new DefaultEventTransformerFactory(),
-                                                                              () -> storageProperties,
-                                                                              meterFactory,
-                sampleEventStoreFolder
-                        .getAbsolutePath());
-        testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.SNAPSHOT),
-                                            indexManager,
-                                            new DefaultEventTransformerFactory(),
-                                            () -> storageProperties,
-                                            () -> secondaryEventStore,
-                                            meterFactory,
-                                            fileSystemMonitor,
-                sampleEventStoreFolder
-                        .getAbsolutePath());
+        InputStreamStrorageTierEventStore secondaryEventStore = new InputStreamStrorageTierEventStore(new EventTypeContext(
+                "default",
+                EventType.SNAPSHOT),
+                                                                                                      indexManager,
+                                                                                                      new DefaultEventTransformerFactory(),
+                                                                                                      () -> storageProperties,
+                                                                                                      meterFactory,
+                                                                                                      sampleEventStoreFolder
+                                                                                                              .getAbsolutePath());
+        testSubject = new FileEventStorageEngine(new EventTypeContext("default", EventType.SNAPSHOT),
+                                                 indexManager,
+                                                 new DefaultEventTransformerFactory(),
+                                                 () -> storageProperties,
+                                                 () -> secondaryEventStore,
+                                                 meterFactory,
+                                                 fileSystemMonitor,
+                                                 sampleEventStoreFolder
+                                                         .getAbsolutePath());
         testSubject.init(true);
     }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ *  Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
  *  under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
@@ -61,19 +61,21 @@ public class StandardEventStoreFactory implements EventStoreFactory {
                                                                      storageProperties.getPrimaryStorage(context),
                                                                      EventType.EVENT,
                                                                      meterFactory);
-        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.EVENT),
-                                                                 indexManager,
-                                                                 eventTransformerFactory,
-                                                                 embeddedDBProperties::getEvent,
-                                                                 meterFactory,
-                                                                 storageProperties.getPrimaryStorage(context));
-        return new PrimaryEventStore(new EventTypeContext(context, EventType.EVENT),
-                                     indexManager,
-                                     eventTransformerFactory,
-                                     embeddedDBProperties::getEvent,
-                                     () -> second,
-                                     meterFactory, fileSystemMonitor,
-                                     storageProperties.getPrimaryStorage(context));
+        InputStreamStrorageTierEventStore second = new InputStreamStrorageTierEventStore(new EventTypeContext(context,
+                                                                                                              EventType.EVENT),
+                                                                                         indexManager,
+                                                                                         eventTransformerFactory,
+                                                                                         embeddedDBProperties::getEvent,
+                                                                                         meterFactory,
+                                                                                         storageProperties.getPrimaryStorage(
+                                                                                                 context));
+        return new FileEventStorageEngine(new EventTypeContext(context, EventType.EVENT),
+                                          indexManager,
+                                          eventTransformerFactory,
+                                          embeddedDBProperties::getEvent,
+                                          () -> second,
+                                          meterFactory, fileSystemMonitor,
+                                          storageProperties.getPrimaryStorage(context));
     }
 
     /**
@@ -88,16 +90,21 @@ public class StandardEventStoreFactory implements EventStoreFactory {
                                                                      storageProperties.getPrimaryStorage(context),
                                                                      EventType.SNAPSHOT,
                                                                      meterFactory);
-        InputStreamEventStore second = new InputStreamEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
-                                                                 indexManager,
-                                                                 eventTransformerFactory,
-                                                                 embeddedDBProperties::getSnapshot,
-                                                                 meterFactory,
-                                                                 storageProperties.getPrimaryStorage(context));
-        return new PrimaryEventStore(new EventTypeContext(context, EventType.SNAPSHOT),
-                                     indexManager,
-                                     eventTransformerFactory,
-                                     embeddedDBProperties::getSnapshot, () -> second, meterFactory, fileSystemMonitor,
-                                     storageProperties.getPrimaryStorage(context));
+        InputStreamStrorageTierEventStore second = new InputStreamStrorageTierEventStore(new EventTypeContext(context,
+                                                                                                              EventType.SNAPSHOT),
+                                                                                         indexManager,
+                                                                                         eventTransformerFactory,
+                                                                                         embeddedDBProperties::getSnapshot,
+                                                                                         meterFactory,
+                                                                                         storageProperties.getPrimaryStorage(
+                                                                                                 context));
+        return new FileEventStorageEngine(new EventTypeContext(context, EventType.SNAPSHOT),
+                                          indexManager,
+                                          eventTransformerFactory,
+                                          embeddedDBProperties::getSnapshot,
+                                          () -> second,
+                                          meterFactory,
+                                          fileSystemMonitor,
+                                          storageProperties.getPrimaryStorage(context));
     }
 }

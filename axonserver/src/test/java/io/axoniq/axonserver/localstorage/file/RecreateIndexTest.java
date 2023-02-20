@@ -37,14 +37,14 @@ import static org.mockito.Mockito.mock;
  */
 public class RecreateIndexTest {
 
-    private PrimaryEventStore testSubject;
+    private FileEventStorageEngine testSubject;
     private final FileSystemMonitor fileSystemMonitor = mock(FileSystemMonitor.class);
 
     @Before
     public void init() {
 
         File sampleEventStoreFolder = new File(TestUtils
-                                                       .fixPathOnWindows(InputStreamEventStore.class
+                                                       .fixPathOnWindows(InputStreamStrorageTierEventStore.class
                                                                                  .getResource(
                                                                                          "/event-store-without-index")
                                                                                  .getFile()));
@@ -65,24 +65,25 @@ public class RecreateIndexTest {
                                                              EventType.EVENT,
                                                              meterFactory);
 
-        InputStreamEventStore secondaryEventStore = new InputStreamEventStore(new EventTypeContext("default",
-                                                                                                   EventType.EVENT),
-                                                                              indexManager,
-                                                                              new DefaultEventTransformerFactory(),
-                                                                              () -> storageProperties,
-                                                                              meterFactory,
-                                                                              storageProperties.getPrimaryStorage(
-                                                                                      "default"));
+        InputStreamStrorageTierEventStore secondaryEventStore = new InputStreamStrorageTierEventStore(new EventTypeContext(
+                "default",
+                EventType.EVENT),
+                                                                                                      indexManager,
+                                                                                                      new DefaultEventTransformerFactory(),
+                                                                                                      () -> storageProperties,
+                                                                                                      meterFactory,
+                                                                                                      storageProperties.getPrimaryStorage(
+                                                                                                              "default"));
 
         doNothing().when(fileSystemMonitor).registerPath(any(), any());
 
-        testSubject = new PrimaryEventStore(new EventTypeContext("default", EventType.EVENT),
-                                            indexManager,
-                                            new DefaultEventTransformerFactory(),
-                                            () -> storageProperties,
-                                            () -> secondaryEventStore,
-                                            meterFactory, fileSystemMonitor,
-                                            storageProperties.getPrimaryStorage("default"));
+        testSubject = new FileEventStorageEngine(new EventTypeContext("default", EventType.EVENT),
+                                                 indexManager,
+                                                 new DefaultEventTransformerFactory(),
+                                                 () -> storageProperties,
+                                                 () -> secondaryEventStore,
+                                                 meterFactory, fileSystemMonitor,
+                                                 storageProperties.getPrimaryStorage("default"));
     }
 
     @Test
