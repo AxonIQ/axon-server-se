@@ -10,7 +10,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-    <title>AxonDashboard: Settings</title>
+    <title>Axon Server</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" type="image/x-icon" href="./img/axon-server-icon.png"/>
@@ -143,25 +143,6 @@
         Vue.prototype.isEnterprise = globals.isEnterprise;
 
         $(document).ready(function () {
-            new Vue({
-                        el: "#logout",
-                        data: {
-                            user: null
-                        },
-                        mounted() {
-                            axios.get("v1/public/user").then(response => {
-                                if (response.data && response.data.user) {
-                                    this.user = response.data.user;
-                                }
-                            });
-                        },
-                        methods: {
-                            loggedIn: function () {
-                                return this.user != null;
-                            }
-                        }
-                    });
-
 
             new Vue({
                         el: '#footer',
@@ -196,11 +177,18 @@
                             licenseLoaded: false,
                             license: "free",
                             initialized: false,
-                            pluginsEnabled: false
+                            pluginsEnabled: false,
+                            user: null
                         }, mounted() {
+                    axios.get("v1/public/user").then(response => {
+                        if (response.data && response.data.user) {
+                            this.user = response.data.user;
+                        }
+                    });
                     axios.get("v1/public/license").then(response => {
                         globals.license = response.data.edition;
                         globals.features = response.data.featureList;
+
 
                         if (globals.license !== 'Standard Edition') {
                             this.licenseLoaded = true;
@@ -234,6 +222,9 @@
                         });
                     });
                 }, methods: {
+                    loggedIn: function () {
+                        return this.user != null;
+                    },
                     showConfiguration: function () {
                         return this.admin || this.readOnlyAdmin || globals.license === 'Standard Edition';
                     },
@@ -296,7 +287,7 @@
                 globals.pageView = null;
             }
             $("#pageContent").load(route + ".html", function () {
-                document.title = "AxonDashboard: " + route
+                document.title = "Axon Server: " + route
             });
         }
 
@@ -360,10 +351,10 @@
     <article>
         <header>
             <h1 v-if="licenseLoaded"
-                style="float: left; background: url('/img/axon-server-ee.png') no-repeat left center;">Axon Server
+                style="float: left; background: url('img/axon-server-ee.png') no-repeat left center;">Axon Server
                 EE</h1>
             <h1 v-if="!licenseLoaded"
-                style="float: left; background: url('/img/axon-server-se.png') no-repeat left center;">Axon Server
+                style="float: left; background: url('img/axon-server-se.png') no-repeat left center;">Axon Server
                 SE</h1>
             <div id="logout" style="float:right; margin-top: 30px;">
                 <a v-if="loggedIn()" href="logout">Logout {{ user }}</a>
