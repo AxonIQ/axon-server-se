@@ -16,6 +16,7 @@ import io.axoniq.axonserver.rest.json.RestResponse;
 import io.axoniq.axonserver.serializer.Printable;
 import io.axoniq.axonserver.transport.rest.json.GenericProcessor;
 import io.axoniq.axonserver.transport.rest.json.StreamingProcessor;
+import io.axoniq.axonserver.util.StringUtils;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,12 +56,18 @@ public class EventProcessorRestController {
 
     @GetMapping("components/{component}/processors")
     public Flux<Printable> componentProcessors(@PathVariable("component") String component,
+                                               @RequestParam("context") String context,
                                                @Parameter(hidden = true) final Principal principal) {
 
         return service.eventProcessorsByComponent(component, new PrincipalAuthentication(principal))
-                      .map(p -> p.isStreaming() ? new StreamingProcessor(p) : new GenericProcessor(p));
+                .filter(p -> isNull(context) || p.id().context().equals(context))
+                                                                       .map(p -> p.isStreaming() ? new StreamingProcessor(p) : new GenericProcessor(p));
     }
 
+    private boolean isNull(String context) {
+        return StringUtils.isEmpty(context) || "null".equals(context);
+
+    }
     /**
      * Processes the request to pause a specific event processor.
      *

@@ -1,6 +1,6 @@
 /*
- *  Copyright (c) 2017-2022 AxonIQ B.V. and/or licensed to AxonIQ B.V.
- *  under one or more contributor license agreements.
+ * Copyright (c) 2017-2023 AxonIQ B.V. and/or licensed to AxonIQ B.V.
+ * under one or more contributor license agreements.
  *
  *  Licensed under the AxonIQ Open Source License Agreement v1.0;
  *  you may not use this file except in compliance with the license.
@@ -29,11 +29,10 @@ import io.axoniq.axonserver.test.FakeStreamObserver;
 import io.axoniq.axonserver.topology.Topology;
 import io.axoniq.axonserver.util.FailingStreamObserver;
 import io.micrometer.core.instrument.Metrics;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.*;
+import org.junit.runner.*;
+import org.mockito.*;
+import org.mockito.junit.*;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -50,9 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Marc Gathier
@@ -83,11 +80,9 @@ public class QueryDispatcherTest {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
         queryCache.putIfAbsent("1234", new ActiveQuery("1234",
-                                               "Source",
-                                               new QueryDefinition("c",
-                                                                   "q"),
-                                               r -> dispatchCalled.incrementAndGet(),
-                                               (client) -> doneCalled.set(true), mockedQueryHandler()));
+                                                       serializedQuery(),
+                                                       r -> dispatchCalled.incrementAndGet(),
+                                                       (client) -> doneCalled.set(true), mockedQueryHandler()));
         testSubject.handleResponse(QueryResponse.newBuilder()
                                                 .setMessageIdentifier("12345")
                                                 .setRequestIdentifier("1234")
@@ -109,11 +104,9 @@ public class QueryDispatcherTest {
         AtomicInteger dispatchCalled = new AtomicInteger(0);
         AtomicBoolean doneCalled = new AtomicBoolean(false);
         queryCache.putIfAbsent("1234", new ActiveQuery("1234",
-                                               "Source",
-                                               new QueryDefinition("c",
-                                                                   "q"),
-                                               r -> dispatchCalled.incrementAndGet(),
-                                               (client) -> doneCalled.set(true), mockedQueryHandlers()));
+                                                       serializedQuery(),
+                                                       r -> dispatchCalled.incrementAndGet(),
+                                                       (client) -> doneCalled.set(true), mockedQueryHandlers()));
         testSubject.handleResponse(QueryResponse.newBuilder()
                                                 .setMessageIdentifier("12345")
                                                 .setRequestIdentifier("1234")
@@ -399,10 +392,7 @@ public class QueryDispatcherTest {
 
         FlowControlQueues<QueryInstruction> queue = testSubject.getQueryQueue();
         QueryInstruction instruction = queue.take("client.default");
-        assertTrue(instruction.query().isPresent());
-        instruction = queue.take("client.default");
-        assertTrue(instruction.cancel().isPresent());
-        assertEquals(requestId, instruction.requestId());
+        assertNull(instruction);
     }
 
     @Test
@@ -456,11 +446,10 @@ public class QueryDispatcherTest {
 
         // this query might have been created earlier and already is in the cache
         queryCache.putIfAbsent(requestId, new ActiveQuery(requestId,
-                                               "Source",
-                                               new QueryDefinition("c","q"),
-                                                  originalFutureResponse::complete,
-                                               (client) -> originalFutureCompleted.complete(true),
-                                                  mockedQueryHandler()));
+                                                          serializedQuery(),
+                                                          originalFutureResponse::complete,
+                                                          (client) -> originalFutureCompleted.complete(true),
+                                                          mockedQueryHandler()));
 
         testSubject = new QueryDispatcher(registrationCache,
                                           queryCache,
@@ -541,4 +530,41 @@ public class QueryDispatcherTest {
     // TODO
     //ErrorCode.TOO_MANY_REQUESTS
     //ErrorCode.OTHER
+
+    private SerializedQuery serializedQuery() {
+        return new SerializedQuery("c", "Source", QueryRequest.newBuilder()
+                                                              .setQuery("q")
+                                                              .build());
+    }
+
+    @Test
+    public void cancelRemoveTheInstructionFromDestinationQueue() throws InterruptedException {
+        QueryCache myQueryCache = new QueryCache(100, 100);
+        QueryDispatcher queryDispatcher = new QueryDispatcher(registrationCache,
+                                                              myQueryCache,
+                                                              queryMetricsRegistry,
+                                                              new MyQueryInterceptors(),
+                                                              meterFactory,
+                                                              10_000);
+        String requestId = "1234";
+        QueryRequest request = QueryRequest.newBuilder()
+                                           .setQuery("test")
+                                           .setMessageIdentifier(requestId)
+                                           .build();
+        Set<QueryHandler<?>> handlers = new HashSet<>();
+        FakeStreamObserver<QueryProviderInbound> dispatchStreamObserver = new FakeStreamObserver<>();
+        handlers.add(new DirectQueryHandler(dispatchStreamObserver,
+                                            new ClientStreamIdentification(Topology.DEFAULT_CONTEXT, "client"),
+                                            "componentName", "client"));
+        when(registrationCache.find(any(String.class), any())).thenReturn(handlers);
+        AtomicReference<String> completion = new AtomicReference<>();
+        queryDispatcher.query(new SerializedQuery(Topology.DEFAULT_CONTEXT, request),
+                              GrpcContextAuthenticationProvider.DEFAULT_PRINCIPAL,
+                              r -> {},
+                              completion::set);
+        queryDispatcher.cancel(requestId);
+        assertTrue(queryCache.isEmpty());
+        assertNull(queryDispatcher.getQueryQueue().take("client.default"));
+        assertNotNull(completion.get());
+    }
 }

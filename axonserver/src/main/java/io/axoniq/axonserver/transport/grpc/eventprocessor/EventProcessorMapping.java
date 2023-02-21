@@ -34,6 +34,10 @@ public class EventProcessorMapping
         builder.setMode(processor.mode())
                .setIsStreaming(processor.isStreaming());
 
+        if( processor.loadBalancingStrategyName() != null ) {
+            builder.setLoadBalancingStrategyName(processor.loadBalancingStrategyName());
+        }
+
         processor.instances().forEach(instance -> builder.addClientInstance(grpcProcessorInstance(instance)));
         return builder.build();
     }
